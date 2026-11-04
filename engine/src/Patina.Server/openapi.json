@@ -30,6 +30,89 @@
           }
         }
       }
+    },
+    "/api/v1/viewport": {
+      "get": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "The viewport: its mesh, camera and size. Frames come over the /ws/viewport WebSocket.",
+        "operationId": "GetViewport",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportState"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/viewport/mesh": {
+      "put": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "Shows a mesh file in the viewport.",
+        "operationId": "SetViewportMesh",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewportMeshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportState"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/viewport/camera": {
+      "put": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "Moves the viewport\u0027s camera.",
+        "operationId": "SetViewportCamera",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewportCameraState"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportState"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -93,6 +176,96 @@
         },
         "description": "The reply to \u0060GET /api/v1/system\u0060."
       },
+      "ViewportCameraState": {
+        "required": [
+          "yaw",
+          "pitch",
+          "distance"
+        ],
+        "type": "object",
+        "properties": {
+          "yaw": {
+            "type": "number",
+            "description": "Radians around the up axis.",
+            "format": "double"
+          },
+          "pitch": {
+            "type": "number",
+            "description": "Radians above the horizon.",
+            "format": "double"
+          },
+          "distance": {
+            "type": "number",
+            "description": "From the model\u0027s centre, in bounding radii.",
+            "format": "double"
+          }
+        },
+        "description": "The viewport\u0027s camera: an orbit around the model."
+      },
+      "ViewportMeshRequest": {
+        "required": [
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The file\u0027s path, on the Server\u0027s machine."
+          }
+        },
+        "description": "Asks the viewport to show a mesh."
+      },
+      "ViewportState": {
+        "required": [
+          "camera",
+          "width",
+          "height",
+          "renderScale",
+          "frames"
+        ],
+        "type": "object",
+        "properties": {
+          "mesh": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The mesh\u0027s path, or null when none is open."
+          },
+          "camera": {
+            "description": "The camera.",
+            "$ref": "#/components/schemas/ViewportCameraState"
+          },
+          "width": {
+            "type": "integer",
+            "description": "The size clients asked for, in pixels.",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "description": "The size clients asked for, in pixels.",
+            "format": "int32"
+          },
+          "renderScale": {
+            "type": "number",
+            "description": "The share of that size frames are rendered at, which drops while a client cannot keep up.",
+            "format": "double"
+          },
+          "frames": {
+            "type": "integer",
+            "description": "How many frames this Server has published.",
+            "format": "int64"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why the last command failed, or null."
+          }
+        },
+        "description": "The reply to \u0060GET /api/v1/viewport\u0060. The Server owns all of this; a Worker can die without losing it."
+      },
       "WorkerStatus": {
         "required": [
           "connected"
@@ -142,6 +315,9 @@
   "tags": [
     {
       "name": "System"
+    },
+    {
+      "name": "Viewport"
     }
   ]
 }

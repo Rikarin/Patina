@@ -11,5 +11,6 @@ contextBridge.exposeInMainWorld('patina', {
   onSidecars: (listener: (statuses: unknown) => void) => {
     ipcRenderer.on('patina:sidecars', (_event, statuses: unknown) => listener(statuses));
   },
-  logs: () => ipcRenderer.invoke('patina:sidecars:logs')
+  logs: () => ipcRenderer.invoke('patina:sidecars:logs'),
+  openMesh: () => ipcRenderer.invoke('patina:openMesh')
 });

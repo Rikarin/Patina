@@ -1,4 +1,4 @@
-import { BrowserWindow, app, ipcMain, net, protocol, session, shell } from 'electron';
+import { BrowserWindow, type OpenDialogOptions, app, dialog, ipcMain, net, protocol, session, shell } from 'electron';
 import { existsSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -117,6 +117,14 @@ function handleIpc(): void {
   ipcMain.handle('patina:connection', () => backend().start());
   ipcMain.handle('patina:sidecars', () => sidecars?.statuses() ?? []);
   ipcMain.handle('patina:sidecars:logs', () => sidecars?.logs() ?? { worker: [], server: [] });
+  ipcMain.handle('patina:openMesh', async () => {
+    const options: OpenDialogOptions = {
+      properties: ['openFile'],
+      filters: [{ name: 'Meshes', extensions: ['glb', 'gltf', 'fbx', 'obj'] }]
+    };
+    const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
+    return picked.canceled ? null : (picked.filePaths[0] ?? null);
+  });
 }
 
 app.on('second-instance', () => {

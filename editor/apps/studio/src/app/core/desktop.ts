@@ -16,6 +16,8 @@ export interface DesktopBridge {
   sidecars(): Promise<SidecarStatus[]>;
   onSidecars(listener: (statuses: SidecarStatus[]) => void): void;
   logs(): Promise<Record<SidecarStatus['name'], string[]>>;
+  /** Asks the user for a mesh file: its path, or null if they cancelled. */
+  openMesh(): Promise<string | null>;
 }
 
 /** The desktop bridge, or undefined outside Electron. */

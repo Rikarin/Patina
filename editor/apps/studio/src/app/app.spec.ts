@@ -1,11 +1,15 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { App } from './app';
-import { type ServerState, SystemStatus } from './core/system-status';
+import { API_CLIENT_FACTORY, SERVER_CONNECTION, type ServerState, SystemStatus } from './core/system-status';
 
 async function render(state: ServerState): Promise<HTMLElement> {
   TestBed.configureTestingModule({
-    providers: [{ provide: SystemStatus, useValue: { state: signal(state) } }]
+    providers: [
+      { provide: SystemStatus, useValue: { state: signal(state) } },
+      { provide: SERVER_CONNECTION, useValue: () => Promise.reject(new Error('no server in this test')) },
+      { provide: API_CLIENT_FACTORY, useValue: () => null }
+    ]
   });
   const fixture = TestBed.createComponent(App);
   await fixture.whenStable();

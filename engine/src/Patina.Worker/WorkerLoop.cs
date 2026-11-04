@@ -5,7 +5,7 @@ using System.Diagnostics;
 namespace Patina.Worker;
 
 /// <summary>Stays connected to the Server until stopped.</summary>
-static class WorkerLoop {
+sealed class WorkerLoop(ViewportHost viewport) {
     static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
     static readonly long Started = Stopwatch.GetTimestamp();
 
@@ -13,7 +13,7 @@ static class WorkerLoop {
     ///     Keeps a link to the Server, reconnecting when it drops. <paramref name="log" /> gets one line per link,
     ///     which the desktop app's supervision reads.
     /// </summary>
-    public static async Task RunAsync(string socketPath, TextWriter log, CancellationToken cancellationToken) {
+    public async Task RunAsync(string socketPath, TextWriter log, CancellationToken cancellationToken) {
         while (!cancellationToken.IsCancellationRequested) {
             try {
                 await RunLinkAsync(socketPath, log, cancellationToken);
@@ -31,7 +31,7 @@ static class WorkerLoop {
         }
     }
 
-    static async Task RunLinkAsync(string socketPath, TextWriter log, CancellationToken cancellationToken) {
+    async Task RunLinkAsync(string socketPath, TextWriter log, CancellationToken cancellationToken) {
         var stream = await IpcSocket.ConnectAsync(socketPath, ConnectTimeout, cancellationToken);
         var connection = new IpcConnection(stream, AnswerAsync);
         await using (connection) {
@@ -49,11 +49,15 @@ static class WorkerLoop {
         }
     }
 
-    static ValueTask<IpcMessage> AnswerAsync(IpcMessage request, CancellationToken cancellationToken) =>
+    ValueTask<IpcMessage> AnswerAsync(IpcMessage request, CancellationToken cancellationToken) =>
         ValueTask.FromResult(
-            request.Type == IpcTypes.Health
-                ? new IpcMessage { Type = IpcTypes.Ok, Health = Health() }
-                : IpcMessage.Fail(request.Id, $"Unknown request '{request.Type}'.")
+            request.Type switch {
+                IpcTypes.Health => new() { Type = IpcTypes.Ok, Health = Health() },
+                IpcTypes.ViewportOpen => viewport.Open(request),
+                IpcTypes.ViewportCamera => viewport.SetCamera(request),
+                IpcTypes.ViewportRender => viewport.Render(request),
+                _ => IpcMessage.Fail(request.Id, $"Unknown request '{request.Type}'.")
+            }
         );
 
     static WorkerHealth Health() => new(Stopwatch.GetElapsedTime(Started).TotalSeconds, Environment.WorkingSet);

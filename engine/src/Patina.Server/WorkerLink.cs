@@ -15,9 +15,21 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
     static readonly TimeSpan HealthInterval = TimeSpan.FromSeconds(5);
     static readonly WorkerStatus Disconnected = new(false);
 
+    readonly Lock changing = new();
+    TaskCompletionSource<IpcConnection> nextWorker = NewWaiter();
     volatile WorkerStatus status = Disconnected;
+    volatile IpcConnection? current;
 
     public WorkerStatus Status => status;
+
+    /// <summary>The Worker's connection now, or waits for one: after a crash, that is the next Worker's hello.</summary>
+    public Task<IpcConnection> ConnectionAsync(CancellationToken cancellationToken) {
+        lock (changing) {
+            return current is { } connection
+                ? Task.FromResult(connection)
+                : nextWorker.Task.WaitAsync(cancellationToken);
+        }
+    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
         var socketPath = options.Value.Worker.SocketPath;
@@ -44,10 +56,16 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
             } catch (Exception e) when (e is IOException or IpcException or TimeoutException) {
                 ServerLog.WorkerLost(logger, e.Message);
             } finally {
+                lock (changing) {
+                    current = null;
+                }
+
                 status = Disconnected;
             }
         }
     }
+
+    static TaskCompletionSource<IpcConnection> NewWaiter() => new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     /// <summary>The only request a Worker sends: its hello, refused if it speaks another protocol.</summary>
     static IpcMessage Greet(IpcMessage request, TaskCompletionSource<WorkerHello> hello) {
@@ -74,6 +92,12 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
 
         var worker = await hello;
         ServerLog.WorkerConnected(logger, worker.Version, worker.ProcessId);
+        lock (changing) {
+            current = connection;
+            nextWorker.TrySetResult(connection);
+            nextWorker = NewWaiter();
+        }
+
         while (!connection.Closed.IsCompleted) {
             var reply = await connection.SendAsync(new() { Type = IpcTypes.Health }, cancellationToken);
             status = new(

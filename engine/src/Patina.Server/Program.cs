@@ -3,6 +3,7 @@ using Patina.Ipc;
 using Patina.Library;
 using Patina.Server;
 using Patina.Server.Api;
+using Patina.Server.Viewport;
 using System.Security.Cryptography;
 using System.Text.Json.Serialization;
 
@@ -52,6 +53,9 @@ builder.Services.AddOpenApi(static o => o.MarkNonNullablePropertiesRequired());
 builder.Services.AddSingleton(new ServerIdentity(library, token));
 builder.Services.AddSingleton<WorkerLink>();
 builder.Services.AddHostedService(static s => s.GetRequiredService<WorkerLink>());
+builder.Services.AddSingleton<FrameMemory>();
+builder.Services.AddSingleton<ViewportSession>();
+builder.Services.AddHostedService(static s => s.GetRequiredService<ViewportSession>());
 builder.Services.AddHostedService<DiscoveryPublisher>();
 
 var app = builder.Build();
@@ -70,6 +74,7 @@ app.UseExceptionHandler(
     }
 );
 app.UsePatinaAccess(token);
+app.UseWebSockets();
 app.MapOpenApi();
 app.MapPatinaApi();
 
