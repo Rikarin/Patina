@@ -1,0 +1,72 @@
+name: engine
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    paths: ["engine/**", "external/**", ".gitmodules", ".github/workflows/engine.yml"]
+  # release.yml runs these jobs on the tagged commit and publishes only when they pass.
+  workflow_call:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: engine
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+      - uses: ./.github/actions/setup-dotnet
+      # lavapipe: Mesa's software Vulkan, a conformant driver with no GPU (plan §7). Copied from Vixen's ci.yml, ready
+      # for the first pixel test: nothing here needs a Vulkan device until the Vixen closure is consumed.
+      - name: Install Vulkan and lavapipe (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -q
+          # spirv-tools carries spirv-val, glslc and glslang-tools the GLSL half of Raven's checks.
+          sudo apt-get install -y libvulkan1 mesa-vulkan-drivers vulkan-validationlayers vulkan-tools spirv-tools glslc glslang-tools
+          vulkaninfo --summary | grep -E 'deviceName|apiVersion|driverName'
+          glslc --version
+          glslangValidator --version
+      - run: dotnet build Patina.slnx -c Release
+      - run: dotnet test --solution Patina.slnx -c Release --no-build
+
+  # CoreCLR with ReadyToRun, as the app ships (plan §3.1): the published binaries must start on each target.
+  publish:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, rid: linux-x64 }
+          - { os: macos-latest, rid: osx-arm64 }
+          - { os: windows-latest, rid: win-x64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+      - uses: ./.github/actions/setup-dotnet
+      - name: Publish the Server and the Worker
+        shell: bash
+        env:
+          RID: ${{ matrix.rid }}
+        run: |
+          for project in src/Patina.Server src/Patina.Worker src/Patina.Cli; do
+            dotnet publish "$project" -c Release -r "$RID" --self-contained -p:PublishReadyToRun=true -o out
+          done
+      - name: The published binaries start
+        shell: bash
+        run: |
+          ./out/patina version
+          ./out/patina-worker --version

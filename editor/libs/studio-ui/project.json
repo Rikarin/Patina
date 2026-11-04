@@ -1,0 +1,14 @@
+{
+  "name": "studio-ui",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/studio-ui/src",
+  "prefix": "ptn",
+  "tags": ["type:ui"],
+  "projectType": "library",
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": { "command": "tsc -p libs/studio-ui/tsconfig.lib.json --noEmit" }
+    }
+  }
+}

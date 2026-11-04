@@ -1,0 +1,29 @@
+# Skala (skala.jsonc, .github/workflows/skala.yml) reads its rule severities and thresholds from here, as Roslyn and the
+# IDE do; skala.jsonc holds only the gates. The policy is in skala.jsonc: a rule that fits this codebase is fixed to zero
+# findings, and one that does not is switched off or re-tuned below, with the reason, instead of being parked in
+# .skala/baseline.sarif. Every rule not named here runs at Skala's default.
+root = true
+
+[*.cs]
+# SK6034, a public constant is baked into every caller: the hazard needs an assembly that ships separately from its
+# callers. Patina's engine assemblies are one application, built and shipped together from this solution (nothing is
+# published as a library), so every caller is always rebuilt with the constant.
+dotnet_diagnostic.SK6034.severity = none
+
+# Tests: table-driven test methods and repeated file names and ids are the readable choice there (Skala's own
+# duplication rule measures tests apart for the same reason). An API test class also names every request and response
+# type of the API it covers, so its type coupling (SK7081) counts the API, not the test. The metrics and the
+# repeated-literal rule stay on for the shipped code.
+[engine/tests/**.cs]
+dotnet_diagnostic.SK7001.severity = none
+dotnet_diagnostic.SK7002.severity = none
+dotnet_diagnostic.SK7003.severity = none
+dotnet_diagnostic.SK7081.severity = none
+dotnet_diagnostic.SK7082.severity = none
+dotnet_diagnostic.SK7083.severity = none
+
+# The wire contracts' source-generated JSON context lists every type that crosses the API with [JsonSerializable], as
+# the generator requires: its type coupling (SK7081) is the size of the API, and splitting it would only split that
+# list.
+[engine/src/Patina.Contracts/ContractsJsonContext.cs]
+dotnet_diagnostic.SK7081.severity = none

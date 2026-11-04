@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Reserved for the persistent job queue, batch rebuilds and impact analysis. An empty assembly for now.</Description>
+  </PropertyGroup>
+</Project>

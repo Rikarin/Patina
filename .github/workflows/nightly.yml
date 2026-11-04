@@ -1,0 +1,45 @@
+name: nightly
+
+# The checks too slow for every push: every property-based test (CsCheck, trait Category=Property) runs for a fixed time
+# per case instead of its fixed number of cases. A failure prints the CsCheck seed that reproduces it (CsCheck_Seed).
+#
+# To come here, with what they test (plan §7): real-GPU goldens on self-hosted Mac and PC runners, the generated
+# 10,000-project library with its performance budgets, and the crash soak.
+
+on:
+  schedule:
+    - cron: "41 3 * * *" # nightly, 03:41 UTC
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: Seconds each property-based test case runs (CsCheck_Time)
+        default: "60"
+        required: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: engine
+
+jobs:
+  properties:
+    name: property-based tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+      - uses: ./.github/actions/setup-dotnet
+      - run: dotnet build Patina.slnx -c Release
+      # CsCheck_Time overrides each test's iteration count: the sample runs that many seconds on every core. By project,
+      # not by solution: a project with no property test would fail the run with "zero tests ran".
+      - name: Property-based tests, run for a fixed time each
+        env:
+          CsCheck_Time: ${{ inputs.seconds || '60' }}
+        run: |
+          for project in tests/Patina.Ipc.Tests tests/Patina.Library.Tests; do
+            dotnet test --project "$project" -c Release --no-build --filter-trait "Category=Property"
+          done

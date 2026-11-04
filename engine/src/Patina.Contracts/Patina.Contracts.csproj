@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>REST DTOs and file schemas. No references, so a client's view of the API changes only when it is changed here.</Description>
+  </PropertyGroup>
+</Project>

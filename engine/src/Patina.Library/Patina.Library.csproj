@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Libraries and projects: identities, the library contract and the per-user discovery file. No GPU. library.yaml, references, the index and build keys arrive in P3.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Patina.Contracts/Patina.Contracts.csproj"/>
+  </ItemGroup>
+</Project>

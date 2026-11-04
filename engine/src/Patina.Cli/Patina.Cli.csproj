@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>The patina command. Only `patina version` so far; build, bake, export and library check arrive with their phases.</Description>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>patina</AssemblyName>
+    <RootNamespace>Patina.Cli</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Patina.Contracts/Patina.Contracts.csproj"/>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../../src/Patina.Ipc/Patina.Ipc.csproj"/>
+  </ItemGroup>
+</Project>

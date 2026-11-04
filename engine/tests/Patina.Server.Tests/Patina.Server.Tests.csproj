@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing"/>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Patina.Server/Patina.Server.csproj"/>
+    <!-- Built, not referenced: the process tests run them as the separate processes they are. -->
+    <ProjectReference Include="../../src/Patina.Worker/Patina.Worker.csproj" ReferenceOutputAssembly="false" Private="false"/>
+    <ProjectReference Include="../../src/Patina.Cli/Patina.Cli.csproj" ReferenceOutputAssembly="false" Private="false"/>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,147 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "patina-server | v1",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost/"
+    }
+  ],
+  "paths": {
+    "/api/v1/system": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "The Server\u0027s version, its library, the machine it runs on and the state of its Worker.",
+        "operationId": "GetSystem",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemInfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HostInfo": {
+        "required": [
+          "os",
+          "architecture",
+          "runtime"
+        ],
+        "type": "object",
+        "properties": {
+          "os": {
+            "type": "string",
+            "description": "The operating system\u0027s description."
+          },
+          "architecture": {
+            "type": "string",
+            "description": "The process architecture, such as \u0060Arm64\u0060."
+          },
+          "runtime": {
+            "type": "string",
+            "description": "The .NET runtime\u0027s description."
+          }
+        },
+        "description": "The machine and runtime a process runs on."
+      },
+      "SystemInfo": {
+        "required": [
+          "version",
+          "apiVersion",
+          "host",
+          "worker"
+        ],
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string",
+            "description": "The Server\u0027s release version."
+          },
+          "apiVersion": {
+            "type": "integer",
+            "description": "The major version of the REST API; it is the \u0060v1\u0060 in the URL.",
+            "format": "int32"
+          },
+          "library": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The library this Server owns, or null when it was started without one."
+          },
+          "host": {
+            "description": "The machine and runtime the Server runs on.",
+            "$ref": "#/components/schemas/HostInfo"
+          },
+          "worker": {
+            "description": "The Worker process as the Server sees it.",
+            "$ref": "#/components/schemas/WorkerStatus"
+          }
+        },
+        "description": "The reply to \u0060GET /api/v1/system\u0060."
+      },
+      "WorkerStatus": {
+        "required": [
+          "connected"
+        ],
+        "type": "object",
+        "properties": {
+          "connected": {
+            "type": "boolean",
+            "description": "Whether a Worker is connected and answering."
+          },
+          "version": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The Worker\u0027s release version, from its hello."
+          },
+          "processId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The Worker\u0027s process id, from its hello.",
+            "format": "int32"
+          },
+          "uptimeSeconds": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "How long the Worker has run, from its last health reply.",
+            "format": "double"
+          },
+          "workingSetBytes": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The Worker\u0027s memory, from its last health reply.",
+            "format": "int64"
+          }
+        },
+        "description": "The Worker as the Server sees it. All but \u0060Connected\u0060 are null while there is none."
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "System"
+    }
+  ]
+}

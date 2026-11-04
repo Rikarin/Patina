@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Reserved for export presets, channel packing and naming templates. An empty assembly for now.</Description>
+  </PropertyGroup>
+</Project>

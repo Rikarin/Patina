@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>The process that will own the GPU device and native parsers. Stateless: it executes what the Server asks and can be restarted at any time. Today it connects and answers health.</Description>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>patina-worker</AssemblyName>
+    <RootNamespace>Patina.Worker</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Patina.Contracts/Patina.Contracts.csproj"/>
+    <ProjectReference Include="../Patina.Ipc/Patina.Ipc.csproj"/>
+  </ItemGroup>
+</Project>

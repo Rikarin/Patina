@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Reserved for the small PBR forward renderer, environment and tonemap. An empty assembly for now.</Description>
+  </PropertyGroup>
+</Project>

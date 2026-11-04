@@ -1,0 +1,25 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- CS1591: public XML docs are encouraged, not enforced. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- The release: a tag build sets PATINA_VERSION (v1.2.3), which wins; local builds take the default, kept equal to
+         editor/package.json's version (a test checks). It reaches `patina version`, /api/v1/system and the Worker's
+         hello. No commit hash: the three must print the same text. -->
+    <Version>0.1.0-dev</Version>
+    <Version Condition="'$(PATINA_VERSION)' != ''">$(PATINA_VERSION.TrimStart('v'))</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <Authors>Patina contributors</Authors>
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+    <!-- CoreCLR, not NativeAOT (plan §3.1): the Worker compiles Raven kernels at run time. Never set IsAotCompatible or
+         PublishAot here; start-up cost comes down through ReadyToRun at publish time instead. -->
+  </PropertyGroup>
+</Project>
