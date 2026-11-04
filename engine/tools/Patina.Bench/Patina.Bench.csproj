@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>The spikes' measurements: the numbers in docs/adr come from here, so that they can be run again.</Description>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>patina-bench</AssemblyName>
+    <RootNamespace>Patina.Bench</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Patina.Viewport/Patina.Viewport.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Tools/Vixen.TextureGraph/Vixen.TextureGraph.csproj"/>
+  </ItemGroup>
+</Project>
