@@ -1,7 +1,6 @@
 @import 'tailwindcss';
 @import '@xui/core/styles/theme.css';
-/* BEZEL: uncomment the next line once @xui/core ships styles/bezel.css (3.1+; 3.0.1 has only theme.css). Nothing else changes. */
-/* @import '@xui/core/styles/bezel.css'; */
+@import '@xui/core/styles/bezel.css';
 @import '@angular/cdk/overlay-prebuilt.css';
 
 /* Tailwind only emits utilities it can see: the xUI packages and our libraries. */

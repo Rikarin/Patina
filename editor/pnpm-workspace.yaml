@@ -10,3 +10,7 @@ allowBuilds:
   msgpackr-extract: true
   nx: true
   unrs-resolver: true
+minimumReleaseAgeExclude:
+  - '@xui/core@3.1.0'
+  - '@xui/dock-manager@3.1.0'
+  - '@xui/icon@3.1.0'
