@@ -33,7 +33,12 @@ public sealed class ServerFixture : WebApplicationFactory<Program> {
         // WebApplicationFactory comes through here twice: from Dispose and from DisposeAsync.
         scratch.Refresh();
         if (scratch.Exists) {
-            scratch.Delete(true);
+            try {
+                scratch.Delete(true);
+            } catch (IOException) {
+                // The Server's last write can land while the folder is going, and a temp folder left
+                // behind is not a test failure.
+            }
         }
     }
 }
