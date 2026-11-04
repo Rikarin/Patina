@@ -10,4 +10,8 @@ namespace Patina.Contracts;
 )]
 [JsonSerializable(typeof(SystemInfo))]
 [JsonSerializable(typeof(DiscoveryDocument))]
+[JsonSerializable(typeof(LibraryInfo))]
+[JsonSerializable(typeof(ProjectPage))]
+[JsonSerializable(typeof(AssetPage))]
+[JsonSerializable(typeof(AssetImpact))]
 public sealed partial class ContractsJsonContext : JsonSerializerContext;

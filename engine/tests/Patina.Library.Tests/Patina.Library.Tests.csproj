@@ -1,5 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- xUnit1051: scans over a handful of files take milliseconds; a token on each adds noise and no responsiveness. -->
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Patina.Library/Patina.Library.csproj"/>
+    <ProjectReference Include="../../tools/Patina.Bench/Patina.Bench.csproj"/>
   </ItemGroup>
 </Project>
