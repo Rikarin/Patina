@@ -1,0 +1,106 @@
+using Microsoft.AspNetCore.Http.HttpResults;
+using Patina.Contracts;
+
+namespace Patina.Server.Api;
+
+/// <summary>
+///     The library, read-only. Every list is a page: the browser is a virtualised grid over 10,000 projects (plan
+///     §5), so no endpoint can return a whole library.
+/// </summary>
+static class LibraryEndpoints {
+    const string Tag = "Library";
+    const int DefaultLimit = 50;
+    const int MaxLimit = 500;
+
+    public static void MapLibraryApi(this IEndpointRouteBuilder api) {
+        var library = api.MapGroup("/library").WithTags(Tag);
+
+        library.MapGet("/", GetLibrary)
+            .WithName("GetLibrary")
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .WithSummary("The Server's library: its settings, its size and whether a rescan is running.");
+
+        library.MapGet("/projects", GetProjects)
+            .WithName("GetProjects")
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .WithSummary("One page of projects: by name, or by relevance when searching.");
+
+        library.MapGet("/assets", GetAssets)
+            .WithName("GetAssets")
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .WithSummary("One page of shared assets with their usage counts: by name, or by relevance when searching.");
+
+        library.MapGet("/assets/{id:guid}/impact", GetImpact)
+            .WithName("GetAssetImpact")
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .WithSummary("What saving a shared asset would touch: its dependent projects, and how many are pinned.");
+    }
+
+    static Results<Ok<LibraryInfo>, ProblemHttpResult> GetLibrary(LibraryHost host) =>
+        host.Library is { } library ? TypedResults.Ok(library.Describe()) : NoLibrary();
+
+    static Results<Ok<ProjectPage>, ProblemHttpResult> GetProjects(
+        LibraryHost host,
+        string? search,
+        string[]? tag,
+        int offset = 0,
+        int limit = DefaultLimit
+    ) {
+        if (BadPage(offset, limit) is { } bad) {
+            return bad;
+        }
+
+        return host.Library is { } library
+            ? TypedResults.Ok(library.Projects(new(search, tag, offset, limit)))
+            : NoLibrary();
+    }
+
+    static Results<Ok<AssetPage>, ProblemHttpResult> GetAssets(
+        LibraryHost host,
+        string? search,
+        string[]? tag,
+        int offset = 0,
+        int limit = DefaultLimit
+    ) {
+        if (BadPage(offset, limit) is { } bad) {
+            return bad;
+        }
+
+        return host.Library is { } library
+            ? TypedResults.Ok(library.Assets(new(search, tag, offset, limit)))
+            : NoLibrary();
+    }
+
+    static Results<Ok<AssetImpact>, ProblemHttpResult> GetImpact(
+        LibraryHost host,
+        Guid id,
+        int offset = 0,
+        int limit = DefaultLimit
+    ) {
+        if (BadPage(offset, limit) is { } bad) {
+            return bad;
+        }
+
+        if (host.Library is not { } library) {
+            return NoLibrary();
+        }
+
+        return library.Impact(new(id), offset, limit) is { } impact
+            ? TypedResults.Ok(impact)
+            : TypedResults.Problem($"No shared asset has the id {id}.", statusCode: StatusCodes.Status404NotFound);
+    }
+
+    static ProblemHttpResult? BadPage(int offset, int limit) =>
+        offset < 0 || limit is < 1 or > MaxLimit
+            ? TypedResults.Problem(
+                $"Offset must not be negative, and limit is 1 to {MaxLimit}.",
+                statusCode: StatusCodes.Status400BadRequest
+            )
+            : null;
+
+    static ProblemHttpResult NoLibrary() =>
+        TypedResults.Problem("This Server has no library.", statusCode: StatusCodes.Status404NotFound);
+}

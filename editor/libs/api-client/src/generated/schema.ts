@@ -21,10 +21,154 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The Server's library: its settings, its size and whether a rescan is running. */
+    get: operations['GetLibrary'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/projects': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One page of projects: by name, or by relevance when searching. */
+    get: operations['GetProjects'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/assets': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One page of shared assets with their usage counts: by name, or by relevance when searching. */
+    get: operations['GetAssets'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/assets/{id}/impact': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** What saving a shared asset would touch: its dependent projects, and how many are pinned. */
+    get: operations['GetAssetImpact'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    /** @description What saving a shared asset would touch: "affects 412 projects, 3 pinned" (plan §5). */
+    AssetImpact: {
+      /** @description The asset asked about. */
+      asset: components['schemas']['AssetSummary'];
+      /**
+       * Format: int32
+       * @description The projects that depend on the asset, directly or through other assets.
+       */
+      projects: number;
+      /**
+       * Format: int32
+       * @description How many of Projects a pin holds back; the rest rebuild.
+       */
+      pinned: number;
+      /**
+       * Format: int32
+       * @description Project and asset documents the index could not read. They may depend on the asset too, so a value above zero
+       *     means the counts are a lower bound.
+       */
+      unreadableDocuments: number;
+      /** @description One page of the dependent projects. */
+      items: components['schemas']['ImpactedProject'][];
+      /**
+       * Format: int32
+       * @description The offset the page starts at.
+       */
+      offset: number;
+      /**
+       * Format: int32
+       * @description The most items a page holds.
+       */
+      limit: number;
+    };
+    /** @description One page of shared assets. */
+    AssetPage: {
+      /** @description The assets on this page. */
+      items: components['schemas']['AssetSummary'][];
+      /**
+       * Format: int32
+       * @description How many assets match, on all pages.
+       */
+      total: number;
+      /**
+       * Format: int32
+       * @description The offset the page starts at.
+       */
+      offset: number;
+      /**
+       * Format: int32
+       * @description The most items a page holds.
+       */
+      limit: number;
+    };
+    /** @description One shared asset as the browser shows it. */
+    AssetSummary: {
+      /**
+       * Format: uuid
+       * @description The asset's identity.
+       */
+      id: string;
+      /** @description The asset's kind, such as `smart-material`. */
+      kind: string;
+      /** @description The asset's display name. */
+      name: string;
+      /** @description The asset's file, relative to `shared/`, with forward slashes. */
+      path: string;
+      /** @description The asset's tags, sorted. */
+      tags: string[];
+      /** @description The content hash of the asset's file, or null when the file is missing. */
+      revision?: null | string;
+      /**
+       * Format: int32
+       * @description How many projects reference the asset directly.
+       */
+      usageCount: number;
+    };
     /** @description The machine and runtime a process runs on. */
     HostInfo: {
       /** @description The operating system's description. */
@@ -33,6 +177,107 @@ export interface components {
       architecture: string;
       /** @description The .NET runtime's description. */
       runtime: string;
+    };
+    /** @description A project that depends on a shared asset. */
+    ImpactedProject: {
+      /**
+       * Format: uuid
+       * @description The project's identity.
+       */
+      id: string;
+      /** @description The project's display name. */
+      name: string;
+      /** @description The project's folder, relative to `projects/`, with forward slashes. */
+      path: string;
+      /** @description True when a pin holds the project back, so a change to the asset does not reach it. */
+      pinned: boolean;
+    };
+    /** @description The reply to `GET /api/v1/library`: what opening a library reads, and nothing more. */
+    LibraryInfo: {
+      /**
+       * Format: uuid
+       * @description The library's identity, from `library.yaml`.
+       */
+      id: string;
+      /** @description The library's display name. */
+      name: string;
+      /** @description The library's folder on the Server's machine. */
+      path: string;
+      /**
+       * Format: int32
+       * @description The version of `library.yaml` as it stands on disk.
+       */
+      schemaVersion: number;
+      /**
+       * Format: double
+       * @description The texel density new projects start from, in texels per metre.
+       */
+      texelDensity: number;
+      /** @description The channels the library authors. */
+      channels: string[];
+      /** @description The shader new projects start from. */
+      defaultShader: string;
+      /** @description The export targets the library builds for. */
+      exportTargets: string[];
+      /**
+       * Format: int32
+       * @description The projects in the index.
+       */
+      projectCount: number;
+      /**
+       * Format: int32
+       * @description The shared assets in the index.
+       */
+      assetCount: number;
+      /** @description Whether a rescan is running; counts and pages may lag the files until it ends. */
+      indexing: boolean;
+    };
+    ProblemDetails: {
+      type?: null | string;
+      title?: null | string;
+      /** Format: int32 */
+      status?: null | number;
+      detail?: null | string;
+      instance?: null | string;
+    };
+    /** @description One page of projects. */
+    ProjectPage: {
+      /** @description The projects on this page. */
+      items: components['schemas']['ProjectSummary'][];
+      /**
+       * Format: int32
+       * @description How many projects match, on all pages.
+       */
+      total: number;
+      /**
+       * Format: int32
+       * @description The offset the page starts at.
+       */
+      offset: number;
+      /**
+       * Format: int32
+       * @description The most items a page holds.
+       */
+      limit: number;
+    };
+    /** @description One project as the browser shows it. The project itself loads on open. */
+    ProjectSummary: {
+      /**
+       * Format: uuid
+       * @description The project's identity.
+       */
+      id: string;
+      /** @description The project's display name. */
+      name: string;
+      /** @description The project's folder, relative to `projects/`, with forward slashes. */
+      path: string;
+      /** @description The project's tags, sorted. */
+      tags: string[];
+      /**
+       * Format: int32
+       * @description How many shared assets the project references directly.
+       */
+      referenceCount: number;
     };
     /** @description The reply to `GET /api/v1/system`. */
     SystemInfo: {
@@ -97,6 +342,164 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['SystemInfo'];
+        };
+      };
+    };
+  };
+  GetLibrary: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryInfo'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetProjects: {
+    parameters: {
+      query?: {
+        search?: string;
+        tag?: string[];
+        offset?: number;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectPage'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetAssets: {
+    parameters: {
+      query?: {
+        search?: string;
+        tag?: string[];
+        offset?: number;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AssetPage'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetAssetImpact: {
+    parameters: {
+      query?: {
+        offset?: number;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AssetImpact'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
     };

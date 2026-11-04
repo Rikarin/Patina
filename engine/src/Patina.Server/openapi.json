@@ -30,10 +30,402 @@
           }
         }
       }
+    },
+    "/api/v1/library": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "The Server\u0027s library: its settings, its size and whether a rescan is running.",
+        "operationId": "GetLibrary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryInfo"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/projects": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "One page of projects: by name, or by relevance when searching.",
+        "operationId": "GetProjects",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/assets": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "One page of shared assets with their usage counts: by name, or by relevance when searching.",
+        "operationId": "GetAssets",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/assets/{id}/impact": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "What saving a shared asset would touch: its dependent projects, and how many are pinned.",
+        "operationId": "GetAssetImpact",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetImpact"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AssetImpact": {
+        "required": [
+          "asset",
+          "projects",
+          "pinned",
+          "unreadableDocuments",
+          "items",
+          "offset",
+          "limit"
+        ],
+        "type": "object",
+        "properties": {
+          "asset": {
+            "description": "The asset asked about.",
+            "$ref": "#/components/schemas/AssetSummary"
+          },
+          "projects": {
+            "type": "integer",
+            "description": "The projects that depend on the asset, directly or through other assets.",
+            "format": "int32"
+          },
+          "pinned": {
+            "type": "integer",
+            "description": "How many of Projects a pin holds back; the rest rebuild.",
+            "format": "int32"
+          },
+          "unreadableDocuments": {
+            "type": "integer",
+            "description": "Project and asset documents the index could not read. They may depend on the asset too, so a value above zero\nmeans the counts are a lower bound.",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImpactedProject"
+            },
+            "description": "One page of the dependent projects."
+          },
+          "offset": {
+            "type": "integer",
+            "description": "The offset the page starts at.",
+            "format": "int32"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "The most items a page holds.",
+            "format": "int32"
+          }
+        },
+        "description": "What saving a shared asset would touch: \u0022affects 412 projects, 3 pinned\u0022 (plan \u00A75)."
+      },
+      "AssetPage": {
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetSummary"
+            },
+            "description": "The assets on this page."
+          },
+          "total": {
+            "type": "integer",
+            "description": "How many assets match, on all pages.",
+            "format": "int32"
+          },
+          "offset": {
+            "type": "integer",
+            "description": "The offset the page starts at.",
+            "format": "int32"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "The most items a page holds.",
+            "format": "int32"
+          }
+        },
+        "description": "One page of shared assets."
+      },
+      "AssetSummary": {
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "path",
+          "tags",
+          "usageCount"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The asset\u0027s identity.",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "description": "The asset\u0027s kind, such as \u0060smart-material\u0060."
+          },
+          "name": {
+            "type": "string",
+            "description": "The asset\u0027s display name."
+          },
+          "path": {
+            "type": "string",
+            "description": "The asset\u0027s file, relative to \u0060shared/\u0060, with forward slashes."
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The asset\u0027s tags, sorted."
+          },
+          "revision": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The content hash of the asset\u0027s file, or null when the file is missing."
+          },
+          "usageCount": {
+            "type": "integer",
+            "description": "How many projects reference the asset directly.",
+            "format": "int32"
+          }
+        },
+        "description": "One shared asset as the browser shows it."
+      },
       "HostInfo": {
         "required": [
           "os",
@@ -56,6 +448,217 @@
           }
         },
         "description": "The machine and runtime a process runs on."
+      },
+      "ImpactedProject": {
+        "required": [
+          "id",
+          "name",
+          "path",
+          "pinned"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The project\u0027s identity.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "The project\u0027s display name."
+          },
+          "path": {
+            "type": "string",
+            "description": "The project\u0027s folder, relative to \u0060projects/\u0060, with forward slashes."
+          },
+          "pinned": {
+            "type": "boolean",
+            "description": "True when a pin holds the project back, so a change to the asset does not reach it."
+          }
+        },
+        "description": "A project that depends on a shared asset."
+      },
+      "LibraryInfo": {
+        "required": [
+          "id",
+          "name",
+          "path",
+          "schemaVersion",
+          "texelDensity",
+          "channels",
+          "defaultShader",
+          "exportTargets",
+          "projectCount",
+          "assetCount",
+          "indexing"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The library\u0027s identity, from \u0060library.yaml\u0060.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "The library\u0027s display name."
+          },
+          "path": {
+            "type": "string",
+            "description": "The library\u0027s folder on the Server\u0027s machine."
+          },
+          "schemaVersion": {
+            "type": "integer",
+            "description": "The version of \u0060library.yaml\u0060 as it stands on disk.",
+            "format": "int32"
+          },
+          "texelDensity": {
+            "type": "number",
+            "description": "The texel density new projects start from, in texels per metre.",
+            "format": "double"
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The channels the library authors."
+          },
+          "defaultShader": {
+            "type": "string",
+            "description": "The shader new projects start from."
+          },
+          "exportTargets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The export targets the library builds for."
+          },
+          "projectCount": {
+            "type": "integer",
+            "description": "The projects in the index.",
+            "format": "int32"
+          },
+          "assetCount": {
+            "type": "integer",
+            "description": "The shared assets in the index.",
+            "format": "int32"
+          },
+          "indexing": {
+            "type": "boolean",
+            "description": "Whether a rescan is running; counts and pages may lag the files until it ends."
+          }
+        },
+        "description": "The reply to \u0060GET /api/v1/library\u0060: what opening a library reads, and nothing more."
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ProjectPage": {
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectSummary"
+            },
+            "description": "The projects on this page."
+          },
+          "total": {
+            "type": "integer",
+            "description": "How many projects match, on all pages.",
+            "format": "int32"
+          },
+          "offset": {
+            "type": "integer",
+            "description": "The offset the page starts at.",
+            "format": "int32"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "The most items a page holds.",
+            "format": "int32"
+          }
+        },
+        "description": "One page of projects."
+      },
+      "ProjectSummary": {
+        "required": [
+          "id",
+          "name",
+          "path",
+          "tags",
+          "referenceCount"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The project\u0027s identity.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "The project\u0027s display name."
+          },
+          "path": {
+            "type": "string",
+            "description": "The project\u0027s folder, relative to \u0060projects/\u0060, with forward slashes."
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The project\u0027s tags, sorted."
+          },
+          "referenceCount": {
+            "type": "integer",
+            "description": "How many shared assets the project references directly.",
+            "format": "int32"
+          }
+        },
+        "description": "One project as the browser shows it. The project itself loads on open."
       },
       "SystemInfo": {
         "required": [
@@ -142,6 +745,9 @@
   "tags": [
     {
       "name": "System"
+    },
+    {
+      "name": "Library"
     }
   ]
 }

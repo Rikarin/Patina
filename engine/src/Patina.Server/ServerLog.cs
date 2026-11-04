@@ -13,4 +13,13 @@ static partial class ServerLog {
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Could not update the discovery file: {Reason}")]
     public static partial void DiscoveryFailed(ILogger logger, string reason);
+
+    [LoggerMessage(
+        Level = LogLevel.Information,
+        Message = "Library indexed: {Files} files, {Changed} changed, {Seconds:F2} s"
+    )]
+    public static partial void LibraryIndexed(ILogger logger, int files, int changed, double seconds);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The library cannot be opened: {Reason}")]
+    public static partial void LibraryUnreadable(ILogger logger, string reason);
 }

@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>The patina command. Only `patina version` so far; build, bake, export and library check arrive with their phases.</Description>
+    <Description>The patina command: `version`, `library new` and `library check`. Build, bake and export arrive with their phases.</Description>
     <OutputType>Exe</OutputType>
     <AssemblyName>patina</AssemblyName>
     <RootNamespace>Patina.Cli</RootNamespace>
@@ -8,5 +8,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Patina.Contracts/Patina.Contracts.csproj"/>
+    <ProjectReference Include="../Patina.Library/Patina.Library.csproj"/>
   </ItemGroup>
 </Project>
