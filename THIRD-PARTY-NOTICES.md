@@ -7,8 +7,9 @@ compatibility as each one arrives (plan §11). NuGet and npm packages are listed
 | Component | Used in | Version | Licence used | Source |
 |---|---|---|---|---|
 | xUI | `editor/` (npm packages `@xui/*`) | see `editor/pnpm-lock.yaml` | Apache-2.0 | https://github.com/rikarin/xui |
+| SQLite (native `e_sqlite3`) | `Patina.Library`, through SQLitePCLRaw | see `engine/Directory.Packages.props` | Public domain | https://sqlite.org |
 
-No native code ships yet. These are expected and must be listed here, with their licences confirmed, when they do: Vixen
+SQLite is the only native code that ships so far. These are expected and must be listed here, with their licences confirmed, when they do: Vixen
 (Apache-2.0, through `external/Vixen`), Assimp, MoltenVK and an EXR library.
 
 Vixen's and xUI's licence and `NOTICE` texts ship with the app.

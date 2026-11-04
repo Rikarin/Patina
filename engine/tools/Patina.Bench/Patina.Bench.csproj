@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Scale tooling: a seeded generator for libraries of any size, and the measurements of spike S6.</Description>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>patina-bench</AssemblyName>
+    <RootNamespace>Patina.Bench</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- A corpus generator picks names, not keys: a seeded System.Random is the point of it. -->
+    <NoWarn>$(NoWarn);CA5394</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Patina.Library/Patina.Library.csproj"/>
+  </ItemGroup>
+</Project>

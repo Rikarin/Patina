@@ -27,6 +27,15 @@ public readonly record struct ProjectId(Guid Value) : IGuidId<ProjectId> {
     public override string ToString() => GuidId.Format(this);
 }
 
+/// <summary>A shared asset's identity: a material, graph, brush and so on, used by many projects.</summary>
+public readonly record struct AssetId(Guid Value) : IGuidId<AssetId> {
+    public static AssetId From(Guid value) => new(value);
+
+    public static AssetId New() => new(Guid.CreateVersion7());
+
+    public override string ToString() => GuidId.Format(this);
+}
+
 /// <summary>The one text form of an identity in Patina's files: lower case, with dashes.</summary>
 public static class GuidId {
     public static string Format<T>(T id) where T : IGuidId<T> => id.Value.ToString("D", CultureInfo.InvariantCulture);

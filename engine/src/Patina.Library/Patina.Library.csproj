@@ -1,8 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Libraries and projects: identities, the library contract and the per-user discovery file. No GPU. library.yaml, references, the index and build keys arrive in P3.</Description>
+    <Description>Libraries and projects: the files on disk and their migrations, GUID references, the SQLite index, build keys, the health check and the per-user discovery file. No GPU and no Vixen dependency.</Description>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite"/>
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3"/>
+    <PackageReference Include="YamlDotNet"/>
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../Patina.Contracts/Patina.Contracts.csproj"/>
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Patina.Library.Tests"/>
   </ItemGroup>
 </Project>

@@ -52,6 +52,8 @@ builder.Services.AddOpenApi(static o => o.MarkNonNullablePropertiesRequired());
 builder.Services.AddSingleton(new ServerIdentity(library, token));
 builder.Services.AddSingleton<WorkerLink>();
 builder.Services.AddHostedService(static s => s.GetRequiredService<WorkerLink>());
+builder.Services.AddSingleton<LibraryHost>();
+builder.Services.AddHostedService(static s => s.GetRequiredService<LibraryHost>());
 builder.Services.AddHostedService<DiscoveryPublisher>();
 
 var app = builder.Build();

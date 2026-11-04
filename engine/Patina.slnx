@@ -10,6 +10,9 @@
     <Project Path="src/Patina.Viewport/Patina.Viewport.csproj"/>
     <Project Path="src/Patina.Worker/Patina.Worker.csproj"/>
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Patina.Bench/Patina.Bench.csproj"/>
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Patina.Ipc.Tests/Patina.Ipc.Tests.csproj"/>
     <Project Path="tests/Patina.Library.Tests/Patina.Library.Tests.csproj"/>

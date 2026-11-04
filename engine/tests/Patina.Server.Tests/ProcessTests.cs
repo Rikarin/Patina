@@ -181,4 +181,47 @@ public sealed class ProcessTests : IDisposable {
         Assert.Equal(0, cli.ExitCode);
         Assert.Equal(ProductInfo.Version, output.Trim());
     }
+
+    async Task<(int ExitCode, string Output)> PatinaAsync(params string[] arguments) {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        deadline.CancelAfter(TimeSpan.FromSeconds(60));
+        var info = new ProcessStartInfo("dotnet") { RedirectStandardOutput = true, RedirectStandardError = true };
+        info.ArgumentList.Add(Engine.Dll("Patina.Cli", "patina"));
+        foreach (var argument in arguments) {
+            info.ArgumentList.Add(argument);
+        }
+
+        using var cli = Process.Start(info)!;
+        var error = cli.StandardError.ReadToEndAsync(deadline.Token);
+        var output = await cli.StandardOutput.ReadToEndAsync(deadline.Token);
+        await cli.WaitForExitAsync(deadline.Token);
+        return (cli.ExitCode, output + await error);
+    }
+
+    [Fact]
+    public async Task The_cli_creates_and_checks_a_library() {
+        var library = Path.Combine(folder.FullName, "Made.ptlib");
+
+        Assert.Equal(0, (await PatinaAsync("library", "new", library, "--name", "Made")).ExitCode);
+        Assert.NotEqual(0, (await PatinaAsync("library", "new", library)).ExitCode);
+
+        var clean = await PatinaAsync("library", "check", library);
+        Assert.Equal(0, clean.ExitCode);
+        Assert.Contains("0 findings", clean.Output, StringComparison.Ordinal);
+
+        Directory.CreateDirectory(Path.Combine(library, "projects", "broken"));
+        await File.WriteAllTextAsync(Path.Combine(library, "projects", "broken", "project.yaml"), "<<<<<<<\n", Token);
+
+        var broken = await PatinaAsync("library", "check", library);
+        Assert.Equal(1, broken.ExitCode);
+        Assert.Contains("Unreadable (1)", broken.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task The_cli_says_when_a_folder_is_no_library() {
+        var (exitCode, output) = await PatinaAsync("library", "check", folder.FullName);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("is not a library", output, StringComparison.Ordinal);
+    }
 }
