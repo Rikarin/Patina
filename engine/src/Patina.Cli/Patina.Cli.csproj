@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>The patina command. Only `patina version` so far; build, bake, export and library check arrive with their phases.</Description>
+    <Description>The patina command: `patina version`, and `patina bake`, which evaluates a texture graph on a GPU with no UI.</Description>
     <OutputType>Exe</OutputType>
     <AssemblyName>patina</AssemblyName>
     <RootNamespace>Patina.Cli</RootNamespace>
@@ -8,5 +8,10 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Patina.Contracts/Patina.Contracts.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Tools/Vixen.TextureGraph/Vixen.TextureGraph.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Tools/Vixen.NodeGraph/Vixen.NodeGraph.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Platform/Vixen.Graphics.Vulkan/Vixen.Graphics.Vulkan.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Core/Vixen.Core.Imaging/Vixen.Core.Imaging.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Core/Vixen.Core.Yaml/Vixen.Core.Yaml.csproj"/>
   </ItemGroup>
 </Project>

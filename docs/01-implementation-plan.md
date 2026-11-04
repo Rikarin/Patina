@@ -325,6 +325,20 @@ Each spike is throwaway, with its result written up in `docs/adr/`.
 
 ### PV: the Vixen split (4–6 weeks, all work in the Vixen repo)
 
+> **Status (2026-11-04): done, apart from the rewrite of issue #720.** Vixen `ef63fe921` holds `Vixen.Authoring`,
+> `Vixen.NodeGraph`, `Vixen.TextureGraph`, `Vixen.Interchange` and `Vixen.Texturing`, each with the closure gate, and
+> `patina bake` evaluates a graph through them on MoltenVK. Differences from the plan below:
+> - **`Vixen.Authoring` is new.** It holds `IAuthoringCommand`, `ICommandContext`, `IAuthoredDocument` and `Selection<T>`.
+>   `Vixen.Ui.Reactive` is allowed in the closure, because it is signals and references only Core.
+> - **The projects live under `Tools/`**, so they take Vixen's tooling profile rather than the engine one.
+> - **`Vixen.Terrain` stays.** It draws nothing, so `Vixen.Texturing` references it directly.
+> - **`MeshData`, `ModelData` and `MorphTargetData` moved to `Vixen.Geometry`**, which the plan did not foresee.
+> - **Left behind for now:** `CubeLut` (still uses `Vixen.Rendering`), `LayerStackMesh` and `PaintAlphaSource` (need an
+>   `EditorProject`), and the `.rvn` shading split. Most Texturing tests stay in `Vixen.Editor.Texturing.Tests`, because
+>   their fixtures open a real document.
+> - **S1 is only partly met.** The bake is byte-identical across two runs on one machine, but it has not been compared
+>   with `vixen texture bake`, and Windows and lavapipe have not been tried.
+
 **Exit:** S1's executable runs on the split libraries, no UI or editor assembly is in its output, and Vixen's editor and
 full test suite still pass.
 

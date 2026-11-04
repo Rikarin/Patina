@@ -1,0 +1,3 @@
+[submodule "external/Vixen"]
+	path = external/Vixen
+	url = https://github.com/Rikarin/Vixen.git
