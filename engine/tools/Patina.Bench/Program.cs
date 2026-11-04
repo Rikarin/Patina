@@ -15,10 +15,17 @@ switch (args) {
             Option(options, "--pipeline-cache="),
             options.Contains("--pipeline-threads")
         );
+    case ["mesh", var path]:
+        return MeshFixture.Write(path);
+    case ["render", var mesh, var png, var width, var height]:
+        return RenderBench.Run(mesh, png, int.Parse(width, CultureInfo.InvariantCulture), int.Parse(height, CultureInfo.InvariantCulture));
     default:
         await Console.Error.WriteLineAsync(
-            "Usage: patina-bench kernels <cache folder> [--parallel] [--pipelines] [--pipeline-threads] "
-            + "[--pipeline-cache=<file>] [--format=<format>] [--salt=<n>]"
+            """
+            Usage: patina-bench kernels <cache folder> [--parallel] [--pipelines] [--pipeline-threads] [--pipeline-cache=<file>] [--format=<format>] [--salt=<n>]
+                   patina-bench mesh <file.glb>
+                   patina-bench render <mesh> <out.png> <width> <height>
+            """
         );
         return 2;
 }
