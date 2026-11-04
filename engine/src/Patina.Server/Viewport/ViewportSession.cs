@@ -55,6 +55,10 @@ public sealed class ViewportSession(
     long revision = 1;
     long frames;
     string? error;
+    long rendered;
+    IpcConnection? told;
+    string? toldMesh;
+    ViewportCameraState? toldCamera;
 
     public ViewportState State {
         get {
@@ -119,39 +123,11 @@ public sealed class ViewportSession(
     }
 
     async Task LoopAsync(CancellationToken cancellationToken) {
-        var rendered = 0L;
-        IpcConnection? told = null;
-        string? toldMesh = null;
-        ViewportCameraState? toldCamera = null;
-
         while (true) {
             await dirty.WaitAsync(cancellationToken);
-            while (true) {
-                var (snapshot, wanted) = Snapshot();
-                if (snapshot is not { Mesh: { } path } work || wanted == rendered) {
-                    break;
-                }
-
+            while (Snapshot() is ({ Mesh: not null } work, var wanted) && wanted != rendered) {
                 try {
-                    var connection = await worker.ConnectionAsync(cancellationToken);
-                    if (!ReferenceEquals(connection, told) || path != toldMesh) {
-                        (toldMesh, toldCamera) = (null, null);
-                        await connection.SendAsync(new() { Type = IpcTypes.ViewportOpen, Mesh = path }, cancellationToken);
-                        (told, toldMesh) = (connection, path);
-                    }
-
-                    if (work.Camera != toldCamera) {
-                        await connection.SendAsync(
-                            new() {
-                                Type = IpcTypes.ViewportCamera,
-                                Camera = new(work.Camera.Yaw, work.Camera.Pitch, work.Camera.Distance)
-                            },
-                            cancellationToken
-                        );
-                        toldCamera = work.Camera;
-                    }
-
-                    await RenderAsync(connection, work, cancellationToken);
+                    await DrawAsync(work, cancellationToken);
                     rendered = wanted;
                 } catch (Exception e) when (e is IOException or TimeoutException) {
                     // The Worker died mid-frame. Nothing is lost: the next one is told everything and this frame runs again.
@@ -163,6 +139,24 @@ public sealed class ViewportSession(
                 }
             }
         }
+    }
+
+    /// <summary>Tells the Worker whatever it does not yet know, then renders. A new Worker knows nothing.</summary>
+    async Task DrawAsync(Work work, CancellationToken cancellationToken) {
+        var connection = await worker.ConnectionAsync(cancellationToken);
+        if (!ReferenceEquals(connection, told) || work.Mesh != toldMesh) {
+            (toldMesh, toldCamera) = (null, null);
+            await connection.SendAsync(new() { Type = IpcTypes.ViewportOpen, Mesh = work.Mesh }, cancellationToken);
+            (told, toldMesh) = (connection, work.Mesh);
+        }
+
+        if (work.Camera != toldCamera) {
+            var camera = new ViewportCamera(work.Camera.Yaw, work.Camera.Pitch, work.Camera.Distance);
+            await connection.SendAsync(new() { Type = IpcTypes.ViewportCamera, Camera = camera }, cancellationToken);
+            toldCamera = work.Camera;
+        }
+
+        await RenderAsync(connection, work, cancellationToken);
     }
 
     (Work? Work, long Revision) Snapshot() {
@@ -214,7 +208,7 @@ public sealed class ViewportSession(
             frames++;
             sequence = (uint)frames;
             error = null;
-            audience = [.. subscribers];
+            audience = [..subscribers];
         }
 
         var header = Header(sequence, frame, work.Input);

@@ -34,7 +34,9 @@ for (var i = 0; i < args.Length; i++) {
 }
 
 if (socketPath is null) {
-    await Console.Error.WriteLineAsync("Usage: patina-worker --socket <path> [--shader-cache <folder>] [--watch-stdin] | --version");
+    await Console.Error.WriteLineAsync(
+        "Usage: patina-worker --socket <path> [--shader-cache <folder>] [--watch-stdin] | --version"
+    );
     return 2;
 }
 

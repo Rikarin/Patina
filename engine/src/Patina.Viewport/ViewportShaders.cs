@@ -14,33 +14,34 @@ sealed class ViewportShaders(ShaderCache cache) {
     const string LibraryPrefix = "Patina.Viewport.Library.";
     const string ShaderPrefix = "Patina.Viewport.Shaders.";
 
-    static readonly ImmutableArray<(string Name, string Text)> Core = Read(static name => name.Contains(".Core.", StringComparison.Ordinal));
+    static readonly ImmutableArray<(string Name, string Text)> Core =
+        Read(static name => name.Contains(".Core.", StringComparison.Ordinal));
 
     static readonly ImmutableArray<(string Name, string Text)> Shading =
-        [.. Core, .. Read(static name => name.Contains(".Shading.", StringComparison.Ordinal))];
+        [..Core, ..Read(static name => name.Contains(".Shading.", StringComparison.Ordinal))];
 
     static readonly ImmutableArray<(string Name, string Text)> PostFx = [
-        .. Core,
-        .. Read(static name => name.Contains(".Geometry.", StringComparison.Ordinal)),
-        .. Read(static name => name.EndsWith("PostFx.Fullscreen.rvn", StringComparison.Ordinal))
+        ..Core,
+        ..Read(static name => name.Contains(".Geometry.", StringComparison.Ordinal)),
+        ..Read(static name => name.EndsWith("PostFx.Fullscreen.rvn", StringComparison.Ordinal))
     ];
 
     public EffectData Forward() =>
         cache.Get(
             EffectKey.Of("ViewportForward"),
-            [.. Shading, .. Read(static name => name.StartsWith(ShaderPrefix, StringComparison.Ordinal))]
+            [..Shading, ..Read(static name => name.StartsWith(ShaderPrefix, StringComparison.Ordinal))]
         );
 
     public EffectData Sky() =>
         cache.Get(
             EffectKey.Of("Sky", [new("Soften", "true")]),
-            [.. PostFx, .. Read(static name => name.EndsWith("PostFx.Sky.rvn", StringComparison.Ordinal))]
+            [..PostFx, ..Read(static name => name.EndsWith("PostFx.Sky.rvn", StringComparison.Ordinal))]
         );
 
     public EffectData Tonemap() =>
         cache.Get(
             EffectKey.Of("Tonemap", [new("EncodeSrgb", "true")]),
-            [.. PostFx, .. Read(static name => name.EndsWith("PostFx.Tonemap.rvn", StringComparison.Ordinal))]
+            [..PostFx, ..Read(static name => name.EndsWith("PostFx.Tonemap.rvn", StringComparison.Ordinal))]
         );
 
     static ImmutableArray<(string Name, string Text)> Read(Func<string, bool> wanted) {

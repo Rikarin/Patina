@@ -25,7 +25,7 @@ import { ViewportClient } from './viewport-client';
   host: { class: 'flex h-full min-h-0 flex-col' },
   template: `
     <div class="chrome-bar flex h-9 shrink-0 items-center gap-2 px-2">
-      <button xuiButton size="sm" [disabled]="!canOpen" (click)="open()">Open mesh…</button>
+      <button type="button" xuiButton size="sm" [disabled]="!canOpen" (click)="open()">Open mesh…</button>
       <span class="readout truncate" data-testid="viewport-mesh">{{ meshName() }}</span>
       <span class="flex-1"></span>
       @if (viewport.stats(); as stats) {
@@ -50,7 +50,7 @@ import { ViewportClient } from './viewport-client';
         (wheel)="wheel($event)"
       ></canvas>
       @if (message(); as text) {
-        <p class="text-foreground-muted absolute inset-x-0 top-1/2 text-center" role="status">{{ text }}</p>
+        <p class="text-foreground-muted absolute inset-x-0 top-1/2 text-center">{{ text }}</p>
       }
     </div>
   `

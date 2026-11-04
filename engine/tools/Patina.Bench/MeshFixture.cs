@@ -20,10 +20,7 @@ static class MeshFixture {
     const uint BinaryChunk = 0x004E4942;
 
     public static int Write(string path) {
-        var parts = new[] {
-            Grid(180, 24, TorusKnot),
-            Grid(48, 32, static (u, v) => Sphere(u, v) * 0.3f)
-        };
+        var parts = new[] { Grid(180, 24, TorusKnot), Grid(48, 32, static (u, v) => Sphere(u, v) * 0.3f) };
         var binary = new MemoryStream();
         var bufferViews = new JsonArray();
         var accessors = new JsonArray();
@@ -33,8 +30,8 @@ static class MeshFixture {
         for (var i = 0; i < parts.Length; i++) {
             var (positions, normals, indices) = parts[i];
             var first = accessors.Count;
-            accessors.Add(Vectors(bufferViews, binary, positions, bounds: true));
-            accessors.Add(Vectors(bufferViews, binary, normals, bounds: false));
+            accessors.Add(Vectors(bufferViews, binary, positions, true));
+            accessors.Add(Vectors(bufferViews, binary, normals, false));
             accessors.Add(Scalars(bufferViews, binary, indices));
             meshes.Add(
                 new JsonObject {
@@ -56,7 +53,10 @@ static class MeshFixture {
             ["scenes"] = new JsonArray(new JsonObject { ["nodes"] = new JsonArray(0, 1) }),
             ["nodes"] = nodes,
             ["meshes"] = meshes,
-            ["materials"] = new JsonArray(Material("Gold", 1f, 0.72f, 0.3f, 1f, 0.28f), Material("Red", 0.7f, 0.05f, 0.04f, 0f, 0.55f)),
+            ["materials"] = new JsonArray(
+                Material("Gold", 1f, 0.72f, 0.3f, 1f, 0.28f),
+                Material("Red", 0.7f, 0.05f, 0.04f, 0f, 0.55f)
+            ),
             ["accessors"] = accessors,
             ["bufferViews"] = bufferViews,
             ["buffers"] = new JsonArray(new JsonObject { ["byteLength"] = binary.Length })
@@ -79,7 +79,11 @@ static class MeshFixture {
 
     static Vector3 Sphere(float u, float v) {
         var (longitude, latitude) = (u * MathF.Tau, (v - 0.5f) * MathF.PI);
-        return new(MathF.Cos(latitude) * MathF.Cos(longitude), MathF.Sin(latitude), MathF.Cos(latitude) * MathF.Sin(longitude));
+        return new(
+            MathF.Cos(latitude) * MathF.Cos(longitude),
+            MathF.Sin(latitude),
+            MathF.Cos(latitude) * MathF.Sin(longitude)
+        );
     }
 
     /// <summary>A (2, 3) knot, wrapped in a tube around its own frame.</summary>
@@ -96,11 +100,15 @@ static class MeshFixture {
         var lift = Vector3.Cross(side, tangent);
         // Against the frame's own turn, so that the grid's winding faces outwards.
         var angle = -v * MathF.Tau;
-        return centre + (((side * MathF.Cos(angle)) + (lift * MathF.Sin(angle))) * 0.11f);
+        return centre + (side * MathF.Cos(angle) + lift * MathF.Sin(angle)) * 0.11f;
     }
 
     /// <summary>A closed grid over a surface, with normals taken from its own differences.</summary>
-    static (Vector3[] Positions, Vector3[] Normals, uint[] Indices) Grid(int columns, int rows, Func<float, float, Vector3> surface) {
+    static (Vector3[] Positions, Vector3[] Normals, uint[] Indices) Grid(
+        int columns,
+        int rows,
+        Func<float, float, Vector3> surface
+    ) {
         var positions = new Vector3[(columns + 1) * (rows + 1)];
         var normals = new Vector3[positions.Length];
         var indices = new List<uint>(columns * rows * 6);
@@ -113,7 +121,9 @@ static class MeshFixture {
                 var across = surface(u + Step, v) - surface(u - Step, v);
                 var along = surface(u, Math.Min(v + Step, 1f)) - surface(u, Math.Max(v - Step, 0f));
                 var normal = Vector3.Cross(along, across);
-                normals[at] = normal.LengthSquared() > 1e-12f ? Vector3.Normalize(normal) : Vector3.Normalize(positions[at]);
+                normals[at] = normal.LengthSquared() > 1e-12f
+                    ? Vector3.Normalize(normal)
+                    : Vector3.Normalize(positions[at]);
                 if (x < columns && y < rows) {
                     var (a, b, c, d) = ((uint)at, (uint)at + 1, (uint)(at + columns + 1), (uint)(at + columns + 2));
                     indices.AddRange([a, c, b, b, c, d]);
@@ -121,7 +131,7 @@ static class MeshFixture {
             }
         }
 
-        return (positions, normals, [.. indices]);
+        return (positions, normals, [..indices]);
     }
 
     static JsonObject Vectors(JsonArray views, MemoryStream binary, Vector3[] values, bool bounds) {
@@ -141,8 +151,16 @@ static class MeshFixture {
             ["type"] = "VEC3"
         };
         if (bounds) {
-            accessor["min"] = new JsonArray(values.Min(static v => v.X), values.Min(static v => v.Y), values.Min(static v => v.Z));
-            accessor["max"] = new JsonArray(values.Max(static v => v.X), values.Max(static v => v.Y), values.Max(static v => v.Z));
+            accessor["min"] = new JsonArray(
+                values.Min(static v => v.X),
+                values.Min(static v => v.Y),
+                values.Min(static v => v.Z)
+            );
+            accessor["max"] = new JsonArray(
+                values.Max(static v => v.X),
+                values.Max(static v => v.Y),
+                values.Max(static v => v.Z)
+            );
         }
 
         return accessor;
@@ -172,7 +190,7 @@ static class MeshFixture {
     }
 
     static byte[] Glb(string json, byte[] binary) {
-        var text = Encoding.UTF8.GetBytes(json + new string(' ', (4 - (json.Length % 4)) % 4));
+        var text = Encoding.UTF8.GetBytes(json + new string(' ', (4 - json.Length % 4) % 4));
         var file = new MemoryStream();
         var writer = new BinaryWriter(file);
         writer.Write(GlbMagic);

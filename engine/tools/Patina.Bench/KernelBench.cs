@@ -50,7 +50,9 @@ static class KernelBench {
         var total = clock.Elapsed.TotalMilliseconds;
         var ordered = times.Order().ToArray();
         Say($"{names.Count} kernels, {(parallel ? "parallel" : "serial")}, hits {cache.Hits}, misses {cache.Misses}");
-        Say($"total {total:F0} ms; first {times[0]:F0} ms; median {ordered[ordered.Length / 2]:F1} ms; max {ordered[^1]:F0} ms");
+        Say(
+            $"total {total:F0} ms; first {times[0]:F0} ms; median {ordered[ordered.Length / 2]:F1} ms; max {ordered[^1]:F0} ms"
+        );
         Say($"spir-v bytes {compiled.Sum(Size)}");
         return pipelines ? Pipelines(compiled, pipelineCache, threads) : 0;
     }
@@ -60,7 +62,7 @@ static class KernelBench {
     static EffectData Compile(ShaderCache cache, string kernel, TextureFormat format) {
         var variant = Salted(TextureKernels.Variant(kernel, format));
         var name = TextureKernels.VariantName(kernel, format);
-        ImmutableArray<(string Name, string Text)> sources = [.. TextureKernelPrelude.Sources, (name, variant)];
+        ImmutableArray<(string Name, string Text)> sources = [..TextureKernelPrelude.Sources, (name, variant)];
         return cache.Get(EffectKey.Of(kernel), sources, () => TextureKernelPrelude.Compile(name, variant));
     }
 
@@ -94,15 +96,16 @@ static class KernelBench {
             var clock = Stopwatch.StartNew();
             var made = new (ShaderHandle Module, PipelineHandle Pipeline)[compiled.Length];
             var prepared = compiled.Select(data => {
-                    var effect = loader.Load(data);
-                    var stage = effect.Stages.First(static s => s.Stage == ShaderStage.Compute);
-                    return (effect.Layout, Module: device.CreateShader(
-                        ShaderStage.Compute,
-                        stage.Bytecode.AsSpan(),
-                        data.ShaderName
-                    ));
-                }
-            ).ToArray();
+                        var effect = loader.Load(data);
+                        var stage = effect.Stages.First(static s => s.Stage == ShaderStage.Compute);
+                        return (effect.Layout, Module: device.CreateShader(
+                            ShaderStage.Compute,
+                            stage.Bytecode.AsSpan(),
+                            data.ShaderName
+                        ));
+                    }
+                )
+                .ToArray();
 
             void Build(int index) {
                 var (layout, module) = prepared[index];

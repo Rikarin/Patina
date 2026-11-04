@@ -2,12 +2,17 @@ import { DestroyRef, Injectable, InjectionToken, inject, signal } from '@angular
 import type { ViewportCameraState, ViewportInput } from '@patina/api-client';
 import { unwrap } from '@patina/api-client';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
-import { type FrameTransport, type FrameTransportFactory, WebSocketFrameTransport, type ViewportFrame } from './frame-transport';
+import {
+  type FrameTransport,
+  type FrameTransportFactory,
+  StreamFrameTransport,
+  type ViewportFrame
+} from './frame-transport';
 import { DefaultCamera } from './orbit';
 
 /** Makes the frame transport; tests replace it. */
 export const FRAME_TRANSPORT_FACTORY = new InjectionToken<FrameTransportFactory>('FRAME_TRANSPORT_FACTORY', {
-  factory: () => (connection, onFrame, onOpen) => new WebSocketFrameTransport(connection, onFrame, onOpen)
+  factory: () => (connection, onFrame, onOpen) => new StreamFrameTransport(connection, onFrame, onOpen)
 });
 
 /** What a pane shows beside the picture. */

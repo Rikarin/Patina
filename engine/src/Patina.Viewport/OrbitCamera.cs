@@ -21,7 +21,7 @@ public readonly record struct OrbitCamera(float Yaw, float Pitch, float Distance
     public Vector3 Eye(BoundingBox bounds) {
         var radial = MathF.Cos(Pitch);
         var direction = new Vector3(radial * MathF.Sin(Yaw), MathF.Sin(Pitch), radial * MathF.Cos(Yaw));
-        return bounds.Center + (direction * (Distance * Radius(bounds)));
+        return bounds.Center + direction * (Distance * Radius(bounds));
     }
 
     /// <summary>The view-projection matrix for a model with these bounds, on Vixen's reversed depth.</summary>

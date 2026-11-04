@@ -25,7 +25,7 @@ public sealed class RenderScale(double budgetMilliseconds = 1000d / 60d) {
             return;
         }
 
-        smoothed = smoothed == 0d ? milliseconds : smoothed + (Smoothing * (milliseconds - smoothed));
+        smoothed = smoothed == 0d ? milliseconds : smoothed + Smoothing * (milliseconds - smoothed);
         if (++sinceChange < SettleFrames) {
             return;
         }

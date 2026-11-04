@@ -3,6 +3,20 @@ import { TestBed } from '@angular/core/testing';
 import { App } from './app';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION, type ServerState, SystemStatus } from './core/system-status';
 
+/** jsdom lays nothing out, so it has no ResizeObserver; the pane only needs one to exist. */
+vi.stubGlobal(
+  'ResizeObserver',
+  class {
+    observe(): void {
+      // Nothing resizes here.
+    }
+
+    disconnect(): void {
+      // Nothing to stop.
+    }
+  }
+);
+
 async function render(state: ServerState): Promise<HTMLElement> {
   TestBed.configureTestingModule({
     providers: [

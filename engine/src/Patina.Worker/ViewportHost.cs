@@ -39,7 +39,9 @@ sealed class ViewportHost(string shaderCache) : IDisposable {
         var render = request.Render ?? throw new IpcException("viewport.render says nothing to render.");
         var bytes = ViewportRenderer.FrameBytes(render.Width, render.Height);
         if (bytes > render.Capacity) {
-            throw new IpcException($"A {render.Width}x{render.Height} frame does not fit its {render.Capacity}-byte slot.");
+            throw new IpcException(
+                $"A {render.Width}x{render.Height} frame does not fit its {render.Capacity}-byte slot."
+            );
         }
 
         Map(render.SharedMemory);

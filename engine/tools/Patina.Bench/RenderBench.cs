@@ -20,7 +20,9 @@ static class RenderBench {
         }
 
         using var renderer = created!;
-        Say($"{renderer.Adapter}: renderer ready in {start.Elapsed.TotalMilliseconds:F0} ms, hits {cache.Hits}, misses {cache.Misses}");
+        Say(
+            $"{renderer.Adapter}: renderer ready in {start.Elapsed.TotalMilliseconds:F0} ms, hits {cache.Hits}, misses {cache.Misses}"
+        );
         start.Restart();
         renderer.OpenMesh(mesh);
         Say($"mesh open in {start.Elapsed.TotalMilliseconds:F0} ms");
@@ -29,7 +31,7 @@ static class RenderBench {
         start.Restart();
         renderer.Render(OrbitCamera.Default, width, height, pixels);
         Say($"first frame in {start.Elapsed.TotalMilliseconds:F0} ms");
-        File.WriteAllBytes(png, PngCodec.Encode(new Bitmap(width, height, pixels)));
+        File.WriteAllBytes(png, PngCodec.Encode(new(width, height, pixels)));
 
         var times = new double[Frames];
         start.Restart();
@@ -40,7 +42,9 @@ static class RenderBench {
         }
 
         Array.Sort(times);
-        Say($"{width}x{height}: {Frames / start.Elapsed.TotalSeconds:F1} fps, median {times[Frames / 2]:F2} ms, p99 {times[(int)(Frames * 0.99)]:F2} ms");
+        Say(
+            $"{width}x{height}: {Frames / start.Elapsed.TotalSeconds:F1} fps, median {times[Frames / 2]:F2} ms, p99 {times[(int)(Frames * 0.99)]:F2} ms"
+        );
         return 0;
     }
 

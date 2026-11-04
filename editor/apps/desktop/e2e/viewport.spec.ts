@@ -20,7 +20,7 @@ test.beforeEach(async () => {
   window = await app.firstWindow();
   // The native file dialog is the one thing a test cannot click.
   await app.evaluate(({ dialog }, path) => {
-    dialog.showOpenDialog = (() => Promise.resolve({ canceled: false, filePaths: [path] })) as never;
+    dialog.showOpenDialog = () => Promise.resolve({ canceled: false, filePaths: [path] });
   }, mesh);
 });
 
@@ -31,25 +31,37 @@ test.afterEach(async () => {
 
 const canvas = () => window.getByRole('img', { name: 'Viewport' });
 
+async function canvasBox(): Promise<{ x: number; y: number; width: number; height: number }> {
+  const box = await canvas().boundingBox();
+  if (!box) {
+    throw new Error('The viewport canvas has no box.');
+  }
+
+  return box;
+}
+
 async function frames(): Promise<number> {
   return Number(await canvas().getAttribute('data-frames'));
 }
 
 /** Counts what the window's own screenshot shows inside the canvas: this reads composited pixels, not a frame counter. */
 async function colours(): Promise<{ gold: number; red: number; total: number }> {
-  const box = await canvas().boundingBox();
-  const png = (await window.screenshot({ clip: box! })).toString('base64');
+  const png = (await window.screenshot({ clip: await canvasBox() })).toString('base64');
   return window.evaluate(async data => {
     const image = new Image();
     image.src = `data:image/png;base64,${data}`;
     await image.decode();
     const surface = new OffscreenCanvas(image.width, image.height);
-    const context = surface.getContext('2d')!;
+    const context = surface.getContext('2d');
+    if (!context) {
+      throw new Error('No 2D context.');
+    }
+
     context.drawImage(image, 0, 0);
     const pixels = context.getImageData(0, 0, image.width, image.height).data;
     let [gold, red] = [0, 0];
     for (let i = 0; i < pixels.length; i += 4) {
-      const [r, g, b] = [pixels[i]!, pixels[i + 1]!, pixels[i + 2]!];
+      const [r, g, b] = [pixels[i] ?? 0, pixels[i + 1] ?? 0, pixels[i + 2] ?? 0];
       gold += r > b + 40 && g > 80 ? 1 : 0;
       red += r > 150 && g < 110 ? 1 : 0;
     }
@@ -72,7 +84,7 @@ test('a glTF opened in the docked viewport shows up lit, and a drag orbits it', 
   expect(lit.red).toBeGreaterThan(20);
 
   const before = await frames();
-  const box = (await canvas().boundingBox())!;
+  const box = await canvasBox();
   await window.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await window.mouse.down();
   for (let step = 1; step <= 10; step++) {
@@ -82,6 +94,13 @@ test('a glTF opened in the docked viewport shows up lit, and a drag orbits it', 
   await window.mouse.up();
   await expect.poll(frames).toBeGreaterThan(before);
   await window.screenshot({ path: join(shots, 'viewport-orbited.png') });
+
+  // A new size is a new texture: a painter that kept the old one's immutable storage would stop showing frames.
+  const resized = await frames();
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setSize(1100, 700));
+  await expect.poll(frames).toBeGreaterThan(resized);
+  await expect.poll(async () => (await colours()).gold).toBeGreaterThan(100);
+  await window.screenshot({ path: join(shots, 'viewport-resized.png') });
 });
 
 test('killing the Worker keeps the view, and frames come back from its successor', async () => {
@@ -92,10 +111,11 @@ test('killing the Worker keeps the view, and frames come back from its successor
     (globalThis as unknown as { patina: { sidecars(): Promise<{ name: string; pid: number }[]> } }).patina.sidecars()
   );
   expect(worker?.name).toBe('worker');
-  process.kill(worker!.pid, 'SIGKILL');
-
-  const box = (await canvas().boundingBox())!;
+  const box = await canvasBox();
   const before = await frames();
+  const killed = Date.now();
+  process.kill(worker?.pid ?? 0, 'SIGKILL');
+
   await expect
     .poll(
       async () => {
@@ -105,8 +125,9 @@ test('killing the Worker keeps the view, and frames come back from its successor
         await window.mouse.up();
         return frames();
       },
-      { timeout: 20_000 }
+      { timeout: 20_000, intervals: [50] }
     )
     .toBeGreaterThan(before);
+  console.warn(`S5: a frame from the new Worker ${Date.now() - killed} ms after the kill`);
   await expect(window.getByRole('status', { name: 'Server status' })).toContainText('Worker connected');
 });

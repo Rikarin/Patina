@@ -274,7 +274,11 @@ public sealed class ViewportRenderer : IDisposable {
 
     /// <summary>Raven numbers a shader's inputs, so the mesh's two attributes are found by name.</summary>
     static VertexBufferLayout VerticesOf(Effect effect) {
-        var position = effect.VertexInputs.First(static input => input.Name.EndsWith("position", StringComparison.Ordinal));
+        var position = effect.VertexInputs.First(static input => input.Name.EndsWith(
+                "position",
+                StringComparison.Ordinal
+            )
+        );
         var normal = effect.VertexInputs.First(static input => input.Name.EndsWith("normal", StringComparison.Ordinal));
         return new(
             ViewportMesh.FloatsPerVertex * sizeof(float),
@@ -360,7 +364,7 @@ public sealed class ViewportRenderer : IDisposable {
             for (var face = 0; face < CubeMap.Faces; face++) {
                 commands.CopyBufferToTexture(
                     staging,
-                    level.Offset + (face * faceBytes),
+                    level.Offset + face * faceBytes,
                     new(texture, level.Level, face),
                     new(level.Width, level.Height, 1)
                 );
@@ -379,10 +383,10 @@ public sealed class ViewportRenderer : IDisposable {
         public Geometry(VulkanDevice device, Pass forward, ViewportMesh mesh) {
             this.device = device;
             Mesh = mesh;
-            Vertices = Upload<float>(mesh.Vertices, BufferUsage.Vertex, "viewport vertices");
-            Indices = Upload<uint>(mesh.Indices, BufferUsage.Index, "viewport indices");
+            Vertices = Upload(mesh.Vertices, BufferUsage.Vertex, "viewport vertices");
+            Indices = Upload(mesh.Indices, BufferUsage.Index, "viewport indices");
             var block = forward.Effect.BlockOf(DescriptorSetSlot.PerMaterial);
-            Parts = [.. mesh.Parts.Select(part => (part, Material(forward, block, part)))];
+            Parts = [..mesh.Parts.Select(part => (part, Material(forward, block, part)))];
         }
 
         public ViewportMesh Mesh { get; }
@@ -454,7 +458,12 @@ public sealed class ViewportRenderer : IDisposable {
             DepthView = device.CreateTextureView(Depth);
             OutputView = device.CreateTextureView(Output);
             Readback = device.CreateBuffer(
-                new(FrameBytes(width, height), BufferUsage.CopyDestination, MemoryAccess.HostReadback, "viewport readback")
+                new(
+                    FrameBytes(width, height),
+                    BufferUsage.CopyDestination,
+                    MemoryAccess.HostReadback,
+                    "viewport readback"
+                )
             );
             ToneSet = device.CreateDescriptorSet(
                 tonemap.Effect.SetLayouts[(int)DescriptorSetSlot.PerMaterial],

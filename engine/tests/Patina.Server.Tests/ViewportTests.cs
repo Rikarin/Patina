@@ -16,7 +16,9 @@ public sealed class ViewportProcessTests : IDisposable {
     const int HeaderBytes = 32;
 
     static readonly HttpClient Http = new();
-    static readonly string Fixture = Path.GetFullPath(Path.Combine(Engine.Root, "..", "content", "fixtures", "viewport-test.glb"));
+
+    static readonly string Fixture =
+        Path.GetFullPath(Path.Combine(Engine.Root, "..", "content", "fixtures", "viewport-test.glb"));
 
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-viewport-");
     readonly string socketPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.sock");
@@ -61,7 +63,14 @@ public sealed class ViewportProcessTests : IDisposable {
     }
 
     Process StartWorker() =>
-        Start(Engine.Dll("Patina.Worker", "patina-worker"), "--socket", socketPath, "--shader-cache", ShaderCache, "--watch-stdin");
+        Start(
+            Engine.Dll("Patina.Worker", "patina-worker"),
+            "--socket",
+            socketPath,
+            "--shader-cache",
+            ShaderCache,
+            "--watch-stdin"
+        );
 
     async Task<ServerInstance> StartServerAsync(CancellationToken cancellationToken) {
         Start(
@@ -90,7 +99,7 @@ public sealed class ViewportProcessTests : IDisposable {
 
     static async Task OpenMeshAsync(ServerInstance instance, CancellationToken cancellationToken) {
         using var request = Authorised(HttpMethod.Put, instance, "/api/v1/viewport/mesh");
-        request.Content = JsonContent.Create(new ViewportMeshRequest(Fixture), ContractsJsonContext.Default.ViewportMeshRequest);
+        request.Content = JsonContent.Create(new(Fixture), ContractsJsonContext.Default.ViewportMeshRequest);
         using var response = await Http.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
     }
@@ -98,7 +107,10 @@ public sealed class ViewportProcessTests : IDisposable {
     static async Task<ViewportState> StateAsync(ServerInstance instance, CancellationToken cancellationToken) {
         using var request = Authorised(HttpMethod.Get, instance, "/api/v1/viewport");
         using var response = await Http.SendAsync(request, cancellationToken);
-        return (await response.Content.ReadFromJsonAsync(ContractsJsonContext.Default.ViewportState, cancellationToken))!;
+        return (await response.Content.ReadFromJsonAsync(
+            ContractsJsonContext.Default.ViewportState,
+            cancellationToken
+        ))!;
     }
 
     /// <summary>Socket input and REST calls are two channels, so a test that wants their order waits for it.</summary>
@@ -110,7 +122,10 @@ public sealed class ViewportProcessTests : IDisposable {
 
     static async Task<ClientWebSocket> ConnectAsync(ServerInstance instance, CancellationToken cancellationToken) {
         var socket = new ClientWebSocket();
-        await socket.ConnectAsync(new($"ws://127.0.0.1:{instance.Port}/ws/viewport?access_token={instance.Token}"), cancellationToken);
+        await socket.ConnectAsync(
+            new($"ws://127.0.0.1:{instance.Port}/ws/viewport?access_token={instance.Token}"),
+            cancellationToken
+        );
         return socket;
     }
 
@@ -134,7 +149,8 @@ public sealed class ViewportProcessTests : IDisposable {
         var receive = socket.ReceiveAsync(buffer.AsMemory(length), patience.Token).AsTask();
         while (true) {
             if (await Task.WhenAny(receive, Task.Delay(250, cancellationToken)) != receive) {
-                if ((await StateAsync(instance, cancellationToken)).Error is { } error && error.StartsWith("No Vulkan", StringComparison.Ordinal)) {
+                if ((await StateAsync(instance, cancellationToken)).Error is { } error
+                    && error.StartsWith("No Vulkan", StringComparison.Ordinal)) {
                     await patience.CancelAsync();
                     Assert.Skip(error);
                 }
@@ -168,9 +184,9 @@ public sealed class ViewportProcessTests : IDisposable {
         Assert.Equal(0x464E5450u, BinaryPrimitives.ReadUInt32LittleEndian(frame));
         Assert.Equal(320u, BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(8)));
         Assert.Equal(200u, BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(12)));
-        Assert.Equal(HeaderBytes + (320 * 200 * 4), frame.Length);
+        Assert.Equal(HeaderBytes + 320 * 200 * 4, frame.Length);
         var warm = Enumerable.Range(0, 320 * 200)
-            .Count(i => frame[HeaderBytes + (i * 4)] > frame[HeaderBytes + (i * 4) + 2] + 40);
+            .Count(i => frame[HeaderBytes + i * 4] > frame[HeaderBytes + i * 4 + 2] + 40);
         Assert.InRange(warm, 320, 320 * 200 / 2);
 
         await SendAsync(socket, new(new(2d, 0.2d, 2.2d), Input: 42), deadline.Token);
@@ -185,6 +201,54 @@ public sealed class ViewportProcessTests : IDisposable {
         Assert.Equal(2d, (await StateAsync(instance, deadline.Token)).Camera.Yaw);
     }
 
+    [Fact]
+    public async Task The_frame_stream_carries_the_same_frames_and_input_comes_over_the_socket() {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        deadline.CancelAfter(TimeSpan.FromSeconds(90));
+        var instance = await StartServerAsync(deadline.Token);
+        StartWorker();
+        using var input = new ClientWebSocket();
+        await input.ConnectAsync(
+            new($"ws://127.0.0.1:{instance.Port}/ws/viewport?frames=false&access_token={instance.Token}"),
+            deadline.Token
+        );
+        await SendAsync(input, new(Width: 64, Height: 48), deadline.Token);
+        await UntilSizeAsync(instance, 64, deadline.Token);
+        await OpenMeshAsync(instance, deadline.Token);
+
+        using var request = Authorised(HttpMethod.Get, instance, "/api/v1/viewport/frames");
+        using var response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, deadline.Token);
+        await using var stream = await response.Content.ReadAsStreamAsync(deadline.Token);
+        var frame = new byte[HeaderBytes + 64 * 48 * 4];
+        using var patience = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token);
+        patience.CancelAfter(TimeSpan.FromSeconds(30));
+        try {
+            await stream.ReadExactlyAsync(frame, patience.Token);
+        } catch (OperationCanceledException) {
+            Assert.Skip(
+                (await StateAsync(instance, deadline.Token)).Error ?? "No frame arrived and no reason was given."
+            );
+        }
+
+        Assert.Equal(0x464E5450u, BinaryPrimitives.ReadUInt32LittleEndian(frame));
+        Assert.Equal(64u, BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(8)));
+        Assert.Contains(frame.Skip(HeaderBytes), static value => value > 0);
+    }
+
+    [Fact]
+    public async Task The_frame_stream_needs_the_token() {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        deadline.CancelAfter(TimeSpan.FromSeconds(60));
+        var instance = await StartServerAsync(deadline.Token);
+
+        using var response = await Http.GetAsync(
+            $"http://127.0.0.1:{instance.Port}/api/v1/viewport/frames",
+            deadline.Token
+        );
+
+        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
     /// <summary>Spike S5 (ADR 0004): the Server stays up, keeps the state, and tells the next Worker all of it.</summary>
     [Fact]
     public async Task A_killed_worker_loses_nothing_and_its_successor_carries_on() {
@@ -197,6 +261,11 @@ public sealed class ViewportProcessTests : IDisposable {
         await UntilSizeAsync(instance, 160, deadline.Token);
         await OpenMeshAsync(instance, deadline.Token);
         var first = await ReceiveFrameAsync(socket, instance, deadline.Token);
+
+        // Mid-render: the camera keeps moving, so the Server has a frame in the Worker's hands when the kill lands.
+        for (var i = 0; i < 20; i++) {
+            await SendAsync(socket, new(new(1d + i * 0.01d, 0.1d, 2.5d)), deadline.Token);
+        }
 
         worker.Kill();
         await worker.WaitForExitAsync(deadline.Token);
@@ -214,7 +283,9 @@ public sealed class ViewportProcessTests : IDisposable {
             input = BinaryPrimitives.ReadUInt32LittleEndian(next.AsSpan(16));
         }
 
-        TestContext.Current.TestOutputHelper?.WriteLine($"first frame from the new Worker after {clock.ElapsedMilliseconds} ms");
+        TestContext.Current.TestOutputHelper?.WriteLine(
+            $"S5: first frame from the new Worker after {clock.ElapsedMilliseconds} ms"
+        );
         var state = await StateAsync(instance, deadline.Token);
         Assert.Equal(Fixture, state.Mesh);
         Assert.Equal(3d, state.Camera.Yaw);
@@ -230,7 +301,7 @@ public sealed class ViewportProcessTests : IDisposable {
 
         using var request = Authorised(HttpMethod.Put, instance, "/api/v1/viewport/mesh");
         request.Content = JsonContent.Create(
-            new ViewportMeshRequest(Path.Combine(folder.FullName, "missing.glb")),
+            new(Path.Combine(folder.FullName, "missing.glb")),
             ContractsJsonContext.Default.ViewportMeshRequest
         );
         using var response = await Http.SendAsync(request, deadline.Token);
@@ -292,7 +363,11 @@ public sealed class RenderScaleTests {
 
 public sealed class FrameMemoryTests : IDisposable {
     readonly FrameMemory memory = new(
-        Options.Create(new ServerOptions { Worker = new() { FramesPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.frames") } })
+        Options.Create(
+            new ServerOptions {
+                Worker = new() { FramesPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.frames") }
+            }
+        )
     );
 
     public void Dispose() => memory.Dispose();

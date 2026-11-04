@@ -40,7 +40,7 @@ public sealed class ViewportRendererTests : IDisposable {
     }
 
     static (byte R, byte G, byte B, byte A) At(byte[] pixels, int x, int y) {
-        var at = ((y * Width) + x) * 4;
+        var at = (y * Width + x) * 4;
         return (pixels[at], pixels[at + 1], pixels[at + 2], pixels[at + 3]);
     }
 
@@ -52,14 +52,15 @@ public sealed class ViewportRendererTests : IDisposable {
         var pixels = Render(renderer, OrbitCamera.Default);
 
         // Every pixel is opaque, and the sky in the corner is a mid grey rather than the clear colour.
-        Assert.All(Enumerable.Range(0, Width * Height), i => Assert.Equal(255, pixels[(i * 4) + 3]));
+        Assert.All(Enumerable.Range(0, Width * Height), i => Assert.Equal(255, pixels[i * 4 + 3]));
         var corner = At(pixels, 2, 2);
         Assert.InRange((int)corner.R, 30, 220);
 
         // Gold is a warm pixel: more red than blue by a wide margin, which grey sky never is. The sphere is the only
         // saturated red.
-        var gold = Enumerable.Range(0, Width * Height).Count(i => pixels[i * 4] > pixels[(i * 4) + 2] + 40 && pixels[(i * 4) + 1] > 80);
-        var red = Enumerable.Range(0, Width * Height).Count(i => pixels[i * 4] > 150 && pixels[(i * 4) + 1] < 110);
+        var gold = Enumerable.Range(0, Width * Height)
+            .Count(i => pixels[i * 4] > pixels[i * 4 + 2] + 40 && pixels[i * 4 + 1] > 80);
+        var red = Enumerable.Range(0, Width * Height).Count(i => pixels[i * 4] > 150 && pixels[i * 4 + 1] < 110);
         Assert.InRange(gold, Width * Height / 50, Width * Height / 2);
         Assert.InRange(red, 20, Width * Height / 5);
     }

@@ -21,12 +21,18 @@ void main() { colour = vec4(texture(frame, uv).rgb, 1.0); }`;
  */
 export class FramePainter {
   private readonly gl: WebGL2RenderingContext;
+  private texture: WebGLTexture | null = null;
   private width = 0;
   private height = 0;
 
   /** Returns null where WebGL2 is not available. */
   static create(canvas: HTMLCanvasElement): FramePainter | null {
-    const gl = canvas.getContext('webgl2', { alpha: false, antialias: false, depth: false, powerPreference: 'low-power' });
+    const gl = canvas.getContext('webgl2', {
+      alpha: false,
+      antialias: false,
+      depth: false,
+      powerPreference: 'low-power'
+    });
     return gl ? new FramePainter(gl) : null;
   }
 
@@ -47,20 +53,28 @@ export class FramePainter {
 
     gl.linkProgram(program);
     gl.useProgram(program);
-    gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  }
+
+  /** A texture's storage is immutable, and frames change size with the pane and the render scale. */
+  private allocate(width: number, height: number): void {
+    const { gl } = this;
+    gl.deleteTexture(this.texture);
+    this.texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, this.texture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, width, height);
+    this.width = width;
+    this.height = height;
   }
 
   paint(frame: ViewportFrame): void {
     const { gl } = this;
     if (frame.width !== this.width || frame.height !== this.height) {
-      this.width = frame.width;
-      this.height = frame.height;
-      gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, frame.width, frame.height);
+      this.allocate(frame.width, frame.height);
     }
 
     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, frame.width, frame.height, gl.RGBA, gl.UNSIGNED_BYTE, frame.pixels);

@@ -42,23 +42,31 @@ static class PatinaApi {
             .WithSummary("Moves the viewport's camera.");
 
         app.Map(
-            "/ws/viewport",
-            static async (HttpContext context, ViewportSession session) => {
-                if (!context.WebSockets.IsWebSocketRequest) {
-                    context.Response.StatusCode = StatusCodes.Status400BadRequest;
-                    return;
-                }
+                "/ws/viewport",
+                static async (HttpContext context, ViewportSession session) => {
+                    if (!context.WebSockets.IsWebSocketRequest) {
+                        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                        return;
+                    }
 
-                using var socket = await context.WebSockets.AcceptWebSocketAsync();
-                using var client = new ViewportSocket(socket, session);
-                await client.RunAsync(context.RequestAborted);
-            }
-        ).ExcludeFromDescription();
+                    using var socket = await context.WebSockets.AcceptWebSocketAsync();
+                    var sendFrames = context.Request.Query["frames"] != "false";
+                    using var client = new ViewportSocket(socket, session, sendFrames);
+                    await client.RunAsync(context.RequestAborted);
+                }
+            )
+            .ExcludeFromDescription();
+
+        // Binary and endless, so outside the OpenAPI document: docs/adr/0003-frame-transport.md describes it.
+        api.MapGet("/viewport/frames", ViewportStream.RunAsync).ExcludeFromDescription();
     }
 
     static Results<Ok<ViewportState>, ProblemHttpResult> SetMesh(ViewportMeshRequest request, ViewportSession session) {
         if (!File.Exists(request.Path)) {
-            return TypedResults.Problem($"There is no file at '{request.Path}'.", statusCode: StatusCodes.Status404NotFound);
+            return TypedResults.Problem(
+                $"There is no file at '{request.Path}'.",
+                statusCode: StatusCodes.Status404NotFound
+            );
         }
 
         session.SetMesh(request.Path);

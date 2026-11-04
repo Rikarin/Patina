@@ -27,8 +27,8 @@ jobs:
         with:
           submodules: recursive
       - uses: ./.github/actions/setup-dotnet
-      # lavapipe: Mesa's software Vulkan, a conformant driver with no GPU (plan §7). Copied from Vixen's ci.yml, ready
-      # for the first pixel test: nothing here needs a Vulkan device until the Vixen closure is consumed.
+      # lavapipe: Mesa's software Vulkan, a conformant driver with no GPU (plan §7). Copied from Vixen's ci.yml. The
+      # viewport's pixel tests run on it, and skip on a runner with no Vulkan.
       - name: Install Vulkan and lavapipe (Linux)
         if: runner.os == 'Linux'
         run: |

@@ -1,33 +1,26 @@
-import { parseFrame } from './frame-transport';
+import { parseHeader } from './frame-transport';
 import { DefaultCamera, orbit, zoom } from './orbit';
 
-function frame(width: number, height: number, magic = 0x464e5450): ArrayBuffer {
-  const message = new ArrayBuffer(32 + width * height * 4);
-  const header = new DataView(message);
-  header.setUint32(0, magic, true);
-  header.setUint32(4, 7, true);
-  header.setUint32(8, width, true);
-  header.setUint32(12, height, true);
-  header.setUint32(16, 3, true);
-  header.setUint32(20, 2500, true);
-  return message;
+function header(width: number, height: number, magic = 0x464e5450): ArrayBuffer {
+  const bytes = new ArrayBuffer(32);
+  const view = new DataView(bytes);
+  view.setUint32(0, magic, true);
+  view.setUint32(4, 7, true);
+  view.setUint32(8, width, true);
+  view.setUint32(12, height, true);
+  view.setUint32(16, 3, true);
+  view.setUint32(20, 2500, true);
+  return bytes;
 }
 
-describe('parseFrame', () => {
+describe('parseHeader', () => {
   it('reads the header the Server writes', () => {
-    const parsed = parseFrame(frame(2, 2));
-
-    expect(parsed).toMatchObject({ sequence: 7, width: 2, height: 2, input: 3, renderMs: 2.5 });
-    expect(parsed?.pixels.length).toBe(16);
+    expect(parseHeader(header(2, 4))).toEqual({ sequence: 7, width: 2, height: 4, input: 3, renderMs: 2.5 });
   });
 
-  it('refuses a message that is not a frame', () => {
-    expect(parseFrame(new ArrayBuffer(8))).toBeNull();
-    expect(parseFrame(frame(2, 2, 0x12345678))).toBeNull();
-  });
-
-  it('refuses a frame shorter than its size says', () => {
-    expect(parseFrame(frame(2, 2).slice(0, 40))).toBeNull();
+  it('refuses bytes that are not a frame header', () => {
+    expect(parseHeader(new ArrayBuffer(8))).toBeNull();
+    expect(parseHeader(header(2, 2, 0x12345678))).toBeNull();
   });
 });
 

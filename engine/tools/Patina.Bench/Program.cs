@@ -6,7 +6,9 @@ using Vixen.TextureGraph;
 
 switch (args) {
     case ["kernels", var folder, .. var options]:
-        KernelBench.Salt = Option(options, "--salt=") is { } salt ? int.Parse(salt, CultureInfo.InvariantCulture) : null;
+        KernelBench.Salt = Option(options, "--salt=") is { } salt
+            ? int.Parse(salt, CultureInfo.InvariantCulture)
+            : null;
         return KernelBench.Run(
             folder,
             Enum.Parse<TextureFormat>(Option(options, "--format=") ?? nameof(TextureFormat.Rgba8)),
@@ -18,7 +20,12 @@ switch (args) {
     case ["mesh", var path]:
         return MeshFixture.Write(path);
     case ["render", var mesh, var png, var width, var height]:
-        return RenderBench.Run(mesh, png, int.Parse(width, CultureInfo.InvariantCulture), int.Parse(height, CultureInfo.InvariantCulture));
+        return RenderBench.Run(
+            mesh,
+            png,
+            int.Parse(width, CultureInfo.InvariantCulture),
+            int.Parse(height, CultureInfo.InvariantCulture)
+        );
     default:
         await Console.Error.WriteLineAsync(
             """

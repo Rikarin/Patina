@@ -66,7 +66,11 @@ public sealed class ShaderCacheTests : IDisposable {
         var cache = new ShaderCache(folder.FullName);
 
         var red = Get(cache, Source, ref compiles);
-        var green = Get(cache, Source.Replace("1f, 0f, 0f, 1f", "0f, 1f, 0f, 1f", StringComparison.Ordinal), ref compiles);
+        var green = Get(
+            cache,
+            Source.Replace("1f, 0f, 0f, 1f", "0f, 1f, 0f, 1f", StringComparison.Ordinal),
+            ref compiles
+        );
 
         Assert.Equal(2, compiles);
         Assert.Equal(2, cache.Misses);

@@ -37,7 +37,9 @@ sealed class ViewportMesh {
 
     /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
     public static ViewportMesh Read(string path) {
-        var options = new ModelReadOptions { GenerateTangents = false, ImportAnimations = false, ImportBlendShapes = false };
+        var options = new ModelReadOptions {
+            GenerateTangents = false, ImportAnimations = false, ImportBlendShapes = false
+        };
         var read = ModelReader.Read(
             File.ReadAllBytes(path),
             Path.GetExtension(path),
@@ -60,7 +62,7 @@ sealed class ViewportMesh {
             parts.Add(new(first, mesh.Indices.Length, Factors(read, part.Material)));
         }
 
-        return new([.. vertices], [.. indices], [.. parts], bounds);
+        return new([..vertices], [..indices], [..parts], bounds);
     }
 
     static ModelMaterialFactors Factors(ReadModel read, int material) =>
