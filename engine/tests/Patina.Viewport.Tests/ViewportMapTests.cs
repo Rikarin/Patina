@@ -100,18 +100,18 @@ public sealed class ViewportMapTests : IDisposable {
         using var renderer = Open();
         renderer.OpenMesh(Square("square.glb"));
 
-        renderer.SetMaps(new(BaseColor: File_(Picture("eight.png", 188, 188, 188))));
+        renderer.SetMaps(new(File_(Picture("eight.png", 188, 188, 188))));
         var eight = Render(renderer);
 
         const ushort Encoded = 188 * 257;
         File.WriteAllBytes(In("sixteen.png"), PngCodec.Encode16(1, 1, 3, [Encoded, Encoded, Encoded]));
-        renderer.SetMaps(new(BaseColor: File_(In("sixteen.png"))));
+        renderer.SetMaps(new(File_(In("sixteen.png"))));
         var sixteen = Render(renderer);
 
         // An EXR holds linear light, and sRGB 188 is about half of it. Read as linear, the 8-bit picture would be 0.74.
         var linear = 0.5029f;
         File.WriteAllBytes(In("float.exr"), ExrCodec.Encode(new(1, 1, 3, [linear, linear, linear])));
-        renderer.SetMaps(new(BaseColor: File_(In("float.exr"))));
+        renderer.SetMaps(new(File_(In("float.exr"))));
         var floating = Render(renderer);
 
         Assert.InRange(Largest(eight, sixteen), 0, 2);
@@ -173,7 +173,7 @@ public sealed class ViewportMapTests : IDisposable {
         renderer.OpenMesh(Square("square.glb"));
         var plain = Render(renderer);
 
-        renderer.SetMaps(new(BaseColor: File_(Picture("red.png", 200, 10, 10))));
+        renderer.SetMaps(new(File_(Picture("red.png", 200, 10, 10))));
         Assert.NotEqual(plain, Render(renderer));
 
         renderer.SetMaps(ViewportMaps.None);
@@ -185,11 +185,11 @@ public sealed class ViewportMapTests : IDisposable {
         using var renderer = Open();
         renderer.OpenMesh(Square("square.glb"));
         var red = File_(Picture("red.png", 200, 10, 10));
-        renderer.SetMaps(new(BaseColor: red));
+        renderer.SetMaps(new(red));
         var first = Render(renderer);
 
         File.Delete(red.Path);
-        renderer.SetMaps(new(BaseColor: red));
+        renderer.SetMaps(new(red));
 
         Assert.Equal(first, Render(renderer));
     }
@@ -200,7 +200,7 @@ public sealed class ViewportMapTests : IDisposable {
         renderer.OpenMesh(Square("square.glb"));
         File.WriteAllBytes(In("broken.png"), [1, 2, 3]);
 
-        Assert.ThrowsAny<Exception>(() => renderer.SetMaps(new(BaseColor: File_(In("broken.png")))));
+        Assert.ThrowsAny<Exception>(() => renderer.SetMaps(new(File_(In("broken.png")))));
 
         Assert.True(renderer.HasMesh);
         Render(renderer);

@@ -671,7 +671,7 @@ public sealed class BakeProcessTests : IDisposable {
         await File.WriteAllBytesAsync(broken, [1, 2, 3], deadline.Token);
         using var laid = await http.PutAsJsonAsync(
             "/api/v1/viewport/maps",
-            new(BaseColor: broken),
+            new(broken),
             ContractsJsonContext.Default.ViewportMapPaths,
             deadline.Token
         );

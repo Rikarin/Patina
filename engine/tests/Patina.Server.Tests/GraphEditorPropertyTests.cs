@@ -199,7 +199,7 @@ public sealed class GraphEditorPropertyTests {
         string Direction() => random.Next(2) == 0 ? "Input" : "Output";
 
         GraphInterfacePort Port(string name, string direction) =>
-            new(name, direction, random.Next(2) == 0 ? "Image" : "Float", [], "");
+            new(name, direction, random.Next(2) == 0 ? "Image" : "Float", [], string.Empty);
 
         string ParameterName() =>
             document.Parameters.Length == 0

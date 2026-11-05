@@ -101,7 +101,7 @@ static class PaintBench {
                     PaintCoverage.Everywhere(size, size),
                     PaintBrush.Default with { Radius = radius, Flow = 1f, Spacing = 0.25f },
                     0xFF3060E0u + (uint)index,
-                    gutter: 0
+                    0
                 )
             )
         ];

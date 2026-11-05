@@ -195,8 +195,8 @@ public sealed class GraphApiTests : IDisposable {
             state.Id,
             Token,
             new GraphAddPort(new("Mask", "Input", "Image", [], "What to wear")),
-            new GraphAddPort(new("Amount", "Input", "Float", [0.5f], "")),
-            new GraphAddPort(new("Result", "Output", "Image", [], "")),
+            new GraphAddPort(new("Amount", "Input", "Float", [0.5f], string.Empty)),
+            new GraphAddPort(new("Result", "Output", "Image", [], string.Empty)),
             new GraphAddNode(SubGraphs.InputType, 0, 0, -1),
             new GraphAddNode(SubGraphs.OutputType, 900, 0, -2),
             new GraphConnect(-1, "Mask", 2, "Input"),
@@ -220,8 +220,8 @@ public sealed class GraphApiTests : IDisposable {
         await client.EditAsync(
             state.Id,
             Token,
-            new GraphSetPort("Mask", "Input", new("Wear", "Input", "Image", [], "")),
-            new GraphSetPort("Result", "Output", new("Worn", "Output", "Image", [], ""))
+            new GraphSetPort("Mask", "Input", new("Wear", "Input", "Image", [], string.Empty)),
+            new GraphSetPort("Result", "Output", new("Worn", "Output", "Image", [], string.Empty))
         );
         var renamed = await client.StateAsync(state.Id, Token);
         Assert.Contains(renamed.Edges, e => e.FromNode == entry && e.FromPort == "Wear" && e.ToNode == 2);
@@ -242,14 +242,14 @@ public sealed class GraphApiTests : IDisposable {
         );
 
         foreach (var refused in new GraphCommand[] {
-                     new GraphAddPort(new("Wear", "Input", "Image", [], "")),
-                     new GraphAddPort(new("", "Input", "Image", [], "")),
-                     new GraphAddPort(new("Bad", "Sideways", "Image", [], "")),
-                     new GraphAddPort(new("Bad", "Input", "Nothing", [], "")),
-                     new GraphAddPort(new("Bad", "Input", "Float", [1f, 2f], "")),
-                     new GraphSetPort("Wear", "Output", new("Wear", "Output", "Image", [], "")),
-                     new GraphSetPort("Wear", "Input", new("Wear", "Output", "Image", [], "")),
-                     new GraphSetPort("Wear", "Input", new("Wear", "Input", "Float", [], "")),
+                     new GraphAddPort(new("Wear", "Input", "Image", [], string.Empty)),
+                     new GraphAddPort(new(string.Empty, "Input", "Image", [], string.Empty)),
+                     new GraphAddPort(new("Bad", "Sideways", "Image", [], string.Empty)),
+                     new GraphAddPort(new("Bad", "Input", "Nothing", [], string.Empty)),
+                     new GraphAddPort(new("Bad", "Input", "Float", [1f, 2f], string.Empty)),
+                     new GraphSetPort("Wear", "Output", new("Wear", "Output", "Image", [], string.Empty)),
+                     new GraphSetPort("Wear", "Input", new("Wear", "Output", "Image", [], string.Empty)),
+                     new GraphSetPort("Wear", "Input", new("Wear", "Input", "Float", [], string.Empty)),
                      new GraphRemovePort("Nothing", "Input")
                  }) {
             using var response = await client.SendAsync(state.Id, new([refused]), Token);

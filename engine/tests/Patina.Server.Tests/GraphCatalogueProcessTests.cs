@@ -206,7 +206,7 @@ public sealed class GraphCatalogueProcessTests : IDisposable {
         var token = deadline.Token;
 
         var pixels = Enumerable.Range(0, 4 * 4 * 4).Select(static i => (byte)(i * 4)).ToArray();
-        PngCodec.Save(Path.Combine(Library, "picture.png"), new Bitmap(4, 4, pixels));
+        PngCodec.Save(Path.Combine(Library, "picture.png"), new(4, 4, pixels));
         NodeGraphAsset host = new() {
             Name = "Catalogue",
             Nodes = [

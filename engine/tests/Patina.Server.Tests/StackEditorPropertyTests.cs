@@ -72,11 +72,11 @@ public sealed class StackEditorPropertyTests {
     [Fact]
     public void A_first_stroke_names_its_paint_file() {
         var editor = new StackEditor("/tmp/Crate.vxlayers", Sample());
-        Assert.Equal("", LayerOf(editor).Paint);
+        Assert.Equal(string.Empty, LayerOf(editor).Paint);
         editor.Apply(new([Stroke("a", false, 1)]));
         Assert.Equal("Crate.Body.paint.vxpaint", LayerOf(editor).Paint);
         editor.Undo();
-        Assert.Equal("", LayerOf(editor).Paint);
+        Assert.Equal(string.Empty, LayerOf(editor).Paint);
     }
 
     static LayerAsset LayerOf(StackEditor editor) => editor.Set.Layers.Single(static layer => layer.Id == "paint");

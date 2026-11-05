@@ -394,7 +394,7 @@ public sealed class StackProcessTests : IDisposable {
     async Task<StackState> CreateAsync(string name, CancellationToken token, int size = Side) {
         using var response = await http.PostAsJsonAsync(
             "/api/v1/stacks/new",
-            new StackCreateRequest(name, size, size),
+            new(name, size, size),
             ContractsJsonContext.Default.StackCreateRequest,
             token
         );
@@ -405,7 +405,7 @@ public sealed class StackProcessTests : IDisposable {
     async Task<StackState> OpenAsync(string path, CancellationToken token) {
         using var response = await http.PostAsJsonAsync(
             "/api/v1/stacks",
-            new StackOpenRequest(path),
+            new(path),
             ContractsJsonContext.Default.StackOpenRequest,
             token
         );
@@ -432,7 +432,7 @@ public sealed class StackProcessTests : IDisposable {
     async Task<StackEditResult> EditAsync(string id, CancellationToken token, params StackCommand[] commands) {
         using var response = await http.PostAsJsonAsync(
             $"/api/v1/stacks/{id}/commands",
-            new StackCommandBatch(commands),
+            new(commands),
             ContractsJsonContext.Default.StackCommandBatch,
             token
         );
@@ -462,7 +462,7 @@ public sealed class StackProcessTests : IDisposable {
     async Task<IReadOnlyList<StackPixels>> ExportAsync(string id, string to, CancellationToken token) {
         using var response = await http.PostAsJsonAsync(
             $"/api/v1/stacks/{id}/export",
-            new StackExportRequest(to),
+            new(to),
             ContractsJsonContext.Default.StackExportRequest,
             token
         );

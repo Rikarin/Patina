@@ -65,7 +65,7 @@ public sealed class StackEditor : ILayerStackDocument {
     public LayerStackAsset Document { get; set; }
 
     /// <inheritdoc />
-    public string PaintSet => "";
+    public string PaintSet => string.Empty;
 
     /// <summary>The texture set this session paints.</summary>
     public TextureSetAsset Set =>
@@ -318,16 +318,16 @@ public sealed class StackEditor : ILayerStackDocument {
             throw new StackEditRefusedException("A brush has a radius.");
         }
 
-        if (!stroke.Mask && Set.Channels.All(channel => channel.Usage != stroke.Channel)) {
+        if (!stroke.Mask && Set.Channels.TrueForAll(channel => channel.Usage != stroke.Channel)) {
             throw new StackEditRefusedException($"This stack has no channel '{stroke.Channel}'.");
         }
 
-        var stem = System.IO.Path.GetFileNameWithoutExtension(AssetPath);
+        var stem = Path.GetFileNameWithoutExtension(AssetPath);
         string paint;
         if (stroke.Mask) {
             paint = layer.Mask.Paint.Trim();
             if (paint.Length == 0) {
-                paint = LayerPaint.NameFor(stem, set, layer.Id, mask: true);
+                paint = LayerPaint.NameFor(stem, set, layer.Id, true);
                 run(
                     Named(
                         layer,

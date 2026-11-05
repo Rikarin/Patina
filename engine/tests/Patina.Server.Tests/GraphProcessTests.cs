@@ -448,7 +448,7 @@ public sealed class GraphProcessTests : IDisposable {
     public async Task Patina_bake_reads_what_the_worker_reads_and_writes_the_same_bytes() {
         using var deadline = Deadline(180);
         var pixels = Enumerable.Range(0, 4 * 4 * 4).Select(static i => (byte)(i * 4)).ToArray();
-        PngCodec.Save(Path.Combine(Library, "picture.png"), new Bitmap(4, 4, pixels));
+        PngCodec.Save(Path.Combine(Library, "picture.png"), new(4, 4, pixels));
         var compounds = Directory.CreateDirectory(Path.Combine(Library, LibraryLayout.CompoundsFolder)).FullName;
         GraphTesting.Write(compounds, Tint("Tint"), "Tint.vxtexgraph");
 
