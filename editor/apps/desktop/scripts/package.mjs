@@ -110,7 +110,9 @@ await build({
 const release = join(dist, 'release');
 const unpacked = () => {
   if (process.platform === 'darwin') {
-    const folder = readdirSync(release).find(name => /^mac/.test(name) && existsSync(join(release, name, 'Patina.app')));
+    const folder = readdirSync(release).find(
+      name => /^mac/.test(name) && existsSync(join(release, name, 'Patina.app'))
+    );
     return join(release, folder, 'Patina.app/Contents/Resources/engine/patina-worker');
   }
 
