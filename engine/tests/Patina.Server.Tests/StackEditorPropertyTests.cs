@@ -20,7 +20,6 @@ public sealed class StackEditorPropertyTests {
                 static batches => {
                     var editor = new StackEditor("/tmp/Crate.vxlayers", Sample());
                     var original = StackDocuments.Text(editor.Document);
-                    var steps = 0;
                     foreach (var seed in batches) {
                         var before = StackDocuments.Text(editor.Document);
                         var random = new Random(seed);
@@ -29,7 +28,6 @@ public sealed class StackEditorPropertyTests {
                             editor.Apply(
                                 new([..Enumerable.Range(0, random.Next(1, 4)).Select(_ => Pick(editor, random))])
                             );
-                            steps++;
                         } catch (StackEditRefusedException) {
                             Assert.Equal(before, StackDocuments.Text(editor.Document));
                             Assert.Equal(history, editor.Standing.Count);
@@ -38,11 +36,12 @@ public sealed class StackEditorPropertyTests {
 
                     var edited = StackDocuments.Text(editor.Document);
                     long[] journal = [..editor.Standing.Select(static entry => entry.Id)];
-                    for (var step = 0; step < steps; step++) {
-                        Assert.NotNull(editor.Undo());
+                    // A part of a drag adds to the step before it, so the history is how many steps there are.
+                    var steps = 0;
+                    while (editor.Undo() is not null) {
+                        steps++;
                     }
 
-                    Assert.Null(editor.Undo());
                     Assert.Equal(original, StackDocuments.Text(editor.Document));
                     Assert.Empty(editor.Standing);
                     for (var step = 0; step < steps; step++) {

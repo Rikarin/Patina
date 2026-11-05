@@ -85,7 +85,7 @@ public sealed class StackEditor : ILayerStackDocument {
     /// <summary>The strokes that stand, oldest first.</summary>
     public IReadOnlyList<StackJournalEntry> Standing => [..undoable.SelectMany(static step => step.Strokes)];
 
-    /// <summary>Strokes that could be redone.</summary>
+    /// <summary>Strokes that have been undone and could be redone.</summary>
     public IReadOnlyList<StackJournalEntry> Redoable => [..redoable.SelectMany(static step => step.Strokes)];
 
     /// <summary>Whether a drag is still going on.</summary>
@@ -339,6 +339,12 @@ public sealed class StackEditor : ILayerStackDocument {
                 paint = LayerPaint.NameFor(stem, set, layer.Id);
                 run(Named(layer, layer with { Paint = paint }, set));
             }
+        }
+
+        // ⚠ Live, two strokes of one batch take turns; replayed, they run one after the other. Where they meet in one
+        // channel that is two pictures, and a journal has to be one.
+        if (step.Strokes.Exists(other => other.Paint == paint && other.Usage == Channel(stroke))) {
+            throw new StackEditRefusedException("One batch paints one channel of a layer once.");
         }
 
         step.Strokes.Add(new(nextEntry++, stroke, paint, Channel(stroke), Packed(stroke.Colour)));

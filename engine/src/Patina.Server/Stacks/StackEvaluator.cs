@@ -161,7 +161,8 @@ public sealed class StackEvaluator(
                 session.Folder,
                 session.ImageRoots,
                 null,
-                Newest(held, work.Standing)
+                Newest(held, work.Standing),
+                session.Created
             );
             await connection.SendAsync(new() { Type = IpcTypes.StackLoad, StackLoad = load }, cancellationToken);
             state.Document = work.Document;
@@ -258,17 +259,22 @@ public sealed class StackEvaluator(
         held.Base = folder;
     }
 
-    string CheckpointRoot(StackSession session) =>
+    string CheckpointRoot(StackSession session) => CheckpointRoot(session.Id);
+
+    string CheckpointRoot(string session) =>
         Path.Combine(
             identity.Library is { } library
                 ? LibraryLayout.PaintPath(library)
                 : Path.Combine(Path.GetTempPath(), $"patina-paint-{Environment.ProcessId}"),
-            session.Id
+            session
         );
 
     async Task ForgetClosedAsync(CancellationToken cancellationToken) {
         foreach (var id in sessions.TakeClosed()) {
-            marks.Remove(id);
+            if (marks.Remove(id) && Directory.Exists(CheckpointRoot(id))) {
+                Directory.Delete(CheckpointRoot(id), true);
+            }
+
             if (told.Remove(id, out var held)) {
                 try {
                     await held.Connection.SendAsync(

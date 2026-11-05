@@ -257,6 +257,9 @@ public sealed record GraphFullImage(string Hash, int Width, int Height);
 /// <param name="ImageRoots">The folders a relative image reference is read from.</param>
 /// <param name="MeshMaps">The folder of baked maps, or null.</param>
 /// <param name="Checkpoint">A folder of canvases newer than the stack's own files, or null.</param>
+/// <param name="Created">
+///     Paint files this session's strokes made. A journal starts before them, so what a save left in them is not a base.
+/// </param>
 public sealed record StackLoad(
     string Session,
     string Path,
@@ -265,7 +268,8 @@ public sealed record StackLoad(
     string? Folder,
     IReadOnlyList<string> ImageRoots,
     string? MeshMaps,
-    string? Checkpoint
+    string? Checkpoint,
+    IReadOnlyList<string> Created
 );
 
 /// <summary>One stroke of the journal, or the part of it a Worker has not been sent.</summary>

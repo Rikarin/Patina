@@ -230,14 +230,19 @@ static class StackEndpoints {
     ) =>
         ReadAsync(id, sessions, evaluator, clean, null, cancellationToken);
 
-    static Task<Results<Ok<IReadOnlyList<StackPixels>>, ProblemHttpResult>> Export(
+    static async Task<Results<Ok<IReadOnlyList<StackPixels>>, ProblemHttpResult>> Export(
         string id,
         StackExportRequest request,
         StackSessions sessions,
         StackEvaluator evaluator,
         CancellationToken cancellationToken
-    ) =>
-        ReadAsync(id, sessions, evaluator, true, sessions.Resolve(request.Folder), cancellationToken);
+    ) {
+        try {
+            return await ReadAsync(id, sessions, evaluator, true, sessions.Resolve(request.Folder), cancellationToken);
+        } catch (StackEditRefusedException e) {
+            return TypedResults.Problem(e.Message, statusCode: Refused);
+        }
+    }
 
     static async Task<Results<Ok<IReadOnlyList<StackPixels>>, ProblemHttpResult>> ReadAsync(
         string id,

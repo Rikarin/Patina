@@ -30,6 +30,7 @@ public sealed record StackWork(
 public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     readonly StackEditor editor;
     readonly Dictionary<string, StackPreview> previews = new(StringComparer.Ordinal);
+    readonly HashSet<string> found = new(StringComparer.Ordinal);
     readonly Action wake;
     string fileHash;
     long revision = 1;
@@ -47,6 +48,9 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         fileHash = Hash(text);
         editor = new(path, StackDocuments.Parse(text));
         this.wake = wake;
+        foreach (var paint in PaintFiles.Where(paint => File.Exists(System.IO.Path.GetFullPath(paint, Folder!)))) {
+            found.Add(paint);
+        }
     }
 
     public string Id { get; }
@@ -73,6 +77,20 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         get {
             lock (Changing) {
                 return [..Named(editor.Document.Sets.SelectMany(static set => set.Layers))];
+            }
+        }
+    }
+
+    /// <summary>The paint files strokes made, standing or undone, that were not there when the session opened.</summary>
+    public IReadOnlyList<string> Created {
+        get {
+            lock (Changing) {
+                return [
+                    ..editor.Standing.Concat(editor.Redoable)
+                        .Select(static stroke => stroke.Paint)
+                        .Distinct(StringComparer.Ordinal)
+                        .Where(paint => !found.Contains(paint))
+                ];
             }
         }
     }
@@ -182,9 +200,7 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                 return null;
             }
 
-            var forget = editor.Forgotten.ToArray();
-            editor.Forgotten.Clear();
-            return new(revision, StackDocuments.Text(editor.Document), editor.Standing, forget, forced);
+            return new(revision, StackDocuments.Text(editor.Document), editor.Standing, [..editor.Forgotten], forced);
         }
     }
 
@@ -312,6 +328,7 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     void Finish(StackWork work) {
         settled = work.Revision;
         forced = forced && !work.Forced;
+        editor.Forgotten.RemoveAll(work.Forget.Contains);
     }
 
     void Report(StackEvaluation report) {

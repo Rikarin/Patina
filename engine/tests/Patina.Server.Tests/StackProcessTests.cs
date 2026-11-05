@@ -283,6 +283,35 @@ public sealed class StackProcessTests : IDisposable {
         );
     }
 
+    /// <summary>
+    ///     A first stroke makes a file, and a save writes it. A new Worker replaying that stroke must not start from the
+    ///     file, or the stroke lands twice and its undo reaches a picture nobody painted.
+    /// </summary>
+    [Fact]
+    public async Task A_worker_lost_after_a_save_undoes_to_before_the_file_existed() {
+        using var deadline = Deadline(240);
+        var (instance, state) = await StartAsync("Fresh.vxlayers", deadline.Token, out var worker);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        await EvaluatedAsync(socket, state.Revision, deadline.Token);
+        var blank = await PixelsAsync(state.Id, false, deadline.Token);
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackStroke("soft", "paint", "baseColor", new(30f, 0.3f), Red, Line(100, 100, 40))
+        );
+        var painted = await PixelsAsync(state.Id, false, deadline.Token);
+        using (var saved = await http.PostAsync($"/api/v1/stacks/{state.Id}/save", null, deadline.Token)) {
+            saved.EnsureSuccessStatusCode();
+        }
+
+        worker.Kill();
+        await worker.WaitForExitAsync(deadline.Token);
+        StartWorker();
+        Assert.Equal(Digest(painted, "baseColor"), Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor"));
+        await ActAsync(state.Id, "undo", deadline.Token);
+        Assert.Equal(Digest(blank, "baseColor"), Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor"));
+    }
+
     static string Digest(IReadOnlyList<StackPixels> maps, string usage) =>
         maps.Single(m => string.Equals(m.Usage, usage, StringComparison.Ordinal)).Digest;
 

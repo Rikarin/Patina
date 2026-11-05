@@ -184,6 +184,10 @@ sealed class StackHost(DeviceHost gpu) : SessionHost<StackHost.Session> {
             if (load.Checkpoint is { } checkpoint) {
                 Restore(checkpoint);
             }
+
+            foreach (var created in load.Created.Where(paint => !touched.Contains(paint))) {
+                canvases.Adopt(Path.Combine(folder, created), new(document.BaseWidth, document.BaseHeight));
+            }
         }
 
         public LayerStackEvaluator Run { get; }
