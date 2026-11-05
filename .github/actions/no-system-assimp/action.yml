@@ -1,0 +1,18 @@
+name: No system Assimp
+description: >
+  Fails if the machine has an Assimp of its own. Patina carries the one it was tested with and Vixen.Interchange opens that
+  copy first (ADR 0010), so this keeps the proof honest: a job that reads meshes after this step did so with nothing
+  installed. Do not add libassimp5 back to get past it. Ubuntu 26.04 has no such package, which is how this was found.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        libraries=$(ldconfig -p)
+        # A list without libc means ldconfig answered nothing, and finding no Assimp in that would prove nothing.
+        grep -q 'libc\.so\.6' <<< "$libraries" || { echo "::error::ldconfig listed no libc, so this check saw nothing"; exit 1; }
+        if grep libassimp <<< "$libraries"; then
+          echo "::error::A system Assimp is installed, so this job cannot show that Patina needs none (ADR 0010)"
+          exit 1
+        fi
+        echo "No system Assimp among $(wc -l <<< "$libraries") libraries."

@@ -38,11 +38,11 @@ jobs:
           vulkaninfo --summary | grep -E 'deviceName|apiVersion|driverName'
           glslc --version
           glslangValidator --version
-      # The Silk.NET loader does not look in runtimes/linux-x64/native, so a model read fails without this. It has to be
-      # version 5: Silk.NET.Assimp binds that ABI. Vixen's ci.yml has the long story.
-      - name: Install Assimp (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get install -y libassimp5
+      # No libassimp5 here, on purpose: the mesh tests below are the proof for a build (ADR 0010). The image stays pinned
+      # to 24.04 anyway, because a moving image is what took libassimp5 away unannounced, and the publish job below is
+      # what reaches forward to 26.04.
+      - if: runner.os == 'Linux'
+        uses: ./.github/actions/no-system-assimp
       - run: dotnet build Patina.slnx -c Release
       - run: dotnet test --solution Patina.slnx -c Release --no-build
 
@@ -75,3 +75,14 @@ jobs:
         run: |
           ./out/patina version
           ./out/patina-worker --version
+      - if: runner.os == 'Linux'
+        uses: ./.github/actions/no-system-assimp
+      - name: The published Worker reads a mesh with its own Assimp
+        shell: bash
+        run: ./out/patina-worker --check-natives
+      # The distribution this is for: Ubuntu 26.04 has no libassimp5 to install, and its image has none to find.
+      - name: And on Ubuntu 26.04
+        if: runner.os == 'Linux'
+        run: |
+          docker run --rm -v "$PWD/out:/engine:ro" ubuntu:26.04 sh -c \
+            'if ldconfig -p | grep libassimp; then exit 1; fi; /engine/patina-worker --check-natives'
