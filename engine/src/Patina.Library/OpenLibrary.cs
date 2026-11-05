@@ -89,9 +89,13 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
 
     public AssetImpact? Impact(AssetId asset, int offset = 0, int limit = 50) => queries.Impact(asset, offset, limit);
 
-    /// <summary>The library as <c>GET /api/v1/library</c> reports it.</summary>
-    public LibraryInfo Describe() =>
-        new(
+    /// <summary>
+    ///     The library as <c>GET /api/v1/library</c> reports it. <see cref="Indexing" /> is read before the counts:
+    ///     read after them, a scan that ends in between reports old counts as caught up.
+    /// </summary>
+    public LibraryInfo Describe() {
+        var indexing = Indexing;
+        return new(
             Document.Id.Value,
             Document.Name,
             RootPath,
@@ -102,8 +106,9 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
             Document.ExportTargets,
             queries.CountProjects(),
             queries.CountAssets(),
-            Indexing
+            indexing
         );
+    }
 
     /// <summary>Rescans, then reports the library's health.</summary>
     /// <param name="tools">The installed tool versions, or null for <see cref="ToolCatalog.Default" />.</param>
