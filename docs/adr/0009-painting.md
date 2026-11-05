@@ -140,15 +140,17 @@ rAF. Debug-free Release, not published, so no ReadyToRun. Apple M1 Max, with oth
 
 | Brush | Load average | p50 | p95 | Worst |
 |---|---|---|---|---|
-| Radius 12 px, about 48 texels | 21 to 61 | 99 to 100 ms | 299 to 368 ms | 620 to 736 ms |
-| Radius 24 px, about 96 texels | 17 to 50 | 1.5 to 2.4 s | 2.0 to 3.2 s | 2.2 to 3.4 s |
+| Radius 12 px, about 48 texels, four strokes | 21 to 61 | 99 to 100 ms | 299 to 368 ms | 620 to 736 ms |
+| Radius 12 px, six strokes, the final build | 38 to 39 | 67 ms | 283 ms | 701 ms |
+| Radius 24 px, about 96 texels, four strokes | 17 to 50 | 1.5 to 2.4 s | 2.0 to 3.2 s | 2.2 to 3.4 s |
+| Radius 24 px, six strokes, the final build | 44 to 57 | 10.9 s | 12.6 s | 12.8 s |
 
 **This does not meet S4's 50 ms in a real window, and the larger brush does not keep up with the pointer on this machine under this load.**
 No idle run exists. The parts, from a probe inside the Worker on the larger brush: composite 8 ms, reading back and laying rectangles in the
 viewport's texture 30 ms, a frame 5 ms, all per cycle and steady under load because the GPU is not what is contended. The rest is stamps: one
 stamp at 96 texels is 6.4 ms alone in `patina-bench stamps` at load 26, and 50 ms inside a Worker at load 55, at the same counters. Stamps are
 CPU on one thread, and a machine with eight performance cores under a load of 50 divides them. Strokes are never skipped, so a drag that
-outruns them queues, which is the 2 s. Whether that is the load or a Worker-only cost that I failed to find is not settled: the 9 times between
+outruns them queues, and the queue grows with the length of the drag, which is the 2 s and the 11 s. Whether that is the load or a Worker-only cost that I failed to find is not settled: the 9 times between
 those two numbers fell as the load fell, but the two were not measured at the same moment. The first thing to do is run the bench on an idle
 machine, and the second is stamps across threads.
 

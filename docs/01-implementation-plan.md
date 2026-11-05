@@ -440,7 +440,7 @@ bezel, on all three platforms, in CI.
 > slot samples equal to the exported file ([ADR 0009](adr/0009-painting.md)). Vixen's panes moved onto `LayerStackEvaluator` in the same change,
 > so #849 is gone and there is one implementation. The studio paints in the viewport with a brush, a line, a path, mirrors, alphas, jitter and
 > pressure, and has fill, paint, filter and group layers, masks, anchors, generators over a bake, and all sixteen blend modes; the atlas pane paints
-> as a UV pane. **What stops the exit:** stamp to frame in a real window is about 100 ms at the median for a brush of 48 texels at 4K on 20 layers,
+> as a UV pane. **What stops the exit:** stamp to frame in a real window is 67 to 100 ms at the median for a brush of 48 texels at 4K on 20 layers,
 > and a brush of 96 texels falls behind the pointer, measured under load only, against S4's 50 ms; and no artist has textured a hero prop.
 > Not started: UDIM, multiple texture sets, stencil, clone, smudge, an occlusion test under the brush, mask sub-layers and effects in the UI.
 
