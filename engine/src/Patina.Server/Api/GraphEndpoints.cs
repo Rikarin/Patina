@@ -366,7 +366,7 @@ static class GraphEndpoints {
     }
 
     /// <summary>Nothing a client sends here means anything; reading is how a socket learns it has closed.</summary>
-    static async Task WatchForCloseAsync(WebSocket socket, CancellationTokenSource stop) {
+    internal static async Task WatchForCloseAsync(WebSocket socket, CancellationTokenSource stop) {
         var buffer = new byte[256];
         try {
             while (socket.State == WebSocketState.Open) {

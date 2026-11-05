@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Globalization;
 using Vixen.Graphics.Vulkan;
 using Vixen.TextureGraph;
+using Vixen.Texturing;
 using Vixen.Texturing.Layers;
 using Vixen.Texturing.Painting;
 
@@ -50,40 +51,46 @@ static class PaintBench {
             }
 
             using var evaluator = new TexturePlanEvaluator(device);
-            if (Environment.GetEnvironmentVariable("S4_BUDGET_GB") is { } budget) {
-                evaluator.Results.Budget = long.Parse(budget, CultureInfo.InvariantCulture) << 30;
+            evaluator.Results.Budget = (Environment.GetEnvironmentVariable("S4_BUDGET_GB") is { } budget
+                ? long.Parse(budget, CultureInfo.InvariantCulture)
+                : 6) << 30;
+            var folder = Path.Combine(Path.GetTempPath(), $"patina-s4-{Environment.ProcessId}");
+            var canvases = new PaintCanvasStore(long.MaxValue);
+            foreach (var layer in stack.Sets[0].Layers.Where(static l => l.Kind == LayerKind.Paint)) {
+                canvases.Adopt(Path.Combine(folder, layer.Paint), new(size, size));
+                if (layer.Mask.Paint.Length > 0) {
+                    canvases.Adopt(Path.Combine(folder, layer.Mask.Paint), new(size, size));
+                }
             }
 
-            using var uploads = new TextureUploads(device);
-            var images = Fill(uploads, plan, compilation.Externals, size);
-            TextureGraphExternal[] painted = [
-                ..compilation.Externals.Where(e =>
-                    (everyChannel || e.Asset.Contains("baseColor|", StringComparison.Ordinal))
-                    && e.Asset.EndsWith($"layer{paintedAt}.vxpaint", StringComparison.Ordinal)
-                )
-            ];
-            int[] outputs = [
-                ..compilation.Outputs.Where(o => everyChannel || o.Usage == "baseColor").Select(static o => o.Image)
-            ];
-
+            var library = TextureNodeLibrary.Publish();
+            using var run = new LayerStackEvaluator(evaluator, canvases, Path.Combine(folder, "s4.vxlayers"));
             clock.Restart();
-            TextureBake bake = evaluator.EvaluateIncremental(plan, uploads.Externals);
-            Say($"first evaluation {clock.Elapsed.TotalMilliseconds:F0} ms, cache {evaluator.Results.Bytes >> 20} MiB");
-            var previous = bake.Keys;
-            bake.Dispose();
+            var refusals = run.Prepare(stack, stack.Sets[0], library.Registry, library.SubGraphs);
+            if (refusals.Count > 0) {
+                Console.Error.WriteLine(string.Join('\n', refusals));
+                return 1;
+            }
 
+            Say($"uploaded in {clock.Elapsed.TotalMilliseconds:F0} ms");
+            clock.Restart();
+            run.Evaluate().Dispose();
+            Say($"first evaluation {clock.Elapsed.TotalMilliseconds:F0} ms, cache {evaluator.Results.Bytes >> 20} MiB");
+
+            string[] usages = everyChannel ? [..stack.Sets[0].Channels.Select(static c => c.Usage)] : ["baseColor"];
+            var canvas = canvases.Open(Path.Combine(folder, $"layer{paintedAt}.vxpaint"))!;
+            int[] outputs = [..run.Outputs.Where(o => usages.Contains(o.Usage)).Select(static o => o.Image)];
             PaintStroke[] strokes = [
-                ..painted.Select(external => new PaintStroke(
-                        images[external.Image],
+                ..usages.Select((usage, index) => new PaintStroke(
+                        canvas.Channel(usage),
                         PaintCoverage.Everywhere(size, size),
-                        new PaintBrush { Radius = radius, Spacing = 0.25f },
-                        0xFF3060E0u + (uint)external.Image
+                        PaintBrush.Default with { Radius = radius, Flow = 1f, Spacing = 0.25f },
+                        0xFF3060E0u + (uint)index,
+                        gutter: 0
                     )
                 )
             ];
             var times = new Times();
-            var repaired = 0;
-            var dispatches = 0;
             for (var stamp = 0; stamp < stamps; stamp++) {
                 var angle = stamp * 0.05f;
                 var at = new Vixen.Core.Mathematics.Vector2(
@@ -99,37 +106,16 @@ static class PaintBench {
 
                 var stamped = Stopwatch.GetTimestamp();
                 var tiles = Tiles(dirty, size);
-                TextureImageChange[] changes = [
-                    ..painted.Select(external => new TextureImageChange(
-                            external.Image,
-                            [..tiles.Select(tile => new TextureTileWrite(tile, Texels(images[external.Image], tile)))],
-                            new(new UInt128((ulong)external.Image + 1, (ulong)stamp + 1))
-                        )
-                    )
-                ];
-                uploads.Update(changes);
-                var uploaded = Stopwatch.GetTimestamp();
-                var regions = whole
-                    ? null
-                    : new TextureRegions(
-                        previous,
-                        painted.ToDictionary(static e => e.Image, _ => (ImmutableArray<TextureRect>)[..tiles])
-                    );
-                bake = evaluator.EvaluateIncremental(plan, uploads.Externals, regions);
+                using var bake = whole ? run.EvaluateClean() : run.Evaluate();
                 var composed = Stopwatch.GetTimestamp();
                 var bytes = outputs.Sum(output => bake.ReadTexels(output, tiles).Sum(static r => r.Length));
                 var readBack = Stopwatch.GetTimestamp();
-                repaired = bake.Repaired;
-                dispatches = bake.Dispatches;
-                previous = bake.Keys;
-                bake.Dispose();
-                var end = Stopwatch.GetTimestamp();
                 if (stamp >= 8 && tiles.Count > 0) { // the first few compile pipelines and are not a stroke
-                    times.Add(start, stamped, uploaded, composed, readBack, end);
+                    times.Add(start, stamped, composed, readBack);
                 }
 
                 if (stamp == stamps / 2) {
-                    Say($"mid-stroke: {tiles.Count} tiles, {repaired} repaired, {dispatches} dispatches, {bytes >> 10} KiB read, cache {evaluator.Results.Bytes >> 20} MiB");
+                    Say($"mid-stroke: {tiles.Count} tiles, {bake.Repaired} repaired of {bake.Ran.Length} run, {bake.Dispatches} dispatches, {bytes >> 10} KiB read, cache {evaluator.Results.Bytes >> 20} MiB");
                 }
             }
 
@@ -149,37 +135,6 @@ static class PaintBench {
         }
 
         return tiles;
-    }
-
-    static byte[] Texels(PaintImage image, TextureRect tile) {
-        var bytes = new byte[tile.Width * tile.Height * 4];
-        for (var row = 0; row < tile.Height; row++) {
-            Buffer.BlockCopy(
-                image.Texels,
-                (((tile.Y + row) * image.Width) + tile.X) * 4,
-                bytes,
-                row * tile.Width * 4,
-                tile.Width * 4
-            );
-        }
-
-        return bytes;
-    }
-
-    static Dictionary<int, PaintImage> Fill(
-        TextureUploads uploads,
-        TexturePlan plan,
-        ImmutableArray<TextureGraphExternal> externals,
-        int size
-    ) {
-        Dictionary<int, PaintImage> images = [];
-        foreach (var external in TextureGraphExternals.Upload(uploads, plan, externals)) {
-            var image = new PaintImage(size, size);
-            images[external.Image] = image;
-            uploads.Add(plan, external.Image, size, size, image.Texels);
-        }
-
-        return images;
     }
 
     /// <summary>
@@ -247,31 +202,28 @@ static class PaintBench {
 
     sealed class Times {
         readonly List<double> stamp = [];
-        readonly List<double> upload = [];
         readonly List<double> compose = [];
         readonly List<double> read = [];
         readonly List<double> total = [];
 
-        public void Add(long start, long stamped, long uploaded, long composed, long readBack, long end) {
+        public void Add(long start, long stamped, long composed, long readBack) {
             static double Ms(long a, long b) => (b - a) * 1000.0 / Stopwatch.Frequency;
             stamp.Add(Ms(start, stamped));
-            upload.Add(Ms(stamped, uploaded));
-            compose.Add(Ms(uploaded, composed));
+            compose.Add(Ms(stamped, composed));
             read.Add(Ms(composed, readBack));
-            total.Add(Ms(start, end));
+            total.Add(Ms(start, readBack));
         }
 
         public void Report() {
             Line("stamp", stamp);
-            Line("upload", upload);
-            Line("composite", compose);
+            Line("upload and composite", compose);
             Line("read-back", read);
             Line("total", total);
         }
 
         static void Line(string name, List<double> values) {
             var sorted = values.Order().ToArray();
-            Say($"{name,-10} p50 {sorted[sorted.Length / 2]:F2}  p95 {sorted[sorted.Length * 95 / 100]:F2}  max {sorted[^1]:F2} ms ({sorted.Length} samples)");
+            Say($"{name,-22} p50 {sorted[sorted.Length / 2]:F2}  p95 {sorted[sorted.Length * 95 / 100]:F2}  max {sorted[^1]:F2} ms ({sorted.Length} samples)");
         }
     }
 }

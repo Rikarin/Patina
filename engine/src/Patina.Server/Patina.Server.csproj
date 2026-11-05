@@ -15,6 +15,7 @@
     <ProjectReference Include="../Patina.Library/Patina.Library.csproj"/>
     <!-- The document, its commands and the node catalogue. No device: the Server never opens one. -->
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.TextureGraph/Vixen.TextureGraph.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Tools/Vixen.Texturing/Vixen.Texturing.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.NodeGraph/Vixen.NodeGraph.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Core/Vixen.Core.Yaml/Vixen.Core.Yaml.csproj"/>
   </ItemGroup>

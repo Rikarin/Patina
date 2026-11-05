@@ -5,7 +5,7 @@ using System.Diagnostics;
 namespace Patina.Worker;
 
 /// <summary>Stays connected to the Server until stopped.</summary>
-sealed class WorkerLoop(ViewportHost viewport, GraphHost graphs, BakeHost bakes) {
+sealed class WorkerLoop(ViewportHost viewport, GraphHost graphs, StackHost stacks, BakeHost bakes) {
     static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
     static readonly long Started = Stopwatch.GetTimestamp();
 
@@ -65,6 +65,12 @@ sealed class WorkerLoop(ViewportHost viewport, GraphHost graphs, BakeHost bakes)
                 IpcTypes.GraphEvaluate => graphs.Evaluate(request),
                 IpcTypes.GraphImage => graphs.Image(request),
                 IpcTypes.GraphClose => graphs.Close(request),
+                IpcTypes.StackLoad => stacks.Load(request),
+                IpcTypes.StackSync => stacks.Sync(request),
+                IpcTypes.StackEvaluate => stacks.Evaluate(request),
+                IpcTypes.StackSave or IpcTypes.StackCheckpoint => stacks.Save(request),
+                IpcTypes.StackPixels => stacks.Pixels(request),
+                IpcTypes.StackClose => stacks.Close(request),
                 IpcTypes.BakeStart => bakes.Start(request, link),
                 IpcTypes.BakeCancel => bakes.Cancel(request),
                 _ => IpcMessage.Fail(request.Id, $"Unknown request '{request.Type}'.")

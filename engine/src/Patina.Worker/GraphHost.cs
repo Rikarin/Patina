@@ -1,10 +1,7 @@
 using Patina.Graphs;
 using Patina.Ipc;
-using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Security.Cryptography;
-using Vixen.Core.Imaging;
 using Vixen.Core.Yaml;
 using Vixen.Graphics.Vulkan;
 using Vixen.NodeGraph;
@@ -18,11 +15,8 @@ namespace Patina.Worker;
 ///     and nothing else. The device opens on the first evaluation, so a Worker with no Vulkan still answers health.
 /// </summary>
 sealed class GraphHost : IDisposable {
-    /// <summary>How many previews are remembered, so that a long drag cannot grow this for ever.</summary>
-    const int PreviewMemory = 8192;
-
     readonly Dictionary<string, Loaded> graphs = new(StringComparer.Ordinal);
-    readonly Dictionary<TextureResultKey, Written> written = [];
+    readonly PreviewWriter previews = new();
     readonly GraphPictures pictures = new();
     readonly CompoundShelf compounds = new();
     VulkanDevice? device;
@@ -64,9 +58,9 @@ sealed class GraphHost : IDisposable {
             return Reply(new(compiled, false, 0, 0, Milliseconds(start), [], problems));
         }
 
-        var previews = GraphPreviews.Extend(plan, graph.Images, evaluate.PreviewSide);
-        using var bake = runner.EvaluateIncremental(previews.Plan, graph.Uploads!.Externals);
-        var stored = Write(bake, previews.Images, evaluate.PreviewFolder);
+        var extended = GraphPreviews.Extend(plan, graph.Images, evaluate.PreviewSide);
+        using var bake = runner.EvaluateIncremental(extended.Plan, graph.Uploads!.Externals);
+        var stored = Write(bake, extended.Images, evaluate.PreviewFolder);
         return Reply(new(compiled, true, bake.Ran.Length, bake.Reused, Milliseconds(start), stored, problems));
     }
 
@@ -91,13 +85,7 @@ sealed class GraphHost : IDisposable {
 
         using var bake = Evaluator()
             .EvaluateIncremental(GraphPreviews.Full(plan, image.Image), graph.Uploads!.Externals);
-        var key = bake.KeyOf(image.Image);
-        if (!written.TryGetValue(key, out var picture)
-            || !File.Exists(GraphPreviewFiles.PathOf(ask.Folder, picture.Hash))) {
-            picture = Encode(bake.Read(image.Image), ask.Folder);
-            written[key] = picture;
-        }
-
+        var picture = previews.WriteOne(bake, image.Image, ask.Folder);
         return new() { Type = IpcTypes.Ok, GraphFullImage = new(picture.Hash, picture.Width, picture.Height) };
     }
 
@@ -111,46 +99,18 @@ sealed class GraphHost : IDisposable {
     ///     encoding has no such limit.
     /// </summary>
     GraphResultPreview[] Write(TextureBake bake, IReadOnlyList<GraphPreviewImage> images, string folder) {
-        Dictionary<TextureResultKey, int> owed = [];
-        foreach (var image in images) {
-            var key = bake.KeyOf(image.Image);
-            if (!owed.ContainsKey(key)
-                && (!written.TryGetValue(key, out var known)
-                    || !File.Exists(GraphPreviewFiles.PathOf(folder, known.Hash)))) {
-                owed[key] = image.Image;
-            }
-        }
-
-        var pictures = bake.Read([..owed.Values]);
-
-        var encoded = new ConcurrentDictionary<TextureResultKey, Written>();
-        Parallel.ForEach(
-            owed.Keys.Zip(pictures),
-            picture => encoded[picture.First] = Encode(picture.Second, folder)
-        );
-        foreach (var (key, picture) in encoded) {
-            written[key] = picture;
-        }
-
-        GraphResultPreview[] stored = [
-            ..images.Select(image => {
-                    var picture = written[bake.KeyOf(image.Image)];
-                    return new GraphResultPreview(image.Node, image.Port, picture.Hash, picture.Width, picture.Height);
-                }
-            )
+        var stored = previews.Write(bake, [..images.Select(static image => image.Image)], folder);
+        return [
+            ..images.Zip(stored)
+                .Select(static pair => new GraphResultPreview(
+                        pair.First.Node,
+                        pair.First.Port,
+                        pair.Second.Hash,
+                        pair.Second.Width,
+                        pair.Second.Height
+                    )
+                )
         ];
-        if (written.Count > PreviewMemory) {
-            written.Clear();
-        }
-
-        return stored;
-    }
-
-    static Written Encode(Bitmap bitmap, string folder) {
-        var png = PngCodec.Encode(bitmap);
-        var hash = Convert.ToHexStringLower(SHA256.HashData(png));
-        GraphPreviews.Store(folder, hash, png);
-        return new(hash, bitmap.Width, bitmap.Height);
     }
 
     void Forget(string session) {
@@ -170,8 +130,6 @@ sealed class GraphHost : IDisposable {
 
         return evaluator;
     }
-
-    readonly record struct Written(string Hash, int Width, int Height);
 
     /// <summary>One graph: the document, the compiler that remembers it, and what the last compile produced.</summary>
     sealed class Loaded : IDisposable {
