@@ -354,6 +354,10 @@ beyond namespaces, that's a sign the split is wrong.
 
 ### P1: foundation (4–5 weeks, parallel with PV)
 
+> **Status (2026-11-05): done on macOS, unproven on Linux and Windows.** The exit needs all three platforms in CI, and the
+> fixes for the first failures there are not yet confirmed by a CI run. Windows runners have no Vulkan, so its viewport
+> tests skip. Left open: a viewport texture path (factors only), and the 2 cores spent while orbiting (ADR 0003).
+
 **Exit:** the desktop app opens, starts both sidecars, and shows a glTF with a PBR material in a docked viewport, under
 bezel, on all three platforms, in CI.
 
@@ -366,6 +370,15 @@ bezel, on all three platforms, in CI.
 
 ### P2: graph editor (6–8 weeks)
 
+> **Status (2026-11-05): the path through the phase works, and the exit is not met.** The evaluator is in Vixen, and a user
+> can open, edit, undo, save and preview a graph through the Server (ADR 0005). S7 holds 60 fps at 500 nodes apart from
+> one zoom stall of about 200 ms (ADR 0006). Left open:
+> - A slider at the head of a 2K, 40-node chain takes about 138 ms, most of it readback one preview at a time.
+> - Value edits on compounds still recompile, and graphs reading external bitmaps do not evaluate.
+> - Input ports declare no range, so slider ranges are guessed from defaults.
+> - No curve editor, gradient ramp, histogram or channel view; no UI for sub-graphs, comments, groups, graph settings or
+>   exposed parameters; new graphs cannot be created; 32-bit float formats have not landed.
+
 **Exit:** a user can build a tiling material from nodes with live thumbnails, and every Vixen node and compound works.
 
 - Rewrite the evaluator **in `Vixen.TextureGraph`**: result cache, separated values, new formats. Vixen's editor adopts it
@@ -376,6 +389,10 @@ bezel, on all three platforms, in CI.
 - `studio-ui`: curve editor, gradient ramp, histogram, channel view.
 
 ### P3: Library (6–8 weeks, parallel with P2)
+
+> **Status (2026-11-05): the exit is met for opening, searching and browsing a generated 10,000-project library.** It holds
+> at 60 fps under scripted scrolling, and a project can be created through the Server. Left open: thumbnails, a grid, drag
+> to apply, the file watcher, opening a project, opening a library from the UI, bulk import and generated `.gitattributes`.
 
 **Exit:** a generated 10,000-project library opens, searches and browses within the S6 targets.
 
