@@ -17,6 +17,7 @@ import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiSkeletonImports } from '@xui/skeleton';
 import { XuiSpinnerImports } from '@xui/spinner';
 import { XuiTagImports } from '@xui/tag';
+import { GraphStore } from '../graph/graph-store';
 import { LibrarySelection } from './library-selection';
 import { LibraryStore } from './library-store';
 import { counted } from './list-keys';
@@ -79,6 +80,19 @@ export class ProjectDetails {
     <div class="shrink-0 p-3">
       <h2 class="truncate text-sm font-semibold" data-testid="inspector-title" [title]="item.name">{{ item.name }}</h2>
       <p class="section-label mb-3">{{ item.kind }}</p>
+      @if (item.kind === 'graph') {
+        <button
+          class="mb-3 w-full"
+          type="button"
+          xuiButton
+          size="sm"
+          color="primary"
+          data-testid="open-graph"
+          (click)="open(item)"
+        >
+          Open
+        </button>
+      }
       <xui-descriptions column="1">
         <xui-descriptions-item label="File">
           <span class="break-all select-text">{{ item.path }}</span>
@@ -152,6 +166,7 @@ export class ProjectDetails {
 })
 export class AssetImpactView {
   private readonly store = inject(LibraryStore);
+  private readonly graph = inject(GraphStore);
   private readonly viewport = viewChild(CdkVirtualScrollViewport);
 
   readonly asset = input.required<AssetSummary>();
@@ -179,6 +194,11 @@ export class AssetImpactView {
         });
       }
     });
+  }
+
+  /** An asset's path is below shared/, and the Server opens paths relative to the library. */
+  protected open(asset: AssetSummary): void {
+    void this.graph.open(`shared/${asset.path}`);
   }
 
   protected projects(count: number): string {
