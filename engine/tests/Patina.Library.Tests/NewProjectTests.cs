@@ -57,8 +57,8 @@ public sealed class NewProjectTests : IDisposable {
 
     [Fact]
     public void A_graph_reads_the_compounds_folder_beside_it_and_a_compound_reads_its_own() {
-        var graph = Path.Combine(library.Root, "shared/graphs/rust.vxtexgraph");
-        var compounds = Path.Combine(library.Root, "shared/graphs", LibraryLayout.CompoundsFolder);
+        var graph = Path.Combine(library.Root, "shared", "graphs", "rust.vxtexgraph");
+        var compounds = Path.Combine(library.Root, "shared", "graphs", LibraryLayout.CompoundsFolder);
         var nested = Directory.CreateDirectory(Path.Combine(compounds, "Grunge")).FullName;
 
         Assert.Equal(compounds, CompoundFolders.Of(graph));
