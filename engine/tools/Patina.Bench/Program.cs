@@ -64,6 +64,18 @@ switch (args) {
         );
     case ["graph", var library, var nodes, var name]:
         return GraphFixture.Write(library, int.Parse(nodes, CultureInfo.InvariantCulture), name);
+    case ["s4", .. var rest]:
+        return PaintBench.Run(
+            Number(rest, 0, 4096),
+            Number(rest, 1, 20),
+            Number(rest, 2, 5),
+            Number(rest, 3, 240),
+            Number(rest, 4, 48),
+            Number(rest, 5, 1),
+            rest.Contains("--whole"),
+            rest.Contains("--every-channel"),
+            rest.Contains("--blur")
+        );
     case ["render", var mesh, var png, var width, var height]:
         return RenderBench.Run(
             mesh,
@@ -81,6 +93,7 @@ switch (args) {
                    patina-bench s9 <folder> [resolution] [rays] [reach]
                    patina-bench bake-preview <low> <normal.png> <ao.png or -> <out.png> <yaw> <pitch>
                    patina-bench graph <library> <nodes> <name>
+                   patina-bench s4 [resolution] [layers] [channels] [stamps] [radius] [painted layer] [--whole] [--every-channel] [--blur]
                    patina-bench render <mesh> <out.png> <width> <height>
                    patina-bench generate <path> <projects> [seed]
                    patina-bench s6 <path> [projects] [seed]
@@ -88,6 +101,11 @@ switch (args) {
         );
         return 2;
 }
+
+static int Number(string[] values, int index, int fallback) =>
+    values.Length > index && int.TryParse(values[index], CultureInfo.InvariantCulture, out var number)
+        ? number
+        : fallback;
 
 static string? Option(string[] options, string prefix) =>
     options.FirstOrDefault(o => o.StartsWith(prefix, StringComparison.Ordinal))?[prefix.Length..];

@@ -13,5 +13,6 @@
     <ProjectReference Include="../../src/Patina.Library/Patina.Library.csproj"/>
     <ProjectReference Include="../../src/Patina.Viewport/Patina.Viewport.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.TextureGraph/Vixen.TextureGraph.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Tools/Vixen.Texturing/Vixen.Texturing.csproj"/>
   </ItemGroup>
 </Project>
