@@ -9,3 +9,4 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0004](0004-crash-isolation.md): crash isolation of the Worker (S5, viewport part).
 - [0005](0005-preview-cache.md): where node previews live, and what a slider costs end to end.
 - [0006](0006-node-graph-scale.md): `@xui/node-graph` at 500 nodes with live thumbnails (S7).
+- [0007](0007-graph-authoring-references.md): how compounds, bitmaps, ramps and curves resolve, with the file as the truth.

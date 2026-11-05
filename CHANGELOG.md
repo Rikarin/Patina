@@ -41,3 +41,22 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   client's edits arriving without a reload. The Inspector sets a selected node's numbers, colours, text and choices, and
   the Texture pane shows its picture. The pane says when no graph is open, when the Worker or the Server has gone, what the
   compiler reported, and what is unsaved.
+- New graphs: `POST /api/v1/library/graphs` writes an empty graph into `shared/graphs` or a project, the scan indexes it,
+  and New in the Graph pane creates and opens one.
+- Graph settings in the Inspector: width, height and seed.
+- Exposed parameters: add, edit and remove them, with live defaults, and drive a number from one with an expression.
+- Groups and notes: commands, state, deltas, frames and cards on the canvas. Dropping a node on a frame moves it there.
+- Compounds: double click one or choose Open compound to go inside, a breadcrumb back, and saving one updates the graphs
+  holding it. Those that ship with Patina open to be read.
+- Bitmaps evaluate: PNG, JPEG, BMP, TGA, PSD and GIF, by a path relative to the graph or the library.
+- A curve editor and a gradient ramp for the Curve and Ramp settings, held inline in the graph's file.
+- The Texture pane has a histogram, counted from the reduction and labelled so, a channel view, and Full size, from
+  `POST /api/v1/graphs/{id}/images`.
+- Quitting with unsaved edits asks first, and multi-selection has an Inspector state of its own.
+
+### Changed
+
+- A graph's compounds now come from a `Compounds` folder beside it, not from every graph in its folder.
+- Undo, Redo and Save work from the Inspector.
+- The evaluation readout says Evaluating…, Up to date or Not evaluated, and no longer shows an old count after an edit.
+
