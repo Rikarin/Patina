@@ -108,6 +108,7 @@ export class GraphStore {
   private readonly mutableCompounds = signal<ReadonlyMap<string, GraphCompound>>(new Map());
   private readonly mutableTrail = signal<readonly GraphCrumb[]>([]);
   private readonly mutableNote = signal<number | null>(null);
+  private selectionDue: { nodes: readonly number[]; revision: number } | null = null;
   private readonly mutableGraphInspected = signal(false);
   private readonly positionDrafts = new DraftLayer<GraphPoint>();
   private readonly valueDrafts = new DraftLayer<DraftValue>();
@@ -276,7 +277,7 @@ export class GraphStore {
           body: { name, nodes, x, y }
         })
       );
-      this.select([extraction.node]);
+      this.selectOnceHeld([extraction.node], extraction.edit.revision);
       return null;
     } catch (error) {
       return reasonOf(error);
@@ -577,7 +578,7 @@ export class GraphStore {
     const result = await this.apply(commands, `Add ${type.title}`);
     const created = result?.created.find(item => item.ref === reference);
     if (created) {
-      this.select([created.node]);
+      this.selectOnceHeld([created.node], result?.revision ?? 0);
     }
   }
 
@@ -955,7 +956,25 @@ export class GraphStore {
     this.valueDrafts.reached(document.sequence);
   }
 
+  /**
+   * Selects what a reply says was made. The reply and its event race, and any event read before that one would find the
+   * nodes missing from the document and take them back out of the selection, so this waits for the revision.
+   */
+  private selectOnceHeld(nodes: readonly number[], revision: number): void {
+    if ((this.mutableDocument()?.revision ?? 0) >= revision) {
+      this.select(nodes);
+    } else {
+      this.selectionDue = { nodes, revision };
+    }
+  }
+
   private keepSelectionReal(document: GraphDocument): void {
+    if (this.selectionDue && document.revision >= this.selectionDue.revision) {
+      const { nodes } = this.selectionDue;
+      this.selectionDue = null;
+      this.select(nodes);
+    }
+
     const held = this.mutableSelection();
     if ([...held].some(node => !document.nodes.has(node))) {
       this.mutableSelection.set(new Set([...held].filter(node => document.nodes.has(node))));

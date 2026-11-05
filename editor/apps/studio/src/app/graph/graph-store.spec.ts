@@ -264,6 +264,13 @@ describe('GraphStore', () => {
       { op: 'addNode', type: 'Source/Noise', x: 1, y: 2, ref: -1 },
       { op: 'connect', fromNode: 1, fromPort: 'Out', toNode: -1, toPort: 'Input' }
     ]);
+    test.socket().send({
+      sequence: 1,
+      kind: 'edited',
+      revision: 2,
+      history: dirty,
+      delta: { ...noDelta, nodes: [node(9)] }
+    });
     expect([...test.store.selection()]).toEqual([9]);
   });
 
@@ -667,6 +674,16 @@ describe('what a graph holds besides its nodes', () => {
     test.store.select([1, 2]);
     await expect(test.store.saveSelectionAsCompound('Wear')).resolves.toBeNull();
     expect(test.requests.at(-1)?.body).toEqual({ name: 'Wear', nodes: [1, 2], x: 150, y: 0 });
+
+    // The reply can pass its own event: one that came first must not take the new node back out of the selection.
+    test.socket().send({ sequence: 1, kind: 'typesChanged', revision: 1, history: clean });
+    test.socket().send({
+      sequence: 2,
+      kind: 'edited',
+      revision: 2,
+      history: dirty,
+      delta: { ...noDelta, nodes: [node(9)] }
+    });
     expect([...test.store.selection()]).toEqual([9]);
   });
 

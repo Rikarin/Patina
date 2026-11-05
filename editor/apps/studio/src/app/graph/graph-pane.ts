@@ -42,6 +42,8 @@ const FitPadding = 48;
 const NotePrefix = 'note-';
 const GroupPrefix = 'group-';
 const NoteOffset = 40;
+/** The canvas height a 128-pixel minimap may sit in: below this it covers more than it shows. */
+const MinimapRoom = 480;
 const portTypes = xuiGraphChartPortTypes(['Image']);
 
 interface PortView {
@@ -364,7 +366,10 @@ export class GraphThumbnail {
         </xui-graph-node>
       }
       <xui-graph-controls class="bottom-3 left-3" orientation="horizontal" showZoomLevel />
-      <xui-graph-minimap class="right-3 bottom-3" />
+      <xui-graph-minimap
+        data-testid="graph-minimap"
+        [class]="minimapHidden() ? 'invisible right-3 bottom-3' : 'right-3 bottom-3'"
+      />
     </xui-node-graph>
 
     @if (diagnostics().length > 0) {
@@ -407,9 +412,10 @@ export class GraphCanvas {
   private readonly status = inject(SystemStatus);
   private readonly graph = viewChild.required(XuiNodeGraph);
   private readonly graphElement = viewChild.required(XuiNodeGraph, { read: ElementRef<HTMLElement> });
-  private readonly nodeViews = new WeakMap<GraphNodeState, NodeView>();
+  private nodeViews = new WeakMap<GraphNodeState, NodeView>();
   private readonly edgeViews = new WeakMap<GraphEdgeState, XuiGraphEdge>();
   private readonly portViews = new Map<string, readonly PortView[]>();
+  private viewedTypes: ReadonlyMap<string, GraphNodeType> | null = null;
   private addAt: XuiGraphPoint | null = null;
   private addFrom: { node: number; port: string; incoming: boolean } | null = null;
   private fitted: string | null = null;
@@ -454,6 +460,13 @@ export class GraphCanvas {
   protected readonly views = computed(() => {
     const nodes = this.document()?.nodes;
     const types = this.store.types();
+    if (types !== this.viewedTypes) {
+      // A boundary node's ports are its graph's interface, so a type's ports can change while its name does not.
+      this.viewedTypes = types;
+      this.nodeViews = new WeakMap();
+      this.portViews.clear();
+    }
+
     const drafts = this.store.positions();
     const frames = this.frames();
     const compounds = this.store.compounds();
@@ -488,6 +501,18 @@ export class GraphCanvas {
     () => [...(this.document()?.edges.values() ?? [])].map(edge => this.edgeView(edge)),
     { equal: (a, b) => a.length === b.length && a.every((edge, index) => edge === b[index]) }
   );
+
+  /**
+   * xUI gap: the minimap is an overlay, and a port under it cannot be seen or reached. A wire lands on whatever
+   * `elementFromPoint` finds, so one dropped there was lost, and a press there never starts one. It slid with the height
+   * of the canvas too, so a diagnostics update could put it over a port between two drags. So it stays away from a canvas
+   * too small to spare it, and steps aside for as long as a wire is in the air. The whole class string is bound because
+   * the minimap has a `class` input, which `[class.x]` does not reach.
+   */
+  protected readonly minimapHidden = computed(() => {
+    const store = this.graph().store;
+    return store.linking() !== null || store.surfaceSize().height < MinimapRoom;
+  });
 
   protected readonly diagnostics = computed(() => {
     const document = this.document();

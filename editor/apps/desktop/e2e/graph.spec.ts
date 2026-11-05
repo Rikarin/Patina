@@ -433,6 +433,41 @@ test('reads a bitmap from beside the graph, and says so when it cannot', async (
   await expect(window.getByText('PT0001')).toBeVisible();
 });
 
+test('the minimap leaves a small canvas, and steps aside for a wire on a large one', async () => {
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]?.setContentSize(1280, 800);
+  });
+  await newGraph('Under The Minimap');
+  await expect(window.getByTestId('graph-canvas')).toBeVisible();
+  await expect(window.getByTestId('graph-minimap')).toBeHidden();
+
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]?.setContentSize(1600, 1300);
+  });
+  await expect(window.getByTestId('graph-minimap')).toBeVisible();
+  const box = await window.getByTestId('graph-canvas').boundingBox();
+  if (!box) {
+    throw new Error('The canvas is not on screen.');
+  }
+
+  // A node's input sits below where it was asked for, which puts this one's under the minimap's corner.
+  await addNodeAt('Source/Noise', box.width - 500, box.height - 306);
+  await addNodeAt('Output/Output', box.width - 100, box.height - 306);
+  await expect(nodes()).toHaveCount(2);
+  const target = await centre(connector(2, 'Input'));
+
+  // The instrument: the minimap really is over the port, so the drop below proves something.
+  const covered = await window.evaluate(
+    ({ x, y }) => document.elementFromPoint(x, y)?.closest('[data-testid=graph-minimap]') !== null,
+    target
+  );
+  expect(covered).toBe(true);
+
+  await dragBetween(await centre(connector(1, 'Out')), target);
+  await expect(window.getByTestId('graph-diagnostics').getByText('TG0002')).toHaveCount(0);
+  await expect(window.getByTestId('graph-minimap')).toBeVisible();
+});
+
 test('saves a selection as a compound, opens it, authors its ports, and undoes the save', async () => {
   await openGraph();
   const output = await hashOf(thumbnail(Nodes));
@@ -466,6 +501,7 @@ test('saves a selection as a compound, opens it, authors its ports, and undoes t
   await window.getByTestId('port-Input2').getByLabel('Port name').fill('Amount');
   await window.getByTestId('port-Input2').getByLabel('Port name').press('Enter');
   await expect(window.getByTestId('port-Amount')).toBeVisible();
+  await expect(window.locator('[data-xui-graph-port="Amount"]')).toHaveCount(1);
   await window.getByTestId('graph-save').click();
   await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
   await window.screenshot({ path: join(shots, 'graph-compound-interface.png') });
