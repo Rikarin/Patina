@@ -19,6 +19,7 @@ public sealed class GraphEvaluator(
     const int PreviewSide = 256;
     const int TrimInterval = 64;
     static readonly TimeSpan LostWorkerPause = TimeSpan.FromMilliseconds(20);
+    static readonly TimeSpan WorkerPatience = TimeSpan.FromSeconds(10);
 
     readonly Dictionary<string, Told> told = new(StringComparer.Ordinal);
     int untilTrim = TrimInterval;
@@ -33,6 +34,31 @@ public sealed class GraphEvaluator(
             }
         } catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) {
             // Stopping: nothing to report.
+        }
+    }
+
+    /// <summary>Has the Worker write a node's picture at full size to the cache, and says which file that is.</summary>
+    /// <exception cref="IpcException">The Worker holds no such picture.</exception>
+    /// <exception cref="TimeoutException">No Worker came, or it did not answer.</exception>
+    public async Task<GraphFullImage> ImageAsync(
+        GraphSession session,
+        int node,
+        string port,
+        CancellationToken cancellationToken
+    ) {
+        using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        patience.CancelAfter(WorkerPatience);
+        try {
+            var connection = await worker.ConnectionAsync(patience.Token);
+            var reply = await connection.SendAsync(
+                new() {
+                    Type = IpcTypes.GraphImage, GraphImage = new(session.Id, node, port, store.Root)
+                },
+                cancellationToken
+            );
+            return reply.GraphFullImage!;
+        } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+            throw new TimeoutException("No Worker is connected.");
         }
     }
 
@@ -72,9 +98,11 @@ public sealed class GraphEvaluator(
         GraphWork work,
         CancellationToken cancellationToken
     ) {
-        var values = told.GetValueOrDefault(session.Id) is { } held && ReferenceEquals(held.Connection, connection)
-            ? GraphDocuments.Values(held.Document, work.Document)
-            : null;
+        var values = !work.Reload
+            && told.GetValueOrDefault(session.Id) is { } held
+            && ReferenceEquals(held.Connection, connection)
+                ? GraphDocuments.Values(held.Document, work.Document)
+                : null;
         if (values is { Count: 0 } && !work.Forced) {
             session.Settle(work);
             return;
@@ -82,7 +110,7 @@ public sealed class GraphEvaluator(
 
         if (values is null) {
             told.Remove(session.Id);
-            var load = new GraphLoad(session.Id, GraphDocuments.Text(work.Document), session.Folder);
+            var load = new GraphLoad(session.Id, GraphDocuments.Text(work.Document), session.Folder, session.ImageRoots);
             await connection.SendAsync(new() { Type = IpcTypes.GraphLoad, GraphLoad = load }, cancellationToken);
         }
 

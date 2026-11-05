@@ -31,7 +31,9 @@ static class GraphTesting {
                     Minimum = 0f,
                     Maximum = 1f
                 }
-            ]
+            ],
+            Groups = [new() { Title = "Base", Nodes = [1, 2] }],
+            Comments = [new() { Text = "Rust goes here", X = 10, Y = 20, Width = 200, Height = 100 }]
         };
 
     public static string Write(string folder, NodeGraphAsset asset, string name = "sample.vxtexgraph") {
@@ -103,6 +105,17 @@ static class GraphTesting {
         ))!;
 
     /// <summary>What a client holds, kept current by nothing but deltas.</summary>
+    public static async Task<IReadOnlyList<GraphCompound>> CompoundsAsync(
+        this HttpClient client,
+        string id,
+        CancellationToken token
+    ) =>
+        (await client.GetFromJsonAsync(
+            $"/api/v1/graphs/{id}/compounds",
+            ContractsJsonContext.Default.IReadOnlyListGraphCompound,
+            token
+        ))!;
+
     public static (SortedDictionary<int, GraphNodeState> Nodes, HashSet<GraphEdgeState> Edges) Replay(
         GraphState start,
         IEnumerable<GraphEvent> events

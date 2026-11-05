@@ -77,6 +77,25 @@ public sealed record GraphNodeType(
     IReadOnlyList<GraphSettingDefinition> Settings
 );
 
+/// <summary>A frame round some nodes. It holds no geometry: a client draws it from where its nodes are.</summary>
+/// <param name="Title">What it is called.</param>
+/// <param name="Nodes">Its members.</param>
+public sealed record GraphGroupState(string Title, IReadOnlyList<int> Nodes);
+
+/// <summary>A note on the canvas.</summary>
+/// <param name="Text">What it says.</param>
+/// <param name="X">Its left edge on the canvas.</param>
+/// <param name="Y">Its top edge on the canvas.</param>
+/// <param name="Width">Its width.</param>
+/// <param name="Height">Its height.</param>
+public sealed record GraphCommentState(string Text, float X, float Y, float Width, float Height);
+
+/// <summary>A compound a graph can hold, and the graph behind it.</summary>
+/// <param name="Type">Its node type's path, as <c>/node-types</c> lists it.</param>
+/// <param name="Path">What <c>POST /graphs</c> takes to open it.</param>
+/// <param name="ReadOnly">True for a compound that ships with Patina, which opens to be read.</param>
+public sealed record GraphCompound(string Type, string Path, bool ReadOnly);
+
 /// <summary>Something a graph's compiler or its file's reader has to say.</summary>
 /// <param name="Id">A stable code, such as <c>TG0005</c>.</param>
 /// <param name="Message">What is wrong.</param>
@@ -140,9 +159,15 @@ public sealed record GraphEvaluation(
 /// <param name="Edges">The wires, by the input they arrive at.</param>
 /// <param name="Settings">Its settings: <c>baseWidth</c>, <c>baseHeight</c>, <c>seed</c> and any others.</param>
 /// <param name="Parameters">The parameters the graph exposes.</param>
+/// <param name="Groups">Its group frames, in file order. A command names one by its place here.</param>
+/// <param name="Comments">Its notes, in file order. A command names one by its place here.</param>
 /// <param name="Previews">The newest preview of each node.</param>
 /// <param name="Repairs">What reading the file had to drop or fix.</param>
 /// <param name="Evaluation">The last evaluation, or null before the first.</param>
+/// <param name="Settled">
+///     The newest revision with nothing left to evaluate. Below <paramref name="Revision" />, evaluation is behind.
+/// </param>
+/// <param name="ReadOnly">True when this graph cannot be edited or saved: a compound that ships with Patina.</param>
 public sealed record GraphState(
     string Id,
     string Path,
@@ -154,9 +179,13 @@ public sealed record GraphState(
     IReadOnlyList<GraphEdgeState> Edges,
     IReadOnlyDictionary<string, string> Settings,
     IReadOnlyList<GraphSettingDefinition> Parameters,
+    IReadOnlyList<GraphGroupState> Groups,
+    IReadOnlyList<GraphCommentState> Comments,
     IReadOnlyList<GraphPreview> Previews,
     IReadOnlyList<GraphDiagnostic> Repairs,
-    GraphEvaluation? Evaluation
+    GraphEvaluation? Evaluation,
+    long Settled,
+    bool ReadOnly
 );
 #pragma warning restore SK7005
 
@@ -173,6 +202,15 @@ public sealed record GraphSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(GraphSetValue), "setValue")]
 [JsonDerivedType(typeof(GraphSetText), "setText")]
 [JsonDerivedType(typeof(GraphSetSetting), "setSetting")]
+[JsonDerivedType(typeof(GraphAddParameter), "addParameter")]
+[JsonDerivedType(typeof(GraphSetParameter), "setParameter")]
+[JsonDerivedType(typeof(GraphRemoveParameter), "removeParameter")]
+[JsonDerivedType(typeof(GraphAddGroup), "addGroup")]
+[JsonDerivedType(typeof(GraphSetGroup), "setGroup")]
+[JsonDerivedType(typeof(GraphRemoveGroup), "removeGroup")]
+[JsonDerivedType(typeof(GraphAddComment), "addComment")]
+[JsonDerivedType(typeof(GraphSetComment), "setComment")]
+[JsonDerivedType(typeof(GraphRemoveComment), "removeComment")]
 public abstract record GraphCommand;
 
 /// <summary>Adds a node.</summary>
@@ -212,6 +250,57 @@ public sealed record GraphSetText(int Node, string Port, string Value) : GraphCo
 /// <summary>Sets a setting of the graph: <c>baseWidth</c>, <c>baseHeight</c> or <c>seed</c>.</summary>
 public sealed record GraphSetSetting(string Key, string Value) : GraphCommand;
 
+/// <summary>Exposes a new parameter. Its name must be free, and its default must suit its kind and range.</summary>
+public sealed record GraphAddParameter(GraphSettingDefinition Parameter) : GraphCommand;
+
+/// <summary>Replaces a parameter where it stands. Dragging its default sends this on every step.</summary>
+/// <param name="Name">The parameter as it is called now.</param>
+/// <param name="Parameter">What it becomes, which may rename it. Expressions keep the old name until edited.</param>
+public sealed record GraphSetParameter(string Name, GraphSettingDefinition Parameter) : GraphCommand;
+
+/// <summary>Stops exposing a parameter.</summary>
+public sealed record GraphRemoveParameter(string Name) : GraphCommand;
+
+/// <summary>Draws a group frame round some nodes.</summary>
+public sealed record GraphAddGroup(string Title, IReadOnlyList<int> Nodes) : GraphCommand;
+
+/// <summary>Changes a group: anything left null stays as it is.</summary>
+/// <param name="Index">Its place in the state's list.</param>
+/// <param name="Title">Its new title.</param>
+/// <param name="Nodes">Its new members.</param>
+public sealed record GraphSetGroup(int Index, string? Title = null, IReadOnlyList<int>? Nodes = null) : GraphCommand;
+
+/// <summary>Takes a group frame away. Its nodes stay.</summary>
+public sealed record GraphRemoveGroup(int Index) : GraphCommand;
+
+/// <summary>Adds a note.</summary>
+/// <param name="Text">What it says.</param>
+/// <param name="X">Its left edge.</param>
+/// <param name="Y">Its top edge.</param>
+/// <param name="Width">Its width, or null for the standard size.</param>
+/// <param name="Height">Its height, or null for the standard size.</param>
+public sealed record GraphAddComment(string Text, float X, float Y, float? Width = null, float? Height = null)
+    : GraphCommand;
+
+/// <summary>Changes a note: anything left null stays as it is. A note moved by hand sends this on every step.</summary>
+/// <param name="Index">Its place in the state's list.</param>
+/// <param name="Text">What it says.</param>
+/// <param name="X">Its left edge.</param>
+/// <param name="Y">Its top edge.</param>
+/// <param name="Width">Its width.</param>
+/// <param name="Height">Its height.</param>
+public sealed record GraphSetComment(
+    int Index,
+    string? Text = null,
+    float? X = null,
+    float? Y = null,
+    float? Width = null,
+    float? Height = null
+) : GraphCommand;
+
+/// <summary>Removes a note.</summary>
+public sealed record GraphRemoveComment(int Index) : GraphCommand;
+
 /// <summary>Some edits, applied whole or not at all, and undone as one step.</summary>
 /// <param name="Commands">What to do, in order.</param>
 /// <param name="Label">What the undo history calls it, or null for a name from the commands.</param>
@@ -243,13 +332,19 @@ public sealed record GraphEditResult(
 /// <param name="RemovedEdges">Wires that have gone.</param>
 /// <param name="Settings">Graph settings that are new or differ.</param>
 /// <param name="RemovedSettings">Graph settings that have gone.</param>
+/// <param name="Parameters">The whole list of exposed parameters, or null when it did not change.</param>
+/// <param name="Groups">The whole list of groups, or null when it did not change.</param>
+/// <param name="Comments">The whole list of notes, or null when it did not change.</param>
 public sealed record GraphDelta(
     IReadOnlyList<GraphNodeState> Nodes,
     IReadOnlyList<int> RemovedNodes,
     IReadOnlyList<GraphEdgeState> Edges,
     IReadOnlyList<GraphEdgeState> RemovedEdges,
     IReadOnlyDictionary<string, string> Settings,
-    IReadOnlyList<string> RemovedSettings
+    IReadOnlyList<string> RemovedSettings,
+    IReadOnlyList<GraphSettingDefinition>? Parameters = null,
+    IReadOnlyList<GraphGroupState>? Groups = null,
+    IReadOnlyList<GraphCommentState>? Comments = null
 );
 
 /// <summary>What an event reports.</summary>
@@ -274,6 +369,14 @@ public enum GraphEventKind {
     /// <summary>An evaluation ended: <see cref="GraphEvent.Evaluation" /> carries the preview hashes.</summary>
     [JsonStringEnumMemberName("evaluated")]
     Evaluated,
+
+    /// <summary>A revision needed no evaluation, as after a move: the last evaluation still stands.</summary>
+    [JsonStringEnumMemberName("settled")]
+    Settled,
+
+    /// <summary>A compound was saved: <c>/node-types</c> may have changed, and the graph evaluates again.</summary>
+    [JsonStringEnumMemberName("typesChanged")]
+    TypesChanged,
 
     /// <summary>The session has ended.</summary>
     [JsonStringEnumMemberName("closed")]
@@ -304,6 +407,28 @@ public sealed record GraphEvent(
     GraphDelta? Delta = null,
     GraphEvaluation? Evaluation = null
 );
+
+/// <summary>Asks for a node's picture at the size the graph computes it.</summary>
+/// <param name="Node">The node.</param>
+/// <param name="Port">Its output port, or the usage of an Output node, as a preview names them.</param>
+public sealed record GraphImageRequest(int Node, string Port);
+
+/// <summary>Where a full-size picture is: <c>GET /api/v1/previews/{hash}</c>. Pixels never cross JSON.</summary>
+/// <param name="Hash">The SHA-256 of the PNG's bytes, in lower-case hex.</param>
+/// <param name="Width">The PNG's size in pixels.</param>
+/// <param name="Height">The PNG's size in pixels.</param>
+public sealed record GraphImage(string Hash, int Width, int Height);
+
+/// <summary>The body of <c>POST /api/v1/library/graphs</c>.</summary>
+/// <param name="Name">The graph's name. The Server makes its file name from it.</param>
+/// <param name="Project">
+///     A project's path below <c>projects/</c> to put it in, or null for <c>shared/graphs</c>.
+/// </param>
+public sealed record GraphCreateRequest(string Name, string? Project = null);
+
+/// <summary>A new graph's file.</summary>
+/// <param name="Path">Relative to the library, with forward slashes, as <c>POST /graphs</c> takes it.</param>
+public sealed record GraphCreated(string Path);
 
 /// <summary>The events after a number, for a client that does not hold a WebSocket or has missed some.</summary>
 /// <param name="Sequence">The newest event's number.</param>

@@ -63,7 +63,8 @@ builder.Services.AddSingleton<ViewportSession>();
 builder.Services.AddHostedService(static s => s.GetRequiredService<ViewportSession>());
 builder.Services.AddSingleton<GraphSessions>();
 builder.Services.AddSingleton<PreviewStore>();
-builder.Services.AddHostedService<GraphEvaluator>();
+builder.Services.AddSingleton<GraphEvaluator>();
+builder.Services.AddHostedService(static services => services.GetRequiredService<GraphEvaluator>());
 builder.Services.AddHostedService<DiscoveryPublisher>();
 
 var app = builder.Build();

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
+using Patina.Ipc;
 using Patina.Server.Graphs;
 using System.Net.WebSockets;
 using System.Text.Json;
@@ -19,6 +20,7 @@ static class GraphEndpoints {
         const int Missing = StatusCodes.Status404NotFound;
         const int Refused = StatusCodes.Status422UnprocessableEntity;
         const int Conflict = StatusCodes.Status409Conflict;
+        const int Unavailable = StatusCodes.Status503ServiceUnavailable;
 
         graphs.MapGet("/", GetAll).Describe("GetGraphs", "The open graphs.");
         graphs.MapPost("/", Open)
@@ -43,6 +45,12 @@ static class GraphEndpoints {
                 "Every node this graph can use, with ports and settings, for a palette.",
                 Missing
             );
+        graphs.MapGet("/{id}/compounds", GetCompounds)
+            .Describe(
+                "GetGraphCompounds",
+                "The compounds this graph can hold, and the path that opens the graph behind each.",
+                Missing
+            );
         graphs.MapPost("/{id}/commands", Apply)
             .Describe(
                 "ApplyGraphCommands",
@@ -59,13 +67,22 @@ static class GraphEndpoints {
                 "SaveGraph",
                 "Writes the document to its file. A file changed on disk refuses this unless force is set.",
                 Missing,
-                Conflict
+                Conflict,
+                Refused
             );
         graphs.MapPost("/{id}/evaluate", Evaluate)
             .Describe(
                 "EvaluateGraph",
                 "Evaluates again, which also rewrites previews a deleted cache has lost.",
                 Missing
+            );
+        graphs.MapPost("/{id}/images", WriteImage)
+            .Describe(
+                "WriteGraphImage",
+                "Writes a node's picture at the size the graph computes it. /previews/{hash} serves the PNG.",
+                Missing,
+                Conflict,
+                Unavailable
             );
         graphs.MapGet("/{id}/events", GetEvents)
             .Describe(
@@ -139,6 +156,14 @@ static class GraphEndpoints {
             )
             : NoSession(id);
 
+    static Results<Ok<IReadOnlyList<GraphCompound>>, ProblemHttpResult> GetCompounds(
+        string id,
+        GraphSessions sessions
+    ) =>
+        sessions.Find(id) is { } session
+            ? TypedResults.Ok(GraphSessions.Compounds(session.Folder))
+            : NoSession(id);
+
     static Results<Ok<GraphEditResult>, ProblemHttpResult> Apply(
         string id,
         GraphCommandBatch batch,
@@ -182,9 +207,34 @@ static class GraphEndpoints {
         }
 
         try {
-            return TypedResults.Ok(session.Save(force));
+            var result = session.Save(force);
+            sessions.Republish(session);
+            return TypedResults.Ok(result);
         } catch (GraphFileChangedException e) {
             return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status409Conflict);
+        } catch (GraphEditRefusedException e) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+        }
+    }
+
+    static async Task<Results<Ok<GraphImage>, ProblemHttpResult>> WriteImage(
+        string id,
+        GraphImageRequest request,
+        GraphSessions sessions,
+        GraphEvaluator evaluator,
+        CancellationToken cancellationToken
+    ) {
+        if (sessions.Find(id) is not { } session) {
+            return NoSession(id);
+        }
+
+        try {
+            var image = await evaluator.ImageAsync(session, request.Node, request.Port, cancellationToken);
+            return TypedResults.Ok(new GraphImage(image.Hash, image.Width, image.Height));
+        } catch (IpcException e) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status409Conflict);
+        } catch (Exception e) when (e is IOException or TimeoutException) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
         }
     }
 

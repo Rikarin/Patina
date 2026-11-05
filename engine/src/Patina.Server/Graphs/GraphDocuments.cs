@@ -2,11 +2,14 @@ using Patina.Contracts;
 using Patina.Ipc;
 using Vixen.Core.Yaml;
 using Vixen.NodeGraph;
+using Vixen.TextureGraph;
 
 namespace Patina.Server.Graphs;
 
 /// <summary>Between Vixen's document, the file and the contract, and what differs between two documents.</summary>
 public static class GraphDocuments {
+    const string NewGraphSide = "1024";
+
     /// <summary>Reads a document from file text.</summary>
     /// <exception cref="GraphEditRefusedException">The text is not a graph.</exception>
     public static NodeGraphAsset Parse(string yaml) {
@@ -16,6 +19,17 @@ public static class GraphDocuments {
             throw new GraphEditRefusedException($"This is not a graph file: {e.Message}", e);
         }
     }
+
+    /// <summary>A new, empty graph, with the settings written down so that it means the same on every machine.</summary>
+    public static NodeGraphAsset New(string name) =>
+        new() {
+            Name = name.Trim(),
+            Settings = new(StringComparer.Ordinal) {
+                [TextureGraphSettings.BaseHeight] = NewGraphSide,
+                [TextureGraphSettings.BaseWidth] = NewGraphSide,
+                [TextureGraphSettings.Seed] = "0"
+            }
+        };
 
     /// <summary>The file's text. The same document always gives the same bytes.</summary>
     public static string Text(NodeGraphAsset document) => YamlSerializer.ToYaml(document);
@@ -57,6 +71,11 @@ public static class GraphDocuments {
 
     public static GraphEdgeState State(GraphEdgeAsset edge) =>
         new(edge.FromNode, edge.FromPort, edge.ToNode, edge.ToPort);
+
+    public static GraphGroupState State(GraphGroupAsset group) => new(group.Title, group.Nodes);
+
+    public static GraphCommentState State(GraphCommentAsset comment) =>
+        new(comment.Text, comment.X, comment.Y, comment.Width, comment.Height);
 
     public static GraphSettingDefinition Definition(GraphParameterAsset parameter) =>
         new(
@@ -128,7 +147,12 @@ public static class GraphDocuments {
             [..before.Edges.Where(edge => !newEdges.Contains(edge)).Select(static edge => State(edge))],
             after.Settings.Where(setting => before.Settings.GetValueOrDefault(setting.Key) != setting.Value)
                 .ToDictionary(StringComparer.Ordinal),
-            [..before.Settings.Keys.Where(key => !after.Settings.ContainsKey(key))]
+            [..before.Settings.Keys.Where(key => !after.Settings.ContainsKey(key))],
+            SameParameters(before, after) ? null : [..after.Parameters.Select(Definition)],
+            SameGroups(before, after) ? null : [..after.Groups.Select(static group => State(group))],
+            before.Comments.AsSpan().SequenceEqual(after.Comments)
+                ? null
+                : [..after.Comments.Select(static comment => State(comment))]
         );
     }
 
@@ -140,7 +164,8 @@ public static class GraphDocuments {
     public static IReadOnlyList<GraphValue>? Values(NodeGraphAsset told, NodeGraphAsset now) {
         if (told.Nodes.Length != now.Nodes.Length
             || !told.Edges.AsSpan().SequenceEqual(now.Edges)
-            || !SameTexts(told.Settings, now.Settings)) {
+            || !SameTexts(told.Settings, now.Settings)
+            || !SameParameters(told, now)) {
             return null;
         }
 
@@ -173,6 +198,20 @@ public static class GraphDocuments {
     }
 
     static float? Bound(float value) => float.IsFinite(value) ? value : null;
+
+    static bool SameParameters(NodeGraphAsset a, NodeGraphAsset b) =>
+        a.Parameters.Length == b.Parameters.Length
+        && a.Parameters.Zip(b.Parameters)
+            .All(static pair => pair.First with { Accepted = [] } == pair.Second with { Accepted = [] }
+                && pair.First.Accepted.AsSpan().SequenceEqual(pair.Second.Accepted)
+            );
+
+    static bool SameGroups(NodeGraphAsset a, NodeGraphAsset b) =>
+        a.Groups.Length == b.Groups.Length
+        && a.Groups.Zip(b.Groups)
+            .All(static pair => string.Equals(pair.First.Title, pair.Second.Title, StringComparison.Ordinal)
+                && pair.First.Nodes.AsSpan().SequenceEqual(pair.Second.Nodes)
+            );
 
     static bool SameNode(GraphNodeAsset a, GraphNodeAsset b) =>
         string.Equals(a.Type, b.Type, StringComparison.Ordinal)

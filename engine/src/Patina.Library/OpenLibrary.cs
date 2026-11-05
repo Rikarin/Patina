@@ -79,6 +79,24 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         return new(document.Id.Value, document.Name, path, document.Tags, 0);
     }
 
+    /// <summary>
+    ///     Writes a new graph's file, leaving the index to the next <see cref="Rescan" /> as
+    ///     <see cref="CreateProject" /> does.
+    /// </summary>
+    /// <param name="graph">What to call it and where it goes.</param>
+    /// <param name="text">The document.</param>
+    /// <returns>Its path below the library, with forward slashes.</returns>
+    /// <exception cref="ProjectRefusedException">The request breaks a rule, or the file is taken.</exception>
+    public string CreateGraph(NewGraph graph, string text) {
+        var path = NewProjects.GraphPath(graph);
+        lock (createGate) {
+            LibraryFiles.CreateGraph(RootPath, path, text, graph.Name.Trim());
+        }
+
+        Interlocked.Increment(ref unscannedWrites);
+        return path;
+    }
+
     public ProjectPage Projects(LibraryQuery query) => queries.Projects(query);
 
     public AssetPage Assets(LibraryQuery query) => queries.Assets(query);

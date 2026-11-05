@@ -22,6 +22,8 @@ sealed class GraphHost : IDisposable {
 
     readonly Dictionary<string, Loaded> graphs = new(StringComparer.Ordinal);
     readonly Dictionary<TextureResultKey, Written> written = [];
+    readonly GraphPictures pictures = new();
+    readonly CompoundShelf compounds = new();
     VulkanDevice? device;
     TexturePlanEvaluator? evaluator;
 
@@ -38,7 +40,7 @@ sealed class GraphHost : IDisposable {
     public IpcMessage Load(IpcMessage request) {
         var load = request.GraphLoad ?? throw new IpcException("graph.load holds no graph.");
         Forget(load.Session);
-        graphs[load.Session] = new(load);
+        graphs[load.Session] = new(load, compounds.Of(load.Folder), pictures);
         return IpcMessage.Ok(request.Id);
     }
 
@@ -65,6 +67,37 @@ sealed class GraphHost : IDisposable {
         using var bake = runner.EvaluateIncremental(previews.Plan, graph.Uploads!.Externals);
         var stored = Write(bake, previews.Images, evaluate.PreviewFolder);
         return Reply(new(compiled, true, bake.Ran.Length, bake.Reused, Milliseconds(start), stored, problems));
+    }
+
+    /// <summary>
+    ///     Writes one picture at full size, from the plan the last evaluation ran. The result cache usually has it; if
+    ///     not, it runs again, at the cost of holding up the next evaluation.
+    /// </summary>
+    public IpcMessage Image(IpcMessage request) {
+        var ask = request.GraphImage ?? throw new IpcException("graph.image says nothing to write.");
+        if (!graphs.TryGetValue(ask.Session, out var graph)) {
+            throw new IpcException($"This Worker has not been told about graph '{ask.Session}'.");
+        }
+
+        if (graph.Plan is not { } plan) {
+            throw new IpcException("This graph has not evaluated, so it has no picture to write.");
+        }
+
+        var image = graph.Images.FirstOrDefault(i => i.Node == ask.Node && i.Port == ask.Port);
+        if (image.Port is null || plan.Ops.All(op => op.Output != image.Image)) {
+            throw new IpcException($"Node {ask.Node} has no picture on '{ask.Port}'.");
+        }
+
+        using var bake = Evaluator().EvaluateIncremental(GraphPreviews.Full(plan, image.Image), graph.Uploads!.Externals);
+        var key = bake.KeyOf(image.Image);
+        if (!written.TryGetValue(key, out var picture) || !File.Exists(GraphPreviewFiles.PathOf(ask.Folder, picture.Hash))) {
+            picture = Encode(bake.Read(image.Image), ask.Folder);
+            written[key] = picture;
+        }
+
+        return new() {
+            Type = IpcTypes.Ok, GraphFullImage = new(picture.Hash, picture.Width, picture.Height)
+        };
     }
 
     static IpcMessage Reply(GraphResult result) => new() { Type = IpcTypes.Ok, GraphResult = result };
@@ -137,14 +170,19 @@ sealed class GraphHost : IDisposable {
     sealed class Loaded : IDisposable {
         readonly NodeGraphModel graph;
         readonly TextureGraphCompiler compiler;
+        readonly GraphPictures pictures;
+        readonly IReadOnlyList<string> imageRoots;
         ImmutableArray<NodeDiagnostic> diagnostics = [];
+        IReadOnlyList<PictureStamp> stamps = [];
 
-        public Loaded(GraphLoad load) {
-            graph = NodeGraphDocument.Load(YamlSerializer.Parse<NodeGraphAsset>(load.Document), out _);
-            NodeTypeRegistry registry = new();
-            NodeTypes.Register(registry);
-            var compounds = TextureCompoundLibrary.Publish(registry, load.Folder, out _);
-            compiler = new(registry) { SubGraphSource = compounds, PreviewEveryNode = true };
+        public Loaded(GraphLoad load, PublishedCompounds compounds, GraphPictures pictures) {
+            graph = NodeGraphDocument.Load(
+                CompoundShelf.WithoutBoundaries(YamlSerializer.Parse<NodeGraphAsset>(load.Document)),
+                out _
+            );
+            compiler = new(compounds.Registry) { SubGraphSource = compounds.Source, PreviewEveryNode = true };
+            this.pictures = pictures;
+            imageRoots = load.ImageRoots;
         }
 
         public TexturePlan? Plan { get; private set; }
@@ -158,7 +196,7 @@ sealed class GraphHost : IDisposable {
         public void Apply(IReadOnlyList<GraphValue> values) {
             foreach (var value in values) {
                 if (!graph.TryGet(new(value.Node), out var node)) {
-                    throw new IpcException($"Graph '{graph.Name}' has no node {value.Node}.");
+                    continue; // a compound's boundary node, which this copy leaves out: it computes nothing
                 }
 
                 if (value.Lanes is { } lanes) {
@@ -172,7 +210,7 @@ sealed class GraphHost : IDisposable {
         /// <summary>Brings the plan up to date, compiling only when the numbers alone could not (plan §3.2).</summary>
         public GraphResultProblem[] Prepare(TexturePlanEvaluator evaluator, out bool compiled) {
             compiled = false;
-            if (compiler.Refresh(graph) is { } refreshed) {
+            if (!stamps.Any(GraphPictures.Moved) && compiler.Refresh(graph) is { } refreshed) {
                 Plan = refreshed;
                 return Problems();
             }
@@ -189,9 +227,11 @@ sealed class GraphHost : IDisposable {
 
             var uploads = new TextureUploads(evaluator.Device);
             var owed = TextureGraphExternals.Upload(uploads, compilation.Value, compiler.Externals);
-            if (owed.Length > 0) {
+            var filled = pictures.Fill(uploads, compilation.Value, owed, imageRoots);
+            stamps = filled.Stamps;
+            if (filled.Refusals.Count > 0) {
                 uploads.Dispose();
-                diagnostics = diagnostics.AddRange(owed.Select(Owed));
+                diagnostics = diagnostics.AddRange(filled.Refusals);
                 return Problems();
             }
 
@@ -200,13 +240,6 @@ sealed class GraphHost : IDisposable {
             Images = GraphPreviews.Sources(compiler);
             return Problems();
         }
-
-        static NodeDiagnostic Owed(TextureGraphExternal external) =>
-            new(
-                "PT0001",
-                $"This graph reads the image '{external.Asset}', and the Worker cannot read external images yet.",
-                NodeId.None
-            );
 
         GraphResultProblem[] Problems() => [
             ..diagnostics.Select(static d => new GraphResultProblem(

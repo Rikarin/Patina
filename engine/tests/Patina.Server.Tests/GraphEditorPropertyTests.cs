@@ -1,6 +1,7 @@
 using CsCheck;
 using Patina.Contracts;
 using Patina.Server.Graphs;
+using System.Globalization;
 using Vixen.NodeGraph;
 using Vixen.TextureGraph;
 
@@ -54,6 +55,11 @@ public sealed class GraphEditorPropertyTests {
                     var editor = new GraphEditor(GraphTesting.Sample(), Registry);
                     var nodes = editor.Document.Nodes.Select(GraphDocuments.State).ToDictionary(static node => node.Id);
                     var edges = editor.Document.Edges.Select(GraphDocuments.State).ToHashSet();
+                    IReadOnlyList<GraphSettingDefinition> parameters =
+                        [..editor.Document.Parameters.Select(GraphDocuments.Definition)];
+                    IReadOnlyList<GraphGroupState> groups = [..editor.Document.Groups.Select(GraphDocuments.State)];
+                    IReadOnlyList<GraphCommentState> comments =
+                        [..editor.Document.Comments.Select(GraphDocuments.State)];
                     foreach (var seed in batches) {
                         var random = new Random(seed);
                         var before = editor.Document;
@@ -84,6 +90,18 @@ public sealed class GraphEditorPropertyTests {
                                 .Select(static node => (node.Id, node.Type, node.X, node.Y))
                         );
                         Assert.True(edges.SetEquals(editor.Document.Edges.Select(GraphDocuments.State)));
+                        parameters = delta.Parameters ?? parameters;
+                        groups = delta.Groups ?? groups;
+                        comments = delta.Comments ?? comments;
+                        Assert.Equal(
+                            editor.Document.Parameters.Select(static p => (p.Name, p.Default, p.Kind.ToString())),
+                            parameters.Select(static p => (p.Name, p.Default, p.Kind))
+                        );
+                        Assert.Equal(
+                            editor.Document.Groups.Select(static g => $"{g.Title}:{string.Join(',', g.Nodes)}"),
+                            groups.Select(static g => $"{g.Title}:{string.Join(',', g.Nodes)}")
+                        );
+                        Assert.Equal(editor.Document.Comments.Select(GraphDocuments.State), comments);
                     }
                 }
             );
@@ -100,8 +118,11 @@ public sealed class GraphEditorPropertyTests {
             Merge: random.Next(3) == 0
         );
 
+    static GraphSettingDefinition Parameter(string name, float value) =>
+        new(name, value.ToString(CultureInfo.InvariantCulture), "", "Float", 0f, 1f, "", []);
+
     static GraphCommand RandomCommand(Random random, NodeGraphAsset document) {
-        return random.Next(9) switch {
+        return random.Next(19) switch {
             0 => new GraphAddNode(Types[random.Next(Types.Length)], random.Next(100), random.Next(100)),
             1 => new GraphRemoveNodes([Node()]),
             2 => new GraphMoveNodes([new(Node(), random.Next(1000), random.Next(1000))]),
@@ -115,8 +136,20 @@ public sealed class GraphEditorPropertyTests {
             5 => new GraphSetValue(Node(), random.Next(2) == 0 ? "Radius" : "Hue", [random.NextSingle()]),
             6 => new GraphSetValue(Node(), "Scale", [1f + random.Next(16)]),
             7 => new GraphSetText(Node(), "Usage", random.Next(2) == 0 ? "normal" : "roughness"),
-            _ => new GraphSetSetting("seed", $"{random.Next(1000)}")
+            8 => new GraphSetSetting("seed", $"{random.Next(1000)}"),
+            9 => new GraphAddParameter(Parameter($"P{random.Next(4)}", random.NextSingle())),
+            10 => new GraphSetParameter(ParameterName(), Parameter($"P{random.Next(4)}", random.NextSingle())),
+            11 => new GraphRemoveParameter(ParameterName()),
+            12 => new GraphAddGroup("Group", [Node(), Node()]),
+            13 => new GraphSetGroup(random.Next(3), "Renamed", random.Next(2) == 0 ? [Node()] : null),
+            14 => new GraphRemoveGroup(random.Next(3)),
+            15 => new GraphAddComment("Note", random.Next(100), random.Next(100)),
+            16 => new GraphSetComment(random.Next(3), Width: random.Next(2) == 0 ? 300f : -1f, X: random.Next(100)),
+            17 => new GraphRemoveComment(random.Next(3)),
+            _ => new GraphSetText(Node(), "=Hue", "Wear * 2")
         };
         int Node() => document.Nodes.Length == 0 ? 1 : document.Nodes[random.Next(document.Nodes.Length)].Id;
+        string ParameterName() =>
+            document.Parameters.Length == 0 ? "Wear" : document.Parameters[random.Next(document.Parameters.Length)].Name;
     }
 }

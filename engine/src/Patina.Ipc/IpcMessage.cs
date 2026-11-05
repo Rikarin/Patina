@@ -34,6 +34,12 @@ public static class IpcTypes {
     /// </summary>
     public const string GraphEvaluate = "graph.evaluate";
 
+    /// <summary>
+    ///     Server to Worker: write one node's picture to the cache at full size; answers with
+    ///     <see cref="IpcMessage.GraphFullImage" />.
+    /// </summary>
+    public const string GraphImage = "graph.image";
+
     /// <summary>Server to Worker: forget the graph named by <see cref="IpcMessage.GraphClose" />.</summary>
     public const string GraphClose = "graph.close";
 
@@ -44,7 +50,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 3;
+    public const int ProtocolVersion = 4;
 
     public string Type { get; set; } = string.Empty;
 
@@ -79,6 +85,12 @@ public sealed class IpcMessage {
     /// <summary>graph.close: the session.</summary>
     public string? GraphClose { get; set; }
 
+    /// <summary>graph.image: which picture, and where it goes.</summary>
+    public GraphImageAsk? GraphImage { get; set; }
+
+    /// <summary>The reply to graph.image.</summary>
+    public GraphFullImage? GraphFullImage { get; set; }
+
     /// <summary>The reply to graph.evaluate.</summary>
     public GraphResult? GraphResult { get; set; }
 
@@ -111,7 +123,8 @@ public sealed record ViewportFrame(int Width, int Height, double RenderMilliseco
 /// <param name="Session">The Server's name for it.</param>
 /// <param name="Document">The document, in its file format. Text, not pixels.</param>
 /// <param name="Folder">The folder compounds are read from, or null for the shipped ones alone.</param>
-public sealed record GraphLoad(string Session, string Document, string? Folder);
+/// <param name="ImageRoots">The folders a relative image reference is read from, in order.</param>
+public sealed record GraphLoad(string Session, string Document, string? Folder, IReadOnlyList<string> ImageRoots);
 
 /// <summary>A number on a node's input, which is all that differs between two value edits.</summary>
 /// <param name="Node">The node.</param>
@@ -130,6 +143,16 @@ public sealed record GraphEvaluate(
     int PreviewSide,
     string PreviewFolder
 );
+
+/// <summary>Asks for one picture of a loaded graph at the size the graph computes it.</summary>
+/// <param name="Session">The graph.</param>
+/// <param name="Node">The node.</param>
+/// <param name="Port">Its output port, or the usage of an Output node.</param>
+/// <param name="Folder">The content-addressed cache the PNG is written to.</param>
+public sealed record GraphImageAsk(string Session, int Node, string Port, string Folder);
+
+/// <summary>A full-size picture that is now in the cache. The pixels are not in the message.</summary>
+public sealed record GraphFullImage(string Hash, int Width, int Height);
 
 /// <summary>Where a preview lives in the cache, for the Worker that writes it and the Server that serves it.</summary>
 public static class GraphPreviewFiles {

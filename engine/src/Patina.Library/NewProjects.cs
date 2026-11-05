@@ -9,6 +9,11 @@ namespace Patina.Library;
 /// <param name="Tags">The project's tags.</param>
 public sealed record NewProject(string Name, string? Folder = null, IReadOnlyList<string>? Tags = null);
 
+/// <summary>A graph about to exist.</summary>
+/// <param name="Name">The graph's name. The file name is made from it.</param>
+/// <param name="Project">A project's path below <c>projects/</c>, or null for <c>shared/graphs</c>.</param>
+public sealed record NewGraph(string Name, string? Project = null);
+
 /// <summary>A new project that cannot be written as asked; the message says why, to the person who asked.</summary>
 public class ProjectRefusedException : Exception {
     public ProjectRefusedException() { }
@@ -62,6 +67,32 @@ static class NewProjects {
         Require(slug);
         var path = folder.Length == 0 ? slug : $"{folder}/{slug}";
         return (path, new(ProjectId.New(), name, Tags(project.Tags), [], []));
+    }
+
+    /// <summary>The path below the library, with forward slashes, for <paramref name="graph" />.</summary>
+    /// <exception cref="ProjectRefusedException">The request breaks one of the rules.</exception>
+    public static string GraphPath(NewGraph graph) {
+        var name = graph.Name.Trim();
+        if (name.Length is 0 or > MaxNameLength || name.Any(char.IsControl)) {
+            throw new ProjectRefusedException($"A graph's name is 1 to {MaxNameLength} characters of text.");
+        }
+
+        var slug = Slug(name);
+        if (slug.Length == 0) {
+            throw new ProjectRefusedException("A graph's name needs a letter or a digit, to name its file.");
+        }
+
+        Require(slug);
+        var file = slug + LibraryLayout.GraphExtension;
+        if (graph.Project?.Trim().Trim('/') is not { Length: > 0 } project) {
+            return $"{LibraryLayout.SharedFolder}/graphs/{file}";
+        }
+
+        foreach (var segment in project.Split('/')) {
+            Require(segment);
+        }
+
+        return $"{LibraryLayout.ProjectsFolder}/{project}/{file}";
     }
 
     /// <summary>The folder for a name: lower case, with letters and digits kept and every other run a hyphen.</summary>

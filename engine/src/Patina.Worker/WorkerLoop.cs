@@ -58,6 +58,7 @@ sealed class WorkerLoop(ViewportHost viewport, GraphHost graphs) {
                 IpcTypes.ViewportRender => viewport.Render(request),
                 IpcTypes.GraphLoad => graphs.Load(request),
                 IpcTypes.GraphEvaluate => graphs.Evaluate(request),
+                IpcTypes.GraphImage => graphs.Image(request),
                 IpcTypes.GraphClose => graphs.Close(request),
                 _ => IpcMessage.Fail(request.Id, $"Unknown request '{request.Type}'.")
             }

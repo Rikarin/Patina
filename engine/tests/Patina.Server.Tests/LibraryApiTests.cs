@@ -136,6 +136,73 @@ public sealed class LibraryApiTests : IDisposable {
     }
 
     [Fact]
+    public async Task A_new_graph_opens_empty_and_is_indexed_by_the_scan() {
+        CreateLibrary();
+        using var client = server.AuthorisedClient();
+        await WaitForIndexAsync(client);
+
+        using var response = await client.PostAsJsonAsync(
+            "/api/v1/library/graphs",
+            new("Heavy Rust"),
+            ContractsJsonContext.Default.GraphCreateRequest,
+            Token
+        );
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await response.Content.ReadFromJsonAsync(ContractsJsonContext.Default.GraphCreated, Token);
+        Assert.Equal("shared/graphs/heavy-rust.vxtexgraph", created!.Path);
+
+        var state = await client.OpenAsync(created.Path, Token);
+        Assert.Equal("Heavy Rust", state.Name);
+        Assert.Empty(state.Nodes);
+        Assert.Equal("1024", state.Settings["baseWidth"]);
+
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        deadline.CancelAfter(TimeSpan.FromSeconds(30));
+        while (true) {
+            var assets = await client.GetFromJsonAsync(
+                "/api/v1/library/assets?search=heavy",
+                ContractsJsonContext.Default.AssetPage,
+                deadline.Token
+            );
+            if (assets!.Items.Count > 0) {
+                Assert.Equal("Heavy Rust", assets.Items[0].Name);
+                return;
+            }
+
+            await Task.Delay(50, deadline.Token);
+        }
+    }
+
+    [Fact]
+    public async Task A_new_graph_with_a_taken_name_or_no_project_is_refused() {
+        CreateLibrary();
+        using var client = server.AuthorisedClient();
+        await WaitForIndexAsync(client);
+        GraphCreateRequest request = new("Rust");
+        using var first = await client.PostAsJsonAsync(
+            "/api/v1/library/graphs",
+            request,
+            ContractsJsonContext.Default.GraphCreateRequest,
+            Token
+        );
+        first.EnsureSuccessStatusCode();
+        using var second = await client.PostAsJsonAsync(
+            "/api/v1/library/graphs",
+            request,
+            ContractsJsonContext.Default.GraphCreateRequest,
+            Token
+        );
+        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
+        using var lost = await client.PostAsJsonAsync(
+            "/api/v1/library/graphs",
+            new("Rust", "props/nothing"),
+            ContractsJsonContext.Default.GraphCreateRequest,
+            Token
+        );
+        Assert.Equal(HttpStatusCode.BadRequest, lost.StatusCode);
+    }
+
+    [Fact]
     public async Task Impact_counts_the_projects_and_the_pins() {
         var id = CreateLibrary();
         using var client = server.AuthorisedClient();

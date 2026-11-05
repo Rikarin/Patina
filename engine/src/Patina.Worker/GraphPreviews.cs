@@ -91,6 +91,19 @@ static class GraphPreviews {
         return new(extended, previews);
     }
 
+    /// <summary>A plan whose one output is an image at the size the graph computes it.</summary>
+    public static TexturePlan Full(TexturePlan plan, int image) =>
+        new() {
+            BaseWidth = plan.BaseWidth,
+            BaseHeight = plan.BaseHeight,
+            BakeLevelOffset = plan.BakeLevelOffset,
+            Images = plan.Images,
+            Ops = plan.Ops,
+            Outputs = [image],
+            Seed = plan.Seed,
+            Kernels = plan.Kernels
+        };
+
     static int Reduction(
         TexturePlan plan,
         int image,
