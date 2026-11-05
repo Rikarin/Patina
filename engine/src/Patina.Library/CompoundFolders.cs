@@ -15,6 +15,42 @@ public static class CompoundFolders {
     /// <summary>Whether the graph at <paramref name="graph" /> is itself a compound.</summary>
     public static bool Holds(string graph) => Enclosing(Path.GetDirectoryName(Path.GetFullPath(graph))!) is not null;
 
+    /// <summary>The folder for a new compound in a library: <c>shared/graphs</c>'s, or a project's.</summary>
+    /// <exception cref="ProjectRefusedException">There is no such project.</exception>
+    public static string InLibrary(string root, string? project) {
+        if (project?.Trim().Trim('/') is not { Length: > 0 } path) {
+            return Path.Combine(root, LibraryLayout.SharedFolder, "graphs", LibraryLayout.CompoundsFolder);
+        }
+
+        var folder = LibraryLayout.Full(root, $"{LibraryLayout.ProjectsFolder}/{path}");
+        return File.Exists(Path.Combine(folder, LibraryLayout.ProjectFile))
+            ? Path.Combine(folder, LibraryLayout.CompoundsFolder)
+            : throw new ProjectRefusedException($"There is no project at '{path}'.");
+    }
+
+    /// <summary>
+    ///     Writes a new compound. Its file is its node type below <paramref name="folder" />, and one under
+    ///     <c>shared/</c> gets a sidecar, as any shared asset has.
+    /// </summary>
+    /// <param name="folder">The compounds folder.</param>
+    /// <param name="type">Its node type's path. The folders in it become folders.</param>
+    /// <param name="text">The document.</param>
+    /// <returns>The file.</returns>
+    /// <exception cref="ProjectRefusedException">The path is not a legal file, or the file is taken.</exception>
+    public static string Create(string folder, string type, string text) {
+        foreach (var segment in type.Split('/')) {
+            NewProjects.Require(segment);
+        }
+
+        var file = Path.Combine(folder, type.Replace('/', Path.DirectorySeparatorChar) + LibraryLayout.GraphExtension);
+        var root = LibraryAround(folder);
+        var shared = root is not null
+            && LibraryLayout.Relative(root, file)
+                .StartsWith($"{LibraryLayout.SharedFolder}/", StringComparison.Ordinal);
+        LibraryFiles.CreateCompound(file, text, shared ? type.Split('/')[^1] : null);
+        return file;
+    }
+
     /// <summary>
     ///     The folders a relative picture reference in the graph at <paramref name="graph" /> is read from, in order:
     ///     beside it, then the library it is in, which is <paramref name="library" /> or the one around it.

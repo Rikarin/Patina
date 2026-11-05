@@ -34,4 +34,7 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(GraphImage))]
 [JsonSerializable(typeof(GraphCreateRequest))]
 [JsonSerializable(typeof(GraphCreated))]
+[JsonSerializable(typeof(GraphExtractRequest))]
+[JsonSerializable(typeof(GraphExtraction))]
+[JsonSerializable(typeof(GraphCompoundCopy))]
 public sealed partial class ContractsJsonContext : JsonSerializerContext;

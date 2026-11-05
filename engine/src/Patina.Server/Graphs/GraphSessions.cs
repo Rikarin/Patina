@@ -78,29 +78,73 @@ public sealed class GraphSessions(ServerIdentity identity) : IDisposable {
         return compounds;
     }
 
-    /// <summary>Gives a document's boundary nodes their ports, which only its own interface declares.</summary>
-    public static void AddBoundaries(NodeTypeRegistry registry, NodeGraphAsset document) {
-        if (document.Interface.Length == 0) {
-            return;
-        }
-
-        var graph = NodeGraphDocument.Load(document with { Nodes = [], Edges = [], Groups = [] }, out _);
-        foreach (var type in new[] { SubGraphs.InputType, SubGraphs.OutputType }) {
-            if (!registry.TryGet(type, out _)) {
-                registry.Add(SubGraphs.Boundary(graph, type));
-            }
+    /// <summary>A compound was saved, so every graph that reads its folder takes the node types again.</summary>
+    public void Republish(GraphSession saved) {
+        if (saved.Folder is { } folder && CompoundFolders.Holds(saved.Path)) {
+            Republish(folder, saved);
         }
     }
 
-    /// <summary>A compound was saved, so every graph that reads its folder takes the node types again.</summary>
-    public void Republish(GraphSession saved) {
-        if (saved.Folder is not { } folder || !CompoundFolders.Holds(saved.Path)) {
-            return;
-        }
-
-        foreach (var session in All.Where(s => s != saved && string.Equals(s.Folder, folder, StringComparison.Ordinal)
+    /// <summary>A folder's compounds changed, so every graph that reads it takes the node types again.</summary>
+    /// <param name="folder">The compounds folder.</param>
+    /// <param name="except">A session that has already taken them.</param>
+    public void Republish(string folder, GraphSession? except = null) {
+        foreach (var session in All.Where(s => s != except && string.Equals(s.Folder, folder, StringComparison.Ordinal)
                  )) {
             session.Republish(Types(folder));
+        }
+    }
+
+    /// <summary>Saves some of a graph's nodes as a new compound in the folder it reads.</summary>
+    /// <exception cref="GraphEditRefusedException">It has no such folder, or the nodes or the name will not do.</exception>
+    public GraphExtraction Extract(GraphSession session, GraphExtractRequest request) {
+        if (session.Folder is not { } folder) {
+            throw new GraphEditRefusedException("This graph has no compounds folder to save into.");
+        }
+
+        var type = request.Name.Trim();
+        RefuseShipped(type);
+        var extraction = session.Extract(
+            request,
+            text => {
+                try {
+                    return (CompoundFolders.Create(folder, type, text), Types(folder));
+                } catch (ProjectRefusedException e) {
+                    throw new GraphEditRefusedException(e.Message, e);
+                }
+            }
+        );
+        Republish(folder, session);
+        return extraction;
+    }
+
+    /// <summary>Copies a shipped compound into a folder as a file, so that it can be edited.</summary>
+    /// <param name="request">Which one, and what to call the copy.</param>
+    /// <param name="folder">The compounds folder that takes it.</param>
+    /// <returns>The copy.</returns>
+    /// <exception cref="FileNotFoundException">No such compound ships.</exception>
+    /// <exception cref="ProjectRefusedException">The name will not do, or the file is taken.</exception>
+    /// <exception cref="GraphEditRefusedException">The name is a shipped compound's.</exception>
+    public GraphCompound Copy(GraphCompoundCopy request, string folder) {
+        var text = TextureCompoundLibrary.Shipped.Contains(request.Type)
+            ? TextureCompoundLibrary.Source(request.Type)
+            : null;
+        if (text is null) {
+            throw new FileNotFoundException($"No compound called '{request.Type}' ships with Patina.", request.Type);
+        }
+
+        var type = (request.Name ?? $"{request.Type} Copy").Trim();
+        RefuseShipped(type);
+        var document = GraphDocuments.Parse(text) with { Name = type.Split('/')[^1] };
+        var file = CompoundFolders.Create(folder, type, GraphDocuments.Text(GraphDocuments.Canonical(document)));
+        Republish(folder);
+        return new(type, file, false);
+    }
+
+    /// <summary>Vixen refuses to let a file shadow a shipped compound, so saying so here is kinder than a lost node.</summary>
+    static void RefuseShipped(string type) {
+        if (TextureCompoundLibrary.Shipped.Contains(type)) {
+            throw new GraphEditRefusedException($"'{type}' ships with Patina. A copy needs a name of its own.");
         }
     }
 

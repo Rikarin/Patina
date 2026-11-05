@@ -51,6 +51,13 @@ static class GraphEndpoints {
                 "The compounds this graph can hold, and the path that opens the graph behind each.",
                 Missing
             );
+        graphs.MapPost("/{id}/compounds", Extract)
+            .Describe(
+                "ExtractGraphCompound",
+                "Saves some nodes as a new compound beside the graph and holds it in their place, as one undo step.",
+                Missing,
+                Refused
+            );
         graphs.MapPost("/{id}/commands", Apply)
             .Describe(
                 "ApplyGraphCommands",
@@ -150,7 +157,7 @@ static class GraphEndpoints {
         sessions.Find(id) is { } session
             ? TypedResults.Ok<IReadOnlyList<GraphNodeType>>(
                 [
-                    ..session.Registry.Types.OrderBy(static type => type.Path, StringComparer.Ordinal)
+                    ..session.NodeTypes.OrderBy(static type => type.Path, StringComparer.Ordinal)
                         .Select(GraphDocuments.Definition)
                 ]
             )
@@ -175,6 +182,25 @@ static class GraphEndpoints {
 
         try {
             return TypedResults.Ok(session.Apply(batch));
+        } catch (GraphEditRefusedException e) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+        }
+    }
+
+    static Results<Ok<GraphExtraction>, ProblemHttpResult> Extract(
+        string id,
+        GraphExtractRequest request,
+        GraphSessions sessions,
+        LibraryHost host
+    ) {
+        if (sessions.Find(id) is not { } session) {
+            return NoSession(id);
+        }
+
+        try {
+            var extraction = sessions.Extract(session, request);
+            host.RequestRescan();
+            return TypedResults.Ok(extraction);
         } catch (GraphEditRefusedException e) {
             return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
         }

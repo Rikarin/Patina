@@ -70,13 +70,22 @@ public sealed class GraphEditor {
 
         Dictionary<int, int> refs = [];
         List<IAuthoringCommand> applied = [];
+        List<(int Ref, Func<int> Identity)> furniture = [];
         try {
             foreach (var command in batch.Commands) {
                 var built = Build(command, refs);
                 built.Do(Context);
                 applied.Add(built);
-                if (command is GraphAddNode { Ref: { } reference } && built is AddNodeCommand added) {
-                    refs[reference] = added.Node.Id.Value;
+                switch (command, built) {
+                    case (GraphAddNode { Ref: { } reference }, AddNodeCommand added):
+                        refs[reference] = added.Node.Id.Value;
+                        break;
+                    case (GraphAddGroup { Ref: { } reference }, AddGroupCommand group):
+                        furniture.Add((reference, () => group.Group.Id));
+                        break;
+                    case (GraphAddComment { Ref: { } reference }, AddNoteCommand note):
+                        furniture.Add((reference, note.Identity));
+                        break;
                 }
             }
         } catch (Exception e) when (e is GraphEditRefusedException or ArgumentException) {
@@ -89,7 +98,41 @@ public sealed class GraphEditor {
 
         Remember(batch, applied);
         Document = GraphDocuments.Canonical(NodeGraphDocument.Save(graph));
-        return [..refs.Select(static r => new GraphCreatedNode(r.Key, r.Value))];
+        return [
+            ..refs.Select(static r => new GraphCreatedNode(r.Key, r.Value)),
+            ..furniture.Select(static f => new GraphCreatedNode(f.Ref, f.Identity()))
+        ];
+    }
+
+    /// <summary>What moving some nodes into a compound would make. Nothing changes until it is applied.</summary>
+    /// <param name="name">What the compound is called.</param>
+    /// <param name="nodes">The nodes.</param>
+    /// <exception cref="GraphEditRefusedException">They cannot be moved.</exception>
+    public SubGraphExtraction PlanExtraction(string name, IReadOnlyCollection<int> nodes) {
+        var ids = nodes.Select(static node => new NodeId(node)).ToArray();
+        if (nodes.Any(node => graph.TryGet(new(node), out var held) && SubGraphs.IsBoundary(held.Type))) {
+            throw new GraphEditRefusedException("A boundary node belongs to this graph and cannot leave it.");
+        }
+
+        try {
+            return SubGraphs.Extract(graph, ids, name, registry);
+        } catch (ArgumentException e) {
+            throw new GraphEditRefusedException(e.Message, e);
+        }
+    }
+
+    /// <summary>Replaces the nodes with one that holds the compound, as one undo step.</summary>
+    /// <param name="extraction">What <see cref="PlanExtraction" /> worked out.</param>
+    /// <param name="type">The node type it was published under.</param>
+    /// <param name="x">Where the node goes.</param>
+    /// <param name="y">Where the node goes.</param>
+    /// <returns>The node.</returns>
+    public int ApplyExtraction(SubGraphExtraction extraction, string type, float x, float y) {
+        ExtractSubGraphCommand command = new(graph, extraction, type, Finite(x, y));
+        command.Do(Context);
+        Remember(new([], $"Save as {type}"), [command]);
+        Document = GraphDocuments.Canonical(NodeGraphDocument.Save(graph));
+        return command.StandIn.Id.Value;
     }
 
     /// <summary>Takes the newest edit back.</summary>
@@ -182,17 +225,20 @@ public sealed class GraphEditor {
             GraphAddParameter add => BuildAddParameter(add),
             GraphSetParameter set => BuildSetParameter(set),
             GraphRemoveParameter remove => BuildRemoveParameter(remove),
+            GraphAddPort add => BuildAddPort(add),
+            GraphSetPort set => BuildSetPort(set),
+            GraphRemovePort remove => BuildRemovePort(remove),
             GraphAddGroup add => new AddGroupCommand(graph, add.Title, Members(add.Nodes, refs)),
             GraphSetGroup set => BuildSetGroup(set, refs),
-            GraphRemoveGroup remove => new RemoveGroupCommand(graph, GroupAt(remove.Index)),
+            GraphRemoveGroup remove => new RemoveGroupCommand(graph, GroupOf(remove.Id)),
             GraphAddComment add => BuildAddComment(add),
             GraphSetComment set => BuildSetComment(set),
-            GraphRemoveComment remove => new RemoveCommentCommand(graph, CommentAt(remove.Index)),
+            GraphRemoveComment remove => new RemoveCommentCommand(graph, CommentOf(remove.Id)),
             _ => throw new GraphEditRefusedException($"Unknown command '{command.GetType().Name}'.")
         };
 
     AddNodeCommand BuildAdd(GraphAddNode add, Dictionary<int, int> refs) {
-        if (!registry.TryGet(add.Type, out _)) {
+        if (!SubGraphs.IsBoundary(add.Type) && !registry.TryGet(add.Type, out _)) {
             throw new GraphEditRefusedException($"There is no node type '{add.Type}'.");
         }
 
@@ -290,6 +336,7 @@ public sealed class GraphEditor {
                 && extent is > 0 and <= TexturePlan.MaxExtent,
             TextureGraphSettings.Seed =>
                 uint.TryParse(setting.Value, NumberStyles.None, CultureInfo.InvariantCulture, out _),
+            TextureGraphSettings.BitDepth => setting.Value is "16" or "32",
             _ => throw new GraphEditRefusedException($"There is no graph setting '{setting.Key}'.")
         };
         return valid
@@ -370,21 +417,115 @@ public sealed class GraphEditor {
         };
     }
 
+    SetInterfaceCommand BuildAddPort(GraphAddPort add) {
+        var port = CheckedPort(add.Port, null);
+        return new(graph, [..graph.Interface, port], null, port.Name, $"Add {port.Name}");
+    }
+
+    SetInterfaceCommand BuildSetPort(GraphSetPort set) {
+        var index = PortAt(set.Name, set.Direction);
+        var port = CheckedPort(set.Port, graph.Interface[index]);
+        foreach (var edge in BoundaryEdges(graph, graph.Interface[index])) {
+            RefuseKindChange(edge, port);
+        }
+
+        List<PortDefinition> next = [..graph.Interface];
+        next[index] = port;
+        return new(graph, next, graph.Interface[index], port.Name, $"Set {set.Name}");
+    }
+
+    SetInterfaceCommand BuildRemovePort(GraphRemovePort remove) {
+        var index = PortAt(remove.Name, remove.Direction);
+        List<PortDefinition> next = [..graph.Interface];
+        next.RemoveAt(index);
+        return new(graph, next, graph.Interface[index], null, $"Remove {remove.Name}");
+    }
+
+    int PortAt(string name, string direction) {
+        var index = graph.Interface.FindIndex(p => string.Equals(p.Name, name, StringComparison.Ordinal)
+            && string.Equals(p.Direction.ToString(), direction, StringComparison.Ordinal)
+        );
+        return index >= 0 ? index : throw new GraphEditRefusedException($"There is no {direction} port '{name}'.");
+    }
+
+    /// <summary>A port as the model holds it, or a refusal a client can show.</summary>
+    /// <param name="port">What a client sent.</param>
+    /// <param name="replacing">The port it replaces, whose name it may keep and whose direction it must.</param>
+    PortDefinition CheckedPort(GraphInterfacePort port, PortDefinition? replacing) {
+        if (string.IsNullOrWhiteSpace(port.Name) || TextureGraphExpressions.IsExpression(port.Name, out _)) {
+            throw new GraphEditRefusedException($"'{port.Name}' cannot name a port.");
+        }
+
+        if (!Enum.TryParse<PortDirection>(port.Direction, out var direction) || !Enum.IsDefined(direction)) {
+            throw new GraphEditRefusedException($"'{port.Direction}' is not a direction.");
+        }
+
+        if (replacing is not null && direction != replacing.Direction) {
+            throw new GraphEditRefusedException("A port keeps its direction. Remove it and add another.");
+        }
+
+        if (!Enum.TryParse<PortKind>(port.Kind, out var kind) || !Enum.IsDefined(kind) || kind == PortKind.None) {
+            throw new GraphEditRefusedException($"'{port.Kind}' is not a kind of port.");
+        }
+
+        if (graph.Interface.Exists(p => p != replacing
+                && p.Direction == direction
+                && string.Equals(p.Name, port.Name, StringComparison.Ordinal)
+            )) {
+            throw new GraphEditRefusedException($"There is a {direction} port called '{port.Name}' already.");
+        }
+
+        if (port.Default.Count > 0
+            && (port.Default.Count != PortKinds.Fields(kind) || !port.Default.All(float.IsFinite))) {
+            throw new GraphEditRefusedException($"{port.Name} ({kind}) takes {PortKinds.Fields(kind)} finite number(s).");
+        }
+
+        return new(port.Name, direction, kind, [..port.Default], port.Summary);
+    }
+
+    /// <summary>Says no to a kind that a wire on the port cannot carry, which the model would take silently.</summary>
+    void RefuseKindChange(GraphEdge edge, PortDefinition port) {
+        var (other, seenAs) = port.Direction == PortDirection.Input
+            ? (edge.To, PortDirection.Input)
+            : (edge.From, PortDirection.Output);
+        if (!graph.TryGet(other.Node, out var node) || TypeOf(node).Port(other.Port, seenAs) is not { } end) {
+            return;
+        }
+
+        var (source, target) = seenAs == PortDirection.Input
+            ? (port.Kind, end)
+            : (end.Kind, port with { Direction = PortDirection.Input });
+        if (!new PortFilter(source, PortDirection.Input).Accepts(target)) {
+            throw new GraphEditRefusedException($"A wire on {port.Name} cannot carry {port.Kind}. Take it off first.");
+        }
+    }
+
+    /// <summary>The wires on the boundary side of an interface port.</summary>
+    internal static List<GraphEdge> BoundaryEdges(NodeGraphModel graph, PortDefinition port) {
+        var input = port.Direction == PortDirection.Input;
+        var type = input ? SubGraphs.InputType : SubGraphs.OutputType;
+        return [
+            ..graph.Edges.Where(edge => {
+                    var end = input ? edge.From : edge.To;
+                    return string.Equals(end.Port, port.Name, StringComparison.Ordinal)
+                        && graph.TryGet(end.Node, out var node)
+                        && string.Equals(node.Type, type, StringComparison.Ordinal);
+                }
+            )
+        ];
+    }
+
     IEnumerable<NodeId> Members(IReadOnlyList<int> nodes, Dictionary<int, int> refs) =>
         [..nodes.Distinct().Select(node => Find(node, refs).Id)];
 
-    GraphGroup GroupAt(int index) =>
-        index >= 0 && index < graph.Groups.Count
-            ? graph.Groups[index]
-            : throw new GraphEditRefusedException($"There is no group {index}.");
+    GraphGroup GroupOf(int id) =>
+        graph.Groups.Find(group => group.Id == id) ?? throw new GraphEditRefusedException($"There is no group {id}.");
 
-    GraphComment CommentAt(int index) =>
-        index >= 0 && index < graph.Comments.Count
-            ? graph.Comments[index]
-            : throw new GraphEditRefusedException($"There is no note {index}.");
+    GraphComment CommentOf(int id) =>
+        graph.Comments.Find(note => note.Id == id) ?? throw new GraphEditRefusedException($"There is no note {id}.");
 
     SetGroupCommand BuildSetGroup(GraphSetGroup set, Dictionary<int, int> refs) {
-        var group = GroupAt(set.Index);
+        var group = GroupOf(set.Id);
         return new(group, set.Title ?? group.Title, [..set.Nodes is { } nodes ? Members(nodes, refs) : group.Nodes]);
     }
 
@@ -401,7 +542,7 @@ public sealed class GraphEditor {
     }
 
     SetNoteCommand BuildSetComment(GraphSetComment set) {
-        var comment = CommentAt(set.Index);
+        var comment = CommentOf(set.Id);
         return new(
             comment,
             new(
@@ -429,10 +570,16 @@ public sealed class GraphEditor {
             : throw new GraphEditRefusedException($"There is no node {id}.");
     }
 
-    NodeTypeDefinition TypeOf(GraphNode node) =>
-        registry.TryGet(node.Type, out var type)
+    /// <summary>A node's type. A boundary node's ports are this graph's interface, as it stands now.</summary>
+    NodeTypeDefinition TypeOf(GraphNode node) {
+        if (SubGraphs.IsBoundary(node.Type)) {
+            return SubGraphs.Boundary(graph, node.Type);
+        }
+
+        return registry.TryGet(node.Type, out var type)
             ? type
             : throw new GraphEditRefusedException($"There is no node type '{node.Type}'.");
+    }
 
     PortDefinition PortOf(GraphNode node, string name, PortDirection direction) =>
         TypeOf(node).Port(name, direction)
@@ -494,6 +641,70 @@ sealed class SetParametersCommand(
     }
 }
 
+/// <summary>
+///     Changes the graph's interface, and the wires on its boundary nodes with it: a renamed port keeps them, and a port
+///     taken away loses them, until an undo. Vixen has no command for this: its editor writes the list through a form.
+/// </summary>
+/// <param name="graph">The graph.</param>
+/// <param name="next">The whole list.</param>
+/// <param name="port">The port changing, if one is.</param>
+/// <param name="renamed">What that port's wires arrive at now, or null when they go.</param>
+/// <param name="name">What the history calls it.</param>
+sealed class SetInterfaceCommand(
+    NodeGraphModel graph,
+    IReadOnlyList<PortDefinition> next,
+    PortDefinition? port,
+    string? renamed,
+    string name
+) : IAuthoringCommand {
+    readonly IReadOnlyList<PortDefinition> previous = [..graph.Interface];
+    readonly List<GraphEdge> taken = [];
+    readonly List<GraphEdge> put = [];
+
+    public string Name => name;
+
+    public void Do(ICommandContext context) {
+        taken.Clear();
+        put.Clear();
+        if (port is not null) {
+            taken.AddRange(GraphEditor.BoundaryEdges(graph, port));
+        }
+
+        foreach (var edge in taken) {
+            graph.Disconnect(edge.To);
+        }
+
+        Write(next);
+        if (renamed is null || port is null) {
+            return;
+        }
+
+        foreach (var edge in taken) {
+            var moved = port.Direction == PortDirection.Input
+                ? edge with { From = edge.From with { Port = renamed } }
+                : edge with { To = edge.To with { Port = renamed } };
+            graph.Connect(moved.From, moved.To);
+            put.Add(moved);
+        }
+    }
+
+    public void Undo(ICommandContext context) {
+        foreach (var edge in put) {
+            graph.Disconnect(edge.To);
+        }
+
+        Write(previous);
+        foreach (var edge in taken) {
+            graph.Connect(edge.From, edge.To);
+        }
+    }
+
+    void Write(IReadOnlyList<PortDefinition> ports) {
+        graph.Interface.Clear();
+        graph.Interface.AddRange(ports);
+    }
+}
+
 /// <summary>Retitles a group and changes its members. Vixen's own command only retitles.</summary>
 sealed class SetGroupCommand(GraphGroup group, string title, NodeId[] nodes) : IAuthoringCommand {
     readonly string previousTitle = group.Title;
@@ -517,6 +728,9 @@ sealed class AddNoteCommand(NodeGraphModel graph, GraphComment comment) : IAutho
     public string Name => "Add Note";
 
     public void Do(ICommandContext context) => graph.Comments.Add(comment);
+
+    /// <summary>The note's identity, which the document gives it when it is next written down.</summary>
+    public int Identity() => comment.Id;
 
     public void Undo(ICommandContext context) => graph.Comments.Remove(comment);
 }
