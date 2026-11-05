@@ -110,7 +110,7 @@ static class NewProjects {
         return text.Length <= MaxSegmentLength ? text : text[..MaxSegmentLength].TrimEnd('-');
     }
 
-    static void Require(string segment) {
+    internal static void Require(string segment) {
         var legal = segment.Length is > 0 and <= MaxSegmentLength
             && segment[0] != '.'
             && !segment.EndsWith('.')

@@ -66,9 +66,7 @@ public sealed class GraphSession {
         Registry = registry;
         ReadOnly = readOnly;
         fileHash = Hash(text);
-        var document = GraphDocuments.Parse(text);
-        GraphSessions.AddBoundaries(registry, document);
-        editor = new(document, registry);
+        editor = new(GraphDocuments.Parse(text), registry);
         this.wake = wake;
     }
 
@@ -83,6 +81,28 @@ public sealed class GraphSession {
     public IReadOnlyList<string> ImageRoots { get; init; } = [];
 
     public NodeTypeRegistry Registry { get; private set; }
+
+    /// <summary>
+    ///     Every node this graph can use, for a palette. A boundary node's ports are this graph's own interface, so a
+    ///     registry cannot hold them: they are made here, for a graph that is a compound or already has an interface.
+    /// </summary>
+    public IReadOnlyList<NodeTypeDefinition> NodeTypes {
+        get {
+            lock (changing) {
+                var document = editor.Document;
+                if (document.Interface.Length == 0 && !ReadOnly && !CompoundFolders.Holds(Path)) {
+                    return [..Registry.Types];
+                }
+
+                var graph = NodeGraphDocument.Load(document with { Nodes = [], Edges = [], Groups = [] }, out _);
+                return [
+                    ..Registry.Types,
+                    SubGraphs.Boundary(graph, SubGraphs.InputType),
+                    SubGraphs.Boundary(graph, SubGraphs.OutputType)
+                ];
+            }
+        }
+    }
 
     /// <summary>True for a compound that ships with Patina, which no file holds to save to.</summary>
     public bool ReadOnly { get; }
@@ -112,6 +132,7 @@ public sealed class GraphSession {
                     [..document.Edges.Select(GraphDocuments.State)],
                     document.Settings,
                     [..document.Parameters.Select(GraphDocuments.Definition)],
+                    [..document.Interface.Select(GraphDocuments.State)],
                     [..document.Groups.Select(GraphDocuments.State)],
                     [..document.Comments.Select(GraphDocuments.State)],
                     [..previews.Values.Where(preview => nodes.Contains(preview.Node))],
@@ -147,6 +168,36 @@ public sealed class GraphSession {
         return result;
     }
 
+    /// <summary>
+    ///     Moves some nodes into a new compound and holds it in their place, as one undo step. An undo brings the
+    ///     nodes back and leaves the file, which is the author's by then and may be in other graphs already.
+    /// </summary>
+    /// <param name="request">What to move, and what to call it.</param>
+    /// <param name="publish">Writes the compound's document and gives back its file and the new node types.</param>
+    /// <exception cref="GraphEditRefusedException">The nodes cannot move.</exception>
+    public GraphExtraction Extract(
+        GraphExtractRequest request,
+        Func<string, (string File, NodeTypeRegistry Registry)> publish
+    ) {
+        GraphExtraction extraction;
+        lock (changing) {
+            RefuseIfReadOnly();
+            var type = request.Name.Trim();
+            var plan = editor.PlanExtraction(type.Split('/')[^1], request.Nodes);
+            var (file, registry) = publish(
+                GraphDocuments.Text(GraphDocuments.Canonical(NodeGraphDocument.Save(plan.Graph)))
+            );
+            Take(registry);
+            var before = editor.Document;
+            var node = editor.ApplyExtraction(plan, type, request.X, request.Y);
+            var edit = Announce(GraphEventKind.Edited, editor.History.UndoLabel, before, []);
+            extraction = new(new(type, file, false), node, edit);
+        }
+
+        wake();
+        return extraction;
+    }
+
     /// <returns>Null when there was nothing to undo.</returns>
     public GraphEditResult? Undo() => Walk(static e => e.Undo(), GraphEventKind.Undone);
 
@@ -178,12 +229,7 @@ public sealed class GraphSession {
     /// </summary>
     public void Republish(NodeTypeRegistry registry) {
         lock (changing) {
-            GraphSessions.AddBoundaries(registry, editor.Document);
-            Registry = registry;
-            editor.UseRegistry(registry);
-            forced = true;
-            reload = true;
-            Append(new(sequence + 1, GraphEventKind.TypesChanged, revision, editor.History));
+            Take(registry);
         }
 
         wake();
@@ -294,6 +340,14 @@ public sealed class GraphSession {
     static TaskCompletionSource NewSignal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     static string Hash(string text) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
+
+    void Take(NodeTypeRegistry registry) {
+        Registry = registry;
+        editor.UseRegistry(registry);
+        forced = true;
+        reload = true;
+        Append(new(sequence + 1, GraphEventKind.TypesChanged, revision, editor.History));
+    }
 
     GraphEditResult? Walk(Func<GraphEditor, string?> move, GraphEventKind kind) {
         GraphEditResult? result;

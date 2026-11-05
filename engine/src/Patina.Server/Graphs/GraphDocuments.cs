@@ -72,10 +72,13 @@ public static class GraphDocuments {
     public static GraphEdgeState State(GraphEdgeAsset edge) =>
         new(edge.FromNode, edge.FromPort, edge.ToNode, edge.ToPort);
 
-    public static GraphGroupState State(GraphGroupAsset group) => new(group.Title, group.Nodes);
+    public static GraphGroupState State(GraphGroupAsset group) => new(group.Id, group.Title, group.Nodes);
 
     public static GraphCommentState State(GraphCommentAsset comment) =>
-        new(comment.Text, comment.X, comment.Y, comment.Width, comment.Height);
+        new(comment.Id, comment.Text, comment.X, comment.Y, comment.Width, comment.Height);
+
+    public static GraphInterfacePort State(GraphPortAsset port) =>
+        new(port.Name, port.Direction.ToString(), port.Kind.ToString(), port.Default, port.Summary);
 
     public static GraphSettingDefinition Definition(GraphParameterAsset parameter) =>
         new(
@@ -163,7 +166,8 @@ public static class GraphDocuments {
             SameGroups(before, after) ? null : [..after.Groups.Select(static group => State(group))],
             before.Comments.AsSpan().SequenceEqual(after.Comments)
                 ? null
-                : [..after.Comments.Select(static comment => State(comment))]
+                : [..after.Comments.Select(static comment => State(comment))],
+            SameInterface(before, after) ? null : [..after.Interface.Select(static port => State(port))]
         );
     }
 
@@ -224,10 +228,18 @@ public static class GraphDocuments {
                 && pair.First.Accepted.AsSpan().SequenceEqual(pair.Second.Accepted)
             );
 
+    static bool SameInterface(NodeGraphAsset a, NodeGraphAsset b) =>
+        a.Interface.Length == b.Interface.Length
+        && a.Interface.Zip(b.Interface)
+            .All(static pair => pair.First with { Default = [] } == pair.Second with { Default = [] }
+                && pair.First.Default.AsSpan().SequenceEqual(pair.Second.Default)
+            );
+
     static bool SameGroups(NodeGraphAsset a, NodeGraphAsset b) =>
         a.Groups.Length == b.Groups.Length
         && a.Groups.Zip(b.Groups)
-            .All(static pair => string.Equals(pair.First.Title, pair.Second.Title, StringComparison.Ordinal)
+            .All(static pair => pair.First.Id == pair.Second.Id
+                && string.Equals(pair.First.Title, pair.Second.Title, StringComparison.Ordinal)
                 && pair.First.Nodes.AsSpan().SequenceEqual(pair.Second.Nodes)
             );
 

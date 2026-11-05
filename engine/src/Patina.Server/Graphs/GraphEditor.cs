@@ -28,12 +28,11 @@ public sealed class GraphEditRefusedException : Exception {
 public sealed class GraphEditor {
     const int Capacity = 256;
 
-    /// <summary>What starts a text's key when it is a number's expression, not a setting. Vixen's spelling.</summary>
-    const char ExpressionMarker = '=';
-
     static readonly HeadlessContext Context = new();
 
     readonly NodeGraphModel graph;
+    readonly GraphInterfaceEdits ports;
+    readonly GraphParameterEdits parameters;
     readonly List<Step> undoable = [];
     readonly List<Step> redoable = [];
     NodeTypeRegistry registry;
@@ -43,6 +42,8 @@ public sealed class GraphEditor {
     /// <summary>Takes a document as a file holds it.</summary>
     public GraphEditor(NodeGraphAsset asset, NodeTypeRegistry registry) {
         graph = NodeGraphDocument.Load(asset, out var repairs);
+        ports = new(graph, TypeOf);
+        parameters = new(graph);
         this.registry = registry;
         Repairs = repairs;
         Document = GraphDocuments.Canonical(NodeGraphDocument.Save(graph));
@@ -73,13 +74,22 @@ public sealed class GraphEditor {
 
         Dictionary<int, int> refs = [];
         List<IAuthoringCommand> applied = [];
+        List<(int Ref, GraphGroup? Group, GraphComment? Note)> furniture = [];
         try {
             foreach (var command in batch.Commands) {
                 var built = Build(command, refs);
                 built.Do(Context);
                 applied.Add(built);
-                if (command is GraphAddNode { Ref: { } reference } && built is AddNodeCommand added) {
-                    refs[reference] = added.Node.Id.Value;
+                switch (command, built) {
+                    case (GraphAddNode { Ref: { } reference }, AddNodeCommand added):
+                        refs[reference] = added.Node.Id.Value;
+                        break;
+                    case (GraphAddGroup { Ref: { } reference }, AddGroupCommand group):
+                        furniture.Add((reference, group.Group, null));
+                        break;
+                    case (GraphAddComment { Ref: { } reference }, AddNoteCommand note):
+                        furniture.Add((reference, null, note.Note));
+                        break;
                 }
             }
         } catch (Exception e) when (e is GraphEditRefusedException or ArgumentException) {
@@ -92,7 +102,41 @@ public sealed class GraphEditor {
 
         Remember(batch, applied);
         Document = GraphDocuments.Canonical(NodeGraphDocument.Save(graph));
-        return [..refs.Select(static r => new GraphCreatedNode(r.Key, r.Value))];
+        return [
+            ..refs.Select(static r => new GraphCreatedNode(r.Key, r.Value)),
+            ..furniture.Select(static f => new GraphCreatedNode(f.Ref, f.Group?.Id ?? f.Note!.Id))
+        ];
+    }
+
+    /// <summary>What moving some nodes into a compound would make. Nothing changes until it is applied.</summary>
+    /// <param name="name">What the compound is called.</param>
+    /// <param name="nodes">The nodes.</param>
+    /// <exception cref="GraphEditRefusedException">They cannot be moved.</exception>
+    public SubGraphExtraction PlanExtraction(string name, IReadOnlyCollection<int> nodes) {
+        var ids = nodes.Select(static node => new NodeId(node)).ToArray();
+        if (nodes.Any(node => graph.TryGet(new(node), out var held) && SubGraphs.IsBoundary(held.Type))) {
+            throw new GraphEditRefusedException("A boundary node belongs to this graph and cannot leave it.");
+        }
+
+        try {
+            return SubGraphs.Extract(graph, ids, name, registry);
+        } catch (ArgumentException e) {
+            throw new GraphEditRefusedException(e.Message, e);
+        }
+    }
+
+    /// <summary>Replaces the nodes with one that holds the compound, as one undo step.</summary>
+    /// <param name="extraction">What <see cref="PlanExtraction" /> worked out.</param>
+    /// <param name="type">The node type it was published under.</param>
+    /// <param name="x">Where the node goes.</param>
+    /// <param name="y">Where the node goes.</param>
+    /// <returns>The node.</returns>
+    public int ApplyExtraction(SubGraphExtraction extraction, string type, float x, float y) {
+        ExtractSubGraphCommand command = new(graph, extraction, type, Finite(x, y));
+        command.Do(Context);
+        Remember(new([], $"Save as {type}"), [command]);
+        Document = GraphDocuments.Canonical(NodeGraphDocument.Save(graph));
+        return command.StandIn.Id.Value;
     }
 
     /// <summary>Takes the newest edit back.</summary>
@@ -182,20 +226,23 @@ public sealed class GraphEditor {
             GraphSetValue value => BuildValue(value, refs),
             GraphSetText text => BuildText(text, refs),
             GraphSetSetting setting => BuildSetting(setting),
-            GraphAddParameter add => BuildAddParameter(add),
-            GraphSetParameter set => BuildSetParameter(set),
-            GraphRemoveParameter remove => BuildRemoveParameter(remove),
+            GraphAddParameter add => parameters.Add(add),
+            GraphSetParameter set => parameters.Set(set),
+            GraphRemoveParameter remove => parameters.Remove(remove),
+            GraphAddPort add => ports.Add(add),
+            GraphSetPort set => ports.Set(set),
+            GraphRemovePort remove => ports.Remove(remove),
             GraphAddGroup add => new AddGroupCommand(graph, add.Title, Members(add.Nodes, refs)),
             GraphSetGroup set => BuildSetGroup(set, refs),
-            GraphRemoveGroup remove => new RemoveGroupCommand(graph, GroupAt(remove.Index)),
+            GraphRemoveGroup remove => new RemoveGroupCommand(graph, GroupOf(remove.Id)),
             GraphAddComment add => BuildAddComment(add),
             GraphSetComment set => BuildSetComment(set),
-            GraphRemoveComment remove => new RemoveCommentCommand(graph, CommentAt(remove.Index)),
+            GraphRemoveComment remove => new RemoveCommentCommand(graph, CommentOf(remove.Id)),
             _ => throw new GraphEditRefusedException($"Unknown command '{command.GetType().Name}'.")
         };
 
     AddNodeCommand BuildAdd(GraphAddNode add, Dictionary<int, int> refs) {
-        if (!registry.TryGet(add.Type, out _)) {
+        if (!SubGraphs.IsBoundary(add.Type) && !registry.TryGet(add.Type, out _)) {
             throw new GraphEditRefusedException($"There is no node type '{add.Type}'.");
         }
 
@@ -270,8 +317,7 @@ public sealed class GraphEditor {
 
     SetPortTextCommand BuildText(GraphSetText text, Dictionary<int, int> refs) {
         var node = Find(text.Node, refs);
-        if (text.Port is [ExpressionMarker, _, ..]) {
-            var input = text.Port[1..];
+        if (TextureGraphExpressions.IsExpression(text.Port, out var input)) {
             var port = PortOf(node, input, PortDirection.Input);
             return port.Kind is PortKind.Float or PortKind.Int or PortKind.Bool
                 ? new(graph, node.Id, text.Port, text.Value)
@@ -294,6 +340,7 @@ public sealed class GraphEditor {
                 && extent is > 0 and <= TexturePlan.MaxExtent,
             TextureGraphSettings.Seed =>
                 uint.TryParse(setting.Value, NumberStyles.None, CultureInfo.InvariantCulture, out _),
+            TextureGraphSettings.BitDepth => setting.Value is "16" or "32",
             _ => throw new GraphEditRefusedException($"There is no graph setting '{setting.Key}'.")
         };
         return valid
@@ -301,94 +348,17 @@ public sealed class GraphEditor {
             : throw new GraphEditRefusedException($"'{setting.Value}' is not a value for {setting.Key}.");
     }
 
-    SetParametersCommand BuildAddParameter(GraphAddParameter add) {
-        var parameter = Checked(add.Parameter, null);
-        return new(graph, [..graph.Parameters, parameter], $"Expose {parameter.Name}", parameter.Name);
-    }
-
-    SetParametersCommand BuildSetParameter(GraphSetParameter set) {
-        var index = ParameterAt(set.Name);
-        var parameter = Checked(set.Parameter, set.Name);
-        List<SettingDefinition> next = [..graph.Parameters];
-        next[index] = parameter;
-        return new(graph, next, $"Set {set.Name}", set.Name);
-    }
-
-    SetParametersCommand BuildRemoveParameter(GraphRemoveParameter remove) {
-        var index = ParameterAt(remove.Name);
-        List<SettingDefinition> next = [..graph.Parameters];
-        next.RemoveAt(index);
-        return new(graph, next, $"Remove {remove.Name}", null);
-    }
-
-    int ParameterAt(string name) {
-        var index = graph.Parameters.FindIndex(p => string.Equals(p.Name, name, StringComparison.Ordinal));
-        return index >= 0 ? index : throw new GraphEditRefusedException($"There is no parameter '{name}'.");
-    }
-
-    /// <summary>A parameter as the model holds it, or a refusal a client can show.</summary>
-    /// <param name="parameter">What a client sent.</param>
-    /// <param name="replacing">The name it replaces, which it may keep.</param>
-    SettingDefinition Checked(GraphSettingDefinition parameter, string? replacing) {
-        if (string.IsNullOrWhiteSpace(parameter.Name)) {
-            throw new GraphEditRefusedException("A parameter needs a name.");
-        }
-
-        if (!string.Equals(parameter.Name, replacing, StringComparison.Ordinal)
-            && graph.Parameters.Exists(p => string.Equals(p.Name, parameter.Name, StringComparison.Ordinal))) {
-            throw new GraphEditRefusedException($"There is a parameter called '{parameter.Name}' already.");
-        }
-
-        if (!Enum.TryParse<SettingKind>(parameter.Kind, out var kind) || !Enum.IsDefined(kind)) {
-            throw new GraphEditRefusedException($"'{parameter.Kind}' is not a kind of parameter.");
-        }
-
-        SettingDefinition definition = new(
-            parameter.Name,
-            parameter.Default,
-            parameter.Summary,
-            kind,
-            parameter.Minimum ?? float.NegativeInfinity,
-            parameter.Maximum ?? float.PositiveInfinity,
-            parameter.Group,
-            [..parameter.Accepted]
-        );
-        return Holds(definition)
-            ? definition
-            : throw new GraphEditRefusedException($"'{parameter.Default}' is not a value for {parameter.Name}.");
-    }
-
-    static bool Holds(SettingDefinition parameter) {
-        var number = float.TryParse(
-            parameter.Default,
-            NumberStyles.Float,
-            CultureInfo.InvariantCulture,
-            out var parsed
-        );
-        return parameter.Kind switch {
-            SettingKind.Float or SettingKind.Int when !number || !float.IsFinite(parsed) => false,
-            SettingKind.Int when parsed != MathF.Round(parsed) => false,
-            SettingKind.Float or SettingKind.Int when parsed < parameter.Minimum || parsed > parameter.Maximum => false,
-            SettingKind.Bool => parameter.Default is "true" or "false",
-            _ => parameter.Accepts(parameter.Default)
-        };
-    }
-
     IEnumerable<NodeId> Members(IReadOnlyList<int> nodes, Dictionary<int, int> refs) =>
         [..nodes.Distinct().Select(node => Find(node, refs).Id)];
 
-    GraphGroup GroupAt(int index) =>
-        index >= 0 && index < graph.Groups.Count
-            ? graph.Groups[index]
-            : throw new GraphEditRefusedException($"There is no group {index}.");
+    GraphGroup GroupOf(int id) =>
+        graph.Groups.Find(group => group.Id == id) ?? throw new GraphEditRefusedException($"There is no group {id}.");
 
-    GraphComment CommentAt(int index) =>
-        index >= 0 && index < graph.Comments.Count
-            ? graph.Comments[index]
-            : throw new GraphEditRefusedException($"There is no note {index}.");
+    GraphComment CommentOf(int id) =>
+        graph.Comments.Find(note => note.Id == id) ?? throw new GraphEditRefusedException($"There is no note {id}.");
 
     SetGroupCommand BuildSetGroup(GraphSetGroup set, Dictionary<int, int> refs) {
-        var group = GroupAt(set.Index);
+        var group = GroupOf(set.Id);
         return new(group, set.Title ?? group.Title, [..set.Nodes is { } nodes ? Members(nodes, refs) : group.Nodes]);
     }
 
@@ -405,7 +375,7 @@ public sealed class GraphEditor {
     }
 
     SetNoteCommand BuildSetComment(GraphSetComment set) {
-        var comment = CommentAt(set.Index);
+        var comment = CommentOf(set.Id);
         return new(
             comment,
             new(
@@ -433,10 +403,16 @@ public sealed class GraphEditor {
             : throw new GraphEditRefusedException($"There is no node {id}.");
     }
 
-    NodeTypeDefinition TypeOf(GraphNode node) =>
-        registry.TryGet(node.Type, out var type)
+    /// <summary>A node's type. A boundary node's ports are this graph's interface, as it stands now.</summary>
+    NodeTypeDefinition TypeOf(GraphNode node) {
+        if (SubGraphs.IsBoundary(node.Type)) {
+            return SubGraphs.Boundary(graph, node.Type);
+        }
+
+        return registry.TryGet(node.Type, out var type)
             ? type
             : throw new GraphEditRefusedException($"There is no node type '{node.Type}'.");
+    }
 
     PortDefinition PortOf(GraphNode node, string name, PortDirection direction) =>
         TypeOf(node).Port(name, direction)
@@ -467,37 +443,6 @@ sealed class SetGraphSettingCommand(NodeGraphModel graph, string key, string val
     }
 }
 
-/// <summary>Replaces the list of exposed parameters. Vixen has no command for this either.</summary>
-sealed class SetParametersCommand(
-    NodeGraphModel graph,
-    IReadOnlyList<SettingDefinition> next,
-    string name,
-    string? merges,
-    IReadOnlyList<SettingDefinition>? before = null
-) : IAuthoringCommand {
-    readonly IReadOnlyList<SettingDefinition> previous = before ?? [..graph.Parameters];
-
-    public string Name => name;
-
-    string? Merges => merges;
-
-    public void Do(ICommandContext context) => Write(next);
-
-    public void Undo(ICommandContext context) => Write(previous);
-
-    public bool TryMergeWith(IAuthoringCommand previousCommand, [NotNullWhen(true)] out IAuthoringCommand? merged) {
-        merged = previousCommand is SetParametersCommand earlier && merges is not null && earlier.Merges == merges
-            ? new SetParametersCommand(graph, next, name, merges, earlier.previous)
-            : null;
-        return merged is not null;
-    }
-
-    void Write(IReadOnlyList<SettingDefinition> parameters) {
-        graph.Parameters.Clear();
-        graph.Parameters.AddRange(parameters);
-    }
-}
-
 /// <summary>Retitles a group and changes its members. Vixen's own command only retitles.</summary>
 sealed class SetGroupCommand(GraphGroup group, string title, NodeId[] nodes) : IAuthoringCommand {
     readonly string previousTitle = group.Title;
@@ -521,6 +466,9 @@ sealed class AddNoteCommand(NodeGraphModel graph, GraphComment comment) : IAutho
     public string Name => "Add Note";
 
     public void Do(ICommandContext context) => graph.Comments.Add(comment);
+
+    /// <summary>The note, whose identity the document gives it when it is next written down.</summary>
+    public GraphComment Note => comment;
 
     public void Undo(ICommandContext context) => graph.Comments.Remove(comment);
 }

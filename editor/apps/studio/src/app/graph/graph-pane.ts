@@ -34,6 +34,7 @@ import { isWireable } from './graph-fields';
 import { diagnosticsOf, edgeKey, evaluationSummary } from './graph-model';
 import { GraphStore } from './graph-store';
 import { NewGraphDialog } from './new-graph-dialog';
+import { SaveCompoundDialog } from './save-compound-dialog';
 
 const NodeWidth = 176;
 const CategoryColours = 8;
@@ -41,6 +42,8 @@ const FitPadding = 48;
 const NotePrefix = 'note-';
 const GroupPrefix = 'group-';
 const NoteOffset = 40;
+/** The canvas height a 128-pixel minimap may sit in: below this it covers more than it shows. */
+const MinimapRoom = 480;
 const portTypes = xuiGraphChartPortTypes(['Image']);
 
 interface PortView {
@@ -66,7 +69,7 @@ interface NodeView {
 }
 
 interface NoteView {
-  index: number;
+  id: number;
   key: string;
   text: string;
   width: number;
@@ -121,6 +124,7 @@ export class GraphThumbnail {
   imports: [
     GraphThumbnail,
     NewGraphDialog,
+    SaveCompoundDialog,
     XuiButtonImports,
     XuiCalloutImports,
     XuiNodeGraphImports,
@@ -151,6 +155,17 @@ export class GraphThumbnail {
       }}</span>
       @if (current?.readOnly) {
         <xui-tag class="ms-1 shrink-0" minimal data-testid="graph-read-only">Ships with Patina</xui-tag>
+        <button
+          class="ms-1 shrink-0"
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          data-testid="graph-copy-compound"
+          (click)="store.copyToLibrary()"
+        >
+          Copy to edit
+        </button>
       }
       @if (current?.history?.dirty) {
         <xui-tag class="ms-1 shrink-0" color="warning" minimal data-testid="graph-unsaved">Unsaved</xui-tag>
@@ -189,6 +204,17 @@ export class GraphThumbnail {
         (click)="store.groupSelection()"
       >
         Group
+      </button>
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        data-testid="graph-save-compound"
+        [disabled]="!store.editable() || store.selection().size === 0"
+        (click)="savingCompound.set(true)"
+      >
+        Compound
       </button>
       <button
         type="button"
@@ -290,23 +316,23 @@ export class GraphThumbnail {
       (nodeMove)="settle($event)"
       (selectionChange)="select($event)"
     >
-      @for (group of document()?.groups; track $index) {
+      @for (group of document()?.groups; track group.id) {
         <xui-graph-group
           data-testid="graph-frame"
-          [color]="'var(--color-chart-' + (($index % 8) + 1) + ')'"
-          [groupId]="groupPrefix + $index"
+          [color]="'var(--color-chart-' + ((group.id % 8) + 1) + ')'"
+          [groupId]="groupPrefix + group.id"
           [label]="group.title"
         />
       }
-      @for (note of notes(); track note.index) {
+      @for (note of notes(); track note.id) {
         <xui-graph-node
           data-testid="graph-note-card"
-          [attr.data-note]="note.index"
+          [attr.data-note]="note.id"
           [label]="'Note'"
           [nodeId]="note.key"
           [position]="note.position"
           [width]="note.width"
-          (positionChange)="store.moveComment(note.index, $event)"
+          (positionChange)="store.moveComment(note.id, $event)"
         >
           <p class="m-0 p-2 text-xs whitespace-pre-wrap">{{ note.text }}</p>
         </xui-graph-node>
@@ -340,7 +366,10 @@ export class GraphThumbnail {
         </xui-graph-node>
       }
       <xui-graph-controls class="bottom-3 left-3" orientation="horizontal" showZoomLevel />
-      <xui-graph-minimap class="right-3 bottom-3" />
+      <xui-graph-minimap
+        data-testid="graph-minimap"
+        [class]="minimapHidden() ? 'invisible right-3 bottom-3' : 'right-3 bottom-3'"
+      />
     </xui-node-graph>
 
     @if (diagnostics().length > 0) {
@@ -361,6 +390,7 @@ export class GraphThumbnail {
     }
 
     <ptn-new-graph [(open)]="creating" />
+    <ptn-save-compound [(open)]="savingCompound" />
 
     <xui-omnibar
       ariaLabel="Add a node"
@@ -382,9 +412,10 @@ export class GraphCanvas {
   private readonly status = inject(SystemStatus);
   private readonly graph = viewChild.required(XuiNodeGraph);
   private readonly graphElement = viewChild.required(XuiNodeGraph, { read: ElementRef<HTMLElement> });
-  private readonly nodeViews = new WeakMap<GraphNodeState, NodeView>();
+  private nodeViews = new WeakMap<GraphNodeState, NodeView>();
   private readonly edgeViews = new WeakMap<GraphEdgeState, XuiGraphEdge>();
   private readonly portViews = new Map<string, readonly PortView[]>();
+  private viewedTypes: ReadonlyMap<string, GraphNodeType> | null = null;
   private addAt: XuiGraphPoint | null = null;
   private addFrom: { node: number; port: string; incoming: boolean } | null = null;
   private fitted: string | null = null;
@@ -395,6 +426,7 @@ export class GraphCanvas {
   protected readonly groupPrefix = GroupPrefix;
   protected readonly paletteOpen = signal(false);
   protected readonly creating = signal(false);
+  protected readonly savingCompound = signal(false);
   /** The port kind a dropped wire needs, while the palette is open for one. */
   private readonly paletteFilter = signal<'Input' | 'Output' | null>(null);
 
@@ -414,19 +446,27 @@ export class GraphCanvas {
   /** The frame each node sits in. xUI gives a node one frame, so the first that names it wins. */
   private readonly frames = computed(() => {
     const frames = new Map<number, string>();
-    (this.document()?.groups ?? []).forEach((group, index) => {
+    for (const group of this.document()?.groups ?? []) {
       for (const node of group.nodes) {
         if (!frames.has(node)) {
-          frames.set(node, `${GroupPrefix}${String(index)}`);
+          frames.set(node, `${GroupPrefix}${String(group.id)}`);
         }
       }
-    });
+    }
+
     return frames;
   });
 
   protected readonly views = computed(() => {
     const nodes = this.document()?.nodes;
     const types = this.store.types();
+    if (types !== this.viewedTypes) {
+      // A boundary node's ports are its graph's interface, so a type's ports can change while its name does not.
+      this.viewedTypes = types;
+      this.nodeViews = new WeakMap();
+      this.portViews.clear();
+    }
+
     const drafts = this.store.positions();
     const frames = this.frames();
     const compounds = this.store.compounds();
@@ -448,12 +488,12 @@ export class GraphCanvas {
 
   protected readonly notes = computed(() => {
     const drafts = this.store.positions();
-    return (this.document()?.comments ?? []).map((comment, index): NoteView => ({
-      index,
-      key: `${NotePrefix}${String(index)}`,
+    return (this.document()?.comments ?? []).map((comment): NoteView => ({
+      id: comment.id,
+      key: `${NotePrefix}${String(comment.id)}`,
       text: comment.text,
       width: comment.width,
-      position: drafts.get(`note/${String(index)}`) ?? { x: comment.x, y: comment.y }
+      position: drafts.get(`note/${String(comment.id)}`) ?? { x: comment.x, y: comment.y }
     }));
   });
 
@@ -461,6 +501,18 @@ export class GraphCanvas {
     () => [...(this.document()?.edges.values() ?? [])].map(edge => this.edgeView(edge)),
     { equal: (a, b) => a.length === b.length && a.every((edge, index) => edge === b[index]) }
   );
+
+  /**
+   * xUI gap: the minimap is an overlay, and a port under it cannot be seen or reached. A wire lands on whatever
+   * `elementFromPoint` finds, so one dropped there was lost, and a press there never starts one. It slid with the height
+   * of the canvas too, so a diagnostics update could put it over a port between two drags. So it stays away from a canvas
+   * too small to spare it, and steps aside for as long as a wire is in the air. The whole class string is bound because
+   * the minimap has a `class` input, which `[class.x]` does not reach.
+   */
+  protected readonly minimapHidden = computed(() => {
+    const store = this.graph().store;
+    return store.linking() !== null || store.surfaceSize().height < MinimapRoom;
+  });
 
   protected readonly diagnostics = computed(() => {
     const document = this.document();
@@ -585,8 +637,8 @@ export class GraphCanvas {
     const notes = selection.nodes
       .filter(key => key.startsWith(NotePrefix))
       .map(key => Number(key.slice(NotePrefix.length)));
-    for (const index of notes.sort((a, b) => b - a)) {
-      this.store.removeComment(index);
+    for (const id of notes) {
+      this.store.removeComment(id);
     }
   }
 

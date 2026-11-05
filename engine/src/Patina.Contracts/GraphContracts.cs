@@ -87,17 +87,33 @@ public sealed record GraphNodeType(
 );
 
 /// <summary>A frame round some nodes. It holds no geometry: a client draws it from where its nodes are.</summary>
+/// <param name="Id">What a command names it by. It never changes and is never reused while a session lasts.</param>
 /// <param name="Title">What it is called.</param>
 /// <param name="Nodes">Its members.</param>
-public sealed record GraphGroupState(string Title, IReadOnlyList<int> Nodes);
+public sealed record GraphGroupState(int Id, string Title, IReadOnlyList<int> Nodes);
 
 /// <summary>A note on the canvas.</summary>
+/// <param name="Id">What a command names it by. It never changes and is never reused while a session lasts.</param>
 /// <param name="Text">What it says.</param>
 /// <param name="X">Its left edge on the canvas.</param>
 /// <param name="Y">Its top edge on the canvas.</param>
 /// <param name="Width">Its width.</param>
 /// <param name="Height">Its height.</param>
-public sealed record GraphCommentState(string Text, float X, float Y, float Width, float Height);
+public sealed record GraphCommentState(int Id, string Text, float X, float Y, float Width, float Height);
+
+/// <summary>One port a graph has when another graph holds it as a node.</summary>
+/// <param name="Name">What an edge in the holding graph calls it.</param>
+/// <param name="Direction">Input or Output, as the holding graph sees it.</param>
+/// <param name="Kind">What it carries: Image, Float, Float4 and so on.</param>
+/// <param name="Default">What an unwired input takes, one number per lane, or empty for the kind's zero.</param>
+/// <param name="Summary">One line about it.</param>
+public sealed record GraphInterfacePort(
+    string Name,
+    string Direction,
+    string Kind,
+    IReadOnlyList<float> Default,
+    string Summary
+);
 
 /// <summary>A compound a graph can hold, and the graph behind it.</summary>
 /// <param name="Type">Its node type's path, as <c>/node-types</c> lists it.</param>
@@ -168,8 +184,9 @@ public sealed record GraphEvaluation(
 /// <param name="Edges">The wires, by the input they arrive at.</param>
 /// <param name="Settings">Its settings: <c>baseWidth</c>, <c>baseHeight</c>, <c>seed</c> and any others.</param>
 /// <param name="Parameters">The parameters the graph exposes.</param>
-/// <param name="Groups">Its group frames, in file order. A command names one by its place here.</param>
-/// <param name="Comments">Its notes, in file order. A command names one by its place here.</param>
+/// <param name="Interface">The ports it has when another graph holds it.</param>
+/// <param name="Groups">Its group frames, in file order.</param>
+/// <param name="Comments">Its notes, in file order.</param>
 /// <param name="Previews">The newest preview of each node.</param>
 /// <param name="Repairs">What reading the file had to drop or fix.</param>
 /// <param name="Evaluation">The last evaluation, or null before the first.</param>
@@ -188,6 +205,7 @@ public sealed record GraphState(
     IReadOnlyList<GraphEdgeState> Edges,
     IReadOnlyDictionary<string, string> Settings,
     IReadOnlyList<GraphSettingDefinition> Parameters,
+    IReadOnlyList<GraphInterfacePort> Interface,
     IReadOnlyList<GraphGroupState> Groups,
     IReadOnlyList<GraphCommentState> Comments,
     IReadOnlyList<GraphPreview> Previews,
@@ -202,7 +220,6 @@ public sealed record GraphState(
 public sealed record GraphSummary(string Id, string Path, string Name, long Revision, bool Dirty);
 
 /// <summary>One edit. Commands in a batch run in order, and every command sees the ones before it.</summary>
-[JsonPolymorphic(TypeDiscriminatorPropertyName = "op")]
 [JsonDerivedType(typeof(GraphAddNode), "addNode")]
 [JsonDerivedType(typeof(GraphRemoveNodes), "removeNodes")]
 [JsonDerivedType(typeof(GraphMoveNodes), "moveNodes")]
@@ -211,9 +228,14 @@ public sealed record GraphSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(GraphSetValue), "setValue")]
 [JsonDerivedType(typeof(GraphSetText), "setText")]
 [JsonDerivedType(typeof(GraphSetSetting), "setSetting")]
+// Here and not first: SK7020 honours no suppression, and reads an unbroken list of twenty attributes as a clone.
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "op")]
 [JsonDerivedType(typeof(GraphAddParameter), "addParameter")]
 [JsonDerivedType(typeof(GraphSetParameter), "setParameter")]
 [JsonDerivedType(typeof(GraphRemoveParameter), "removeParameter")]
+[JsonDerivedType(typeof(GraphAddPort), "addPort")]
+[JsonDerivedType(typeof(GraphSetPort), "setPort")]
+[JsonDerivedType(typeof(GraphRemovePort), "removePort")]
 [JsonDerivedType(typeof(GraphAddGroup), "addGroup")]
 [JsonDerivedType(typeof(GraphSetGroup), "setGroup")]
 [JsonDerivedType(typeof(GraphRemoveGroup), "removeGroup")]
@@ -270,17 +292,32 @@ public sealed record GraphSetParameter(string Name, GraphSettingDefinition Param
 /// <summary>Stops exposing a parameter.</summary>
 public sealed record GraphRemoveParameter(string Name) : GraphCommand;
 
+/// <summary>Gives the graph a new port. Its boundary node shows it at once, and a holding graph after a save.</summary>
+public sealed record GraphAddPort(GraphInterfacePort Port) : GraphCommand;
+
+/// <summary>Changes a port where it stands, and keeps the wires on its boundary node under a new name.</summary>
+/// <param name="Name">The port as it is called now.</param>
+/// <param name="Direction">Input or Output, which cannot change.</param>
+/// <param name="Port">What it becomes. A kind its wires cannot carry is refused until they are gone.</param>
+public sealed record GraphSetPort(string Name, string Direction, GraphInterfacePort Port) : GraphCommand;
+
+/// <summary>Takes a port away, with the wires on its boundary node. Undoing it puts them back.</summary>
+public sealed record GraphRemovePort(string Name, string Direction) : GraphCommand;
+
 /// <summary>Draws a group frame round some nodes.</summary>
-public sealed record GraphAddGroup(string Title, IReadOnlyList<int> Nodes) : GraphCommand;
+/// <param name="Title">What it is called.</param>
+/// <param name="Nodes">Its members.</param>
+/// <param name="Ref">A negative number the client picks. The reply says which identity it became.</param>
+public sealed record GraphAddGroup(string Title, IReadOnlyList<int> Nodes, int? Ref = null) : GraphCommand;
 
 /// <summary>Changes a group: anything left null stays as it is.</summary>
-/// <param name="Index">Its place in the state's list.</param>
+/// <param name="Id">The group.</param>
 /// <param name="Title">Its new title.</param>
 /// <param name="Nodes">Its new members.</param>
-public sealed record GraphSetGroup(int Index, string? Title = null, IReadOnlyList<int>? Nodes = null) : GraphCommand;
+public sealed record GraphSetGroup(int Id, string? Title = null, IReadOnlyList<int>? Nodes = null) : GraphCommand;
 
 /// <summary>Takes a group frame away. Its nodes stay.</summary>
-public sealed record GraphRemoveGroup(int Index) : GraphCommand;
+public sealed record GraphRemoveGroup(int Id) : GraphCommand;
 
 /// <summary>Adds a note.</summary>
 /// <param name="Text">What it says.</param>
@@ -288,18 +325,25 @@ public sealed record GraphRemoveGroup(int Index) : GraphCommand;
 /// <param name="Y">Its top edge.</param>
 /// <param name="Width">Its width, or null for the standard size.</param>
 /// <param name="Height">Its height, or null for the standard size.</param>
-public sealed record GraphAddComment(string Text, float X, float Y, float? Width = null, float? Height = null)
-    : GraphCommand;
+/// <param name="Ref">A negative number the client picks. The reply says which identity it became.</param>
+public sealed record GraphAddComment(
+    string Text,
+    float X,
+    float Y,
+    float? Width = null,
+    float? Height = null,
+    int? Ref = null
+) : GraphCommand;
 
 /// <summary>Changes a note: anything left null stays as it is. A note moved by hand sends this on every step.</summary>
-/// <param name="Index">Its place in the state's list.</param>
+/// <param name="Id">The note.</param>
 /// <param name="Text">What it says.</param>
 /// <param name="X">Its left edge.</param>
 /// <param name="Y">Its top edge.</param>
 /// <param name="Width">Its width.</param>
 /// <param name="Height">Its height.</param>
 public sealed record GraphSetComment(
-    int Index,
+    int Id,
     string? Text = null,
     float? X = null,
     float? Y = null,
@@ -308,7 +352,7 @@ public sealed record GraphSetComment(
 ) : GraphCommand;
 
 /// <summary>Removes a note.</summary>
-public sealed record GraphRemoveComment(int Index) : GraphCommand;
+public sealed record GraphRemoveComment(int Id) : GraphCommand;
 
 /// <summary>Some edits, applied whole or not at all, and undone as one step.</summary>
 /// <param name="Commands">What to do, in order.</param>
@@ -319,14 +363,16 @@ public sealed record GraphRemoveComment(int Index) : GraphCommand;
 /// </param>
 public sealed record GraphCommandBatch(IReadOnlyList<GraphCommand> Commands, string? Label = null, bool Merge = false);
 
-/// <summary>Which identity a client's <see cref="GraphAddNode.Ref" /> became.</summary>
+/// <summary>Which identity a client's <c>ref</c> became, on a node, a group or a note.</summary>
+/// <param name="Ref">The number the client picked.</param>
+/// <param name="Node">The identity.</param>
 public sealed record GraphCreatedNode(int Ref, int Node);
 
 /// <summary>The reply to an edit, an undo, a redo or a save.</summary>
 /// <param name="Revision">The document's revision after it.</param>
 /// <param name="Sequence">The event that announced it.</param>
 /// <param name="History">The undo history after it.</param>
-/// <param name="Created">The nodes a batch created under a <c>ref</c>.</param>
+/// <param name="Created">What a batch created under a <c>ref</c>.</param>
 public sealed record GraphEditResult(
     long Revision,
     long Sequence,
@@ -344,6 +390,7 @@ public sealed record GraphEditResult(
 /// <param name="Settings">Graph settings that are new or differ.</param>
 /// <param name="RemovedSettings">Graph settings that have gone.</param>
 /// <param name="Parameters">The whole list of exposed parameters, or null when it did not change.</param>
+/// <param name="Interface">The whole list of interface ports, or null when it did not change.</param>
 /// <param name="Groups">The whole list of groups, or null when it did not change.</param>
 /// <param name="Comments">The whole list of notes, or null when it did not change.</param>
 public sealed record GraphDelta(
@@ -355,7 +402,8 @@ public sealed record GraphDelta(
     IReadOnlyList<string> RemovedSettings,
     IReadOnlyList<GraphSettingDefinition>? Parameters = null,
     IReadOnlyList<GraphGroupState>? Groups = null,
-    IReadOnlyList<GraphCommentState>? Comments = null
+    IReadOnlyList<GraphCommentState>? Comments = null,
+    IReadOnlyList<GraphInterfacePort>? Interface = null
 );
 #pragma warning restore SK7005
 
@@ -441,6 +489,33 @@ public sealed record GraphCreateRequest(string Name, string? Project = null);
 /// <summary>A new graph's file.</summary>
 /// <param name="Path">Relative to the library, with forward slashes, as <c>POST /graphs</c> takes it.</param>
 public sealed record GraphCreated(string Path);
+
+/// <summary>Moves some nodes into a new compound beside the graph and puts a node holding it in their place.</summary>
+/// <param name="Name">
+///     Its node type's path, such as <c>Masks/Rust Edge</c>, which is also its file below <c>Compounds</c>.
+/// </param>
+/// <param name="Nodes">The nodes. The wires that cross into them and out of them become its ports.</param>
+/// <param name="X">Where the node holding it goes.</param>
+/// <param name="Y">Where the node holding it goes.</param>
+public sealed record GraphExtractRequest(string Name, IReadOnlyList<int> Nodes, float X, float Y);
+
+/// <summary>A selection saved as a compound. The edit undoes as one step, and the file stays.</summary>
+/// <param name="Compound">The new compound.</param>
+/// <param name="Node">The node holding it.</param>
+/// <param name="Edit">The edit to the graph the selection came from.</param>
+public sealed record GraphExtraction(GraphCompound Compound, int Node, GraphEditResult Edit);
+
+/// <summary>The body of <c>POST /api/v1/library/compounds</c>.</summary>
+/// <param name="Type">The shipped compound's node type.</param>
+/// <param name="Name">
+///     The copy's node type. It cannot be a shipped one's, since a shipped compound is never shadowed. Null for the
+///     shipped name and " Copy".
+/// </param>
+/// <param name="Graph">
+///     An open graph whose compounds folder takes it, so that the graph can hold it, or null for
+///     <c>shared/graphs</c>'s.
+/// </param>
+public sealed record GraphCompoundCopy(string Type, string? Name = null, string? Graph = null);
 
 /// <summary>The events after a number, for a client that does not hold a WebSocket or has missed some.</summary>
 /// <param name="Sequence">The newest event's number.</param>

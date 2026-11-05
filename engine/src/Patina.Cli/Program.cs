@@ -7,6 +7,8 @@ switch (args) {
         return 0;
     case ["bake", var graph, var folder]:
         return GraphBake.Run(graph, folder);
+    case ["bake", var graph, var folder, "--library", var library]:
+        return GraphBake.Run(graph, folder, library);
     case ["library", "new", var path, .. var options]:
         return LibraryCommands.New(path, options);
     case ["library", "check", var path, .. var options]:
@@ -15,7 +17,7 @@ switch (args) {
         await Console.Error.WriteLineAsync(
             """
             Usage:
-              patina version | patina bake <graph.vxtexgraph> <folder>
+              patina version | patina bake <graph.vxtexgraph> <folder> [--library <path>]
               patina library new <path> [--name <name>]
               patina library check <path> [--all]
             """

@@ -28,7 +28,7 @@ public sealed class GraphEditorPropertyTests {
                         var before = GraphDocuments.Text(editor.Document);
                         var random = new Random(seed);
                         try {
-                            editor.Apply(RandomBatch(random, editor.Document));
+                            Edit(editor, random, editor.Document);
                         } catch (GraphEditRefusedException) {
                             Assert.Equal(before, GraphDocuments.Text(editor.Document));
                         }
@@ -60,6 +60,8 @@ public sealed class GraphEditorPropertyTests {
                     IReadOnlyList<GraphGroupState> groups = [..editor.Document.Groups.Select(GraphDocuments.State)];
                     IReadOnlyList<GraphCommentState> comments =
                         [..editor.Document.Comments.Select(GraphDocuments.State)];
+                    IReadOnlyList<GraphInterfacePort> ports =
+                        [..editor.Document.Interface.Select(GraphDocuments.State)];
                     foreach (var seed in batches) {
                         var random = new Random(seed);
                         var before = editor.Document;
@@ -67,7 +69,7 @@ public sealed class GraphEditorPropertyTests {
                             if (random.Next(4) == 0) {
                                 editor.Undo();
                             } else {
-                                editor.Apply(RandomBatch(random, before));
+                                Edit(editor, random, before);
                             }
                         } catch (GraphEditRefusedException) {
                             continue;
@@ -93,6 +95,7 @@ public sealed class GraphEditorPropertyTests {
                         parameters = delta.Parameters ?? parameters;
                         groups = delta.Groups ?? groups;
                         comments = delta.Comments ?? comments;
+                        ports = delta.Interface ?? ports;
                         Assert.Equal(
                             editor.Document.Parameters.Select(static p => (p.Name, p.Default, p.Kind.ToString())),
                             parameters.Select(static p => (p.Name, p.Default, p.Kind))
@@ -102,9 +105,37 @@ public sealed class GraphEditorPropertyTests {
                             groups.Select(static g => $"{g.Title}:{string.Join(',', g.Nodes)}")
                         );
                         Assert.Equal(editor.Document.Comments.Select(GraphDocuments.State), comments);
+                        Assert.Equal(
+                            editor.Document.Interface.Select(static p => (p.Name, p.Direction.ToString(),
+                                    p.Kind.ToString())
+                            ),
+                            ports.Select(static p => (p.Name, p.Direction, p.Kind))
+                        );
                     }
                 }
             );
+
+    /// <summary>
+    ///     A batch, or now and then a selection saved as a compound, which takes the same history. The file it would
+    ///     write is the Server's: this history is what an undo walks.
+    /// </summary>
+    static void Edit(GraphEditor editor, Random random, NodeGraphAsset document) {
+        if (random.Next(8) != 0 || document.Nodes.Length == 0) {
+            editor.Apply(RandomBatch(random, document));
+            return;
+        }
+
+        int[] nodes = [
+            ..document.Nodes.Select(static node => node.Id)
+                .Where(_ => random.Next(2) == 0)
+                .Where(id => !SubGraphs.IsBoundary(document.Nodes.Single(node => node.Id == id).Type))
+        ];
+        if (nodes.Length == 0) {
+            return;
+        }
+
+        editor.ApplyExtraction(editor.PlanExtraction("Mine", nodes), "Compounds/Mine", 50, 50);
+    }
 
     static NodeTypeRegistry Catalogue() {
         NodeTypeRegistry registry = new();
@@ -122,7 +153,7 @@ public sealed class GraphEditorPropertyTests {
         new(name, value.ToString(CultureInfo.InvariantCulture), "", "Float", 0f, 1f, "", []);
 
     static GraphCommand RandomCommand(Random random, NodeGraphAsset document) {
-        return random.Next(19) switch {
+        return random.Next(24) switch {
             0 => new GraphAddNode(Types[random.Next(Types.Length)], random.Next(100), random.Next(100)),
             1 => new GraphRemoveNodes([Node()]),
             2 => new GraphMoveNodes([new(Node(), random.Next(1000), random.Next(1000))]),
@@ -141,14 +172,34 @@ public sealed class GraphEditorPropertyTests {
             10 => new GraphSetParameter(ParameterName(), Parameter($"P{random.Next(4)}", random.NextSingle())),
             11 => new GraphRemoveParameter(ParameterName()),
             12 => new GraphAddGroup("Group", [Node(), Node()]),
-            13 => new GraphSetGroup(random.Next(3), "Renamed", random.Next(2) == 0 ? [Node()] : null),
-            14 => new GraphRemoveGroup(random.Next(3)),
+            13 => new GraphSetGroup(Group(), "Renamed", random.Next(2) == 0 ? [Node()] : null),
+            14 => new GraphRemoveGroup(Group()),
             15 => new GraphAddComment("Note", random.Next(100), random.Next(100)),
-            16 => new GraphSetComment(random.Next(3), Width: random.Next(2) == 0 ? 300f : -1f, X: random.Next(100)),
-            17 => new GraphRemoveComment(random.Next(3)),
+            16 => new GraphSetComment(Comment(), Width: random.Next(2) == 0 ? 300f : -1f, X: random.Next(100)),
+            17 => new GraphRemoveComment(Comment()),
+            18 => new GraphAddPort(Port($"Port{random.Next(3)}", Direction())),
+            19 => new GraphSetPort($"Port{random.Next(3)}", Direction(), Port($"Port{random.Next(3)}", Direction())),
+            20 => new GraphRemovePort($"Port{random.Next(3)}", Direction()),
+            21 => new GraphAddNode(random.Next(2) == 0 ? SubGraphs.InputType : SubGraphs.OutputType, 10, 10),
+            22 => new GraphConnect(Node(), $"Port{random.Next(3)}", Node(), $"Port{random.Next(3)}"),
             _ => new GraphSetText(Node(), "=Hue", "Wear * 2")
         };
         int Node() => document.Nodes.Length == 0 ? 1 : document.Nodes[random.Next(document.Nodes.Length)].Id;
+
+        int Group() =>
+            document.Groups.Length == 0 || random.Next(8) == 0
+                ? 999
+                : document.Groups[random.Next(document.Groups.Length)].Id;
+
+        int Comment() =>
+            document.Comments.Length == 0 || random.Next(8) == 0
+                ? 999
+                : document.Comments[random.Next(document.Comments.Length)].Id;
+
+        string Direction() => random.Next(2) == 0 ? "Input" : "Output";
+
+        GraphInterfacePort Port(string name, string direction) =>
+            new(name, direction, random.Next(2) == 0 ? "Image" : "Float", [], "");
 
         string ParameterName() =>
             document.Parameters.Length == 0

@@ -324,6 +324,77 @@
         }
       }
     },
+    "/api/v1/library/compounds": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Copies a shipped compound into the library as a file, so that it can be edited.",
+        "operationId": "CopyCompound",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphCompoundCopy"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphCompound"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/graphs": {
       "post": {
         "tags": [
@@ -905,6 +976,65 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Saves some nodes as a new compound beside the graph and holds it in their place, as one undo step.",
+        "operationId": "ExtractGraphCompound",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphExtractRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphExtraction"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/graphs/{id}/commands": {
@@ -1472,6 +1602,15 @@
             "$ref": "#/components/schemas/GraphCommandGraphRemoveParameter"
           },
           {
+            "$ref": "#/components/schemas/GraphCommandGraphAddPort"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphSetPort"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphRemovePort"
+          },
+          {
             "$ref": "#/components/schemas/GraphCommandGraphAddGroup"
           },
           {
@@ -1505,6 +1644,9 @@
             "addParameter": "#/components/schemas/GraphCommandGraphAddParameter",
             "setParameter": "#/components/schemas/GraphCommandGraphSetParameter",
             "removeParameter": "#/components/schemas/GraphCommandGraphRemoveParameter",
+            "addPort": "#/components/schemas/GraphCommandGraphAddPort",
+            "setPort": "#/components/schemas/GraphCommandGraphSetPort",
+            "removePort": "#/components/schemas/GraphCommandGraphRemovePort",
             "addGroup": "#/components/schemas/GraphCommandGraphAddGroup",
             "setGroup": "#/components/schemas/GraphCommandGraphSetGroup",
             "removeGroup": "#/components/schemas/GraphCommandGraphRemoveGroup",
@@ -1586,6 +1728,14 @@
             ],
             "description": "Its height, or null for the standard size.",
             "format": "float"
+          },
+          "ref": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "A negative number the client picks. The reply says which identity it became.",
+            "format": "int32"
           }
         },
         "description": "Adds a note."
@@ -1604,14 +1754,24 @@
             "type": "string"
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "description": "What it is called."
           },
           "nodes": {
             "type": "array",
             "items": {
               "type": "integer",
               "format": "int32"
-            }
+            },
+            "description": "Its members."
+          },
+          "ref": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "A negative number the client picks. The reply says which identity it became.",
+            "format": "int32"
           }
         },
         "description": "Draws a group frame round some nodes."
@@ -1672,6 +1832,24 @@
           }
         },
         "description": "Exposes a new parameter. Its name must be free, and its default must suit its kind and range."
+      },
+      "GraphCommandGraphAddPort": {
+        "required": [
+          "port",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "addPort"
+            ],
+            "type": "string"
+          },
+          "port": {
+            "$ref": "#/components/schemas/GraphInterfacePort"
+          }
+        },
+        "description": "Gives the graph a new port. Its boundary node shows it at once, and a holding graph after a save."
       },
       "GraphCommandGraphConnect": {
         "required": [
@@ -1751,7 +1929,7 @@
       },
       "GraphCommandGraphRemoveComment": {
         "required": [
-          "index",
+          "id",
           "op"
         ],
         "properties": {
@@ -1761,7 +1939,7 @@
             ],
             "type": "string"
           },
-          "index": {
+          "id": {
             "type": "integer",
             "format": "int32"
           }
@@ -1770,7 +1948,7 @@
       },
       "GraphCommandGraphRemoveGroup": {
         "required": [
-          "index",
+          "id",
           "op"
         ],
         "properties": {
@@ -1780,7 +1958,7 @@
             ],
             "type": "string"
           },
-          "index": {
+          "id": {
             "type": "integer",
             "format": "int32"
           }
@@ -1827,9 +2005,31 @@
         },
         "description": "Stops exposing a parameter."
       },
+      "GraphCommandGraphRemovePort": {
+        "required": [
+          "name",
+          "direction",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "removePort"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string"
+          }
+        },
+        "description": "Takes a port away, with the wires on its boundary node. Undoing it puts them back."
+      },
       "GraphCommandGraphSetComment": {
         "required": [
-          "index",
+          "id",
           "op"
         ],
         "properties": {
@@ -1839,9 +2039,9 @@
             ],
             "type": "string"
           },
-          "index": {
+          "id": {
             "type": "integer",
-            "description": "Its place in the state\u0027s list.",
+            "description": "The note.",
             "format": "int32"
           },
           "text": {
@@ -1888,7 +2088,7 @@
       },
       "GraphCommandGraphSetGroup": {
         "required": [
-          "index",
+          "id",
           "op"
         ],
         "properties": {
@@ -1898,9 +2098,9 @@
             ],
             "type": "string"
           },
-          "index": {
+          "id": {
             "type": "integer",
-            "description": "Its place in the state\u0027s list.",
+            "description": "The group.",
             "format": "int32"
           },
           "title": {
@@ -1947,6 +2147,35 @@
           }
         },
         "description": "Replaces a parameter where it stands. Dragging its default sends this on every step."
+      },
+      "GraphCommandGraphSetPort": {
+        "required": [
+          "name",
+          "direction",
+          "port",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "setPort"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "The port as it is called now."
+          },
+          "direction": {
+            "type": "string",
+            "description": "Input or Output, which cannot change."
+          },
+          "port": {
+            "description": "What it becomes. A kind its wires cannot carry is refused until they are gone.",
+            "$ref": "#/components/schemas/GraphInterfacePort"
+          }
+        },
+        "description": "Changes a port where it stands, and keeps the wires on its boundary node under a new name."
       },
       "GraphCommandGraphSetSetting": {
         "required": [
@@ -2033,6 +2262,7 @@
       },
       "GraphCommentState": {
         "required": [
+          "id",
           "text",
           "x",
           "y",
@@ -2041,6 +2271,11 @@
         ],
         "type": "object",
         "properties": {
+          "id": {
+            "type": "integer",
+            "description": "What a command names it by. It never changes and is never reused while a session lasts.",
+            "format": "int32"
+          },
           "text": {
             "type": "string",
             "description": "What it says."
@@ -2091,6 +2326,33 @@
         },
         "description": "A compound a graph can hold, and the graph behind it."
       },
+      "GraphCompoundCopy": {
+        "required": [
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "The shipped compound\u0027s node type."
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The copy\u0027s node type. It cannot be a shipped one\u0027s, since a shipped compound is never shadowed. Null for the\nshipped name and \u0022 Copy\u0022."
+          },
+          "graph": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "An open graph whose compounds folder takes it, so that the graph can hold it, or null for\n\u0060shared/graphs\u0060\u0027s."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/compounds\u0060."
+      },
       "GraphCreated": {
         "required": [
           "path"
@@ -2113,14 +2375,16 @@
         "properties": {
           "ref": {
             "type": "integer",
+            "description": "The number the client picked.",
             "format": "int32"
           },
           "node": {
             "type": "integer",
+            "description": "The identity.",
             "format": "int32"
           }
         },
-        "description": "Which identity a client\u0027s int? GraphAddNode.Ref became."
+        "description": "Which identity a client\u0027s \u0060ref\u0060 became, on a node, a group or a note."
       },
       "GraphCreateRequest": {
         "required": [
@@ -2225,6 +2489,16 @@
               "$ref": "#/components/schemas/GraphCommentState"
             },
             "description": "The whole list of notes, or null when it did not change."
+          },
+          "interface": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/GraphInterfacePort"
+            },
+            "description": "The whole list of interface ports, or null when it did not change."
           }
         },
         "description": "What changed in the document, the same for an edit, an undo and a redo."
@@ -2321,7 +2595,7 @@
             "items": {
               "$ref": "#/components/schemas/GraphCreatedNode"
             },
-            "description": "The nodes a batch created under a \u0060ref\u0060."
+            "description": "What a batch created under a \u0060ref\u0060."
           }
         },
         "description": "The reply to an edit, an undo, a redo or a save."
@@ -2481,13 +2755,77 @@
         },
         "description": "The events after a number, for a client that does not hold a WebSocket or has missed some."
       },
+      "GraphExtraction": {
+        "required": [
+          "compound",
+          "node",
+          "edit"
+        ],
+        "type": "object",
+        "properties": {
+          "compound": {
+            "description": "The new compound.",
+            "$ref": "#/components/schemas/GraphCompound"
+          },
+          "node": {
+            "type": "integer",
+            "description": "The node holding it.",
+            "format": "int32"
+          },
+          "edit": {
+            "description": "The edit to the graph the selection came from.",
+            "$ref": "#/components/schemas/GraphEditResult"
+          }
+        },
+        "description": "A selection saved as a compound. The edit undoes as one step, and the file stays."
+      },
+      "GraphExtractRequest": {
+        "required": [
+          "name",
+          "nodes",
+          "x",
+          "y"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Its node type\u0027s path, such as \u0060Masks/Rust Edge\u0060, which is also its file below \u0060Compounds\u0060."
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "The nodes. The wires that cross into them and out of them become its ports."
+          },
+          "x": {
+            "type": "number",
+            "description": "Where the node holding it goes.",
+            "format": "float"
+          },
+          "y": {
+            "type": "number",
+            "description": "Where the node holding it goes.",
+            "format": "float"
+          }
+        },
+        "description": "Moves some nodes into a new compound beside the graph and puts a node holding it in their place."
+      },
       "GraphGroupState": {
         "required": [
+          "id",
           "title",
           "nodes"
         ],
         "type": "object",
         "properties": {
+          "id": {
+            "type": "integer",
+            "description": "What a command names it by. It never changes and is never reused while a session lasts.",
+            "format": "int32"
+          },
           "title": {
             "type": "string",
             "description": "What it is called."
@@ -2583,6 +2921,43 @@
           }
         },
         "description": "Asks for a node\u0027s picture at the size the graph computes it."
+      },
+      "GraphInterfacePort": {
+        "required": [
+          "name",
+          "direction",
+          "kind",
+          "default",
+          "summary"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "What an edge in the holding graph calls it."
+          },
+          "direction": {
+            "type": "string",
+            "description": "Input or Output, as the holding graph sees it."
+          },
+          "kind": {
+            "type": "string",
+            "description": "What it carries: Image, Float, Float4 and so on."
+          },
+          "default": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "What an unwired input takes, one number per lane, or empty for the kind\u0027s zero."
+          },
+          "summary": {
+            "type": "string",
+            "description": "One line about it."
+          }
+        },
+        "description": "One port a graph has when another graph holds it as a node."
       },
       "GraphNodePosition": {
         "required": [
@@ -2911,6 +3286,7 @@
           "edges",
           "settings",
           "parameters",
+          "interface",
           "groups",
           "comments",
           "previews",
@@ -2974,19 +3350,26 @@
             },
             "description": "The parameters the graph exposes."
           },
+          "interface": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphInterfacePort"
+            },
+            "description": "The ports it has when another graph holds it."
+          },
           "groups": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/GraphGroupState"
             },
-            "description": "Its group frames, in file order. A command names one by its place here."
+            "description": "Its group frames, in file order."
           },
           "comments": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/GraphCommentState"
             },
-            "description": "Its notes, in file order. A command names one by its place here."
+            "description": "Its notes, in file order."
           },
           "previews": {
             "type": "array",

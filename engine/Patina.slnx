@@ -3,6 +3,7 @@
     <Project Path="src/Patina.Cli/Patina.Cli.csproj"/>
     <Project Path="src/Patina.Contracts/Patina.Contracts.csproj"/>
     <Project Path="src/Patina.Export/Patina.Export.csproj"/>
+    <Project Path="src/Patina.Graphs/Patina.Graphs.csproj"/>
     <Project Path="src/Patina.Ipc/Patina.Ipc.csproj"/>
     <Project Path="src/Patina.Jobs/Patina.Jobs.csproj"/>
     <Project Path="src/Patina.Library/Patina.Library.csproj"/>

@@ -36,6 +36,14 @@ static class LibraryEndpoints {
             .ProducesProblem(StatusCodes.Status409Conflict)
             .WithSummary("Writes a new project's files. It reaches the listings once the index has caught up.");
 
+        library.MapPost("/compounds", CopyCompound)
+            .WithName("CopyCompound")
+            .WithSummary("Copies a shipped compound into the library as a file, so that it can be edited.")
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
         library.MapPost("/graphs", CreateGraph)
             .WithName("CreateGraph")
             .ProducesProblem(StatusCodes.Status400BadRequest)
@@ -113,6 +121,44 @@ static class LibraryEndpoints {
             return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status409Conflict);
         } catch (ProjectRefusedException e) {
             return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
+    }
+
+    static Results<Created<GraphCompound>, ProblemHttpResult> CopyCompound(
+        LibraryHost host,
+        GraphSessions sessions,
+        GraphCompoundCopy request
+    ) {
+        string? folder;
+        if (request.Graph is { } graph) {
+            if (sessions.Find(graph) is not { } session) {
+                return TypedResults.Problem(
+                    $"There is no open graph '{graph}'.",
+                    statusCode: StatusCodes.Status404NotFound
+                );
+            }
+
+            folder = session.Folder;
+        } else {
+            folder = host.Library is { } library ? CompoundFolders.Shared(library.RootPath) : null;
+        }
+
+        if (folder is null) {
+            return NoLibrary();
+        }
+
+        try {
+            var copy = sessions.Copy(request, folder);
+            host.RequestRescan();
+            return TypedResults.Created((string?)null, copy);
+        } catch (FileNotFoundException e) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status404NotFound);
+        } catch (ProjectExistsException e) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status409Conflict);
+        } catch (ProjectRefusedException e) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status400BadRequest);
+        } catch (GraphEditRefusedException e) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
         }
     }
 
