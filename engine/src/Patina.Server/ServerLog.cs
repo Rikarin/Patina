@@ -14,6 +14,15 @@ static partial class ServerLog {
     [LoggerMessage(Level = LogLevel.Warning, Message = "Viewport: {Reason}")]
     public static partial void ViewportFailed(ILogger logger, string reason);
 
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "The Worker went away evaluating {Path}; the next one will take over"
+    )]
+    public static partial void GraphWorkerLost(ILogger logger, string path);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Graph {Path}: {Reason}")]
+    public static partial void GraphFailed(ILogger logger, string path, string reason);
+
     [LoggerMessage(Level = LogLevel.Error, Message = "Library {Library} already has a Server (pid {ProcessId})")]
     public static partial void LibraryTaken(ILogger logger, string library, int processId);
 

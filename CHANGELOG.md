@@ -25,3 +25,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and `/ws/viewport` for input.
 - A killed Worker no longer costs the view: the Server keeps it, and the next Worker carries on within two seconds.
 - `patina-worker --shader-cache <folder>`, and a disk cache of compiled shaders.
+- Texture graphs over the API: open a graph file, read its nodes, edges and parameters, list node types for a palette, and
+  save it back (`/api/v1/graphs`). A graph that opens is shared by every client that opens it.
+- Undoable command batches with server-side undo and redo, and numbered delta events over `/ws/graphs/{id}` and
+  `/api/v1/graphs/{id}/events`, so a second client sees the first client's edits.
+- Graph evaluation in the Worker: a slider edit does not recompile, only what depends on it runs, and a killed Worker loses
+  nothing. Each node's preview is a PNG at `/api/v1/previews/{hash}`, and events carry the hash.

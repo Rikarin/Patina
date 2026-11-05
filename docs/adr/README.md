@@ -7,3 +7,4 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0002](0002-kernel-compile.md): kernel compile time and the SPIR-V cache (S2).
 - [0003](0003-frame-transport.md): frames to the renderer (S3).
 - [0004](0004-crash-isolation.md): crash isolation of the Worker (S5, viewport part).
+- [0005](0005-preview-cache.md): where node previews live, and what a slider costs end to end.

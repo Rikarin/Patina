@@ -36,6 +36,9 @@ public static class LibraryLayout {
     public static string RevisionPath(string root, Revision revision) =>
         Path.Combine(root, SharedFolder, RevisionsFolder, revision.Hex[..2], revision.Hex);
 
+    /// <summary>Node previews, content-addressed and rebuilt by evaluating (ADR 0005).</summary>
+    public static string PreviewsPath(string root) => Path.Combine(root, CacheFolder, "previews");
+
     /// <summary>The full path of a <paramref name="relative" /> path stored with forward slashes.</summary>
     public static string Full(string root, string relative) =>
         Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar));

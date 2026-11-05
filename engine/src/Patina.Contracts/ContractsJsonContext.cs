@@ -18,4 +18,12 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(ViewportMeshRequest))]
 [JsonSerializable(typeof(ViewportCameraState))]
 [JsonSerializable(typeof(ViewportInput))]
+[JsonSerializable(typeof(GraphOpenRequest))]
+[JsonSerializable(typeof(GraphState))]
+[JsonSerializable(typeof(IReadOnlyList<GraphSummary>))]
+[JsonSerializable(typeof(IReadOnlyList<GraphNodeType>))]
+[JsonSerializable(typeof(GraphCommandBatch))]
+[JsonSerializable(typeof(GraphEditResult))]
+[JsonSerializable(typeof(GraphEvent))]
+[JsonSerializable(typeof(GraphEventPage))]
 public sealed partial class ContractsJsonContext : JsonSerializerContext;

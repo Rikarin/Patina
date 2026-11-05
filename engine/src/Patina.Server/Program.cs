@@ -3,6 +3,7 @@ using Patina.Ipc;
 using Patina.Library;
 using Patina.Server;
 using Patina.Server.Api;
+using Patina.Server.Graphs;
 using Patina.Server.Viewport;
 using System.Security.Cryptography;
 using System.Text.Json.Serialization;
@@ -45,6 +46,8 @@ builder.Services.ConfigureHttpJsonOptions(static o => {
         // Numbers are numbers: the web default also accepts "1", which turns every number in the OpenAPI document
         // (and so in generated clients) into number | string.
         o.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
+        // A command's "op" may come anywhere in its object: a client's JSON writer decides, not the client.
+        o.SerializerOptions.AllowOutOfOrderMetadataProperties = true;
     }
 );
 builder.Services.AddProblemDetails();
@@ -58,6 +61,9 @@ builder.Services.AddHostedService(static s => s.GetRequiredService<LibraryHost>(
 builder.Services.AddSingleton<FrameMemory>();
 builder.Services.AddSingleton<ViewportSession>();
 builder.Services.AddHostedService(static s => s.GetRequiredService<ViewportSession>());
+builder.Services.AddSingleton<GraphSessions>();
+builder.Services.AddSingleton<PreviewStore>();
+builder.Services.AddHostedService<GraphEvaluator>();
 builder.Services.AddHostedService<DiscoveryPublisher>();
 
 var app = builder.Build();

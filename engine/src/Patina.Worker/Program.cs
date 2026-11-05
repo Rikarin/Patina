@@ -55,5 +55,6 @@ if (watchStdin) {
 }
 
 using var viewport = new ViewportHost(shaderCache ?? ShaderCache.DefaultDirectory);
-await new WorkerLoop(viewport).RunAsync(socketPath, Console.Out, stop.Token);
+using var graphs = new GraphHost();
+await new WorkerLoop(viewport, graphs).RunAsync(socketPath, Console.Out, stop.Token);
 return 0;
