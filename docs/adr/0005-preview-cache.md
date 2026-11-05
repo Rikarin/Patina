@@ -38,16 +38,18 @@ loopback. Three runs of 40 edits each; ranges are across runs.
 
 | Slider on | Ops run | Median | p95 | Rate at the median |
 |---|---|---|---|---|
-| The head of the chain, the worst case | 82 | 137 to 139 ms | 152 to 198 ms | 7 Hz |
-| The middle | 42 | 78 to 86 ms | 91 to 113 ms | 12 Hz |
-| The tail | 2 | 8.9 to 9.4 ms | 11 to 13 ms | 100 Hz |
+| The head of the chain, the worst case | 82 | 81 to 84 ms | 108 to 132 ms | 12 Hz |
+| The middle | 42 | 33 to 34 ms | 41 to 44 ms | 30 Hz |
+| The tail | 2 | 6.9 to 7.8 ms | 9 to 10 ms | 130 Hz |
 
 The first evaluation, cold Worker included, takes 0.8 to 0.9 s. No edit compiled. The Server adds 1 to 2 ms to the Worker's
 time, and a drag faster than these rates skips positions rather than queueing them.
 
-Where the worst case goes, measured before encoding went parallel: evaluation **30 ms**, reading back 41 previews **80 ms**,
-encoding **180 ms**, now about 25 ms on ten cores. So the GPU is not the limit: the largest cost left is one synchronous
-readback per preview, about 2 ms each, since `TextureBake.Read` opens a frame and waits for the device every time.
+Before the reads were batched these were 133 to 137 ms, 76 to 80 ms and 8.6 to 8.9 ms on the same machine. Where the worst
+case goes now: evaluation about **35 ms**, reading back 41 previews about **10 ms**, the rest about **33 ms**, nearly all of it
+encoding. The read used to be about 80 ms, and it was two costs: a wait for the device per preview, which batching took out,
+and rounding half-floats to bytes on one thread, about 35 ms, which `TextureBake.Read` now does on the thread pool. So the
+evaluation and the encoder are what remain.
 
 Reproduce with:
 
@@ -59,13 +61,11 @@ PATINA_BENCH_OUT=/tmp/bench.txt tests/Patina.Server.Tests/bin/Release/net10.0/Pa
 
 ## Costs and open questions
 
-- **The worst case misses a strict reading of "interactive".** A batched read in `TextureBake`, one submission for all
-  previews, should take about 70 ms off it. It needs a Vixen change, and it was left out because nothing fails without it.
+- **The worst case is 12 Hz**, which a drag survives by skipping positions. Encoding is most of what is left outside the GPU, so
+  that is where to look next.
 - **The chain is cheap.** HSL and a radius-3 blur are not the heaviest kernels, so a graph of warps and flood fills will
   spend more in evaluation. It has not been measured.
 - **A long evaluation holds up the viewport.** The IPC handler answers one request at a time, in order, so a frame waits for
   an evaluation in progress. An evaluation over 30 s counts as a lost Worker (ADR 0004).
-- **A graph with a compound recompiles on a value edit.** `TextureGraphCompiler.Refresh` refuses any graph that inlined a
-  sub-graph, by design. The result cache still limits what runs, but the "no recompile" rule holds only for plain graphs.
 - **Not measured:** Windows, Linux, any GPU where readback is not unified memory, and full-size images, which have no
   endpoint yet.

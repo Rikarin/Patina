@@ -373,11 +373,13 @@ bezel, on all three platforms, in CI.
 > **Status (2026-11-05): the path through the phase works, and the exit is not met.** The evaluator is in Vixen, and a user
 > can open, edit, undo, save and preview a graph through the Server (ADR 0005). S7 holds 60 fps at 500 nodes apart from
 > one zoom stall of about 200 ms (ADR 0006). Left open:
-> - A slider at the head of a 2K, 40-node chain takes about 138 ms, most of it readback one preview at a time.
-> - Value edits on compounds still recompile, and graphs reading external bitmaps do not evaluate.
-> - Input ports declare no range, so slider ranges are guessed from defaults.
+> - A slider at the head of a 2K, 40-node chain takes about 82 ms, now mostly evaluation and PNG encoding (ADR 0005).
+> - Graphs reading external bitmaps do not evaluate.
+> - Input ports declare a range where the kernel gives one; the rest are still guessed from defaults.
 > - No curve editor, gradient ramp, histogram or channel view; no UI for sub-graphs, comments, groups, graph settings or
->   exposed parameters; new graphs cannot be created; 32-bit float formats have not landed.
+>   exposed parameters; new graphs cannot be created.
+> - 32-bit float and any size work (`bitDepth: 32` in a graph's settings), but bakes and previews are 8-bit PNG, and
+>   Distance and Flood Fill still stop at 2048 until the jump-flood rework.
 
 **Exit:** a user can build a tiling material from nodes with live thumbnails, and every Vixen node and compound works.
 
