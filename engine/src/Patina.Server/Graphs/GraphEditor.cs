@@ -28,7 +28,7 @@ public sealed class GraphEditRefusedException : Exception {
 public sealed class GraphEditor {
     const int Capacity = 256;
 
-    /// <summary>What starts a text's key when it is a number's expression and not a setting. Vixen's spelling.</summary>
+    /// <summary>What starts a text's key when it is a number's expression, not a setting. Vixen's spelling.</summary>
     const char ExpressionMarker = '=';
 
     static readonly HeadlessContext Context = new();
@@ -516,7 +516,7 @@ sealed class SetGroupCommand(GraphGroup group, string title, NodeId[] nodes) : I
     }
 }
 
-/// <summary>Adds a note with a size. Vixen's <see cref="AddCommentCommand" /> takes only its text and position.</summary>
+/// <summary>Adds a note with a size. Vixen's <see cref="AddCommentCommand" /> takes text and a position.</summary>
 sealed class AddNoteCommand(NodeGraphModel graph, GraphComment comment) : IAuthoringCommand {
     public string Name => "Add Note";
 

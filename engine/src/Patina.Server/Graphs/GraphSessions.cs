@@ -41,9 +41,7 @@ public sealed class GraphSessions(ServerIdentity identity) : IDisposable {
     /// <exception cref="GraphEditRefusedException">The file is not a graph.</exception>
     public GraphSession Open(string path) {
         var shipped = path.StartsWith(ShippedPrefix, StringComparison.Ordinal);
-        var full = shipped
-            ? path
-            : Path.GetFullPath(identity.Library is { } library ? Path.Combine(library, path) : path);
+        var full = shipped ? path : Resolve(path);
         lock (changing) {
             if (byId.Values.FirstOrDefault(s => string.Equals(s.Path, full, StringComparison.Ordinal)) is { } open) {
                 return open;
@@ -56,7 +54,7 @@ public sealed class GraphSessions(ServerIdentity identity) : IDisposable {
         }
     }
 
-    /// <summary>What a graph could hold: every shipped compound, then its own folder's, as a client opens them.</summary>
+    /// <summary>What a graph could hold: every shipped compound and its own folder's, as a client opens them.</summary>
     public static IReadOnlyList<GraphCompound> Compounds(string? folder) {
         List<GraphCompound> compounds = [
             ..TextureCompoundLibrary.Shipped.Select(static type => new GraphCompound(type, ShippedPrefix + type, true))
@@ -100,10 +98,14 @@ public sealed class GraphSessions(ServerIdentity identity) : IDisposable {
             return;
         }
 
-        foreach (var session in All.Where(s => s != saved && string.Equals(s.Folder, folder, StringComparison.Ordinal))) {
+        foreach (var session in All.Where(s => s != saved && string.Equals(s.Folder, folder, StringComparison.Ordinal)
+                 )) {
             session.Republish(Types(folder));
         }
     }
+
+    string Resolve(string path) =>
+        Path.GetFullPath(identity.Library is { } library ? Path.Combine(library, path) : path);
 
     static NodeTypeRegistry Types(string? folder) {
         NodeTypeRegistry registry = new();

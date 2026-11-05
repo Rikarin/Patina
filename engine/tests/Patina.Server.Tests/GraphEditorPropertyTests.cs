@@ -149,7 +149,10 @@ public sealed class GraphEditorPropertyTests {
             _ => new GraphSetText(Node(), "=Hue", "Wear * 2")
         };
         int Node() => document.Nodes.Length == 0 ? 1 : document.Nodes[random.Next(document.Nodes.Length)].Id;
+
         string ParameterName() =>
-            document.Parameters.Length == 0 ? "Wear" : document.Parameters[random.Next(document.Parameters.Length)].Name;
+            document.Parameters.Length == 0
+                ? "Wear"
+                : document.Parameters[random.Next(document.Parameters.Length)].Name;
     }
 }

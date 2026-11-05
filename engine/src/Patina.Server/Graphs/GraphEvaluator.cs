@@ -51,9 +51,7 @@ public sealed class GraphEvaluator(
         try {
             var connection = await worker.ConnectionAsync(patience.Token);
             var reply = await connection.SendAsync(
-                new() {
-                    Type = IpcTypes.GraphImage, GraphImage = new(session.Id, node, port, store.Root)
-                },
+                new() { Type = IpcTypes.GraphImage, GraphImage = new(session.Id, node, port, store.Root) },
                 cancellationToken
             );
             return reply.GraphFullImage!;
@@ -110,7 +108,12 @@ public sealed class GraphEvaluator(
 
         if (values is null) {
             told.Remove(session.Id);
-            var load = new GraphLoad(session.Id, GraphDocuments.Text(work.Document), session.Folder, session.ImageRoots);
+            var load = new GraphLoad(
+                session.Id,
+                GraphDocuments.Text(work.Document),
+                session.Folder,
+                session.ImageRoots
+            );
             await connection.SendAsync(new() { Type = IpcTypes.GraphLoad, GraphLoad = load }, cancellationToken);
         }
 

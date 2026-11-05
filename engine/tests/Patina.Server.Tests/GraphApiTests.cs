@@ -45,7 +45,11 @@ public sealed class GraphApiTests : IDisposable {
         using (client) {
             GraphSettingDefinition grit = new("Grit", "0.25", "How rough", "Float", 0f, 1f, "Look", []);
             await client.EditAsync(state.Id, Token, new GraphAddParameter(grit));
-            await client.EditAsync(state.Id, Token, new GraphSetParameter("Wear", grit with { Name = "Wear", Default = "1" }));
+            await client.EditAsync(
+                state.Id,
+                Token,
+                new GraphSetParameter("Wear", grit with { Name = "Wear", Default = "1" })
+            );
             var edited = await client.StateAsync(state.Id, Token);
             Assert.Equal(["Wear", "Grit"], edited.Parameters.Select(static p => p.Name));
             Assert.Equal("1", edited.Parameters[0].Default);

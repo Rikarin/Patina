@@ -54,7 +54,10 @@ sealed class CompoundShelf {
 
         return string.Join(
             '|',
-            new DirectoryInfo(folder).EnumerateFiles($"*{TextureCompoundLibrary.Extension}", SearchOption.AllDirectories)
+            new DirectoryInfo(folder).EnumerateFiles(
+                    $"*{TextureCompoundLibrary.Extension}",
+                    SearchOption.AllDirectories
+                )
                 .OrderBy(static file => file.FullName, StringComparer.Ordinal)
                 .Select(static file => $"{file.FullName}:{file.Length}:{file.LastWriteTimeUtc.Ticks}")
         );

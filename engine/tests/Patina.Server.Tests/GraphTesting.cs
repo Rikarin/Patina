@@ -33,7 +33,15 @@ static class GraphTesting {
                 }
             ],
             Groups = [new() { Title = "Base", Nodes = [1, 2] }],
-            Comments = [new() { Text = "Rust goes here", X = 10, Y = 20, Width = 200, Height = 100 }]
+            Comments = [
+                new() {
+                    Text = "Rust goes here",
+                    X = 10,
+                    Y = 20,
+                    Width = 200,
+                    Height = 100
+                }
+            ]
         };
 
     public static string Write(string folder, NodeGraphAsset asset, string name = "sample.vxtexgraph") {

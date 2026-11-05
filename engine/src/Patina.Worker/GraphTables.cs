@@ -112,7 +112,12 @@ static class GraphTables {
     static Color4 Colour(string hex) {
         var lanes = new float[HexChannels];
         for (var i = 0; i < HexChannels; i++) {
-            if (!byte.TryParse(hex.AsSpan(i * 2, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var lane)) {
+            if (!byte.TryParse(
+                    hex.AsSpan(i * 2, 2),
+                    NumberStyles.HexNumber,
+                    CultureInfo.InvariantCulture,
+                    out var lane
+                )) {
                 throw new InvalidDataException($"'{hex}' is not hex");
             }
 
@@ -124,7 +129,10 @@ static class GraphTables {
 
     static Dictionary<string, CurveSample[]> Channels(string text) {
         Dictionary<string, CurveSample[]> channels = new(StringComparer.Ordinal);
-        foreach (var channel in text.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)) {
+        foreach (var channel in text.Split(
+                     ';',
+                     StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries
+                 )) {
             var split = channel.IndexOf('=', StringComparison.Ordinal);
             if (split < 1) {
                 throw new InvalidDataException($"a curve channel is a name and its keys, not '{channel}'");

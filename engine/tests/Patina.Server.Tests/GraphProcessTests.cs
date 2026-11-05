@@ -409,7 +409,13 @@ public sealed class GraphProcessTests : IDisposable {
     [Fact]
     public async Task A_full_size_image_is_a_png_by_hash_at_the_size_of_the_graph() {
         using var deadline = Deadline(120);
-        var (_, state, socket, _) = await OpenSampleAsync(GraphTesting.Sample(512), deadline.Token);
+        var sample = GraphTesting.Sample(512);
+        var nodes = sample.Nodes.Select(static node => node.Id != 1
+                    ? node
+                    : node with { Values = new() { ["Scale"] = [4f], ["Tiling"] = [1f] } }
+            )
+            .ToArray();
+        var (_, state, socket, _) = await OpenSampleAsync(sample with { Nodes = nodes }, deadline.Token);
         using (socket) {
             using var response = await http.PostAsJsonAsync(
                 $"/api/v1/graphs/{state.Id}/images",
@@ -425,7 +431,15 @@ public sealed class GraphProcessTests : IDisposable {
             Assert.Equal((512, 512), (image.Width, image.Height));
             var png = await http.GetByteArrayAsync($"/api/v1/previews/{image.Hash}", deadline.Token);
             Assert.Equal(image.Hash, Convert.ToHexStringLower(SHA256.HashData(png)));
-            Assert.Equal(512, PngCodec.Decode(png).Width);
+            var picture = PngCodec.Decode(png);
+            Assert.Equal(512, picture.Width);
+
+            // It tiles: the last row runs on into the first as smoothly as any row runs into the next.
+            double Step(int a, int b) =>
+                Enumerable.Range(0, 512)
+                    .Average(x => Math.Abs(picture.Pixels[(a * 512 + x) * 4] - picture.Pixels[(b * 512 + x) * 4]));
+
+            Assert.True(Step(511, 0) < 3 * Math.Max(1, Enumerable.Range(0, 511).Average(y => Step(y, y + 1))));
 
             using var missing = await http.PostAsJsonAsync(
                 $"/api/v1/graphs/{state.Id}/images",

@@ -1,4 +1,5 @@
 using Patina.Library;
+
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 using Vixen.Core.Imaging;

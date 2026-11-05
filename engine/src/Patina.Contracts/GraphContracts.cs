@@ -325,6 +325,8 @@ public sealed record GraphEditResult(
     IReadOnlyList<GraphCreatedNode> Created
 );
 
+// SK7005: as on GraphState, one constructor parameter per JSON field.
+#pragma warning disable SK7005
 /// <summary>What changed in the document, the same for an edit, an undo and a redo.</summary>
 /// <param name="Nodes">Nodes that are new or differ, whole.</param>
 /// <param name="RemovedNodes">Nodes that have gone.</param>
@@ -346,6 +348,7 @@ public sealed record GraphDelta(
     IReadOnlyList<GraphGroupState>? Groups = null,
     IReadOnlyList<GraphCommentState>? Comments = null
 );
+#pragma warning restore SK7005
 
 /// <summary>What an event reports.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<GraphEventKind>))]

@@ -89,8 +89,8 @@ public static class LibraryFiles {
     }
 
     /// <summary>
-    ///     Writes a new graph at <paramref name="path" /> below the library. A shared one gets the sidecar that makes it
-    ///     an asset; a project's graph belongs to its project.
+    ///     Writes a new graph at <paramref name="path" /> below the library. A shared one gets the sidecar that makes
+    ///     it an asset; a project's graph belongs to its project.
     /// </summary>
     /// <exception cref="ProjectExistsException">The file is taken.</exception>
     /// <exception cref="ProjectRefusedException">It names a project that is not there.</exception>

@@ -58,9 +58,14 @@ sealed class GraphPictures {
                 stamps.Add(stamp);
                 var picture = Read(stamp);
                 uploads.Add(plan, external.Image, picture.Width, picture.Height, picture.Texels);
-            } catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException
-                or ArgumentException or FormatException) {
-                refusals.Add(new(Problem, $"This graph reads '{reference}', which cannot be read: {e.Message}", external.Node));
+            } catch (Exception e) when (e is IOException
+                                            or InvalidDataException
+                                            or UnauthorizedAccessException
+                                            or ArgumentException
+                                            or FormatException) {
+                refusals.Add(
+                    new(Problem, $"This graph reads '{reference}', which cannot be read: {e.Message}", external.Node)
+                );
             }
         }
 
@@ -100,7 +105,7 @@ sealed class GraphPictures {
             throw new InvalidDataException($"a bitmap is 8-bit RGBA, and this file decodes to {data.Format}");
         }
 
-        Decoded picture = new(data.Width, data.Height, data.Pixels.ToArray());
+        Decoded picture = new(data.Width, data.Height, [..data.Pixels]);
         if (held + picture.Texels.Length > Budget) {
             decoded.Clear();
             held = 0;

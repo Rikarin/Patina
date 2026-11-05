@@ -20,7 +20,7 @@ public static class GraphDocuments {
         }
     }
 
-    /// <summary>A new, empty graph, with the settings written down so that it means the same on every machine.</summary>
+    /// <summary>A new, empty graph, its settings written down so that it means the same on every machine.</summary>
     public static NodeGraphAsset New(string name) =>
         new() {
             Name = name.Trim(),

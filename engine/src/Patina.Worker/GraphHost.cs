@@ -88,16 +88,16 @@ sealed class GraphHost : IDisposable {
             throw new IpcException($"Node {ask.Node} has no picture on '{ask.Port}'.");
         }
 
-        using var bake = Evaluator().EvaluateIncremental(GraphPreviews.Full(plan, image.Image), graph.Uploads!.Externals);
+        using var bake = Evaluator()
+            .EvaluateIncremental(GraphPreviews.Full(plan, image.Image), graph.Uploads!.Externals);
         var key = bake.KeyOf(image.Image);
-        if (!written.TryGetValue(key, out var picture) || !File.Exists(GraphPreviewFiles.PathOf(ask.Folder, picture.Hash))) {
+        if (!written.TryGetValue(key, out var picture)
+            || !File.Exists(GraphPreviewFiles.PathOf(ask.Folder, picture.Hash))) {
             picture = Encode(bake.Read(image.Image), ask.Folder);
             written[key] = picture;
         }
 
-        return new() {
-            Type = IpcTypes.Ok, GraphFullImage = new(picture.Hash, picture.Width, picture.Height)
-        };
+        return new() { Type = IpcTypes.Ok, GraphFullImage = new(picture.Hash, picture.Width, picture.Height) };
     }
 
     static IpcMessage Reply(GraphResult result) => new() { Type = IpcTypes.Ok, GraphResult = result };
