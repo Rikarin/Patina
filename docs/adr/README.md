@@ -11,4 +11,4 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0006](0006-node-graph-scale.md): `@xui/node-graph` at 500 nodes with live thumbnails (S7).
 - [0007](0007-graph-authoring-references.md): how compounds, bitmaps, ramps and curves resolve, with the file as the truth.
 - [0008](0008-baking.md): bake throughput (S9, failed), bakes as Worker jobs beside the viewport, and a managed EXR codec.
-- [0009](0009-painting.md): stroke latency (S4), dirty regions in the plan, and who holds a stroke.
+- [0009](0009-painting.md): stroke latency (S4), dirty regions in the plan, the journal that lets a Worker die mid-stroke (S5).

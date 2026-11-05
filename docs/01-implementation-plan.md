@@ -431,6 +431,13 @@ bezel, on all three platforms, in CI.
 
 ### P5: painting (12–16 weeks, the biggest risk)
 
+> **Status (2026-11-05): the foundations are in and the exit is not met.** S4 passed at the median and S5's painting half passed,
+> with a journal ([ADR 0009](adr/0009-painting.md)). The tile store, `.vxpaint` packs, the migration and dirty regions are in Vixen,
+> and its pane stores tiles but still composites with `PaintComposite`, so Vixen's documented mismatch stands there. In Patina a stack
+> is a document on the Server, a stroke is stamps, the plan is the only compositor, and a test holds exported pixels equal to composite
+> pixels. The Paint pane is a layer list and a brush on the 2D map at 512². Not started: the live full-stack viewport, masks in the
+> UI, generators, seams and gutters on a mesh, symmetry, UV-pane painting, UDIM, and everything after them in the list below.
+
 **Exit:** an artist textures a hero prop end to end, and **what they see under the brush is exactly what exports**.
 
 - **Tile store first, in `Vixen.Texturing`:** sparse tiles, copy-on-write undo, `.vxpaint` packs, a GPU tile cache, and a
