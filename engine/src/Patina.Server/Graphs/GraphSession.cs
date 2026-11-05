@@ -65,6 +65,7 @@ public sealed class GraphSession {
         Folder = folder;
         Registry = registry;
         ReadOnly = readOnly;
+        MeshMaps = readOnly ? null : ReadMeshMaps(path);
         fileHash = Hash(text);
         editor = new(GraphDocuments.Parse(text), registry);
         this.wake = wake;
@@ -79,6 +80,9 @@ public sealed class GraphSession {
 
     /// <summary>The folders a relative image reference is read from, in order.</summary>
     public IReadOnlyList<string> ImageRoots { get; init; } = [];
+
+    /// <summary>The folder its Mesh Map nodes read a bake from, or null.</summary>
+    public string? MeshMaps { get; private set; }
 
     public NodeTypeRegistry Registry { get; private set; }
 
@@ -230,6 +234,45 @@ public sealed class GraphSession {
     public void Republish(NodeTypeRegistry registry) {
         lock (changing) {
             Take(registry);
+        }
+
+        wake();
+    }
+
+    /// <summary>The file beside a graph that says which bake it reads.</summary>
+    static string MeshMapsFile(string path) => $"{path}.bake";
+
+    /// <summary>The bake a graph file reads, or null. A file, because the choice outlives the session.</summary>
+    public static string? ReadMeshMaps(string path) {
+        var file = MeshMapsFile(path);
+        return File.Exists(file)
+            ? System.IO.Path.GetFullPath(File.ReadAllText(file).Trim(), System.IO.Path.GetDirectoryName(path)!)
+            : null;
+    }
+
+    /// <summary>
+    ///     Chooses the bake this graph's Mesh Map nodes read. The Worker takes the document again, since the same
+    ///     document now means something else.
+    /// </summary>
+    /// <param name="folder">A folder of baked maps, or null for none.</param>
+    public void UseMeshMaps(string? folder) {
+        lock (changing) {
+            MeshMaps = folder;
+            if (!ReadOnly) {
+                var file = MeshMapsFile(Path);
+                if (folder is null) {
+                    File.Delete(file);
+                } else {
+                    // Relative, so that a library can move and take its bakes with it.
+                    LibraryFiles.Replace(
+                        file,
+                        System.IO.Path.GetRelativePath(System.IO.Path.GetDirectoryName(Path)!, folder)
+                    );
+                }
+            }
+
+            forced = true;
+            reload = true;
         }
 
         wake();

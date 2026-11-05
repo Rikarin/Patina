@@ -112,7 +112,8 @@ public sealed class GraphEvaluator(
                 session.Id,
                 GraphDocuments.Text(work.Document),
                 session.Folder,
-                session.ImageRoots
+                session.ImageRoots,
+                session.MeshMaps
             );
             await connection.SendAsync(new() { Type = IpcTypes.GraphLoad, GraphLoad = load }, cancellationToken);
         }

@@ -368,7 +368,7 @@ public sealed class GraphProcessTests : IDisposable {
             var moved = await http.EditAsync(
                 state.Id,
                 deadline.Token,
-                new GraphSetParameter("Wear", new("Wear", "1", "", "Float", 0f, 1f, "", []))
+                new GraphSetParameter("Wear", new("Wear", "1", string.Empty, "Float", 0f, 1f, string.Empty, []))
             );
             var second = await EvaluatedAsync(socket, moved.Revision, deadline.Token);
             Assert.True(second.Compiled);
@@ -380,7 +380,7 @@ public sealed class GraphProcessTests : IDisposable {
     public async Task A_bitmap_beside_the_graph_evaluates_and_a_missing_one_says_so() {
         using var deadline = Deadline(120);
         var pixels = Enumerable.Range(0, 4 * 4 * 4).Select(static i => (byte)(i * 4)).ToArray();
-        PngCodec.Save(Path.Combine(Library, "picture.png"), new Bitmap(4, 4, pixels));
+        PngCodec.Save(Path.Combine(Library, "picture.png"), new(4, 4, pixels));
         var asset = GraphTesting.Sample() with {
             Nodes = [
                 ..GraphTesting.Sample().Nodes,

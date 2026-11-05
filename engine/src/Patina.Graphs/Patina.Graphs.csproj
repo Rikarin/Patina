@@ -3,6 +3,7 @@
     <Description>What a graph's references mean to Patina, for every process that evaluates one: compounds from the folder beside it, and bitmaps from paths relative to it and to the library (ADR 0007). The Worker and `patina bake` read a graph through this, so a graph means the same in both.</Description>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../Patina.Export/Patina.Export.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.TextureGraph/Vixen.TextureGraph.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.NodeGraph/Vixen.NodeGraph.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.Interchange/Vixen.Interchange.csproj"/>

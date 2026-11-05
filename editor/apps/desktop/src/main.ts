@@ -144,6 +144,11 @@ function handleIpc(): void {
     const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
     return picked.canceled ? null : (picked.filePaths[0] ?? null);
   });
+  ipcMain.handle('patina:openFolder', async () => {
+    const options: OpenDialogOptions = { properties: ['openDirectory', 'createDirectory'] };
+    const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
+    return picked.canceled ? null : (picked.filePaths[0] ?? null);
+  });
 }
 
 app.on('second-instance', () => {

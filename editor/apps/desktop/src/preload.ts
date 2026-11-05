@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('patina', {
   },
   logs: () => ipcRenderer.invoke('patina:sidecars:logs'),
   openMesh: () => ipcRenderer.invoke('patina:openMesh'),
+  openFolder: () => ipcRenderer.invoke('patina:openFolder'),
   setUnsaved: (unsaved: boolean) => {
     ipcRenderer.send('patina:unsaved', unsaved);
   },

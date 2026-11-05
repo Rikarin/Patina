@@ -1,3 +1,4 @@
+using Patina.Export;
 using System.Collections.Immutable;
 using Vixen.Graphics;
 using Vixen.Interchange;
@@ -38,21 +39,24 @@ public sealed class GraphPictures {
         TextureUploads uploads,
         TexturePlan plan,
         ImmutableArray<TextureGraphExternal> owed,
-        IReadOnlyList<string> roots
+        IReadOnlyList<string> roots,
+        string? meshMaps
     ) {
         List<NodeDiagnostic> refusals = [];
         List<PictureStamp> stamps = [];
         foreach (var external in owed) {
             var reference = external.Asset.Trim();
             try {
+                PictureStamp stamp;
+                Decoded picture;
                 if (reference.StartsWith(MeshMapScheme, StringComparison.Ordinal)) {
-                    throw new InvalidDataException("it is a measurement of a mesh, and nothing has been baked yet");
+                    (stamp, picture) = ReadMeshMap(reference[MeshMapScheme.Length..], meshMaps);
+                } else {
+                    stamp = StampOf(Locate(reference, roots));
+                    picture = Read(stamp);
                 }
 
-                var path = Locate(reference, roots);
-                var stamp = StampOf(path);
                 stamps.Add(stamp);
-                var picture = Read(stamp);
                 uploads.Add(plan, external.Image, picture.Width, picture.Height, picture.Texels);
             } catch (Exception e) when (e is IOException
                                             or InvalidDataException
@@ -66,6 +70,25 @@ public sealed class GraphPictures {
         }
 
         return new(refusals, stamps);
+    }
+
+    /// <summary>A map of the bake this graph reads, by what it measures.</summary>
+    (PictureStamp Stamp, Decoded Picture) ReadMeshMap(string map, string? folder) {
+        if (folder is null) {
+            throw new InvalidDataException("it is a measurement of a mesh, and no bake has been chosen for this graph");
+        }
+
+        if (BakedMapPicture.Find(folder, map) is not { } found) {
+            throw new FileNotFoundException($"the bake in '{folder}' has no {map} map");
+        }
+
+        var stamp = StampOf(found.Path);
+        if (decoded.TryGetValue(stamp, out var known)) {
+            return (stamp, known);
+        }
+
+        var bitmap = BakedMapPicture.Read(found.Path, found.Map, found.Format);
+        return (stamp, Keep(stamp, new(bitmap.Width, bitmap.Height, bitmap.Pixels)));
     }
 
     static PictureStamp StampOf(string path) {
@@ -101,7 +124,10 @@ public sealed class GraphPictures {
             throw new InvalidDataException($"a bitmap is 8-bit RGBA, and this file decodes to {data.Format}");
         }
 
-        Decoded picture = new(data.Width, data.Height, [..data.Pixels]);
+        return Keep(stamp, new(data.Width, data.Height, [..data.Pixels]));
+    }
+
+    Decoded Keep(PictureStamp stamp, Decoded picture) {
         if (held + picture.Texels.Length > Budget) {
             decoded.Clear();
             held = 0;

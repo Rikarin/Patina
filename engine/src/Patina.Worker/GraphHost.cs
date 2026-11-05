@@ -179,6 +179,7 @@ sealed class GraphHost : IDisposable {
         readonly TextureGraphCompiler compiler;
         readonly GraphPictures pictures;
         readonly IReadOnlyList<string> imageRoots;
+        readonly string? meshMaps;
         ImmutableArray<NodeDiagnostic> diagnostics = [];
         IReadOnlyList<PictureStamp> stamps = [];
 
@@ -190,6 +191,7 @@ sealed class GraphHost : IDisposable {
             compiler = new(compounds.Registry) { SubGraphSource = compounds.Source, PreviewEveryNode = true };
             this.pictures = pictures;
             imageRoots = load.ImageRoots;
+            meshMaps = load.MeshMaps;
         }
 
         public TexturePlan? Plan { get; private set; }
@@ -236,7 +238,7 @@ sealed class GraphHost : IDisposable {
 
             var uploads = new TextureUploads(evaluator.Device);
             var owed = TextureGraphExternals.Upload(uploads, compilation.Value, compiler.Externals);
-            var filled = pictures.Fill(uploads, compilation.Value, owed, imageRoots);
+            var filled = pictures.Fill(uploads, compilation.Value, owed, imageRoots, meshMaps);
             stamps = filled.Stamps;
             if (filled.Refusals.Count > 0) {
                 uploads.Dispose();

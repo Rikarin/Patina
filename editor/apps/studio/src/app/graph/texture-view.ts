@@ -3,6 +3,7 @@ import { ChannelView, HistogramChart, type PictureChannel, computeHistogram } fr
 import { XuiButtonImports } from '@xui/button';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
+import { BakeStore } from '../bake/bake-store';
 import { GraphStore } from './graph-store';
 
 const MinZoom = 0.25;
@@ -54,7 +55,35 @@ async function pixelsOf(url: string): Promise<ImageData | null> {
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
   template: `
-    @if (store.selectedNode() === null) {
+    @if (bake.shown(); as map) {
+      <div
+        class="well relative min-h-0 flex-1 cursor-grab overflow-hidden"
+        data-testid="texture-view"
+        (dblclick)="reset()"
+        (pointerdown)="grab($event)"
+        (pointermove)="drag($event)"
+        (pointerup)="drop()"
+        (wheel)="zoomBy($event)"
+      >
+        <img
+          class="absolute top-1/2 left-1/2 max-w-none"
+          alt="The baked map"
+          data-testid="texture-bake"
+          draggable="false"
+          style="image-rendering: pixelated"
+          [src]="map.url"
+          [style.height.px]="(256 * zoom() * map.height) / map.width"
+          [style.transform]="transform()"
+          [style.width.px]="256 * zoom()"
+        />
+      </div>
+      <div class="chrome-bar flex h-7 shrink-0 items-center gap-2 px-2">
+        <span class="readout min-w-0 truncate" data-testid="texture-size">
+          {{ map.map }}, {{ map.width }} × {{ map.height }}, shown at 8 bits
+        </span>
+        <span class="readout ms-auto shrink-0" data-testid="texture-zoom">{{ percent() }}%</span>
+      </div>
+    } @else if (store.selectedNode() === null) {
       <xui-non-ideal-state class="flex-1" description="Select a node to see its picture." />
     } @else {
       @let picture = shown();
@@ -134,6 +163,7 @@ async function pixelsOf(url: string): Promise<ImageData | null> {
 })
 export class TextureView {
   protected readonly store = inject(GraphStore);
+  protected readonly bake = inject(BakeStore);
   protected readonly channelOptions = channels;
   private grabbed: { x: number; y: number } | null = null;
   private readonly offset = signal({ x: 0, y: 0 });
@@ -183,6 +213,15 @@ export class TextureView {
   });
 
   constructor() {
+    // A node chosen after a map was shown is what someone now wants to look at.
+    effect(() => {
+      if (this.store.selectedNode() !== null) {
+        untracked(() => {
+          this.bake.hide();
+        });
+      }
+    });
+
     // A new picture has its pixels read once. What arrives after the picture moved on is dropped.
     effect(() => {
       const url = this.reduction()?.url;

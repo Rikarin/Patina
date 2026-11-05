@@ -23,6 +23,13 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
     public WorkerStatus Status => status;
 
     /// <summary>
+    ///     Something the Worker said that nobody asked it: how a job is going. Raised on the link's own loop, so a
+    ///     handler
+    ///     returns at once.
+    /// </summary>
+    public event Action<IpcMessage>? Reported;
+
+    /// <summary>
     ///     The Worker's connection now, or waits for one: after a crash, that is the next Worker's hello.
     /// </summary>
     public Task<IpcConnection> ConnectionAsync(CancellationToken cancellationToken) {
@@ -50,7 +57,7 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
 
     async Task ServeAsync(Stream stream, CancellationToken cancellationToken) {
         var hello = new TaskCompletionSource<WorkerHello>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var connection = new IpcConnection(stream, (request, _) => ValueTask.FromResult(Greet(request, hello)));
+        var connection = new IpcConnection(stream, (request, _) => ValueTask.FromResult(Answer(request, hello)));
         await using (connection) {
             connection.Start();
             try {
@@ -69,7 +76,16 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
 
     static TaskCompletionSource<IpcConnection> NewWaiter() => new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    /// <summary>The only request a Worker sends: its hello, refused if it speaks another protocol.</summary>
+    IpcMessage Answer(IpcMessage request, TaskCompletionSource<WorkerHello> hello) {
+        if (request.Type is IpcTypes.BakeProgress or IpcTypes.BakeEnded) {
+            Reported?.Invoke(request);
+            return IpcMessage.Ok(request.Id);
+        }
+
+        return Greet(request, hello);
+    }
+
+    /// <summary>A Worker's hello, refused if it speaks another protocol.</summary>
     static IpcMessage Greet(IpcMessage request, TaskCompletionSource<WorkerHello> hello) {
         if (request is not { Type: IpcTypes.Hello, Worker: { } worker }) {
             return IpcMessage.Fail(request.Id, $"Unexpected request '{request.Type}'.");

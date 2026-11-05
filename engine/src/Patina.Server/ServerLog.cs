@@ -20,6 +20,12 @@ static partial class ServerLog {
     )]
     public static partial void GraphWorkerLost(ILogger logger, string path);
 
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "The Worker went away with job {Job} on attempt {Attempt}; it goes back in the queue"
+    )]
+    public static partial void JobWorkerLost(ILogger logger, string job, int attempt);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Graph {Path}: {Reason}")]
     public static partial void GraphFailed(ILogger logger, string path, string reason);
 

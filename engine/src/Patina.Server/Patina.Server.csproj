@@ -11,6 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="../Patina.Contracts/Patina.Contracts.csproj"/>
     <ProjectReference Include="../Patina.Ipc/Patina.Ipc.csproj"/>
+    <ProjectReference Include="../Patina.Jobs/Patina.Jobs.csproj"/>
     <ProjectReference Include="../Patina.Library/Patina.Library.csproj"/>
     <!-- The document, its commands and the node catalogue. No device: the Server never opens one. -->
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.TextureGraph/Vixen.TextureGraph.csproj"/>

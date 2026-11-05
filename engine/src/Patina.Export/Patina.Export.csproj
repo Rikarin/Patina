@@ -1,5 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Reserved for export presets, channel packing and naming templates. An empty assembly for now.</Description>
+    <Description>Writes what Patina makes: baked maps, at the depth asked for. Export presets, channel packing and naming templates arrive in P6.</Description>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Patina.Contracts/Patina.Contracts.csproj"/>
+    <ProjectReference Include="../Patina.Jobs/Patina.Jobs.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Tools/Vixen.Interchange/Vixen.Interchange.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Core/Vixen.Geometry.Remeshing/Vixen.Geometry.Remeshing.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Core/Vixen.Core.Imaging/Vixen.Core.Imaging.csproj"/>
+  </ItemGroup>
 </Project>

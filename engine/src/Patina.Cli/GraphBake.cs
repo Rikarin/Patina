@@ -58,7 +58,8 @@ internal static class GraphBake {
             using TextureUploads uploads = new(device);
 
             var owed = TextureGraphExternals.Upload(uploads, plan, compiler.Externals);
-            var filled = new GraphPictures().Fill(uploads, plan, owed, CompoundFolders.PictureRoots(graph, library));
+            var roots = CompoundFolders.PictureRoots(graph, library);
+            var filled = new GraphPictures().Fill(uploads, plan, owed, roots, null);
 
             if (filled.Refusals.Count > 0) {
                 foreach (var problem in filled.Refusals) {

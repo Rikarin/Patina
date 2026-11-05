@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Reserved for the persistent job queue, batch rebuilds and impact analysis. An empty assembly for now.</Description>
+    <Description>The persistent job queue the Server owns, and the cache of what jobs made. No GPU, no Worker and no Vixen dependency: it holds state and the state outlives both processes.</Description>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Patina.Contracts/Patina.Contracts.csproj"/>
+    <ProjectReference Include="../Patina.Library/Patina.Library.csproj"/>
+  </ItemGroup>
 </Project>

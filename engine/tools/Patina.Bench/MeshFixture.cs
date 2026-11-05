@@ -20,7 +20,9 @@ static class MeshFixture {
     const uint BinaryChunk = 0x004E4942;
 
     public static int Write(string path) {
-        var parts = new[] { Grid(180, 24, TorusKnot), Grid(48, 32, static (u, v) => Sphere(u, v) * 0.3f) };
+        var parts = new[] {
+            Grid(180, 24, static (u, v) => TorusKnot(u, v)), Grid(48, 32, static (u, v) => Sphere(u, v) * 0.3f)
+        };
         var binary = new MemoryStream();
         var bufferViews = new JsonArray();
         var accessors = new JsonArray();
@@ -87,7 +89,7 @@ static class MeshFixture {
     }
 
     /// <summary>A (2, 3) knot, wrapped in a tube around its own frame.</summary>
-    static Vector3 TorusKnot(float u, float v) {
+    public static Vector3 TorusKnot(float u, float v, float tube = 0.11f) {
         static Vector3 Centre(float t) {
             var radius = 2f + MathF.Cos(3f * t);
             return new Vector3(radius * MathF.Cos(2f * t), MathF.Sin(3f * t), radius * MathF.Sin(2f * t)) * 0.4f;
@@ -100,7 +102,7 @@ static class MeshFixture {
         var lift = Vector3.Cross(side, tangent);
         // Against the frame's own turn, so that the grid's winding faces outwards.
         var angle = -v * MathF.Tau;
-        return centre + (side * MathF.Cos(angle) + lift * MathF.Sin(angle)) * 0.11f;
+        return centre + (side * MathF.Cos(angle) + lift * MathF.Sin(angle)) * tube;
     }
 
     /// <summary>A closed grid over a surface, with normals taken from its own differences.</summary>

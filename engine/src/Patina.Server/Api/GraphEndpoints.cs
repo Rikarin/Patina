@@ -91,6 +91,12 @@ static class GraphEndpoints {
                 Conflict,
                 Unavailable
             );
+        graphs.MapPut("/{id}/mesh-maps", UseMeshMaps)
+            .Describe(
+                "SetGraphMeshMaps",
+                "Chooses the folder of baked maps this graph's Mesh Map nodes read, and remembers it beside the file.",
+                Missing
+            );
         graphs.MapGet("/{id}/events", GetEvents)
             .Describe(
                 "GetGraphEvents",
@@ -129,6 +135,19 @@ static class GraphEndpoints {
         } catch (GraphEditRefusedException e) {
             return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
         }
+    }
+
+    static Results<NoContent, ProblemHttpResult> UseMeshMaps(
+        string id,
+        GraphMeshMapsRequest request,
+        GraphSessions sessions
+    ) {
+        if (sessions.Find(id) is not { } session) {
+            return NoSession(id);
+        }
+
+        session.UseMeshMaps(request.Folder is { } folder ? Path.GetFullPath(folder) : null);
+        return TypedResults.NoContent();
     }
 
     static Results<Ok<GraphState>, ProblemHttpResult> GetState(string id, GraphSessions sessions) =>

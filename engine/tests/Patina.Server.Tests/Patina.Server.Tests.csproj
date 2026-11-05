@@ -7,5 +7,6 @@
     <!-- Built, not referenced: the process tests run them as the separate processes they are. -->
     <ProjectReference Include="../../src/Patina.Worker/Patina.Worker.csproj" ReferenceOutputAssembly="false" Private="false"/>
     <ProjectReference Include="../../src/Patina.Cli/Patina.Cli.csproj" ReferenceOutputAssembly="false" Private="false"/>
+    <ProjectReference Include="../../tools/Patina.Bench/Patina.Bench.csproj"/>
   </ItemGroup>
 </Project>

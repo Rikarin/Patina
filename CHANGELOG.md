@@ -57,6 +57,20 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The Texture pane has a histogram, counted from the reduction and labelled so, a channel view, and Full size, from
   `POST /api/v1/graphs/{id}/images`.
 - Quitting with unsaved edits asks first, and multi-selection has an Inspector state of its own.
+- High-to-low baking: `POST /api/v1/jobs/bakes` takes paths to a high and a low mesh and returns paths to the maps: normal,
+  height, ambient occlusion, bent normal, curvature, thickness, position, world normal and ID, as 8- or 16-bit PNG or 16- or
+  32-bit EXR. Hard edges do not seam, a cage decides what rays reach, skew and a skew map straighten detail near hard edges,
+  and parts match by name. The baker uses every core but two and gives the same bytes on any number of them.
+- A persistent job queue: a bake survives a killed Worker and a killed Server and carries on, and stops being retried
+  after three Workers die on it. Follow jobs over `/ws/jobs` or `GET /api/v1/jobs/events`; `POST /api/v1/jobs/{id}/cancel`
+  stops one between rows of the atlas. The same bake twice comes from the cache, even with its meshes renamed.
+- A long bake holds up neither the viewport nor graph evaluation.
+- `patina bake-maps`, the same bake in-process for a build farm, which can share a cache folder with others.
+- The Bake panel: choose meshes, cage, size, format and maps, watch progress, and show results in the Texture pane.
+- Source/Mesh Map nodes read a finished bake once a graph is pointed at it, with Use in the Bake panel or
+  `PUT /api/v1/graphs/{id}/mesh-maps`. The choice is kept in a `.bake` file beside the graph.
+- `patina-bench bake-pair`, a generated hard-edged high and low pair; `patina-bench s9`, and `patina-bench bake-preview`,
+  which shades a low mesh with its maps on the CPU.
 
 ### Changed
 

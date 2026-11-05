@@ -399,6 +399,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/graphs/{id}/mesh-maps': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Chooses the folder of baked maps this graph's Mesh Map nodes read, and remembers it beside the file. */
+    put: operations['SetGraphMeshMaps'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/graphs/{id}/events': {
     parameters: {
       query?: never;
@@ -408,6 +425,108 @@ export interface paths {
     };
     /** The events after a number. /ws/graphs/{id}?since= sends the same events as they happen. */
     get: operations['GetGraphEvents'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/jobs': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Every job the Server remembers, newest first, and the sequence to follow from. */
+    get: operations['GetJobs'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/jobs/bakes': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Queues a bake, or answers from the cache when the same bake has been made. */
+    post: operations['StartBake'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/jobs/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One job. */
+    get: operations['GetJob'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/jobs/{id}/cancel': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Asks a job to stop. A running job stops at the end of its row of the atlas. */
+    post: operations['CancelJob'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/jobs/events': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The events after a number. /ws/jobs?since= sends the same events as they happen. */
+    get: operations['GetJobEvents'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/jobs/{id}/previews/{map}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** An 8-bit PNG of one map of a finished bake. */
+    get: operations['GetJobPreview'];
     put?: never;
     post?: never;
     delete?: never;
@@ -495,6 +614,107 @@ export interface components {
        * @description How many projects reference the asset directly.
        */
       usageCount: number;
+    };
+    /** @description One baked map, as a file. */
+    BakedMapFile: {
+      /** @description What it measures. */
+      map: string;
+      /** @description The file. */
+      path: string;
+      /**
+       * Format: int32
+       * @description Its edge in pixels.
+       */
+      resolution: number;
+      /**
+       * Format: double
+       * @description What a stored unit value is multiplied by to get the measurement back, for a signed map in an integer format;
+       *     zero when there is nothing to undo.
+       */
+      scale: number;
+    };
+    /**
+     * @description A high-to-low bake. Everything is a path on the Server's machine, and the results are files there: a client
+     *     sends paths and gets paths, whichever client it is (plan §8).
+     */
+    BakeRequest: {
+      /** @description The detailed mesh. */
+      high: string;
+      /** @description The mesh baked onto, which must have texture coordinates. */
+      low: string;
+      /** @description The folder the maps are written to. */
+      output: string;
+      /** @description A mesh with the low mesh's faces, moved outward, which the rays start from. */
+      cage?: null | string;
+      /**
+       * Format: int32
+       * @description The atlas's edge, in texels.
+       */
+      resolution: number;
+      /**
+       * @description What to bake beyond `normal` and `height`, which are always baked: `ao`, `bent`,
+       *     `curvature`, `thickness`, `position`, `world`, `id`.
+       */
+      maps?: null | string[];
+      /** @description `png8`, `png16`, `exr16` or `exr32`. */
+      format: string;
+      /**
+       * Format: int32
+       * @description How many samples along each side of a texel.
+       */
+      supersampling: number;
+      /**
+       * Format: int32
+       * @description How many rays a texel's occlusion is estimated with.
+       */
+      occlusionRays: number;
+      /**
+       * Format: double
+       * @description How far a ray looks, as a fraction of the high mesh's diagonal.
+       */
+      searchRadius: number;
+      /**
+       * Format: double
+       * @description How far an occluder counts, as a fraction of the diagonal.
+       */
+      occlusionRadius: number;
+      /**
+       * Format: double
+       * @description How far rays lean from the smoothed direction towards the low mesh's own normal, 0 to 1.
+       */
+      skew: number;
+      /** @description A grey image saying where to apply the skew, or null for everywhere. */
+      skewMap?: null | string;
+      /** @description Whether a part of the low mesh only strikes the high part of the same name. */
+      matchByName: boolean;
+      /**
+       * Format: int32
+       * @description How many texels of dilation surround each chart.
+       */
+      gutter: number;
+      /** @description `tangent` or `object`. */
+      space: string;
+      /** @description The stem of each file's name, or null for the low mesh's. */
+      name?: null | string;
+    };
+    /** @description What a finished bake made. */
+    BakeResult: {
+      /** @description The files. */
+      maps: components['schemas']['BakedMapFile'][];
+      /**
+       * Format: int64
+       * @description How many texels held chart content.
+       */
+      covered: number;
+      /**
+       * Format: int64
+       * @description How many found no source and took the closest point instead.
+       */
+      missed: number;
+      /** @description What could not be baked as asked. */
+      warnings: string[];
+      /** @description Whether this was found in the cache and nothing ran. */
+      cached: boolean;
     };
     /** @description One edit. Commands in a batch run in order, and every command sees the ones before it. */
     GraphCommand:
@@ -1075,6 +1295,11 @@ export interface components {
       /** @description One line about it. */
       summary: string;
     };
+    /** @description Says which folder of baked maps a graph's Mesh Map nodes read. */
+    GraphMeshMapsRequest: {
+      /** @description A folder holding a bake's files, or null to read none. */
+      folder?: null | string;
+    };
     /** @description Where one node goes. */
     GraphNodePosition: {
       /** Format: int32 */
@@ -1298,6 +1523,57 @@ export interface components {
       path: string;
       /** @description True when a pin holds the project back, so a change to the asset does not reach it. */
       pinned: boolean;
+    };
+    /** @description A job changing. Numbered, so a client that dropped its socket can ask what it missed. */
+    JobEvent: {
+      /**
+       * Format: int64
+       * @description The number, rising with each event.
+       */
+      sequence: number;
+      /** @description The job as it now stands. */
+      job: components['schemas']['JobState'];
+    };
+    /** @description Every job the Server remembers, and the sequence a client can follow from. */
+    JobPage: {
+      /** @description Newest first. */
+      jobs: components['schemas']['JobState'][];
+      /**
+       * Format: int64
+       * @description The newest event's number.
+       */
+      sequence: number;
+    };
+    /** @description A piece of work the Server owns, which outlives the Worker running it and the Server itself. */
+    JobState: {
+      /** @description Its identity. */
+      id: string;
+      /** @description The build key of what it makes. */
+      key: string;
+      /** @description One of JobStates. */
+      state: string;
+      /**
+       * Format: double
+       * @description How far through it is, 0 to 1.
+       */
+      progress: number;
+      /**
+       * Format: int32
+       * @description How many Workers have started it.
+       */
+      attempts: number;
+      /**
+       * Format: date-time
+       * @description When it was asked for, in UTC.
+       */
+      created: string;
+      /** @description What to do. */
+      bake: components['schemas']['BakeRequest'];
+      result?: null | components['schemas']['BakeResult'];
+      /** @description Why it failed. */
+      error?: null | string;
+      /** @description Whether a client has asked for it to stop. */
+      cancelRequested: boolean;
     };
     /** @description The reply to `GET /api/v1/library`: what opening a library reads, and nothing more. */
     LibraryInfo: {
@@ -2541,6 +2817,39 @@ export interface operations {
       };
     };
   };
+  SetGraphMeshMaps: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GraphMeshMapsRequest'];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   GetGraphEvents: {
     parameters: {
       query?: {
@@ -2562,6 +2871,182 @@ export interface operations {
         content: {
           'application/json': components['schemas']['GraphEventPage'];
         };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetJobs: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['JobPage'];
+        };
+      };
+    };
+  };
+  StartBake: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['BakeRequest'];
+      };
+    };
+    responses: {
+      /** @description Accepted */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['JobState'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetJob: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['JobState'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  CancelJob: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['JobState'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetJobEvents: {
+    parameters: {
+      query?: {
+        after?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['JobEvent'][];
+        };
+      };
+    };
+  };
+  GetJobPreview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        map: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Not Found */
       404: {

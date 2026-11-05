@@ -412,6 +412,15 @@ bezel, on all three platforms, in CI.
 
 ### P4: baking (5–7 weeks)
 
+> **Status (2026-11-05): the path works from panel to maps, the exit is not met, and S9 failed.** An owner has to judge the
+> pictures, on an artist's asset rather than the generated pair, and decide what S9's result means: threaded CPU occlusion takes
+> 2,761 CPU-seconds for 4K at 256 rays over two million triangles, so at best 4.6 minutes against a 2-minute target
+> ([ADR 0008](adr/0008-baking.md)). GPU traversal has not been started, because the plan keeps one implementation. Everything
+> else below is in: `MapBaker` is threaded with a SAH tree, supersampling, a cage, skew and match-by-name; 16-bit PNG and EXR are
+> in `Core.Imaging`, the EXR codec managed rather than a native library; a bake is a job that survives both processes; and
+> the Bake panel and Mesh Map nodes are wired. Left open: the viewport does not show normal maps, so `patina-bench bake-preview`
+> shades them instead; the tangent basis is per triangle and not MikkTSpace; `patina bake` cannot bind mesh maps.
+
 **Exit:** a high-to-low bake of a real game asset is judged usable by an artist, on a mesh with hard edges.
 
 - Upgrade `MapBaker` in place: threaded, SAH BVH, supersampling, cage mesh, skew, match-by-name, 16/32-bit output.
