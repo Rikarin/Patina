@@ -45,7 +45,7 @@ pnpm exec playwright test --config apps/desktop/e2e/bench.config.ts graph
 
 ## Costs and open questions
 
-- **The stall.** Zooming with everything on screen stalls once per run, at the first zoom, for 165 to 232 ms, and the
+- **The stall.** Zooming with everything on screen stalls once per six-second run, for 165 to 232 ms, and the
   stall's long animation frame has no script, style or layout in it. So it is not Angular and not xUI's code, and the likely
   cause is Chromium rasterising the one large layer at a new scale. Nodes off screen are not the cost at full fit, where
   culling would remove nothing. It was not traced further.
