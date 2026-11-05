@@ -7,7 +7,8 @@
 // they run on the machine that built them; elsewhere Gatekeeper asks the user to allow them. PATINA_VERSION overrides
 // the version (CI passes the release tag).
 import { build } from 'electron-builder';
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join, resolve } from 'node:path';
 
@@ -81,7 +82,10 @@ await build({
     electronVersion: require('electron/package.json').version,
     directories: { app: stage, output: join(dist, 'release'), buildResources: join(workspace, 'apps/desktop/assets') },
     files: ['**/*', '!**/*.map'],
-    extraResources: [{ from: engine, to: 'engine' }],
+    extraResources: [
+      { from: engine, to: 'engine' },
+      { from: join(workspace, '../THIRD-PARTY-NOTICES.md'), to: 'THIRD-PARTY-NOTICES.md' }
+    ],
     npmRebuild: false,
     icon: join(workspace, 'apps/desktop/assets/icon.png'),
     artifactName: '${productName}-${version}-${os}-${arch}.${ext}',
@@ -100,3 +104,23 @@ await build({
     linux: { target: ['AppImage'], category: 'Graphics' }
   }
 });
+
+// The package's own engine reads a mesh with what the package carries (ADR 0010). On Linux that is the AppImage itself,
+// unpacked: its runtime can do that with no FUSE, and linux-unpacked would only say what went in.
+const release = join(dist, 'release');
+const unpacked = () => {
+  if (process.platform === 'darwin') {
+    const folder = readdirSync(release).find(name => /^mac/.test(name) && existsSync(join(release, name, 'Patina.app')));
+    return join(release, folder, 'Patina.app/Contents/Resources/engine/patina-worker');
+  }
+
+  if (process.platform === 'win32') {
+    return join(release, 'win-unpacked/resources/engine/patina-worker.exe');
+  }
+
+  const image = readdirSync(release).find(name => name.endsWith('.AppImage'));
+  rmSync(join(release, 'squashfs-root'), { recursive: true, force: true });
+  execFileSync(join(release, image), ['--appimage-extract'], { cwd: release, stdio: 'ignore' });
+  return join(release, 'squashfs-root/resources/engine/patina-worker');
+};
+execFileSync(unpacked(), ['--check-natives'], { stdio: 'inherit' });

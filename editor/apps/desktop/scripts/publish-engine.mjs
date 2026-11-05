@@ -45,9 +45,15 @@ for (const project of ['src/Patina.Server', 'src/Patina.Worker']) {
   );
 }
 
-// Debug symbols and API docs stay out of the app.
+// Debug symbols and API docs stay out of the app, and so does Assimp 6: Ultz.Native.Assimp carries two majors on Linux
+// and macOS, and the binding opens the 5 (ADR 0010).
 for (const entry of readdirSync(out)) {
-  if (/\.(pdb|dbg|dSYM|xml)$/.test(entry)) {
+  if (/\.(pdb|dbg|dSYM|xml)$/.test(entry) || /^libassimp\.(so\.6|6\.dylib)$/.test(entry)) {
     rmSync(join(out, entry), { recursive: true, force: true });
   }
 }
+
+// What the app will carry reads a mesh with what it carries, on the machine that built it, or there is no package.
+execFileSync(join(out, process.platform === 'win32' ? 'patina-worker.exe' : 'patina-worker'), ['--check-natives'], {
+  stdio: 'inherit'
+});
