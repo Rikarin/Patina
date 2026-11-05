@@ -30,11 +30,13 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
     public event Action<IpcMessage>? Reported;
 
     /// <summary>
-    ///     The Worker's connection now, or waits for one: after a crash, that is the next Worker's hello.
+    ///     The Worker's connection now, or waits for one: after a crash, that is the next Worker's hello. A closed
+    ///     connection is not one, though <see cref="current" /> can keep it until the health loop next wakes: a job
+    ///     handed it would spend an attempt on a Worker that had already gone.
     /// </summary>
     public Task<IpcConnection> ConnectionAsync(CancellationToken cancellationToken) {
         lock (changing) {
-            return current is { } connection
+            return current is { Closed.IsCompleted: false } connection
                 ? Task.FromResult(connection)
                 : nextWorker.Task.WaitAsync(cancellationToken);
         }
