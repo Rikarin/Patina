@@ -44,5 +44,5 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A slider on a compound, or on an exposed parameter, no longer recompiles the graph.
 - Graphs can compute in 32-bit float: `bitDepth: 32` in a graph's settings, for height and position. PNG previews and
   bakes are still eight bits.
-- `GET /api/v1/graphs/{id}/node-types` gives each input port's `minimum`, `maximum`, `softMinimum` and `softMaximum`
-  where the node defines them, and the Inspector's sliders use them.
+- `GET /api/v1/graphs/{id}/node-types` gives an input port's `range`, with `minimum`, `maximum`, `softMinimum` and
+  `softMaximum`, where the node defines them, and the Inspector's sliders use them.

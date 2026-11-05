@@ -94,10 +94,7 @@ public static class GraphDocuments {
                         port.Kind.ToString(),
                         port.Default,
                         port.Summary,
-                        Bound(port.Minimum),
-                        Bound(port.Maximum),
-                        Bound(port.SoftMinimum),
-                        Bound(port.SoftMaximum)
+                        RangeOf(port)
                     )
                 )
             ],
@@ -115,6 +112,16 @@ public static class GraphDocuments {
                 )
             ]
         );
+
+    static GraphPortRange? RangeOf(PortDefinition port) {
+        GraphPortRange range = new(
+            Bound(port.Minimum),
+            Bound(port.Maximum),
+            Bound(port.SoftMinimum),
+            Bound(port.SoftMaximum)
+        );
+        return range == new GraphPortRange(null, null, null, null) ? null : range;
+    }
 
     /// <summary>What turns one document into another, whichever way the history moved.</summary>
     public static GraphDelta Delta(NodeGraphAsset before, NodeGraphAsset after) {
@@ -153,7 +160,7 @@ public static class GraphDocuments {
             var (was, node) = (told.Nodes[i], now.Nodes[i]);
             if (was.Id != node.Id
                 || !string.Equals(was.Type, node.Type, StringComparison.Ordinal)
-                || was.Texts.Keys.Any(key => !node.Texts.ContainsKey(key))) {
+                || LostAText(was, node)) {
                 return null;
             }
 
@@ -162,6 +169,9 @@ public static class GraphDocuments {
 
         return values;
     }
+
+    static bool LostAText(GraphNodeAsset was, GraphNodeAsset node) =>
+        was.Texts.Keys.Any(key => !node.Texts.ContainsKey(key));
 
     static void AddChanges(List<GraphValue> values, GraphNodeAsset was, GraphNodeAsset node) {
         foreach (var (port, lanes) in node.Values) {

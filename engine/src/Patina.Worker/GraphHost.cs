@@ -177,7 +177,7 @@ sealed class GraphHost : IDisposable {
             }
         }
 
-        /// <summary>Brings the plan up to date, compiling only when a change was more than a value (plan §3.2).</summary>
+        /// <summary>Brings the plan up to date, compiling only for more than a value (plan §3.2).</summary>
         public GraphResultProblem[] Prepare(TexturePlanEvaluator evaluator, out bool compiled) {
             compiled = false;
             if (compiler.Refresh(graph) is { } refreshed) {

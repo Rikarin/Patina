@@ -285,7 +285,7 @@ public sealed class GraphProcessTests : IDisposable {
         }
     }
 
-    /// <summary>The rule holds through a compound: a number on one reaches its inner nodes without a compile (plan §3.2).</summary>
+    /// <summary>A number on a compound reaches its inner nodes without a compile (plan §3.2).</summary>
     [Fact]
     public async Task A_compound_gets_one_preview_per_port_and_a_number_on_it_does_not_recompile() {
         using var deadline = Deadline(120);
@@ -335,7 +335,7 @@ public sealed class GraphProcessTests : IDisposable {
         }
     }
 
-    /// <summary>Plan §3.2's formats on the whole path: 32 bits and an odd size reach a client as ordinary previews.</summary>
+    /// <summary>Plan §3.2's formats on the whole path: 32 bits and an odd size reach a client.</summary>
     [Fact]
     public async Task A_graph_at_32_bits_and_an_odd_size_previews_and_a_slider_does_not_recompile() {
         using var deadline = Deadline(120);

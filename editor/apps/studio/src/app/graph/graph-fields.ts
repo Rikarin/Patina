@@ -41,8 +41,8 @@ export function isWireable(port: GraphPortDefinition): boolean {
 function fieldOfPort(port: GraphPortDefinition): GraphField | null {
   const base = { source: 'value', name: port.name, summary: port.summary, fallback: port.default } as const;
   const range = {
-    minimum: port.softMinimum ?? port.minimum ?? null,
-    maximum: port.softMaximum ?? port.maximum ?? null
+    minimum: port.range?.softMinimum ?? port.range?.minimum ?? null,
+    maximum: port.range?.softMaximum ?? port.range?.maximum ?? null
   };
   switch (port.kind) {
     case 'Float':

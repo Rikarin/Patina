@@ -2073,12 +2073,29 @@
             "type": "string",
             "description": "One line about it."
           },
+          "range": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What numbers mean anything on it, or null when it declares none.",
+                "$ref": "#/components/schemas/GraphPortRange"
+              }
+            ]
+          }
+        },
+        "description": "One port of a node type."
+      },
+      "GraphPortRange": {
+        "type": "object",
+        "properties": {
           "minimum": {
             "type": [
               "null",
               "number"
             ],
-            "description": "The smallest number that means anything, or null when open.",
+            "description": "The smallest number that means anything.",
             "format": "float"
           },
           "maximum": {
@@ -2086,7 +2103,7 @@
               "null",
               "number"
             ],
-            "description": "The largest number that means anything, or null when open.",
+            "description": "The largest number that means anything.",
             "format": "float"
           },
           "softMinimum": {
@@ -2094,7 +2111,7 @@
               "null",
               "number"
             ],
-            "description": "Where a slider starts, when the port\u0027s meaning gives that; numbers go on past it.",
+            "description": "Where a slider starts, when the port\u0027s meaning gives that. Numbers go on past it.",
             "format": "float"
           },
           "softMaximum": {
@@ -2106,7 +2123,7 @@
             "format": "float"
           }
         },
-        "description": "One port of a node type."
+        "description": "What an input port says about its numbers. Any end may be open, as null."
       },
       "GraphPreview": {
         "required": [

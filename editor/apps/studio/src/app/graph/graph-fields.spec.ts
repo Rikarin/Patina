@@ -9,7 +9,7 @@ const type: GraphNodeType = {
   hasPreview: true,
   ports: [
     { name: 'Input', direction: 'Input', kind: 'Image', default: [], summary: '' },
-    { name: 'Amount', direction: 'Input', kind: 'Float', default: [0.5], summary: '', minimum: 0, softMaximum: 1 },
+    { name: 'Amount', direction: 'Input', kind: 'Float', default: [0.5], summary: '', range: { minimum: 0, softMaximum: 1 } },
     { name: 'Count', direction: 'Input', kind: 'Int', default: [4], summary: '' },
     { name: 'Flip', direction: 'Input', kind: 'Bool', default: [0], summary: '' },
     { name: 'Tint', direction: 'Input', kind: 'Float4', default: [1, 1, 1, 1], summary: '' },
