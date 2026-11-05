@@ -47,11 +47,13 @@ jobs:
         with:
           submodules: recursive
       - uses: ./.github/actions/setup-dotnet
-      # The Worker renders the viewport specs' frames on lavapipe and reads their mesh through Assimp 5, as in engine.yml.
-      - name: Install Vulkan, lavapipe and Assimp
+      # The Worker renders the viewport specs' frames on lavapipe. Their mesh goes through the Assimp the Worker carries,
+      # with none installed, as in engine.yml (ADR 0010).
+      - name: Install Vulkan and lavapipe
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y libvulkan1 mesa-vulkan-drivers libassimp5
+          sudo apt-get install -y libvulkan1 mesa-vulkan-drivers
+      - uses: ./.github/actions/no-system-assimp
       - name: Build the engine
         working-directory: engine
         run: dotnet build Patina.slnx -c Release
