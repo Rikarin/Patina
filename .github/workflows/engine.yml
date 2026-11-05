@@ -38,6 +38,11 @@ jobs:
           vulkaninfo --summary | grep -E 'deviceName|apiVersion|driverName'
           glslc --version
           glslangValidator --version
+      # The Silk.NET loader does not look in runtimes/linux-x64/native, so a model read fails without this. It has to be
+      # version 5: Silk.NET.Assimp binds that ABI. Vixen's ci.yml has the long story.
+      - name: Install Assimp (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y libassimp5
       - run: dotnet build Patina.slnx -c Release
       - run: dotnet test --solution Patina.slnx -c Release --no-build
 

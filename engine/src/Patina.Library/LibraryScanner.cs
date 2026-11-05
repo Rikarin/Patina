@@ -145,20 +145,18 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
         var projects = Path.Combine(root, LibraryLayout.ProjectsFolder);
         if (Directory.Exists(projects)) {
             Parallel.ForEach(
-                Directory.EnumerateDirectories(projects, "*", Visible),
+                VisibleFolders(projects),
                 folder => WalkProjects(folder, found)
             );
         }
 
         var shared = new DirectoryInfo(Path.Combine(root, LibraryLayout.SharedFolder));
         if (shared.Exists) {
-            foreach (var file in shared.EnumerateFiles("*", VisibleTree)) {
-                if (!file.Name.EndsWith(".tmp", StringComparison.Ordinal)) {
-                    var kind = file.Name.EndsWith(LibraryLayout.SidecarSuffix, StringComparison.Ordinal)
-                        ? TrackedKind.Sidecar
-                        : TrackedKind.Content;
-                    found.Add(Describe(file, kind));
-                }
+            foreach (var file in shared.EnumerateFiles("*", VisibleTree).Where(f => IsSharedFile(shared, f))) {
+                var kind = file.Name.EndsWith(LibraryLayout.SidecarSuffix, StringComparison.Ordinal)
+                    ? TrackedKind.Sidecar
+                    : TrackedKind.Content;
+                found.Add(Describe(file, kind));
             }
         }
 
@@ -176,10 +174,25 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
             return;
         }
 
-        foreach (var child in Directory.EnumerateDirectories(folder, "*", Visible)) {
+        foreach (var child in VisibleFolders(folder)) {
             WalkProjects(child, found);
         }
     }
+
+    /// <summary>
+    ///     The folders below <paramref name="folder" /> a scan enters. A leading dot hides a folder only on Unix, so
+    ///     the name is checked as well as the attribute: on Windows <c>.revisions</c> would otherwise be scanned.
+    /// </summary>
+    static IEnumerable<string> VisibleFolders(string folder) =>
+        Directory.EnumerateDirectories(folder, "*", Visible).Where(static d => !IsDotted(Path.GetFileName(d)));
+
+    static bool IsSharedFile(DirectoryInfo shared, FileInfo file) =>
+        !file.Name.EndsWith(".tmp", StringComparison.Ordinal)
+        && !Path.GetRelativePath(shared.FullName, file.FullName)
+            .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            .Any(IsDotted);
+
+    static bool IsDotted(string name) => name.StartsWith('.');
 
     ScannedFile Describe(FileInfo file, TrackedKind kind) =>
         new(LibraryLayout.Relative(root, file.FullName), file.FullName, kind, file.Length, file.LastWriteTimeUtc.Ticks);

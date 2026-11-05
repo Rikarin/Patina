@@ -80,7 +80,8 @@ public sealed class InstanceRegistry(string path) {
     static StringComparison PathComparison =>
         OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
 
-    static bool SameLibrary(string left, string right) => string.Equals(left, right, PathComparison);
+    static bool SameLibrary(string left, string right) =>
+        string.Equals(NormaliseLibrary(left), NormaliseLibrary(right), PathComparison);
 
     static List<ServerInstance> Alive(IEnumerable<ServerInstance> instances) => [..instances.Where(IsRunning)];
 
