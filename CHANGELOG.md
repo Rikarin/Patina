@@ -60,6 +60,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The app has its new icon, on the window, the installers and the studio's favicon.
 - A graph's compounds now come from a `Compounds` folder beside it, not from every graph in its folder.
 - Groups and notes have an `id`, in the file and the API, and commands name them by it instead of `index`, so two clients
   can no longer hit the wrong one.
