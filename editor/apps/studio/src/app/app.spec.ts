@@ -50,7 +50,7 @@ describe('App', () => {
   it('shows the Server, its library and its Worker in the status bar', async () => {
     const element = await render({ kind: 'online', system });
 
-    const status = element.querySelector('[role=status]')?.textContent;
+    const status = element.querySelector('footer[role=status]')?.textContent;
     expect(status).toContain('Patina 1.2.3');
     expect(status).toContain('/games/Ember.ptlib');
     expect(status).toContain('Worker not connected');
@@ -59,12 +59,12 @@ describe('App', () => {
   it('says so when no library is open', async () => {
     const element = await render({ kind: 'online', system: { ...system, library: null } });
 
-    expect(element.querySelector('[role=status]')?.textContent).toContain('No library open');
+    expect(element.querySelector('footer[role=status]')?.textContent).toContain('No library open');
   });
 
   it('says why when the Server cannot be reached', async () => {
     const element = await render({ kind: 'offline', reason: 'connection refused' });
 
-    expect(element.querySelector('[role=status]')?.textContent).toContain('connection refused');
+    expect(element.querySelector('footer[role=status]')?.textContent).toContain('connection refused');
   });
 });

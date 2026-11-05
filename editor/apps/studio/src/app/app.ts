@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { type XuiDockManagerLayout, XuiDockManagerImports } from '@xui/dock-manager';
 import { desktop } from './core/desktop';
 import { SystemStatus } from './core/system-status';
+import { LibraryInspector } from './library/library-inspector';
+import { LibraryPane } from './library/library-pane';
 import { ViewportPane } from './viewport/viewport-pane';
 
 /** The panes cannot be closed yet: nothing could bring one back until there is a Window menu. */
@@ -22,7 +24,7 @@ const initialLayout: XuiDockManagerLayout = {
 /** The app shell: a title bar, the docked panes and the status bar. `chrome-bar` and `readout` are bezel's. */
 @Component({
   selector: 'ptn-root',
-  imports: [ViewportPane, XuiDockManagerImports],
+  imports: [LibraryInspector, LibraryPane, ViewportPane, XuiDockManagerImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full flex-col' },
   template: `
@@ -32,13 +34,13 @@ const initialLayout: XuiDockManagerLayout = {
 
     <xui-dock-manager class="min-h-0 flex-1" [(layout)]="layout">
       <ng-template xuiDockContent="library">
-        <p class="text-foreground-muted p-3">No projects yet.</p>
+        <ptn-library />
       </ng-template>
       <ng-template xuiDockContent="viewport">
         <ptn-viewport />
       </ng-template>
       <ng-template xuiDockContent="inspector">
-        <p class="text-foreground-muted p-3">Nothing selected.</p>
+        <ptn-library-inspector />
       </ng-template>
     </xui-dock-manager>
 
@@ -49,9 +51,11 @@ const initialLayout: XuiDockManagerLayout = {
           <span class="readout">Connecting to the Server…</span>
         }
         @case ('online') {
-          <span class="readout">Patina {{ current.system.version }}</span>
+          <span class="readout shrink-0">Patina {{ current.system.version }}</span>
           <span class="readout truncate">{{ current.system.library ?? 'No library open' }}</span>
-          <span class="readout">Worker {{ current.system.worker.connected ? 'connected' : 'not connected' }}</span>
+          <span class="readout shrink-0"
+            >Worker {{ current.system.worker.connected ? 'connected' : 'not connected' }}</span
+          >
         }
         @case ('offline') {
           <span class="readout text-error truncate">Server unreachable: {{ current.reason }}</span>

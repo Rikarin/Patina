@@ -18,6 +18,11 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `patina library new` and `patina library check`.
 - Read-only library endpoints: `GET /api/v1/library`, `/library/projects`, `/library/assets` and
   `/library/assets/{id}/impact`.
+- `POST /api/v1/library/projects`, which writes a new project's files and lets the index catch up, and
+  `GET /api/v1/library/projects/tags` and `/library/assets/tags`.
+- The Library browser: projects and shared assets in a virtualised list that pages through the Server, with search and a
+  tag filter. Selecting a shared asset shows its impact in the Inspector, selecting a project shows its details, and
+  New… creates a project.
 - The desktop app, which supervises both processes, and a studio shell with Library, Viewport and Inspector panes.
 - A docked viewport: open a glTF, FBX or OBJ, orbit and zoom it, lit by a built-in studio environment, with the file's
   metallic-roughness factors. Texture maps are not read yet.
