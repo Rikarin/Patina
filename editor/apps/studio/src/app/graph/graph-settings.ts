@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
-import type { GraphSettingDefinition } from '@patina/api-client';
+import type { GraphInterfacePort, GraphSettingDefinition } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiInputImports } from '@xui/input';
 import { XuiNumericInputImports } from '@xui/numeric-input';
@@ -10,6 +10,9 @@ import { GraphStore } from './graph-store';
 
 const Sides = ['256', '512', '1024', '2048', '4096'];
 const Kinds = ['Float', 'Int', 'Bool', 'Text'];
+const BitDepths = ['16', '32'];
+const PortKinds = ['Image', 'Float', 'Int', 'Bool', 'Float2', 'Float3', 'Float4'];
+const DefaultBitDepth = '16';
 const SliderSteps = 1000;
 
 /** What a kind's default starts as, which the Server has to accept. */
@@ -33,6 +36,18 @@ export function freeParameterName(taken: readonly GraphSettingDefinition[]): str
   }
 
   return `Parameter${String(number)}`;
+}
+
+/** The first port name of the form the graph does not use yet, on one side. */
+export function freePortName(taken: readonly GraphInterfacePort[], direction: string): string {
+  const side = direction === 'Input' ? 'Input' : 'Output';
+  const names = new Set(taken.filter(port => port.direction === direction).map(port => port.name));
+  let number = names.size + 1;
+  while (names.has(`${side}${String(number)}`)) {
+    number++;
+  }
+
+  return `${side}${String(number)}`;
 }
 
 /** The graph itself in the Inspector: its size and seed, what it exposes, and its frames and notes. */
@@ -76,6 +91,16 @@ export function freeParameterName(taken: readonly GraphSettingDefinition[]): str
           [items]="sidesOf('baseHeight')"
           [value]="settingOf('baseHeight')"
           (valueChange)="setSide('baseHeight', $event)"
+        />
+      </div>
+      <div class="flex flex-col gap-1" data-testid="setting-bitDepth">
+        <span class="text-foreground-muted text-xs">Bit depth</span>
+        <xui-select
+          ariaLabel="Bit depth"
+          [disabled]="!store.editable()"
+          [items]="bitDepths"
+          [value]="bitDepth()"
+          (valueChange)="setBitDepth($event)"
         />
       </div>
       <div class="flex flex-col gap-1" data-testid="setting-seed">
@@ -198,10 +223,74 @@ export function freeParameterName(taken: readonly GraphSettingDefinition[]): str
       </button>
     </div>
 
+    @if (isCompound()) {
+      <p class="section-label mt-4 mb-1">Interface</p>
+      <div class="flex flex-col gap-1.5">
+        @for (port of document?.interface; track port.direction + '/' + port.name) {
+          <div class="flex items-center gap-1" [attr.data-testid]="'port-' + port.name">
+            <span class="readout text-foreground-muted w-8 shrink-0">{{
+              port.direction === 'Input' ? 'In' : 'Out'
+            }}</span>
+            <input
+              class="min-w-0 flex-1"
+              xuiInput
+              size="sm"
+              aria-label="Port name"
+              [disabled]="!store.editable()"
+              [value]="port.name"
+              (change)="renamePort(port, $event)"
+            />
+            <xui-select
+              class="w-20 shrink-0"
+              ariaLabel="Port kind"
+              [disabled]="!store.editable()"
+              [items]="portKinds"
+              [value]="port.kind"
+              (valueChange)="setPortKind(port, $event)"
+            />
+            <button
+              type="button"
+              xuiButton
+              size="sm"
+              variant="ghost"
+              [disabled]="!store.editable()"
+              (click)="store.removePort(port.name, port.direction)"
+            >
+              Remove
+            </button>
+          </div>
+        } @empty {
+          <p class="text-foreground-muted text-xs">This compound has no ports yet.</p>
+        }
+        <div class="flex gap-1">
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            data-testid="port-add-input"
+            [disabled]="!store.editable()"
+            (click)="addPort('Input')"
+          >
+            Add input
+          </button>
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            data-testid="port-add-output"
+            [disabled]="!store.editable()"
+            (click)="addPort('Output')"
+          >
+            Add output
+          </button>
+        </div>
+      </div>
+    }
+
     @if (document?.groups?.length) {
       <p class="section-label mt-4 mb-1">Groups</p>
       <div class="flex flex-col gap-1.5">
-        @for (group of document?.groups; track $index) {
+        @for (group of document?.groups; track group.id) {
           <div class="flex items-center gap-1" data-testid="group-row">
             <input
               class="min-w-0 flex-1"
@@ -210,7 +299,7 @@ export function freeParameterName(taken: readonly GraphSettingDefinition[]): str
               aria-label="Group title"
               [disabled]="!store.editable()"
               [value]="group.title"
-              (change)="rename$($index, $event)"
+              (change)="retitle(group.id, $event)"
             />
             <span class="readout text-foreground-muted shrink-0">{{ group.nodes.length }}</span>
             <button
@@ -219,7 +308,7 @@ export function freeParameterName(taken: readonly GraphSettingDefinition[]): str
               size="sm"
               variant="ghost"
               [disabled]="!store.editable()"
-              (click)="store.ungroup($index)"
+              (click)="store.ungroup(group.id)"
             >
               Ungroup
             </button>
@@ -232,8 +321,15 @@ export function freeParameterName(taken: readonly GraphSettingDefinition[]): str
 export class GraphSettings {
   protected readonly store = inject(GraphStore);
   protected readonly kinds = Kinds;
+  protected readonly bitDepths = BitDepths;
+  protected readonly portKinds = PortKinds;
 
   protected readonly seed = computed(() => Number(this.store.document()?.settings['seed'] ?? 0));
+
+  protected readonly bitDepth = computed(() => this.store.document()?.settings['bitDepth'] ?? DefaultBitDepth);
+
+  /** The Server offers boundary nodes to a graph that can have an interface, and to no other. */
+  protected readonly isCompound = computed(() => this.store.types().has('Sub-graph/Input'));
 
   protected settingOf(key: string): string {
     return this.store.document()?.settings[key] ?? '';
@@ -248,6 +344,35 @@ export class GraphSettings {
   protected setSide(key: string, value: string | null): void {
     if (value !== null && value !== this.settingOf(key)) {
       this.store.setSetting(key, value);
+    }
+  }
+
+  protected setBitDepth(value: string | null): void {
+    if (value !== null && value !== this.bitDepth()) {
+      this.store.setSetting('bitDepth', value);
+    }
+  }
+
+  protected addPort(direction: string): void {
+    this.store.addPort({
+      name: freePortName(this.store.document()?.interface ?? [], direction),
+      direction,
+      kind: 'Image',
+      default: [],
+      summary: ''
+    });
+  }
+
+  protected renamePort(port: GraphInterfacePort, event: Event): void {
+    const name = (event.target as HTMLInputElement).value.trim();
+    if (name !== port.name) {
+      this.store.editPort(port.name, port.direction, { ...port, name });
+    }
+  }
+
+  protected setPortKind(port: GraphInterfacePort, kind: string | null): void {
+    if (kind !== null && kind !== port.kind) {
+      this.store.editPort(port.name, port.direction, { ...port, kind, default: [] });
     }
   }
 
@@ -335,8 +460,8 @@ export class GraphSettings {
     });
   }
 
-  protected rename$(index: number, event: Event): void {
-    this.store.renameGroup(index, (event.target as HTMLInputElement).value);
+  protected retitle(id: number, event: Event): void {
+    this.store.renameGroup(id, (event.target as HTMLInputElement).value);
   }
 }
 
@@ -365,7 +490,7 @@ export class GraphSettings {
       size="sm"
       variant="ghost"
       [disabled]="!store.editable()"
-      (click)="store.removeComment(index())"
+      (click)="store.removeComment(note())"
     >
       Delete note
     </button>
@@ -374,12 +499,14 @@ export class GraphSettings {
 export class GraphNoteInspector {
   protected readonly store = inject(GraphStore);
 
-  readonly index = input.required<number>();
+  readonly note = input.required<number>();
 
-  protected readonly text = computed(() => this.store.document()?.comments[this.index()]?.text ?? '');
+  protected readonly text = computed(
+    () => this.store.document()?.comments.find(comment => comment.id === this.note())?.text ?? ''
+  );
 
   protected retype(event: Event): void {
-    this.store.setCommentText(this.index(), (event.target as HTMLTextAreaElement).value);
+    this.store.setCommentText(this.note(), (event.target as HTMLTextAreaElement).value);
   }
 }
 

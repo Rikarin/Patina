@@ -15,18 +15,9 @@ public static class CompoundFolders {
     /// <summary>Whether the graph at <paramref name="graph" /> is itself a compound.</summary>
     public static bool Holds(string graph) => Enclosing(Path.GetDirectoryName(Path.GetFullPath(graph))!) is not null;
 
-    /// <summary>The folder for a new compound in a library: <c>shared/graphs</c>'s, or a project's.</summary>
-    /// <exception cref="ProjectRefusedException">There is no such project.</exception>
-    public static string InLibrary(string root, string? project) {
-        if (project?.Trim().Trim('/') is not { Length: > 0 } path) {
-            return Path.Combine(root, LibraryLayout.SharedFolder, "graphs", LibraryLayout.CompoundsFolder);
-        }
-
-        var folder = LibraryLayout.Full(root, $"{LibraryLayout.ProjectsFolder}/{path}");
-        return File.Exists(Path.Combine(folder, LibraryLayout.ProjectFile))
-            ? Path.Combine(folder, LibraryLayout.CompoundsFolder)
-            : throw new ProjectRefusedException($"There is no project at '{path}'.");
-    }
+    /// <summary>The folder a library's shared graphs read their compounds from.</summary>
+    public static string Shared(string root) =>
+        Path.Combine(root, LibraryLayout.SharedFolder, "graphs", LibraryLayout.CompoundsFolder);
 
     /// <summary>
     ///     Writes a new compound. Its file is its node type below <paramref name="folder" />, and one under

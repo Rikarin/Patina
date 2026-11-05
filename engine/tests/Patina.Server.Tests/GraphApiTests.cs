@@ -416,8 +416,14 @@ public sealed class GraphApiTests : IDisposable {
             Assert.Equal(HttpStatusCode.UnprocessableEntity, shadow.StatusCode);
             using var missing = await CopyAsync(client, new("Patterns/Nothing"));
             Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
-            using var project = await CopyAsync(client, new("Patterns/Cells", "Mine", "nowhere"));
-            Assert.Equal(HttpStatusCode.BadRequest, project.StatusCode);
+            using var illegal = await CopyAsync(client, new("Patterns/Cells", "bad:name"));
+            Assert.Equal(HttpStatusCode.BadRequest, illegal.StatusCode);
+            using var closed = await CopyAsync(client, new("Patterns/Cells", "Mine", "nowhere"));
+            Assert.Equal(HttpStatusCode.NotFound, closed.StatusCode);
+
+            using var beside = await CopyAsync(client, new("Patterns/Cells", "Beside", host.Id));
+            Assert.Equal(HttpStatusCode.Created, beside.StatusCode);
+            Assert.True(File.Exists(Path.Combine(shared, "Compounds", "Beside.vxtexgraph")));
         }
     }
 

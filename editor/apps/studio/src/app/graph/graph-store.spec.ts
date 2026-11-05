@@ -541,8 +541,8 @@ describe('what a graph holds besides its nodes', () => {
       delta: {
         ...noDelta,
         parameters: [wear],
-        groups: [{ title: 'Base', nodes: [1] }],
-        comments: [{ text: 'Hello', x: 1, y: 2, width: 200, height: 100 }]
+        groups: [{ id: 1, title: 'Base', nodes: [1] }],
+        comments: [{ id: 1, text: 'Hello', x: 1, y: 2, width: 200, height: 100 }]
       }
     });
     const document = test.store.document();
@@ -552,12 +552,12 @@ describe('what a graph holds besides its nodes', () => {
   });
 
   it('groups the selection, taking its nodes out of the frames they were in', async () => {
-    const test = await opened(state({ groups: [{ title: 'Old', nodes: [1, 2] }] }));
+    const test = await opened(state({ groups: [{ id: 7, title: 'Old', nodes: [1, 2] }] }));
     test.store.select([1]);
     test.store.groupSelection();
     await vi.waitFor(() => {
       expect(sent(test)).toEqual([
-        { op: 'setGroup', index: 0, nodes: [2] },
+        { op: 'setGroup', id: 7, nodes: [2] },
         { op: 'addGroup', title: 'Group', nodes: [1] }
       ]);
     });
@@ -567,27 +567,29 @@ describe('what a graph holds besides its nodes', () => {
     const test = await opened(
       state({
         groups: [
-          { title: 'A', nodes: [1] },
-          { title: 'B', nodes: [] }
+          { id: 4, title: 'A', nodes: [1] },
+          { id: 9, title: 'B', nodes: [] }
         ]
       })
     );
-    test.store.regroup([{ node: 1, group: 'group-0' }]);
+    test.store.regroup([{ node: 1, group: 'group-4' }]);
     expect(test.commands()).toEqual([]);
-    test.store.regroup([{ node: 1, group: 'group-1' }]);
+    test.store.regroup([{ node: 1, group: 'group-9' }]);
     await vi.waitFor(() => {
       expect(sent(test)).toEqual([
-        { op: 'setGroup', index: 0, nodes: [] },
-        { op: 'setGroup', index: 1, nodes: [1] }
+        { op: 'setGroup', id: 4, nodes: [] },
+        { op: 'setGroup', id: 9, nodes: [1] }
       ]);
     });
   });
 
   it('selects a new note, and forgets a selected note that has gone', async () => {
     const test = await opened();
+    test.routes['POST graphs/g1/commands'] = () =>
+      Response.json({ revision: 2, sequence: 1, history: dirty, created: [{ ref: -1, node: 12 }] });
     await test.store.addComment({ x: 1, y: 2 });
-    expect(sent(test)).toEqual([{ op: 'addComment', text: 'Note', x: 1, y: 2 }]);
-    expect(test.store.selectedNote()).toBe(0);
+    expect(sent(test)).toEqual([{ op: 'addComment', text: 'Note', x: 1, y: 2, ref: -1 }]);
+    expect(test.store.selectedNote()).toBe(12);
     test.socket().send({
       sequence: 1,
       kind: 'edited',
@@ -596,6 +598,98 @@ describe('what a graph holds besides its nodes', () => {
       delta: { ...noDelta, comments: [] }
     });
     expect(test.store.selectedNote()).toBeNull();
+  });
+
+  it('edits a note by its identity, wherever it stands in the list', async () => {
+    const note = { id: 12, text: 'Two', x: 0, y: 0, width: 200, height: 100 };
+    const test = await opened(state({ comments: [{ ...note, id: 3, text: 'One' }, note] }));
+    test.store.selectNote(12);
+    test.store.setCommentText(12, 'Second');
+    await vi.waitFor(() => {
+      expect(sent(test)).toEqual([{ op: 'setComment', id: 12, text: 'Second' }]);
+    });
+
+    // Another client took the first note away, and the selected one moved up.
+    test.socket().send({
+      sequence: 1,
+      kind: 'edited',
+      revision: 2,
+      history: dirty,
+      delta: { ...noDelta, comments: [note] }
+    });
+    expect(test.store.selectedNote()).toBe(12);
+  });
+
+  it('sends ports as commands, and reads the node types again when the interface changes', async () => {
+    const test = await opened();
+    const port = { name: 'Mask', direction: 'Input', kind: 'Image', default: [], summary: '' };
+    test.store.addPort(port);
+    await vi.waitFor(() => {
+      expect(sent(test).at(-1)).toEqual({ op: 'addPort', port });
+    });
+    test.store.editPort('Mask', 'Input', { ...port, name: 'Wear' });
+    await vi.waitFor(() => {
+      expect(sent(test).at(-1)).toEqual({
+        op: 'setPort',
+        name: 'Mask',
+        direction: 'Input',
+        port: { ...port, name: 'Wear' }
+      });
+    });
+    test.store.removePort('Wear', 'Input');
+    await vi.waitFor(() => {
+      expect(sent(test).at(-1)).toEqual({ op: 'removePort', name: 'Wear', direction: 'Input' });
+    });
+
+    const types = () => test.requests.filter(request => request.key === 'GET graphs/g1/node-types').length;
+    expect(types()).toBe(1);
+    test.socket().send({
+      sequence: 1,
+      kind: 'edited',
+      revision: 2,
+      history: dirty,
+      delta: { ...noDelta, interface: [port] }
+    });
+    expect(test.store.document()?.interface).toEqual([port]);
+    await vi.waitFor(() => {
+      expect(types()).toBe(2);
+    });
+  });
+
+  it('saves the selection as a compound at its centre, and selects the node that holds it', async () => {
+    const test = await opened();
+    test.routes['POST graphs/g1/compounds'] = () =>
+      Response.json({
+        compound: { type: 'Wear', path: '/lib/Compounds/Wear.vxtexgraph', readOnly: false },
+        node: 9,
+        edit: { revision: 2, sequence: 1, history: dirty, created: [] }
+      });
+    test.store.select([1, 2]);
+    await expect(test.store.saveSelectionAsCompound('Wear')).resolves.toBeNull();
+    expect(test.requests.at(-1)?.body).toEqual({ name: 'Wear', nodes: [1, 2], x: 150, y: 0 });
+    expect([...test.store.selection()]).toEqual([9]);
+  });
+
+  it('says why a selection could not be saved', async () => {
+    const test = await opened();
+    test.routes['POST graphs/g1/compounds'] = () => Response.json({ detail: 'That is taken.' }, { status: 422 });
+    test.store.select([1]);
+    await expect(test.store.saveSelectionAsCompound('Wear')).resolves.toContain('That is taken.');
+  });
+
+  it('copies a shipped compound and opens the copy', async () => {
+    const shipped = state({ path: 'shipped:Patterns/Cells', readOnly: true });
+    const test = await opened(shipped);
+    test.routes['POST library/compounds'] = () =>
+      Response.json({ type: 'Patterns/Cells Copy', path: '/lib/c.vxtexgraph', readOnly: false }, { status: 201 });
+    test.routes['POST graphs'] = () => Response.json(state({ path: '/lib/c.vxtexgraph' }));
+    await test.store.copyToLibrary();
+    expect(test.requests.find(request => request.key === 'POST library/compounds')?.body).toEqual({
+      type: 'Patterns/Cells',
+      graph: null
+    });
+    expect(test.store.document()?.path).toBe('/lib/c.vxtexgraph');
+    expect(test.store.document()?.readOnly).toBe(false);
   });
 
   it('asks for the node types again when a compound was saved', async () => {

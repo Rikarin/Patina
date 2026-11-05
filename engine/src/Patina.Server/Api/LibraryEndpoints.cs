@@ -43,6 +43,7 @@ static class LibraryEndpoints {
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
         library.MapPost("/graphs", CreateGraph)
             .WithName("CreateGraph")
             .ProducesProblem(StatusCodes.Status400BadRequest)
@@ -128,12 +129,23 @@ static class LibraryEndpoints {
         GraphSessions sessions,
         GraphCompoundCopy request
     ) {
-        if (host.Library is not { } library) {
+        string? folder;
+        if (request.Graph is { } graph) {
+            if (sessions.Find(graph) is not { } session) {
+                return TypedResults.Problem($"There is no open graph '{graph}'.", statusCode: StatusCodes.Status404NotFound);
+            }
+
+            folder = session.Folder;
+        } else {
+            folder = host.Library is { } library ? CompoundFolders.Shared(library.RootPath) : null;
+        }
+
+        if (folder is null) {
             return NoLibrary();
         }
 
         try {
-            var copy = sessions.Copy(request, CompoundFolders.InLibrary(library.RootPath, request.Project));
+            var copy = sessions.Copy(request, folder);
             host.RequestRescan();
             return TypedResults.Created((string?)null, copy);
         } catch (FileNotFoundException e) {

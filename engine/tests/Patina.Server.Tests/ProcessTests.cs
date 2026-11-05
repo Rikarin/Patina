@@ -182,6 +182,24 @@ public sealed class ProcessTests : IDisposable {
         Assert.Equal(ProductInfo.Version, output.Trim());
     }
 
+    /// <summary>An author's mistake is a sentence: this ended in an unhandled exception, after saying why.</summary>
+    [Fact]
+    public async Task Baking_a_graph_that_does_not_compile_says_so_and_does_not_throw() {
+        var folder = Directory.CreateTempSubdirectory("patina-bake-");
+        try {
+            var graph = GraphTesting.Write(
+                folder.FullName,
+                new() { Name = "Broken", Nodes = [new() { Id = 1, Type = "Output/Output" }] }
+            );
+            var (exit, output) = await PatinaAsync("bake", graph, Path.Combine(folder.FullName, "out"));
+            Assert.Equal(1, exit);
+            Assert.Contains("Nothing baked", output, StringComparison.Ordinal);
+            Assert.DoesNotContain("Unhandled", output, StringComparison.Ordinal);
+        } finally {
+            folder.Delete(true);
+        }
+    }
+
     async Task<(int ExitCode, string Output)> PatinaAsync(params string[] arguments) {
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(Token);
         deadline.CancelAfter(TimeSpan.FromSeconds(60));

@@ -42,10 +42,12 @@ internal static class GraphBake {
             Console.Error.WriteLine($"{diagnostic.Id}: {diagnostic.Message}");
         }
 
-        if (compilation.Value is not { } plan || compiler.Outputs.Length == 0) {
+        if (!compilation.Succeeded || compiler.Outputs.Length == 0) {
             Console.Error.WriteLine("Nothing baked: the graph did not compile, or it has no Output node.");
             return 1;
         }
+
+        var plan = compilation.Value;
 
         if (!VulkanDevice.TryCreate(new(), out var device, out var refusal)) {
             Console.Error.WriteLine($"Nothing baked: no Vulkan device. {refusal}");

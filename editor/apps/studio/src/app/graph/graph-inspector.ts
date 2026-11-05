@@ -376,7 +376,7 @@ export class GraphInspector {
     } @else if (store.selectedNode(); as node) {
       <ptn-graph-inspector [node]="node" />
     } @else if (store.selectedNote() !== null) {
-      <ptn-graph-note [index]="store.selectedNote() ?? 0" />
+      <ptn-graph-note [note]="store.selectedNote() ?? 0" />
     } @else if (store.graphInspected()) {
       <ptn-graph-settings />
     } @else {

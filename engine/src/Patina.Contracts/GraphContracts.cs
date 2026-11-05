@@ -510,10 +510,11 @@ public sealed record GraphExtraction(GraphCompound Compound, int Node, GraphEdit
 ///     The copy's node type. It cannot be a shipped one's, since a shipped compound is never shadowed. Null for the
 ///     shipped name and " Copy".
 /// </param>
-/// <param name="Project">
-///     A project's path below <c>projects/</c> whose compounds folder takes it, or null for <c>shared/graphs</c>.
+/// <param name="Graph">
+///     An open graph whose compounds folder takes it, so that the graph can hold it, or null for
+///     <c>shared/graphs</c>'s.
 /// </param>
-public sealed record GraphCompoundCopy(string Type, string? Name = null, string? Project = null);
+public sealed record GraphCompoundCopy(string Type, string? Name = null, string? Graph = null);
 
 /// <summary>The events after a number, for a client that does not hold a WebSocket or has missed some.</summary>
 /// <param name="Sequence">The newest event's number.</param>
