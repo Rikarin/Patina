@@ -42,6 +42,15 @@ public static class LibraryLayout {
 
     public static string ObjectsPath(string root) => Path.Combine(root, CacheFolder, "objects");
 
+    /// <summary>Where bakes are kept, a folder per build key.</summary>
+    public static string BakesPath(string root) => Path.Combine(root, CacheFolder, "objects", "bakes");
+
+    /// <summary>
+    ///     Where jobs are kept. Under the cache because a job is a request and not a document: deleting the folder loses
+    ///     what was asked for and not yet made, which a client can ask again, and nothing that was made.
+    /// </summary>
+    public static string JobsPath(string root) => Path.Combine(root, CacheFolder, "jobs");
+
     public static string RevisionPath(string root, Revision revision) =>
         Path.Combine(root, SharedFolder, RevisionsFolder, revision.Hex[..2], revision.Hex);
 

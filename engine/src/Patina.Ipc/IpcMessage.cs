@@ -1,3 +1,4 @@
+using Patina.Contracts;
 using System.Text.Json.Serialization;
 
 namespace Patina.Ipc;
@@ -43,6 +44,22 @@ public static class IpcTypes {
     /// <summary>Server to Worker: forget the graph named by <see cref="IpcMessage.GraphClose" />.</summary>
     public const string GraphClose = "graph.close";
 
+    /// <summary>
+    ///     Server to Worker: start <see cref="IpcMessage.BakeStart" /> and answer at once. The bake runs beside whatever
+    ///     else is asked, and says how it ends with <see cref="BakeEnded" />, so nothing waits on it and no reply can
+    ///     time out on it (ADR 0008).
+    /// </summary>
+    public const string BakeStart = "bake.start";
+
+    /// <summary>Server to Worker: stop the bake named by <see cref="IpcMessage.BakeCancel" />.</summary>
+    public const string BakeCancel = "bake.cancel";
+
+    /// <summary>Worker to Server: how far <see cref="IpcMessage.BakeProgress" /> has got.</summary>
+    public const string BakeProgress = "bake.progress";
+
+    /// <summary>Worker to Server: <see cref="IpcMessage.BakeEnded" />, however it ended.</summary>
+    public const string BakeEnded = "bake.ended";
+
     public const string Ok = "ok";
     public const string Error = "error";
 }
@@ -50,7 +67,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 4;
+    public const int ProtocolVersion = 5;
 
     public string Type { get; set; } = string.Empty;
 
@@ -94,10 +111,42 @@ public sealed class IpcMessage {
     /// <summary>The reply to graph.evaluate.</summary>
     public GraphResult? GraphResult { get; set; }
 
+    /// <summary>bake.start: what to bake and where it goes.</summary>
+    public BakeStart? BakeStart { get; set; }
+
+    /// <summary>bake.cancel: which bake.</summary>
+    public BakeTicket? BakeCancel { get; set; }
+
+    /// <summary>bake.progress: how far.</summary>
+    public BakeProgressNote? BakeProgress { get; set; }
+
+    /// <summary>bake.ended: how it ended.</summary>
+    public BakeEnding? BakeEnded { get; set; }
+
     public static IpcMessage Ok(long id) => new() { Type = IpcTypes.Ok, Id = id };
 
     public static IpcMessage Fail(long id, string error) => new() { Type = IpcTypes.Error, Id = id, Error = error };
 }
+
+/// <summary>One attempt at a job: a report from an earlier attempt is one that arrived too late.</summary>
+/// <param name="Job">The job.</param>
+/// <param name="Attempt">Which attempt.</param>
+public sealed record BakeTicket(string Job, int Attempt);
+
+/// <summary>A bake for the Worker to run. It is a copy: the Server has the job, and sends it again after a crash.</summary>
+/// <param name="Ticket">Which attempt this is.</param>
+/// <param name="Request">What to bake.</param>
+/// <param name="Folder">The folder to make, which is the cache's for this key.</param>
+public sealed record BakeStart(BakeTicket Ticket, BakeRequest Request, string Folder);
+
+/// <summary>How far a bake is.</summary>
+public sealed record BakeProgressNote(BakeTicket Ticket, double Fraction);
+
+/// <summary>How a bake ended. A cancelled bake has neither a manifest nor an error.</summary>
+/// <param name="Ticket">Which attempt.</param>
+/// <param name="Manifest">What is in the folder, when it finished.</param>
+/// <param name="Error">Why it could not be done, when it could not.</param>
+public sealed record BakeEnding(BakeTicket Ticket, BakeManifest? Manifest, string? Error);
 
 /// <summary>The Worker's hello.</summary>
 public sealed record WorkerHello(int Protocol, string Version, int ProcessId);
@@ -124,7 +173,14 @@ public sealed record ViewportFrame(int Width, int Height, double RenderMilliseco
 /// <param name="Document">The document, in its file format. Text, not pixels.</param>
 /// <param name="Folder">The folder compounds are read from, or null for the shipped ones alone.</param>
 /// <param name="ImageRoots">The folders a relative image reference is read from, in order.</param>
-public sealed record GraphLoad(string Session, string Document, string? Folder, IReadOnlyList<string> ImageRoots);
+/// <param name="MeshMaps">The folder Mesh Map nodes read a bake from, or null when none has been chosen.</param>
+public sealed record GraphLoad(
+    string Session,
+    string Document,
+    string? Folder,
+    IReadOnlyList<string> ImageRoots,
+    string? MeshMaps = null
+);
 
 /// <summary>
 ///     A number on a node's input or a new text on it, which is all that differs between two value edits. A knob on a

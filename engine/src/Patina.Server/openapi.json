@@ -1244,6 +1244,50 @@
         }
       }
     },
+    "/api/v1/graphs/{id}/mesh-maps": {
+      "put": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Chooses the folder of baked maps this graph\u0027s Mesh Map nodes read, and remembers it beside the file.",
+        "operationId": "SetGraphMeshMaps",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphMeshMapsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/graphs/{id}/events": {
       "get": {
         "tags": [
@@ -1280,6 +1324,237 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs": {
+      "get": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "Every job the Server remembers, newest first, and the sequence to follow from.",
+        "operationId": "GetJobs",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobPage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/bakes": {
+      "post": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "Queues a bake, or answers from the cache when the same bake has been made.",
+        "operationId": "StartBake",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BakeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/{id}": {
+      "get": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "One job.",
+        "operationId": "GetJob",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "Asks a job to stop. A running job stops at the end of its row of the atlas.",
+        "operationId": "CancelJob",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/events": {
+      "get": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "The events after a number. /ws/jobs?since= sends the same events as they happen.",
+        "operationId": "GetJobEvents",
+        "parameters": [
+          {
+            "name": "after",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JobEvent"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/{id}/previews/{map}": {
+      "get": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "An 8-bit PNG of one map of a finished bake.",
+        "operationId": "GetJobPreview",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "map",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           },
           "404": {
             "description": "Not Found",
@@ -1431,6 +1706,198 @@
           }
         },
         "description": "One shared asset as the browser shows it."
+      },
+      "BakedMapFile": {
+        "required": [
+          "map",
+          "path",
+          "resolution",
+          "scale"
+        ],
+        "type": "object",
+        "properties": {
+          "map": {
+            "type": "string",
+            "description": "What it measures."
+          },
+          "path": {
+            "type": "string",
+            "description": "The file."
+          },
+          "resolution": {
+            "type": "integer",
+            "description": "Its edge in pixels.",
+            "format": "int32"
+          },
+          "scale": {
+            "type": "number",
+            "description": "What a stored unit value is multiplied by to get the measurement back, for a signed map in an integer format;\nzero when there is nothing to undo.",
+            "format": "double"
+          }
+        },
+        "description": "One baked map, as a file."
+      },
+      "BakeRequest": {
+        "required": [
+          "high",
+          "low",
+          "output",
+          "resolution",
+          "format",
+          "supersampling",
+          "occlusionRays",
+          "searchRadius",
+          "occlusionRadius",
+          "skew",
+          "matchByName",
+          "gutter",
+          "space"
+        ],
+        "type": "object",
+        "properties": {
+          "high": {
+            "type": "string",
+            "description": "The detailed mesh."
+          },
+          "low": {
+            "type": "string",
+            "description": "The mesh baked onto, which must have texture coordinates."
+          },
+          "output": {
+            "type": "string",
+            "description": "The folder the maps are written to."
+          },
+          "cage": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A mesh with the low mesh\u0027s faces, moved outward, which the rays start from."
+          },
+          "resolution": {
+            "type": "integer",
+            "description": "The atlas\u0027s edge, in texels.",
+            "format": "int32",
+            "default": 2048
+          },
+          "maps": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "What to bake beyond \u0060normal\u0060 and \u0060height\u0060, which are always baked: \u0060ao\u0060, \u0060bent\u0060,\n\u0060curvature\u0060, \u0060thickness\u0060, \u0060position\u0060, \u0060world\u0060, \u0060id\u0060."
+          },
+          "format": {
+            "type": "string",
+            "description": "\u0060png8\u0060, \u0060png16\u0060, \u0060exr16\u0060 or \u0060exr32\u0060.",
+            "default": "png16"
+          },
+          "supersampling": {
+            "type": "integer",
+            "description": "How many samples along each side of a texel.",
+            "format": "int32",
+            "default": 1
+          },
+          "occlusionRays": {
+            "type": "integer",
+            "description": "How many rays a texel\u0027s occlusion is estimated with.",
+            "format": "int32",
+            "default": 64
+          },
+          "searchRadius": {
+            "type": "number",
+            "description": "How far a ray looks, as a fraction of the high mesh\u0027s diagonal.",
+            "format": "double",
+            "default": 0.05
+          },
+          "occlusionRadius": {
+            "type": "number",
+            "description": "How far an occluder counts, as a fraction of the diagonal.",
+            "format": "double",
+            "default": 0.5
+          },
+          "skew": {
+            "type": "number",
+            "description": "How far rays lean from the smoothed direction towards the low mesh\u0027s own normal, 0 to 1.",
+            "format": "double",
+            "default": 0
+          },
+          "skewMap": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A grey image saying where to apply the skew, or null for everywhere."
+          },
+          "matchByName": {
+            "type": "boolean",
+            "description": "Whether a part of the low mesh only strikes the high part of the same name.",
+            "default": false
+          },
+          "gutter": {
+            "type": "integer",
+            "description": "How many texels of dilation surround each chart.",
+            "format": "int32",
+            "default": 4
+          },
+          "space": {
+            "type": "string",
+            "description": "\u0060tangent\u0060 or \u0060object\u0060.",
+            "default": "tangent"
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The stem of each file\u0027s name, or null for the low mesh\u0027s."
+          }
+        },
+        "description": "A high-to-low bake. Everything is a path on the Server\u0027s machine, and the results are files there: a client\nsends paths and gets paths, whichever client it is (plan \u00A78)."
+      },
+      "BakeResult": {
+        "required": [
+          "maps",
+          "covered",
+          "missed",
+          "warnings",
+          "cached"
+        ],
+        "type": "object",
+        "properties": {
+          "maps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BakedMapFile"
+            },
+            "description": "The files."
+          },
+          "covered": {
+            "type": "integer",
+            "description": "How many texels held chart content.",
+            "format": "int64"
+          },
+          "missed": {
+            "type": "integer",
+            "description": "How many found no source and took the closest point instead.",
+            "format": "int64"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What could not be baked as asked."
+          },
+          "cached": {
+            "type": "boolean",
+            "description": "Whether this was found in the cache and nothing ran."
+          }
+        },
+        "description": "What a finished bake made."
       },
       "GraphCommand": {
         "required": [
@@ -2584,6 +3051,19 @@
         },
         "description": "Asks for a node\u0027s picture at the size the graph computes it."
       },
+      "GraphMeshMapsRequest": {
+        "type": "object",
+        "properties": {
+          "folder": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A folder holding a bake\u0027s files, or null to read none."
+          }
+        },
+        "description": "Says which folder of baked maps a graph\u0027s Mesh Map nodes read."
+      },
       "GraphNodePosition": {
         "required": [
           "node",
@@ -3106,6 +3586,117 @@
         },
         "description": "A project that depends on a shared asset."
       },
+      "JobEvent": {
+        "required": [
+          "sequence",
+          "job"
+        ],
+        "type": "object",
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "description": "The number, rising with each event.",
+            "format": "int64"
+          },
+          "job": {
+            "description": "The job as it now stands.",
+            "$ref": "#/components/schemas/JobState"
+          }
+        },
+        "description": "A job changing. Numbered, so a client that dropped its socket can ask what it missed."
+      },
+      "JobPage": {
+        "required": [
+          "jobs",
+          "sequence"
+        ],
+        "type": "object",
+        "properties": {
+          "jobs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JobState"
+            },
+            "description": "Newest first."
+          },
+          "sequence": {
+            "type": "integer",
+            "description": "The newest event\u0027s number.",
+            "format": "int64"
+          }
+        },
+        "description": "Every job the Server remembers, and the sequence a client can follow from."
+      },
+      "JobState": {
+        "required": [
+          "id",
+          "key",
+          "state",
+          "progress",
+          "attempts",
+          "created",
+          "bake",
+          "cancelRequested"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Its identity."
+          },
+          "key": {
+            "type": "string",
+            "description": "The build key of what it makes."
+          },
+          "state": {
+            "type": "string",
+            "description": "One of JobStates."
+          },
+          "progress": {
+            "type": "number",
+            "description": "How far through it is, 0 to 1.",
+            "format": "double"
+          },
+          "attempts": {
+            "type": "integer",
+            "description": "How many Workers have started it.",
+            "format": "int32"
+          },
+          "created": {
+            "type": "string",
+            "description": "When it was asked for, in UTC.",
+            "format": "date-time"
+          },
+          "bake": {
+            "description": "What to do.",
+            "$ref": "#/components/schemas/BakeRequest"
+          },
+          "result": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What it made, once done.",
+                "$ref": "#/components/schemas/BakeResult"
+              }
+            ]
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why it failed."
+          },
+          "cancelRequested": {
+            "type": "boolean",
+            "description": "Whether a client has asked for it to stop.",
+            "default": false
+          }
+        },
+        "description": "A piece of work the Server owns, which outlives the Worker running it and the Server itself."
+      },
       "LibraryInfo": {
         "required": [
           "id",
@@ -3555,6 +4146,9 @@
     },
     {
       "name": "Library"
+    },
+    {
+      "name": "Jobs"
     }
   ]
 }

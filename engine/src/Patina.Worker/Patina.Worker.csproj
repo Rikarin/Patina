@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>The process that will own the GPU device and native parsers. Stateless: it executes what the Server asks and can be restarted at any time. It renders the viewport and evaluates texture graphs.</Description>
+    <Description>The process that will own the GPU device and native parsers. Stateless: it executes what the Server asks and can be restarted at any time. It renders the viewport, evaluates texture graphs and runs bakes.</Description>
     <OutputType>Exe</OutputType>
     <AssemblyName>patina-worker</AssemblyName>
     <RootNamespace>Patina.Worker</RootNamespace>
@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Patina.Contracts/Patina.Contracts.csproj"/>
+    <ProjectReference Include="../Patina.Export/Patina.Export.csproj"/>
     <ProjectReference Include="../Patina.Ipc/Patina.Ipc.csproj"/>
     <ProjectReference Include="../Patina.Viewport/Patina.Viewport.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.TextureGraph/Vixen.TextureGraph.csproj"/>

@@ -56,6 +56,39 @@ sealed class KeyHash : IDisposable {
     }
 }
 
+/// <summary>The key of a bake: the files it reads, what it was asked for, and what bakes.</summary>
+public static class BakeKeys {
+    /// <summary>The tool whose version a bake's key carries.</summary>
+    public const string Tool = "mesh-maps";
+
+    /// <summary>
+    ///     The key. Inputs count by content and by role, so renaming a mesh or moving it reuses the bake, and swapping
+    ///     the high and the low does not. Where the maps are going is not in it, nor is the name of a file.
+    /// </summary>
+    /// <param name="files">Each input's role and revision.</param>
+    /// <param name="settings">Everything that changes a pixel.</param>
+    /// <param name="tools">The installed tool versions.</param>
+    public static BuildKey Compute(
+        IReadOnlyDictionary<string, Revision> files,
+        IReadOnlyDictionary<string, string> settings,
+        ToolCatalog tools
+    ) {
+        using var hash = new KeyHash("patina.bake.v1").Add(Tool).Add(tools.VersionOf(Tool));
+
+        hash.Add(files.Count);
+        foreach (var (role, revision) in files.OrderBy(static f => f.Key, StringComparer.Ordinal)) {
+            hash.Add(role).Add(revision.Text);
+        }
+
+        hash.Add(settings.Count);
+        foreach (var (name, value) in settings.OrderBy(static s => s.Key, StringComparer.Ordinal)) {
+            hash.Add(name).Add(value);
+        }
+
+        return hash.Finish();
+    }
+}
+
 /// <summary>A shared asset as keys see it.</summary>
 /// <param name="Id">The asset.</param>
 /// <param name="Content">The hash of its file, or null when the file is missing.</param>

@@ -5,7 +5,7 @@ using System.Diagnostics;
 namespace Patina.Worker;
 
 /// <summary>Stays connected to the Server until stopped.</summary>
-sealed class WorkerLoop(ViewportHost viewport, GraphHost graphs) {
+sealed class WorkerLoop(ViewportHost viewport, GraphHost graphs, BakeHost bakes) {
     static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
     static readonly long Started = Stopwatch.GetTimestamp();
 
@@ -33,7 +33,8 @@ sealed class WorkerLoop(ViewportHost viewport, GraphHost graphs) {
 
     async Task RunLinkAsync(string socketPath, TextWriter log, CancellationToken cancellationToken) {
         var stream = await IpcSocket.ConnectAsync(socketPath, ConnectTimeout, cancellationToken);
-        var connection = new IpcConnection(stream, AnswerAsync);
+        IpcConnection? connection = null;
+        connection = new(stream, (request, token) => AnswerAsync(connection!, request, token));
         await using (connection) {
             connection.Start();
             await connection.SendAsync(
@@ -44,12 +45,16 @@ sealed class WorkerLoop(ViewportHost viewport, GraphHost graphs) {
                 cancellationToken
             );
             await log.WriteLineAsync($"patina-worker {ProductInfo.Version} connected to {socketPath}");
-            await connection.Closed.WaitAsync(cancellationToken);
-            await log.WriteLineAsync("patina-worker: the Server disconnected");
+            try {
+                await connection.Closed.WaitAsync(cancellationToken);
+                await log.WriteLineAsync("patina-worker: the Server disconnected");
+            } finally {
+                bakes.LinkLost();
+            }
         }
     }
 
-    ValueTask<IpcMessage> AnswerAsync(IpcMessage request, CancellationToken cancellationToken) =>
+    ValueTask<IpcMessage> AnswerAsync(IpcConnection link, IpcMessage request, CancellationToken cancellationToken) =>
         ValueTask.FromResult(
             request.Type switch {
                 IpcTypes.Health => new() { Type = IpcTypes.Ok, Health = Health() },
@@ -60,6 +65,8 @@ sealed class WorkerLoop(ViewportHost viewport, GraphHost graphs) {
                 IpcTypes.GraphEvaluate => graphs.Evaluate(request),
                 IpcTypes.GraphImage => graphs.Image(request),
                 IpcTypes.GraphClose => graphs.Close(request),
+                IpcTypes.BakeStart => bakes.Start(request, link),
+                IpcTypes.BakeCancel => bakes.Cancel(request),
                 _ => IpcMessage.Fail(request.Id, $"Unknown request '{request.Type}'.")
             }
         );

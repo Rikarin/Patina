@@ -1,5 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Server-to-Worker protocol: message envelope and length-prefixed JSON framing over a Unix domain socket. Plain types only, no GPU or domain dependencies. It carries commands and hashes; pixels never cross it (plan §3.1).</Description>
+    <Description>Server-to-Worker protocol: message envelope and length-prefixed JSON framing over a Unix domain socket. Plain types and the public contracts, no GPU or domain dependencies. It carries commands and hashes; pixels never cross it (plan §3.1).</Description>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Patina.Contracts/Patina.Contracts.csproj"/>
+  </ItemGroup>
 </Project>

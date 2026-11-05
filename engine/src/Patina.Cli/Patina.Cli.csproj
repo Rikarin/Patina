@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>The patina command: `version`, `library new`, `library check`, and `bake`, which evaluates a texture graph on a GPU with no UI.</Description>
+    <Description>The patina command: `version`, `library new`, `library check`, `bake`, which evaluates a texture graph on a GPU with no UI, and `bake-maps`, a high-to-low bake on the CPU in this process.</Description>
     <OutputType>Exe</OutputType>
     <AssemblyName>patina</AssemblyName>
     <RootNamespace>Patina.Cli</RootNamespace>
@@ -8,6 +8,8 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Patina.Contracts/Patina.Contracts.csproj"/>
+    <ProjectReference Include="../Patina.Export/Patina.Export.csproj"/>
+    <ProjectReference Include="../Patina.Jobs/Patina.Jobs.csproj"/>
     <ProjectReference Include="../Patina.Library/Patina.Library.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.TextureGraph/Vixen.TextureGraph.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.NodeGraph/Vixen.NodeGraph.csproj"/>

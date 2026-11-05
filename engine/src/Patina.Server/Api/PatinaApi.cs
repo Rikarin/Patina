@@ -63,6 +63,8 @@ static class PatinaApi {
 
         api.MapGraphApi();
         app.MapGraphSocket();
+        api.MapJobApi();
+        app.MapJobSocket();
     }
 
     static Results<Ok<ViewportState>, ProblemHttpResult> SetMesh(ViewportMeshRequest request, ViewportSession session) {
