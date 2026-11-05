@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using Vixen.Authoring;
 using Vixen.Core.Imaging;
-using Vixen.Core.Mathematics;
 using Vixen.TextureGraph;
 using Vixen.Texturing.Layers;
 using Vixen.Texturing.Painting;
@@ -304,7 +303,7 @@ sealed class StackHost(DeviceHost gpu) : SessionHost<StackHost.Session> {
                         Falloff = part.Brush.Falloff
                     },
                     part.Colour,
-                    gutter: 0
+                    0
                 )
             );
             known[part.Id] = stroke;
@@ -313,7 +312,7 @@ sealed class StackHost(DeviceHost gpu) : SessionHost<StackHost.Session> {
 
         static void Extend(Applied stroke, StackPaintPart part) {
             foreach (var stamp in part.Stamps) {
-                stroke.Stroke.MoveTo(new Vector2(stamp.X, stamp.Y));
+                stroke.Stroke.MoveTo(new(stamp.X, stamp.Y));
             }
 
             if (!part.Open) {

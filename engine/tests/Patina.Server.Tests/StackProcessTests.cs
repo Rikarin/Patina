@@ -201,7 +201,7 @@ public sealed class StackProcessTests : IDisposable {
         var repaired = 0;
         for (var stamp = 0; stamp < 120; stamp++) {
             var clock = Stopwatch.GetTimestamp();
-            var sent = await PaintAsync(state.Id, "drag", [new(100f + (stamp * 6f), 300f)], true, deadline.Token);
+            var sent = await PaintAsync(state.Id, "drag", [new(100f + stamp * 6f, 300f)], true, deadline.Token);
             var evaluation = await EvaluatedAsync(socket, sent.Revision, deadline.Token);
             foreach (var preview in evaluation.Previews) {
                 _ = await http.GetByteArrayAsync($"/api/v1/previews/{preview.Hash}", deadline.Token);
@@ -265,7 +265,7 @@ public sealed class StackProcessTests : IDisposable {
         // More stamps than a checkpoint allows, in strokes.
         StackEditResult last = null!;
         for (var stroke = 0; stroke < 5; stroke++) {
-            last = await PaintAsync(state.Id, $"s{stroke}", Line(20, 100 + (stroke * 40), 500), false, deadline.Token);
+            last = await PaintAsync(state.Id, $"s{stroke}", Line(20, 100 + stroke * 40, 500), false, deadline.Token);
         }
 
         await EvaluatedAsync(socket, last.Revision, deadline.Token);
@@ -325,7 +325,7 @@ public sealed class StackProcessTests : IDisposable {
         maps.Single(m => string.Equals(m.Usage, usage, StringComparison.Ordinal)).Digest;
 
     static IReadOnlyList<StackStamp> Line(float x, float y, int count) =>
-        [..Enumerable.Range(0, count).Select(index => new StackStamp(x + (index * 6f), y + (index % 3)))];
+        [..Enumerable.Range(0, count).Select(index => new StackStamp(x + index * 6f, y + index % 3))];
 
     static CancellationTokenSource Deadline(int seconds) {
         var deadline = CancellationTokenSource.CreateLinkedTokenSource(Token);

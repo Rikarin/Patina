@@ -109,8 +109,8 @@ static class PaintBench {
         for (var stamp = 0; stamp < stamps; stamp++) {
             var angle = stamp * 0.05f;
             var at = new Vixen.Core.Mathematics.Vector2(
-                (size / 2f) + (MathF.Cos(angle) * size * 0.3f),
-                (size / 2f) + (MathF.Sin(angle * 0.7f) * size * 0.3f)
+                size / 2f + MathF.Cos(angle) * size * 0.3f,
+                size / 2f + MathF.Sin(angle * 0.7f) * size * 0.3f
             );
 
             var start = Stopwatch.GetTimestamp();
@@ -147,9 +147,7 @@ static class PaintBench {
         var box = dirty.Clip(size, size);
         for (var y = box.Y / Tile; !box.IsEmpty && y <= (box.EndY - 1) / Tile; y++) {
             for (var x = box.X / Tile; x <= (box.EndX - 1) / Tile; x++) {
-                tiles.Add(
-                    new(x * Tile, y * Tile, Math.Min(Tile, size - (x * Tile)), Math.Min(Tile, size - (y * Tile)))
-                );
+                tiles.Add(new(x * Tile, y * Tile, Math.Min(Tile, size - x * Tile), Math.Min(Tile, size - y * Tile)));
             }
         }
 
@@ -171,7 +169,7 @@ static class PaintBench {
             [LayerBlendMode.Copy, LayerBlendMode.Multiply, LayerBlendMode.Overlay, LayerBlendMode.Screen];
         for (var index = 0; index < layerCount; index++) {
             var id = $"layer{index}";
-            var opacity = 0.5f + (0.05f * (index % 8));
+            var opacity = 0.5f + 0.05f * (index % 8);
             layers.Add(
                 (index, index % 5) switch {
                     _ when index == paintedAt => new() { Id = id, Kind = LayerKind.Paint, Paint = $"{id}.vxpaint" },
@@ -209,7 +207,7 @@ static class PaintBench {
                         Opacity = opacity,
                         Values = wanted.ToDictionary(
                             static c => c.Usage,
-                            c => (float[])[0.3f, 0.5f, 0.7f, 1f - (Array.IndexOf(usages, c.Usage) * 0.1f)]
+                            c => (float[])[0.3f, 0.5f, 0.7f, 1f - Array.IndexOf(usages, c.Usage) * 0.1f]
                         )
                     }
                 }
