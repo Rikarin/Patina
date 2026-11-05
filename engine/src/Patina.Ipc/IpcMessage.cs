@@ -113,11 +113,15 @@ public sealed record ViewportFrame(int Width, int Height, double RenderMilliseco
 /// <param name="Folder">The folder compounds are read from, or null for the shipped ones alone.</param>
 public sealed record GraphLoad(string Session, string Document, string? Folder);
 
-/// <summary>A number on a node's input, which is all that differs between two value edits.</summary>
+/// <summary>
+///     A number on a node's input or a new text on it, which is all that differs between two value edits. A knob on a
+///     compound is a text, and only the Worker's compiler can tell a knob from a setting that changes the plan.
+/// </summary>
 /// <param name="Node">The node.</param>
-/// <param name="Port">The input.</param>
+/// <param name="Port">The input, or the setting's name.</param>
 /// <param name="Lanes">The numbers, or null when the input has gone back to its default.</param>
-public sealed record GraphValue(int Node, string Port, IReadOnlyList<float>? Lanes);
+/// <param name="Text">The setting's text, or null when this is a number.</param>
+public sealed record GraphValue(int Node, string Port, IReadOnlyList<float>? Lanes, string? Text = null);
 
 /// <summary>Evaluates a loaded graph.</summary>
 /// <param name="Session">The Server's name for it.</param>

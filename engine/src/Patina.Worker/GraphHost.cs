@@ -167,7 +167,9 @@ sealed class GraphHost : IDisposable {
                     throw new IpcException($"Graph '{graph.Name}' has no node {value.Node}.");
                 }
 
-                if (value.Lanes is { } lanes) {
+                if (value.Text is { } text) {
+                    node.SetText(value.Port, text);
+                } else if (value.Lanes is { } lanes) {
                     node.SetValue(value.Port, [..lanes]);
                 } else {
                     node.ClearValue(value.Port);
@@ -175,7 +177,7 @@ sealed class GraphHost : IDisposable {
             }
         }
 
-        /// <summary>Brings the plan up to date, compiling only when the numbers alone could not (plan §3.2).</summary>
+        /// <summary>Brings the plan up to date, compiling only when a change was more than a value (plan §3.2).</summary>
         public GraphResultProblem[] Prepare(TexturePlanEvaluator evaluator, out bool compiled) {
             compiled = false;
             if (compiler.Refresh(graph) is { } refreshed) {

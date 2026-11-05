@@ -41,3 +41,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   client's edits arriving without a reload. The Inspector sets a selected node's numbers, colours, text and choices, and
   the Texture pane shows its picture. The pane says when no graph is open, when the Worker or the Server has gone, what the
   compiler reported, and what is unsaved.
+- A slider on a compound, or on an exposed parameter, no longer recompiles the graph.
+- Graphs can compute in 32-bit float: `bitDepth: 32` in a graph's settings, for height and position. PNG previews and
+  bakes are still eight bits.
+- `GET /api/v1/graphs/{id}/node-types` gives each input port's `minimum`, `maximum`, `softMinimum` and `softMaximum`
+  where the node defines them, and the Inspector's sliders use them.

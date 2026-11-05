@@ -2072,6 +2072,38 @@
           "summary": {
             "type": "string",
             "description": "One line about it."
+          },
+          "minimum": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "The smallest number that means anything, or null when open.",
+            "format": "float"
+          },
+          "maximum": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "The largest number that means anything, or null when open.",
+            "format": "float"
+          },
+          "softMinimum": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Where a slider starts, when the port\u0027s meaning gives that; numbers go on past it.",
+            "format": "float"
+          },
+          "softMaximum": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Where a slider ends, the same way.",
+            "format": "float"
           }
         },
         "description": "One port of a node type."

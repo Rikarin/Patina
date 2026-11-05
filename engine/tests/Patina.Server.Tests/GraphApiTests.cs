@@ -89,6 +89,10 @@ public sealed class GraphApiTests : IDisposable {
                     blur.Ports.Single(static p => p.Name == "Radius").Kind)
             );
             Assert.Equal(8f, Assert.Single(blur.Ports.Single(static p => p.Name == "Radius").Default));
+            var radius = blur.Ports.Single(static p => p.Name == "Radius");
+            Assert.Equal((0f, null), (radius.Minimum, radius.Maximum));
+            var hue = types.Single(static type => type.Path == "Colour/HSL").Ports.Single(static p => p.Name == "Hue");
+            Assert.Equal((null, -0.5f, 0.5f), (hue.Minimum, hue.SoftMinimum, hue.SoftMaximum));
             var blend = types.Single(static type => type.Path == "Colour/Blend");
             Assert.Contains("Multiply", blend.Settings.Single(static s => s.Name == "Mode").Accepted);
             Assert.Contains(types, static type => type.Path == "Patterns/Cells");

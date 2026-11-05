@@ -2,7 +2,16 @@ import type { GraphNodeType, GraphPortDefinition, GraphSettingDefinition } from 
 
 /** A row of the Inspector: one thing a node lets an author set. */
 export type GraphField =
-  | { control: 'number'; source: 'value'; name: string; summary: string; fallback: readonly number[]; whole: boolean }
+  | {
+      control: 'number';
+      source: 'value';
+      name: string;
+      summary: string;
+      fallback: readonly number[];
+      whole: boolean;
+      minimum: number | null;
+      maximum: number | null;
+    }
   | { control: 'switch'; source: 'value'; name: string; summary: string; fallback: readonly number[] }
   | { control: 'colour'; source: 'value'; name: string; summary: string; fallback: readonly number[] }
   | {
@@ -31,11 +40,15 @@ export function isWireable(port: GraphPortDefinition): boolean {
 
 function fieldOfPort(port: GraphPortDefinition): GraphField | null {
   const base = { source: 'value', name: port.name, summary: port.summary, fallback: port.default } as const;
+  const range = {
+    minimum: port.softMinimum ?? port.minimum ?? null,
+    maximum: port.softMaximum ?? port.maximum ?? null
+  };
   switch (port.kind) {
     case 'Float':
-      return { ...base, control: 'number', whole: false };
+      return { ...base, ...range, control: 'number', whole: false };
     case 'Int':
-      return { ...base, control: 'number', whole: true };
+      return { ...base, ...range, control: 'number', whole: true };
     case 'Bool':
       return { ...base, control: 'switch' };
     case 'Float4':
@@ -89,8 +102,8 @@ export function fieldsOf(type: GraphNodeType): readonly GraphFieldGroup[] {
 }
 
 /**
- * The range a slider covers. A setting declares one; an input port does not, so this guesses from its default and
- * widens to reach whatever is set. The number box beside it takes anything, so a guess can never cost a value.
+ * The range a slider covers. A setting or a port declares what it can, and an open end is guessed from the default.
+ * Either way the range widens to reach whatever is set, since the number box beside it takes anything.
  */
 export function sliderRange(
   value: number,
@@ -98,8 +111,8 @@ export function sliderRange(
   declared?: { minimum: number | null; maximum: number | null }
 ): { min: number; max: number } {
   const span = Math.max(1, Math.abs(fallback) * 4);
-  const min = declared?.minimum ?? Math.min(0, fallback < 0 ? -span : 0, value);
-  const max = declared?.maximum ?? Math.max(span, value);
+  const min = Math.min(declared?.minimum ?? Math.min(0, fallback < 0 ? -span : 0), value);
+  const max = Math.max(declared?.maximum ?? span, value);
   return { min, max: max > min ? max : min + 1 };
 }
 

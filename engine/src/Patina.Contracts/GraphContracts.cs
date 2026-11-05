@@ -51,12 +51,20 @@ public sealed record GraphSettingDefinition(
 /// <param name="Kind">What it carries: Image, Float, Float4 and so on.</param>
 /// <param name="Default">The numbers an unset input takes.</param>
 /// <param name="Summary">One line about it.</param>
+/// <param name="Minimum">The smallest number that means anything, or null when open.</param>
+/// <param name="Maximum">The largest number that means anything, or null when open.</param>
+/// <param name="SoftMinimum">Where a slider starts, when the port's meaning gives that; numbers go on past it.</param>
+/// <param name="SoftMaximum">Where a slider ends, the same way.</param>
 public sealed record GraphPortDefinition(
     string Name,
     string Direction,
     string Kind,
     IReadOnlyList<float> Default,
-    string Summary
+    string Summary,
+    float? Minimum,
+    float? Maximum,
+    float? SoftMinimum,
+    float? SoftMaximum
 );
 
 /// <summary>A node a client can add, for a palette.</summary>

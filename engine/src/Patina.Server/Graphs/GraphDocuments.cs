@@ -93,7 +93,11 @@ public static class GraphDocuments {
                         port.Direction.ToString(),
                         port.Kind.ToString(),
                         port.Default,
-                        port.Summary
+                        port.Summary,
+                        Bound(port.Minimum),
+                        Bound(port.Maximum),
+                        Bound(port.SoftMinimum),
+                        Bound(port.SoftMaximum)
                     )
                 )
             ],
@@ -133,9 +137,9 @@ public static class GraphDocuments {
     }
 
     /// <summary>
-    ///     What a Worker holding <paramref name="told" /> needs to reach <paramref name="now" />, if numbers on inputs
-    ///     will do it. Null means anything else changed and it needs the whole document; empty means nothing it
-    ///     computes from changed, as after a move.
+    ///     What a Worker holding <paramref name="told" /> needs to reach <paramref name="now" />, if numbers and texts
+    ///     on nodes will do it. Null means anything else changed and it needs the whole document; empty means nothing
+    ///     it computes from changed, as after a move. A text its compiler cannot refresh from, it compiles.
     /// </summary>
     public static IReadOnlyList<GraphValue>? Values(NodeGraphAsset told, NodeGraphAsset now) {
         if (told.Nodes.Length != now.Nodes.Length
@@ -149,7 +153,7 @@ public static class GraphDocuments {
             var (was, node) = (told.Nodes[i], now.Nodes[i]);
             if (was.Id != node.Id
                 || !string.Equals(was.Type, node.Type, StringComparison.Ordinal)
-                || !SameTexts(was.Texts, node.Texts)) {
+                || was.Texts.Keys.Any(key => !node.Texts.ContainsKey(key))) {
                 return null;
             }
 
@@ -169,6 +173,10 @@ public static class GraphDocuments {
         values.AddRange(
             was.Values.Keys.Where(port => !node.Values.ContainsKey(port))
                 .Select(port => new GraphValue(node.Id, port, null))
+        );
+        values.AddRange(
+            node.Texts.Where(text => was.Texts.GetValueOrDefault(text.Key) != text.Value)
+                .Select(text => new GraphValue(node.Id, text.Key, null, text.Value))
         );
     }
 
