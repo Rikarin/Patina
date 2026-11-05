@@ -220,7 +220,10 @@ public sealed class ViewportSession(
         }
 
         if (work.Stack != toldStack) {
-            await connection.SendAsync(new() { Type = IpcTypes.ViewportStack, Following = work.Stack }, cancellationToken);
+            await connection.SendAsync(
+                new() { Type = IpcTypes.ViewportStack, Following = work.Stack },
+                cancellationToken
+            );
             toldStack = work.Stack;
         }
 
@@ -288,7 +291,8 @@ public sealed class ViewportSession(
         lock (changing) {
             return subscribers.Count == 0
                 ? (null, revision)
-                : (new(mesh, stack, painted, maps, camera, width, height, scale.Value, interacting, lastInput), revision);
+                : (new(mesh, stack, painted, maps, camera, width, height, scale.Value, interacting, lastInput),
+                    revision);
         }
     }
 

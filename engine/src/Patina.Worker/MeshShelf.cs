@@ -25,7 +25,10 @@ sealed class MeshShelf {
                 throw new IpcException($"'{path}' has no texture coordinates, so nothing can be painted on it.");
             }
 
-            var mesh = new Mesh(geometry, PaintProjection.Over(geometry.Positions, geometry.Coordinates, geometry.Indices));
+            var mesh = new Mesh(
+                geometry,
+                PaintProjection.Over(geometry.Positions, geometry.Coordinates, geometry.Indices)
+            );
             held[path] = (written, mesh);
             return mesh;
         } catch (Exception e) when (e is ModelFormatException or IOException or UnauthorizedAccessException) {

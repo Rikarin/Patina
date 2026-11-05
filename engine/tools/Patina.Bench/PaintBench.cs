@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+using Patina.Viewport;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Globalization;
-using Patina.Viewport;
 using Vixen.Graphics.Vulkan;
 using Vixen.TextureGraph;
 using Vixen.Texturing;
@@ -58,12 +58,18 @@ static class PaintBench {
         }
 
         var brush = PaintBrush.Default with { Radius = radius, Flow = 1f };
-        var stroke = new PaintStroke(canvas.Channel("baseColor"), surface.Coverage, brush, 0xFF2020E0u, placement: surface.Through(view));
+        var stroke = new PaintStroke(
+            canvas.Channel("baseColor"),
+            surface.Coverage,
+            brush,
+            0xFF2020E0u,
+            placement: surface.Through(view)
+        );
         clock.Restart();
         List<double> times = [];
         for (var move = 0; move < moves; move++) {
             var start = Stopwatch.GetTimestamp();
-            stroke.MoveTo(new(190f + (move * 2.5f), 120f + (MathF.Sin(move / 6f) * 6f)));
+            stroke.MoveTo(new(190f + move * 2.5f, 120f + MathF.Sin(move / 6f) * 6f));
             times.Add(Stopwatch.GetElapsedTime(start).TotalMilliseconds);
         }
 

@@ -1,3 +1,4 @@
+using Patina.Bench;
 using Patina.Contracts;
 using System.Diagnostics;
 using System.Net;
@@ -5,7 +6,6 @@ using System.Net.Http.Json;
 using System.Net.WebSockets;
 using System.Security.Cryptography;
 using System.Text.Json;
-using Patina.Bench;
 using Vixen.Core.Imaging;
 
 namespace Patina.Server.Tests;
@@ -194,16 +194,26 @@ public sealed class StackProcessTests : IDisposable {
         var layers = (await StateAsync(state.Id, deadline.Token)).Layers;
         var (group, fill, filter) = (layers[^3].Id, layers[^2].Id, layers[^1].Id);
         await EditAsync(state.Id, deadline.Token, new StackNestLayer(fill, group));
-        Assert.Equal(fill, (await StateAsync(state.Id, deadline.Token)).Layers.Single(l => l.Id == group).Children[0].Id);
+        Assert.Equal(
+            fill,
+            (await StateAsync(state.Id, deadline.Token)).Layers.Single(l => l.Id == group).Children[0].Id
+        );
 
         await EditAsync(
             state.Id,
             deadline.Token,
-            new StackSetLayer(filter, Settings: new Dictionary<string, IReadOnlyList<float>> { ["Saturation"] = [0.2f] }),
+            new StackSetLayer(
+                filter,
+                Settings: new Dictionary<string, IReadOnlyList<float>> { ["Saturation"] = [0.2f] }
+            ),
             new StackSetLayer(fill, Mask: new("Constant", 0.6f)),
             new StackSetLayer(group, Mask: new("Anchor", Anchor: "paint"))
         );
-        var painted = await EditAsync(state.Id, deadline.Token, Across("one", await AimAsync(0.5, 0.5, deadline.Token), 300, 500, 300, false));
+        var painted = await EditAsync(
+            state.Id,
+            deadline.Token,
+            Across("one", await AimAsync(0.5, 0.5, deadline.Token), 300, 500, 300, false)
+        );
         await EvaluatedAsync(socket, painted.Revision, deadline.Token);
         await SameAsExportAsync(state, "stack", deadline.Token);
 

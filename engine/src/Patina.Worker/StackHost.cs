@@ -1,9 +1,9 @@
 using Patina.Contracts;
 using Patina.Graphs;
 using Patina.Ipc;
+using Patina.Viewport;
 using System.Diagnostics;
 using System.Security.Cryptography;
-using Patina.Viewport;
 using Vixen.Authoring;
 using Vixen.Core.Imaging;
 using Vixen.Core.Mathematics;

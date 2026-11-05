@@ -49,8 +49,11 @@ public sealed record ViewportRepair(ViewportRect Rect, byte[] Pixels);
 /// </summary>
 /// <remarks>
 ///     <para>
-///         <b>Eight bits, in the same formats a file of them gets, so that a stack's map is seen as its exported file
-///         would be.</b> The stack's own outputs are half-float, and sampling one would filter sRGB numbers without
+///         <b>
+///             Eight bits, in the same formats a file of them gets, so that a stack's map is seen as its exported file
+///             would be.
+///         </b>
+///         The stack's own outputs are half-float, and sampling one would filter sRGB numbers without
 ///         decoding them and show precision no export has. The price is one read-back per stamp, which ADR 0009's
 ///         table already includes.
 ///     </para>
@@ -63,14 +66,12 @@ public sealed record ViewportRepair(ViewportRect Rect, byte[] Pixels);
 sealed class ViewportLiveMap : IDisposable {
     const int BytesPerTexel = 4;
 
-    static readonly float[] ToLinear = Enumerable.Range(0, 256)
-        .Select(static value => Decode(value / 255f))
-        .ToArray();
+    static readonly float[] ToLinear = [..Enumerable.Range(0, 256).Select(static value => Decode(value / 255f))];
 
     /// <summary>Linear back to sRGB in steps fine enough for the dark end, since a stamp's mips run this per texel.</summary>
-    static readonly byte[] FromLinear = Enumerable.Range(0, 1 << 14)
-        .Select(static value => Coded(value / (float)((1 << 14) - 1)))
-        .ToArray();
+    static readonly byte[] FromLinear = [
+        ..Enumerable.Range(0, 1 << 14).Select(static value => Coded(value / (float)((1 << 14) - 1)))
+    ];
 
     readonly VulkanDevice device;
     readonly MapMeaning meaning;
@@ -142,13 +143,9 @@ sealed class ViewportLiveMap : IDisposable {
             new(bytes, BufferUsage.CopyDestination, MemoryAccess.HostReadback, "viewport live map readback")
         );
         using (var commands = device.BeginCommandList(QueueKind.Graphics, "viewport live map readback")) {
-            commands.Barrier(
-                new BarrierGroup([], [new(texture, ResourceState.ShaderRead, ResourceState.CopySource)])
-            );
+            commands.Barrier(new BarrierGroup([], [new(texture, ResourceState.ShaderRead, ResourceState.CopySource)]));
             commands.CopyTextureToBuffer(new(texture), new(Width, Height, 1), readback, 0);
-            commands.Barrier(
-                new BarrierGroup([], [new(texture, ResourceState.CopySource, ResourceState.ShaderRead)])
-            );
+            commands.Barrier(new BarrierGroup([], [new(texture, ResourceState.CopySource, ResourceState.ShaderRead)]));
             commands.Finish();
             device.GraphicsQueue.Submit([commands]);
         }
@@ -188,6 +185,7 @@ sealed class ViewportLiveMap : IDisposable {
                 ? ((Math.Min(row, from.EndY - 1) - from.Y) * from.Width + Math.Min(column, from.EndX - 1) - from.X)
                 * BytesPerTexel
                 : (Math.Min(row, sourceHeight - 1) * sourceWidth + Math.Min(column, sourceWidth - 1)) * BytesPerTexel;
+
         var read = below ?? source;
 
         Parallel.For(

@@ -168,7 +168,7 @@ public sealed class ViewportRenderer : IDisposable {
             map = live[(int)slot] = new(device, Meaning(slot), width, height);
         }
 
-        map!.Repair([new(new(0, 0, width, height), pixels.ToArray())]);
+        map!.Repair([new(new(0, 0, width, height), [..pixels])]);
         if (created && geometry is { } scene) {
             Show(scene.Mesh);
         }
@@ -261,7 +261,6 @@ public sealed class ViewportRenderer : IDisposable {
 
     /// <summary>A material with the pictures laid over it, each slot read as what it means.</summary>
     MaterialBinding Material(ViewportMaterial material, ViewportMesh mesh) {
-        var folder = meshFolder ?? string.Empty;
         var own = material.Textures;
 
         var factors = material.Factors;
@@ -288,29 +287,37 @@ public sealed class ViewportRenderer : IDisposable {
                     MapMeaning.Measurement,
                     textures.Open
                 ),
-                Slot(ViewportSlot.Metallic, maps.Metallic, own.MetallicRoughness, MapMeaning.Measurement, textures.Open),
+                Slot(
+                    ViewportSlot.Metallic,
+                    maps.Metallic,
+                    own.MetallicRoughness,
+                    MapMeaning.Measurement,
+                    textures.Open
+                ),
                 Slot(ViewportSlot.Occlusion, maps.Occlusion, own.Occlusion, MapMeaning.Measurement, textures.Open)
             ),
             mapSampler
         );
-
-        bool Covered(ViewportSlot slot, ViewportMapFile? file) => live[(int)slot] is not null || file is not null;
-
-        TextureViewHandle Slot(
-            ViewportSlot slot,
-            ViewportMapFile? file,
-            ModelTexture? image,
-            MapMeaning meaning,
-            TextureViewHandle empty
-        ) =>
-            live[(int)slot] is { } map
-                ? map.View
-                : file is not null
-                    ? textures.Of(file, meaning)
-                    : image is not null
-                        ? textures.Of(image, folder, meaning)
-                        : empty;
     }
+
+    /// <summary>Whether a picture fills a slot, so the material's own factor for it stands down.</summary>
+    bool Covered(ViewportSlot slot, ViewportMapFile? file) => live[(int)slot] is not null || file is not null;
+
+    /// <summary>What a slot samples: live pixels, a picture laid over, the material's own image, or nothing.</summary>
+    TextureViewHandle Slot(
+        ViewportSlot slot,
+        ViewportMapFile? file,
+        ModelTexture? image,
+        MapMeaning meaning,
+        TextureViewHandle empty
+    ) =>
+        live[(int)slot] is { } map
+            ? map.View
+            : file is not null
+                ? textures.Of(file, meaning)
+                : image is not null
+                    ? textures.Of(image, meshFolder ?? string.Empty, meaning)
+                    : empty;
 
     static MapMeaning Meaning(ViewportSlot slot) =>
         slot switch {

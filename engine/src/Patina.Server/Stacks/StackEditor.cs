@@ -466,7 +466,9 @@ public sealed class StackEditor : ILayerStackDocument {
 
         if (stroke.View is not { } view) {
             if (stroke.Mirror is not null) {
-                throw new StackEditRefusedException("Only a stroke with a view can be mirrored: a mirror is on the mesh.");
+                throw new StackEditRefusedException(
+                    "Only a stroke with a view can be mirrored: a mirror is on the mesh."
+                );
             }
 
             return;

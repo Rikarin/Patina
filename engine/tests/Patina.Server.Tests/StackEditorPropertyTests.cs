@@ -122,9 +122,15 @@ public sealed class StackEditorPropertyTests {
         string[] ids = [..editor.Set.Layers.Select(static layer => layer.Id), "absent"];
         var id = ids[random.Next(ids.Length)];
         return random.Next(8) switch {
-            7 => new StackAddLayer(random.Next(2) == 0 ? "group" : "filter", "Nest", null, random.Next(3) == 0 ? id : null, "Hsl"),
+            7 => new StackAddLayer(
+                random.Next(2) == 0 ? "group" : "filter",
+                "Nest",
+                null,
+                random.Next(3) == 0 ? id : null,
+                "Hsl"
+            ),
             6 => new StackNestLayer(id, random.Next(2) == 0 ? ids[random.Next(ids.Length)] : null),
-            5 => new StackSetModel(random.Next(3) == 0 ? "" : $"meshes/{random.Next(3)}.glb"),
+            5 => new StackSetModel(random.Next(3) == 0 ? string.Empty : $"meshes/{random.Next(3)}.glb"),
             0 => new StackAddLayer(random.Next(4) == 0 ? "nonsense" : "fill", $"Layer {random.Next(4)}"),
             1 => new StackRemoveLayer(id),
             2 => new StackMoveLayer(id, random.Next(-2, 3)),

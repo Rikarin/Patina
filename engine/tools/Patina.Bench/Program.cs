@@ -57,7 +57,13 @@ switch (args) {
     case ["graph", var library, var nodes, var name]:
         return GraphFixture.Write(library, int.Parse(nodes, CultureInfo.InvariantCulture), name);
     case ["stamps", var model, .. var rest]:
-        return PaintBench.Stamps(model, Number(rest, 0, 4096), Number(rest, 1, 24), Number(rest, 2, 120), rest.ElementAtOrDefault(3));
+        return PaintBench.Stamps(
+            model,
+            Number(rest, 0, 4096),
+            Number(rest, 1, 24),
+            Number(rest, 2, 120),
+            rest.ElementAtOrDefault(3)
+        );
     case ["s4-stack", var stack, var model, .. var rest]:
         return PaintBench.WriteStack(stack, Number(rest, 0, 4096), Number(rest, 1, 20), model);
     case ["s4", .. var rest]:

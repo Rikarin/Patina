@@ -32,7 +32,13 @@ public static class StackDocuments {
                 .Select(static kind => new StackFilterKind(kind.ToString(), LayerStackGraph.Filter(kind).Ports))
         ],
         Enum.GetNames<LayerMaskSource>(),
-        [..TextureCompoundLibrary.Shipped.Where(static path => path.StartsWith("Generators/", StringComparison.Ordinal))],
+        [
+            ..TextureCompoundLibrary.Shipped.Where(static path => path.StartsWith(
+                    "Generators/",
+                    StringComparison.Ordinal
+                )
+            )
+        ],
         TextureNodeLibrary.MeshMaps,
         PaintAlphas.Names
     );

@@ -206,9 +206,10 @@ public sealed class StackEvaluator(
 
         // ⚠ The viewport is what a drag watches, and a preview costs an encode per map per stamp. The last part of
         // the stroke has no open strokes, so the maps a client lists catch up as it ends.
-        var side = viewport.Wears(session.Id) && work.Standing.Any(static entry => entry is { Open: true, View: not null })
-            ? 0
-            : PreviewSide;
+        var side = viewport.Wears(session.Id)
+            && work.Standing.Any(static entry => entry is { Open: true, View: not null })
+                ? 0
+                : PreviewSide;
         var reply = await connection.SendAsync(
             new() { Type = IpcTypes.StackEvaluate, StackEvaluate = new(session.Id, side, store.Root) },
             cancellationToken

@@ -85,7 +85,7 @@ public sealed class ViewportLiveMapTests : IDisposable {
 
     ViewportMapFile File(string name, byte[] pixels) {
         var path = In(name);
-        System.IO.File.WriteAllBytes(path, PngCodec.Encode(new Bitmap(Map, Map, pixels)));
+        System.IO.File.WriteAllBytes(path, PngCodec.Encode(new(Map, Map, pixels)));
         return new(path, name);
     }
 
