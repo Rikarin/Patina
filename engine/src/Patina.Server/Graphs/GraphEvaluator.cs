@@ -64,13 +64,7 @@ public sealed class GraphEvaluator(
         await ForgetClosedAsync(cancellationToken);
         var worked = false;
         foreach (var session in sessions.All) {
-            if (session.Pending() is null) {
-                continue;
-            }
-
-            // Waiting for a Worker can take seconds, and only what is newest when one arrives counts.
-            var connection = await worker.ConnectionAsync(cancellationToken);
-            if (session.Pending() is not { } work) {
+            if (await worker.WhenThereIsWorkAsync(session.Pending, cancellationToken) is not var (connection, work)) {
                 continue;
             }
 

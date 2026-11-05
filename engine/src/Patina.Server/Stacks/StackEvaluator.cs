@@ -30,7 +30,11 @@ public sealed class StackEvaluator(
     /// <summary>Writes the pixels beside the stack, then the stack.</summary>
     /// <exception cref="GraphFileChangedException">The file changed behind the session.</exception>
     /// <exception cref="TimeoutException">No Worker came.</exception>
-    public async Task<StackEditResult> SaveAsync(StackSession session, bool force, CancellationToken cancellationToken) {
+    public async Task<StackEditResult> SaveAsync(
+        StackSession session,
+        bool force,
+        CancellationToken cancellationToken
+    ) {
         var text = session.PrepareSave(force);
         KeepBase(session);
         await ReachedAsync(session, cancellationToken);
@@ -96,10 +100,10 @@ public sealed class StackEvaluator(
         using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         patience.CancelAfter(WorkerPatience);
         try {
-            var sequence = session.State.Sequence;
+            var sequence = session.Sequence;
             while (session.Pending() is not null) {
                 await session.WaitAsync(sequence, patience.Token);
-                sequence = session.State.Sequence;
+                sequence = session.Sequence;
             }
         } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
             throw new TimeoutException("No Worker reached this stack.");
@@ -108,33 +112,34 @@ public sealed class StackEvaluator(
 
     async Task<bool> DrainAsync(CancellationToken cancellationToken) {
         await ForgetClosedAsync(cancellationToken);
-        var worked = false;
+        var worked = 0;
         foreach (var session in sessions.All) {
-            if (session.Pending() is null) {
-                continue;
-            }
-
-            var connection = await worker.ConnectionAsync(cancellationToken);
-            if (session.Pending() is not { } work) {
-                continue;
-            }
-
-            worked = true;
-            try {
-                await EvaluateAsync(session, connection, work, cancellationToken);
-            } catch (Exception e) when (e is IOException or TimeoutException) {
-                // Nothing is lost: the next Worker gets the document and the journal, and this runs again.
-                told.Remove(session.Id);
-                ServerLog.GraphWorkerLost(logger, session.Path);
-                session.Evaluate();
-                await Task.Delay(LostWorkerPause, cancellationToken);
-            } catch (IpcException e) {
-                ServerLog.GraphFailed(logger, session.Path, e.Message);
-                session.Fail(work, e.Message);
-            }
+            worked += await StepAsync(session, cancellationToken) ? 1 : 0;
         }
 
-        return worked;
+        return worked > 0;
+    }
+
+    /// <summary>Brings one stack up to date. A lost Worker costs a retry: its successor is told everything.</summary>
+    async Task<bool> StepAsync(StackSession session, CancellationToken cancellationToken) {
+        var ready = await worker.WhenThereIsWorkAsync(session.Pending, cancellationToken);
+        if (ready is null) {
+            return false;
+        }
+
+        try {
+            await EvaluateAsync(session, ready.Value.Connection, ready.Value.Work, cancellationToken);
+        } catch (Exception e) when (e is IOException or TimeoutException) {
+            told.Remove(session.Id);
+            ServerLog.GraphWorkerLost(logger, session.Path);
+            session.Evaluate();
+            await Task.Delay(LostWorkerPause, cancellationToken);
+        } catch (IpcException e) {
+            ServerLog.GraphFailed(logger, session.Path, e.Message);
+            session.Fail(ready.Value.Work, e.Message);
+        }
+
+        return true;
     }
 
     async Task EvaluateAsync(
@@ -188,10 +193,7 @@ public sealed class StackEvaluator(
         state.Document = work.Document;
         told[session.Id] = state;
         var reply = await connection.SendAsync(
-            new() {
-                Type = IpcTypes.StackEvaluate,
-                StackEvaluate = new(session.Id, PreviewSide, store.Root)
-            },
+            new() { Type = IpcTypes.StackEvaluate, StackEvaluate = new(session.Id, PreviewSide, store.Root) },
             cancellationToken
         );
         session.Publish(work, reply.StackResult!);

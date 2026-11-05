@@ -1,13 +1,11 @@
 using Patina.Contracts;
 using Patina.Graphs;
 using Patina.Ipc;
-using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using Vixen.Authoring;
 using Vixen.Core.Imaging;
 using Vixen.Core.Mathematics;
-using Vixen.Graphics.Vulkan;
 using Vixen.TextureGraph;
 using Vixen.Texturing.Layers;
 using Vixen.Texturing.Painting;
@@ -19,32 +17,16 @@ namespace Patina.Worker;
 ///     stroke is stamped and composited here, in tiles, through the plan, and a Worker that dies costs the time to stamp
 ///     again (ADR 0009). All the painting is Vixen's; what is here is holding sessions and answering the socket.
 /// </summary>
-sealed class StackHost : IDisposable {
-    /// <summary>What a stack's outputs and the pool under a stroke need, or the pool is rebuilt per stamp (ADR 0009).</summary>
-    const long ResultBudget = 6L << 30;
-
-    readonly Dictionary<string, Session> stacks = new(StringComparer.Ordinal);
+sealed class StackHost(DeviceHost gpu) : SessionHost<StackHost.Session> {
     readonly PreviewWriter previews = new();
     readonly CompoundShelf compounds = new();
     readonly GraphPictures pictures = new();
-    VulkanDevice? device;
-    TexturePlanEvaluator? evaluator;
 
-    public void Dispose() {
-        foreach (var stack in stacks.Values) {
-            stack.Dispose();
-        }
-
-        stacks.Clear();
-        evaluator?.Dispose();
-        device?.Dispose();
-    }
+    protected override string Kind => "stack";
 
     public IpcMessage Load(IpcMessage request) {
         var load = request.StackLoad ?? throw new IpcException("stack.load holds no stack.");
-        Forget(load.Session);
-        var published = compounds.Of(load.Folder);
-        stacks[load.Session] = new(load, Evaluator(), published, pictures);
+        Hold(load.Session, new(load, gpu.Evaluator, compounds.Of(load.Folder), pictures));
         return IpcMessage.Ok(request.Id);
     }
 
@@ -124,7 +106,9 @@ sealed class StackHost : IDisposable {
         var maps = bake.Read([..outputs.Select(static output => output.Image)]);
         List<StackPixels> pixels = [];
         foreach (var (output, map) in outputs.Zip(maps)) {
-            pixels.Add(new(output.Usage, map.Width, map.Height, Digest(map), Export(stack, output.Usage, map, ask.Folder)));
+            pixels.Add(
+                new(output.Usage, map.Width, map.Height, Digest(map), Export(stack, output.Usage, map, ask.Folder))
+            );
         }
 
         return new() { Type = IpcTypes.Ok, StackPicture = pixels };
@@ -147,29 +131,6 @@ sealed class StackHost : IDisposable {
 
     static double Milliseconds(long start) => Stopwatch.GetElapsedTime(start).TotalMilliseconds;
 
-    Session Find(string id) =>
-        stacks.TryGetValue(id, out var stack)
-            ? stack
-            : throw new IpcException($"This Worker has not been told about stack '{id}'.");
-
-    void Forget(string session) {
-        if (stacks.Remove(session, out var stack)) {
-            stack.Dispose();
-        }
-    }
-
-    TexturePlanEvaluator Evaluator() {
-        if (evaluator is null) {
-            if (!VulkanDevice.TryCreate(new(), out device, out var refusal)) {
-                throw new IpcException($"No Vulkan device: {refusal}");
-            }
-
-            evaluator = new(device) { Results = { Budget = ResultBudget } };
-        }
-
-        return evaluator;
-    }
-
     /// <summary>One stroke as this Worker holds it: under way, or a command that can undo it.</summary>
     sealed class Applied(long id, PaintStroke stroke) {
         public long Id { get; } = id;
@@ -181,7 +142,7 @@ sealed class StackHost : IDisposable {
         public bool Done { get; set; }
     }
 
-    sealed class Session : IDisposable {
+    internal sealed class Session : IDisposable {
         static readonly NoContext Context = new();
 
         readonly string path;
@@ -195,7 +156,12 @@ sealed class StackHost : IDisposable {
         LayerStackAsset document;
         bool stale = true;
 
-        public Session(StackLoad load, TexturePlanEvaluator evaluator, PublishedCompounds compounds, GraphPictures pictures) {
+        public Session(
+            StackLoad load,
+            TexturePlanEvaluator evaluator,
+            PublishedCompounds compounds,
+            GraphPictures pictures
+        ) {
             path = load.Path;
             set = load.Set;
             folder = Path.GetDirectoryName(Path.GetFullPath(load.Path))!;
@@ -239,8 +205,8 @@ sealed class StackHost : IDisposable {
 
             var common = 0;
             while (common < applied.Count
-                && common < sync.Standing.Count
-                && applied[common].Id == sync.Standing[common]) {
+                   && common < sync.Standing.Count
+                   && applied[common].Id == sync.Standing[common]) {
                 common++;
             }
 
@@ -352,7 +318,9 @@ sealed class StackHost : IDisposable {
         static IAuthoringCommand Close(Applied stroke) {
             if (!stroke.Done) {
                 stroke.Done = true;
-                stroke.Command = stroke.Stroke.IsEmpty ? new Nothing() : new PaintStrokeCommand([stroke.Stroke], "Stroke");
+                stroke.Command = stroke.Stroke.IsEmpty
+                    ? new Nothing()
+                    : new PaintStrokeCommand([stroke.Stroke], "Stroke");
             }
 
             return stroke.Command!;

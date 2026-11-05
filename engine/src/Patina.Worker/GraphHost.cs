@@ -3,7 +3,6 @@ using Patina.Ipc;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using Vixen.Core.Yaml;
-using Vixen.Graphics.Vulkan;
 using Vixen.NodeGraph;
 using Vixen.TextureGraph;
 
@@ -14,28 +13,16 @@ namespace Patina.Worker;
 ///     Server has the document and sends it to a new Worker, and the result cache starts cold, so a restart costs time
 ///     and nothing else. The device opens on the first evaluation, so a Worker with no Vulkan still answers health.
 /// </summary>
-sealed class GraphHost : IDisposable {
-    readonly Dictionary<string, Loaded> graphs = new(StringComparer.Ordinal);
+sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
     readonly PreviewWriter previews = new();
     readonly GraphPictures pictures = new();
     readonly CompoundShelf compounds = new();
-    VulkanDevice? device;
-    TexturePlanEvaluator? evaluator;
 
-    public void Dispose() {
-        foreach (var graph in graphs.Values) {
-            graph.Dispose();
-        }
-
-        graphs.Clear();
-        evaluator?.Dispose();
-        device?.Dispose();
-    }
+    protected override string Kind => "graph";
 
     public IpcMessage Load(IpcMessage request) {
         var load = request.GraphLoad ?? throw new IpcException("graph.load holds no graph.");
-        Forget(load.Session);
-        graphs[load.Session] = new(load, compounds.Of(load.Folder), pictures);
+        Hold(load.Session, new(load, compounds.Of(load.Folder), pictures));
         return IpcMessage.Ok(request.Id);
     }
 
@@ -46,13 +33,10 @@ sealed class GraphHost : IDisposable {
 
     public IpcMessage Evaluate(IpcMessage request) {
         var evaluate = request.GraphEvaluate ?? throw new IpcException("graph.evaluate says nothing to evaluate.");
-        if (!graphs.TryGetValue(evaluate.Session, out var graph)) {
-            throw new IpcException($"This Worker has not been told about graph '{evaluate.Session}'.");
-        }
-
+        var graph = Find(evaluate.Session);
         var start = Stopwatch.GetTimestamp();
         graph.Apply(evaluate.Values);
-        var runner = Evaluator();
+        var runner = gpu.Evaluator;
         var problems = graph.Prepare(runner, out var compiled);
         if (graph.Plan is not { } plan) {
             return Reply(new(compiled, false, 0, 0, Milliseconds(start), [], problems));
@@ -70,10 +54,7 @@ sealed class GraphHost : IDisposable {
     /// </summary>
     public IpcMessage Image(IpcMessage request) {
         var ask = request.GraphImage ?? throw new IpcException("graph.image says nothing to write.");
-        if (!graphs.TryGetValue(ask.Session, out var graph)) {
-            throw new IpcException($"This Worker has not been told about graph '{ask.Session}'.");
-        }
-
+        var graph = Find(ask.Session);
         if (graph.Plan is not { } plan) {
             throw new IpcException("This graph has not evaluated, so it has no picture to write.");
         }
@@ -83,7 +64,7 @@ sealed class GraphHost : IDisposable {
             throw new IpcException($"Node {ask.Node} has no picture on '{ask.Port}'.");
         }
 
-        using var bake = Evaluator()
+        using var bake = gpu.Evaluator
             .EvaluateIncremental(GraphPreviews.Full(plan, image.Image), graph.Uploads!.Externals);
         var picture = previews.WriteOne(bake, image.Image, ask.Folder);
         return new() { Type = IpcTypes.Ok, GraphFullImage = new(picture.Hash, picture.Width, picture.Height) };
@@ -113,26 +94,8 @@ sealed class GraphHost : IDisposable {
         ];
     }
 
-    void Forget(string session) {
-        if (graphs.Remove(session, out var graph)) {
-            graph.Dispose();
-        }
-    }
-
-    TexturePlanEvaluator Evaluator() {
-        if (evaluator is null) {
-            if (!VulkanDevice.TryCreate(new(), out device, out var refusal)) {
-                throw new IpcException($"No Vulkan device: {refusal}");
-            }
-
-            evaluator = new(device);
-        }
-
-        return evaluator;
-    }
-
     /// <summary>One graph: the document, the compiler that remembers it, and what the last compile produced.</summary>
-    sealed class Loaded : IDisposable {
+    internal sealed class Loaded : IDisposable {
         readonly NodeGraphModel graph;
         readonly TextureGraphCompiler compiler;
         readonly GraphPictures pictures;

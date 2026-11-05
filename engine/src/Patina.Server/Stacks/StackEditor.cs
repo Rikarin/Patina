@@ -89,7 +89,7 @@ public sealed class StackEditor : ILayerStackDocument {
     public IReadOnlyList<StackJournalEntry> Redoable => [..redoable.SelectMany(static step => step.Strokes)];
 
     /// <summary>Whether a drag is still going on.</summary>
-    public bool HasOpenStroke => undoable.Count > 0 && undoable[^1].Strokes.Any(static stroke => stroke.Open);
+    public bool HasOpenStroke => undoable.Count > 0 && undoable[^1].Strokes.Exists(static stroke => stroke.Open);
 
     /// <summary>Applies a batch whole, or throws and leaves everything as it was.</summary>
     /// <returns>What strokes in it touched.</returns>
@@ -259,7 +259,10 @@ public sealed class StackEditor : ILayerStackDocument {
             throw new StackEditRefusedException($"'{add.Kind}' is not a kind of layer.");
         }
 
-        var id = LayerStackEdit.FreeId(Set, add.Name.Length > 0 ? add.Name.ToLowerInvariant().Replace(' ', '-') : "layer");
+        var id = LayerStackEdit.FreeId(
+            Set,
+            add.Name.Length > 0 ? add.Name.ToLowerInvariant().Replace(' ', '-') : "layer"
+        );
         return new(
             this,
             new(set, null, Set.Layers.Count),
@@ -267,7 +270,8 @@ public sealed class StackEditor : ILayerStackDocument {
                 Id = id,
                 Name = add.Name,
                 Kind = kind,
-                Values = add.Values?.ToDictionary(static value => value.Key, static value => value.Value.ToArray()) ?? []
+                Values = add.Values?.ToDictionary(static value => value.Key, static value => value.Value.ToArray())
+                    ?? []
             },
             $"Add {add.Name}"
         );
@@ -301,7 +305,9 @@ public sealed class StackEditor : ILayerStackDocument {
     void Stroke(StackStroke stroke, Step step, string set, Action<IAuthoringCommand> run) {
         var layer = Require(stroke.Layer);
         if (layer.Kind != LayerKind.Paint) {
-            throw new StackEditRefusedException($"'{layer.Name}' is a {layer.Kind} layer, and only a paint layer takes a brush.");
+            throw new StackEditRefusedException(
+                $"'{layer.Name}' is a {layer.Kind} layer, and only a paint layer takes a brush."
+            );
         }
 
         if (stroke.Brush.Radius <= 0f) {
@@ -318,7 +324,13 @@ public sealed class StackEditor : ILayerStackDocument {
             paint = layer.Mask.Paint.Trim();
             if (paint.Length == 0) {
                 paint = LayerPaint.NameFor(stem, set, layer.Id, mask: true);
-                run(Named(layer, layer with { Mask = layer.Mask with { Source = LayerMaskSource.Paint, Paint = paint } }, set));
+                run(
+                    Named(
+                        layer,
+                        layer with { Mask = layer.Mask with { Source = LayerMaskSource.Paint, Paint = paint } },
+                        set
+                    )
+                );
             }
         } else {
             paint = layer.Paint.Trim();
@@ -337,7 +349,9 @@ public sealed class StackEditor : ILayerStackDocument {
 
     LayerAsset Require(string id) =>
         LayerStackEdit.Find(Document, new(Set.Name, id))
-        ?? throw new StackEditRefusedException(string.Create(CultureInfo.InvariantCulture, $"This stack has no layer '{id}'."));
+        ?? throw new StackEditRefusedException(
+            string.Create(CultureInfo.InvariantCulture, $"This stack has no layer '{id}'.")
+        );
 
     sealed record Step(long Id, string Label) {
         public List<IAuthoringCommand> Commands { get; } = [];

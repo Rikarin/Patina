@@ -2,6 +2,7 @@ using Patina.Contracts;
 using Patina.Ipc;
 using Patina.Library;
 using Patina.Server.Graphs;
+using Patina.Server.Sessions;
 using System.Security.Cryptography;
 using System.Text;
 using Vixen.Texturing.Layers;
@@ -26,18 +27,12 @@ public sealed record StackWork(
 ///     One open stack. The Server owns the document, its history, its numbered events and the journal of strokes; none
 ///     of it depends on a Worker, so edits work with none running and the pixels catch up when one connects.
 /// </summary>
-public sealed class StackSession {
-    const int LogCapacity = 1024;
-
-    readonly Lock changing = new();
+public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     readonly StackEditor editor;
-    readonly Queue<StackEvent> log = new();
     readonly Dictionary<string, StackPreview> previews = new(StringComparer.Ordinal);
     readonly Action wake;
-    TaskCompletionSource next = NewSignal();
     string fileHash;
     long revision = 1;
-    long sequence;
     long settled;
     bool forced;
     bool closed;
@@ -46,7 +41,7 @@ public sealed class StackSession {
     /// <param name="path">Its file.</param>
     /// <param name="text">The document as text.</param>
     /// <param name="wake">Tells the evaluation loop to look.</param>
-    public StackSession(string path, string text, Action wake) {
+    public StackSession(string path, string text, Action wake) : base(static item => item.Sequence) {
         Id = Guid.NewGuid().ToString("N");
         Path = path;
         fileHash = Hash(text);
@@ -67,7 +62,7 @@ public sealed class StackSession {
     /// <summary>The texture set this session paints.</summary>
     public string Set {
         get {
-            lock (changing) {
+            lock (Changing) {
                 return editor.Set.Name;
             }
         }
@@ -76,7 +71,7 @@ public sealed class StackSession {
     /// <summary>The paint files the document names, for keeping a copy of what a save overwrites.</summary>
     public IReadOnlyList<string> PaintFiles {
         get {
-            lock (changing) {
+            lock (Changing) {
                 return [..Named(editor.Document.Sets.SelectMany(static set => set.Layers))];
             }
         }
@@ -84,7 +79,7 @@ public sealed class StackSession {
 
     public StackSummary Summary {
         get {
-            lock (changing) {
+            lock (Changing) {
                 return new(Id, Path, editor.Document.Name, revision, editor.History.Dirty);
             }
         }
@@ -92,7 +87,7 @@ public sealed class StackSession {
 
     public StackState State {
         get {
-            lock (changing) {
+            lock (Changing) {
                 var set = editor.Set;
                 return new(
                     Id,
@@ -102,7 +97,7 @@ public sealed class StackSession {
                     editor.Document.BaseWidth,
                     editor.Document.BaseHeight,
                     revision,
-                    sequence,
+                    Log.Sequence,
                     editor.History,
                     [..set.Channels.Select(static channel => new StackChannel(channel.Usage, channel.Default))],
                     StackDocuments.Layers(set.Layers),
@@ -116,7 +111,7 @@ public sealed class StackSession {
 
     public IReadOnlyList<string> PreviewHashes {
         get {
-            lock (changing) {
+            lock (Changing) {
                 return [..previews.Values.Select(static preview => preview.Hash)];
             }
         }
@@ -126,7 +121,7 @@ public sealed class StackSession {
     /// <exception cref="StackEditRefusedException">A command cannot be applied.</exception>
     public StackEditResult Apply(StackCommandBatch batch) {
         StackEditResult result;
-        lock (changing) {
+        lock (Changing) {
             var painted = editor.Apply(batch);
             result = Announce(GraphEventKind.Edited, editor.History.UndoLabel, painted);
         }
@@ -144,7 +139,7 @@ public sealed class StackSession {
     /// <summary>What the document says now, and that everything the Worker has been told is about to be on disk.</summary>
     /// <exception cref="GraphFileChangedException">The file changed behind this session.</exception>
     public string PrepareSave(bool force) {
-        lock (changing) {
+        lock (Changing) {
             if (!force && File.Exists(Path) && Hash(File.ReadAllText(Path)) != fileHash) {
                 throw new GraphFileChangedException($"'{Path}' changed on disk after it was opened.");
             }
@@ -155,7 +150,7 @@ public sealed class StackSession {
 
     /// <summary>Writes the document, once the Worker has written its pixels.</summary>
     public StackEditResult FinishSave(string text) {
-        lock (changing) {
+        lock (Changing) {
             LibraryFiles.Replace(Path, text);
             fileHash = Hash(text);
             editor.MarkSaved();
@@ -165,7 +160,7 @@ public sealed class StackSession {
 
     /// <summary>Asks for an evaluation of the stack as it stands.</summary>
     public void Evaluate() {
-        lock (changing) {
+        lock (Changing) {
             forced = true;
         }
 
@@ -174,15 +169,15 @@ public sealed class StackSession {
 
     /// <summary>Ends the session: followers get a last event.</summary>
     public void Close() {
-        lock (changing) {
-            Append(new(sequence + 1, GraphEventKind.Closed, revision, editor.History));
+        lock (Changing) {
+            Log.Append(new(Log.Sequence + 1, GraphEventKind.Closed, revision, editor.History));
             closed = true;
         }
     }
 
     /// <summary>What the evaluation loop should do next, or null.</summary>
     public StackWork? Pending() {
-        lock (changing) {
+        lock (Changing) {
             if (closed || (settled == revision && !forced)) {
                 return null;
             }
@@ -201,7 +196,7 @@ public sealed class StackSession {
         IReadOnlyList<StackJournalEntry> entries,
         Dictionary<long, (int Stamps, bool Open)> sent
     ) {
-        lock (changing) {
+        lock (Changing) {
             List<StackPaintPart> parts = [];
             foreach (var entry in entries) {
                 var known = sent.TryGetValue(entry.Id, out var told);
@@ -229,7 +224,7 @@ public sealed class StackSession {
 
     /// <summary>Takes an evaluation in and tells the clients, with the maps that changed.</summary>
     public void Publish(StackWork work, StackResult result) {
-        lock (changing) {
+        lock (Changing) {
             Finish(work);
             List<StackPreview> changed = [];
             if (result.Evaluated) {
@@ -259,32 +254,17 @@ public sealed class StackSession {
 
     /// <summary>Tells the clients why an evaluation failed. The document is untouched.</summary>
     public void Fail(StackWork work, string reason) {
-        lock (changing) {
+        lock (Changing) {
             Finish(work);
             Report(new(work.Revision, false, 0, 0, 0, 0, [], [], reason));
         }
     }
 
     /// <summary>The events after a number; a single resync event when they are no longer held.</summary>
-    public StackEventPage EventsAfter(long since) {
-        lock (changing) {
-            var oldest = log.Count > 0 ? log.Peek().Sequence : sequence + 1;
-            if (since > sequence || since < oldest - 1) {
-                return new(sequence, [new(sequence, GraphEventKind.Resync, revision, editor.History)]);
-            }
+    public StackEventPage EventsAfter(long since) => new(Sequence, After(since));
 
-            return new(sequence, [..log.Where(e => e.Sequence > since)]);
-        }
-    }
-
-    /// <summary>Completes when there is an event after <paramref name="since" />.</summary>
-    public Task WaitAsync(long since, CancellationToken cancellationToken) {
-        lock (changing) {
-            return sequence > since ? Task.CompletedTask : next.Task.WaitAsync(cancellationToken);
-        }
-    }
-
-    static TaskCompletionSource NewSignal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
+    /// <inheritdoc />
+    protected override StackEvent Resync() => new(Log.Sequence, GraphEventKind.Resync, revision, editor.History);
 
     static string Hash(string text) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
 
@@ -306,7 +286,7 @@ public sealed class StackSession {
 
     StackEditResult? Walk(Func<StackEditor, string?> move, GraphEventKind kind) {
         StackEditResult result;
-        lock (changing) {
+        lock (Changing) {
             if (move(editor) is not { } label) {
                 return null;
             }
@@ -325,8 +305,8 @@ public sealed class StackSession {
 
         var delta = painted is null ? null : new StackDelta(StackDocuments.Layers(editor.Set.Layers), painted);
         var history = editor.History;
-        Append(new(sequence + 1, kind, revision, history, label, delta));
-        return new(revision, sequence, history);
+        Log.Append(new(Log.Sequence + 1, kind, revision, history, label, delta));
+        return new(revision, Log.Sequence, history);
     }
 
     void Finish(StackWork work) {
@@ -336,18 +316,6 @@ public sealed class StackSession {
 
     void Report(StackEvaluation report) {
         evaluation = report;
-        Append(new(sequence + 1, GraphEventKind.Evaluated, revision, editor.History, null, null, report));
-    }
-
-    void Append(StackEvent item) {
-        sequence = item.Sequence;
-        log.Enqueue(item);
-        if (log.Count > LogCapacity) {
-            log.Dequeue();
-        }
-
-        var signal = next;
-        next = NewSignal();
-        signal.TrySetResult();
+        Log.Append(new(Log.Sequence + 1, GraphEventKind.Evaluated, revision, editor.History, null, null, report));
     }
 }

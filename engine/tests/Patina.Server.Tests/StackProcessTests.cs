@@ -71,11 +71,17 @@ public sealed class StackProcessTests : IDisposable {
         var undone = await ActAsync(state.Id, "undo", deadline.Token);
         Assert.False(undone.History.CanUndo);
         await EvaluatedAsync(socket, undone.Revision, deadline.Token);
-        Assert.Equal(Digest(blank, "baseColor"), Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor"));
+        Assert.Equal(
+            Digest(blank, "baseColor"),
+            Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor")
+        );
 
         var redone = await ActAsync(state.Id, "redo", deadline.Token);
         await EvaluatedAsync(socket, redone.Revision, deadline.Token);
-        Assert.Equal(Digest(after, "baseColor"), Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor"));
+        Assert.Equal(
+            Digest(after, "baseColor"),
+            Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor")
+        );
     }
 
     /// <summary>
@@ -136,11 +142,14 @@ public sealed class StackProcessTests : IDisposable {
         var replayed = await PixelsAsync(state.Id, false, deadline.Token);
 
         // The same history, on a Worker that never died, from the same file.
-        var control = await OpenControlAsync("Control.vxlayers", deadline.Token);
+        var control = await CreateAsync("Control.vxlayers", deadline.Token);
         await PaintAsync(control.Id, "before", Line(100, 500, 10), false, deadline.Token);
         await PaintAsync(control.Id, "drag", Line(100, 200, 10), true, deadline.Token);
         await PaintAsync(control.Id, "drag", Line(400, 200, 10), false, deadline.Token);
-        Assert.Equal(Digest(await PixelsAsync(control.Id, false, deadline.Token), "baseColor"), Digest(replayed, "baseColor"));
+        Assert.Equal(
+            Digest(await PixelsAsync(control.Id, false, deadline.Token), "baseColor"),
+            Digest(replayed, "baseColor")
+        );
 
         // History came through as well: the drag undoes as one step, on a Worker that never held it.
         await ActAsync(state.Id, "undo", deadline.Token);
@@ -173,7 +182,7 @@ public sealed class StackProcessTests : IDisposable {
             deadline.Token,
             [
                 ..layers.Skip(2)
-                    .Select((layer, index) => (StackCommand)new StackSetLayer(
+                    .Select(static (layer, index) => (StackCommand)new StackSetLayer(
                             layer.Id,
                             null,
                             null,
@@ -191,7 +200,7 @@ public sealed class StackProcessTests : IDisposable {
         var repaired = 0;
         for (var stamp = 0; stamp < 120; stamp++) {
             var clock = Stopwatch.GetTimestamp();
-            var sent = await PaintAsync(state.Id, "drag", [new(200f + (stamp * 8f), 300f)], true, deadline.Token);
+            var sent = await PaintAsync(state.Id, "drag", [new(100f + (stamp * 6f), 300f)], true, deadline.Token);
             var evaluation = await EvaluatedAsync(socket, sent.Revision, deadline.Token);
             foreach (var preview in evaluation.Previews) {
                 _ = await http.GetByteArrayAsync($"/api/v1/previews/{preview.Hash}", deadline.Token);
@@ -233,7 +242,10 @@ public sealed class StackProcessTests : IDisposable {
 
         var again = await OpenAsync(state.Path, deadline.Token);
         Assert.NotEqual(state.Id, again.Id);
-        Assert.Equal(Digest(before, "baseColor"), Digest(await PixelsAsync(again.Id, false, deadline.Token), "baseColor"));
+        Assert.Equal(
+            Digest(before, "baseColor"),
+            Digest(await PixelsAsync(again.Id, false, deadline.Token), "baseColor")
+        );
     }
 
     /// <summary>
@@ -265,10 +277,14 @@ public sealed class StackProcessTests : IDisposable {
             await ActAsync(state.Id, "undo", deadline.Token);
         }
 
-        Assert.Equal(Digest(blank, "baseColor"), Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor"));
+        Assert.Equal(
+            Digest(blank, "baseColor"),
+            Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor")
+        );
     }
 
-    static string Digest(IReadOnlyList<StackPixels> maps, string usage) => maps.Single(m => m.Usage == usage).Digest;
+    static string Digest(IReadOnlyList<StackPixels> maps, string usage) =>
+        maps.Single(m => string.Equals(m.Usage, usage, StringComparison.Ordinal)).Digest;
 
     static IReadOnlyList<StackStamp> Line(float x, float y, int count) =>
         [..Enumerable.Range(0, count).Select(index => new StackStamp(x + (index * 6f), y + (index % 3)))];
@@ -336,8 +352,6 @@ public sealed class StackProcessTests : IDisposable {
             await Task.Delay(50, token);
         }
     }
-
-    async Task<StackState> OpenControlAsync(string name, CancellationToken token) => await CreateAsync(name, token);
 
     async Task<StackState> CreateAsync(string name, CancellationToken token, int size = Side) {
         using var response = await http.PostAsJsonAsync(

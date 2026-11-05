@@ -1,5 +1,6 @@
 using Patina.Contracts;
 using Patina.Library;
+using Patina.Server.Sessions;
 using Vixen.NodeGraph;
 using Vixen.TextureGraph;
 
@@ -12,28 +13,15 @@ public sealed class GraphSessions(ServerIdentity identity) : IDisposable {
     /// <summary>What a compound that ships with Patina is opened by. No file holds one.</summary>
     public const string ShippedPrefix = "shipped:";
 
-    readonly Lock changing = new();
-    readonly Dictionary<string, GraphSession> byId = new(StringComparer.Ordinal);
-    readonly List<string> closed = [];
-    readonly SemaphoreSlim dirty = new(0, 1);
+    readonly SessionTable<GraphSession> table = new();
 
     string[] LibraryRoot => identity.Library is { } library ? [library] : [];
 
-    public IReadOnlyList<GraphSession> All {
-        get {
-            lock (changing) {
-                return [..byId.Values];
-            }
-        }
-    }
+    public IReadOnlyList<GraphSession> All => table.All;
 
-    public void Dispose() => dirty.Dispose();
+    public void Dispose() => table.Dispose();
 
-    public GraphSession? Find(string id) {
-        lock (changing) {
-            return byId.GetValueOrDefault(id);
-        }
-    }
+    public GraphSession? Find(string id) => table.Find(id);
 
     /// <summary>Opens a file, or joins the session that has it open.</summary>
     /// <param name="path">Absolute, or relative to the library.</param>
@@ -42,16 +30,7 @@ public sealed class GraphSessions(ServerIdentity identity) : IDisposable {
     public GraphSession Open(string path) {
         var shipped = path.StartsWith(ShippedPrefix, StringComparison.Ordinal);
         var full = shipped ? path : Resolve(path);
-        lock (changing) {
-            if (byId.Values.FirstOrDefault(s => string.Equals(s.Path, full, StringComparison.Ordinal)) is { } open) {
-                return open;
-            }
-
-            var session = shipped ? OpenShipped(path) : OpenFile(full);
-            byId[session.Id] = session;
-            Wake();
-            return session;
-        }
+        return table.Open(full, () => shipped ? OpenShipped(path) : OpenFile(full));
     }
 
     /// <summary>What a graph could hold: every shipped compound and its own folder's, as a client opens them.</summary>
@@ -179,33 +158,13 @@ public sealed class GraphSessions(ServerIdentity identity) : IDisposable {
     }
 
     /// <summary>Ends a session. The file stays as it was last saved.</summary>
-    public void Close(GraphSession session) {
-        lock (changing) {
-            byId.Remove(session.Id);
-            closed.Add(session.Id);
-        }
-
-        session.Close();
-        Wake();
-    }
+    public void Close(GraphSession session) => table.Close(session);
 
     /// <summary>The sessions closed since the last call, for the Worker to forget.</summary>
-    public IReadOnlyList<string> TakeClosed() {
-        lock (changing) {
-            string[] taken = [..closed];
-            closed.Clear();
-            return taken;
-        }
-    }
+    public IReadOnlyList<string> TakeClosed() => table.TakeClosed();
 
     /// <summary>Completes when something changed.</summary>
-    public Task WaitAsync(CancellationToken cancellationToken) => dirty.WaitAsync(cancellationToken);
+    public Task WaitAsync(CancellationToken cancellationToken) => table.WaitAsync(cancellationToken);
 
-    void Wake() {
-        try {
-            dirty.Release();
-        } catch (SemaphoreFullException) {
-            // Already awake: the loop reads every session, so one signal stands for any number of changes.
-        }
-    }
+    void Wake() => table.Wake();
 }

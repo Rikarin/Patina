@@ -1,31 +1,18 @@
-using Patina.Library;
+using Patina.Server.Sessions;
 
 namespace Patina.Server.Stacks;
 
 /// <summary>The open stacks. One file has one session, so two clients that open it share its edits and its undo.</summary>
 public sealed class StackSessions(ServerIdentity identity) : IDisposable {
-    readonly Lock changing = new();
-    readonly Dictionary<string, StackSession> byId = new(StringComparer.Ordinal);
-    readonly List<string> closed = [];
-    readonly SemaphoreSlim dirty = new(0, 1);
+    readonly SessionTable<StackSession> table = new();
 
     string[] LibraryRoot => identity.Library is { } library ? [library] : [];
 
-    public IReadOnlyList<StackSession> All {
-        get {
-            lock (changing) {
-                return [..byId.Values];
-            }
-        }
-    }
+    public IReadOnlyList<StackSession> All => table.All;
 
-    public void Dispose() => dirty.Dispose();
+    public void Dispose() => table.Dispose();
 
-    public StackSession? Find(string id) {
-        lock (changing) {
-            return byId.GetValueOrDefault(id);
-        }
-    }
+    public StackSession? Find(string id) => table.Find(id);
 
     /// <summary>A path a client gave, as a file.</summary>
     /// <exception cref="StackEditRefusedException">It is relative and no library holds it.</exception>
@@ -44,49 +31,17 @@ public sealed class StackSessions(ServerIdentity identity) : IDisposable {
     /// <exception cref="StackEditRefusedException">The file is not a stack.</exception>
     public StackSession Open(string path) {
         var full = Resolve(path);
-        lock (changing) {
-            if (byId.Values.FirstOrDefault(s => string.Equals(s.Path, full, StringComparison.Ordinal)) is { } open) {
-                return open;
-            }
-
-            if (!File.Exists(full)) {
-                throw new FileNotFoundException($"There is no stack at '{full}'.", full);
-            }
-
-            var session = new StackSession(full, File.ReadAllText(full), Wake) { ImageRoots = LibraryRoot };
-            byId[session.Id] = session;
-            Wake();
-            return session;
-        }
+        return table.Open(
+            full,
+            () => File.Exists(full)
+                ? new StackSession(full, File.ReadAllText(full), table.Wake) { ImageRoots = LibraryRoot }
+                : throw new FileNotFoundException($"There is no stack at '{full}'.", full)
+        );
     }
 
-    public void Close(StackSession session) {
-        session.Close();
-        lock (changing) {
-            byId.Remove(session.Id);
-            closed.Add(session.Id);
-        }
+    public void Close(StackSession session) => table.Close(session);
 
-        Wake();
-    }
+    public IReadOnlyList<string> TakeClosed() => table.TakeClosed();
 
-    public IReadOnlyList<string> TakeClosed() {
-        lock (changing) {
-            string[] taken = [..closed];
-            closed.Clear();
-            return taken;
-        }
-    }
-
-    public Task WaitAsync(CancellationToken cancellationToken) => dirty.WaitAsync(cancellationToken);
-
-    void Wake() {
-        if (dirty.CurrentCount == 0) {
-            try {
-                dirty.Release();
-            } catch (SemaphoreFullException) {
-                // Two wakes at once: the loop will look either way.
-            }
-        }
-    }
+    public Task WaitAsync(CancellationToken cancellationToken) => table.WaitAsync(cancellationToken);
 }

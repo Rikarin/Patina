@@ -16,7 +16,8 @@ public sealed class StackEditorPropertyTests {
     [Trait("Category", "Property")]
     public void Random_batches_undone_return_the_original_stack() =>
         Gen.Int.Array[1, 30]
-            .Sample(static batches => {
+            .Sample(
+                static batches => {
                     var editor = new StackEditor("/tmp/Crate.vxlayers", Sample());
                     var original = StackDocuments.Text(editor.Document);
                     var steps = 0;
@@ -25,7 +26,9 @@ public sealed class StackEditorPropertyTests {
                         var random = new Random(seed);
                         var history = editor.Standing.Count;
                         try {
-                            editor.Apply(new([..Enumerable.Range(0, random.Next(1, 4)).Select(_ => Pick(editor, random))]));
+                            editor.Apply(
+                                new([..Enumerable.Range(0, random.Next(1, 4)).Select(_ => Pick(editor, random))])
+                            );
                             steps++;
                         } catch (StackEditRefusedException) {
                             Assert.Equal(before, StackDocuments.Text(editor.Document));
