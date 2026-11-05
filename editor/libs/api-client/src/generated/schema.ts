@@ -826,7 +826,7 @@ export interface components {
       nodes: components['schemas']['GraphNodeState'][];
       /** @description The wires, by the input they arrive at. */
       edges: components['schemas']['GraphEdgeState'][];
-      /** @description The graph's settings: `baseWidth`, `baseHeight`, `seed` and any others. */
+      /** @description Its settings: `baseWidth`, `baseHeight`, `seed` and any others. */
       settings: {
         [key: string]: string;
       };

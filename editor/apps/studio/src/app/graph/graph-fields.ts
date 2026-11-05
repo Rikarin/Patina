@@ -85,9 +85,7 @@ export function fieldsOf(type: GraphNodeType): readonly GraphFieldGroup[] {
     groups.set(setting.group, fields);
   }
 
-  return [...groups]
-    .filter(([, fields]) => fields.length > 0)
-    .map(([name, fields]) => ({ name, fields }));
+  return [...groups].filter(([, fields]) => fields.length > 0).map(([name, fields]) => ({ name, fields }));
 }
 
 /**

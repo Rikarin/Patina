@@ -52,6 +52,7 @@ const SliderSteps = 1000;
                     @let range = rangeOf(field, current);
                     <xui-slider
                       class="min-w-0 flex-1"
+                      labelStepSize="0"
                       [attr.aria-label]="field.name"
                       [disabled]="!store.editable()"
                       [max]="range.max"
@@ -63,6 +64,7 @@ const SliderSteps = 1000;
                   } @else if (field.source === 'text' && field.minimum !== null && field.maximum !== null) {
                     <xui-slider
                       class="min-w-0 flex-1"
+                      labelStepSize="0"
                       [attr.aria-label]="field.name"
                       [disabled]="!store.editable()"
                       [max]="field.maximum"

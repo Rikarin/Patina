@@ -389,9 +389,7 @@ export class GraphStore {
     return new PreviewLoader(
       {
         fetch: async hash =>
-          unwrap(
-            await this.api().GET('/api/v1/previews/{hash}', { params: { path: { hash } }, parseAs: 'blob' })
-          ) as unknown as Blob,
+          unwrap(await this.api().GET('/api/v1/previews/{hash}', { params: { path: { hash } }, parseAs: 'blob' })),
         url: blob => URL.createObjectURL(blob),
         revoke: url => {
           URL.revokeObjectURL(url);

@@ -28,8 +28,8 @@ interface Motion {
   worstMs: number;
   over17: number;
   over33: number;
-  /** Frames the page was in long animation frames (over 50 ms), which is where a stutter comes from. */
-  longFrames: number;
+  /** Animation frames over 50 ms, which is where a stutter comes from, and where each one's time went. */
+  longFrames: string[];
 }
 
 /**
@@ -51,9 +51,19 @@ async function animate([label, kind, seconds]: readonly [string, 'pan' | 'zoom',
     canvas.dispatchEvent(new PointerEvent(type, { bubbles: true, button: 1, clientX, clientY, pointerId: 1 }));
   };
 
-  let longFrames = 0;
+  const longFrames: string[] = [];
   const observer = new PerformanceObserver(list => {
-    longFrames += list.getEntries().length;
+    for (const entry of list.getEntries() as (PerformanceEntry & {
+      renderStart: number;
+      styleAndLayoutStart: number;
+      scripts: { duration: number }[];
+    })[]) {
+      const script = entry.scripts.reduce((sum, item) => sum + item.duration, 0);
+      const layout = entry.startTime + entry.duration - entry.styleAndLayoutStart;
+      longFrames.push(
+        `${entry.duration.toFixed(0)} ms: scripts ${script.toFixed(0)}, style, layout and paint ${layout.toFixed(0)}`
+      );
+    }
   });
   observer.observe({ type: 'long-animation-frame', buffered: false });
 
@@ -78,7 +88,7 @@ async function animate([label, kind, seconds]: readonly [string, 'pan' | 'zoom',
       if (kind === 'pan') {
         pointer('pointermove', x + Math.sin(phase / 40) * 300, y + Math.cos(phase / 53) * 120);
       } else {
-        const deltaY = Math.cos(phase / 30) * 12;
+        const deltaY = Math.cos(phase / 30) * 6;
         canvas.dispatchEvent(
           new WheelEvent('wheel', { bubbles: true, cancelable: true, clientX: x, clientY: y, deltaY })
         );
@@ -112,12 +122,12 @@ async function animate([label, kind, seconds]: readonly [string, 'pan' | 'zoom',
   };
 }
 
-/** Wheels the canvas until the zoom is near a target, the way a user would get there. */
+/** Wheels the canvas until the zoom is near a target, a frame at a time, and says where it got to. */
 async function zoomTo(window: Page, target: number): Promise<void> {
-  await window.evaluate(wanted => {
+  const reached = await window.evaluate(async wanted => {
     const canvas = document.querySelector<HTMLElement>('[data-testid=graph-canvas]');
     if (!canvas) {
-      return;
+      return 0;
     }
 
     const box = canvas.getBoundingClientRect();
@@ -127,19 +137,57 @@ async function zoomTo(window: Page, target: number): Promise<void> {
       );
       return Number(/scale\(([\d.]+)\)/.exec(layer?.style.transform ?? '')?.[1] ?? 1);
     };
-    for (let step = 0; step < 40 && Math.abs(Math.log(zoomNow() / wanted)) > 0.1; step++) {
+    for (let step = 0; step < 200 && Math.abs(Math.log(zoomNow() / wanted)) > 0.08; step++) {
       canvas.dispatchEvent(
         new WheelEvent('wheel', {
           bubbles: true,
           cancelable: true,
           clientX: box.left + box.width / 2,
           clientY: box.top + box.height / 2,
-          deltaY: zoomNow() < wanted ? -40 : 40
+          deltaY: zoomNow() < wanted ? -20 : 20
         })
       );
+      await new Promise(done => requestAnimationFrame(done));
     }
+
+    return zoomNow();
   }, target);
+  console.log(`zoom ${reached.toFixed(3)}`);
   await window.waitForTimeout(500);
+}
+
+interface TraceEvent {
+  name: string;
+  ph: string;
+  args?: Record<string, Record<string, string | boolean>>;
+}
+
+/** What the compositor presented during a run, from Chromium's own frame reporting. rAF cannot see a dropped draw. */
+async function traced<T>(window: Page, run: () => Promise<T>): Promise<T & { compositor: unknown }> {
+  const session = await window.context().newCDPSession(window);
+  const events: TraceEvent[] = [];
+  session.on('Tracing.dataCollected', ({ value }) => events.push(...(value as unknown as TraceEvent[])));
+  await session.send('Tracing.start', {
+    transferMode: 'ReportEvents',
+    traceConfig: { includedCategories: ['cc', 'benchmark'], recordMode: 'recordContinuously' }
+  });
+  const result = await run();
+  const finished = new Promise(done => session.once('Tracing.tracingComplete', done));
+  await session.send('Tracing.end');
+  await finished;
+  await session.detach();
+  const states: Record<string, number> = {};
+  let checkerboarded = 0;
+  for (const event of events) {
+    const reporter = event.args?.['frame_reporter'];
+    if (event.name === 'PipelineReporter' && event.ph === 'b' && reporter) {
+      const state = String(reporter['state']);
+      states[state] = (states[state] ?? 0) + 1;
+      checkerboarded += reporter['has_missing_content'] ? 1 : 0;
+    }
+  }
+
+  return { ...result, compositor: { ...states, checkerboarded } };
 }
 
 test('spike S7: a graph of 500 nodes with live thumbnails', async () => {
@@ -183,7 +231,9 @@ test('spike S7: a graph of 500 nodes with live thumbnails', async () => {
       ['fit, all nodes on screen: pan', 'pan'],
       ['fit, all nodes on screen: zoom', 'zoom']
     ] as const) {
-      console.log(JSON.stringify(await window.evaluate(animate, [label, kind, Seconds] as const)));
+      console.log(
+        JSON.stringify(await traced(window, () => window.evaluate(animate, [label, kind, Seconds] as const)))
+      );
     }
 
     await zoomTo(window, 1);
@@ -192,19 +242,48 @@ test('spike S7: a graph of 500 nodes with live thumbnails', async () => {
       ['1:1, a few nodes on screen: pan', 'pan'],
       ['1:1, a few nodes on screen: zoom', 'zoom']
     ] as const) {
-      console.log(JSON.stringify(await window.evaluate(animate, [label, kind, Seconds] as const)));
+      console.log(
+        JSON.stringify(await traced(window, () => window.evaluate(animate, [label, kind, Seconds] as const)))
+      );
     }
+
+    // The largest the canvas gets: the pane maximized in the window, with everything on screen.
+    await window.getByRole('button', { name: 'Maximize Graph' }).click();
+    await expect(window.getByTestId('graph-node')).toHaveCount(Nodes);
+    await window.getByRole('button', { name: 'Fit view' }).click();
+    await window.waitForTimeout(800);
+    const full = await pane.boundingBox();
+    console.log(`maximized canvas: ${String(full?.width)} x ${String(full?.height)} CSS pixels`);
+    await window.screenshot({ path: join(shots, 'graph-500-maximized.png') });
+    for (const [label, kind] of [
+      ['maximized, fit: pan', 'pan'],
+      ['maximized, fit: zoom', 'zoom']
+    ] as const) {
+      console.log(
+        JSON.stringify(await traced(window, () => window.evaluate(animate, [label, kind, Seconds] as const)))
+      );
+    }
+
+    await zoomTo(window, 0.5);
+    console.log(
+      JSON.stringify(
+        await traced(window, () => window.evaluate(animate, ['maximized, 50%: pan', 'pan', Seconds] as const))
+      )
+    );
+    await window.getByRole('button', { name: 'Restore Graph' }).click();
 
     // Live thumbnails: every noise changes, so every node in the graph has a new picture, while the canvas pans.
     const { baseUrl, token } = await window.evaluate(() =>
-      (globalThis as unknown as { patina: { connection(): Promise<{ baseUrl: string; token: string }> } }).patina.connection()
+      (
+        globalThis as unknown as { patina: { connection(): Promise<{ baseUrl: string; token: string }> } }
+      ).patina.connection()
     );
     const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
     const [session] = (await (await fetch(`${baseUrl}/api/v1/graphs`, { headers })).json()) as { id: string }[];
-    let stop = false;
+    const live = { editing: true };
     let edits = 0;
     const editing = (async () => {
-      while (!stop) {
+      while (live.editing) {
         const commands = Array.from({ length: Rows }, (_, row) => ({
           op: 'setValue',
           node: row * 25 + 1,
@@ -227,14 +306,18 @@ test('spike S7: a graph of 500 nodes with live thumbnails', async () => {
       await zoomTo(window, zoom);
       console.log(
         JSON.stringify(
-          await window.evaluate(animate, [`${label}, every thumbnail changing: pan`, 'pan', Seconds] as const)
+          await traced(window, () =>
+            window.evaluate(animate, [`${label}, every thumbnail changing: pan`, 'pan', Seconds] as const)
+          )
         )
       );
     }
 
-    stop = true;
+    live.editing = false;
     await editing;
-    console.log(`edits during the live runs: ${String(edits)}, last: ${(await window.getByTestId('graph-evaluation').textContent()) ?? ''}`);
+    console.log(
+      `edits during the live runs: ${String(edits)}, last: ${(await window.getByTestId('graph-evaluation').textContent()) ?? ''}`
+    );
     const heap = await window.evaluate(
       () => (performance as unknown as { memory: { usedJSHeapSize: number } }).memory.usedJSHeapSize
     );

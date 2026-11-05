@@ -1,4 +1,11 @@
-import { _electron as electron, expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test';
+import {
+  _electron as electron,
+  expect,
+  test,
+  type ElectronApplication,
+  type Locator,
+  type Page
+} from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -71,8 +78,7 @@ async function dragBetween(from: { x: number; y: number }, to: { x: number; y: n
   await window.mouse.up();
 }
 
-const connector = (id: number, port: string) =>
-  node(id).locator(`[data-xui-graph-port="${port}"]`).getByRole('button');
+const connector = (id: number, port: string) => node(id).locator(`[data-xui-graph-port="${port}"]`).getByRole('button');
 
 async function addNode(search: string): Promise<void> {
   await window.getByTestId('graph-add').click();
@@ -84,7 +90,9 @@ async function addNode(search: string): Promise<void> {
 /** The Server's address and token, for a second client. */
 async function server(): Promise<{ baseUrl: string; token: string }> {
   return window.evaluate(() =>
-    (globalThis as unknown as { patina: { connection(): Promise<{ baseUrl: string; token: string }> } }).patina.connection()
+    (
+      globalThis as unknown as { patina: { connection(): Promise<{ baseUrl: string; token: string }> } }
+    ).patina.connection()
   );
 }
 
@@ -194,7 +202,9 @@ test('a killed Worker costs nothing: the next one is sent the document', async (
   await hashOf(thumbnail(2));
   const { baseUrl, token } = await server();
   const statuses = await window.evaluate(() =>
-    (globalThis as unknown as { patina: { sidecars(): Promise<{ name: string; pid: number | null }[]> } }).patina.sidecars()
+    (
+      globalThis as unknown as { patina: { sidecars(): Promise<{ name: string; pid: number | null }[]> } }
+    ).patina.sidecars()
   );
   const worker = statuses.find(status => status.name === 'worker')?.pid ?? 0;
   expect(worker).toBeGreaterThan(0);

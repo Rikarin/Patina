@@ -22,7 +22,7 @@ export class DraftLayer<T> {
       values.set(key, draft.value);
     }
 
-    return values as ReadonlyMap<string, T>;
+    return values;
   });
 
   set(key: string, value: T): void {

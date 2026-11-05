@@ -101,20 +101,15 @@ export class GraphThumbnail {
 /** The toolbar, the canvas and what the Server has to say about the open graph. */
 @Component({
   selector: 'ptn-graph-canvas',
-  imports: [
-    GraphThumbnail,
-    XuiButtonImports,
-    XuiCalloutImports,
-    XuiNodeGraphImports,
-    XuiOmnibarImports,
-    XuiTagImports
-  ],
+  imports: [GraphThumbnail, XuiButtonImports, XuiCalloutImports, XuiNodeGraphImports, XuiOmnibarImports, XuiTagImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col', '(keydown)': 'onKeydown($event)' },
   template: `
     @let current = document();
     <div class="chrome-bar flex h-9 shrink-0 items-center gap-1 px-2">
-      <span class="truncate font-medium" data-testid="graph-name" [title]="current?.path ?? ''">{{ current?.name }}</span>
+      <span class="truncate font-medium" data-testid="graph-name" [title]="current?.path ?? ''">{{
+        current?.name
+      }}</span>
       @if (current?.history?.dirty) {
         <xui-tag class="ms-1 shrink-0" color="warning" minimal data-testid="graph-unsaved">Unsaved</xui-tag>
       }
@@ -180,7 +175,9 @@ export class GraphThumbnail {
       </xui-callout>
     }
     @if (current?.evaluation?.error; as reason) {
-      <xui-callout class="shrink-0" color="error" compact data-testid="graph-evaluation-error">{{ reason }}</xui-callout>
+      <xui-callout class="shrink-0" color="error" compact data-testid="graph-evaluation-error">{{
+        reason
+      }}</xui-callout>
     }
     @if (store.problem(); as reason) {
       <xui-callout class="shrink-0" color="error" compact data-testid="graph-problem">
@@ -349,9 +346,13 @@ export class GraphCanvas {
     // select-all only work after a press on empty canvas. Listening in the capture phase gets there first.
     afterNextRender(() => {
       const element = this.graphElement().nativeElement as HTMLElement;
-      element.addEventListener('pointerdown', () => {
-        element.focus({ preventScroll: true });
-      }, { capture: true });
+      element.addEventListener(
+        'pointerdown',
+        () => {
+          element.focus({ preventScroll: true });
+        },
+        { capture: true }
+      );
     });
 
     // The canvas selects what the store says, whichever side changed it.
@@ -372,7 +373,13 @@ export class GraphCanvas {
       const canvas = this.graph().store;
       const { width } = canvas.surfaceSize();
       const measured = canvas.nodes().every(node => node.size().height > 0);
-      if (document && width > 0 && measured && canvas.nodes().length === document.nodes.size && document.id !== this.fitted) {
+      if (
+        document &&
+        width > 0 &&
+        measured &&
+        canvas.nodes().length === document.nodes.size &&
+        document.id !== this.fitted
+      ) {
         this.fitted = document.id;
         untracked(() => {
           canvas.fitView(FitPadding);
@@ -458,7 +465,7 @@ export class GraphCanvas {
     } else if (command && key === 's') {
       event.preventDefault();
       void this.store.save();
-    } else if (event.key === ' ' && this.store.editable()) {
+    } else if (event.key === ' ' && this.store.editable() && !target.closest('button, [role=button]')) {
       event.preventDefault();
       this.openPalette(null);
     }

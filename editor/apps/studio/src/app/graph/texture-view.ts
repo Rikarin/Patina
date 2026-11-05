@@ -47,7 +47,9 @@ const WheelSpeed = 0.002;
         }
       </div>
       <div class="chrome-bar flex h-7 shrink-0 items-center gap-3 px-2">
-        <span class="readout truncate">{{ picture ? picture.width + ' × ' + picture.height + ', a reduction' : '—' }}</span>
+        <span class="readout truncate">{{
+          picture ? picture.width + ' × ' + picture.height + ', a reduction' : '—'
+        }}</span>
         <span class="readout ms-auto shrink-0" data-testid="texture-zoom">{{ percent() }}%</span>
       </div>
     }

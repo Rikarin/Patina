@@ -36,3 +36,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `/api/v1/graphs/{id}/events`, so a second client sees the first client's edits.
 - Graph evaluation in the Worker: a slider edit does not recompile, only what depends on it runs, and a killed Worker loses
   nothing. Each node's preview is a PNG at `/api/v1/previews/{hash}`, and events carry the hash.
+- The graph editor: select a graph in the Library's Shared Assets, choose Open, and edit it in the Graph pane. Search for a
+  node and add it, wire, move, delete, undo, redo and save, with a thumbnail on every node that follows each edit and a second
+  client's edits arriving without a reload. The Inspector sets a selected node's numbers, colours, text and choices, and
+  the Texture pane shows its picture. The pane says when no graph is open, when the Worker or the Server has gone, what the
+  compiler reported, and what is unsaved.
