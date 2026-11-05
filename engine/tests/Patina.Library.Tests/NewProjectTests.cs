@@ -28,6 +28,46 @@ public sealed class NewProjectTests : IDisposable {
     }
 
     [Fact]
+    public void A_new_shared_graph_is_a_file_with_a_sidecar_that_a_scan_indexes() {
+        using var open = library.Open();
+
+        var path = open.CreateGraph(new("Rust: Heavy"), "name: Rust");
+        open.Rescan(TestContext.Current.CancellationToken);
+
+        Assert.Equal("shared/graphs/rust-heavy.vxtexgraph", path);
+        Assert.Equal("name: Rust", File.ReadAllText(Path.Combine(library.Root, path)));
+        var asset = Assert.Single(open.Assets(new(null, null, 0, 50)).Items);
+        Assert.Equal(("Rust: Heavy", LibraryLayout.GraphKind), (asset.Name, asset.Kind));
+        Assert.Throws<ProjectExistsException>(() => open.CreateGraph(new("rust heavy"), "other"));
+        Assert.Equal("name: Rust", File.ReadAllText(Path.Combine(library.Root, path)));
+    }
+
+    [Fact]
+    public void A_new_project_graph_lands_in_its_project_and_a_missing_project_is_refused() {
+        using var open = library.Open();
+        var project = open.CreateProject(new("Crate", "props"));
+
+        var path = open.CreateGraph(new("Rust", project.Path), "name: Rust");
+
+        Assert.Equal("projects/props/crate/rust.vxtexgraph", path);
+        Assert.True(File.Exists(Path.Combine(library.Root, path)));
+        Assert.Throws<ProjectRefusedException>(() => open.CreateGraph(new("Rust", "props/nothing"), "text"));
+        Assert.Throws<ProjectRefusedException>(() => open.CreateGraph(new("!!!"), "text"));
+    }
+
+    [Fact]
+    public void A_graph_reads_the_compounds_folder_beside_it_and_a_compound_reads_its_own() {
+        var graph = Path.Combine(library.Root, "shared/graphs/rust.vxtexgraph");
+        var compounds = Path.Combine(library.Root, "shared/graphs", LibraryLayout.CompoundsFolder);
+        var nested = Directory.CreateDirectory(Path.Combine(compounds, "Grunge")).FullName;
+
+        Assert.Equal(compounds, CompoundFolders.Of(graph));
+        Assert.False(CompoundFolders.Holds(graph));
+        Assert.Equal(compounds, CompoundFolders.Of(Path.Combine(nested, "dirt.vxtexgraph")));
+        Assert.True(CompoundFolders.Holds(Path.Combine(nested, "dirt.vxtexgraph")));
+    }
+
+    [Fact]
     public void The_index_lags_a_write_until_a_scan_sees_it() {
         using var open = library.Open();
         open.Rescan();

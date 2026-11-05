@@ -17,12 +17,23 @@ export type GraphField =
     }
   | { control: 'switch'; source: 'text'; name: string; summary: string; fallback: string }
   | { control: 'choice'; source: 'text'; name: string; summary: string; fallback: string; choices: readonly string[] }
-  | { control: 'text'; source: 'text'; name: string; summary: string; fallback: string };
+  | { control: 'text'; source: 'text'; name: string; summary: string; fallback: string }
+  | { control: 'curve'; source: 'text'; name: string; summary: string; fallback: string }
+  | { control: 'ramp'; source: 'text'; name: string; summary: string; fallback: string };
+
+/** The text a port's expression is kept under, in Vixen's spelling. */
+export function expressionKey(port: string): string {
+  return `=${port}`;
+}
 
 export interface GraphFieldGroup {
   name: string;
   fields: readonly GraphField[];
 }
+
+/** The settings of the Curve, Gradient and Gradient Map nodes, whose text holds what these two controls edit. */
+const CurveSetting = 'Curve';
+const RampSetting = 'Ramp';
 
 /** The inputs a wire can reach, which every output in the catalogue is: an Image. Other inputs take numbers. */
 export function isWireable(port: GraphPortDefinition): boolean {
@@ -49,6 +60,10 @@ function fieldOfSetting(setting: GraphSettingDefinition): GraphField {
   const base = { source: 'text', name: setting.name, summary: setting.summary, fallback: setting.default } as const;
   if (setting.accepted.length > 0) {
     return { ...base, control: 'choice', choices: setting.accepted };
+  }
+
+  if (setting.name === CurveSetting || setting.name === RampSetting) {
+    return { ...base, control: setting.name === CurveSetting ? 'curve' : 'ramp' };
   }
 
   switch (setting.kind) {

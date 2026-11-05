@@ -30,6 +30,14 @@ image with Vixen's `Resample` kernel, as ops appended to the plan in the Worker,
 milliseconds before any encoding. No Vixen change was needed. Only the reductions are the plan's outputs, so 2K intermediates
 are kept while they fit the result cache and are never pinned by previews.
 
+## Full size
+
+`POST /graphs/{id}/images` asks for one node's picture at the size the graph computes it. The Worker reads it from the plan
+the last evaluation ran, usually out of the result cache, and writes a PNG into this same cache under the same rules; the
+reply carries the hash, and `GET /previews/{hash}` serves the bytes. So there is one way to fetch a picture, pixels stay on
+plain HTTP, and a file trimmed from the budget is written again by asking again. It holds up the next evaluation while it
+encodes, and a Worker that has not evaluated the graph answers 409.
+
 ## Numbers
 
 A slider, from the start of the REST call to the hash arriving in an event on the WebSocket: 2048×2048, 40 nodes (a noise,
@@ -67,5 +75,4 @@ PATINA_BENCH_OUT=/tmp/bench.txt tests/Patina.Server.Tests/bin/Release/net10.0/Pa
   an evaluation in progress. An evaluation over 30 s counts as a lost Worker (ADR 0004).
 - **A graph with a compound recompiles on a value edit.** `TextureGraphCompiler.Refresh` refuses any graph that inlined a
   sub-graph, by design. The result cache still limits what runs, but the "no recompile" rule holds only for plain graphs.
-- **Not measured:** Windows, Linux, any GPU where readback is not unified memory, and full-size images, which have no
-  endpoint yet.
+- **Not measured:** Windows, Linux, any GPU where readback is not unified memory, and what a full-size image costs.

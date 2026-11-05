@@ -1,5 +1,5 @@
 import type { GraphNodeType } from '@patina/api-client';
-import { fieldsOf, hexOfLanes, isWireable, lanesOfHex, sliderRange } from './graph-fields';
+import { expressionKey, fieldsOf, hexOfLanes, isWireable, lanesOfHex, sliderRange } from './graph-fields';
 
 const type: GraphNodeType = {
   path: 'Test/Node',
@@ -70,5 +70,29 @@ describe('graph fields', () => {
     expect(lanesOfHex('#ff0000')).toEqual([1, 0, 0, 1]);
     expect(lanesOfHex('#00ff0080')?.[3]).toBeCloseTo(0.502, 2);
     expect(lanesOfHex('red')).toBeNull();
+  });
+});
+
+describe('curve and ramp settings', () => {
+  const setting = (name: string) => ({
+    name,
+    default: '',
+    summary: '',
+    kind: 'Text',
+    group: '',
+    accepted: []
+  });
+  const control = (name: string) => fieldsOf({ ...type, ports: [], settings: [setting(name)] })[0]?.fields[0]?.control;
+
+  it('get their own controls, and other text stays a box', () => {
+    expect(control('Curve')).toBe('curve');
+    expect(control('Ramp')).toBe('ramp');
+    expect(control('Source')).toBe('text');
+  });
+});
+
+describe('expressionKey', () => {
+  it('spells a port as Vixen stores it', () => {
+    expect(expressionKey('Scale')).toBe('=Scale');
   });
 });

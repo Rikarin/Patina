@@ -88,6 +88,34 @@ public static class LibraryFiles {
         }
     }
 
+    /// <summary>
+    ///     Writes a new graph at <paramref name="path" /> below the library. A shared one gets the sidecar that makes
+    ///     it an asset; a project's graph belongs to its project.
+    /// </summary>
+    /// <exception cref="ProjectExistsException">The file is taken.</exception>
+    /// <exception cref="ProjectRefusedException">It names a project that is not there.</exception>
+    public static void CreateGraph(string root, string path, string text, string name) {
+        var file = LibraryLayout.Full(root, path);
+        var folder = Path.GetDirectoryName(file)!;
+        var shared = path.StartsWith($"{LibraryLayout.SharedFolder}/", StringComparison.Ordinal);
+        if (!shared && !File.Exists(Path.Combine(folder, LibraryLayout.ProjectFile))) {
+            throw new ProjectRefusedException($"There is no project at '{Path.GetRelativePath(root, folder)}'.");
+        }
+
+        try {
+            Write(file, Utf8.GetBytes(text), false);
+        } catch (IOException e) when (File.Exists(file)) {
+            throw new ProjectExistsException($"'{path}' exists already.", e);
+        }
+
+        if (shared) {
+            Replace(
+                file + LibraryLayout.SidecarSuffix,
+                DocumentCodec.Write(new AssetDocument(AssetId.New(), LibraryLayout.GraphKind, name, [], []))
+            );
+        }
+    }
+
     /// <summary>Writes a shared asset and its sidecar at <paramref name="path" /> below <c>shared/</c>.</summary>
     public static void WriteAsset(string root, string path, ReadOnlySpan<byte> content, AssetDocument document) {
         var file = AssetFile(root, path);

@@ -20,7 +20,8 @@ public sealed class GraphFileChangedException : Exception {
 /// <param name="Revision">The revision this document is.</param>
 /// <param name="Document">The document.</param>
 /// <param name="Forced">Whether to evaluate even if the Worker already has this document.</param>
-public sealed record GraphWork(long Revision, NodeGraphAsset Document, bool Forced);
+/// <param name="Reload">Whether the Worker has to take the document again: the compounds it reads have changed.</param>
+public sealed record GraphWork(long Revision, NodeGraphAsset Document, bool Forced, bool Reload);
 
 /// <summary>
 ///     One open graph. The Server owns the document, its history and its numbered events, and none of it depends on a
@@ -41,16 +42,33 @@ public sealed class GraphSession {
     long sequence;
     long settled;
     bool forced;
+    bool reload;
     bool closed;
     GraphEvaluation? evaluation;
 
-    public GraphSession(string path, string text, NodeTypeRegistry registry, string? folder, Action wake) {
+    /// <param name="path">Its file, or a name for a graph no file holds.</param>
+    /// <param name="text">The document as text.</param>
+    /// <param name="registry">The node types it can use.</param>
+    /// <param name="folder">The folder its compounds come from.</param>
+    /// <param name="wake">Tells the evaluation loop to look.</param>
+    /// <param name="readOnly">Refuses every edit and every save.</param>
+    public GraphSession(
+        string path,
+        string text,
+        NodeTypeRegistry registry,
+        string? folder,
+        Action wake,
+        bool readOnly = false
+    ) {
         Id = Guid.NewGuid().ToString("N");
         Path = path;
         Folder = folder;
         Registry = registry;
+        ReadOnly = readOnly;
         fileHash = Hash(text);
-        editor = new(GraphDocuments.Parse(text), registry);
+        var document = GraphDocuments.Parse(text);
+        GraphSessions.AddBoundaries(registry, document);
+        editor = new(document, registry);
         this.wake = wake;
     }
 
@@ -61,7 +79,13 @@ public sealed class GraphSession {
     /// <summary>The folder its compounds come from.</summary>
     public string? Folder { get; }
 
-    public NodeTypeRegistry Registry { get; }
+    /// <summary>The folders a relative image reference is read from, in order.</summary>
+    public IReadOnlyList<string> ImageRoots { get; init; } = [];
+
+    public NodeTypeRegistry Registry { get; private set; }
+
+    /// <summary>True for a compound that ships with Patina, which no file holds to save to.</summary>
+    public bool ReadOnly { get; }
 
     public GraphSummary Summary {
         get {
@@ -88,9 +112,13 @@ public sealed class GraphSession {
                     [..document.Edges.Select(GraphDocuments.State)],
                     document.Settings,
                     [..document.Parameters.Select(GraphDocuments.Definition)],
+                    [..document.Groups.Select(GraphDocuments.State)],
+                    [..document.Comments.Select(GraphDocuments.State)],
                     [..previews.Values.Where(preview => nodes.Contains(preview.Node))],
                     [..editor.Repairs.Select(GraphDocuments.Diagnostic)],
-                    evaluation
+                    evaluation,
+                    settled,
+                    ReadOnly
                 );
             }
         }
@@ -109,6 +137,7 @@ public sealed class GraphSession {
     public GraphEditResult Apply(GraphCommandBatch batch) {
         GraphEditResult result;
         lock (changing) {
+            RefuseIfReadOnly();
             var before = editor.Document;
             var created = editor.Apply(batch);
             result = Announce(GraphEventKind.Edited, editor.History.UndoLabel, before, created);
@@ -127,8 +156,10 @@ public sealed class GraphSession {
     /// <summary>Writes the document to its file.</summary>
     /// <param name="force">Write even though the file changed behind this session.</param>
     /// <exception cref="GraphFileChangedException">The file is not what this session read or wrote.</exception>
+    /// <exception cref="GraphEditRefusedException">This graph has no file to write.</exception>
     public GraphEditResult Save(bool force) {
         lock (changing) {
+            RefuseIfReadOnly();
             if (!force && File.Exists(Path) && Hash(File.ReadAllText(Path)) != fileHash) {
                 throw new GraphFileChangedException($"'{Path}' changed on disk after it was opened.");
             }
@@ -139,6 +170,23 @@ public sealed class GraphSession {
             editor.MarkSaved();
             return Announce(GraphEventKind.Saved, null, null, []);
         }
+    }
+
+    /// <summary>
+    ///     Takes the node types again after a compound changed: clients are told, and the Worker takes the document
+    ///     again and evaluates it, since the same document now means something else.
+    /// </summary>
+    public void Republish(NodeTypeRegistry registry) {
+        lock (changing) {
+            GraphSessions.AddBoundaries(registry, editor.Document);
+            Registry = registry;
+            editor.UseRegistry(registry);
+            forced = true;
+            reload = true;
+            Append(new(sequence + 1, GraphEventKind.TypesChanged, revision, editor.History));
+        }
+
+        wake();
     }
 
     /// <summary>Asks for an evaluation of the document as it stands, as after deleting the cache.</summary>
@@ -161,7 +209,7 @@ public sealed class GraphSession {
     /// <summary>What the evaluation loop should do next, or null.</summary>
     public GraphWork? Pending() {
         lock (changing) {
-            return closed || (settled == revision && !forced) ? null : new(revision, editor.Document, forced);
+            return closed || (settled == revision && !forced) ? null : new(revision, editor.Document, forced, reload);
         }
     }
 
@@ -169,6 +217,7 @@ public sealed class GraphSession {
     public void Settle(GraphWork work) {
         lock (changing) {
             Finish(work);
+            Append(new(sequence + 1, GraphEventKind.Settled, revision, editor.History));
         }
     }
 
@@ -280,6 +329,15 @@ public sealed class GraphSession {
     void Finish(GraphWork work) {
         settled = work.Revision;
         forced = forced && !work.Forced;
+        reload = reload && !work.Reload;
+    }
+
+    void RefuseIfReadOnly() {
+        if (ReadOnly) {
+            throw new GraphEditRefusedException(
+                $"{editor.Document.Name} ships with Patina, so it can be read and not changed."
+            );
+        }
     }
 
     void Report(GraphEvaluation report) {

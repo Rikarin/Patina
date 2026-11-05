@@ -7,6 +7,7 @@ using System.Net.Http.Json;
 using System.Net.WebSockets;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Vixen.Core.Imaging;
 using Vixen.NodeGraph;
 
 namespace Patina.Server.Tests;
@@ -318,6 +319,169 @@ public sealed class GraphProcessTests : IDisposable {
             var evaluated = await EvaluatedAsync(socket, edit.Revision, deadline.Token);
             Assert.True(evaluated.Compiled);
             Assert.DoesNotContain(evaluated.Previews, static p => p.Node is 1 or 2 or 3 or 5);
+        }
+    }
+
+    [Fact]
+    public async Task A_default_a_number_reads_by_expression_changes_the_picture() {
+        using var deadline = Deadline(120);
+        var (_, state, socket, _) = await OpenSampleAsync(GraphTesting.Sample(), deadline.Token);
+        using (socket) {
+            var bound = await http.EditAsync(state.Id, deadline.Token, new GraphSetText(1, "=Scale", "1 + Wear * 8"));
+            var first = await EvaluatedAsync(socket, bound.Revision, deadline.Token);
+            var noise = first.Previews.Single(static p => p.Node == 1);
+
+            var moved = await http.EditAsync(
+                state.Id,
+                deadline.Token,
+                new GraphSetParameter("Wear", new("Wear", "1", "", "Float", 0f, 1f, "", []))
+            );
+            var second = await EvaluatedAsync(socket, moved.Revision, deadline.Token);
+            Assert.True(second.Compiled);
+            Assert.NotEqual(noise.Hash, second.Previews.Single(static p => p.Node == 1).Hash);
+        }
+    }
+
+    [Fact]
+    public async Task A_bitmap_beside_the_graph_evaluates_and_a_missing_one_says_so() {
+        using var deadline = Deadline(120);
+        var pixels = Enumerable.Range(0, 4 * 4 * 4).Select(static i => (byte)(i * 4)).ToArray();
+        PngCodec.Save(Path.Combine(Library, "picture.png"), new Bitmap(4, 4, pixels));
+        var asset = GraphTesting.Sample() with {
+            Nodes = [
+                ..GraphTesting.Sample().Nodes,
+                new() { Id = 6, Type = "Source/Bitmap", Texts = new() { ["Source"] = "picture.png" } }
+            ]
+        };
+        var (_, state, socket, first) = await OpenSampleAsync(asset, deadline.Token);
+        using (socket) {
+            Assert.Contains(first.Previews, static p => p.Node == 6);
+            Assert.DoesNotContain(first.Diagnostics, static d => d.Id == "PT0001");
+
+            var gone = await http.EditAsync(state.Id, deadline.Token, new GraphSetText(6, "Source", "nothing.png"));
+            var refused = await EvaluatedAsync(socket, gone.Revision, deadline.Token);
+            var problem = refused.Diagnostics.Single(static d => d.Id == "PT0001");
+            Assert.Contains("nothing.png", problem.Message, StringComparison.Ordinal);
+            Assert.Equal(6, problem.Node);
+        }
+    }
+
+    [Fact]
+    public async Task An_inline_ramp_and_curve_change_the_picture() {
+        using var deadline = Deadline(120);
+        var asset = GraphTesting.Sample() with {
+            Nodes = [
+                ..GraphTesting.Sample().Nodes,
+                new() { Id = 6, Type = "Source/Gradient" }, new() { Id = 7, Type = "Colour/Curve" }
+            ],
+            Edges = [
+                ..GraphTesting.Sample().Edges,
+                new() { FromNode = 6, FromPort = "Out", ToNode = 7, ToPort = "Input" }
+            ]
+        };
+        var (_, state, socket, first) = await OpenSampleAsync(asset, deadline.Token);
+        using (socket) {
+            var plain = first.Previews.Single(static p => p.Node == 6).Hash;
+            var ramped = await http.EditAsync(
+                state.Id,
+                deadline.Token,
+                new GraphSetText(6, "Ramp", "ramp:0 ff0000ff,0.5 00ff00ff,1 0000ffff")
+            );
+            var second = await EvaluatedAsync(socket, ramped.Revision, deadline.Token);
+            Assert.NotEqual(plain, second.Previews.Single(static p => p.Node == 6).Hash);
+            Assert.DoesNotContain(second.Diagnostics, static d => d.Id == "PT0001");
+
+            var curved = await http.EditAsync(
+                state.Id,
+                deadline.Token,
+                new GraphSetText(7, "Curve", "curve:r=0 1,1 0;g=0 0,0.5 0.8,1 1")
+            );
+            var third = await EvaluatedAsync(socket, curved.Revision, deadline.Token);
+            Assert.Contains(third.Previews, static p => p.Node == 7);
+            Assert.DoesNotContain(third.Diagnostics, static d => d.Id == "PT0001");
+
+            var wrong = await http.EditAsync(state.Id, deadline.Token, new GraphSetText(6, "Ramp", "ramp:nonsense"));
+            var refused = await EvaluatedAsync(socket, wrong.Revision, deadline.Token);
+            Assert.Contains(refused.Diagnostics, static d => d.Id == "PT0001");
+        }
+    }
+
+    [Fact]
+    public async Task A_full_size_image_is_a_png_by_hash_at_the_size_of_the_graph() {
+        using var deadline = Deadline(120);
+        var sample = GraphTesting.Sample(512);
+        var nodes = sample.Nodes.Select(static node => node.Id != 1
+                    ? node
+                    : node with { Values = new() { ["Scale"] = [4f], ["Tiling"] = [1f] } }
+            )
+            .ToArray();
+        var (_, state, socket, _) = await OpenSampleAsync(sample with { Nodes = nodes }, deadline.Token);
+        using (socket) {
+            using var response = await http.PostAsJsonAsync(
+                $"/api/v1/graphs/{state.Id}/images",
+                new(1, "Out"),
+                ContractsJsonContext.Default.GraphImageRequest,
+                deadline.Token
+            );
+            response.EnsureSuccessStatusCode();
+            var image = (await response.Content.ReadFromJsonAsync(
+                ContractsJsonContext.Default.GraphImage,
+                deadline.Token
+            ))!;
+            Assert.Equal((512, 512), (image.Width, image.Height));
+            var png = await http.GetByteArrayAsync($"/api/v1/previews/{image.Hash}", deadline.Token);
+            Assert.Equal(image.Hash, Convert.ToHexStringLower(SHA256.HashData(png)));
+            var picture = PngCodec.Decode(png);
+            Assert.Equal(512, picture.Width);
+
+            // It tiles: the last row runs on into the first as smoothly as any row runs into the next.
+            double Step(int a, int b) =>
+                Enumerable.Range(0, 512)
+                    .Average(x => Math.Abs(picture.Pixels[(a * 512 + x) * 4] - picture.Pixels[(b * 512 + x) * 4]));
+
+            Assert.True(Step(511, 0) < 3 * Math.Max(1, Enumerable.Range(0, 511).Average(y => Step(y, y + 1))));
+
+            using var missing = await http.PostAsJsonAsync(
+                $"/api/v1/graphs/{state.Id}/images",
+                new(1, "Nothing"),
+                ContractsJsonContext.Default.GraphImageRequest,
+                deadline.Token
+            );
+            Assert.Equal(HttpStatusCode.Conflict, missing.StatusCode);
+        }
+    }
+
+    [Fact]
+    public async Task A_compound_evaluates_on_its_own_and_its_host_follows_a_save() {
+        using var deadline = Deadline(120);
+        var compounds = Directory.CreateDirectory(Path.Combine(Library, LibraryLayout.CompoundsFolder));
+        NodeGraphAsset compound = new() {
+            Name = "Mine",
+            Nodes = [
+                new() { Id = 1, Type = "Source/Noise", Values = new() { ["Scale"] = [4f] } },
+                new() { Id = 2, Type = "Sub-graph/Output", X = 300 }
+            ],
+            Edges = [new() { FromNode = 1, FromPort = "Out", ToNode = 2, ToPort = "Result" }],
+            Interface = [new() { Name = "Result", Direction = PortDirection.Output, Kind = PortKind.Image }],
+            Settings = new() { ["seed"] = "7", ["baseWidth"] = "64", ["baseHeight"] = "64" }
+        };
+        var file = GraphTesting.Write(compounds.FullName, compound, "Mine.vxtexgraph");
+        var host = GraphTesting.Sample() with {
+            Nodes = [..GraphTesting.Sample().Nodes, new() { Id = 6, Type = "Mine", Y = 400 }]
+        };
+        var (instance, state, socket, first) = await OpenSampleAsync(host, deadline.Token);
+        using (socket) {
+            var picture = first.Previews.Single(static p => p.Node == 6).Hash;
+            var inner = await http.OpenAsync(file, deadline.Token);
+            using var innerSocket = await FollowAsync(instance, inner, deadline.Token);
+            var own = await EvaluatedAsync(innerSocket, inner.Revision, deadline.Token);
+            Assert.Contains(own.Previews, static p => p.Node == 1);
+
+            await http.EditAsync(inner.Id, deadline.Token, new GraphSetValue(1, "Scale", [12f]));
+            await http.ActAsync(inner.Id, "save", deadline.Token);
+
+            var changed = await EvaluatedAsync(socket, state.Revision, deadline.Token);
+            Assert.NotEqual(picture, changed.Previews.Single(static p => p.Node == 6).Hash);
         }
     }
 

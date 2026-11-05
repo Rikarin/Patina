@@ -1,3 +1,5 @@
+using Patina.Library;
+
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 using Vixen.Core.Imaging;
@@ -30,7 +32,7 @@ internal static class GraphBake {
 
         var compounds = TextureCompoundLibrary.Publish(
             registry,
-            Path.GetDirectoryName(Path.GetFullPath(graph))!,
+            CompoundFolders.Of(graph),
             out _
         );
         var compiler = new TextureGraphCompiler(registry) { SubGraphSource = compounds };

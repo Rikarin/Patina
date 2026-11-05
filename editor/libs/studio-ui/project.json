@@ -8,7 +8,13 @@
   "targets": {
     "typecheck": {
       "executor": "nx:run-commands",
-      "options": { "command": "tsc -p libs/studio-ui/tsconfig.lib.json --noEmit" }
+      "options": {
+        "commands": [
+          "tsc -p libs/studio-ui/tsconfig.lib.json --noEmit",
+          "tsc -p libs/studio-ui/tsconfig.spec.json --noEmit"
+        ],
+        "parallel": false
+      }
     }
   }
 }

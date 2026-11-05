@@ -7,7 +7,7 @@ import {
   type Page
 } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -17,6 +17,7 @@ const shots = resolve(__dirname, '../../../dist/e2e-results');
 const Name = 'Rust Plate';
 const File = 'Rust_Plate.vxtexgraph';
 const Nodes = 6;
+const OnePixelPng = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC';
 
 let scratch: string;
 let library: string;
@@ -37,6 +38,12 @@ test.beforeEach(async () => {
 });
 
 test.afterEach(async () => {
+  // A test may leave edits unsaved, and quitting would then wait for an answer nobody is there to give.
+  await app
+    .evaluate(({ ipcMain }) => {
+      ipcMain.emit('patina:quit');
+    })
+    .catch(() => undefined); // the test may have quit already
   await app.close();
   rmSync(scratch, { recursive: true, force: true });
 });
@@ -224,4 +231,253 @@ test('a killed Worker costs nothing: the next one is sent the document', async (
   await window.getByTestId('field-Scale').getByRole('spinbutton').fill('5');
   await window.getByTestId('field-Scale').getByRole('spinbutton').press('Enter');
   await expect(thumbnail(2)).not.toHaveAttribute('data-hash', before, { timeout: 30_000 });
+});
+
+/** Opens the palette at a place on the canvas, so that a new node does not land on the last. */
+async function addNodeAt(search: string, x: number, y: number): Promise<void> {
+  await window.getByTestId('graph-canvas').click({ button: 'right', position: { x, y } });
+  await window.locator('input[role=combobox]').fill(search);
+  await expect(window.getByRole('option').first()).toBeVisible();
+  await window.keyboard.press('Enter');
+  // Its backdrop would take the next press.
+  await expect(window.locator('input[role=combobox]')).toHaveCount(0);
+}
+
+async function newGraph(name: string): Promise<void> {
+  await window.getByTestId('graph-new').click();
+  await window.getByTestId('new-graph-name').fill(name);
+  await window.getByTestId('new-graph-create').click();
+  await expect(window.getByTestId('graph-name')).toHaveText(name);
+}
+
+const inspect = (id: number) => node(id).locator('xui-graph-node-preview').click();
+
+test('builds a tiling material from a new graph, down to its channels and full size', async () => {
+  await newGraph('Tiling Rust');
+  await expect(nodes()).toHaveCount(0);
+
+  // The file is written and the scan finds it, without opening anything by hand.
+  await window.getByRole('radio', { name: 'Shared Assets' }).click();
+  await window.getByTestId('library-search').fill('Tiling Rust');
+  await expect(window.getByText('Tiling Rust').first()).toBeVisible();
+
+  // Settings: smaller, and a seed of its own.
+  await window.getByTestId('graph-settings').click();
+  await expect(window.getByTestId('inspector-title')).toHaveText('Tiling Rust');
+  await window.getByTestId('setting-baseWidth').getByRole('combobox').click();
+  await window.getByRole('option', { name: '512' }).click();
+  await window.getByTestId('setting-baseHeight').getByRole('combobox').click();
+  await window.getByRole('option', { name: '512' }).click();
+  await window.getByTestId('setting-seed').getByRole('spinbutton').fill('11');
+  await window.getByTestId('setting-seed').getByRole('spinbutton').press('Enter');
+  await expect(window.getByTestId('graph-unsaved')).toBeVisible();
+
+  await addNodeAt('Source/Noise', 20, 20);
+  await window.getByTestId('field-Tiling').getByRole('switch').click();
+  await addNodeAt('Colour/Curve', 220, 20);
+  await addNodeAt('Colour/Gradient Map', 420, 20);
+  await addNodeAt('Output/Output', 620, 20);
+  await expect(nodes()).toHaveCount(4);
+
+  // Each wire answers one diagnostic, and the list changing size is not something to drag through.
+  const unwired = window.getByTestId('graph-diagnostics').getByRole('listitem').filter({ hasText: 'TG0002' });
+  await expect(unwired).toHaveCount(3);
+  for (const [from, left] of [
+    [1, 2],
+    [2, 1],
+    [3, 0]
+  ] as const) {
+    await dragBetween(await centre(connector(from, 'Out')), await centre(connector(from + 1, 'Input')));
+    await expect(unwired).toHaveCount(left);
+  }
+
+  const plain = await hashOf(thumbnail(3));
+
+  // The curve: a press in the middle bends it, and the picture after it changes.
+  await inspect(2);
+  const curve = window.getByTestId('curve-editor');
+  const box = await curve.boundingBox();
+  if (!box) {
+    throw new Error('The curve is not on screen.');
+  }
+
+  await dragBetween(
+    { x: box.x + box.width * 0.5, y: box.y + box.height * 0.5 },
+    { x: box.x + box.width * 0.5, y: box.y + box.height * 0.2 }
+  );
+  await expect(thumbnail(3)).not.toHaveAttribute('data-hash', plain);
+  const curved = await hashOf(thumbnail(3));
+
+  // The ramp: a stop in the middle, in a rust colour.
+  await inspect(3);
+  const ramp = window.getByTestId('gradient-ramp');
+  await ramp.click({ position: { x: 60, y: 8 } });
+  await window.getByTestId('field-Ramp').getByRole('spinbutton').fill('0.45');
+  await window.getByTestId('field-Ramp').getByRole('spinbutton').press('Enter');
+  await expect(window.getByRole('slider', { name: 'Stop 2' })).toHaveAttribute('aria-valuenow', '0.45');
+  await window.getByTestId('field-Ramp').getByRole('button', { name: /^#/ }).click();
+  await window.getByLabel('Hex color').fill('#A0522DFF');
+  await window.getByLabel('Hex color').press('Enter');
+  await window.keyboard.press('Escape');
+  await expect(window.getByRole('slider', { name: 'Stop 2' })).toHaveAttribute('aria-valuenow', '0.45');
+  await expect(thumbnail(3)).not.toHaveAttribute('data-hash', curved);
+  await expect(window.getByTestId('graph-evaluation')).toHaveText(/ran, \d+ ms|Up to date/);
+
+  // The Texture pane: a histogram that says where it came from, a channel, the real size.
+  await expect(window.getByTestId('texture-histogram-label')).toHaveText('Histogram of the 256 × 256 reduction');
+  await expect(window.getByTestId('texture-size')).toHaveText('256 × 256, a reduction');
+  await window.getByRole('radio', { name: 'R', exact: true }).click();
+  await expect(window.getByTestId('texture-channel')).toBeVisible();
+  await window.screenshot({ path: join(shots, 'graph-channel.png') });
+  await window.getByRole('radio', { name: 'RGBA' }).click();
+  await window.getByTestId('texture-full').click();
+  await expect(window.getByTestId('texture-size')).toHaveText('512 × 512');
+  await window.screenshot({ path: join(shots, 'graph-tiling-material.png') });
+
+  await window.getByTestId('graph-save').click();
+  await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
+
+  // The file is the truth: everything above is in it.
+  const file = readFileSync(join(library, 'shared', 'graphs', 'tiling-rust.vxtexgraph'), 'utf8');
+  expect(file).toContain('ramp:0 000000ff,0.45 a0522dff,1 ffffffff');
+  expect(file).toMatch(/curve:r=0 0,0\.5 \d\.\d+,1 1;/);
+  expect(file).toContain("baseWidth: '512'");
+});
+
+test('exposes a parameter, drives a number from it and edits its default', async () => {
+  await openGraph();
+  const before = await hashOf(thumbnail(1));
+  await window.getByTestId('graph-settings').click();
+  await window.getByTestId('parameter-add').click();
+  const parameter = window.getByTestId('parameter-Parameter1');
+  await expect(parameter).toBeVisible();
+
+  await inspect(1);
+  await window.getByTestId('expression-toggle-Scale').click();
+  await window.getByTestId('expression-Scale').fill('Parameter1 * 20 + 1');
+  await window.getByTestId('expression-Scale').press('Enter');
+  await expect(thumbnail(1)).not.toHaveAttribute('data-hash', before);
+  const driven = await hashOf(thumbnail(1));
+
+  await window.getByTestId('graph-settings').click();
+  await parameter.getByRole('spinbutton').fill('0.9');
+  await parameter.getByRole('spinbutton').press('Enter');
+  await expect(thumbnail(1)).not.toHaveAttribute('data-hash', driven);
+
+  await window.getByTestId('graph-undo').click();
+  await expect(thumbnail(1)).toHaveAttribute('data-hash', driven);
+});
+
+test('groups nodes, keeps notes, and both survive a save and a reopen', async () => {
+  await openGraph();
+  await inspect(1);
+  await window.getByTestId('graph-group').click();
+  await expect(window.getByTestId('graph-frame')).toHaveCount(1);
+
+  await window.getByTestId('graph-note').click();
+  await expect(window.getByTestId('graph-note-card')).toHaveCount(1);
+  await expect(window.getByTestId('inspector-title')).toHaveText('Note');
+  await window.getByTestId('note-text').fill('Rust gathers in the seams');
+  await window.getByTestId('note-text').press('Tab');
+  await expect(window.getByTestId('graph-note-card')).toContainText('Rust gathers in the seams');
+
+  await window.getByTestId('graph-settings').click();
+  await window.getByTestId('group-row').getByLabel('Group title').fill('Base');
+  await window.getByTestId('group-row').getByLabel('Group title').press('Tab');
+  await expect(window.getByTestId('graph-frame')).toContainText('Base');
+
+  await window.getByTestId('graph-save').click();
+  await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
+  await window.getByTestId('graph-close').click();
+  await expect(window.getByTestId('graph-none')).toBeVisible();
+  await window.getByTestId('open-graph').click();
+  await expect(window.getByTestId('graph-frame')).toContainText('Base');
+  await expect(window.getByTestId('graph-note-card')).toContainText('Rust gathers in the seams');
+});
+
+test('instances a compound, opens it, and comes back along the breadcrumb', async () => {
+  await openGraph();
+  await addNodeAt('Patterns/Cells', 60, 60);
+  const added = Nodes + 1;
+  await hashOf(thumbnail(added));
+  await expect(node(added)).toHaveAttribute('data-compound', 'Patterns/Cells');
+  await expect(window.getByTestId('graph-unsaved')).toBeVisible();
+
+  await window.getByTestId('graph-open-compound').click();
+  await expect(window.getByTestId('graph-name')).not.toHaveText(Name);
+  await expect(window.getByTestId('graph-read-only')).toBeVisible();
+  await expect(window.getByTestId('graph-add')).toBeDisabled();
+  await expect(window.getByTestId('graph-crumb')).toHaveText(Name);
+  await window.screenshot({ path: join(shots, 'graph-compound.png') });
+
+  // Back: the outer graph is as it was left, edits and undo included.
+  await window.getByTestId('graph-crumb').click();
+  await expect(window.getByTestId('graph-name')).toHaveText(Name);
+  await expect(window.getByTestId('graph-crumb')).toHaveCount(0);
+  await expect(nodes()).toHaveCount(Nodes + 1);
+  await expect(window.getByTestId('graph-unsaved')).toBeVisible();
+});
+
+test('reads a bitmap from beside the graph, and says so when it cannot', async () => {
+  await openGraph();
+  writeFileSync(join(library, 'shared', 'graphs', 'dot.png'), Buffer.from(OnePixelPng, 'base64'));
+  await addNodeAt('Source/Bitmap', 60, 60);
+  const added = Nodes + 1;
+  await window.getByTestId('field-Source').getByRole('textbox').fill('dot.png');
+  await window.getByTestId('field-Source').getByRole('textbox').press('Enter');
+  await hashOf(thumbnail(added));
+  await expect(window.getByText('PT0001')).toHaveCount(0);
+
+  await window.getByTestId('field-Source').getByRole('textbox').fill('gone.png');
+  await window.getByTestId('field-Source').getByRole('textbox').press('Enter');
+  await expect(window.getByText('PT0001')).toBeVisible();
+});
+
+test('Undo, Redo and Save work from the Inspector, and several nodes say so', async () => {
+  await openGraph();
+  await inspect(2);
+  const title = await window.getByTestId('inspector-title').textContent();
+  const slider = window.locator('[data-testid^=field-]').getByRole('slider').first();
+  await slider.focus();
+  await window.keyboard.press('ArrowRight');
+  await expect(window.getByTestId('graph-unsaved')).toBeVisible();
+
+  await window.keyboard.press('ControlOrMeta+s');
+  await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
+  await window.keyboard.press('ArrowRight');
+  await expect(window.getByTestId('graph-undo')).toBeEnabled();
+  await window.keyboard.press('ControlOrMeta+z');
+  await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
+  await window.keyboard.press('ControlOrMeta+Shift+z');
+  await expect(window.getByTestId('graph-unsaved')).toBeVisible();
+  expect(title).not.toBe('');
+
+  await inspect(1);
+  await node(3)
+    .locator('xui-graph-node-preview')
+    .click({ modifiers: ['Shift'] });
+  await expect(window.getByTestId('inspector-title')).toHaveText('2 nodes');
+  await expect(window.getByTestId('selection-list').getByRole('listitem')).toHaveCount(2);
+});
+
+test('asks before quitting with unsaved edits', async () => {
+  await openGraph();
+  await addNode('Grayscale');
+  await expect(window.getByTestId('graph-unsaved')).toBeVisible();
+
+  void app.evaluate(({ app: electronApp }) => {
+    electronApp.quit();
+  });
+  await expect(window.getByTestId('graph-leaving')).toBeVisible();
+  await window.getByRole('button', { name: 'Cancel' }).click();
+  await expect(window.getByTestId('graph-leaving')).toHaveCount(0);
+  await expect(window.getByTestId('graph-name')).toHaveText(Name);
+
+  const closed = app.waitForEvent('close');
+  void app.evaluate(({ app: electronApp }) => {
+    electronApp.quit();
+  });
+  await expect(window.getByTestId('graph-leaving')).toBeVisible();
+  await window.getByTestId('graph-discard').click();
+  await closed;
 });

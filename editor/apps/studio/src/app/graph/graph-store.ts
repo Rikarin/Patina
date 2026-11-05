@@ -3,13 +3,16 @@ import {
   ApiError,
   type Connection,
   type GraphCommand,
+  type GraphCompound,
   type GraphEditResult,
   type GraphEvent,
   type GraphNodeType,
+  type GraphSettingDefinition,
   type GraphState,
   type PatinaClient,
   unwrap
 } from '@patina/api-client';
+import { desktop } from '../core/desktop';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { LibrarySelection } from '../library/library-selection';
 import { DraftLayer } from './draft-layer';
@@ -27,8 +30,17 @@ export type GraphSessionState =
 /** Whether events are arriving. Edits wait for `live`, since an edit nobody can see land is not an edit. */
 export type GraphLink = 'live' | 'reconnecting';
 
-/** Leaving a graph with unsaved edits: to open another, or just to close it. */
-export type GraphLeaving = { kind: 'open'; path: string } | { kind: 'close' };
+/** Leaving a graph with unsaved edits: to open another, to close it, to go back up a level, or to quit. */
+export type GraphLeaving =
+  { kind: 'open'; path: string } | { kind: 'close' } | { kind: 'back'; index: number } | { kind: 'quit' };
+
+/** A graph the user went through to reach the compound on screen. Its session stays open, edits and undo included. */
+export interface GraphCrumb {
+  id: string;
+  path: string;
+  name: string;
+  dirty: boolean;
+}
 
 export interface GraphPoint {
   x: number;
@@ -49,6 +61,9 @@ const LastRetryMs = 4_000;
 type DraftValue = readonly number[] | string;
 
 const valueKey = (node: number, port: string): string => `${String(node)}/${port}`;
+const noteKey = (index: number): string => `note/${String(index)}`;
+const parameterKey = (name: string): string => `parameter/${name}`;
+const GroupPrefix = 'group-';
 
 function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -88,6 +103,10 @@ export class GraphStore {
   private readonly mutableSelection = signal<ReadonlySet<number>>(new Set());
   private readonly mutableLeaving = signal<GraphLeaving | null>(null);
   private readonly mutableSaveConflict = signal(false);
+  private readonly mutableCompounds = signal<ReadonlyMap<string, GraphCompound>>(new Map());
+  private readonly mutableTrail = signal<readonly GraphCrumb[]>([]);
+  private readonly mutableNote = signal<number | null>(null);
+  private readonly mutableGraphInspected = signal(false);
   private readonly positionDrafts = new DraftLayer<GraphPoint>();
   private readonly valueDrafts = new DraftLayer<DraftValue>();
   private readonly edits = new EditQueue<GraphEditResult>();
@@ -123,6 +142,19 @@ export class GraphStore {
   /** A save refused because the file changed on disk. */
   readonly saveConflict = this.mutableSaveConflict.asReadonly();
   readonly positions = this.positionDrafts.values;
+  /** The compounds a node of this graph can be, by node type. */
+  readonly compounds = this.mutableCompounds.asReadonly();
+  /** The graphs around the one on screen, outermost first. */
+  readonly trail = this.mutableTrail.asReadonly();
+  /** The selected note, by its place in the document. */
+  readonly selectedNote = this.mutableNote.asReadonly();
+  /** Whether the Inspector shows the graph itself. */
+  readonly graphInspected = this.mutableGraphInspected.asReadonly();
+
+  /** Whether anything open here differs from its file, on this level or one above it. */
+  readonly unsaved = computed(
+    () => (this.mutableDocument()?.history.dirty ?? false) || this.mutableTrail().some(crumb => crumb.dirty)
+  );
 
   /** The one node the Inspector and the texture view follow. */
   readonly selectedNode = computed(() => {
@@ -131,7 +163,10 @@ export class GraphStore {
     return (first === undefined ? undefined : document?.nodes.get(first)) ?? null;
   });
 
-  readonly editable = computed(() => this.mutableDocument() !== null && this.mutableLink() === 'live');
+  readonly editable = computed(() => {
+    const document = this.mutableDocument();
+    return document !== null && !document.readOnly && this.mutableLink() === 'live';
+  });
 
   constructor() {
     inject(DestroyRef).onDestroy(() => {
@@ -149,9 +184,22 @@ export class GraphStore {
         seen = item;
         untracked(() => {
           this.select([]);
+          this.mutableNote.set(null);
+          this.mutableGraphInspected.set(false);
         });
       }
     });
+
+    // The desktop app asks before it quits, so it has to know whether there is anything to ask about.
+    const bridge = desktop();
+    if (bridge) {
+      effect(() => {
+        bridge.setUnsaved(this.unsaved());
+      });
+      bridge.onQuitRequested(() => {
+        this.mutableLeaving.set({ kind: 'quit' });
+      });
+    }
   }
 
   /** A node's thumbnail. */
@@ -166,39 +214,85 @@ export class GraphStore {
       return;
     }
 
-    if (document?.history.dirty) {
+    if (this.unsaved()) {
       this.mutableLeaving.set({ kind: 'open', path });
       return;
     }
 
     if (document) {
-      await this.closeSession(false);
+      await this.closeAll(false);
     }
 
     await this.start(path);
   }
 
+  /** Writes a new graph into the library and opens it. The Server's refusal is what the caller shows. */
+  async create(name: string, project: string | null): Promise<void> {
+    const client = await this.reconnect();
+    const { path } = unwrap(await client.POST('/api/v1/library/graphs', { body: { name, project } }));
+    await this.open(path);
+  }
+
   /** Closes the session on the Server, which ends it for every client that joined. Unsaved edits ask first. */
   async close(): Promise<void> {
-    if (this.mutableDocument()?.history.dirty) {
+    if (this.unsaved()) {
       this.mutableLeaving.set({ kind: 'close' });
       return;
     }
 
-    await this.closeSession(false);
+    await this.closeAll(false);
+  }
+
+  /** Opens the graph behind a compound node, keeping this one open to come back to. */
+  async enterCompound(type: string): Promise<void> {
+    const compound = this.mutableCompounds().get(type);
+    const document = this.mutableDocument();
+    if (!compound || !document) {
+      return;
+    }
+
+    const crumb = { id: document.id, path: document.path, name: document.name, dirty: document.history.dirty };
+    this.mutableTrail.update(trail => [...trail, crumb]);
+    await this.start(compound.path);
+  }
+
+  /** Goes back to a graph on the trail. What is open below it closes, so unsaved edits there ask first. */
+  async back(index: number): Promise<void> {
+    if (
+      (this.mutableDocument()?.history.dirty ?? false) ||
+      this.mutableTrail()
+        .slice(index + 1)
+        .some(c => c.dirty)
+    ) {
+      this.mutableLeaving.set({ kind: 'back', index });
+      return;
+    }
+
+    await this.goBack(index, false);
   }
 
   /** Answers {@link leaving}. */
   async resolveLeaving(choice: 'save' | 'discard' | 'cancel'): Promise<void> {
     const leaving = this.mutableLeaving();
     this.mutableLeaving.set(null);
-    if (leaving === null || choice === 'cancel' || (choice === 'save' && !(await this.save()))) {
+    if (leaving === null || choice === 'cancel' || (choice === 'save' && !(await this.saveLeaving(leaving)))) {
       return;
     }
 
-    await this.closeSession(choice === 'discard');
-    if (leaving.kind === 'open') {
-      await this.start(leaving.path);
+    const discard = choice === 'discard';
+    switch (leaving.kind) {
+      case 'back':
+        await this.goBack(leaving.index, discard);
+        break;
+      case 'open':
+        await this.closeAll(discard);
+        await this.start(leaving.path);
+        break;
+      case 'close':
+        await this.closeAll(discard);
+        break;
+      case 'quit':
+        desktop()?.quit();
     }
   }
 
@@ -216,6 +310,25 @@ export class GraphStore {
     if (next.size !== held.size || [...next].some(node => !held.has(node))) {
       this.mutableSelection.set(next);
     }
+
+    if (next.size > 0) {
+      this.mutableGraphInspected.set(false);
+    }
+  }
+
+  /** Selects a note, or none. */
+  selectNote(index: number | null): void {
+    this.mutableNote.set(index);
+    if (index !== null) {
+      this.mutableGraphInspected.set(false);
+    }
+  }
+
+  /** Shows the graph's own settings in the Inspector. */
+  inspectGraph(): void {
+    this.select([]);
+    this.mutableNote.set(null);
+    this.mutableGraphInspected.set(true);
   }
 
   dismissProblem(): void {
@@ -244,6 +357,133 @@ export class GraphStore {
     }
 
     return this.mutableDocument()?.nodes.get(node)?.texts[setting] ?? fallback;
+  }
+
+  /** A parameter's default as it shows: the hand's, then the document's. */
+  parameterDefault(parameter: GraphSettingDefinition): string {
+    const draft = this.valueDrafts.values().get(parameterKey(parameter.name));
+    return typeof draft === 'string' ? draft : parameter.default;
+  }
+
+  /** Sets a setting of the graph itself. */
+  setSetting(key: string, value: string): void {
+    void this.apply([{ op: 'setSetting', key, value }], `Set ${key}`);
+  }
+
+  addParameter(parameter: GraphSettingDefinition): void {
+    void this.apply([{ op: 'addParameter', parameter }], null);
+  }
+
+  /** Changes a parameter in one step, which may rename it. */
+  editParameter(name: string, parameter: GraphSettingDefinition): void {
+    void this.apply([{ op: 'setParameter', name, parameter }], null);
+  }
+
+  /** Sets a parameter's default. Live: a slider sends this on every step. */
+  setParameterDefault(parameter: GraphSettingDefinition, value: string): void {
+    const key = parameterKey(parameter.name);
+    this.sendDraft(key, key, value, {
+      op: 'setParameter',
+      name: parameter.name,
+      parameter: { ...parameter, default: value }
+    });
+  }
+
+  removeParameter(name: string): void {
+    void this.apply([{ op: 'removeParameter', name }], null);
+  }
+
+  /** Draws a frame round the selected nodes. A node belongs to one frame, so they leave any they were in. */
+  groupSelection(): void {
+    const nodes = [...this.mutableSelection()];
+    if (nodes.length > 0) {
+      void this.apply([...this.leavingGroups(nodes), { op: 'addGroup', title: 'Group', nodes }], 'Group Nodes');
+    }
+  }
+
+  renameGroup(index: number, title: string): void {
+    void this.apply([{ op: 'setGroup', index, title }], null);
+  }
+
+  ungroup(index: number): void {
+    void this.apply([{ op: 'removeGroup', index }], null);
+  }
+
+  /** Nodes came to rest, each inside a frame or outside them all. A node that changed frame changes group. */
+  regroup(moved: readonly { node: number; group: string | undefined }[]): void {
+    const groups = this.mutableDocument()?.groups ?? [];
+    const members = groups.map(group => new Set(group.nodes));
+    let changed = false;
+    for (const { node, group } of moved) {
+      const target = group === undefined ? -1 : Number(group.slice(GroupPrefix.length));
+      const held = members.findIndex(set => set.has(node));
+      if (held !== target) {
+        members[held]?.delete(node);
+        members[target]?.add(node);
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      const commands = members.map((nodes, index): GraphCommand => ({ op: 'setGroup', index, nodes: [...nodes] }));
+      void this.apply(commands, 'Move Between Groups');
+    }
+  }
+
+  /** Adds a note, and selects it for typing into. */
+  async addComment(position: GraphPoint): Promise<void> {
+    const index = this.mutableDocument()?.comments.length ?? 0;
+    const added = await this.apply([{ op: 'addComment', text: 'Note', x: position.x, y: position.y }], null);
+    if (added) {
+      this.select([]);
+      this.selectNote(index);
+    }
+  }
+
+  setCommentText(index: number, text: string): void {
+    void this.apply([{ op: 'setComment', index, text }], null);
+  }
+
+  /** A note moved under the hand. Live, and a drag is one undo. */
+  moveComment(index: number, position: GraphPoint): void {
+    const key = noteKey(index);
+    this.positionDrafts.set(key, position);
+    this.sendLive(
+      key,
+      { op: 'setComment', index, x: position.x, y: position.y },
+      (sequence, seen) => {
+        this.positionDrafts.settle(key, position, sequence, seen);
+      },
+      () => {
+        this.positionDrafts.drop(key);
+      }
+    );
+  }
+
+  removeComment(index: number): void {
+    this.selectNote(null);
+    void this.apply([{ op: 'removeComment', index }], null);
+  }
+
+  /** Writes a node's picture at full size and fetches it. The Worker does the work and the file is the answer. */
+  async fullImage(node: number, port: string): Promise<{ blob: Blob; width: number; height: number } | null> {
+    const id = this.mutableDocument()?.id;
+    if (id === undefined) {
+      return null;
+    }
+
+    try {
+      const image = unwrap(
+        await this.api().POST('/api/v1/graphs/{id}/images', { params: { path: { id } }, body: { node, port } })
+      );
+      const blob = unwrap(
+        await this.api().GET('/api/v1/previews/{hash}', { params: { path: { hash: image.hash } }, parseAs: 'blob' })
+      );
+      return { blob, width: image.width, height: image.height };
+    } catch (error) {
+      this.refused(error);
+      return null;
+    }
   }
 
   /** Adds a node, and wires it to the port a dropped wire came from. */
@@ -350,6 +590,36 @@ export class GraphStore {
 
   redo(): void {
     this.walk('redo');
+  }
+
+  /**
+   * Undo, Redo and Save, wherever the keys were pressed: true if this was one of them. A caller decides first whether
+   * the press belongs to a text box.
+   */
+  shortcut(event: KeyboardEvent): boolean {
+    if (!event.metaKey && !event.ctrlKey) {
+      return false;
+    }
+
+    const key = event.key.toLowerCase();
+    if (key === 'z') {
+      event.preventDefault();
+      if (event.shiftKey) {
+        this.redo();
+      } else {
+        this.undo();
+      }
+
+      return true;
+    }
+
+    if (key === 's') {
+      event.preventDefault();
+      void this.save();
+      return true;
+    }
+
+    return false;
   }
 
   /** Writes the file. False if it did not happen. */
@@ -564,17 +834,38 @@ export class GraphStore {
   }
 
   private async adopt(state: GraphState, epoch: number): Promise<void> {
-    const types = unwrap(
-      await this.api().GET('/api/v1/graphs/{id}/node-types', { params: { path: { id: state.id } } })
-    );
+    const catalogue = await this.catalogue(state.id);
     if (epoch !== this.epoch) {
       return;
     }
 
-    this.mutableTypes.set(new Map(types.map(type => [type.path, type])));
+    this.showCatalogue(catalogue);
     this.accept(documentOf(state));
     this.mutableSession.set({ kind: 'open' });
     this.follow(epoch);
+  }
+
+  /** Every node type and compound this graph can use, which a saved compound can change. */
+  private async catalogue(id: string): Promise<[GraphNodeType[], GraphCompound[]]> {
+    const params = { params: { path: { id } } };
+    const [types, compounds] = await Promise.all([
+      this.api().GET('/api/v1/graphs/{id}/node-types', params),
+      this.api().GET('/api/v1/graphs/{id}/compounds', params)
+    ]);
+    return [unwrap(types), unwrap(compounds)];
+  }
+
+  private showCatalogue([types, compounds]: [GraphNodeType[], GraphCompound[]]): void {
+    this.mutableTypes.set(new Map(types.map(type => [type.path, type])));
+    this.mutableCompounds.set(new Map(compounds.map(compound => [compound.type, compound])));
+  }
+
+  private async refreshCatalogue(id: string): Promise<void> {
+    const epoch = this.epoch;
+    const catalogue = await this.catalogue(id);
+    if (epoch === this.epoch) {
+      this.showCatalogue(catalogue);
+    }
   }
 
   /** Takes a whole document, as on opening or after a resync. */
@@ -601,6 +892,23 @@ export class GraphStore {
     if ([...held].some(node => !document.nodes.has(node))) {
       this.mutableSelection.set(new Set([...held].filter(node => document.nodes.has(node))));
     }
+
+    const note = this.mutableNote();
+    if (note !== null && note >= document.comments.length) {
+      this.mutableNote.set(null);
+    }
+  }
+
+  /** The commands that take nodes out of the frames they are in. */
+  private leavingGroups(nodes: readonly number[]): GraphCommand[] {
+    const leaving = new Set(nodes);
+    const commands: GraphCommand[] = [];
+    (this.mutableDocument()?.groups ?? []).forEach((group, index) => {
+      if (group.nodes.some(node => leaving.has(node))) {
+        commands.push({ op: 'setGroup', index, nodes: group.nodes.filter(node => !leaving.has(node)) });
+      }
+    });
+    return commands;
   }
 
   private follow(epoch: number): void {
@@ -733,6 +1041,12 @@ export class GraphStore {
       this.previews.retryLost();
     }
 
+    if (event.kind === 'typesChanged') {
+      this.refreshCatalogue(next.id).catch((error: unknown) => {
+        this.refused(error);
+      });
+    }
+
     this.keepSelectionReal(next);
     this.positionDrafts.reached(event.sequence);
     this.valueDrafts.reached(event.sequence);
@@ -789,6 +1103,63 @@ export class GraphStore {
     this.mutableSession.set({ kind: 'none' });
   }
 
+  /** Saves what leaving would lose: the graph on screen and whatever on the trail is going too. */
+  private async saveLeaving(leaving: GraphLeaving): Promise<boolean> {
+    const trail = this.mutableTrail();
+    const going = leaving.kind === 'back' ? trail.slice(leaving.index + 1) : trail;
+    if (this.mutableDocument()?.history.dirty && !(await this.save())) {
+      return false;
+    }
+
+    try {
+      for (const crumb of going.filter(item => item.dirty)) {
+        unwrap(await this.api().POST('/api/v1/graphs/{id}/save', { params: { path: { id: crumb.id } } }));
+      }
+
+      this.mutableTrail.set(trail.map(crumb => (going.includes(crumb) ? { ...crumb, dirty: false } : crumb)));
+      return true;
+    } catch (error) {
+      this.refused(error);
+      return false;
+    }
+  }
+
+  private async closeCrumb(crumb: GraphCrumb, discard: boolean): Promise<void> {
+    try {
+      await this.api().DELETE('/api/v1/graphs/{id}', { params: { path: { id: crumb.id }, query: { discard } } });
+    } catch (error) {
+      if (!(error instanceof ApiError && error.status === 404)) {
+        this.refused(error);
+      }
+    }
+  }
+
+  /** Closes the graph on screen and every graph on the trail. */
+  private async closeAll(discard: boolean): Promise<void> {
+    await this.closeSession(discard);
+    const trail = this.mutableTrail();
+    this.mutableTrail.set([]);
+    for (const crumb of trail) {
+      await this.closeCrumb(crumb, discard);
+    }
+  }
+
+  private async goBack(index: number, discard: boolean): Promise<void> {
+    const trail = this.mutableTrail();
+    const target = trail[index];
+    if (!target) {
+      return;
+    }
+
+    await this.closeSession(discard);
+    for (const crumb of trail.slice(index + 1)) {
+      await this.closeCrumb(crumb, discard);
+    }
+
+    this.mutableTrail.set(trail.slice(0, index));
+    await this.start(target.path);
+  }
+
   /** Lets go of everything the session held. Returns the new epoch. */
   private endSession(): number {
     this.stopFollowing();
@@ -804,6 +1175,9 @@ export class GraphStore {
     this.evaluateAsked = false;
     this.mutableDocument.set(null);
     this.mutableSelection.set(new Set());
+    this.mutableNote.set(null);
+    this.mutableGraphInspected.set(false);
+    this.mutableCompounds.set(new Map());
     this.mutableLink.set('live');
     this.mutableProblem.set(null);
     this.mutableSaveConflict.set(false);

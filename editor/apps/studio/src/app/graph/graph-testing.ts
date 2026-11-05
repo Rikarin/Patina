@@ -33,9 +33,13 @@ export function state(overrides: Partial<GraphState> = {}): GraphState {
     edges: [{ fromNode: 1, fromPort: 'Out', toNode: 2, toPort: 'Input' }],
     settings: { seed: '7' },
     parameters: [],
+    groups: [],
+    comments: [],
     previews: [],
     repairs: [],
     evaluation: null,
+    settled: 1,
+    readOnly: false,
     ...overrides
   };
 }

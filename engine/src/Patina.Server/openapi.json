@@ -324,6 +324,67 @@
         }
       }
     },
+    "/api/v1/library/graphs": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Writes a new, empty graph file. It reaches the listings once the index has caught up.",
+        "operationId": "CreateGraph",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphCreated"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/projects/tags": {
       "get": {
         "tags": [
@@ -802,6 +863,50 @@
         }
       }
     },
+    "/api/v1/graphs/{id}/compounds": {
+      "get": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "The compounds this graph can hold, and the path that opens the graph behind each.",
+        "operationId": "GetGraphCompounds",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GraphCompound"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/graphs/{id}/commands": {
       "post": {
         "tags": [
@@ -1020,6 +1125,16 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -1047,6 +1162,77 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graphs/{id}/images": {
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Writes a node\u0027s picture at the size the graph computes it. /previews/{hash} serves the PNG.",
+        "operationId": "WriteGraphImage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphImageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphImage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -1275,6 +1461,33 @@
           },
           {
             "$ref": "#/components/schemas/GraphCommandGraphSetSetting"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphAddParameter"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphSetParameter"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphRemoveParameter"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphAddGroup"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphSetGroup"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphRemoveGroup"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphAddComment"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphSetComment"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphRemoveComment"
           }
         ],
         "description": "One edit. Commands in a batch run in order, and every command sees the ones before it.",
@@ -1288,7 +1501,16 @@
             "disconnect": "#/components/schemas/GraphCommandGraphDisconnect",
             "setValue": "#/components/schemas/GraphCommandGraphSetValue",
             "setText": "#/components/schemas/GraphCommandGraphSetText",
-            "setSetting": "#/components/schemas/GraphCommandGraphSetSetting"
+            "setSetting": "#/components/schemas/GraphCommandGraphSetSetting",
+            "addParameter": "#/components/schemas/GraphCommandGraphAddParameter",
+            "setParameter": "#/components/schemas/GraphCommandGraphSetParameter",
+            "removeParameter": "#/components/schemas/GraphCommandGraphRemoveParameter",
+            "addGroup": "#/components/schemas/GraphCommandGraphAddGroup",
+            "setGroup": "#/components/schemas/GraphCommandGraphSetGroup",
+            "removeGroup": "#/components/schemas/GraphCommandGraphRemoveGroup",
+            "addComment": "#/components/schemas/GraphCommandGraphAddComment",
+            "setComment": "#/components/schemas/GraphCommandGraphSetComment",
+            "removeComment": "#/components/schemas/GraphCommandGraphRemoveComment"
           }
         }
       },
@@ -1320,6 +1542,79 @@
           }
         },
         "description": "Some edits, applied whole or not at all, and undone as one step."
+      },
+      "GraphCommandGraphAddComment": {
+        "required": [
+          "text",
+          "x",
+          "y",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "addComment"
+            ],
+            "type": "string"
+          },
+          "text": {
+            "type": "string",
+            "description": "What it says."
+          },
+          "x": {
+            "type": "number",
+            "description": "Its left edge.",
+            "format": "float"
+          },
+          "y": {
+            "type": "number",
+            "description": "Its top edge.",
+            "format": "float"
+          },
+          "width": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Its width, or null for the standard size.",
+            "format": "float"
+          },
+          "height": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Its height, or null for the standard size.",
+            "format": "float"
+          }
+        },
+        "description": "Adds a note."
+      },
+      "GraphCommandGraphAddGroup": {
+        "required": [
+          "title",
+          "nodes",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "addGroup"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        },
+        "description": "Draws a group frame round some nodes."
       },
       "GraphCommandGraphAddNode": {
         "required": [
@@ -1359,6 +1654,24 @@
           }
         },
         "description": "Adds a node."
+      },
+      "GraphCommandGraphAddParameter": {
+        "required": [
+          "parameter",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "addParameter"
+            ],
+            "type": "string"
+          },
+          "parameter": {
+            "$ref": "#/components/schemas/GraphSettingDefinition"
+          }
+        },
+        "description": "Exposes a new parameter. Its name must be free, and its default must suit its kind and range."
       },
       "GraphCommandGraphConnect": {
         "required": [
@@ -1436,6 +1749,44 @@
         },
         "description": "Moves nodes. A move never evaluates anything."
       },
+      "GraphCommandGraphRemoveComment": {
+        "required": [
+          "index",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "removeComment"
+            ],
+            "type": "string"
+          },
+          "index": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "description": "Removes a note."
+      },
+      "GraphCommandGraphRemoveGroup": {
+        "required": [
+          "index",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "removeGroup"
+            ],
+            "type": "string"
+          },
+          "index": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "description": "Takes a group frame away. Its nodes stay."
+      },
       "GraphCommandGraphRemoveNodes": {
         "required": [
           "nodes",
@@ -1457,6 +1808,145 @@
           }
         },
         "description": "Removes nodes, and the wires that touch them."
+      },
+      "GraphCommandGraphRemoveParameter": {
+        "required": [
+          "name",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "removeParameter"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "description": "Stops exposing a parameter."
+      },
+      "GraphCommandGraphSetComment": {
+        "required": [
+          "index",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "setComment"
+            ],
+            "type": "string"
+          },
+          "index": {
+            "type": "integer",
+            "description": "Its place in the state\u0027s list.",
+            "format": "int32"
+          },
+          "text": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What it says."
+          },
+          "x": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Its left edge.",
+            "format": "float"
+          },
+          "y": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Its top edge.",
+            "format": "float"
+          },
+          "width": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Its width.",
+            "format": "float"
+          },
+          "height": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Its height.",
+            "format": "float"
+          }
+        },
+        "description": "Changes a note: anything left null stays as it is. A note moved by hand sends this on every step."
+      },
+      "GraphCommandGraphSetGroup": {
+        "required": [
+          "index",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "setGroup"
+            ],
+            "type": "string"
+          },
+          "index": {
+            "type": "integer",
+            "description": "Its place in the state\u0027s list.",
+            "format": "int32"
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its new title."
+          },
+          "nodes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Its new members."
+          }
+        },
+        "description": "Changes a group: anything left null stays as it is."
+      },
+      "GraphCommandGraphSetParameter": {
+        "required": [
+          "name",
+          "parameter",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "setParameter"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "The parameter as it is called now."
+          },
+          "parameter": {
+            "description": "What it becomes, which may rename it. Expressions keep the old name until edited.",
+            "$ref": "#/components/schemas/GraphSettingDefinition"
+          }
+        },
+        "description": "Replaces a parameter where it stands. Dragging its default sends this on every step."
       },
       "GraphCommandGraphSetSetting": {
         "required": [
@@ -1541,6 +2031,79 @@
         },
         "description": "Sets the numbers on a node\u0027s input. This is what a slider sends."
       },
+      "GraphCommentState": {
+        "required": [
+          "text",
+          "x",
+          "y",
+          "width",
+          "height"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "What it says."
+          },
+          "x": {
+            "type": "number",
+            "description": "Its left edge on the canvas.",
+            "format": "float"
+          },
+          "y": {
+            "type": "number",
+            "description": "Its top edge on the canvas.",
+            "format": "float"
+          },
+          "width": {
+            "type": "number",
+            "description": "Its width.",
+            "format": "float"
+          },
+          "height": {
+            "type": "number",
+            "description": "Its height.",
+            "format": "float"
+          }
+        },
+        "description": "A note on the canvas."
+      },
+      "GraphCompound": {
+        "required": [
+          "type",
+          "path",
+          "readOnly"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Its node type\u0027s path, as \u0060/node-types\u0060 lists it."
+          },
+          "path": {
+            "type": "string",
+            "description": "What \u0060POST /graphs\u0060 takes to open it."
+          },
+          "readOnly": {
+            "type": "boolean",
+            "description": "True for a compound that ships with Patina, which opens to be read."
+          }
+        },
+        "description": "A compound a graph can hold, and the graph behind it."
+      },
+      "GraphCreated": {
+        "required": [
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Relative to the library, with forward slashes, as \u0060POST /graphs\u0060 takes it."
+          }
+        },
+        "description": "A new graph\u0027s file."
+      },
       "GraphCreatedNode": {
         "required": [
           "ref",
@@ -1558,6 +2121,26 @@
           }
         },
         "description": "Which identity a client\u0027s int? GraphAddNode.Ref became."
+      },
+      "GraphCreateRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The graph\u0027s name. The Server makes its file name from it."
+          },
+          "project": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A project\u0027s path below \u0060projects/\u0060 to put it in, or null for \u0060shared/graphs\u0060."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/graphs\u0060."
       },
       "GraphDelta": {
         "required": [
@@ -1612,6 +2195,36 @@
               "type": "string"
             },
             "description": "Graph settings that have gone."
+          },
+          "parameters": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/GraphSettingDefinition"
+            },
+            "description": "The whole list of exposed parameters, or null when it did not change."
+          },
+          "groups": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/GraphGroupState"
+            },
+            "description": "The whole list of groups, or null when it did not change."
+          },
+          "comments": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/GraphCommentState"
+            },
+            "description": "The whole list of notes, or null when it did not change."
           }
         },
         "description": "What changed in the document, the same for an edit, an undo and a redo."
@@ -1839,6 +2452,8 @@
           "redone",
           "saved",
           "evaluated",
+          "settled",
+          "typesChanged",
           "closed",
           "resync"
         ],
@@ -1865,6 +2480,28 @@
           }
         },
         "description": "The events after a number, for a client that does not hold a WebSocket or has missed some."
+      },
+      "GraphGroupState": {
+        "required": [
+          "title",
+          "nodes"
+        ],
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "What it is called."
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Its members."
+          }
+        },
+        "description": "A frame round some nodes. It holds no geometry: a client draws it from where its nodes are."
       },
       "GraphHistoryState": {
         "required": [
@@ -1902,6 +2539,50 @@
           }
         },
         "description": "What the undo history offers."
+      },
+      "GraphImage": {
+        "required": [
+          "hash",
+          "width",
+          "height"
+        ],
+        "type": "object",
+        "properties": {
+          "hash": {
+            "type": "string",
+            "description": "The SHA-256 of the PNG\u0027s bytes, in lower-case hex."
+          },
+          "width": {
+            "type": "integer",
+            "description": "The PNG\u0027s size in pixels.",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "description": "The PNG\u0027s size in pixels.",
+            "format": "int32"
+          }
+        },
+        "description": "Where a full-size picture is: \u0060GET /api/v1/previews/{hash}\u0060. Pixels never cross JSON."
+      },
+      "GraphImageRequest": {
+        "required": [
+          "node",
+          "port"
+        ],
+        "type": "object",
+        "properties": {
+          "node": {
+            "type": "integer",
+            "description": "The node.",
+            "format": "int32"
+          },
+          "port": {
+            "type": "string",
+            "description": "Its output port, or the usage of an Output node, as a preview names them."
+          }
+        },
+        "description": "Asks for a node\u0027s picture at the size the graph computes it."
       },
       "GraphNodePosition": {
         "required": [
@@ -2181,8 +2862,12 @@
           "edges",
           "settings",
           "parameters",
+          "groups",
+          "comments",
           "previews",
-          "repairs"
+          "repairs",
+          "settled",
+          "readOnly"
         ],
         "type": "object",
         "properties": {
@@ -2240,6 +2925,20 @@
             },
             "description": "The parameters the graph exposes."
           },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphGroupState"
+            },
+            "description": "Its group frames, in file order. A command names one by its place here."
+          },
+          "comments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphCommentState"
+            },
+            "description": "Its notes, in file order. A command names one by its place here."
+          },
           "previews": {
             "type": "array",
             "items": {
@@ -2264,6 +2963,15 @@
                 "$ref": "#/components/schemas/GraphEvaluation"
               }
             ]
+          },
+          "settled": {
+            "type": "integer",
+            "description": "The newest revision with nothing left to evaluate. Below Revision, evaluation is behind.",
+            "format": "int64"
+          },
+          "readOnly": {
+            "type": "boolean",
+            "description": "True when this graph cannot be edited or saved: a compound that ships with Patina."
           }
         },
         "description": "The reply to \u0060GET /api/v1/graphs/{id}\u0060: the whole document as the Server holds it."

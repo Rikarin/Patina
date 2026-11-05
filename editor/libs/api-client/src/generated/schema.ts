@@ -124,6 +124,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/graphs': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Writes a new, empty graph file. It reaches the listings once the index has caught up. */
+    post: operations['CreateGraph'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/projects/tags': {
     parameters: {
       query?: never;
@@ -245,6 +262,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/graphs/{id}/compounds': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The compounds this graph can hold, and the path that opens the graph behind each. */
+    get: operations['GetGraphCompounds'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/graphs/{id}/commands': {
     parameters: {
       query?: never;
@@ -324,6 +358,23 @@ export interface paths {
     put?: never;
     /** Evaluates again, which also rewrites previews a deleted cache has lost. */
     post: operations['EvaluateGraph'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/graphs/{id}/images': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Writes a node's picture at the size the graph computes it. /previews/{hash} serves the PNG. */
+    post: operations['WriteGraphImage'];
     delete?: never;
     options?: never;
     head?: never;
@@ -436,7 +487,16 @@ export interface components {
       | components['schemas']['GraphCommandGraphDisconnect']
       | components['schemas']['GraphCommandGraphSetValue']
       | components['schemas']['GraphCommandGraphSetText']
-      | components['schemas']['GraphCommandGraphSetSetting'];
+      | components['schemas']['GraphCommandGraphSetSetting']
+      | components['schemas']['GraphCommandGraphAddParameter']
+      | components['schemas']['GraphCommandGraphSetParameter']
+      | components['schemas']['GraphCommandGraphRemoveParameter']
+      | components['schemas']['GraphCommandGraphAddGroup']
+      | components['schemas']['GraphCommandGraphSetGroup']
+      | components['schemas']['GraphCommandGraphRemoveGroup']
+      | components['schemas']['GraphCommandGraphAddComment']
+      | components['schemas']['GraphCommandGraphSetComment']
+      | components['schemas']['GraphCommandGraphRemoveComment'];
     /** @description Some edits, applied whole or not at all, and undone as one step. */
     GraphCommandBatch: {
       /** @description What to do, in order. */
@@ -449,6 +509,40 @@ export interface components {
        * @default false
        */
       merge: boolean;
+    };
+    /** @description Adds a note. */
+    GraphCommandGraphAddComment: {
+      /** @enum {string} */
+      op: 'addComment';
+      /** @description What it says. */
+      text: string;
+      /**
+       * Format: float
+       * @description Its left edge.
+       */
+      x: number;
+      /**
+       * Format: float
+       * @description Its top edge.
+       */
+      y: number;
+      /**
+       * Format: float
+       * @description Its width, or null for the standard size.
+       */
+      width?: null | number;
+      /**
+       * Format: float
+       * @description Its height, or null for the standard size.
+       */
+      height?: null | number;
+    };
+    /** @description Draws a group frame round some nodes. */
+    GraphCommandGraphAddGroup: {
+      /** @enum {string} */
+      op: 'addGroup';
+      title: string;
+      nodes: number[];
     };
     /** @description Adds a node. */
     GraphCommandGraphAddNode: {
@@ -472,6 +566,12 @@ export interface components {
        *     reply says which identity it became.
        */
       ref?: null | number;
+    };
+    /** @description Exposes a new parameter. Its name must be free, and its default must suit its kind and range. */
+    GraphCommandGraphAddParameter: {
+      /** @enum {string} */
+      op: 'addParameter';
+      parameter: components['schemas']['GraphSettingDefinition'];
     };
     /** @description Wires an output to an input, replacing what was on that input. */
     GraphCommandGraphConnect: {
@@ -498,11 +598,86 @@ export interface components {
       op: 'moveNodes';
       positions: components['schemas']['GraphNodePosition'][];
     };
+    /** @description Removes a note. */
+    GraphCommandGraphRemoveComment: {
+      /** @enum {string} */
+      op: 'removeComment';
+      /** Format: int32 */
+      index: number;
+    };
+    /** @description Takes a group frame away. Its nodes stay. */
+    GraphCommandGraphRemoveGroup: {
+      /** @enum {string} */
+      op: 'removeGroup';
+      /** Format: int32 */
+      index: number;
+    };
     /** @description Removes nodes, and the wires that touch them. */
     GraphCommandGraphRemoveNodes: {
       /** @enum {string} */
       op: 'removeNodes';
       nodes: number[];
+    };
+    /** @description Stops exposing a parameter. */
+    GraphCommandGraphRemoveParameter: {
+      /** @enum {string} */
+      op: 'removeParameter';
+      name: string;
+    };
+    /** @description Changes a note: anything left null stays as it is. A note moved by hand sends this on every step. */
+    GraphCommandGraphSetComment: {
+      /** @enum {string} */
+      op: 'setComment';
+      /**
+       * Format: int32
+       * @description Its place in the state's list.
+       */
+      index: number;
+      /** @description What it says. */
+      text?: null | string;
+      /**
+       * Format: float
+       * @description Its left edge.
+       */
+      x?: null | number;
+      /**
+       * Format: float
+       * @description Its top edge.
+       */
+      y?: null | number;
+      /**
+       * Format: float
+       * @description Its width.
+       */
+      width?: null | number;
+      /**
+       * Format: float
+       * @description Its height.
+       */
+      height?: null | number;
+    };
+    /** @description Changes a group: anything left null stays as it is. */
+    GraphCommandGraphSetGroup: {
+      /** @enum {string} */
+      op: 'setGroup';
+      /**
+       * Format: int32
+       * @description Its place in the state's list.
+       */
+      index: number;
+      /** @description Its new title. */
+      title?: null | string;
+      /** @description Its new members. */
+      nodes?: null | number[];
+    };
+    /** @description Replaces a parameter where it stands. Dragging its default sends this on every step. */
+    GraphCommandGraphSetParameter: {
+      /** @enum {string} */
+      op: 'setParameter';
+      /** @description The parameter as it is called now. */
+      name: string;
+      /** @description What it becomes, which may rename it. Expressions keep the old name until edited. */
+      parameter: components['schemas']['GraphSettingDefinition'];
     };
     /** @description Sets a setting of the graph: `baseWidth`, `baseHeight` or `seed`. */
     GraphCommandGraphSetSetting: {
@@ -534,12 +709,58 @@ export interface components {
       /** @description One number per lane of the port. */
       value: number[];
     };
+    /** @description A note on the canvas. */
+    GraphCommentState: {
+      /** @description What it says. */
+      text: string;
+      /**
+       * Format: float
+       * @description Its left edge on the canvas.
+       */
+      x: number;
+      /**
+       * Format: float
+       * @description Its top edge on the canvas.
+       */
+      y: number;
+      /**
+       * Format: float
+       * @description Its width.
+       */
+      width: number;
+      /**
+       * Format: float
+       * @description Its height.
+       */
+      height: number;
+    };
+    /** @description A compound a graph can hold, and the graph behind it. */
+    GraphCompound: {
+      /** @description Its node type's path, as `/node-types` lists it. */
+      type: string;
+      /** @description What `POST /graphs` takes to open it. */
+      path: string;
+      /** @description True for a compound that ships with Patina, which opens to be read. */
+      readOnly: boolean;
+    };
+    /** @description A new graph's file. */
+    GraphCreated: {
+      /** @description Relative to the library, with forward slashes, as `POST /graphs` takes it. */
+      path: string;
+    };
     /** @description Which identity a client's int? GraphAddNode.Ref became. */
     GraphCreatedNode: {
       /** Format: int32 */
       ref: number;
       /** Format: int32 */
       node: number;
+    };
+    /** @description The body of `POST /api/v1/library/graphs`. */
+    GraphCreateRequest: {
+      /** @description The graph's name. The Server makes its file name from it. */
+      name: string;
+      /** @description A project's path below `projects/` to put it in, or null for `shared/graphs`. */
+      project?: null | string;
     };
     /** @description What changed in the document, the same for an edit, an undo and a redo. */
     GraphDelta: {
@@ -557,6 +778,12 @@ export interface components {
       };
       /** @description Graph settings that have gone. */
       removedSettings: string[];
+      /** @description The whole list of exposed parameters, or null when it did not change. */
+      parameters?: null | components['schemas']['GraphSettingDefinition'][];
+      /** @description The whole list of groups, or null when it did not change. */
+      groups?: null | components['schemas']['GraphGroupState'][];
+      /** @description The whole list of notes, or null when it did not change. */
+      comments?: null | components['schemas']['GraphCommentState'][];
     };
     /** @description Something a graph's compiler or its file's reader has to say. */
     GraphDiagnostic: {
@@ -659,7 +886,8 @@ export interface components {
      * @description What an event reports.
      * @enum {unknown}
      */
-    GraphEventKind: 'edited' | 'undone' | 'redone' | 'saved' | 'evaluated' | 'closed' | 'resync';
+    GraphEventKind:
+      'edited' | 'undone' | 'redone' | 'saved' | 'evaluated' | 'settled' | 'typesChanged' | 'closed' | 'resync';
     /** @description The events after a number, for a client that does not hold a WebSocket or has missed some. */
     GraphEventPage: {
       /**
@@ -669,6 +897,13 @@ export interface components {
       sequence: number;
       /** @description The events after the number asked for, oldest first. */
       events: components['schemas']['GraphEvent'][];
+    };
+    /** @description A frame round some nodes. It holds no geometry: a client draws it from where its nodes are. */
+    GraphGroupState: {
+      /** @description What it is called. */
+      title: string;
+      /** @description Its members. */
+      nodes: number[];
     };
     /** @description What the undo history offers. */
     GraphHistoryState: {
@@ -682,6 +917,31 @@ export interface components {
       redoLabel?: null | string;
       /** @description Whether the document differs from the file. */
       dirty: boolean;
+    };
+    /** @description Where a full-size picture is: `GET /api/v1/previews/{hash}`. Pixels never cross JSON. */
+    GraphImage: {
+      /** @description The SHA-256 of the PNG's bytes, in lower-case hex. */
+      hash: string;
+      /**
+       * Format: int32
+       * @description The PNG's size in pixels.
+       */
+      width: number;
+      /**
+       * Format: int32
+       * @description The PNG's size in pixels.
+       */
+      height: number;
+    };
+    /** @description Asks for a node's picture at the size the graph computes it. */
+    GraphImageRequest: {
+      /**
+       * Format: int32
+       * @description The node.
+       */
+      node: number;
+      /** @description Its output port, or the usage of an Output node, as a preview names them. */
+      port: string;
     };
     /** @description Where one node goes. */
     GraphNodePosition: {
@@ -832,11 +1092,22 @@ export interface components {
       };
       /** @description The parameters the graph exposes. */
       parameters: components['schemas']['GraphSettingDefinition'][];
+      /** @description Its group frames, in file order. A command names one by its place here. */
+      groups: components['schemas']['GraphGroupState'][];
+      /** @description Its notes, in file order. A command names one by its place here. */
+      comments: components['schemas']['GraphCommentState'][];
       /** @description The newest preview of each node. */
       previews: components['schemas']['GraphPreview'][];
       /** @description What reading the file had to drop or fix. */
       repairs: components['schemas']['GraphDiagnostic'][];
       evaluation?: null | components['schemas']['GraphEvaluation'];
+      /**
+       * Format: int64
+       * @description The newest revision with nothing left to evaluate. Below Revision, evaluation is behind.
+       */
+      settled: number;
+      /** @description True when this graph cannot be edited or saved: a compound that ships with Patina. */
+      readOnly: boolean;
     };
     /** @description An open graph, for a list. */
     GraphSummary: {
@@ -1337,6 +1608,57 @@ export interface operations {
       };
     };
   };
+  CreateGraph: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GraphCreateRequest'];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphCreated'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   GetProjectTags: {
     parameters: {
       query?: {
@@ -1669,6 +1991,37 @@ export interface operations {
       };
     };
   };
+  GetGraphCompounds: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphCompound'][];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   ApplyGraphCommands: {
     parameters: {
       query?: never;
@@ -1833,6 +2186,15 @@ export interface operations {
           'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
     };
   };
   EvaluateGraph: {
@@ -1855,6 +2217,59 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  WriteGraphImage: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GraphImageRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphImage'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
         headers: {
           [name: string]: unknown;
         };

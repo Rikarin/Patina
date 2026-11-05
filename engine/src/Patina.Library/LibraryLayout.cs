@@ -5,6 +5,15 @@ namespace Patina.Library;
 ///     so an index or a document means the same on every platform.
 /// </summary>
 public static class LibraryLayout {
+    /// <summary>Where the graphs a graph may hold as nodes live, beside it. Vixen's convention and name.</summary>
+    public const string CompoundsFolder = "Compounds";
+
+    /// <summary>The kind a graph's sidecar declares.</summary>
+    public const string GraphKind = "graph";
+
+    /// <summary>What a graph file ends in.</summary>
+    public const string GraphExtension = ".vxtexgraph";
+
     public const string LibraryFile = "library.yaml";
     public const string ProjectFile = "project.yaml";
     public const string SharedFolder = "shared";

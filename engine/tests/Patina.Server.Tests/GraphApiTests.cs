@@ -1,8 +1,11 @@
 using Patina.Contracts;
+using Patina.Library;
+using Patina.Server.Graphs;
 using System.Net;
 using System.Net.Http.Json;
 using System.Net.WebSockets;
 using System.Text.Json;
+using Vixen.TextureGraph;
 
 namespace Patina.Server.Tests;
 
@@ -33,6 +36,148 @@ public sealed class GraphApiTests : IDisposable {
             Assert.Equal(("Wear", "Float", 0f, 1f), (wear.Name, wear.Kind, wear.Minimum, wear.Maximum));
             Assert.False(state.History.CanUndo);
             Assert.False(state.History.Dirty);
+        }
+    }
+
+    [Fact]
+    public async Task Parameters_are_added_edited_and_removed_and_a_bad_default_is_refused() {
+        var (client, state) = await OpenAsync();
+        using (client) {
+            GraphSettingDefinition grit = new("Grit", "0.25", "How rough", "Float", 0f, 1f, "Look", []);
+            await client.EditAsync(state.Id, Token, new GraphAddParameter(grit));
+            await client.EditAsync(
+                state.Id,
+                Token,
+                new GraphSetParameter("Wear", grit with { Name = "Wear", Default = "1" })
+            );
+            var edited = await client.StateAsync(state.Id, Token);
+            Assert.Equal(["Wear", "Grit"], edited.Parameters.Select(static p => p.Name));
+            Assert.Equal("1", edited.Parameters[0].Default);
+
+            using var outside = await client.SendAsync(
+                state.Id,
+                new([new GraphSetParameter("Grit", grit with { Default = "2" })]),
+                Token
+            );
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, outside.StatusCode);
+            using var twice = await client.SendAsync(state.Id, new([new GraphAddParameter(grit)]), Token);
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, twice.StatusCode);
+
+            await client.EditAsync(state.Id, Token, new GraphRemoveParameter("Grit"));
+            Assert.Equal("Wear", Assert.Single((await client.StateAsync(state.Id, Token)).Parameters).Name);
+            await client.ActAsync(state.Id, "undo", Token);
+            Assert.Equal(2, (await client.StateAsync(state.Id, Token)).Parameters.Count);
+        }
+    }
+
+    [Fact]
+    public async Task Groups_and_notes_are_in_the_state_the_deltas_and_the_file() {
+        var (client, state) = await OpenAsync();
+        using (client) {
+            Assert.Equal("Base", Assert.Single(state.Groups).Title);
+            Assert.Equal("Rust goes here", Assert.Single(state.Comments).Text);
+
+            await client.EditAsync(
+                state.Id,
+                Token,
+                new GraphAddGroup("Wear", [3, 4]),
+                new GraphSetGroup(0, Nodes: [2]),
+                new GraphAddComment("Later", 5, 6),
+                new GraphSetComment(0, "Rust", Width: 320)
+            );
+            var events = await client.EventsAsync(state.Id, state.Sequence, Token);
+            var delta = Assert.Single(events.Events).Delta!;
+            Assert.Equal(["Base", "Wear"], delta.Groups!.Select(static g => g.Title));
+            Assert.Equal([2], delta.Groups![0].Nodes);
+            Assert.Equal(["Rust", "Later"], delta.Comments!.Select(static c => c.Text));
+            Assert.Null(delta.Parameters);
+
+            await client.ActAsync(state.Id, "save", Token);
+            var written = GraphDocuments.Parse(await File.ReadAllTextAsync(state.Path, Token));
+            Assert.Equal(2, written.Groups.Length);
+            Assert.Equal(320f, written.Comments[0].Width);
+
+            await client.EditAsync(state.Id, Token, new GraphRemoveNodes([2]));
+            Assert.Empty((await client.StateAsync(state.Id, Token)).Groups[0].Nodes);
+            await client.ActAsync(state.Id, "undo", Token);
+            Assert.Equal([2], (await client.StateAsync(state.Id, Token)).Groups[0].Nodes);
+
+            using var missing = await client.SendAsync(state.Id, new([new GraphRemoveGroup(9)]), Token);
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, missing.StatusCode);
+        }
+    }
+
+    [Fact]
+    public async Task A_number_takes_an_expression_and_a_colour_does_not() {
+        var (client, state) = await OpenAsync();
+        using (client) {
+            await client.EditAsync(state.Id, Token, new GraphSetText(2, "=Hue", "Wear * 2"));
+            Assert.Equal("Wear * 2", (await client.StateAsync(state.Id, Token)).Nodes[1].Texts["=Hue"]);
+            using var missing = await client.SendAsync(state.Id, new([new GraphSetText(2, "=Nothing", "1")]), Token);
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, missing.StatusCode);
+        }
+    }
+
+    [Fact]
+    public async Task A_compound_folder_is_read_and_a_sibling_graph_is_not_a_node() {
+        var compounds = Directory.CreateDirectory(Path.Combine(server.Library, LibraryLayout.CompoundsFolder));
+        GraphTesting.Write(compounds.FullName, GraphTesting.Sample(), "Mine.vxtexgraph");
+        GraphTesting.Write(server.Library, GraphTesting.Sample(), "sibling.vxtexgraph");
+        var (client, state) = await OpenAsync();
+        using (client) {
+            var listed = await client.CompoundsAsync(state.Id, Token);
+            var mine = listed.Single(static c => c.Type == "Mine");
+            Assert.False(mine.ReadOnly);
+            Assert.DoesNotContain(listed, static c => c.Type == "sibling");
+            Assert.Contains(listed, static c => c.ReadOnly);
+            var inner = await client.OpenAsync(mine.Path, Token);
+            Assert.Equal(Path.GetFullPath(mine.Path), inner.Path);
+            Assert.Equal(LibraryLayout.CompoundsFolder, TextureCompoundLibrary.Folder);
+        }
+    }
+
+    [Fact]
+    public async Task A_shipped_compound_opens_to_be_read_and_keeps_its_boundary_ports() {
+        var (client, state) = await OpenAsync();
+        using (client) {
+            var cells = (await client.CompoundsAsync(state.Id, Token)).Single(static c => c.Type == "Patterns/Cells");
+            var opened = await client.OpenAsync(cells.Path, Token);
+            Assert.True(opened.ReadOnly);
+            Assert.Equal((await client.OpenAsync(cells.Path, Token)).Id, opened.Id);
+
+            using var edit = await client.SendAsync(opened.Id, new([new GraphAddNode("Source/Noise", 0, 0)]), Token);
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, edit.StatusCode);
+            using var save = await client.PostAsync($"/api/v1/graphs/{opened.Id}/save", null, Token);
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, save.StatusCode);
+        }
+    }
+
+    [Fact]
+    public async Task Saving_a_compound_tells_the_graphs_that_read_its_folder() {
+        var compounds = Directory.CreateDirectory(Path.Combine(server.Library, LibraryLayout.CompoundsFolder));
+        var file = GraphTesting.Write(compounds.FullName, GraphTesting.Sample(), "Mine.vxtexgraph");
+        var (client, state) = await OpenAsync();
+        using (client) {
+            var inner = await client.OpenAsync(file, Token);
+            await client.EditAsync(inner.Id, Token, new GraphSetValue(1, "Scale", [9f]));
+            await client.ActAsync(inner.Id, "save", Token);
+
+            var events = await client.EventsAsync(state.Id, state.Sequence, Token);
+            Assert.Contains(events.Events, static e => e.Kind == GraphEventKind.TypesChanged);
+        }
+    }
+
+    [Fact]
+    public async Task A_full_size_image_needs_a_worker_that_has_the_graph() {
+        var (client, state) = await OpenAsync();
+        using (client) {
+            using var response = await client.PostAsJsonAsync(
+                $"/api/v1/graphs/{state.Id}/images",
+                new(1, "Out"),
+                ContractsJsonContext.Default.GraphImageRequest,
+                Token
+            );
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
         }
     }
 

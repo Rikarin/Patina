@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
 using Patina.Library;
+using Patina.Server.Graphs;
 
 namespace Patina.Server.Api;
 
@@ -34,6 +35,13 @@ static class LibraryEndpoints {
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict)
             .WithSummary("Writes a new project's files. It reaches the listings once the index has caught up.");
+
+        library.MapPost("/graphs", CreateGraph)
+            .WithName("CreateGraph")
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .WithSummary("Writes a new, empty graph file. It reaches the listings once the index has caught up.");
 
         library.MapGet("/projects/tags", GetProjectTags)
             .WithName("GetProjectTags")
@@ -84,6 +92,23 @@ static class LibraryEndpoints {
             var project = library.CreateProject(new(request.Name, request.Folder, request.Tags));
             host.RequestRescan();
             return TypedResults.Created((string?)null, project);
+        } catch (ProjectExistsException e) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status409Conflict);
+        } catch (ProjectRefusedException e) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
+    }
+
+    static Results<Created<GraphCreated>, ProblemHttpResult> CreateGraph(LibraryHost host, GraphCreateRequest request) {
+        if (host.Library is not { } library) {
+            return NoLibrary();
+        }
+
+        try {
+            var text = GraphDocuments.Text(GraphDocuments.New(request.Name));
+            var path = library.CreateGraph(new(request.Name, request.Project), text);
+            host.RequestRescan();
+            return TypedResults.Created((string?)null, new GraphCreated(path));
         } catch (ProjectExistsException e) {
             return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status409Conflict);
         } catch (ProjectRefusedException e) {
