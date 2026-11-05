@@ -1,0 +1,37 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+using Vixen.Core.Mathematics;
+
+namespace Patina.Viewport;
+
+/// <summary>
+///     A camera that circles the model. <see cref="Distance" /> is in multiples of the model's bounding radius, so one
+///     camera suits a ring and a cathedral.
+/// </summary>
+/// <param name="Yaw">Radians around the up axis.</param>
+/// <param name="Pitch">Radians above the horizon.</param>
+/// <param name="Distance">From the model's centre, in bounding radii.</param>
+public readonly record struct OrbitCamera(float Yaw, float Pitch, float Distance) {
+    const float FieldOfView = 0.7f;
+
+    /// <summary>Three-quarters from above: the view a turntable opens on.</summary>
+    public static OrbitCamera Default => new(0.6f, 0.35f, 2.2f);
+
+    /// <summary>Where the camera sits for a model with these bounds.</summary>
+    public Vector3 Eye(BoundingBox bounds) {
+        var radial = MathF.Cos(Pitch);
+        var direction = new Vector3(radial * MathF.Sin(Yaw), MathF.Sin(Pitch), radial * MathF.Cos(Yaw));
+        return bounds.Center + direction * (Distance * Radius(bounds));
+    }
+
+    /// <summary>The view-projection matrix for a model with these bounds, on Vixen's reversed depth.</summary>
+    public Matrix4x4 ViewProjection(BoundingBox bounds, float aspectRatio) {
+        var radius = Radius(bounds);
+        var view = Matrix4x4.LookAt(Eye(bounds), bounds.Center, new(0f, 1f, 0f));
+        var near = Math.Max(0.01f * radius, (Distance - 1.5f) * radius);
+        var far = (Distance + 2f) * radius;
+        return view * Matrix4x4.PerspectiveFieldOfView(FieldOfView, aspectRatio, near, far);
+    }
+
+    static float Radius(BoundingBox bounds) => Math.Max(bounds.Extent.Length(), 1e-4f);
+}

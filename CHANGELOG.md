@@ -19,3 +19,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Read-only library endpoints: `GET /api/v1/library`, `/library/projects`, `/library/assets` and
   `/library/assets/{id}/impact`.
 - The desktop app, which supervises both processes, and a studio shell with Library, Viewport and Inspector panes.
+- A docked viewport: open a glTF, FBX or OBJ, orbit and zoom it, lit by a built-in studio environment, with the file's
+  metallic-roughness factors. Texture maps are not read yet.
+- `GET /api/v1/viewport`, `PUT /api/v1/viewport/mesh`, `PUT /api/v1/viewport/camera`, frames from `/api/v1/viewport/frames`,
+  and `/ws/viewport` for input.
+- A killed Worker no longer costs the view: the Server keeps it, and the next Worker carries on within two seconds.
+- `patina-worker --shader-cache <folder>`, and a disk cache of compiled shaders.

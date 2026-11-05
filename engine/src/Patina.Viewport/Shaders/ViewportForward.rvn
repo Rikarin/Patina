@@ -1,0 +1,71 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package Patina.Viewport
+
+import Vixen.Shaders.Core
+import Vixen.Shaders.Shading
+
+// The viewport's surface: one directional light plus image-based lighting, in the same split-sum
+// form Vixen's forward and deferred passes evaluate, on Vixen's own `Brdf` and `Ibl`. Vertices are
+// already in world space, because a model is flattened once when it is read.
+
+shader ViewportForward {
+    [PerFrame] var viewProjection: mat4
+    [PerFrame] var cameraPosition: float3
+    [PerFrame] var lightDirection: float3
+    [PerFrame] var lightColor: float3
+    [PerFrame] var environmentMipCount: float
+    [PerFrame] var environmentSh: ShCoefficients
+    [PerFrame] var environment: TextureCube
+    [PerFrame] var environmentSampler: Sampler
+
+    var baseColor: float3
+    var metallic: float
+    var roughness: float
+
+    stream var worldPosition: float3
+    stream var worldNormal: float3
+
+    [VertexShader]
+    [Semantic("SV_Position")]
+    func Vertex(position: float3, normal: float3): float4 {
+        worldPosition = position
+        worldNormal = normal
+        return viewProjection * float4(position, 1f)
+    }
+
+    [FragmentShader]
+    [Semantic("SV_Target")]
+    func Fragment(): float4 {
+        val n = Math.SafeNormalize(worldNormal)
+        val v = Math.SafeNormalize(cameraPosition - worldPosition)
+        val perceptual = clamp(roughness, 0.045f, 1f)
+        val f0 = Brdf.F0FromMetalness(baseColor, metallic, 0.04f)
+        val diffuseColor = baseColor * (1f - metallic)
+
+        return float4(Direct(n, v, perceptual, f0, diffuseColor) + Ambient(n, v, perceptual, f0, diffuseColor), 1f)
+    }
+
+    func Direct(n: float3, v: float3, perceptual: float, f0: float3, diffuseColor: float3): float3 {
+        val l = Math.SafeNormalize(lightDirection)
+        val angles = ShadingAngles.Of(n, v, l)
+        val alpha = Brdf.ClampAlpha(Brdf.Alpha(perceptual))
+
+        val d = Brdf.DistributionGgx(angles.NdotH, alpha)
+        val visibility = Brdf.VisibilitySmithGgx(angles.NdotL, angles.NdotV, alpha)
+        val fresnel = Brdf.FresnelSchlick(f0, angles.VdotH)
+        val specular = fresnel * (d * visibility)
+        val diffuse = diffuseColor * Const.InvPi
+
+        return (diffuse + specular) * lightColor * angles.NdotL
+    }
+
+    func Ambient(n: float3, v: float3, perceptual: float, f0: float3, diffuseColor: float3): float3 {
+        val dfg = Ibl.EnvironmentDfg(saturate(dot(n, v)), perceptual)
+        val lod = Ibl.SpecularLod(perceptual, environmentMipCount)
+        val prefiltered = environment.SampleLevel(environmentSampler, reflect(-v, n), lod).rgb
+        val irradiance = Ibl.IrradianceSh9(n, environmentSh)
+
+        return Ibl.Specular(prefiltered, f0, dfg, 1f) + Ibl.Diffuse(irradiance, diffuseColor, 1f)
+    }
+}

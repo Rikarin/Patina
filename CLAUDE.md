@@ -14,7 +14,7 @@ reference for how this repository works, and its code can be copied freely (same
 - **The Server owns all state; the Worker only executes.** The Worker can die at any time, so it holds nothing that cannot
   be rebuilt (plan §3.1).
 - **Pixels never cross JSON or the socket.** They go through the content-addressed cache and shared memory; the socket
-  carries hashes.
+  carries hashes. Viewport frames reach clients as a long HTTP response, never WebSocket messages in a browser (ADR 0003).
 - **Nothing in the API knows about Electron (plan §8).** The Server starts with `patina-server --library <path>` and needs
   nothing else. If the API would only suit the editor, it is wrong: Blender is the next client.
 - **One evaluator, no CPU twin (plan §3.2).** Value changes never recompile a plan.
@@ -41,7 +41,8 @@ reference for how this repository works, and its code can be copied freely (same
 
 - Angular 22 zoneless with signals, Tailwind 4, Nx 24, pnpm, Vitest, Playwright for Electron, Electron 45, Node 24.
 - `pnpm exec nx run-many -t lint typecheck test`, `pnpm exec nx build desktop`, and
-  `pnpm exec playwright test --config apps/desktop/e2e/playwright.config.ts` after a Release engine build.
+  `pnpm exec playwright test --config apps/desktop/e2e/playwright.config.ts` after a Release engine build. Tests that open a
+  mesh use `content/fixtures/viewport-test.glb`, written by `patina-bench mesh`.
 - **Use the xUI skin; don't rebuild it.** Import `theme.css` then `bezel.css`, set `data-skin="bezel"`, and use `pane`,
   `chrome-bar`, `well`, `readout` and friends for app chrome. `libs/studio-ui` holds only controls xUI lacks; a gap in a
   general control gets fixed in xUI. Install the xUI MCP server for agents.

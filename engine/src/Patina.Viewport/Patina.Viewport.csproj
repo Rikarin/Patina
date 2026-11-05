@@ -1,5 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Reserved for the small PBR forward renderer, environment and tonemap. An empty assembly for now.</Description>
+    <Description>The small PBR forward renderer: a mesh, an environment and a tonemap, offscreen on Vulkan and read back. It runs in the Worker, written in Raven on Vixen's Brdf and Ibl, and holds nothing that cannot be rebuilt.</Description>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- Patina's own shaders. The library's are Vixen's files at their own path: one copy, none here. -->
+    <EmbeddedResource Include="Shaders/*.rvn" LogicalName="Patina.Viewport.Shaders.%(Filename)%(Extension)"/>
+    <EmbeddedResource Include="../../../external/Vixen/Raven/Library/Core/*.rvn" LogicalName="Patina.Viewport.Library.Core.%(Filename)%(Extension)"/>
+    <EmbeddedResource Include="../../../external/Vixen/Raven/Library/Geometry/Transform.rvn" LogicalName="Patina.Viewport.Library.Geometry.%(Filename)%(Extension)"/>
+    <EmbeddedResource Include="../../../external/Vixen/Raven/Library/Shading/Brdf.rvn" LogicalName="Patina.Viewport.Library.Shading.%(Filename)%(Extension)"/>
+    <EmbeddedResource Include="../../../external/Vixen/Raven/Library/Shading/Ibl.rvn" LogicalName="Patina.Viewport.Library.Shading.%(Filename)%(Extension)"/>
+    <EmbeddedResource Include="../../../external/Vixen/Raven/Library/Shading/SpecularModels.rvn" LogicalName="Patina.Viewport.Library.Shading.%(Filename)%(Extension)"/>
+    <EmbeddedResource Include="../../../external/Vixen/Raven/Library/PostFx/Fullscreen.rvn" LogicalName="Patina.Viewport.Library.PostFx.%(Filename)%(Extension)"/>
+    <EmbeddedResource Include="../../../external/Vixen/Raven/Library/PostFx/Sky.rvn" LogicalName="Patina.Viewport.Library.PostFx.%(Filename)%(Extension)"/>
+    <EmbeddedResource Include="../../../external/Vixen/Raven/Library/PostFx/Tonemap.rvn" LogicalName="Patina.Viewport.Library.PostFx.%(Filename)%(Extension)"/>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../external/Vixen/Platform/Vixen.Graphics.Vulkan/Vixen.Graphics.Vulkan.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Tools/Vixen.Interchange/Vixen.Interchange.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Tools/Vixen.ShaderCompiler/Vixen.ShaderCompiler.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Core/Vixen.Core.Imaging/Vixen.Core.Imaging.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Core/Vixen.Shaders/Vixen.Shaders.csproj"/>
+  </ItemGroup>
 </Project>

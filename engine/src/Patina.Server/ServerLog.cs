@@ -8,6 +8,12 @@ static partial class ServerLog {
     [LoggerMessage(Level = LogLevel.Warning, Message = "Worker link lost: {Reason}")]
     public static partial void WorkerLost(ILogger logger, string reason);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The Worker went away mid-frame; the next one will take over")]
+    public static partial void ViewportWorkerLost(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Viewport: {Reason}")]
+    public static partial void ViewportFailed(ILogger logger, string reason);
+
     [LoggerMessage(Level = LogLevel.Error, Message = "Library {Library} already has a Server (pid {ProcessId})")]
     public static partial void LibraryTaken(ILogger logger, string library, int processId);
 

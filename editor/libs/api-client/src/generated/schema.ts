@@ -21,6 +21,57 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/viewport': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The viewport: its mesh, camera and size. Frames come over the /ws/viewport WebSocket. */
+    get: operations['GetViewport'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/viewport/mesh': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Shows a mesh file in the viewport. */
+    put: operations['SetViewportMesh'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/viewport/camera': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Moves the viewport's camera. */
+    put: operations['SetViewportCamera'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library': {
     parameters: {
       query?: never;
@@ -295,6 +346,58 @@ export interface components {
       /** @description The Worker process as the Server sees it. */
       worker: components['schemas']['WorkerStatus'];
     };
+    /** @description The viewport's camera: an orbit around the model. */
+    ViewportCameraState: {
+      /**
+       * Format: double
+       * @description Radians around the up axis.
+       */
+      yaw: number;
+      /**
+       * Format: double
+       * @description Radians above the horizon.
+       */
+      pitch: number;
+      /**
+       * Format: double
+       * @description From the model's centre, in bounding radii.
+       */
+      distance: number;
+    };
+    /** @description Asks the viewport to show a mesh. */
+    ViewportMeshRequest: {
+      /** @description The file's path, on the Server's machine. */
+      path: string;
+    };
+    /** @description The reply to `GET /api/v1/viewport`. The Server owns all of this; a Worker can die without losing it. */
+    ViewportState: {
+      /** @description The mesh's path, or null when none is open. */
+      mesh?: null | string;
+      /** @description The camera. */
+      camera: components['schemas']['ViewportCameraState'];
+      /**
+       * Format: int32
+       * @description The size clients asked for, in pixels.
+       */
+      width: number;
+      /**
+       * Format: int32
+       * @description The size clients asked for, in pixels.
+       */
+      height: number;
+      /**
+       * Format: double
+       * @description The share of that size frames are rendered at, which drops while a client cannot keep up.
+       */
+      renderScale: number;
+      /**
+       * Format: int64
+       * @description How many frames this Server has published.
+       */
+      frames: number;
+      /** @description Why the last command failed, or null. */
+      error?: null | string;
+    };
     /** @description The Worker as the Server sees it. All but `Connected` are null while there is none. */
     WorkerStatus: {
       /** @description Whether a Worker is connected and answering. */
@@ -342,6 +445,74 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['SystemInfo'];
+        };
+      };
+    };
+  };
+  GetViewport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportState'];
+        };
+      };
+    };
+  };
+  SetViewportMesh: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportMeshRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportState'];
+        };
+      };
+    };
+  };
+  SetViewportCamera: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportCameraState'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportState'];
         };
       };
     };

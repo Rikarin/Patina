@@ -14,4 +14,8 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(ProjectPage))]
 [JsonSerializable(typeof(AssetPage))]
 [JsonSerializable(typeof(AssetImpact))]
+[JsonSerializable(typeof(ViewportState))]
+[JsonSerializable(typeof(ViewportMeshRequest))]
+[JsonSerializable(typeof(ViewportCameraState))]
+[JsonSerializable(typeof(ViewportInput))]
 public sealed partial class ContractsJsonContext : JsonSerializerContext;

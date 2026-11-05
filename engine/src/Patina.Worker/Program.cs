@@ -1,5 +1,6 @@
 using Patina.Contracts;
 using Patina.Ipc;
+using Patina.Viewport;
 using Patina.Worker;
 using System.Runtime.InteropServices;
 
@@ -12,11 +13,15 @@ if (args is ["--version"] or ["version"]) {
 }
 
 string? socketPath = null;
+string? shaderCache = null;
 var watchStdin = false;
 for (var i = 0; i < args.Length; i++) {
     switch (args[i]) {
         case "--socket" when i + 1 < args.Length:
             socketPath = args[++i];
+            break;
+        case "--shader-cache" when i + 1 < args.Length:
+            shaderCache = args[++i];
             break;
         case "--watch-stdin":
             watchStdin = true;
@@ -29,7 +34,9 @@ for (var i = 0; i < args.Length; i++) {
 }
 
 if (socketPath is null) {
-    await Console.Error.WriteLineAsync("Usage: patina-worker --socket <path> [--watch-stdin] | --version");
+    await Console.Error.WriteLineAsync(
+        "Usage: patina-worker --socket <path> [--shader-cache <folder>] [--watch-stdin] | --version"
+    );
     return 2;
 }
 
@@ -47,5 +54,6 @@ if (watchStdin) {
     StdinWatch.Start(Console.OpenStandardInput(), stop.Cancel);
 }
 
-await WorkerLoop.RunAsync(socketPath, Console.Out, stop.Token);
+using var viewport = new ViewportHost(shaderCache ?? ShaderCache.DefaultDirectory);
+await new WorkerLoop(viewport).RunAsync(socketPath, Console.Out, stop.Token);
 return 0;

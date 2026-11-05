@@ -1,1 +1,1 @@
-An empty assembly with a marker type. It is reserved for the small PBR forward renderer, environment and tonemap, which arrive in P1, once the Vixen closure is consumed (plan §6).
+The small PBR forward renderer (plan §3.1, §6 P1). It runs in the Worker: a mesh read by `Vixen.Interchange`, an environment baked by `Vixen.Core.Imaging`, a forward pass written in Raven on the library's `Brdf` and `Ibl`, the library's `Tonemap`, and a readback. It depends on no part of `Vixen.Rendering`. Compiled shaders go through `ShaderCache`, so a Worker's second start compiles nothing.

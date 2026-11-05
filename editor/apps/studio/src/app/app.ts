@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { type XuiDockManagerLayout, XuiDockManagerImports } from '@xui/dock-manager';
 import { desktop } from './core/desktop';
 import { SystemStatus } from './core/system-status';
+import { ViewportPane } from './viewport/viewport-pane';
 
 /** The panes cannot be closed yet: nothing could bring one back until there is a Window menu. */
 const fixedPane = { allowClose: false } as const;
@@ -21,7 +22,7 @@ const initialLayout: XuiDockManagerLayout = {
 /** The app shell: a title bar, the docked panes and the status bar. `chrome-bar` and `readout` are bezel's. */
 @Component({
   selector: 'ptn-root',
-  imports: [XuiDockManagerImports],
+  imports: [ViewportPane, XuiDockManagerImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full flex-col' },
   template: `
@@ -34,7 +35,7 @@ const initialLayout: XuiDockManagerLayout = {
         <p class="text-foreground-muted p-3">No projects yet.</p>
       </ng-template>
       <ng-template xuiDockContent="viewport">
-        <p class="text-foreground-muted p-3">The viewport arrives with the Worker's renderer.</p>
+        <ptn-viewport />
       </ng-template>
       <ng-template xuiDockContent="inspector">
         <p class="text-foreground-muted p-3">Nothing selected.</p>

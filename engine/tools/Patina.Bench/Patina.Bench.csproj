@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Scale tooling: a seeded generator for libraries of any size, and the measurements of spike S6.</Description>
+    <Description>The spikes' measurements, so that the numbers in docs/adr can be run again: a seeded library generator and S6, kernels, and the viewport.</Description>
     <OutputType>Exe</OutputType>
     <AssemblyName>patina-bench</AssemblyName>
     <RootNamespace>Patina.Bench</RootNamespace>
@@ -10,5 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Patina.Library/Patina.Library.csproj"/>
+    <ProjectReference Include="../../src/Patina.Viewport/Patina.Viewport.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Tools/Vixen.TextureGraph/Vixen.TextureGraph.csproj"/>
   </ItemGroup>
 </Project>

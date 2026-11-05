@@ -19,4 +19,7 @@ public sealed class ServerOptions {
 public sealed class WorkerOptions {
     /// <summary>The Unix domain socket the Server listens on for its Worker.</summary>
     public string SocketPath { get; set; } = Path.Combine(Path.GetTempPath(), $"patina-{Environment.ProcessId}.sock");
+
+    /// <summary>The file frames pass through on their way from the Worker: it is created at start and removed at stop.</summary>
+    public string FramesPath { get; set; } = Path.Combine(Path.GetTempPath(), $"patina-{Guid.NewGuid():N}.frames");
 }
