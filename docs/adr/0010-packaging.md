@@ -1,7 +1,7 @@
 # ADR 0010: Native libraries in a package (spike S8)
 
-**Status:** S8 **failed**, 2026-11-05, measured on the macOS package: Vulkan is not in it. Assimp is settled on every
-platform, by one mechanism, with Linux proved in CI and not on the machine this was written on. **Pass criteria (plan §6):** the
+**Status:** S8 **failed**, 2026-11-05, measured on the macOS package: Vulkan is not in it. Assimp has one mechanism on every
+platform, but no Linux or Windows machine has run it yet: that proof is CI's first run. **Pass criteria (plan §6):** the
 Vulkan loader, MoltenVK and ICD inside a signed `.dmg`, the Worker finding them with no Homebrew or SDK, launching on a clean Mac.
 If not, change the bundling layout in Vixen's `VulkanLoader` upstream.
 
