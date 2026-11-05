@@ -2,8 +2,8 @@ namespace Patina.Server.Viewport;
 
 /// <summary>
 ///     Picks the share of the asked size to render at (plan §9). While the user's hand is on the view and a frame takes
-///     longer than the budget, the scale steps down; when frames come in well under budget it steps back up. Once the hand
-///     lifts, the next frame is full size, so what stays on screen is sharp.
+///     longer than the budget, the scale steps down; when frames come in well under budget it steps back up. Once the
+///     hand lifts, the next frame is full size, so what stays on screen is sharp.
 /// </summary>
 public sealed class RenderScale(double budgetMilliseconds = 1000d / 60d) {
     const double Minimum = 0.5;

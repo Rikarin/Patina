@@ -51,7 +51,8 @@ switch (args) {
     default:
         await Console.Error.WriteLineAsync(
             """
-            Usage: patina-bench kernels <cache folder> [--parallel] [--pipelines] [--pipeline-threads] [--pipeline-cache=<file>] [--format=<format>] [--salt=<n>]
+            Usage: patina-bench kernels <cache folder> [--parallel] [--pipelines] [--pipeline-threads]
+                       [--pipeline-cache=<file>] [--format=<format>] [--salt=<n>]
                    patina-bench mesh <file.glb>
                    patina-bench render <mesh> <out.png> <width> <height>
                    patina-bench generate <path> <projects> [seed]

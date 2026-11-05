@@ -44,8 +44,8 @@ public sealed class FrameSlot : MemoryManager<byte> {
 }
 
 /// <summary>
-///     The file frames pass through (plan §3.1): the Server creates it, the Worker writes a slot, the Server reads it. Its
-///     pages are the same physical memory in both processes, and a frame's cost on this link is the name of a slot.
+///     The file frames pass through (plan §3.1): the Server creates it, the Worker writes a slot, the Server reads it.
+///     Its pages are the same physical memory in both processes, and a frame's cost on this link is the name of a slot.
 /// </summary>
 public sealed class FrameMemory : IDisposable {
     const int Slots = 4;

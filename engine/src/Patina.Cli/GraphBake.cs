@@ -57,7 +57,8 @@ internal static class GraphBake {
 
             if (owed.Length > 0) {
                 Console.Error.WriteLine(
-                    $"Nothing baked: this graph reads {owed.Length} external image(s), which this command cannot supply yet."
+                    $"Nothing baked: this graph reads {owed.Length} external image(s), "
+                    + "which this command cannot supply yet."
                 );
                 return 1;
             }

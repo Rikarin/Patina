@@ -76,10 +76,12 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
     const int BatchSize = 256;
 
     const string MissingReferences = """
-                                     SELECT 'projects/' || p.path, r.asset FROM project_reference r JOIN project p ON p.rid = r.project
+                                     SELECT 'projects/' || p.path, r.asset
+                                     FROM project_reference r JOIN project p ON p.rid = r.project
                                      WHERE NOT EXISTS(SELECT 1 FROM asset a WHERE a.id = r.asset)
                                      UNION ALL
-                                     SELECT 'shared/' || a.path, d.target FROM asset_dependency d JOIN asset a ON a.rid = d.asset
+                                     SELECT 'shared/' || a.path, d.target
+                                     FROM asset_dependency d JOIN asset a ON a.rid = d.asset
                                      WHERE NOT EXISTS(SELECT 1 FROM asset t WHERE t.id = d.target)
                                      """;
 
@@ -109,14 +111,17 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
                            """;
 
     const string DuplicateIds = """
-                                SELECT 'projects/' || path, id FROM project WHERE id IN (SELECT id FROM project GROUP BY id HAVING count(*) > 1)
+                                SELECT 'projects/' || path, id FROM project
+                                WHERE id IN (SELECT id FROM project GROUP BY id HAVING count(*) > 1)
                                 UNION ALL
-                                SELECT 'shared/' || path, id FROM asset WHERE id IN (SELECT id FROM asset GROUP BY id HAVING count(*) > 1)
+                                SELECT 'shared/' || path, id FROM asset
+                                WHERE id IN (SELECT id FROM asset GROUP BY id HAVING count(*) > 1)
                                 """;
 
     const string UnidentifiedFiles = """
                                      SELECT f.path, '' FROM file f
-                                     WHERE f.kind = 2 AND NOT EXISTS(SELECT 1 FROM asset a WHERE 'shared/' || a.path = f.path)
+                                     WHERE f.kind = 2
+                                     AND NOT EXISTS(SELECT 1 FROM asset a WHERE 'shared/' || a.path = f.path)
                                      """;
 
     const string MissingAssetFiles = """
@@ -218,7 +223,8 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
     static List<AssetNode> ReadNodes(SqliteConnection connection, Dictionary<long, List<AssetReference>> dependencies) {
         using var command = connection.CreateCommand();
         command.CommandText = """
-                              SELECT a.rid, a.id, f.hash FROM asset a LEFT JOIN file f ON f.path = 'shared/' || a.path ORDER BY a.path
+                              SELECT a.rid, a.id, f.hash
+                              FROM asset a LEFT JOIN file f ON f.path = 'shared/' || a.path ORDER BY a.path
                               """;
         using var reader = command.ExecuteReader();
         List<AssetNode> nodes = [];
@@ -377,7 +383,8 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
 
             using var insert = connection.CreateCommand();
             insert.CommandText = """
-                                 INSERT INTO input_hash(path, size, mtime, scanned, hash) VALUES (@path, @size, @mtime, @scanned, @hash)
+                                 INSERT INTO input_hash(path, size, mtime, scanned, hash)
+                                 VALUES (@path, @size, @mtime, @scanned, @hash)
                                  """;
             var path = insert.Parameters.Add("@path", SqliteType.Text);
             var size = insert.Parameters.Add("@size", SqliteType.Integer);

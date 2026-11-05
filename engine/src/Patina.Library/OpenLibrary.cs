@@ -35,7 +35,9 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     /// <summary>The library's settings.</summary>
     public LibraryDocument Document { get; }
 
-    /// <summary>Whether the index lags what this process knows of: a rescan is running, or a write awaits one.</summary>
+    /// <summary>
+    ///     Whether the index lags what this process knows of: a rescan is running, or a write awaits one.
+    /// </summary>
     public bool Indexing => Volatile.Read(ref rescans) > 0 || Volatile.Read(ref unscannedWrites) > 0;
 
     /// <summary>Whether <paramref name="root" /> holds a library.</summary>

@@ -3,8 +3,8 @@ using Vixen.Core.Mathematics;
 namespace Patina.Viewport.Tests;
 
 /// <summary>
-///     The renderer on a real device, judged by its pixels: a test that only asks whether a frame came back would pass on
-///     a black frame, as this renderer's first draft did. Skipped where there is no Vulkan.
+///     The renderer on a real device, judged by its pixels: a test that only asks whether a frame came back would pass
+///     on a black frame, as this renderer's first draft did. Skipped where there is no Vulkan.
 /// </summary>
 public sealed class ViewportRendererTests : IDisposable {
     const int Width = 320;

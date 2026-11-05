@@ -11,7 +11,9 @@ using System.Text.Json;
 
 namespace Patina.Server.Tests;
 
-/// <summary>The frame path as a client sees it: the real Server and Worker, and frames over the real WebSocket.</summary>
+/// <summary>
+///     The frame path as a client sees it: the real Server and Worker, and frames over the real WebSocket.
+/// </summary>
 public sealed class ViewportProcessTests : IDisposable {
     const int HeaderBytes = 32;
 
@@ -249,7 +251,9 @@ public sealed class ViewportProcessTests : IDisposable {
         Assert.Equal(System.Net.HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    /// <summary>Spike S5 (ADR 0004): the Server stays up, keeps the state, and tells the next Worker all of it.</summary>
+    /// <summary>
+    ///     Spike S5 (ADR 0004): the Server stays up, keeps the state, and tells the next Worker all of it.
+    /// </summary>
     [Fact]
     public async Task A_killed_worker_loses_nothing_and_its_successor_carries_on() {
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);

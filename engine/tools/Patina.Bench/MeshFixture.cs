@@ -9,8 +9,8 @@ namespace Patina.Bench;
 
 /// <summary>
 ///     Writes <c>content/fixtures/viewport-test.glb</c>: a brushed-gold torus knot around a rough red sphere, which is
-///     the smallest scene where a metal, a dielectric and their reflections can all be told apart in a screenshot. Vixen's
-///     model writer stores no materials, so this writes the glTF container itself.
+///     the smallest scene where a metal, a dielectric and their reflections can all be told apart in a screenshot.
+///     Vixen's model writer stores no materials, so this writes the glTF container itself.
 /// </summary>
 static class MeshFixture {
     const int ComponentFloat = 5126;

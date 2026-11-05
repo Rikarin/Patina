@@ -186,8 +186,9 @@ public static class OutputKeys {
 
         var uses = output.Uses.Distinct().OrderBy(static u => u.ToString(), StringComparer.Ordinal).ToList();
         hash.Add(uses.Count);
+        var references = project.References.ToLookup(static r => r.Asset);
         foreach (var asset in uses) {
-            var reference = project.References.First(r => r.Asset == asset);
+            var reference = references[asset].First();
             if (graph.KeyOf(reference) is not { } key) {
                 return null;
             }

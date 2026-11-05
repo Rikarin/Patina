@@ -7,7 +7,9 @@ using Vixen.Core.Imaging;
 
 namespace Patina.Bench;
 
-/// <summary>Renders a mesh once to a PNG, then times a spinning camera: the renderer with no transport in the way.</summary>
+/// <summary>
+///     Renders a mesh once to a PNG, then times a spinning camera: the renderer with no transport in the way.
+/// </summary>
 static class RenderBench {
     const int Frames = 240;
 
@@ -20,9 +22,8 @@ static class RenderBench {
         }
 
         using var renderer = created!;
-        Say(
-            $"{renderer.Adapter}: renderer ready in {start.Elapsed.TotalMilliseconds:F0} ms, hits {cache.Hits}, misses {cache.Misses}"
-        );
+        var ready = start.Elapsed.TotalMilliseconds;
+        Say($"{renderer.Adapter}: renderer ready in {ready:F0} ms, hits {cache.Hits}, misses {cache.Misses}");
         start.Restart();
         renderer.OpenMesh(mesh);
         Say($"mesh open in {start.Elapsed.TotalMilliseconds:F0} ms");
@@ -42,9 +43,10 @@ static class RenderBench {
         }
 
         Array.Sort(times);
-        Say(
-            $"{width}x{height}: {Frames / start.Elapsed.TotalSeconds:F1} fps, median {times[Frames / 2]:F2} ms, p99 {times[(int)(Frames * 0.99)]:F2} ms"
-        );
+        var fps = Frames / start.Elapsed.TotalSeconds;
+        var median = times[Frames / 2];
+        var p99 = times[(int)(Frames * 0.99)];
+        Say($"{width}x{height}: {fps:F1} fps, median {median:F2} ms, p99 {p99:F2} ms");
         return 0;
     }
 

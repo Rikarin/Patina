@@ -38,7 +38,9 @@ sealed class LibraryQueries(IndexDatabase database) {
                                 (SELECT count(*) FROM project_reference r WHERE r.asset = a.id)
                                 """;
 
-    /// <summary>The chains out of an asset, and who moves when its bytes do. See <see cref="AssetReference" />.</summary>
+    /// <summary>
+    ///     The chains out of an asset, and who moves when its bytes do. See <see cref="AssetReference" />.
+    /// </summary>
     /// <remarks>
     ///     <c>followers</c> are the assets whose key moves: those reading the asset through a floating edge, and
     ///     everything that reads those by any edge, because a pin freezes only the file it names. <c>dependents</c>
@@ -48,7 +50,8 @@ sealed class LibraryQueries(IndexDatabase database) {
     const string ImpactChains = """
                                 WITH RECURSIVE
                                 followers(id) AS (
-                                    SELECT a.id FROM asset_dependency d JOIN asset a ON a.rid = d.asset WHERE d.target = @asset AND d.mode = 0
+                                    SELECT a.id FROM asset_dependency d JOIN asset a ON a.rid = d.asset
+                                    WHERE d.target = @asset AND d.mode = 0
                                     UNION
                                     SELECT a.id FROM followers f
                                     JOIN asset_dependency d ON d.target = f.id
@@ -76,41 +79,40 @@ sealed class LibraryQueries(IndexDatabase database) {
     public int CountAssets() => Scalar("SELECT count(*) FROM asset");
 
     public ProjectPage Projects(LibraryQuery query) {
-        using var connection = database.Open();
-        var (from, order) = Selection(query, "project", "p", "project_tag", "project");
-        var total = Count(connection, query, from);
-        List<ProjectSummary> items = [];
-        using var command = Command(
-            connection,
-            query,
-            $"SELECT {ProjectColumns} {from} {order} LIMIT @limit OFFSET @offset"
-        );
-        Page(command, query);
-        using var reader = command.ExecuteReader();
-        while (reader.Read()) {
-            items.Add(ReadProject(reader));
-        }
-
+        var selection = Selection(query, "project", "p", "project_tag", "project");
+        var (items, total) = Listing(query, ProjectColumns, selection, ReadProject);
         return new(items, total, query.Offset, query.Limit);
     }
 
     public AssetPage Assets(LibraryQuery query) {
+        var selection = Selection(query, "asset", "a", "asset_tag", "asset");
+        var (items, total) = Listing(query, AssetColumns, selection, ReadAsset);
+        return new(items, total, query.Offset, query.Limit);
+    }
+
+    /// <summary>One page of a listing, and how many items match on all pages.</summary>
+    (List<T> Items, int Total) Listing<T>(
+        LibraryQuery query,
+        string columns,
+        (string From, string Order) selection,
+        Func<SqliteDataReader, T> read
+    ) {
         using var connection = database.Open();
-        var (from, order) = Selection(query, "asset", "a", "asset_tag", "asset");
+        var (from, order) = selection;
         var total = Count(connection, query, from);
-        List<AssetSummary> items = [];
+        List<T> items = [];
         using var command = Command(
             connection,
             query,
-            $"SELECT {AssetColumns} {from} {order} LIMIT @limit OFFSET @offset"
+            $"SELECT {columns} {from} {order} LIMIT @limit OFFSET @offset"
         );
         Page(command, query);
         using var reader = command.ExecuteReader();
         while (reader.Read()) {
-            items.Add(ReadAsset(reader));
+            items.Add(read(reader));
         }
 
-        return new(items, total, query.Offset, query.Limit);
+        return (items, total);
     }
 
     public TagPage ProjectTags(int offset, int limit) => Tags("project_tag", offset, limit);
@@ -135,7 +137,9 @@ sealed class LibraryQueries(IndexDatabase database) {
         return new(items, total, offset, limit);
     }
 
-    /// <summary>The impact of changing <paramref name="asset" />'s bytes, or null when the index does not know it.</summary>
+    /// <summary>
+    ///     The impact of changing <paramref name="asset" />'s bytes, or null when the index does not know it.
+    /// </summary>
     public AssetImpact? Impact(AssetId asset, int offset, int limit) {
         using var connection = database.Open();
         if (FindAsset(connection, asset) is not { } summary) {
@@ -169,7 +173,10 @@ sealed class LibraryQueries(IndexDatabase database) {
 
         var unreadable = Scalar(
             connection,
-            $"SELECT count(*) FROM problem WHERE code IN ({(int)ProblemCode.Unreadable}, {(int)ProblemCode.NewerSchema})"
+            $"""
+             SELECT count(*) FROM problem
+             WHERE code IN ({(int)ProblemCode.Unreadable}, {(int)ProblemCode.NewerSchema})
+             """
         );
         return new(summary, projects, pinned, unreadable, items, offset, limit);
     }
@@ -220,7 +227,9 @@ sealed class LibraryQueries(IndexDatabase database) {
         return expression.ToString().TrimEnd();
     }
 
-    /// <summary>The FROM and ORDER BY of a listing. Only constants of this class reach the SQL; values are parameters.</summary>
+    /// <summary>
+    ///     The FROM and ORDER BY of a listing. Only constants of this class reach the SQL; values are parameters.
+    /// </summary>
     static (string From, string Order) Selection(
         LibraryQuery query,
         string table,

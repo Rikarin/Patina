@@ -12,9 +12,13 @@ namespace Patina.Server.Viewport;
 /// <param name="PixelBytes">How many bytes of the slot are this frame.</param>
 public sealed record PublishedFrame(FrameSlot Slot, byte[] Header, int PixelBytes);
 
-/// <summary>Where frames go. WebSocket is the one transport today (ADR 0003); the session knows nothing about it.</summary>
+/// <summary>
+///     Where frames go. WebSocket is the one transport today (ADR 0003); the session knows nothing about it.
+/// </summary>
 public interface IFrameSubscriber {
-    /// <summary>Takes a frame it now owns a hold on. It must not block, and a slow subscriber drops frames, not time.</summary>
+    /// <summary>
+    ///     Takes a frame it now owns a hold on. It must not block, and a slow subscriber drops frames, not time.
+    /// </summary>
     void Offer(PublishedFrame frame);
 
     /// <summary>How long the subscriber took over its last whole frame, for the render scale.</summary>
@@ -130,7 +134,8 @@ public sealed class ViewportSession(
                     await DrawAsync(work, cancellationToken);
                     rendered = wanted;
                 } catch (Exception e) when (e is IOException or TimeoutException) {
-                    // The Worker died mid-frame. Nothing is lost: the next one is told everything and this frame runs again.
+                    // The Worker died mid-frame. Nothing is lost: the next one is told everything and this frame runs
+                    // again.
                     ServerLog.ViewportWorkerLost(logger);
                     await Task.Delay(LostWorkerPause, cancellationToken);
                 } catch (IpcException e) {

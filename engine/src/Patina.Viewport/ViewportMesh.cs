@@ -58,7 +58,10 @@ sealed class ViewportMesh {
             var first = indices.Count;
             var offset = (uint)(vertices.Count / FloatsPerVertex);
             bounds = Append(mesh, world[part.Node], vertices, bounds);
-            indices.AddRange(mesh.Indices.Select(index => offset + (uint)index));
+            foreach (var index in mesh.Indices) {
+                indices.Add(offset + (uint)index);
+            }
+
             parts.Add(new(first, mesh.Indices.Length, Factors(read, part.Material)));
         }
 

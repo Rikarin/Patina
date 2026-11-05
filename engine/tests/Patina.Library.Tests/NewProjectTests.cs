@@ -17,13 +17,13 @@ public sealed class NewProjectTests : IDisposable {
     public void A_new_project_reads_back_as_written() {
         using var open = library.Open();
 
-        var created = open.CreateProject(new("Crate: \"one\" #1", "props/small", ["wood", "hero", "wood"]));
+        var created = open.CreateProject(new("""Crate: "one" #1""", "props/small", ["wood", "hero", "wood"]));
 
         var text = File.ReadAllText(LibraryFiles.ProjectFile(library.Root, created.Path));
         var read = DocumentCodec.ReadProject(text, created.Path).Document;
         Assert.Equal("props/small/crate-one-1", created.Path);
         Assert.Equal(created.Id, read.Id.Value);
-        Assert.Equal("Crate: \"one\" #1", read.Name);
+        Assert.Equal("""Crate: "one" #1""", read.Name);
         Assert.Equal(["hero", "wood"], read.Tags);
     }
 
@@ -71,7 +71,7 @@ public sealed class NewProjectTests : IDisposable {
     [InlineData(".git")]
     [InlineData("a//b")]
     [InlineData("a /b")]
-    [InlineData("back\\slash")]
+    [InlineData("""back\slash""")]
     [InlineData("con")]
     [InlineData("nul.txt")]
     [InlineData("trailing.")]
