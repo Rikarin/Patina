@@ -237,7 +237,8 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                 folder,
                 manifest,
                 export.Target,
-                new(project.Project.Name, preset.Id)
+                new(project.Project.Name, preset.Id),
+                Beside(project)
             );
             journal.Ended(
                 step,
@@ -259,6 +260,20 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
 
     string ProjectFile(PlannedProject project, string file) =>
         LibraryLayout.Full(library.RootPath, $"{LibraryLayout.ProjectsFolder}/{project.Project.Path}/{file}");
+
+    /// <summary>A project's other results, under its name: every level of detail goes with every preset.</summary>
+    List<(string From, string Name)> Beside(PlannedProject project) {
+        var stem = NamingTemplate.Clean(project.Project.Name);
+        List<(string, string)> files = [];
+        foreach (var output in project.Project.Outputs.Where(static o => o.Key is not null)) {
+            var key = output.Key!.Value;
+            foreach (var file in BuildObjects.Read(objects, key)?.Files ?? []) {
+                files.Add((Path.Combine(objects.FolderOf(key), file), $"{stem}_{file}"));
+            }
+        }
+
+        return files;
+    }
 
     /// <summary>
     ///     The objects a project's presets read. A bake is the floor and a stack the top: an output that composes the

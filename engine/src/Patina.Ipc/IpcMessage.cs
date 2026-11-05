@@ -230,13 +230,17 @@ public sealed record WorkerHealth(double UptimeSeconds, long WorkingSetBytes);
 /// <summary>A picture on a disk the Worker can read, and the hash of what is in it.</summary>
 public sealed record ViewportMapFile(string Path, string Hash);
 
-/// <summary>The pictures laid over the open mesh's materials. A null slot keeps the material's own.</summary>
+/// <summary>
+///     The pictures laid over the open mesh's materials. A null slot keeps the material's own. <c>Look</c> is a viewing
+///     table for the frame, which goes with them because a Worker that comes back must be told it too.
+/// </summary>
 public sealed record ViewportMapSet(
     ViewportMapFile? BaseColor = null,
     ViewportMapFile? Normal = null,
     ViewportMapFile? Roughness = null,
     ViewportMapFile? Metallic = null,
-    ViewportMapFile? Occlusion = null
+    ViewportMapFile? Occlusion = null,
+    ViewportMapFile? Look = null
 );
 
 /// <summary>An orbit around the model: radians, and a distance in bounding radii.</summary>

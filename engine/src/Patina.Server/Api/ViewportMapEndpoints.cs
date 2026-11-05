@@ -30,6 +30,11 @@ static class ViewportMapEndpoints {
             .WithTags(Tag)
             .WithSummary("Lays pictures over the mesh's own materials. An empty body takes them off.")
             .ProducesProblem(Missing);
+        api.MapPut("/viewport/look", SetLook)
+            .WithName("SetViewportLook")
+            .WithTags(Tag)
+            .WithSummary("Views frames through a .cube table. No export sees it. A null path views without one.")
+            .ProducesProblem(Missing);
         api.MapPut("/viewport/bake", ShowBakeAsync)
             .WithName("ShowBakeInViewport")
             .WithTags(Tag)
@@ -53,6 +58,15 @@ static class ViewportMapEndpoints {
     ) {
         try {
             session.SetMaps(await Task.Run(() => Hashed(request), cancellationToken));
+            return TypedResults.Ok(session.State);
+        } catch (FileNotFoundException e) {
+            return TypedResults.Problem(e.Message, statusCode: Missing);
+        }
+    }
+
+    static Results<Ok<ViewportState>, ProblemHttpResult> SetLook(ViewportLookRequest request, ViewportSession session) {
+        try {
+            session.SetLook(Hash(request.Path));
             return TypedResults.Ok(session.State);
         } catch (FileNotFoundException e) {
             return TypedResults.Problem(e.Message, statusCode: Missing);

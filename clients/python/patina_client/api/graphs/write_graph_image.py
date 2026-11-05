@@ -1,0 +1,213 @@
+from http import HTTPStatus
+from typing import Any, cast
+from urllib.parse import quote
+
+import httpx
+
+from ...client import AuthenticatedClient, Client
+from ...types import Response, UNSET
+from ... import errors
+
+from ...models.graph_image import GraphImage
+from ...models.graph_image_request import GraphImageRequest
+from ...models.problem_details import ProblemDetails
+from typing import cast
+
+
+
+def _get_kwargs(
+    id: str,
+    *,
+    body: GraphImageRequest,
+
+) -> dict[str, Any]:
+    headers: dict[str, Any] = {}
+
+
+    
+
+    
+
+    _kwargs: dict[str, Any] = {
+        "method": "post",
+        "url": "/api/v1/graphs/{id}/images".format(id=quote(str(id), safe=""),),
+    }
+
+    _kwargs["json"] = body.to_dict()
+
+    headers["Content-Type"] = "application/json"
+
+    _kwargs["headers"] = headers
+    return _kwargs
+
+
+
+def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> GraphImage | ProblemDetails | None:
+    if response.status_code == 200:
+        response_200 = GraphImage.from_dict(response.json())
+
+
+
+        return response_200
+
+    if response.status_code == 404:
+        response_404 = ProblemDetails.from_dict(response.json())
+
+
+
+        return response_404
+
+    if response.status_code == 409:
+        response_409 = ProblemDetails.from_dict(response.json())
+
+
+
+        return response_409
+
+    if response.status_code == 503:
+        response_503 = ProblemDetails.from_dict(response.json())
+
+
+
+        return response_503
+
+    if client.raise_on_unexpected_status:
+        raise errors.UnexpectedStatus(response.status_code, response.content)
+    else:
+        return None
+
+
+def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Response[GraphImage | ProblemDetails]:
+    return Response(
+        status_code=HTTPStatus(response.status_code),
+        content=response.content,
+        headers=response.headers,
+        parsed=_parse_response(client=client, response=response),
+    )
+
+
+def sync_detailed(
+    id: str,
+    *,
+    client: AuthenticatedClient | Client,
+    body: GraphImageRequest,
+
+) -> Response[GraphImage | ProblemDetails]:
+    """ Writes a node's picture at the size the graph computes it. /previews/{hash} serves the PNG.
+
+    Args:
+        id (str):
+        body (GraphImageRequest): Asks for a node's picture at the size the graph computes it.
+
+    Raises:
+        errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
+        httpx.TimeoutException: If the request takes longer than Client.timeout.
+
+    Returns:
+        Response[GraphImage | ProblemDetails]
+     """
+
+
+    kwargs = _get_kwargs(
+        id=id,
+body=body,
+
+    )
+
+    response = client.get_httpx_client().request(
+        **kwargs,
+    )
+
+    return _build_response(client=client, response=response)
+
+def sync(
+    id: str,
+    *,
+    client: AuthenticatedClient | Client,
+    body: GraphImageRequest,
+
+) -> GraphImage | ProblemDetails | None:
+    """ Writes a node's picture at the size the graph computes it. /previews/{hash} serves the PNG.
+
+    Args:
+        id (str):
+        body (GraphImageRequest): Asks for a node's picture at the size the graph computes it.
+
+    Raises:
+        errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
+        httpx.TimeoutException: If the request takes longer than Client.timeout.
+
+    Returns:
+        GraphImage | ProblemDetails
+     """
+
+
+    return sync_detailed(
+        id=id,
+client=client,
+body=body,
+
+    ).parsed
+
+async def asyncio_detailed(
+    id: str,
+    *,
+    client: AuthenticatedClient | Client,
+    body: GraphImageRequest,
+
+) -> Response[GraphImage | ProblemDetails]:
+    """ Writes a node's picture at the size the graph computes it. /previews/{hash} serves the PNG.
+
+    Args:
+        id (str):
+        body (GraphImageRequest): Asks for a node's picture at the size the graph computes it.
+
+    Raises:
+        errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
+        httpx.TimeoutException: If the request takes longer than Client.timeout.
+
+    Returns:
+        Response[GraphImage | ProblemDetails]
+     """
+
+
+    kwargs = _get_kwargs(
+        id=id,
+body=body,
+
+    )
+
+    response = await client.get_async_httpx_client().request(
+        **kwargs
+    )
+
+    return _build_response(client=client, response=response)
+
+async def asyncio(
+    id: str,
+    *,
+    client: AuthenticatedClient | Client,
+    body: GraphImageRequest,
+
+) -> GraphImage | ProblemDetails | None:
+    """ Writes a node's picture at the size the graph computes it. /previews/{hash} serves the PNG.
+
+    Args:
+        id (str):
+        body (GraphImageRequest): Asks for a node's picture at the size the graph computes it.
+
+    Raises:
+        errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
+        httpx.TimeoutException: If the request takes longer than Client.timeout.
+
+    Returns:
+        GraphImage | ProblemDetails
+     """
+
+
+    return (await asyncio_detailed(
+        id=id,
+client=client,
+body=body,
+
+    )).parsed

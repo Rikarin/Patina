@@ -90,13 +90,15 @@ public static class ExportRun {
     /// <param name="manifest">What it holds.</param>
     /// <param name="target">The folder they go to.</param>
     /// <param name="values">What the names are made from.</param>
+    /// <param name="beside">Other files that go with them, such as a mesh's levels of detail: from, then its name.</param>
     /// <returns>The files, absolute.</returns>
     public static IReadOnlyList<string> Deliver(
         string key,
         string folder,
         ExportManifest manifest,
         string target,
-        NamingValues values
+        NamingValues values,
+        IReadOnlyList<(string From, string Name)>? beside = null
     ) {
         ArgumentNullException.ThrowIfNull(manifest);
         Directory.CreateDirectory(target);
@@ -105,10 +107,13 @@ public static class ExportRun {
         List<string> delivered = [];
         foreach (var file in manifest.Files) {
             var path = Path.Combine(target, NamingTemplate.Resolve(file.Template, values, file.Extension));
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            var part = $"{path}.{Guid.NewGuid():N}.part";
-            File.Copy(Path.Combine(folder, file.File), part);
-            File.Move(part, path, true);
+            Copy(Path.Combine(folder, file.File), path);
+            delivered.Add(path);
+        }
+
+        foreach (var (from, name) in beside ?? []) {
+            var path = Path.Combine(target, name);
+            Copy(from, path);
             delivered.Add(path);
         }
 
@@ -125,5 +130,12 @@ public static class ExportRun {
             )
         );
         return delivered;
+    }
+
+    static void Copy(string from, string to) {
+        Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+        var part = $"{to}.{Guid.NewGuid():N}.part";
+        File.Copy(from, part);
+        File.Move(part, to, true);
     }
 }

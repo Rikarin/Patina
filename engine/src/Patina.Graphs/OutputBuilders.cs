@@ -215,15 +215,11 @@ public sealed class OutputBuilders(Func<TexturePlanEvaluator> evaluator, Func<Fu
 /// <summary>A bake's settings, which an output declares as text.</summary>
 static class MeshMapSettings {
     public static BakeRequest Request(OutputStep step, string folder) {
-        if (step.Files.Count < 2) {
-            throw new InvalidDataException("A mesh-maps output reads a low mesh, then a high one.");
-        }
-
         var s = step.Settings;
         return new() {
-            Low = step.Files[0],
-            High = step.Files[1],
-            Cage = step.Files.Count > 2 ? step.Files[2] : null,
+            Low = Role(step, "low"),
+            High = Role(step, "high"),
+            Cage = s.ContainsKey("cage") ? Role(step, "cage") : null,
             Output = folder,
             Resolution = Int(s, "resolution", 2048),
             Format = s.GetValueOrDefault("format", BakeInputs.Png16),
@@ -231,6 +227,17 @@ static class MeshMapSettings {
             Supersampling = Int(s, "supersampling", 1),
             Maps = s.TryGetValue("maps", out var maps) ? maps.Split(',') : ["ao"]
         };
+    }
+
+    /// <summary>A file by its part in the bake. A project's lists are sorted, so a position would mean nothing.</summary>
+    static string Role(OutputStep step, string role) {
+        if (step.Settings.GetValueOrDefault(role) is not { } named) {
+            throw new InvalidDataException($"A mesh-maps output says which of its files is the {role} mesh.");
+        }
+
+        var ending = Path.DirectorySeparatorChar + named.Replace('/', Path.DirectorySeparatorChar);
+        return step.Files.FirstOrDefault(file => file.EndsWith(ending, StringComparison.Ordinal))
+            ?? throw new InvalidDataException($"The {role} mesh, '{named}', is not among this output's files.");
     }
 
     static int Int(IReadOnlyDictionary<string, string> settings, string name, int fallback) =>

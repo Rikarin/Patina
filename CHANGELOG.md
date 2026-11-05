@@ -16,6 +16,17 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Export presets for Unreal, Unity URP, Unity HDRP, Godot and Vixen, as files. A library adds or replaces one with a file in
+  `shared/export-presets`. Green follows the source and the target: a bake's runs up, a graph's `Height to Normal` runs down, and
+  it turns over only when they disagree.
+- Batch builds: `POST /api/v1/builds/preview` shows what would change from build keys with nothing run, `POST /api/v1/builds` runs it
+  as a job that survives the Worker and the Server, and `/builds/{id}/report` lists what each project wrote. `patina build` is
+  the same pipeline with no Server. A second build does nothing.
+- `texture-graph`, `layer-stack`, `mesh-maps` and `mesh-lod` outputs in `project.yaml`, delivered to `exports/<preset>/<project>`.
+- An Export pane: choose a preset, see the impact, run it, read the report.
+- `PUT /api/v1/viewport/look` views frames through a `.cube` table. No export sees it.
+- `patina-bench fan-out` and `patina-bench bake-library`.
+- A generated Python client in `clients/python`, with a Blender-shaped conformance test that needs no Blender.
 - Painting's foundations: layer stacks through the API (`/api/v1/stacks`, `/ws/stacks/{id}`), undoable batches on the same
   numbered events as graphs, strokes sent as lists of stamps, and a Paint pane with a layer list and a brush on the composited map.
   The composite is the plan's, repaired tile by tile: about 6 ms a stamp at 4K with 20 layers, 38 ms to a client. A Worker that dies

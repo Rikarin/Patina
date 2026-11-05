@@ -81,7 +81,7 @@ public sealed class ViewportSession(
     public void Show(string path, ViewportMapSet pictures) {
         lock (changing) {
             mesh = path;
-            maps = pictures;
+            maps = pictures with { Look = maps.Look };
             error = null;
             mapsError = null;
             revision++;
@@ -93,7 +93,18 @@ public sealed class ViewportSession(
     /// <summary>Lays pictures over the open mesh. A mesh leaving takes its pictures with it.</summary>
     public void SetMaps(ViewportMapSet pictures) {
         lock (changing) {
-            maps = pictures;
+            maps = pictures with { Look = maps.Look };
+            mapsError = null;
+            revision++;
+        }
+
+        Wake();
+    }
+
+    /// <summary>Views frames through a table, or without one. Whatever is laid on the mesh stays.</summary>
+    public void SetLook(ViewportMapFile? look) {
+        lock (changing) {
+            maps = maps with { Look = look };
             mapsError = null;
             revision++;
         }
@@ -303,7 +314,8 @@ public sealed class ViewportSession(
             set.Normal?.Path,
             set.Roughness?.Path,
             set.Metallic?.Path,
-            set.Occlusion?.Path
+            set.Occlusion?.Path,
+            set.Look?.Path
         );
 
     readonly record struct Work(

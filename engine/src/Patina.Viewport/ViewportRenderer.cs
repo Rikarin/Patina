@@ -103,6 +103,9 @@ public sealed class ViewportRenderer : IDisposable {
         cleanup.Add(() => device.Destroy(meteredExposure));
     }
 
+    ViewportLook? look;
+    string? lookPath;
+
     /// <summary>The adapter's name, for logs.</summary>
     public string Adapter => device.Adapter.Name;
 
@@ -177,6 +180,16 @@ public sealed class ViewportRenderer : IDisposable {
         device.EndFrame();
         device.WaitIdle();
         device.Read(current.Readback, 0, destination[..FrameBytes(width, height)]);
+        look?.Apply(destination[..FrameBytes(width, height)], width, height);
+    }
+
+    /// <summary>Views frames through the <c>.cube</c> at a path, or without one.</summary>
+    /// <exception cref="FormatException">It is not a 3D table.</exception>
+    public void SetLook(string? path) {
+        if (path != lookPath) {
+            look = path is null ? null : ViewportLook.Parse(File.ReadAllText(path));
+            lookPath = path;
+        }
     }
 
     public void Dispose() {

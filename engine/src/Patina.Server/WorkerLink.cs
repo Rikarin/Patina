@@ -95,7 +95,7 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
     static TaskCompletionSource<IpcConnection> NewWaiter() => new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     IpcMessage Answer(IpcMessage request, TaskCompletionSource<WorkerHello> hello) {
-        if (request.Type is IpcTypes.BakeProgress or IpcTypes.BakeEnded) {
+        if (request.Type is IpcTypes.BakeProgress or IpcTypes.BakeEnded or IpcTypes.BuildEnded) {
             Reported?.Invoke(request);
             return IpcMessage.Ok(request.Id);
         }

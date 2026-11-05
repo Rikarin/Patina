@@ -39,9 +39,9 @@ public sealed record PlannedProject(
 ///     finished has a result under its key, and so is not in the new plan.
 /// </summary>
 public sealed class BuildPlan {
-    /// <summary>The tools whose outputs are pictures, which a preset can read.</summary>
-    static readonly HashSet<string> Pictures = new(
-        [BuildTools.TextureGraph, BuildTools.LayerStack, BakeKeys.Tool],
+    /// <summary>The tools whose outputs an export takes: pictures, which a preset reads, and meshes, which go beside.</summary>
+    static readonly HashSet<string> Exported = new(
+        [BuildTools.TextureGraph, BuildTools.LayerStack, BakeKeys.Tool, BuildTools.MeshLod],
         StringComparer.Ordinal
     );
 
@@ -129,7 +129,7 @@ public sealed class BuildPlan {
         var pinned = project.Outputs.Count(static o => o.Reach == AssetReach.Held);
         var unresolved = project.Outputs.Where(static o => o.Key is null).ToList();
 
-        var maps = resolved.Where(static o => Pictures.Contains(o.Output.Tool)).Select(static o => o.Key!.Value).ToList();
+        var maps = resolved.Where(static o => Exported.Contains(o.Output.Tool)).Select(static o => o.Key!.Value).ToList();
         List<PlannedExport> planned = [];
         if (maps.Count > 0 && unresolved.Count == 0 && project.Outputs.Any(static o => o.Reach == AssetReach.Moves)) {
             foreach (var preset in presets) {

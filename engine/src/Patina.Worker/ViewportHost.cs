@@ -41,6 +41,12 @@ sealed class ViewportHost(string shaderCache) : IDisposable {
                     File(maps.Occlusion)
                 )
             );
+        try {
+            Renderer().SetLook(maps.Look?.Path);
+        } catch (FormatException e) {
+            throw new IpcException($"'{maps.Look?.Path}' is not a viewing table: {e.Message}");
+        }
+
         return IpcMessage.Ok(request.Id);
 
         static Viewport.ViewportMapFile? File(Ipc.ViewportMapFile? file) =>

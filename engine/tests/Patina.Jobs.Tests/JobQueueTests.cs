@@ -241,4 +241,48 @@ public sealed class JobQueueTests : IDisposable {
         Assert.Equal(512, read.Bake!.Resolution);
         Assert.Equal("a", read.Key);
     }
+
+    [Fact]
+    public void A_bake_goes_ahead_of_a_build_that_was_asked_for_first() {
+        var queue = Open();
+        var build = queue.Enqueue(new BuildRequest());
+        var bake = queue.Enqueue("a", Bake);
+
+        Assert.Equal(bake.Id, queue.TakeNext()!.Id);
+        Assert.Equal(build.Id, queue.TakeNext()!.Id);
+    }
+
+    [Fact]
+    public void A_running_build_lets_a_bake_by_and_never_takes_another_build() {
+        var queue = Open();
+        var first = queue.Enqueue(new BuildRequest());
+        queue.Enqueue(new BuildRequest());
+        Assert.Equal(first.Id, queue.TakeNext()!.Id);
+
+        Assert.Null(queue.TakeInteractive());
+        var bake = queue.Enqueue("a", Bake);
+        Assert.Equal(bake.Id, queue.TakeInteractive()!.Id);
+    }
+
+    [Fact]
+    public void A_build_survives_more_lost_workers_than_a_bake_because_it_counts_them_per_step() {
+        var queue = Open();
+        var build = queue.Enqueue(new BuildRequest());
+
+        for (var attempt = 1; attempt <= JobQueue.MaxAttempts + 2; attempt++) {
+            Assert.Equal(attempt, queue.TakeNext()!.Attempts);
+            queue.Requeue(build.Id, attempt);
+        }
+
+        Assert.Equal(JobStates.Queued, queue.Find(build.Id)!.State);
+    }
+
+    [Fact]
+    public void A_build_in_a_restarted_server_goes_back_in_the_queue() {
+        var queue = Open();
+        var build = queue.Enqueue(new BuildRequest());
+        queue.TakeNext();
+
+        Assert.Equal(JobStates.Queued, Open().Find(build.Id)!.State);
+    }
 }
