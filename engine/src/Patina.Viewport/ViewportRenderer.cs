@@ -48,6 +48,7 @@ public sealed class ViewportRenderer : IDisposable {
     Targets? targets;
     string? meshFolder;
     ViewportMaps maps = ViewportMaps.None;
+    readonly ViewportLiveMap?[] live = new ViewportLiveMap?[Enum.GetValues<ViewportSlot>().Length];
 
     ViewportRenderer(VulkanDevice device, ShaderCache cache) {
         this.device = device;
@@ -155,6 +156,52 @@ public sealed class ViewportRenderer : IDisposable {
         Show(scene.Mesh);
     }
 
+    /// <summary>
+    ///     Replaces a slot's picture with live pixels, the bytes an export writes: RGBA, tightly packed, top row first.
+    ///     They win over any file, and stay until <see cref="ClearLive" /> or another mesh's stack replaces them.
+    /// </summary>
+    public void SetLive(ViewportSlot slot, int width, int height, ReadOnlySpan<byte> pixels) {
+        var map = live[(int)slot];
+        var created = map is null || map.Width != width || map.Height != height;
+        if (created) {
+            map?.Dispose();
+            map = live[(int)slot] = new(device, Meaning(slot), width, height);
+        }
+
+        map!.Repair([new(new(0, 0, width, height), pixels.ToArray())]);
+        if (created && geometry is { } scene) {
+            Show(scene.Mesh);
+        }
+    }
+
+    /// <summary>Rewrites only the rectangles that changed, with the mips above them. Nothing rebinds.</summary>
+    public void RepairLive(ViewportSlot slot, IReadOnlyList<ViewportRepair> repairs) {
+        ArgumentNullException.ThrowIfNull(repairs);
+        (live[(int)slot] ?? throw new InvalidOperationException($"{slot} has no live map.")).Repair(repairs);
+    }
+
+    /// <summary>Takes the live maps off.</summary>
+    public void ClearLive() {
+        var had = false;
+        device.WaitIdle();
+        for (var slot = 0; slot < live.Length; slot++) {
+            had |= live[slot] is not null;
+            live[slot]?.Dispose();
+            live[slot] = null;
+        }
+
+        if (had && geometry is { } scene) {
+            Show(scene.Mesh);
+        }
+    }
+
+    /// <summary>
+    ///     The top level of the texture a slot's draw call samples, read back from the GPU: RGBA, tightly packed, top
+    ///     row first. Null when the slot has no live map. This is the picture before lighting and tonemapping, which
+    ///     is the one that can equal an exported file.
+    /// </summary>
+    public byte[]? Sampled(ViewportSlot slot) => live[(int)slot]?.ReadBack();
+
     /// <summary>Renders one frame and copies it into <paramref name="destination" />.</summary>
     public void Render(OrbitCamera camera, int width, int height, Span<byte> destination) {
         if (geometry is not { } scene) {
@@ -183,6 +230,10 @@ public sealed class ViewportRenderer : IDisposable {
         device.WaitIdle();
         targets?.Dispose();
         geometry?.Dispose();
+        foreach (var map in live) {
+            map?.Dispose();
+        }
+
         foreach (var action in Enumerable.Reverse(cleanup)) {
             action();
         }
@@ -193,7 +244,9 @@ public sealed class ViewportRenderer : IDisposable {
 
     /// <summary>Puts a mesh on the GPU with its materials as they stand, dropping textures no longer used.</summary>
     void Show(ViewportMesh mesh) {
-        var ready = maps.Normal is not null || mesh.WantsTangents ? mesh.WithTangents() : mesh;
+        var ready = maps.Normal is not null || live[(int)ViewportSlot.Normal] is not null || mesh.WantsTangents
+            ? mesh.WithTangents()
+            : mesh;
         var next = ReferenceEquals(ready, geometry?.Mesh) ? geometry! : new Geometry(device, ready);
         textures.BeginUse();
         var sets = next.Bind(forward, material => Material(material, ready));
@@ -212,38 +265,59 @@ public sealed class ViewportRenderer : IDisposable {
         var own = material.Textures;
 
         var factors = material.Factors;
-        var colour = maps.BaseColor is null ? factors.BaseColor : new Vector4(1f, 1f, 1f, 1f);
-        var normal = mesh.HasTangents ? Slot(maps.Normal, own.Normal, MapMeaning.Normal, textures.Open) : textures.Open;
-        var hasNormal = mesh.HasTangents && (maps.Normal is not null || own.Normal is not null);
+        var colour = Covered(ViewportSlot.BaseColor, maps.BaseColor) ? new Vector4(1f, 1f, 1f, 1f) : factors.BaseColor;
+        var normal = mesh.HasTangents
+            ? Slot(ViewportSlot.Normal, maps.Normal, own.Normal, MapMeaning.Normal, textures.Open)
+            : textures.Open;
+        var laidOver = Covered(ViewportSlot.Normal, maps.Normal);
+        var hasNormal = mesh.HasTangents && (laidOver || own.Normal is not null);
 
         return new(
             new(colour.X, colour.Y, colour.Z),
-            maps.Metallic is null ? factors.Metallic : 1f,
-            maps.Roughness is null ? factors.Roughness : 1f,
-            maps.Normal is null ? own.NormalScale : 1f,
+            Covered(ViewportSlot.Metallic, maps.Metallic) ? 1f : factors.Metallic,
+            Covered(ViewportSlot.Roughness, maps.Roughness) ? 1f : factors.Roughness,
+            laidOver ? 1f : own.NormalScale,
             hasNormal,
             new(
-                Slot(maps.BaseColor, own.BaseColor, MapMeaning.Colour, textures.White),
+                Slot(ViewportSlot.BaseColor, maps.BaseColor, own.BaseColor, MapMeaning.Colour, textures.White),
                 normal,
-                Slot(maps.Roughness, own.MetallicRoughness, MapMeaning.Measurement, textures.Open),
-                Slot(maps.Metallic, own.MetallicRoughness, MapMeaning.Measurement, textures.Open),
-                Slot(maps.Occlusion, own.Occlusion, MapMeaning.Measurement, textures.Open)
+                Slot(
+                    ViewportSlot.Roughness,
+                    maps.Roughness,
+                    own.MetallicRoughness,
+                    MapMeaning.Measurement,
+                    textures.Open
+                ),
+                Slot(ViewportSlot.Metallic, maps.Metallic, own.MetallicRoughness, MapMeaning.Measurement, textures.Open),
+                Slot(ViewportSlot.Occlusion, maps.Occlusion, own.Occlusion, MapMeaning.Measurement, textures.Open)
             ),
             mapSampler
         );
 
+        bool Covered(ViewportSlot slot, ViewportMapFile? file) => live[(int)slot] is not null || file is not null;
+
         TextureViewHandle Slot(
+            ViewportSlot slot,
             ViewportMapFile? file,
             ModelTexture? image,
             MapMeaning meaning,
             TextureViewHandle empty
         ) =>
-            file is not null
-                ? textures.Of(file, meaning)
-                : image is not null
-                    ? textures.Of(image, folder, meaning)
-                    : empty;
+            live[(int)slot] is { } map
+                ? map.View
+                : file is not null
+                    ? textures.Of(file, meaning)
+                    : image is not null
+                        ? textures.Of(image, folder, meaning)
+                        : empty;
     }
+
+    static MapMeaning Meaning(ViewportSlot slot) =>
+        slot switch {
+            ViewportSlot.BaseColor => MapMeaning.Colour,
+            ViewportSlot.Normal => MapMeaning.Normal,
+            _ => MapMeaning.Measurement
+        };
 
     /// <summary>
     ///     Draws the mesh until its frames stop changing, so that one camera gives one picture from the first frame a

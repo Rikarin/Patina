@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Net.WebSockets;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Patina.Bench;
 using Vixen.Core.Imaging;
 
 namespace Patina.Server.Tests;
@@ -12,6 +13,9 @@ namespace Patina.Server.Tests;
 /// <summary>Painting as a client sees it: the real Server and Worker, with strokes sent as lists of stamps.</summary>
 public sealed class StackProcessTests : IDisposable {
     const int Side = 1024;
+
+    /// <summary>The size of the picture a stroke on the mesh is measured on.</summary>
+    const int Picture = 800;
 
     static readonly IReadOnlyList<float> Red = [0.9f, 0.1f, 0.05f, 1f];
 
@@ -114,6 +118,67 @@ public sealed class StackProcessTests : IDisposable {
             var file = PngCodec.Decode(File.ReadAllBytes(map.File!));
             Assert.Equal(map.Digest, Convert.ToHexStringLower(SHA256.HashData(file.Pixels)));
         }
+    }
+
+    /// <summary>
+    ///     The same criterion on a mesh, through the viewport. Viewport pixels are tonemapped, so what is compared is the
+    ///     picture the plan means: the top level of the texture each material slot samples, read back from the
+    ///     viewport's own device, as 8-bit RGBA. Its digest must equal that of the file an export wrote for the channel,
+    ///     from a clean evaluation of the whole stack, after strokes that cross the mesh's seams, an undo and a redo.
+    /// </summary>
+    [Fact]
+    public async Task What_the_viewport_samples_is_what_exports() {
+        using var deadline = Deadline(240);
+        var (instance, state) = await StartAsync("Sampled.vxlayers", deadline.Token);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        await BindMeshAsync(state.Id, deadline.Token);
+        await EditAsync(state.Id, deadline.Token, new StackSetLayer("paint", null, null, 0.7f, "Overlay"));
+        using var frames = await WearAsync(instance, state.Id, deadline.Token);
+
+        var view = await AimAsync(0.5, 0.5, deadline.Token);
+        var first = await EditAsync(state.Id, deadline.Token, Across("one", view, 300, 500, 300, false));
+        await EvaluatedAsync(socket, first.Revision, deadline.Token);
+        var live = await EditAsync(state.Id, deadline.Token, Across("two", view, 200, 620, 420, true));
+        var repaired = await EvaluatedAsync(socket, live.Revision, deadline.Token);
+        Assert.True(repaired.Repaired > 0, "The stroke ran whole, so this never reached the viewport as tiles.");
+        var closed = await EditAsync(state.Id, deadline.Token, Across("two", view, 620, 200, 200, false));
+        await EvaluatedAsync(socket, closed.Revision, deadline.Token);
+
+        await SameAsExportAsync(state, "first", deadline.Token);
+
+        await ActAsync(state.Id, "undo", deadline.Token);
+        await SameAsExportAsync(state, "undone", deadline.Token);
+
+        await ActAsync(state.Id, "redo", deadline.Token);
+        await SameAsExportAsync(state, "redone", deadline.Token);
+    }
+
+    /// <summary>A stroke on a mesh is a list of positions and a camera, so a new Worker lands it in the same texels.</summary>
+    [Fact]
+    public async Task A_worker_killed_in_a_stroke_on_the_mesh_loses_nothing() {
+        using var deadline = Deadline(240);
+        var (instance, state) = await StartAsync("Mesh.vxlayers", deadline.Token, out var worker);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        await BindMeshAsync(state.Id, deadline.Token);
+        using var frames = await WearAsync(instance, state.Id, deadline.Token);
+        var view = await AimAsync(0.5, 0.5, deadline.Token);
+
+        await EditAsync(state.Id, deadline.Token, Across("drag", view, 200, 400, 300, true));
+        worker.Kill();
+        await worker.WaitForExitAsync(deadline.Token);
+        var last = await EditAsync(state.Id, deadline.Token, Across("drag", view, 400, 620, 300, false));
+        StartWorker();
+        await EvaluatedAsync(socket, last.Revision, deadline.Token);
+        var replayed = await PixelsAsync(state.Id, false, deadline.Token);
+
+        var other = await CreateAsync("Whole.vxlayers", deadline.Token);
+        await BindMeshAsync(other.Id, deadline.Token);
+        await EditAsync(other.Id, deadline.Token, Across("drag", view, 200, 400, 300, true));
+        await EditAsync(other.Id, deadline.Token, Across("drag", view, 400, 620, 300, false));
+        Assert.Equal(
+            Digest(await PixelsAsync(other.Id, false, deadline.Token), "baseColor"),
+            Digest(replayed, "baseColor")
+        );
     }
 
     /// <summary>
@@ -319,6 +384,98 @@ public sealed class StackProcessTests : IDisposable {
             Digest(blank, "baseColor"),
             Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor")
         );
+    }
+
+    async Task SameAsExportAsync(StackState state, string when, CancellationToken token) {
+        var exported = await ExportAsync(state.Id, Path.Combine(folder.FullName, when), token);
+        var sampled = await SampledAsync(state.Id, token);
+
+        // Read until the frame's texture has caught up with the document: a pick of the viewport races nothing else.
+        foreach (var map in exported) {
+            var file = PngCodec.Decode(File.ReadAllBytes(map.File!));
+            Assert.Equal(map.Digest, Convert.ToHexStringLower(SHA256.HashData(file.Pixels)));
+            Assert.Equal(map.Digest, Digest(sampled, map.Usage));
+        }
+
+        Assert.Equal(exported.Count, sampled.Count);
+    }
+
+    async Task BindMeshAsync(string id, CancellationToken token) {
+        var meshes = Directory.CreateDirectory(Path.Combine(folder.FullName, "meshes")).FullName;
+        if (!File.Exists(Path.Combine(meshes, BakeFixture.LowFile))) {
+            BakeFixture.Write(meshes, 0.05f);
+        }
+
+        await EditAsync(id, token, new StackSetModel(Path.Combine(meshes, BakeFixture.LowFile)));
+    }
+
+    /// <summary>Puts a stack on the viewport and holds a socket open that takes frames, which is what makes it draw.</summary>
+    async Task<IDisposable> WearAsync(ServerInstance instance, string id, CancellationToken token) {
+        var socket = new ClientWebSocket();
+        await socket.ConnectAsync(
+            new($"ws://127.0.0.1:{instance.Port}/ws/viewport?access_token={instance.Token}"),
+            token
+        );
+        var drain = new byte[1 << 20];
+        var draining = Task.Run(
+            async () => {
+                while (socket.State == WebSocketState.Open) {
+                    await socket.ReceiveAsync(drain, token);
+                }
+            },
+            token
+        );
+        using var response = await http.PutAsJsonAsync(
+            "/api/v1/viewport/stack",
+            new(id),
+            ContractsJsonContext.Default.ViewportStackRequest,
+            token
+        );
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync(token));
+        return new Drained(socket, draining);
+    }
+
+    async Task<StackView> AimAsync(double x, double y, CancellationToken token) {
+        using var response = await http.PostAsJsonAsync(
+            "/api/v1/viewport/pick",
+            new(x, y, null, Picture, Picture),
+            ContractsJsonContext.Default.ViewportPickRequest,
+            token
+        );
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync(token));
+        var picked = (await response.Content.ReadFromJsonAsync(ContractsJsonContext.Default.ViewportPick, token))!;
+        Assert.True(picked.Found, "The middle of the picture should be on the housing.");
+        return picked.View;
+    }
+
+    /// <summary>A stroke straight across the picture, over whatever flats and seams are under it.</summary>
+    static StackStroke Across(string stroke, StackView view, int from, int to, int row, bool open) =>
+        new(
+            stroke,
+            "paint",
+            "baseColor",
+            new(30f, Spacing: 0.25f),
+            Red,
+            [..Enumerable.Range(0, 8).Select(step => new StackStamp(from + (to - from) * step / 7f, row, 1f))],
+            open,
+            View: view
+        );
+
+    async Task<IReadOnlyList<StackPixels>> SampledAsync(string id, CancellationToken token) {
+        using var response = await http.GetAsync($"/api/v1/stacks/{id}/pixels?sampled=true", token);
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync(token));
+        return (await response.Content.ReadFromJsonAsync(
+            ContractsJsonContext.Default.IReadOnlyListStackPixels,
+            token
+        ))!;
+    }
+
+    sealed class Drained(ClientWebSocket socket, Task draining) : IDisposable {
+        public void Dispose() {
+            socket.Abort();
+            socket.Dispose();
+            _ = draining.ContinueWith(static _ => { }, TaskScheduler.Default);
+        }
     }
 
     static string Digest(IReadOnlyList<StackPixels> maps, string usage) =>

@@ -62,6 +62,8 @@ sealed class WorkerLoop(ViewportHost viewport, GraphHost graphs, StackHost stack
                 IpcTypes.ViewportMaps => viewport.SetMaps(request),
                 IpcTypes.ViewportCamera => viewport.SetCamera(request),
                 IpcTypes.ViewportRender => viewport.Render(request),
+                IpcTypes.ViewportPick => viewport.Pick(request),
+                IpcTypes.ViewportStack => stacks.Follow(request),
                 IpcTypes.GraphLoad => graphs.Load(request),
                 IpcTypes.GraphEvaluate => graphs.Evaluate(request),
                 IpcTypes.GraphImage => graphs.Image(request),

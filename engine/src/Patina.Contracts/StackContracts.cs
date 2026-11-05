@@ -86,6 +86,7 @@ public sealed record StackEvaluation(
 /// <param name="Previews">The newest maps.</param>
 /// <param name="Evaluation">The last evaluation, or null.</param>
 /// <param name="Settled">The newest revision an evaluation has reached.</param>
+/// <param name="Model">The mesh it is painted on, as the document names it, or empty.</param>
 public sealed record StackState(
     string Id,
     string Path,
@@ -100,7 +101,8 @@ public sealed record StackState(
     IReadOnlyList<StackLayer> Layers,
     IReadOnlyList<StackPreview> Previews,
     StackEvaluation? Evaluation,
-    long Settled
+    long Settled,
+    string Model
 );
 #pragma warning restore SK7005
 
@@ -119,6 +121,7 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackMoveLayer), "moveLayer")]
 [JsonDerivedType(typeof(StackSetLayer), "setLayer")]
 [JsonDerivedType(typeof(StackStroke), "stroke")]
+[JsonDerivedType(typeof(StackSetModel), "setModel")]
 public abstract record StackCommand;
 
 /// <summary>Adds a layer at the top of the stack.</summary>
@@ -154,23 +157,65 @@ public sealed record StackSetLayer(
     string? Blend = null
 ) : StackCommand;
 
-/// <summary>Where the brush goes, in texels from the image's top left.</summary>
+/// <summary>Names the mesh a stack is painted on, which is undone like any other edit.</summary>
+/// <param name="Model">A model file, absolute or relative to the stack. Empty takes the mesh away.</param>
+public sealed record StackSetModel(string Model) : StackCommand;
+
+/// <summary>Where the brush goes: in texels from the image's top left, or on the stroke's picture when it has a view.</summary>
 /// <param name="X">Its column.</param>
 /// <param name="Y">Its row.</param>
-public sealed record StackStamp(float X, float Y);
+/// <param name="Pressure">How hard, 0 to 1.</param>
+public sealed record StackStamp(float X, float Y, float Pressure = 1f);
+
+/// <summary>
+///     A camera in the mesh's own space, which a stroke keeps because a position on a picture means nothing without
+///     it. Any client with a camera can fill this in; <c>POST /viewport/pick</c> gives the viewport's.
+/// </summary>
+/// <param name="Eye">Where it is: three numbers.</param>
+/// <param name="Right">The unit direction a column grows in: three numbers.</param>
+/// <param name="Up">The unit direction a row shrinks in: three numbers.</param>
+/// <param name="Forward">The unit direction it looks: three numbers.</param>
+/// <param name="VerticalFieldOfView">In radians.</param>
+/// <param name="Width">The picture's width, in the units stamps and the brush's radius are in.</param>
+/// <param name="Height">Its height.</param>
+public sealed record StackView(
+    IReadOnlyList<float> Eye,
+    IReadOnlyList<float> Right,
+    IReadOnlyList<float> Up,
+    IReadOnlyList<float> Forward,
+    float VerticalFieldOfView,
+    int Width,
+    int Height
+);
 
 /// <summary>A brush. Everything but the radius has the value a new brush has.</summary>
-/// <param name="Radius">In texels.</param>
+/// <param name="Radius">In texels, or in the units of the picture for a stroke with a view.</param>
 /// <param name="Flow">How much one stamp lays down, 0 to 1.</param>
 /// <param name="Opacity">How much a whole stroke can lay down, 0 to 1.</param>
 /// <param name="Spacing">How far apart stamps are, as a share of the radius.</param>
 /// <param name="Falloff">How soft its edge is, 0 to 1.</param>
+/// <param name="Alpha">A named alpha (Round, Square, Chisel, Cross) or an image relative to the stack, or null.</param>
+/// <param name="Angle">Its fixed rotation, in radians.</param>
+/// <param name="Rotation">fixed, along or random.</param>
+/// <param name="PositionJitter">How far a stamp strays, as a share of the radius, 0 to 1.</param>
+/// <param name="AngleJitter">How far a stamp turns either way, in radians.</param>
+/// <param name="SizeJitter">How much of its radius a stamp can lose, 0 to 1.</param>
+/// <param name="PressureSize">How much of the radius pressure takes off, 0 to 1.</param>
+/// <param name="PressureFlow">How much of the flow pressure takes off, 0 to 1.</param>
 public sealed record StackBrush(
     float Radius,
     float Flow = 1f,
     float Opacity = 1f,
     float Spacing = 0.15f,
-    float Falloff = 0.5f
+    float Falloff = 0.5f,
+    string? Alpha = null,
+    float Angle = 0f,
+    string Rotation = "fixed",
+    float PositionJitter = 0f,
+    float AngleJitter = 0f,
+    float SizeJitter = 0f,
+    float PressureSize = 0f,
+    float PressureFlow = 0f
 );
 
 /// <summary>
@@ -185,6 +230,12 @@ public sealed record StackBrush(
 /// <param name="Stamps">Where the brush went since the last part.</param>
 /// <param name="Open">Whether more of this drag is coming.</param>
 /// <param name="Mask">Whether this paints the layer's mask.</param>
+/// <param name="View">
+///     The camera, which makes this a stroke on the mesh: stamps are positions on its picture, each one is found on the
+///     surface by the Worker, and it lands wherever the brush's disc falls, seams or no seams. Null paints the atlas.
+/// </param>
+/// <param name="Curve">free follows the stamps; line and path run through them as control points when the stroke ends.</param>
+/// <param name="Mirror">x, y or z mirrors a stroke on the mesh through that plane of the mesh, or null.</param>
 public sealed record StackStroke(
     string Stroke,
     string Layer,
@@ -193,7 +244,10 @@ public sealed record StackStroke(
     IReadOnlyList<float> Colour,
     IReadOnlyList<StackStamp> Stamps,
     bool Open = false,
-    bool Mask = false
+    bool Mask = false,
+    StackView? View = null,
+    string Curve = "free",
+    string? Mirror = null
 ) : StackCommand;
 
 /// <summary>Edits applied whole or not at all, as one undo step.</summary>

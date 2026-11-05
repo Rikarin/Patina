@@ -12,7 +12,8 @@ namespace Patina.Viewport;
 /// <param name="Pitch">Radians above the horizon.</param>
 /// <param name="Distance">From the model's centre, in bounding radii.</param>
 public readonly record struct OrbitCamera(float Yaw, float Pitch, float Distance) {
-    const float FieldOfView = 0.7f;
+    /// <summary>The vertical field of view, in radians.</summary>
+    public const float FieldOfView = 0.7f;
 
     /// <summary>Three-quarters from above: the view a turntable opens on.</summary>
     public static OrbitCamera Default => new(0.6f, 0.35f, 2.2f);
@@ -22,6 +23,13 @@ public readonly record struct OrbitCamera(float Yaw, float Pitch, float Distance
         var radial = MathF.Cos(Pitch);
         var direction = new Vector3(radial * MathF.Sin(Yaw), MathF.Sin(Pitch), radial * MathF.Cos(Yaw));
         return bounds.Center + direction * (Distance * Radius(bounds));
+    }
+
+    /// <summary>The camera's axes for a model with these bounds: Vixen's look-at, right-handed.</summary>
+    public (Vector3 Right, Vector3 Up, Vector3 Forward) Axes(BoundingBox bounds) {
+        var forward = Vector3.Normalize(bounds.Center - Eye(bounds));
+        var right = Vector3.Normalize(Vector3.Cross(forward, new(0f, 1f, 0f)));
+        return (right, Vector3.Cross(right, forward), forward);
     }
 
     /// <summary>The view-projection matrix for a model with these bounds, on Vixen's reversed depth.</summary>

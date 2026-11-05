@@ -54,10 +54,11 @@ if (watchStdin) {
     StdinWatch.Start(Console.OpenStandardInput(), stop.Cancel);
 }
 
-using var viewport = new ViewportHost(shaderCache ?? ShaderCache.DefaultDirectory);
+var meshes = new MeshShelf();
+using var viewport = new ViewportHost(shaderCache ?? ShaderCache.DefaultDirectory, meshes);
 using var gpu = new DeviceHost();
 using var graphs = new GraphHost(gpu);
-using var stacks = new StackHost(gpu);
+using var stacks = new StackHost(gpu, viewport, meshes);
 using var bakes = new BakeHost();
 await new WorkerLoop(viewport, graphs, stacks, bakes).RunAsync(socketPath, Console.Out, stop.Token);
 return 0;

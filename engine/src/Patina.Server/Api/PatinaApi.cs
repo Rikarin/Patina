@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
+using Patina.Server.Stacks;
 using Patina.Server.Viewport;
 using System.Runtime.InteropServices;
 
@@ -42,6 +43,19 @@ static class PatinaApi {
             .WithTags("Viewport")
             .WithSummary("Moves the viewport's camera.");
 
+        api.MapPost("/viewport/pick", PickAsync)
+            .WithName("PickInViewport")
+            .WithTags("Viewport")
+            .WithSummary("What is under a position in the viewport, and the camera a stroke there carries.")
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
+        api.MapPut("/viewport/stack", WearStack)
+            .WithName("ShowStackInViewport")
+            .WithTags("Viewport")
+            .WithSummary("Puts a stack on its mesh in the viewport, which shows every stroke from then on.")
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
         app.Map(
                 "/ws/viewport",
                 static async (HttpContext context, ViewportSession session) => {
@@ -68,6 +82,44 @@ static class PatinaApi {
         app.MapStackSocket();
         api.MapJobApi();
         app.MapJobSocket();
+    }
+
+    static async Task<Results<Ok<ViewportPick>, ProblemHttpResult>> PickAsync(
+        ViewportPickRequest request,
+        ViewportSession session,
+        CancellationToken cancellationToken
+    ) {
+        try {
+            return TypedResults.Ok(await session.PickAsync(request, cancellationToken));
+        } catch (Patina.Ipc.IpcException e) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status409Conflict);
+        } catch (Exception e) when (e is IOException or TimeoutException) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+    }
+
+    static Results<Ok<ViewportState>, ProblemHttpResult> WearStack(
+        ViewportStackRequest request,
+        StackSessions stacks,
+        ViewportSession session
+    ) {
+        if (stacks.Find(request.Stack) is not { } stack) {
+            return TypedResults.Problem(
+                $"There is no stack session '{request.Stack}'.",
+                statusCode: StatusCodes.Status404NotFound
+            );
+        }
+
+        if (stack.ModelFile is not { } file || !File.Exists(file)) {
+            return TypedResults.Problem(
+                stack.ModelFile is null ? "This stack has no mesh." : $"There is no file at '{stack.ModelFile}'.",
+                statusCode: StatusCodes.Status422UnprocessableEntity
+            );
+        }
+
+        session.Wear(stack.Id, file);
+        stack.Evaluate();
+        return TypedResults.Ok(session.State);
     }
 
     static Results<Ok<ViewportState>, ProblemHttpResult> SetMesh(ViewportMeshRequest request, ViewportSession session) {

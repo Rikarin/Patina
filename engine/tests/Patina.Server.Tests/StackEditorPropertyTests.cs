@@ -8,6 +8,8 @@ namespace Patina.Server.Tests;
 public sealed class StackEditorPropertyTests {
     static readonly IReadOnlyList<float> White = [1f, 1f, 1f, 1f];
 
+    static readonly StackView View = new([0f, 0f, 4f], [1f, 0f, 0f], [0f, 1f, 0f], [0f, 0f, -1f], 0.7f, 64, 64);
+
     /// <summary>
     ///     Random batches of every command, some of which are refused, then undoing all of them, gives the original
     ///     document and an empty journal; redoing all of them gives the edited document and the same journal.
@@ -53,6 +55,21 @@ public sealed class StackEditorPropertyTests {
                 iter: 200,
                 threads: 1
             );
+
+    /// <summary>A stroke keeps the mesh that stood, so binding another later cannot move what it painted.</summary>
+    [Fact]
+    public void A_stroke_on_the_mesh_needs_one_and_keeps_it() {
+        var editor = new StackEditor("/tmp/Crate.vxlayers", Sample());
+        StackStroke aimed = new("s", "paint", "baseColor", new(2f), White, [new(1f, 1f)], false, false, View);
+
+        Assert.Throws<StackEditRefusedException>(() => editor.Apply(new([aimed])));
+
+        editor.Apply(new([new StackSetModel("a.glb")]));
+        editor.Apply(new([aimed]));
+        editor.Apply(new([new StackSetModel("b.glb")]));
+
+        Assert.Equal("a.glb", editor.Standing.Single().Model);
+    }
 
     /// <summary>The parts of a drag are one step, and whatever else arrives ends it.</summary>
     [Fact]
@@ -104,7 +121,8 @@ public sealed class StackEditorPropertyTests {
     static StackCommand Pick(StackEditor editor, Random random) {
         string[] ids = [..editor.Set.Layers.Select(static layer => layer.Id), "absent"];
         var id = ids[random.Next(ids.Length)];
-        return random.Next(5) switch {
+        return random.Next(6) switch {
+            5 => new StackSetModel(random.Next(3) == 0 ? "" : $"meshes/{random.Next(3)}.glb"),
             0 => new StackAddLayer(random.Next(4) == 0 ? "nonsense" : "fill", $"Layer {random.Next(4)}"),
             1 => new StackRemoveLayer(id),
             2 => new StackMoveLayer(id, random.Next(-2, 3)),
@@ -123,7 +141,10 @@ public sealed class StackEditorPropertyTests {
                 White,
                 [new(random.NextSingle() * 64f, random.NextSingle() * 64f)],
                 random.Next(2) == 0,
-                random.Next(4) == 0
+                random.Next(4) == 0,
+                random.Next(3) == 0 ? View : null,
+                random.Next(4) == 0 ? "line" : "free",
+                random.Next(8) == 0 ? "x" : null
             )
         };
     }

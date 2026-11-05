@@ -72,6 +72,16 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         }
     }
 
+    /// <summary>The mesh's file, or null when the stack names none.</summary>
+    public string? ModelFile {
+        get {
+            lock (Changing) {
+                var model = editor.Document.Model.Trim();
+                return model.Length == 0 ? null : System.IO.Path.GetFullPath(model, Folder!);
+            }
+        }
+    }
+
     /// <summary>The paint files the document names, for keeping a copy of what a save overwrites.</summary>
     public IReadOnlyList<string> PaintFiles {
         get {
@@ -124,7 +134,8 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                     StackDocuments.Layers(set.Layers),
                     [..previews.Values],
                     evaluation,
-                    settled
+                    settled,
+                    editor.Document.Model
                 );
             }
         }
@@ -240,7 +251,11 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                         entry.Brush,
                         entry.Colour,
                         [..entry.Stamps.Skip(told.Stamps)],
-                        entry.Open
+                        entry.Open,
+                        entry.Model,
+                        entry.View,
+                        entry.Curve,
+                        entry.Mirror
                     )
                 );
                 sent[entry.Id] = (entry.Stamps.Count, entry.Open);

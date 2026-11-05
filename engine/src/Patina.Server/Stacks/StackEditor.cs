@@ -16,7 +16,14 @@ public sealed class StackEditRefusedException : Exception {
 }
 
 /// <summary>A stroke as the journal holds it: where the brush went, in order, which is all a Worker needs.</summary>
-public sealed class StackJournalEntry(long id, StackStroke first, string paint, string usage, uint colour) {
+public sealed class StackJournalEntry(
+    long id,
+    StackStroke first,
+    string paint,
+    string usage,
+    uint colour,
+    string model
+) {
     public long Id { get; } = id;
 
     public string Stroke { get; } = first.Stroke;
@@ -30,6 +37,15 @@ public sealed class StackJournalEntry(long id, StackStroke first, string paint, 
     public StackBrush Brush { get; } = first.Brush;
 
     public uint Colour { get; } = colour;
+
+    /// <summary>The mesh that stood when this was painted: a later binding must not move it.</summary>
+    public string Model { get; } = model;
+
+    public StackView? View { get; } = first.View;
+
+    public string Curve { get; } = first.Curve;
+
+    public string? Mirror { get; } = first.Mirror;
 
     public List<StackStamp> Stamps { get; } = [..first.Stamps];
 
@@ -177,6 +193,7 @@ public sealed class StackEditor : ILayerStackDocument {
             StackRemoveLayer => "Remove layer",
             StackMoveLayer => "Move layer",
             StackSetLayer => "Change layer",
+            StackSetModel => "Bind mesh",
             StackStroke => "Stroke",
             _ => "Edit"
         };
@@ -250,6 +267,9 @@ public sealed class StackEditor : ILayerStackDocument {
             case StackSetLayer change:
                 Do(Change(change, set));
                 break;
+            case StackSetModel model:
+                Do(new SetModelCommand(this, model.Model, "Bind mesh"));
+                break;
             case StackStroke stroke:
                 Stroke(stroke, step, set, Do);
                 break;
@@ -318,6 +338,8 @@ public sealed class StackEditor : ILayerStackDocument {
             throw new StackEditRefusedException("A brush has a radius.");
         }
 
+        Aimed(stroke);
+
         if (!stroke.Mask && Set.Channels.TrueForAll(channel => channel.Usage != stroke.Channel)) {
             throw new StackEditRefusedException($"This stack has no channel '{stroke.Channel}'.");
         }
@@ -351,7 +373,38 @@ public sealed class StackEditor : ILayerStackDocument {
             throw new StackEditRefusedException("One batch paints one channel of a layer once.");
         }
 
-        step.Strokes.Add(new(nextEntry++, stroke, paint, Channel(stroke), Packed(stroke.Colour)));
+        step.Strokes.Add(new(nextEntry++, stroke, paint, Channel(stroke), Packed(stroke.Colour), Document.Model));
+    }
+
+    /// <summary>Refuses what a Worker could not do with a stroke, while nothing has happened yet.</summary>
+    void Aimed(StackStroke stroke) {
+        if (stroke.Curve is not ("free" or "line" or "path")) {
+            throw new StackEditRefusedException($"'{stroke.Curve}' is not a kind of stroke.");
+        }
+
+        if (stroke.Mirror is not (null or "x" or "y" or "z")) {
+            throw new StackEditRefusedException($"'{stroke.Mirror}' is not a plane to mirror through.");
+        }
+
+        if (stroke.Brush.Rotation is not ("fixed" or "along" or "random")) {
+            throw new StackEditRefusedException($"'{stroke.Brush.Rotation}' is not a way for a brush to turn.");
+        }
+
+        if (stroke.View is not { } view) {
+            if (stroke.Mirror is not null) {
+                throw new StackEditRefusedException("Only a stroke with a view can be mirrored: a mirror is on the mesh.");
+            }
+
+            return;
+        }
+
+        if (Document.Model.Trim().Length == 0) {
+            throw new StackEditRefusedException("This stack has no mesh to paint on. Bind one first.");
+        }
+
+        if (view is not { Eye.Count: 3, Right.Count: 3, Up.Count: 3, Forward.Count: 3, Width: > 0, Height: > 0 }) {
+            throw new StackEditRefusedException("A view is three vectors of three numbers and a picture with a size.");
+        }
     }
 
     SetLayerCommand Named(LayerAsset before, LayerAsset after, string set) =>
