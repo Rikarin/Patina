@@ -177,6 +177,112 @@ public sealed class LibraryApiTests : IDisposable {
     }
 
     [Fact]
+    public async Task Tags_are_listed_with_their_counts() {
+        CreateLibrary();
+        using var client = server.AuthorisedClient();
+        await WaitForIndexAsync(client);
+
+        var projects = await client.GetFromJsonAsync(
+            "/api/v1/library/projects/tags",
+            ContractsJsonContext.Default.TagPage,
+            Token
+        );
+        var assets = await client.GetFromJsonAsync(
+            "/api/v1/library/assets/tags",
+            ContractsJsonContext.Default.TagPage,
+            Token
+        );
+
+        Assert.Equal(new("hero", 1), projects?.Items.Single());
+        Assert.Equal(new("metal", 1), assets?.Items.Single());
+    }
+
+    Task<HttpResponseMessage> CreateProjectAsync(HttpClient client, ProjectCreateRequest request) =>
+        client.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            request,
+            ContractsJsonContext.Default.ProjectCreateRequest,
+            Token
+        );
+
+    [Fact]
+    public async Task A_new_project_is_a_file_first_and_reaches_the_index_behind_it() {
+        CreateLibrary();
+        using var client = server.AuthorisedClient();
+        await WaitForIndexAsync(client);
+
+        var response = await CreateProjectAsync(client, new("Oak Barrel", "props", ["wood", "hero"]));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await response.Content.ReadFromJsonAsync(ContractsJsonContext.Default.ProjectSummary, Token);
+        Assert.Equal("props/oak-barrel", created?.Path);
+        Assert.Equal(["hero", "wood"], created?.Tags);
+        Assert.True(File.Exists(LibraryFiles.ProjectFile(server.Library, "props/oak-barrel")));
+
+        var indexed = await WaitForIndexAsync(client);
+        var found = await client.GetFromJsonAsync(
+            "/api/v1/library/projects?search=oak",
+            ContractsJsonContext.Default.ProjectPage,
+            Token
+        );
+        var listed = found?.Items.Single();
+        Assert.Equal(3, indexed.ProjectCount);
+        Assert.Equal(created?.Id, listed?.Id);
+        Assert.Equal(created?.Path, listed?.Path);
+    }
+
+    [Fact]
+    public async Task No_reply_says_the_index_has_caught_up_before_it_has() {
+        CreateLibrary();
+        using var client = server.AuthorisedClient();
+        await WaitForIndexAsync(client);
+
+        await CreateProjectAsync(client, new("Oak Barrel"));
+
+        var info = await client.GetFromJsonAsync("/api/v1/library", ContractsJsonContext.Default.LibraryInfo, Token);
+        Assert.True(info is { Indexing: true } or { ProjectCount: 3 });
+    }
+
+    [Fact]
+    public async Task A_taken_folder_is_a_409_and_writes_nothing() {
+        CreateLibrary();
+        using var client = server.AuthorisedClient();
+        await WaitForIndexAsync(client);
+        var file = LibraryFiles.ProjectFile(server.Library, "props/crate");
+        var before = await File.ReadAllTextAsync(file, Token);
+
+        var response = await CreateProjectAsync(client, new("Crate", "props"));
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal(before, await File.ReadAllTextAsync(file, Token));
+    }
+
+    [Theory]
+    [InlineData("", null)]
+    [InlineData("???", null)]
+    [InlineData("Crate", "../outside")]
+    [InlineData("Crate", "/../outside")]
+    [InlineData("Crate", ".hidden")]
+    public async Task A_bad_new_project_is_a_400(string name, string? folder) {
+        CreateLibrary();
+        using var client = server.AuthorisedClient();
+
+        var response = await CreateProjectAsync(client, new(name, folder));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task A_new_project_needs_a_library() {
+        using var client = server.AuthorisedClient();
+
+        var response = await CreateProjectAsync(client, new("Crate"));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task The_library_needs_the_token() {
         CreateLibrary();
         using var client = server.CreateClient();

@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
+using Patina.Library;
 
 namespace Patina.Server.Api;
 
 /// <summary>
-///     The library, read-only. Every list is a page: the browser is a virtualised grid over 10,000 projects (plan
-///     §5), so no endpoint can return a whole library.
+///     The library. Every list is a page: the browser is a virtualised grid over 10,000 projects (plan §5), so no
+///     endpoint can return a whole library. A write changes the files and returns; the index catches up behind it,
+///     and <c>indexing</c> on <c>GET /library</c> is true until it has.
 /// </summary>
 static class LibraryEndpoints {
     const string Tag = "Library";
@@ -26,11 +28,30 @@ static class LibraryEndpoints {
             .ProducesProblem(StatusCodes.Status404NotFound)
             .WithSummary("One page of projects: by name, or by relevance when searching.");
 
+        library.MapPost("/projects", CreateProject)
+            .WithName("CreateProject")
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .WithSummary("Writes a new project's files. It reaches the listings once the index has caught up.");
+
+        library.MapGet("/projects/tags", GetProjectTags)
+            .WithName("GetProjectTags")
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .WithSummary("One page of the tags on projects, by name, with how many projects carry each.");
+
         library.MapGet("/assets", GetAssets)
             .WithName("GetAssets")
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .WithSummary("One page of shared assets with their usage counts: by name, or by relevance when searching.");
+
+        library.MapGet("/assets/tags", GetAssetTags)
+            .WithName("GetAssetTags")
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .WithSummary("One page of the tags on shared assets, by name, with how many assets carry each.");
 
         library.MapGet("/assets/{id:guid}/impact", GetImpact)
             .WithName("GetAssetImpact")
@@ -56,6 +77,49 @@ static class LibraryEndpoints {
         return host.Library is { } library
             ? TypedResults.Ok(library.Projects(new(search, tag, offset, limit)))
             : NoLibrary();
+    }
+
+    static Results<Created<ProjectSummary>, ProblemHttpResult> CreateProject(
+        LibraryHost host,
+        ProjectCreateRequest request
+    ) {
+        if (host.Library is not { } library) {
+            return NoLibrary();
+        }
+
+        try {
+            var project = library.CreateProject(new(request.Name, request.Folder, request.Tags));
+            host.RequestRescan();
+            return TypedResults.Created((string?)null, project);
+        } catch (ProjectExistsException e) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status409Conflict);
+        } catch (ProjectRefusedException e) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
+    }
+
+    static Results<Ok<TagPage>, ProblemHttpResult> GetProjectTags(
+        LibraryHost host,
+        int offset = 0,
+        int limit = DefaultLimit
+    ) {
+        if (BadPage(offset, limit) is { } bad) {
+            return bad;
+        }
+
+        return host.Library is { } library ? TypedResults.Ok(library.ProjectTags(offset, limit)) : NoLibrary();
+    }
+
+    static Results<Ok<TagPage>, ProblemHttpResult> GetAssetTags(
+        LibraryHost host,
+        int offset = 0,
+        int limit = DefaultLimit
+    ) {
+        if (BadPage(offset, limit) is { } bad) {
+            return bad;
+        }
+
+        return host.Library is { } library ? TypedResults.Ok(library.AssetTags(offset, limit)) : NoLibrary();
     }
 
     static Results<Ok<AssetPage>, ProblemHttpResult> GetAssets(

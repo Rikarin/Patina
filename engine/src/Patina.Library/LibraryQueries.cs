@@ -113,6 +113,28 @@ sealed class LibraryQueries(IndexDatabase database) {
         return new(items, total, query.Offset, query.Limit);
     }
 
+    public TagPage ProjectTags(int offset, int limit) => Tags("project_tag", offset, limit);
+
+    public TagPage AssetTags(int offset, int limit) => Tags("asset_tag", offset, limit);
+
+    /// <summary>One page of a tag table. Only constants of this class reach the SQL; values are parameters.</summary>
+    TagPage Tags(string table, int offset, int limit) {
+        using var connection = database.Open();
+        var total = Scalar(connection, $"SELECT count(DISTINCT tag) FROM {table}");
+        List<TagCount> items = [];
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            $"SELECT tag, count(*) FROM {table} GROUP BY tag ORDER BY tag LIMIT @limit OFFSET @offset";
+        command.Parameters.AddWithValue("@limit", limit);
+        command.Parameters.AddWithValue("@offset", offset);
+        using var reader = command.ExecuteReader();
+        while (reader.Read()) {
+            items.Add(new(reader.GetString(0), reader.GetInt32(1)));
+        }
+
+        return new(items, total, offset, limit);
+    }
+
     /// <summary>The impact of changing <paramref name="asset" />'s bytes, or null when the index does not know it.</summary>
     public AssetImpact? Impact(AssetId asset, int offset, int limit) {
         using var connection = database.Open();
