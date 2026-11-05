@@ -19,7 +19,7 @@ namespace Patina.Bench;
 static class PaintBench {
     const int Tile = 256;
 
-    /// <summary>Writes S4's stack as files, painted on a mesh, for a client to open: the measurement in a real window.</summary>
+    /// <summary>Writes S4's stack as files, on a mesh, for a real window to open.</summary>
     public static int WriteStack(string path, int size, int layerCount, string model) {
         var folder = Path.GetDirectoryName(Path.GetFullPath(path))!;
         Directory.CreateDirectory(folder);
@@ -36,7 +36,7 @@ static class PaintBench {
         return 0;
     }
 
-    /// <summary>What stamps on a mesh cost by themselves, with no device: one drag through a camera, and its counters.</summary>
+    /// <summary>What stamps on a mesh cost by themselves: one drag through a camera, and its counters.</summary>
     public static int Stamps(string model, int size, float radius, int moves, string? file = null) {
         var clock = Stopwatch.StartNew();
         var geometry = ViewportGeometry.Read(model);
@@ -76,8 +76,9 @@ static class PaintBench {
         var elapsed = clock.Elapsed.TotalMilliseconds;
         times.Sort();
         Say($"a move p50 {times[times.Count / 2]:F1} ms, worst {times[^1]:F1} ms");
+        Say($"{stroke.StampCount} stamps, {elapsed:F0} ms, {elapsed / stroke.StampCount:F2} ms a stamp");
         Say(
-            $"{stroke.StampCount} stamps, {elapsed:F0} ms, {elapsed / stroke.StampCount:F2} ms a stamp, {stroke.WeightsEvaluated / stroke.StampCount} weights and {stroke.TexelsScanned / stroke.StampCount} scanned a stamp, {stroke.DilatedTexels} dilated, rect {stroke.Rect}"
+            $"{stroke.WeightsEvaluated / stroke.StampCount} weights, {stroke.TexelsScanned / stroke.StampCount} scanned"
         );
         return 0;
     }

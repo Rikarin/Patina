@@ -73,7 +73,7 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         }
     }
 
-    /// <summary>The bake generators and bake masks read, which survives the session in a file beside the stack.</summary>
+    /// <summary>The bake generators and bake masks read, kept in a file beside the stack.</summary>
     public string? MeshMaps { get; private set; }
 
     /// <summary>Chooses a bake: a new Worker copy loads it, since the images are external to the plan.</summary>

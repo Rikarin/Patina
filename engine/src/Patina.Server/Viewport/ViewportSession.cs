@@ -219,12 +219,12 @@ public sealed class ViewportSession(
             await TellMapsAsync(connection, work.Maps, cancellationToken);
         }
 
-        if (work.Stack != toldStack) {
+        if (work.Worn.Stack != toldStack) {
             await connection.SendAsync(
-                new() { Type = IpcTypes.ViewportStack, Following = work.Stack },
+                new() { Type = IpcTypes.ViewportStack, Following = work.Worn.Stack },
                 cancellationToken
             );
-            toldStack = work.Stack;
+            toldStack = work.Worn.Stack;
         }
 
         if (work.Camera != toldCamera) {
@@ -243,30 +243,23 @@ public sealed class ViewportSession(
         ViewportCameraState look;
         int across;
         int down;
+        string path;
         lock (changing) {
+            path = mesh ?? throw new IpcException("Open a mesh first: there is nothing to pick.");
             look = request.Camera ?? camera;
             across = request.Width ?? width;
             down = request.Height ?? height;
         }
 
         var connection = await worker.ConnectionAsync(cancellationToken);
-        await EnsureMeshAsync(connection, cancellationToken);
         var reply = await connection.SendAsync(
             new() {
                 Type = IpcTypes.ViewportPick,
-                Pick = new(request.X, request.Y, new(look.Yaw, look.Pitch, look.Distance), across, down)
+                Pick = new(request.X, request.Y, new(look.Yaw, look.Pitch, look.Distance), across, down, path)
             },
             cancellationToken
         );
         return reply.Picked!;
-    }
-
-    /// <summary>A pick can arrive at a Worker that has not been told the mesh yet.</summary>
-    async Task EnsureMeshAsync(IpcConnection connection, CancellationToken cancellationToken) {
-        var path = State.Mesh ?? throw new IpcException("Open a mesh first: there is nothing to pick.");
-        if (!ReferenceEquals(connection, told) || toldMesh != path) {
-            await connection.SendAsync(new() { Type = IpcTypes.ViewportOpen, Mesh = path }, cancellationToken);
-        }
     }
 
     /// <summary>
@@ -291,7 +284,7 @@ public sealed class ViewportSession(
         lock (changing) {
             return subscribers.Count == 0
                 ? (null, revision)
-                : (new(mesh, stack, painted, maps, camera, width, height, scale.Value, interacting, lastInput),
+                : (new(mesh, new(stack, painted), maps, camera, (width, height), scale.Value, interacting, lastInput),
                     revision);
         }
     }
@@ -324,10 +317,10 @@ public sealed class ViewportSession(
     static (int Width, int Height) Fit(Work work) {
         var fit = Math.Min(
             1d,
-            Math.Min((double)FrameMemory.MaxWidth / work.Width, (double)FrameMemory.MaxHeight / work.Height)
+            Math.Min((double)FrameMemory.MaxWidth / work.Size.Width, (double)FrameMemory.MaxHeight / work.Size.Height)
         );
         var factor = fit * work.Scale;
-        return (Math.Max(2, (int)(work.Width * factor) & ~1), Math.Max(2, (int)(work.Height * factor) & ~1));
+        return (Math.Max(2, (int)(work.Size.Width * factor) & ~1), Math.Max(2, (int)(work.Size.Height * factor) & ~1));
     }
 
     void Publish(FrameSlot slot, ViewportFrame frame, Work work) {
@@ -340,7 +333,7 @@ public sealed class ViewportSession(
             audience = [..subscribers];
         }
 
-        var header = Header(sequence, frame, work.Input, work.Painted);
+        var header = Header(sequence, frame, work.Input, work.Worn.Revision);
         var bytes = frame.Width * frame.Height * 4;
         foreach (var subscriber in audience) {
             slot.Hold();
@@ -390,14 +383,15 @@ public sealed class ViewportSession(
             set.Occlusion?.Path
         );
 
+    /// <summary>The stack the viewport wears, if any, and the newest revision of it the Worker has shown.</summary>
+    readonly record struct Wearing(string? Stack, long Revision);
+
     readonly record struct Work(
         string? Mesh,
-        string? Stack,
-        long Painted,
+        Wearing Worn,
         ViewportMapSet Maps,
         ViewportCameraState Camera,
-        int Width,
-        int Height,
+        (int Width, int Height) Size,
         double Scale,
         bool Interacting,
         uint Input

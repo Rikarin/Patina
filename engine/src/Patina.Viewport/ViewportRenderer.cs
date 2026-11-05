@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 using System.Runtime.InteropServices;
-using Vixen.Core.Imaging;
 using Vixen.Core.Mathematics;
 using Vixen.Graphics;
 using Vixen.Graphics.Vulkan;
@@ -62,7 +61,7 @@ public sealed class ViewportRenderer : IDisposable {
         cleanup.Add(() => device.Destroy(mapSampler));
         textures = new(device);
         cleanup.Add(textures.Dispose);
-        environmentView = UploadEnvironment();
+        environmentView = textures.UploadCube(environment.Prefiltered, cleanup);
 
         var hdr = new[] { new ColourTargetState(HdrFormat, BlendState.Opaque) };
         forward = Pipeline(shaders.Forward(), hdr, Samples, DepthStencilState.Default, DepthFormat, true);
@@ -498,62 +497,6 @@ public sealed class ViewportRenderer : IDisposable {
             ]
         );
         return set;
-    }
-
-    TextureViewHandle UploadEnvironment() {
-        var data = environment.Prefiltered;
-        var texture = device.CreateTexture(
-            new(
-                data.Format,
-                data.Width,
-                data.Height,
-                TextureUsage.Sampled | TextureUsage.CopyDestination,
-                MipLevels: data.LevelCount,
-                ArrayLayers: CubeMap.Faces,
-                Dimension: TextureDimension.TextureCube,
-                Name: "viewport environment"
-            )
-        );
-        var view = device.CreateTextureView(texture);
-        cleanup.Add(() => {
-                device.Destroy(view);
-                device.Destroy(texture);
-            }
-        );
-
-        var staging = device.CreateBuffer(
-            new(data.ByteLength, BufferUsage.CopySource, MemoryAccess.HostUpload, "viewport environment staging")
-        );
-        device.Write(staging, 0, data.Pixels);
-        using (var commands = device.BeginCommandList(QueueKind.Graphics, "viewport environment")) {
-            commands.Barrier(
-                new BarrierGroup([], [new(texture, ResourceState.Undefined, ResourceState.CopyDestination)])
-            );
-            CopyFaces(commands, data, staging, texture);
-            commands.Barrier(
-                new BarrierGroup([], [new(texture, ResourceState.CopyDestination, ResourceState.ShaderRead)])
-            );
-            commands.Finish();
-            device.GraphicsQueue.Submit([commands]);
-        }
-
-        device.WaitIdle();
-        device.Destroy(staging);
-        return view;
-    }
-
-    static void CopyFaces(ICommandList commands, TextureData data, BufferHandle staging, TextureHandle texture) {
-        foreach (var level in data.Levels) {
-            var faceBytes = level.Length / CubeMap.Faces;
-            for (var face = 0; face < CubeMap.Faces; face++) {
-                commands.CopyBufferToTexture(
-                    staging,
-                    level.Offset + face * faceBytes,
-                    new(texture, level.Level, face),
-                    new(level.Width, level.Height, 1)
-                );
-            }
-        }
     }
 
     readonly record struct Pass(Effect Effect, PipelineHandle Pipeline);

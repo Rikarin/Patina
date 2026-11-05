@@ -68,7 +68,7 @@ sealed class ViewportLiveMap : IDisposable {
 
     static readonly float[] ToLinear = [..Enumerable.Range(0, 256).Select(static value => Decode(value / 255f))];
 
-    /// <summary>Linear back to sRGB in steps fine enough for the dark end, since a stamp's mips run this per texel.</summary>
+    /// <summary>Linear back to sRGB in steps fine enough for the dark end: a stamp's mips run this per texel.</summary>
     static readonly byte[] FromLinear = [
         ..Enumerable.Range(0, 1 << 14).Select(static value => Coded(value / (float)((1 << 14) - 1)))
     ];

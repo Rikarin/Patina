@@ -85,6 +85,8 @@ public sealed record ViewportGraphRequest(string Graph);
 /// <param name="Stack">The stack session it is wearing, or null.</param>
 /// <param name="Frames">How many frames this Server has published.</param>
 /// <param name="Error">Why the last command failed, or null.</param>
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field.
+#pragma warning disable SK7005
 public sealed record ViewportState(
     string? Mesh,
     ViewportMapPaths Maps,
@@ -96,6 +98,7 @@ public sealed record ViewportState(
     string? Error,
     string? Stack = null
 );
+#pragma warning restore SK7005
 
 /// <summary>What a client sends over <c>/ws/viewport</c>, as JSON text. Any field may be left out.</summary>
 /// <param name="Camera">Where to look.</param>

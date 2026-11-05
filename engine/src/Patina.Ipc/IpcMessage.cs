@@ -114,6 +114,30 @@ public sealed class IpcMessage {
     /// <summary>The reply to health.</summary>
     public WorkerHealth? Health { get; set; }
 
+    /// <summary>bake.start: what to bake and where it goes.</summary>
+    public StackLoad? StackLoad { get; set; }
+
+    public StackSync? StackSync { get; set; }
+
+    public StackEvaluate? StackEvaluate { get; set; }
+
+    public StackResult? StackResult { get; set; }
+
+    public StackSave? StackSave { get; set; }
+
+    public StackPixelsAsk? StackPixels { get; set; }
+
+    public IReadOnlyList<StackPixels>? StackPicture { get; set; }
+
+    /// <summary>viewport.pick: where to look.</summary>
+    public ViewportPickAsk? Pick { get; set; }
+
+    /// <summary>The reply to viewport.pick.</summary>
+    public ViewportPick? Picked { get; set; }
+
+    /// <summary>viewport.stack: which stack the viewport wears.</summary>
+    public string? Following { get; set; }
+
     /// <summary>viewport.open: the mesh's path, on a disk the Worker can read.</summary>
     public string? Mesh { get; set; }
 
@@ -129,14 +153,6 @@ public sealed class IpcMessage {
     /// <summary>The reply to viewport.render.</summary>
     public ViewportFrame? Frame { get; set; }
 
-    /// <summary>viewport.pick: where to look.</summary>
-    public ViewportPickAsk? Pick { get; set; }
-
-    /// <summary>The reply to viewport.pick.</summary>
-    public ViewportPick? Picked { get; set; }
-
-    /// <summary>viewport.stack: which stack the viewport wears.</summary>
-    public string? Following { get; set; }
 
     /// <summary>graph.load: a whole document.</summary>
     public GraphLoad? GraphLoad { get; set; }
@@ -155,21 +171,6 @@ public sealed class IpcMessage {
 
     /// <summary>The reply to graph.evaluate.</summary>
     public GraphResult? GraphResult { get; set; }
-
-    /// <summary>bake.start: what to bake and where it goes.</summary>
-    public StackLoad? StackLoad { get; set; }
-
-    public StackSync? StackSync { get; set; }
-
-    public StackEvaluate? StackEvaluate { get; set; }
-
-    public StackResult? StackResult { get; set; }
-
-    public StackSave? StackSave { get; set; }
-
-    public StackPixelsAsk? StackPixels { get; set; }
-
-    public IReadOnlyList<StackPixels>? StackPicture { get; set; }
 
     public string? StackClose { get; set; }
 
@@ -244,7 +245,8 @@ public sealed record ViewportRender(int Width, int Height, string SharedMemory, 
 /// <param name="Camera">The camera.</param>
 /// <param name="Width">The picture's width in the units the reply's view is in.</param>
 /// <param name="Height">Its height.</param>
-public sealed record ViewportPickAsk(double X, double Y, ViewportCamera Camera, int Width, int Height);
+/// <param name="Mesh">The mesh. Only its file is read, so this answers where there is no Vulkan.</param>
+public sealed record ViewportPickAsk(double X, double Y, ViewportCamera Camera, int Width, int Height, string Mesh);
 
 /// <summary>A frame that is now in shared memory.</summary>
 public sealed record ViewportFrame(int Width, int Height, double RenderMilliseconds);
@@ -327,6 +329,9 @@ public sealed record StackLoad(
 
 #pragma warning restore SK7005
 
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field.
+#pragma warning disable SK7005
+
 /// <summary>One stroke of the journal, or the part of it a Worker has not been sent.</summary>
 /// <param name="Id">Its number in the journal.</param>
 /// <param name="Paint">The paint file, relative to the stack.</param>
@@ -352,6 +357,8 @@ public sealed record StackPaintPart(
     string Curve,
     string? Mirror
 );
+
+#pragma warning restore SK7005
 
 /// <summary>
 ///     What the pixels should be: the strokes that stand, in order. The Worker works out how to get

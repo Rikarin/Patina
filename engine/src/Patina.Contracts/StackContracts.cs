@@ -212,6 +212,9 @@ public sealed record StackRemoveLayer(string Layer) : StackCommand;
 /// <param name="Delta">How many places, up the stack when positive.</param>
 public sealed record StackMoveLayer(string Layer, int Delta) : StackCommand;
 
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field.
+#pragma warning disable SK7005
+
 /// <summary>Changes what a layer's row shows. What is null stays.</summary>
 /// <param name="Layer">Which.</param>
 /// <param name="Name">What it is called.</param>
@@ -243,12 +246,13 @@ public sealed record StackSetLayer(
     IReadOnlyDictionary<string, IReadOnlyList<float>>? Settings = null,
     StackMask? Mask = null
 ) : StackCommand;
+#pragma warning restore SK7005
 
 /// <summary>Names the mesh a stack is painted on, which is undone like any other edit.</summary>
 /// <param name="Model">A model file, absolute or relative to the stack. Empty takes the mesh away.</param>
 public sealed record StackSetModel(string Model) : StackCommand;
 
-/// <summary>Where the brush goes: in texels from the image's top left, or on the stroke's picture when it has a view.</summary>
+/// <summary>Where the brush goes: in texels of the image, or on the picture of a stroke with a view.</summary>
 /// <param name="X">Its column.</param>
 /// <param name="Y">Its row.</param>
 /// <param name="Pressure">How hard, 0 to 1.</param>
@@ -274,6 +278,9 @@ public sealed record StackView(
     int Width,
     int Height
 );
+
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field.
+#pragma warning disable SK7005
 
 /// <summary>A brush. Everything but the radius has the value a new brush has.</summary>
 /// <param name="Radius">In texels, or in the units of the picture for a stroke with a view.</param>
@@ -304,6 +311,10 @@ public sealed record StackBrush(
     float PressureSize = 0f,
     float PressureFlow = 0f
 );
+#pragma warning restore SK7005
+
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field.
+#pragma warning disable SK7005
 
 /// <summary>
 ///     Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one
@@ -321,7 +332,7 @@ public sealed record StackBrush(
 ///     The camera, which makes this a stroke on the mesh: stamps are positions on its picture, each one is found on the
 ///     surface by the Worker, and it lands wherever the brush's disc falls, seams or no seams. Null paints the atlas.
 /// </param>
-/// <param name="Curve">free follows the stamps; line and path run through them as control points when the stroke ends.</param>
+/// <param name="Curve">free follows the stamps; line and path run through them as control points when it ends.</param>
 /// <param name="Mirror">x, y or z mirrors a stroke on the mesh through that plane of the mesh, or null.</param>
 public sealed record StackStroke(
     string Stroke,
@@ -336,6 +347,7 @@ public sealed record StackStroke(
     string Curve = "free",
     string? Mirror = null
 ) : StackCommand;
+#pragma warning restore SK7005
 
 /// <summary>Edits applied whole or not at all, as one undo step.</summary>
 /// <param name="Commands">The edits, in order.</param>

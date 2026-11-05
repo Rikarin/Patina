@@ -15,7 +15,6 @@ namespace Patina.Worker;
 /// </summary>
 sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
     ViewportRenderer? renderer;
-    string? mesh;
     OrbitCamera camera = OrbitCamera.Default;
     MemoryMappedFile? frames;
     MemoryMappedViewAccessor? view;
@@ -30,7 +29,6 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
     public IpcMessage Open(IpcMessage request) {
         var path = request.Mesh ?? throw new IpcException("viewport.open names no mesh.");
         Renderer().OpenMesh(path);
-        mesh = path;
         return IpcMessage.Ok(request.Id);
     }
 
@@ -39,10 +37,10 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
 
     public ViewportRenderer Live => Renderer();
 
-    /// <summary>What is under a position on the picture, through the camera it asks about. No device is involved.</summary>
+    /// <summary>What is under a position on the picture, through the camera asked about. It opens no device.</summary>
     public IpcMessage Pick(IpcMessage request) {
         var pick = request.Pick ?? throw new IpcException("viewport.pick says nothing.");
-        var shelf = meshes.Of(mesh ?? throw new IpcException("No mesh is open."));
+        var shelf = meshes.Of(pick.Mesh);
         var (yaw, pitch, distance) = (pick.Camera.Yaw, pick.Camera.Pitch, pick.Camera.Distance);
         var orbit = new OrbitCamera((float)yaw, (float)pitch, (float)distance);
         var bounds = shelf.Geometry.Bounds;
@@ -75,7 +73,7 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
         };
     }
 
-    /// <summary>Starts or stops wearing a stack. What it wore comes off either way, and the stack sends itself again.</summary>
+    /// <summary>Starts or stops wearing a stack. What it wore comes off, and the stack sends itself again.</summary>
     public void Follow(string? session) {
         if (session == Following) {
             return;

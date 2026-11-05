@@ -121,10 +121,11 @@ public sealed class StackProcessTests : IDisposable {
     }
 
     /// <summary>
-    ///     The same criterion on a mesh, through the viewport. Viewport pixels are tonemapped, so what is compared is the
-    ///     picture the plan means: the top level of the texture each material slot samples, read back from the
-    ///     viewport's own device, as 8-bit RGBA. Its digest must equal that of the file an export wrote for the channel,
-    ///     from a clean evaluation of the whole stack, after strokes that cross the mesh's seams, an undo and a redo.
+    ///     The same criterion on a mesh, through the viewport. Viewport pixels are tonemapped, so what is compared is
+    ///     the picture the plan means: the top level of the texture each material slot samples, read back from the
+    ///     viewport's own device, as 8-bit RGBA. Its digest must equal that of the file an export wrote for the
+    ///     channel, from a clean evaluation of the whole stack, after strokes that cross the mesh's seams, an undo and
+    ///     a redo.
     /// </summary>
     [Fact]
     public async Task What_the_viewport_samples_is_what_exports() {
@@ -165,9 +166,9 @@ public sealed class StackProcessTests : IDisposable {
     }
 
     /// <summary>
-    ///     Every kind of layer the stack has, through the API alone: a fill, a filter, a group holding a layer that moved
-    ///     into it, and masks of each source that need no bake, under sixteen blend modes in turn. What the
-    ///     viewport samples stays what exports, whatever compiled or repaired on the way.
+    ///     Every kind of layer the stack has, through the API alone: a fill, a filter, a group holding a layer that
+    ///     moved into it, and masks of each source that needs no bake. What the viewport samples stays what exports,
+    ///     whatever compiled or repaired on the way.
     /// </summary>
     [Fact]
     public async Task Every_kind_of_layer_stays_what_exports() {
@@ -228,7 +229,7 @@ public sealed class StackProcessTests : IDisposable {
         await SameAsExportAsync(state, "masked", deadline.Token);
     }
 
-    /// <summary>A stroke on a mesh is a list of positions and a camera, so a new Worker lands it in the same texels.</summary>
+    /// <summary>A stroke on a mesh is positions and a camera, so a new Worker lands it in the same texels.</summary>
     [Fact]
     public async Task A_worker_killed_in_a_stroke_on_the_mesh_loses_nothing() {
         using var deadline = Deadline(240);
@@ -489,7 +490,7 @@ public sealed class StackProcessTests : IDisposable {
         await EditAsync(id, token, new StackSetModel(Path.Combine(meshes, BakeFixture.LowFile)));
     }
 
-    /// <summary>Puts a stack on the viewport and holds a socket open that takes frames, which is what makes it draw.</summary>
+    /// <summary>Puts a stack on the viewport and holds a socket open for frames, which is what makes it draw.</summary>
     async Task<IDisposable> WearAsync(ServerInstance instance, string id, CancellationToken token) {
         var socket = new ClientWebSocket();
         await socket.ConnectAsync(
