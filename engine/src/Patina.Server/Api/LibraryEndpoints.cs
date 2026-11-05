@@ -132,7 +132,10 @@ static class LibraryEndpoints {
         string? folder;
         if (request.Graph is { } graph) {
             if (sessions.Find(graph) is not { } session) {
-                return TypedResults.Problem($"There is no open graph '{graph}'.", statusCode: StatusCodes.Status404NotFound);
+                return TypedResults.Problem(
+                    $"There is no open graph '{graph}'.",
+                    statusCode: StatusCodes.Status404NotFound
+                );
             }
 
             folder = session.Folder;

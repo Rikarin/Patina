@@ -31,6 +31,8 @@ public sealed class GraphEditor {
     static readonly HeadlessContext Context = new();
 
     readonly NodeGraphModel graph;
+    readonly GraphInterfaceEdits ports;
+    readonly GraphParameterEdits parameters;
     readonly List<Step> undoable = [];
     readonly List<Step> redoable = [];
     NodeTypeRegistry registry;
@@ -40,6 +42,8 @@ public sealed class GraphEditor {
     /// <summary>Takes a document as a file holds it.</summary>
     public GraphEditor(NodeGraphAsset asset, NodeTypeRegistry registry) {
         graph = NodeGraphDocument.Load(asset, out var repairs);
+        ports = new(graph, TypeOf);
+        parameters = new(graph);
         this.registry = registry;
         Repairs = repairs;
         Document = GraphDocuments.Canonical(NodeGraphDocument.Save(graph));
@@ -70,7 +74,7 @@ public sealed class GraphEditor {
 
         Dictionary<int, int> refs = [];
         List<IAuthoringCommand> applied = [];
-        List<(int Ref, Func<int> Identity)> furniture = [];
+        List<(int Ref, GraphGroup? Group, GraphComment? Note)> furniture = [];
         try {
             foreach (var command in batch.Commands) {
                 var built = Build(command, refs);
@@ -81,10 +85,10 @@ public sealed class GraphEditor {
                         refs[reference] = added.Node.Id.Value;
                         break;
                     case (GraphAddGroup { Ref: { } reference }, AddGroupCommand group):
-                        furniture.Add((reference, () => group.Group.Id));
+                        furniture.Add((reference, group.Group, null));
                         break;
                     case (GraphAddComment { Ref: { } reference }, AddNoteCommand note):
-                        furniture.Add((reference, note.Identity));
+                        furniture.Add((reference, null, note.Note));
                         break;
                 }
             }
@@ -100,7 +104,7 @@ public sealed class GraphEditor {
         Document = GraphDocuments.Canonical(NodeGraphDocument.Save(graph));
         return [
             ..refs.Select(static r => new GraphCreatedNode(r.Key, r.Value)),
-            ..furniture.Select(static f => new GraphCreatedNode(f.Ref, f.Identity()))
+            ..furniture.Select(static f => new GraphCreatedNode(f.Ref, f.Group?.Id ?? f.Note!.Id))
         ];
     }
 
@@ -222,12 +226,12 @@ public sealed class GraphEditor {
             GraphSetValue value => BuildValue(value, refs),
             GraphSetText text => BuildText(text, refs),
             GraphSetSetting setting => BuildSetting(setting),
-            GraphAddParameter add => BuildAddParameter(add),
-            GraphSetParameter set => BuildSetParameter(set),
-            GraphRemoveParameter remove => BuildRemoveParameter(remove),
-            GraphAddPort add => BuildAddPort(add),
-            GraphSetPort set => BuildSetPort(set),
-            GraphRemovePort remove => BuildRemovePort(remove),
+            GraphAddParameter add => parameters.Add(add),
+            GraphSetParameter set => parameters.Set(set),
+            GraphRemoveParameter remove => parameters.Remove(remove),
+            GraphAddPort add => ports.Add(add),
+            GraphSetPort set => ports.Set(set),
+            GraphRemovePort remove => ports.Remove(remove),
             GraphAddGroup add => new AddGroupCommand(graph, add.Title, Members(add.Nodes, refs)),
             GraphSetGroup set => BuildSetGroup(set, refs),
             GraphRemoveGroup remove => new RemoveGroupCommand(graph, GroupOf(remove.Id)),
@@ -344,177 +348,6 @@ public sealed class GraphEditor {
             : throw new GraphEditRefusedException($"'{setting.Value}' is not a value for {setting.Key}.");
     }
 
-    SetParametersCommand BuildAddParameter(GraphAddParameter add) {
-        var parameter = Checked(add.Parameter, null);
-        return new(graph, [..graph.Parameters, parameter], $"Expose {parameter.Name}", parameter.Name);
-    }
-
-    SetParametersCommand BuildSetParameter(GraphSetParameter set) {
-        var index = ParameterAt(set.Name);
-        var parameter = Checked(set.Parameter, set.Name);
-        List<SettingDefinition> next = [..graph.Parameters];
-        next[index] = parameter;
-        return new(graph, next, $"Set {set.Name}", set.Name);
-    }
-
-    SetParametersCommand BuildRemoveParameter(GraphRemoveParameter remove) {
-        var index = ParameterAt(remove.Name);
-        List<SettingDefinition> next = [..graph.Parameters];
-        next.RemoveAt(index);
-        return new(graph, next, $"Remove {remove.Name}", null);
-    }
-
-    int ParameterAt(string name) {
-        var index = graph.Parameters.FindIndex(p => string.Equals(p.Name, name, StringComparison.Ordinal));
-        return index >= 0 ? index : throw new GraphEditRefusedException($"There is no parameter '{name}'.");
-    }
-
-    /// <summary>A parameter as the model holds it, or a refusal a client can show.</summary>
-    /// <param name="parameter">What a client sent.</param>
-    /// <param name="replacing">The name it replaces, which it may keep.</param>
-    SettingDefinition Checked(GraphSettingDefinition parameter, string? replacing) {
-        if (string.IsNullOrWhiteSpace(parameter.Name)) {
-            throw new GraphEditRefusedException("A parameter needs a name.");
-        }
-
-        if (!string.Equals(parameter.Name, replacing, StringComparison.Ordinal)
-            && graph.Parameters.Exists(p => string.Equals(p.Name, parameter.Name, StringComparison.Ordinal))) {
-            throw new GraphEditRefusedException($"There is a parameter called '{parameter.Name}' already.");
-        }
-
-        if (!Enum.TryParse<SettingKind>(parameter.Kind, out var kind) || !Enum.IsDefined(kind)) {
-            throw new GraphEditRefusedException($"'{parameter.Kind}' is not a kind of parameter.");
-        }
-
-        SettingDefinition definition = new(
-            parameter.Name,
-            parameter.Default,
-            parameter.Summary,
-            kind,
-            parameter.Minimum ?? float.NegativeInfinity,
-            parameter.Maximum ?? float.PositiveInfinity,
-            parameter.Group,
-            [..parameter.Accepted]
-        );
-        return Holds(definition)
-            ? definition
-            : throw new GraphEditRefusedException($"'{parameter.Default}' is not a value for {parameter.Name}.");
-    }
-
-    static bool Holds(SettingDefinition parameter) {
-        var number = float.TryParse(
-            parameter.Default,
-            NumberStyles.Float,
-            CultureInfo.InvariantCulture,
-            out var parsed
-        );
-        return parameter.Kind switch {
-            SettingKind.Float or SettingKind.Int when !number || !float.IsFinite(parsed) => false,
-            SettingKind.Int when parsed != MathF.Round(parsed) => false,
-            SettingKind.Float or SettingKind.Int when parsed < parameter.Minimum || parsed > parameter.Maximum => false,
-            SettingKind.Bool => parameter.Default is "true" or "false",
-            _ => parameter.Accepts(parameter.Default)
-        };
-    }
-
-    SetInterfaceCommand BuildAddPort(GraphAddPort add) {
-        var port = CheckedPort(add.Port, null);
-        return new(graph, [..graph.Interface, port], null, port.Name, $"Add {port.Name}");
-    }
-
-    SetInterfaceCommand BuildSetPort(GraphSetPort set) {
-        var index = PortAt(set.Name, set.Direction);
-        var port = CheckedPort(set.Port, graph.Interface[index]);
-        foreach (var edge in BoundaryEdges(graph, graph.Interface[index])) {
-            RefuseKindChange(edge, port);
-        }
-
-        List<PortDefinition> next = [..graph.Interface];
-        next[index] = port;
-        return new(graph, next, graph.Interface[index], port.Name, $"Set {set.Name}");
-    }
-
-    SetInterfaceCommand BuildRemovePort(GraphRemovePort remove) {
-        var index = PortAt(remove.Name, remove.Direction);
-        List<PortDefinition> next = [..graph.Interface];
-        next.RemoveAt(index);
-        return new(graph, next, graph.Interface[index], null, $"Remove {remove.Name}");
-    }
-
-    int PortAt(string name, string direction) {
-        var index = graph.Interface.FindIndex(p => string.Equals(p.Name, name, StringComparison.Ordinal)
-            && string.Equals(p.Direction.ToString(), direction, StringComparison.Ordinal)
-        );
-        return index >= 0 ? index : throw new GraphEditRefusedException($"There is no {direction} port '{name}'.");
-    }
-
-    /// <summary>A port as the model holds it, or a refusal a client can show.</summary>
-    /// <param name="port">What a client sent.</param>
-    /// <param name="replacing">The port it replaces, whose name it may keep and whose direction it must.</param>
-    PortDefinition CheckedPort(GraphInterfacePort port, PortDefinition? replacing) {
-        if (string.IsNullOrWhiteSpace(port.Name) || TextureGraphExpressions.IsExpression(port.Name, out _)) {
-            throw new GraphEditRefusedException($"'{port.Name}' cannot name a port.");
-        }
-
-        if (!Enum.TryParse<PortDirection>(port.Direction, out var direction) || !Enum.IsDefined(direction)) {
-            throw new GraphEditRefusedException($"'{port.Direction}' is not a direction.");
-        }
-
-        if (replacing is not null && direction != replacing.Direction) {
-            throw new GraphEditRefusedException("A port keeps its direction. Remove it and add another.");
-        }
-
-        if (!Enum.TryParse<PortKind>(port.Kind, out var kind) || !Enum.IsDefined(kind) || kind == PortKind.None) {
-            throw new GraphEditRefusedException($"'{port.Kind}' is not a kind of port.");
-        }
-
-        if (graph.Interface.Exists(p => p != replacing
-                && p.Direction == direction
-                && string.Equals(p.Name, port.Name, StringComparison.Ordinal)
-            )) {
-            throw new GraphEditRefusedException($"There is a {direction} port called '{port.Name}' already.");
-        }
-
-        if (port.Default.Count > 0
-            && (port.Default.Count != PortKinds.Fields(kind) || !port.Default.All(float.IsFinite))) {
-            throw new GraphEditRefusedException($"{port.Name} ({kind}) takes {PortKinds.Fields(kind)} finite number(s).");
-        }
-
-        return new(port.Name, direction, kind, [..port.Default], port.Summary);
-    }
-
-    /// <summary>Says no to a kind that a wire on the port cannot carry, which the model would take silently.</summary>
-    void RefuseKindChange(GraphEdge edge, PortDefinition port) {
-        var (other, seenAs) = port.Direction == PortDirection.Input
-            ? (edge.To, PortDirection.Input)
-            : (edge.From, PortDirection.Output);
-        if (!graph.TryGet(other.Node, out var node) || TypeOf(node).Port(other.Port, seenAs) is not { } end) {
-            return;
-        }
-
-        var (source, target) = seenAs == PortDirection.Input
-            ? (port.Kind, end)
-            : (end.Kind, port with { Direction = PortDirection.Input });
-        if (!new PortFilter(source, PortDirection.Input).Accepts(target)) {
-            throw new GraphEditRefusedException($"A wire on {port.Name} cannot carry {port.Kind}. Take it off first.");
-        }
-    }
-
-    /// <summary>The wires on the boundary side of an interface port.</summary>
-    internal static List<GraphEdge> BoundaryEdges(NodeGraphModel graph, PortDefinition port) {
-        var input = port.Direction == PortDirection.Input;
-        var type = input ? SubGraphs.InputType : SubGraphs.OutputType;
-        return [
-            ..graph.Edges.Where(edge => {
-                    var end = input ? edge.From : edge.To;
-                    return string.Equals(end.Port, port.Name, StringComparison.Ordinal)
-                        && graph.TryGet(end.Node, out var node)
-                        && string.Equals(node.Type, type, StringComparison.Ordinal);
-                }
-            )
-        ];
-    }
-
     IEnumerable<NodeId> Members(IReadOnlyList<int> nodes, Dictionary<int, int> refs) =>
         [..nodes.Distinct().Select(node => Find(node, refs).Id)];
 
@@ -610,101 +443,6 @@ sealed class SetGraphSettingCommand(NodeGraphModel graph, string key, string val
     }
 }
 
-/// <summary>Replaces the list of exposed parameters. Vixen has no command for this either.</summary>
-sealed class SetParametersCommand(
-    NodeGraphModel graph,
-    IReadOnlyList<SettingDefinition> next,
-    string name,
-    string? merges,
-    IReadOnlyList<SettingDefinition>? before = null
-) : IAuthoringCommand {
-    readonly IReadOnlyList<SettingDefinition> previous = before ?? [..graph.Parameters];
-
-    public string Name => name;
-
-    string? Merges => merges;
-
-    public void Do(ICommandContext context) => Write(next);
-
-    public void Undo(ICommandContext context) => Write(previous);
-
-    public bool TryMergeWith(IAuthoringCommand previousCommand, [NotNullWhen(true)] out IAuthoringCommand? merged) {
-        merged = previousCommand is SetParametersCommand earlier && merges is not null && earlier.Merges == merges
-            ? new SetParametersCommand(graph, next, name, merges, earlier.previous)
-            : null;
-        return merged is not null;
-    }
-
-    void Write(IReadOnlyList<SettingDefinition> parameters) {
-        graph.Parameters.Clear();
-        graph.Parameters.AddRange(parameters);
-    }
-}
-
-/// <summary>
-///     Changes the graph's interface, and the wires on its boundary nodes with it: a renamed port keeps them, and a port
-///     taken away loses them, until an undo. Vixen has no command for this: its editor writes the list through a form.
-/// </summary>
-/// <param name="graph">The graph.</param>
-/// <param name="next">The whole list.</param>
-/// <param name="port">The port changing, if one is.</param>
-/// <param name="renamed">What that port's wires arrive at now, or null when they go.</param>
-/// <param name="name">What the history calls it.</param>
-sealed class SetInterfaceCommand(
-    NodeGraphModel graph,
-    IReadOnlyList<PortDefinition> next,
-    PortDefinition? port,
-    string? renamed,
-    string name
-) : IAuthoringCommand {
-    readonly IReadOnlyList<PortDefinition> previous = [..graph.Interface];
-    readonly List<GraphEdge> taken = [];
-    readonly List<GraphEdge> put = [];
-
-    public string Name => name;
-
-    public void Do(ICommandContext context) {
-        taken.Clear();
-        put.Clear();
-        if (port is not null) {
-            taken.AddRange(GraphEditor.BoundaryEdges(graph, port));
-        }
-
-        foreach (var edge in taken) {
-            graph.Disconnect(edge.To);
-        }
-
-        Write(next);
-        if (renamed is null || port is null) {
-            return;
-        }
-
-        foreach (var edge in taken) {
-            var moved = port.Direction == PortDirection.Input
-                ? edge with { From = edge.From with { Port = renamed } }
-                : edge with { To = edge.To with { Port = renamed } };
-            graph.Connect(moved.From, moved.To);
-            put.Add(moved);
-        }
-    }
-
-    public void Undo(ICommandContext context) {
-        foreach (var edge in put) {
-            graph.Disconnect(edge.To);
-        }
-
-        Write(previous);
-        foreach (var edge in taken) {
-            graph.Connect(edge.From, edge.To);
-        }
-    }
-
-    void Write(IReadOnlyList<PortDefinition> ports) {
-        graph.Interface.Clear();
-        graph.Interface.AddRange(ports);
-    }
-}
-
 /// <summary>Retitles a group and changes its members. Vixen's own command only retitles.</summary>
 sealed class SetGroupCommand(GraphGroup group, string title, NodeId[] nodes) : IAuthoringCommand {
     readonly string previousTitle = group.Title;
@@ -729,8 +467,8 @@ sealed class AddNoteCommand(NodeGraphModel graph, GraphComment comment) : IAutho
 
     public void Do(ICommandContext context) => graph.Comments.Add(comment);
 
-    /// <summary>The note's identity, which the document gives it when it is next written down.</summary>
-    public int Identity() => comment.Id;
+    /// <summary>The note, whose identity the document gives it when it is next written down.</summary>
+    public GraphComment Note => comment;
 
     public void Undo(ICommandContext context) => graph.Comments.Remove(comment);
 }

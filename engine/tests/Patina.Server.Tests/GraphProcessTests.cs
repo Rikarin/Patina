@@ -441,8 +441,8 @@ public sealed class GraphProcessTests : IDisposable {
     }
 
     /// <summary>
-    ///     Everything a Worker resolves, through the real command: a bitmap beside the graph, a ramp and a curve written
-    ///     inline, a compound from the folder beside it. The Worker's own full-size picture is the oracle.
+    ///     Everything a Worker resolves, through the real command: a bitmap beside the graph, a ramp and a curve
+    ///     written inline, a compound from the folder beside it. The Worker's own full-size picture is the oracle.
     /// </summary>
     [Fact]
     public async Task Patina_bake_reads_what_the_worker_reads_and_writes_the_same_bytes() {
@@ -451,6 +451,7 @@ public sealed class GraphProcessTests : IDisposable {
         PngCodec.Save(Path.Combine(Library, "picture.png"), new Bitmap(4, 4, pixels));
         var compounds = Directory.CreateDirectory(Path.Combine(Library, LibraryLayout.CompoundsFolder)).FullName;
         GraphTesting.Write(compounds, Tint("Tint"), "Tint.vxtexgraph");
+
         static GraphEdgeAsset Edge(int from, int to) =>
             new() { FromNode = from, FromPort = "Out", ToNode = to, ToPort = "Input" };
 
@@ -458,7 +459,9 @@ public sealed class GraphProcessTests : IDisposable {
             Name = "Everything",
             Nodes = [
                 new() { Id = 1, Type = "Source/Bitmap", Texts = new() { ["Source"] = "picture.png" } },
-                new() { Id = 2, Type = "Colour/Curve", Texts = new() { ["Curve"] = "curve:r=0 1,1 0;g=0 0,0.5 0.8,1 1" } },
+                new() {
+                    Id = 2, Type = "Colour/Curve", Texts = new() { ["Curve"] = "curve:r=0 1,1 0;g=0 0,0.5 0.8,1 1" }
+                },
                 new() { Id = 3, Type = "Tint" },
                 new() { Id = 4, Type = "Output/Output", Texts = new() { ["Usage"] = "baseColor" } },
                 new() { Id = 5, Type = "Source/Gradient", Texts = new() { ["Ramp"] = "ramp:0 ff0000ff,1 0000ffff" } },

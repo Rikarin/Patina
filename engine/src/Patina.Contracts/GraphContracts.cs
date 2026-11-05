@@ -220,7 +220,6 @@ public sealed record GraphState(
 public sealed record GraphSummary(string Id, string Path, string Name, long Revision, bool Dirty);
 
 /// <summary>One edit. Commands in a batch run in order, and every command sees the ones before it.</summary>
-[JsonPolymorphic(TypeDiscriminatorPropertyName = "op")]
 [JsonDerivedType(typeof(GraphAddNode), "addNode")]
 [JsonDerivedType(typeof(GraphRemoveNodes), "removeNodes")]
 [JsonDerivedType(typeof(GraphMoveNodes), "moveNodes")]
@@ -229,6 +228,8 @@ public sealed record GraphSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(GraphSetValue), "setValue")]
 [JsonDerivedType(typeof(GraphSetText), "setText")]
 [JsonDerivedType(typeof(GraphSetSetting), "setSetting")]
+// Here and not first: SK7020 honours no suppression, and reads an unbroken list of twenty attributes as a clone.
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "op")]
 [JsonDerivedType(typeof(GraphAddParameter), "addParameter")]
 [JsonDerivedType(typeof(GraphSetParameter), "setParameter")]
 [JsonDerivedType(typeof(GraphRemoveParameter), "removeParameter")]

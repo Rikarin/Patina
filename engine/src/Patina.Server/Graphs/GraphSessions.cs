@@ -96,7 +96,7 @@ public sealed class GraphSessions(ServerIdentity identity) : IDisposable {
     }
 
     /// <summary>Saves some of a graph's nodes as a new compound in the folder it reads.</summary>
-    /// <exception cref="GraphEditRefusedException">It has no such folder, or the nodes or the name will not do.</exception>
+    /// <exception cref="GraphEditRefusedException">It has no such folder, or the nodes or name will not do.</exception>
     public GraphExtraction Extract(GraphSession session, GraphExtractRequest request) {
         if (session.Folder is not { } folder) {
             throw new GraphEditRefusedException("This graph has no compounds folder to save into.");
@@ -141,7 +141,7 @@ public sealed class GraphSessions(ServerIdentity identity) : IDisposable {
         return new(type, file, false);
     }
 
-    /// <summary>Vixen refuses to let a file shadow a shipped compound, so saying so here is kinder than a lost node.</summary>
+    /// <summary>Vixen refuses a file that shadows a shipped compound, and saying so here beats a lost node.</summary>
     static void RefuseShipped(string type) {
         if (TextureCompoundLibrary.Shipped.Contains(type)) {
             throw new GraphEditRefusedException($"'{type}' ships with Patina. A copy needs a name of its own.");

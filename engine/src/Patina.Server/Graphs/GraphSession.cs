@@ -184,7 +184,9 @@ public sealed class GraphSession {
             RefuseIfReadOnly();
             var type = request.Name.Trim();
             var plan = editor.PlanExtraction(type.Split('/')[^1], request.Nodes);
-            var (file, registry) = publish(GraphDocuments.Text(GraphDocuments.Canonical(NodeGraphDocument.Save(plan.Graph))));
+            var (file, registry) = publish(
+                GraphDocuments.Text(GraphDocuments.Canonical(NodeGraphDocument.Save(plan.Graph)))
+            );
             Take(registry);
             var before = editor.Document;
             var node = editor.ApplyExtraction(plan, type, request.X, request.Y);

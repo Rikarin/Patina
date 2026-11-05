@@ -150,9 +150,14 @@ public sealed class GraphApiTests : IDisposable {
             Assert.Equal(HttpStatusCode.UnprocessableEntity, wrongKind.StatusCode);
 
             await client.ActAsync(state.Id, "save", Token);
-            var reopened = await client.OpenAsync(GraphTesting.Write(server.Library, GraphDocuments.Parse(
-                await File.ReadAllTextAsync(after.Path, Token)
-            ), "again.vxtexgraph"), Token);
+            var reopened = await client.OpenAsync(
+                GraphTesting.Write(
+                    server.Library,
+                    GraphDocuments.Parse(await File.ReadAllTextAsync(after.Path, Token)),
+                    "again.vxtexgraph"
+                ),
+                Token
+            );
             Assert.Equal(second, Assert.Single(reopened.Groups).Id);
         }
     }
@@ -176,7 +181,10 @@ public sealed class GraphApiTests : IDisposable {
 
     async Task<GraphState> OpenCompoundAsync(HttpClient client) {
         var compounds = Directory.CreateDirectory(Path.Combine(server.Library, LibraryLayout.CompoundsFolder));
-        return await client.OpenAsync(GraphTesting.Write(compounds.FullName, GraphTesting.Sample(), "Mine.vxtexgraph"), Token);
+        return await client.OpenAsync(
+            GraphTesting.Write(compounds.FullName, GraphTesting.Sample(), "Mine.vxtexgraph"),
+            Token
+        );
     }
 
     [Fact]
@@ -220,7 +228,7 @@ public sealed class GraphApiTests : IDisposable {
         Assert.Contains(renamed.Edges, e => e.ToNode == exit && e.ToPort == "Worn");
 
         await client.ActAsync(state.Id, "undo", Token);
-        Assert.Contains((await client.StateAsync(state.Id, Token)).Edges, e => e.FromPort == "Mask");
+        Assert.Contains((await client.StateAsync(state.Id, Token)).Edges, static e => e.FromPort == "Mask");
         await client.ActAsync(state.Id, "redo", Token);
 
         await client.EditAsync(state.Id, Token, new GraphRemovePort("Wear", "Input"));
@@ -228,7 +236,10 @@ public sealed class GraphApiTests : IDisposable {
         Assert.DoesNotContain(removed.Edges, e => e.FromNode == entry);
         Assert.DoesNotContain(removed.Interface, static p => p.Name == "Wear");
         await client.ActAsync(state.Id, "undo", Token);
-        Assert.Contains((await client.StateAsync(state.Id, Token)).Edges, e => e.FromNode == entry && e.FromPort == "Wear");
+        Assert.Contains(
+            (await client.StateAsync(state.Id, Token)).Edges,
+            e => e.FromNode == entry && e.FromPort == "Wear"
+        );
 
         foreach (var refused in new GraphCommand[] {
                      new GraphAddPort(new("Wear", "Input", "Image", [], "")),
@@ -296,8 +307,10 @@ public sealed class GraphApiTests : IDisposable {
             );
             var compound = GraphDocuments.Parse(await File.ReadAllTextAsync(saved.Compound.Path, Token));
             Assert.Equal("Tinted", compound.Name);
-            Assert.Equal(["Colour/HSL", "Colour/Invert", "Sub-graph/Input", "Sub-graph/Output"],
-                compound.Nodes.Select(static n => n.Type).Order(StringComparer.Ordinal));
+            Assert.Equal(
+                ["Colour/HSL", "Colour/Invert", "Sub-graph/Input", "Sub-graph/Output"],
+                compound.Nodes.Select(static n => n.Type).Order(StringComparer.Ordinal)
+            );
             Assert.Equal(2, compound.Interface.Length);
 
             var after = await client.StateAsync(state.Id, Token);
@@ -375,7 +388,12 @@ public sealed class GraphApiTests : IDisposable {
     }
 
     Task<HttpResponseMessage> CopyAsync(HttpClient client, GraphCompoundCopy copy) =>
-        client.PostAsJsonAsync("/api/v1/library/compounds", copy, ContractsJsonContext.Default.GraphCompoundCopy, Token);
+        client.PostAsJsonAsync(
+            "/api/v1/library/compounds",
+            copy,
+            ContractsJsonContext.Default.GraphCompoundCopy,
+            Token
+        );
 
     [Fact]
     public async Task A_shipped_compound_copied_into_the_library_opens_to_be_edited_and_saved() {

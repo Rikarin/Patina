@@ -17,7 +17,7 @@ namespace Patina.Server.Tests;
 public sealed class GraphCatalogueProcessTests : IDisposable {
     const string MeshBake = "It reads a meshmap: reference, a measurement of a mesh, and baking one is P4.";
 
-    /// <summary>What cannot work yet, and why. An entry that starts working fails the test, so this only shrinks.</summary>
+    /// <summary>What cannot work yet, and why. One that starts working fails the test, so this only shrinks.</summary>
     static readonly Dictionary<string, string> CannotWorkYet = new(StringComparer.Ordinal) {
         ["Source/Mesh Map"] = MeshBake,
         ["Generators/Curvature Edge Wear"] = MeshBake,

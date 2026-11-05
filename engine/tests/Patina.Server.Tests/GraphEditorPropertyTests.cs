@@ -106,7 +106,9 @@ public sealed class GraphEditorPropertyTests {
                         );
                         Assert.Equal(editor.Document.Comments.Select(GraphDocuments.State), comments);
                         Assert.Equal(
-                            editor.Document.Interface.Select(static p => (p.Name, p.Direction.ToString(), p.Kind.ToString())),
+                            editor.Document.Interface.Select(static p => (p.Name, p.Direction.ToString(),
+                                    p.Kind.ToString())
+                            ),
                             ports.Select(static p => (p.Name, p.Direction, p.Kind))
                         );
                     }
