@@ -127,6 +127,8 @@ public sealed record GraphEvaluation(
     string? Error
 );
 
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field, so fewer parameters means a new API.
+#pragma warning disable SK7005
 /// <summary>The reply to <c>GET /api/v1/graphs/{id}</c>: the whole document as the Server holds it.</summary>
 /// <param name="Id">The session.</param>
 /// <param name="Path">The file.</param>
@@ -156,6 +158,7 @@ public sealed record GraphState(
     IReadOnlyList<GraphDiagnostic> Repairs,
     GraphEvaluation? Evaluation
 );
+#pragma warning restore SK7005
 
 /// <summary>An open graph, for a list.</summary>
 public sealed record GraphSummary(string Id, string Path, string Name, long Revision, bool Dirty);

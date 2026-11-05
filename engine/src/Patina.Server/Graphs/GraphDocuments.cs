@@ -159,10 +159,11 @@ public static class GraphDocuments {
                 }
             }
 
-            values.AddRange(
-                was.Values.Keys.Where(port => !node.Values.ContainsKey(port))
-                    .Select(port => new GraphValue(node.Id, port, null))
-            );
+            foreach (var port in was.Values.Keys) {
+                if (!node.Values.ContainsKey(port)) {
+                    values.Add(new(node.Id, port, null));
+                }
+            }
         }
 
         return values;

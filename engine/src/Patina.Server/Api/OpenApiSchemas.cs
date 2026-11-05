@@ -12,10 +12,13 @@ static class OpenApiSchemas {
     public static void MarkNonNullablePropertiesRequired(this OpenApiOptions options) =>
         options.AddSchemaTransformer(static (schema, context, _) => {
                 if (schema.Properties is { Count: > 0 } properties) {
+                    var nullable = context.JsonTypeInfo.Properties.Where(static p => p.IsGetNullable)
+                        .Select(static p => p.Name)
+                        .ToHashSet();
                     foreach (var name in properties.Keys) {
                         // By the declaration: a nullable object is a reference at this point and an enum is not, so
                         // the schema's own shape would call the first required and the second optional.
-                        if (context.JsonTypeInfo.Properties.Any(p => p.Name == name && p.IsGetNullable)) {
+                        if (nullable.Contains(name)) {
                             schema.Required?.Remove(name);
                         } else {
                             (schema.Required ??= new HashSet<string>()).Add(name);
