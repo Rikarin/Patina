@@ -55,6 +55,35 @@ public static class LibraryFiles {
     public static void WriteProject(string root, string path, ProjectDocument document) =>
         Replace(ProjectFile(root, path), DocumentCodec.Write(document));
 
+    /// <summary>
+    ///     Writes a new project's document at <paramref name="path" /> below <c>projects/</c>. Projects do not nest, so
+    ///     the scan stops at the first <c>project.yaml</c> on the way down: a project inside another would never be
+    ///     found, and one above others would hide them. Neither is written.
+    /// </summary>
+    /// <exception cref="ProjectExistsException">The folder, or a folder on the way to it, is taken.</exception>
+    public static void CreateProject(string root, string path, ProjectDocument document) {
+        var segments = path.Split('/');
+        for (var i = 1; i < segments.Length; i++) {
+            var parent = string.Join('/', segments[..i]);
+            var parentFolder = LibraryLayout.Full(root, $"{LibraryLayout.ProjectsFolder}/{parent}");
+            if (File.Exists(ProjectFile(root, parent)) || File.Exists(parentFolder)) {
+                throw new ProjectExistsException($"'{parent}' is a project, and projects do not nest.");
+            }
+        }
+
+        var file = ProjectFile(root, path);
+        var folder = Path.GetDirectoryName(file)!;
+        if (File.Exists(folder) || (Directory.Exists(folder) && Directory.EnumerateFileSystemEntries(folder).Any())) {
+            throw new ProjectExistsException($"'{path}' exists already.");
+        }
+
+        try {
+            Write(file, Utf8.GetBytes(DocumentCodec.Write(document)), false);
+        } catch (IOException e) when (File.Exists(file)) {
+            throw new ProjectExistsException($"'{path}' exists already.", e); // lost a race for the same folder
+        }
+    }
+
     /// <summary>Writes a shared asset and its sidecar at <paramref name="path" /> below <c>shared/</c>.</summary>
     public static void WriteAsset(string root, string path, ReadOnlySpan<byte> content, AssetDocument document) {
         var file = AssetFile(root, path);
@@ -83,7 +112,9 @@ public static class LibraryFiles {
     public static void Replace(string path, string text) => Replace(path, Utf8.GetBytes(text));
 
     /// <summary>Writes <paramref name="content" /> over <paramref name="path" /> in one step.</summary>
-    public static void Replace(string path, ReadOnlySpan<byte> content) {
+    public static void Replace(string path, ReadOnlySpan<byte> content) => Write(path, content, true);
+
+    static void Write(string path, ReadOnlySpan<byte> content, bool overwrite) {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var temporary = $"{path}.{Environment.ProcessId}.{Environment.CurrentManagedThreadId}.tmp";
         try {
@@ -91,7 +122,7 @@ public static class LibraryFiles {
                 stream.Write(content);
             }
 
-            File.Move(temporary, path, true);
+            File.Move(temporary, path, overwrite);
         } finally {
             File.Delete(temporary); // already moved, unless the write failed
         }

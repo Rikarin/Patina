@@ -18,6 +18,12 @@ public interface ILibrary {
     /// <summary>One page of the shared assets that match.</summary>
     AssetPage Assets(LibraryQuery query);
 
+    /// <summary>One page of the tags on projects, by name, with how many projects carry each.</summary>
+    TagPage ProjectTags(int offset = 0, int limit = 50);
+
+    /// <summary>One page of the tags on shared assets, by name, with how many assets carry each.</summary>
+    TagPage AssetTags(int offset = 0, int limit = 50);
+
     /// <summary>What changing an asset's bytes would touch, or null when the index does not know the asset.</summary>
     AssetImpact? Impact(AssetId asset, int offset = 0, int limit = 50);
 }

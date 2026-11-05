@@ -99,6 +99,24 @@ export interface paths {
     /** One page of projects: by name, or by relevance when searching. */
     get: operations['GetProjects'];
     put?: never;
+    /** Writes a new project's files. It reaches the listings once the index has caught up. */
+    post: operations['CreateProject'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/projects/tags': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One page of the tags on projects, by name, with how many projects carry each. */
+    get: operations['GetProjectTags'];
+    put?: never;
     post?: never;
     delete?: never;
     options?: never;
@@ -115,6 +133,23 @@ export interface paths {
     };
     /** One page of shared assets with their usage counts: by name, or by relevance when searching. */
     get: operations['GetAssets'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/assets/tags': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One page of the tags on shared assets, by name, with how many assets carry each. */
+    get: operations['GetAssetTags'];
     put?: never;
     post?: never;
     delete?: never;
@@ -291,6 +326,15 @@ export interface components {
       detail?: null | string;
       instance?: null | string;
     };
+    /** @description The body of `POST /api/v1/library/projects`. */
+    ProjectCreateRequest: {
+      /** @description The project's display name. The Server makes its folder from it. */
+      name: string;
+      /** @description Folders below `projects/` to put it in, with forward slashes, such as `props`. */
+      folder?: null | string;
+      /** @description The project's tags. */
+      tags?: null | string[];
+    };
     /** @description One page of projects. */
     ProjectPage: {
       /** @description The projects on this page. */
@@ -345,6 +389,36 @@ export interface components {
       host: components['schemas']['HostInfo'];
       /** @description The Worker process as the Server sees it. */
       worker: components['schemas']['WorkerStatus'];
+    };
+    /** @description A tag, and how many items carry it. */
+    TagCount: {
+      /** @description The tag. */
+      tag: string;
+      /**
+       * Format: int32
+       * @description How many projects or assets carry it.
+       */
+      count: number;
+    };
+    /** @description One page of tags, by name. */
+    TagPage: {
+      /** @description The tags on this page. */
+      items: components['schemas']['TagCount'][];
+      /**
+       * Format: int32
+       * @description How many tags there are, on all pages.
+       */
+      total: number;
+      /**
+       * Format: int32
+       * @description The offset the page starts at.
+       */
+      offset: number;
+      /**
+       * Format: int32
+       * @description The most items a page holds.
+       */
+      limit: number;
     };
     /** @description The viewport's camera: an orbit around the model. */
     ViewportCameraState: {
@@ -589,6 +663,98 @@ export interface operations {
       };
     };
   };
+  CreateProject: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectCreateRequest'];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectSummary'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetProjectTags: {
+    parameters: {
+      query?: {
+        offset?: number;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TagPage'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   GetAssets: {
     parameters: {
       query?: {
@@ -610,6 +776,47 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['AssetPage'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetAssetTags: {
+    parameters: {
+      query?: {
+        offset?: number;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TagPage'];
         };
       };
       /** @description Bad Request */

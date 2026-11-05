@@ -221,6 +221,126 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Writes a new project\u0027s files. It reaches the listings once the index has caught up.",
+        "operationId": "CreateProject",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/projects/tags": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "One page of the tags on projects, by name, with how many projects carry each.",
+        "operationId": "GetProjectTags",
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/library/assets": {
@@ -274,6 +394,67 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AssetPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/assets/tags": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "One page of the tags on shared assets, by name, with how many assets carry each.",
+        "operationId": "GetAssetTags",
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagPage"
                 }
               }
             }
@@ -671,6 +852,36 @@
           }
         }
       },
+      "ProjectCreateRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The project\u0027s display name. The Server makes its folder from it."
+          },
+          "folder": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Folders below \u0060projects/\u0060 to put it in, with forward slashes, such as \u0060props\u0060."
+          },
+          "tags": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "The project\u0027s tags."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/projects\u0060."
+      },
       "ProjectPage": {
         "required": [
           "items",
@@ -778,6 +989,59 @@
           }
         },
         "description": "The reply to \u0060GET /api/v1/system\u0060."
+      },
+      "TagCount": {
+        "required": [
+          "tag",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "tag": {
+            "type": "string",
+            "description": "The tag."
+          },
+          "count": {
+            "type": "integer",
+            "description": "How many projects or assets carry it.",
+            "format": "int32"
+          }
+        },
+        "description": "A tag, and how many items carry it."
+      },
+      "TagPage": {
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TagCount"
+            },
+            "description": "The tags on this page."
+          },
+          "total": {
+            "type": "integer",
+            "description": "How many tags there are, on all pages.",
+            "format": "int32"
+          },
+          "offset": {
+            "type": "integer",
+            "description": "The offset the page starts at.",
+            "format": "int32"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "The most items a page holds.",
+            "format": "int32"
+          }
+        },
+        "description": "One page of tags, by name."
       },
       "ViewportCameraState": {
         "required": [

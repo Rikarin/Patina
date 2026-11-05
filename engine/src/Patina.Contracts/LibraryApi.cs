@@ -41,6 +41,24 @@ public sealed record ProjectSummary(Guid Id, string Name, string Path, IReadOnly
 /// <param name="Limit">The most items a page holds.</param>
 public sealed record ProjectPage(IReadOnlyList<ProjectSummary> Items, int Total, int Offset, int Limit);
 
+/// <summary>The body of <c>POST /api/v1/library/projects</c>.</summary>
+/// <param name="Name">The project's display name. The Server makes its folder from it.</param>
+/// <param name="Folder">Folders below <c>projects/</c> to put it in, with forward slashes, such as <c>props</c>.</param>
+/// <param name="Tags">The project's tags.</param>
+public sealed record ProjectCreateRequest(string Name, string? Folder = null, IReadOnlyList<string>? Tags = null);
+
+/// <summary>A tag, and how many items carry it.</summary>
+/// <param name="Tag">The tag.</param>
+/// <param name="Count">How many projects or assets carry it.</param>
+public sealed record TagCount(string Tag, int Count);
+
+/// <summary>One page of tags, by name.</summary>
+/// <param name="Items">The tags on this page.</param>
+/// <param name="Total">How many tags there are, on all pages.</param>
+/// <param name="Offset">The offset the page starts at.</param>
+/// <param name="Limit">The most items a page holds.</param>
+public sealed record TagPage(IReadOnlyList<TagCount> Items, int Total, int Offset, int Limit);
+
 /// <summary>One shared asset as the browser shows it.</summary>
 /// <param name="Id">The asset's identity.</param>
 /// <param name="Kind">The asset's kind, such as <c>smart-material</c>.</param>

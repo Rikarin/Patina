@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test';
 
-/** Spike S3's measurements (docs/adr/0003-frame-transport.md). Not a test: run it by hand on an otherwise idle machine. */
+/** Measurements: spike S3's (docs/adr/0003-frame-transport.md) and the Library's. Not tests: run them by hand on an otherwise idle machine. */
 export default defineConfig({
   testDir: '.',
   testMatch: '*.bench.ts',
