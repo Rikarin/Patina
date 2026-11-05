@@ -153,20 +153,23 @@ public static class GraphDocuments {
                 return null;
             }
 
-            foreach (var (port, lanes) in node.Values) {
-                if (!was.Values.TryGetValue(port, out var held) || !held.AsSpan().SequenceEqual(lanes)) {
-                    values.Add(new(node.Id, port, lanes));
-                }
-            }
-
-            foreach (var port in was.Values.Keys) {
-                if (!node.Values.ContainsKey(port)) {
-                    values.Add(new(node.Id, port, null));
-                }
-            }
+            AddChanges(values, was, node);
         }
 
         return values;
+    }
+
+    static void AddChanges(List<GraphValue> values, GraphNodeAsset was, GraphNodeAsset node) {
+        foreach (var (port, lanes) in node.Values) {
+            if (!was.Values.TryGetValue(port, out var held) || !held.AsSpan().SequenceEqual(lanes)) {
+                values.Add(new(node.Id, port, lanes));
+            }
+        }
+
+        values.AddRange(
+            was.Values.Keys.Where(port => !node.Values.ContainsKey(port))
+                .Select(port => new GraphValue(node.Id, port, null))
+        );
     }
 
     static float? Bound(float value) => float.IsFinite(value) ? value : null;
