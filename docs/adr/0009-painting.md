@@ -69,6 +69,9 @@ replay makes the same bytes.
 - **A save keeps what it overwrites.** The journal starts from what the session opened, so before the first save or checkpoint those
   files are copied to `.ptcache/paint/<session>/base`. Deleting that cache costs the undo past a save after a lost Worker, and
   nothing a file holds, which is the rule (plan §3.1).
+- **A file a stroke made is not a base.** A first stroke creates its paint file and a save writes it, so a replay that started from
+  that file painted the stroke twice. `stack.load` names the files this session's strokes created, and a new Worker starts those
+  blank. `A_worker_lost_after_a_save_undoes_to_before_the_file_existed` was red before that.
 - **A Server that dies loses unsaved strokes**, as it loses unsaved graph edits. The journal is in memory. S5 is about the Worker.
 
 `A_worker_killed_mid_stroke_loses_nothing` kills the Worker with `SIGKILL` between two parts of a drag, sends a third with nobody
