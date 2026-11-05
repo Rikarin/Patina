@@ -59,7 +59,6 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A graph's compounds now come from a `Compounds` folder beside it, not from every graph in its folder.
 - Undo, Redo and Save work from the Inspector.
 - The evaluation readout says Evaluating…, Up to date or Not evaluated, and no longer shows an old count after an edit.
-
 - A slider on a compound, or on an exposed parameter, no longer recompiles the graph.
 - Graphs can compute in 32-bit float: `bitDepth: 32` in a graph's settings, for height and position. PNG previews and
   bakes are still eight bits.
