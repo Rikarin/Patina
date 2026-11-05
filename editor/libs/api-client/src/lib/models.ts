@@ -17,6 +17,7 @@ export type ViewportCameraState = components['schemas']['ViewportCameraState'];
 export type GraphState = components['schemas']['GraphState'];
 export type GraphNodeState = components['schemas']['GraphNodeState'];
 export type GraphEdgeState = components['schemas']['GraphEdgeState'];
+export type GraphInterfacePort = components['schemas']['GraphInterfacePort'];
 export type GraphNodeType = components['schemas']['GraphNodeType'];
 export type GraphPortDefinition = components['schemas']['GraphPortDefinition'];
 export type GraphSettingDefinition = components['schemas']['GraphSettingDefinition'];

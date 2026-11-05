@@ -124,6 +124,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/compounds': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Copies a shipped compound into the library as a file, so that it can be edited. */
+    post: operations['CopyCompound'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/graphs': {
     parameters: {
       query?: never;
@@ -272,7 +289,8 @@ export interface paths {
     /** The compounds this graph can hold, and the path that opens the graph behind each. */
     get: operations['GetGraphCompounds'];
     put?: never;
-    post?: never;
+    /** Saves some nodes as a new compound beside the graph and holds it in their place, as one undo step. */
+    post: operations['ExtractGraphCompound'];
     delete?: never;
     options?: never;
     head?: never;
@@ -711,6 +729,9 @@ export interface components {
       | components['schemas']['GraphCommandGraphAddParameter']
       | components['schemas']['GraphCommandGraphSetParameter']
       | components['schemas']['GraphCommandGraphRemoveParameter']
+      | components['schemas']['GraphCommandGraphAddPort']
+      | components['schemas']['GraphCommandGraphSetPort']
+      | components['schemas']['GraphCommandGraphRemovePort']
       | components['schemas']['GraphCommandGraphAddGroup']
       | components['schemas']['GraphCommandGraphSetGroup']
       | components['schemas']['GraphCommandGraphRemoveGroup']
@@ -756,13 +777,25 @@ export interface components {
        * @description Its height, or null for the standard size.
        */
       height?: null | number;
+      /**
+       * Format: int32
+       * @description A negative number the client picks. The reply says which identity it became.
+       */
+      ref?: null | number;
     };
     /** @description Draws a group frame round some nodes. */
     GraphCommandGraphAddGroup: {
       /** @enum {string} */
       op: 'addGroup';
+      /** @description What it is called. */
       title: string;
+      /** @description Its members. */
       nodes: number[];
+      /**
+       * Format: int32
+       * @description A negative number the client picks. The reply says which identity it became.
+       */
+      ref?: null | number;
     };
     /** @description Adds a node. */
     GraphCommandGraphAddNode: {
@@ -792,6 +825,12 @@ export interface components {
       /** @enum {string} */
       op: 'addParameter';
       parameter: components['schemas']['GraphSettingDefinition'];
+    };
+    /** @description Gives the graph a new port. Its boundary node shows it at once, and a holding graph after a save. */
+    GraphCommandGraphAddPort: {
+      /** @enum {string} */
+      op: 'addPort';
+      port: components['schemas']['GraphInterfacePort'];
     };
     /** @description Wires an output to an input, replacing what was on that input. */
     GraphCommandGraphConnect: {
@@ -823,14 +862,14 @@ export interface components {
       /** @enum {string} */
       op: 'removeComment';
       /** Format: int32 */
-      index: number;
+      id: number;
     };
     /** @description Takes a group frame away. Its nodes stay. */
     GraphCommandGraphRemoveGroup: {
       /** @enum {string} */
       op: 'removeGroup';
       /** Format: int32 */
-      index: number;
+      id: number;
     };
     /** @description Removes nodes, and the wires that touch them. */
     GraphCommandGraphRemoveNodes: {
@@ -844,15 +883,22 @@ export interface components {
       op: 'removeParameter';
       name: string;
     };
+    /** @description Takes a port away, with the wires on its boundary node. Undoing it puts them back. */
+    GraphCommandGraphRemovePort: {
+      /** @enum {string} */
+      op: 'removePort';
+      name: string;
+      direction: string;
+    };
     /** @description Changes a note: anything left null stays as it is. A note moved by hand sends this on every step. */
     GraphCommandGraphSetComment: {
       /** @enum {string} */
       op: 'setComment';
       /**
        * Format: int32
-       * @description Its place in the state's list.
+       * @description The note.
        */
-      index: number;
+      id: number;
       /** @description What it says. */
       text?: null | string;
       /**
@@ -882,9 +928,9 @@ export interface components {
       op: 'setGroup';
       /**
        * Format: int32
-       * @description Its place in the state's list.
+       * @description The group.
        */
-      index: number;
+      id: number;
       /** @description Its new title. */
       title?: null | string;
       /** @description Its new members. */
@@ -898,6 +944,17 @@ export interface components {
       name: string;
       /** @description What it becomes, which may rename it. Expressions keep the old name until edited. */
       parameter: components['schemas']['GraphSettingDefinition'];
+    };
+    /** @description Changes a port where it stands, and keeps the wires on its boundary node under a new name. */
+    GraphCommandGraphSetPort: {
+      /** @enum {string} */
+      op: 'setPort';
+      /** @description The port as it is called now. */
+      name: string;
+      /** @description Input or Output, which cannot change. */
+      direction: string;
+      /** @description What it becomes. A kind its wires cannot carry is refused until they are gone. */
+      port: components['schemas']['GraphInterfacePort'];
     };
     /** @description Sets a setting of the graph: `baseWidth`, `baseHeight` or `seed`. */
     GraphCommandGraphSetSetting: {
@@ -931,6 +988,11 @@ export interface components {
     };
     /** @description A note on the canvas. */
     GraphCommentState: {
+      /**
+       * Format: int32
+       * @description What a command names it by. It never changes and is never reused while a session lasts.
+       */
+      id: number;
       /** @description What it says. */
       text: string;
       /**
@@ -963,16 +1025,37 @@ export interface components {
       /** @description True for a compound that ships with Patina, which opens to be read. */
       readOnly: boolean;
     };
+    /** @description The body of `POST /api/v1/library/compounds`. */
+    GraphCompoundCopy: {
+      /** @description The shipped compound's node type. */
+      type: string;
+      /**
+       * @description The copy's node type. It cannot be a shipped one's, since a shipped compound is never shadowed. Null for the
+       *     shipped name and " Copy".
+       */
+      name?: null | string;
+      /**
+       * @description An open graph whose compounds folder takes it, so that the graph can hold it, or null for
+       *     `shared/graphs`'s.
+       */
+      graph?: null | string;
+    };
     /** @description A new graph's file. */
     GraphCreated: {
       /** @description Relative to the library, with forward slashes, as `POST /graphs` takes it. */
       path: string;
     };
-    /** @description Which identity a client's int? GraphAddNode.Ref became. */
+    /** @description Which identity a client's `ref` became, on a node, a group or a note. */
     GraphCreatedNode: {
-      /** Format: int32 */
+      /**
+       * Format: int32
+       * @description The number the client picked.
+       */
       ref: number;
-      /** Format: int32 */
+      /**
+       * Format: int32
+       * @description The identity.
+       */
       node: number;
     };
     /** @description The body of `POST /api/v1/library/graphs`. */
@@ -1004,6 +1087,8 @@ export interface components {
       groups?: null | components['schemas']['GraphGroupState'][];
       /** @description The whole list of notes, or null when it did not change. */
       comments?: null | components['schemas']['GraphCommentState'][];
+      /** @description The whole list of interface ports, or null when it did not change. */
+      interface?: null | components['schemas']['GraphInterfacePort'][];
     };
     /** @description Something a graph's compiler or its file's reader has to say. */
     GraphDiagnostic: {
@@ -1044,7 +1129,7 @@ export interface components {
       sequence: number;
       /** @description The undo history after it. */
       history: components['schemas']['GraphHistoryState'];
-      /** @description The nodes a batch created under a `ref`. */
+      /** @description What a batch created under a `ref`. */
       created: components['schemas']['GraphCreatedNode'][];
     };
     /** @description What one evaluation did. */
@@ -1118,8 +1203,42 @@ export interface components {
       /** @description The events after the number asked for, oldest first. */
       events: components['schemas']['GraphEvent'][];
     };
+    /** @description A selection saved as a compound. The edit undoes as one step, and the file stays. */
+    GraphExtraction: {
+      /** @description The new compound. */
+      compound: components['schemas']['GraphCompound'];
+      /**
+       * Format: int32
+       * @description The node holding it.
+       */
+      node: number;
+      /** @description The edit to the graph the selection came from. */
+      edit: components['schemas']['GraphEditResult'];
+    };
+    /** @description Moves some nodes into a new compound beside the graph and puts a node holding it in their place. */
+    GraphExtractRequest: {
+      /** @description Its node type's path, such as `Masks/Rust Edge`, which is also its file below `Compounds`. */
+      name: string;
+      /** @description The nodes. The wires that cross into them and out of them become its ports. */
+      nodes: number[];
+      /**
+       * Format: float
+       * @description Where the node holding it goes.
+       */
+      x: number;
+      /**
+       * Format: float
+       * @description Where the node holding it goes.
+       */
+      y: number;
+    };
     /** @description A frame round some nodes. It holds no geometry: a client draws it from where its nodes are. */
     GraphGroupState: {
+      /**
+       * Format: int32
+       * @description What a command names it by. It never changes and is never reused while a session lasts.
+       */
+      id: number;
       /** @description What it is called. */
       title: string;
       /** @description Its members. */
@@ -1162,6 +1281,19 @@ export interface components {
       node: number;
       /** @description Its output port, or the usage of an Output node, as a preview names them. */
       port: string;
+    };
+    /** @description One port a graph has when another graph holds it as a node. */
+    GraphInterfacePort: {
+      /** @description What an edge in the holding graph calls it. */
+      name: string;
+      /** @description Input or Output, as the holding graph sees it. */
+      direction: string;
+      /** @description What it carries: Image, Float, Float4 and so on. */
+      kind: string;
+      /** @description What an unwired input takes, one number per lane, or empty for the kind's zero. */
+      default: number[];
+      /** @description One line about it. */
+      summary: string;
     };
     /** @description Says which folder of baked maps a graph's Mesh Map nodes read. */
     GraphMeshMapsRequest: {
@@ -1341,9 +1473,11 @@ export interface components {
       };
       /** @description The parameters the graph exposes. */
       parameters: components['schemas']['GraphSettingDefinition'][];
-      /** @description Its group frames, in file order. A command names one by its place here. */
+      /** @description The ports it has when another graph holds it. */
+      interface: components['schemas']['GraphInterfacePort'][];
+      /** @description Its group frames, in file order. */
       groups: components['schemas']['GraphGroupState'][];
-      /** @description Its notes, in file order. A command names one by its place here. */
+      /** @description Its notes, in file order. */
       comments: components['schemas']['GraphCommentState'][];
       /** @description The newest preview of each node. */
       previews: components['schemas']['GraphPreview'][];
@@ -1908,6 +2042,66 @@ export interface operations {
       };
     };
   };
+  CopyCompound: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GraphCompoundCopy'];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphCompound'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   CreateGraph: {
     parameters: {
       query?: never;
@@ -2313,6 +2507,50 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  ExtractGraphCompound: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GraphExtractRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphExtraction'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
         headers: {
           [name: string]: unknown;
         };

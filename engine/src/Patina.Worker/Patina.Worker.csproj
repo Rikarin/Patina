@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="../Patina.Contracts/Patina.Contracts.csproj"/>
     <ProjectReference Include="../Patina.Export/Patina.Export.csproj"/>
+    <ProjectReference Include="../Patina.Graphs/Patina.Graphs.csproj"/>
     <ProjectReference Include="../Patina.Ipc/Patina.Ipc.csproj"/>
     <ProjectReference Include="../Patina.Viewport/Patina.Viewport.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.TextureGraph/Vixen.TextureGraph.csproj"/>

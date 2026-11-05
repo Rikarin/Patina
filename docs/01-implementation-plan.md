@@ -124,6 +124,7 @@ patina/
 │  │  ├─ Patina.Contracts/         # REST DTOs and file schemas, no references
 │  │  ├─ Patina.Ipc/               # Server <-> Worker protocol
 │  │  ├─ Patina.Library/           # library, projects, references, index, build keys. No GPU
+│  │  ├─ Patina.Graphs/            # what a graph's references mean, for the Worker and `patina bake`
 │  │  ├─ Patina.Jobs/              # persistent job queue, batch rebuilds, impact analysis
 │  │  ├─ Patina.Export/            # export presets, channel packing, naming templates
 │  │  ├─ Patina.Viewport/          # small PBR forward renderer, environment, tonemap
@@ -336,8 +337,9 @@ Each spike is throwaway, with its result written up in `docs/adr/`.
 > - **Left behind for now:** `CubeLut` (still uses `Vixen.Rendering`), `LayerStackMesh` and `PaintAlphaSource` (need an
 >   `EditorProject`), and the `.rvn` shading split. Most Texturing tests stay in `Vixen.Editor.Texturing.Tests`, because
 >   their fixtures open a real document.
-> - **S1 is only partly met.** The bake is byte-identical across two runs on one machine, but it has not been compared
->   with `vixen texture bake`, and Windows and lavapipe have not been tried.
+> - **S1 is met on one machine.** `patina bake` and `vixen texture bake` write the same bytes on an M1 Max with MoltenVK, at
+>   the same Vixen commit: 11 maps of 11 from three graphs, at 16 and 32 bits, through compounds, an inline ramp and
+>   curve, a bitmap, normals, occlusion and a distance field (ADR 0007). Windows and lavapipe have not been tried.
 
 **Exit:** S1's executable runs on the split libraries, no UI or editor assembly is in its output, and Vixen's editor and
 full test suite still pass.
@@ -370,17 +372,20 @@ bezel, on all three platforms, in CI.
 
 ### P2: graph editor (6–8 weeks)
 
-> **Status (2026-11-05): the path through the phase works, and the exit is not met.** The evaluator is in Vixen, and a user
-> can open, edit, undo, save and preview a graph through the Server (ADR 0005). S7 holds 60 fps at 500 nodes apart from
-> one zoom stall of about 200 ms (ADR 0006). Left open:
+> **Status (2026-11-05): the exit is met but for what P4 owes.** A user can build a tiling material from nodes with live
+> thumbnails. Of the 84 node types and compounds a palette offers, 76 give a preview through the real API at 16 and 32
+> bits, which a process test holds. The other eight read a mesh map, and baking one is P4: `Source/Mesh Map`, and the
+> compounds Curvature Edge Wear, Dirt, Dust, Grunge Rough Dirty, Mask Editor, Metal Edge Wear and Position Gradient. The
+> evaluator is in Vixen, and S7 holds 60 fps at 500 nodes apart from one zoom stall of about 200 ms (ADR 0005, 0006).
+> Left open:
 > - A slider at the head of a 2K, 40-node chain takes about 82 ms, now mostly evaluation and PNG encoding (ADR 0005).
 > - Input ports declare a range where the kernel gives one; the rest are still guessed from defaults.
-> - A compound's interface cannot be authored, and a shipped compound opens read-only (ADR 0007).
-> - `bitDepth` 32 has no UI, and previews and bakes stay 8-bit until a float export lands.
+> - Previews and bakes stay 8-bit until a float export lands, though a graph can compute at 32.
+> - The minimap is hidden on a canvas under 480 px, because a graph overlay takes a port's hit test in xUI.
 >
-> New graphs, graph settings, exposed parameters, groups, notes, opening and instancing compounds, bitmaps, the curve
-> editor, gradient ramp, histogram, channel view, full-size images, compound refresh without a recompile and 32-bit
-> formats are in (ADRs 0005 and 0007).
+> New graphs, settings, exposed parameters, groups and notes with identities, compounds authored, saved from a selection
+> and copied from those that ship, bitmaps, the curve editor, gradient ramp, histogram, channel view, full-size images,
+> compound refresh without a recompile and 32-bit formats are in (ADRs 0005 and 0007).
 
 **Exit:** a user can build a tiling material from nodes with live thumbnails, and every Vixen node and compound works.
 

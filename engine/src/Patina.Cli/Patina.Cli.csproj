@@ -10,6 +10,7 @@
     <ProjectReference Include="../Patina.Contracts/Patina.Contracts.csproj"/>
     <ProjectReference Include="../Patina.Export/Patina.Export.csproj"/>
     <ProjectReference Include="../Patina.Jobs/Patina.Jobs.csproj"/>
+    <ProjectReference Include="../Patina.Graphs/Patina.Graphs.csproj"/>
     <ProjectReference Include="../Patina.Library/Patina.Library.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.TextureGraph/Vixen.TextureGraph.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.NodeGraph/Vixen.NodeGraph.csproj"/>

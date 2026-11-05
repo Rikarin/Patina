@@ -116,6 +116,24 @@ public static class LibraryFiles {
         }
     }
 
+    /// <summary>Writes a new compound, and a sidecar when it has a <paramref name="sharedName" />.</summary>
+    /// <exception cref="ProjectExistsException">The file is taken.</exception>
+    public static void CreateCompound(string file, string text, string? sharedName) {
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        try {
+            Write(file, Utf8.GetBytes(text), false);
+        } catch (IOException e) when (File.Exists(file)) {
+            throw new ProjectExistsException($"'{file}' exists already.", e);
+        }
+
+        if (sharedName is not null) {
+            Replace(
+                file + LibraryLayout.SidecarSuffix,
+                DocumentCodec.Write(new AssetDocument(AssetId.New(), LibraryLayout.GraphKind, sharedName, [], []))
+            );
+        }
+    }
+
     /// <summary>Writes a shared asset and its sidecar at <paramref name="path" /> below <c>shared/</c>.</summary>
     public static void WriteAsset(string root, string path, ReadOnlySpan<byte> content, AssetDocument document) {
         var file = AssetFile(root, path);

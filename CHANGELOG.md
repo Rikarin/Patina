@@ -48,6 +48,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Groups and notes: commands, state, deltas, frames and cards on the canvas. Dropping a node on a frame moves it there.
 - Compounds: double click one or choose Open compound to go inside, a breadcrumb back, and saving one updates the graphs
   holding it. Those that ship with Patina open to be read.
+- Compound authoring: `addPort`, `setPort` and `removePort` commands, an Interface list in the graph settings, Compound in
+  the Graph pane to save a selection into `Compounds` as one undo (`POST /api/v1/graphs/{id}/compounds`), and Copy to edit
+  on a shipped compound (`POST /api/v1/library/compounds`).
+- A bit depth control in the graph settings, and a `bitDepth` setting a command can reach.
 - Bitmaps evaluate: PNG, JPEG, BMP, TGA, PSD and GIF, by a path relative to the graph or the library.
 - A curve editor and a gradient ramp for the Curve and Ramp settings, held inline in the graph's file.
 - The Texture pane has a histogram, counted from the reduction and labelled so, a channel view, and Full size, from
@@ -70,7 +74,16 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The app has its new icon, on the window, the installers and the studio's favicon.
 - A graph's compounds now come from a `Compounds` folder beside it, not from every graph in its folder.
+- Groups and notes have an `id`, in the file and the API, and commands name them by it instead of `index`, so two clients
+  can no longer hit the wrong one.
+- `patina bake` accepts everything the Worker evaluates: bitmaps, inline ramps and curves, and a compound on its own, with
+  `--library <path>` where the graph is outside its library. The bytes match the Worker's, and `vixen texture bake`'s.
+- A compound with an image input shows its nodes when opened on its own, with a noise standing in for what would feed it.
+- The minimap leaves a small canvas and steps aside while a wire is being dragged, because it took the drop on a port under
+  it.
+- A graph that does not compile makes `patina bake` say so rather than crash.
 - Undo, Redo and Save work from the Inspector.
 - The evaluation readout says Evaluating…, Up to date or Not evaluated, and no longer shows an old count after an edit.
 - A slider on a compound, or on an exposed parameter, no longer recompiles the graph.

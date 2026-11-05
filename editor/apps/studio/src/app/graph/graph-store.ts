@@ -6,6 +6,7 @@ import {
   type GraphCompound,
   type GraphEditResult,
   type GraphEvent,
+  type GraphInterfacePort,
   type GraphNodeType,
   type GraphSettingDefinition,
   type GraphState,
@@ -61,9 +62,10 @@ const LastRetryMs = 4_000;
 type DraftValue = readonly number[] | string;
 
 const valueKey = (node: number, port: string): string => `${String(node)}/${port}`;
-const noteKey = (index: number): string => `note/${String(index)}`;
+const noteKey = (id: number): string => `note/${String(id)}`;
 const parameterKey = (name: string): string => `parameter/${name}`;
 const GroupPrefix = 'group-';
+const ShippedPrefix = 'shipped:';
 
 function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -106,6 +108,7 @@ export class GraphStore {
   private readonly mutableCompounds = signal<ReadonlyMap<string, GraphCompound>>(new Map());
   private readonly mutableTrail = signal<readonly GraphCrumb[]>([]);
   private readonly mutableNote = signal<number | null>(null);
+  private selectionDue: { nodes: readonly number[]; revision: number } | null = null;
   private readonly mutableGraphInspected = signal(false);
   private readonly positionDrafts = new DraftLayer<GraphPoint>();
   private readonly valueDrafts = new DraftLayer<DraftValue>();
@@ -256,6 +259,53 @@ export class GraphStore {
     await this.start(compound.path);
   }
 
+  /** Saves the selected nodes as a compound in the folder this graph reads, as one undo. Says why it could not. */
+  async saveSelectionAsCompound(name: string): Promise<string | null> {
+    const document = this.mutableDocument();
+    const nodes = [...this.mutableSelection()];
+    if (!document || nodes.length === 0) {
+      return null;
+    }
+
+    const held = nodes.flatMap(id => document.nodes.get(id) ?? []);
+    const x = held.reduce((sum, node) => sum + node.x, 0) / held.length;
+    const y = held.reduce((sum, node) => sum + node.y, 0) / held.length;
+    try {
+      const extraction = unwrap(
+        await this.api().POST('/api/v1/graphs/{id}/compounds', {
+          params: { path: { id: document.id } },
+          body: { name, nodes, x, y }
+        })
+      );
+      this.selectOnceHeld([extraction.node], extraction.edit.revision);
+      return null;
+    } catch (error) {
+      return reasonOf(error);
+    }
+  }
+
+  /** Copies the shipped compound on screen into the folder the graph it was entered from reads, and opens the copy. */
+  async copyToLibrary(): Promise<void> {
+    const document = this.mutableDocument();
+    if (!document?.readOnly) {
+      return;
+    }
+
+    try {
+      const copy = unwrap(
+        await this.api().POST('/api/v1/library/compounds', {
+          body: {
+            type: document.path.slice(ShippedPrefix.length),
+            graph: this.mutableTrail().at(-1)?.id ?? null
+          }
+        })
+      );
+      await this.start(copy.path);
+    } catch (error) {
+      this.refused(error);
+    }
+  }
+
   /** Goes back to a graph on the trail. What is open below it closes, so unsaved edits there ask first. */
   async back(index: number): Promise<void> {
     if (
@@ -393,6 +443,19 @@ export class GraphStore {
     void this.apply([{ op: 'removeParameter', name }], null);
   }
 
+  addPort(port: GraphInterfacePort): void {
+    void this.apply([{ op: 'addPort', port }], null);
+  }
+
+  /** Changes a port in one step, which may rename it. The wires on its boundary node follow. */
+  editPort(name: string, direction: string, port: GraphInterfacePort): void {
+    void this.apply([{ op: 'setPort', name, direction, port }], null);
+  }
+
+  removePort(name: string, direction: string): void {
+    void this.apply([{ op: 'removePort', name, direction }], null);
+  }
+
   /** Draws a frame round the selected nodes. A node belongs to one frame, so they leave any they were in. */
   groupSelection(): void {
     const nodes = [...this.mutableSelection()];
@@ -401,56 +464,62 @@ export class GraphStore {
     }
   }
 
-  renameGroup(index: number, title: string): void {
-    void this.apply([{ op: 'setGroup', index, title }], null);
+  renameGroup(id: number, title: string): void {
+    void this.apply([{ op: 'setGroup', id, title }], null);
   }
 
-  ungroup(index: number): void {
-    void this.apply([{ op: 'removeGroup', index }], null);
+  ungroup(id: number): void {
+    void this.apply([{ op: 'removeGroup', id }], null);
   }
 
   /** Nodes came to rest, each inside a frame or outside them all. A node that changed frame changes group. */
   regroup(moved: readonly { node: number; group: string | undefined }[]): void {
     const groups = this.mutableDocument()?.groups ?? [];
-    const members = groups.map(group => new Set(group.nodes));
+    const members = new Map(groups.map(group => [group.id, new Set(group.nodes)]));
     let changed = false;
     for (const { node, group } of moved) {
-      const target = group === undefined ? -1 : Number(group.slice(GroupPrefix.length));
-      const held = members.findIndex(set => set.has(node));
+      const target = group === undefined ? undefined : Number(group.slice(GroupPrefix.length));
+      const held = [...members].find(([, set]) => set.has(node))?.[0];
       if (held !== target) {
-        members[held]?.delete(node);
-        members[target]?.add(node);
+        if (held !== undefined) {
+          members.get(held)?.delete(node);
+        }
+
+        if (target !== undefined) {
+          members.get(target)?.add(node);
+        }
+
         changed = true;
       }
     }
 
     if (changed) {
-      const commands = members.map((nodes, index): GraphCommand => ({ op: 'setGroup', index, nodes: [...nodes] }));
+      const commands = [...members].map(([id, nodes]): GraphCommand => ({ op: 'setGroup', id, nodes: [...nodes] }));
       void this.apply(commands, 'Move Between Groups');
     }
   }
 
   /** Adds a note, and selects it for typing into. */
   async addComment(position: GraphPoint): Promise<void> {
-    const index = this.mutableDocument()?.comments.length ?? 0;
-    const added = await this.apply([{ op: 'addComment', text: 'Note', x: position.x, y: position.y }], null);
-    if (added) {
+    const reply = await this.apply([{ op: 'addComment', text: 'Note', x: position.x, y: position.y, ref: -1 }], null);
+    const note = reply?.created.find(item => item.ref === -1);
+    if (note) {
       this.select([]);
-      this.selectNote(index);
+      this.selectNote(note.node);
     }
   }
 
-  setCommentText(index: number, text: string): void {
-    void this.apply([{ op: 'setComment', index, text }], null);
+  setCommentText(id: number, text: string): void {
+    void this.apply([{ op: 'setComment', id, text }], null);
   }
 
   /** A note moved under the hand. Live, and a drag is one undo. */
-  moveComment(index: number, position: GraphPoint): void {
-    const key = noteKey(index);
+  moveComment(id: number, position: GraphPoint): void {
+    const key = noteKey(id);
     this.positionDrafts.set(key, position);
     this.sendLive(
       key,
-      { op: 'setComment', index, x: position.x, y: position.y },
+      { op: 'setComment', id, x: position.x, y: position.y },
       (sequence, seen) => {
         this.positionDrafts.settle(key, position, sequence, seen);
       },
@@ -460,9 +529,9 @@ export class GraphStore {
     );
   }
 
-  removeComment(index: number): void {
+  removeComment(id: number): void {
     this.selectNote(null);
-    void this.apply([{ op: 'removeComment', index }], null);
+    void this.apply([{ op: 'removeComment', id }], null);
   }
 
   /** Writes a node's picture at full size and fetches it. The Worker does the work and the file is the answer. */
@@ -509,7 +578,7 @@ export class GraphStore {
     const result = await this.apply(commands, `Add ${type.title}`);
     const created = result?.created.find(item => item.ref === reference);
     if (created) {
-      this.select([created.node]);
+      this.selectOnceHeld([created.node], result?.revision ?? 0);
     }
   }
 
@@ -887,14 +956,32 @@ export class GraphStore {
     this.valueDrafts.reached(document.sequence);
   }
 
+  /**
+   * Selects what a reply says was made. The reply and its event race, and any event read before that one would find the
+   * nodes missing from the document and take them back out of the selection, so this waits for the revision.
+   */
+  private selectOnceHeld(nodes: readonly number[], revision: number): void {
+    if ((this.mutableDocument()?.revision ?? 0) >= revision) {
+      this.select(nodes);
+    } else {
+      this.selectionDue = { nodes, revision };
+    }
+  }
+
   private keepSelectionReal(document: GraphDocument): void {
+    if (this.selectionDue && document.revision >= this.selectionDue.revision) {
+      const { nodes } = this.selectionDue;
+      this.selectionDue = null;
+      this.select(nodes);
+    }
+
     const held = this.mutableSelection();
     if ([...held].some(node => !document.nodes.has(node))) {
       this.mutableSelection.set(new Set([...held].filter(node => document.nodes.has(node))));
     }
 
     const note = this.mutableNote();
-    if (note !== null && note >= document.comments.length) {
+    if (note !== null && !document.comments.some(comment => comment.id === note)) {
       this.mutableNote.set(null);
     }
   }
@@ -903,11 +990,12 @@ export class GraphStore {
   private leavingGroups(nodes: readonly number[]): GraphCommand[] {
     const leaving = new Set(nodes);
     const commands: GraphCommand[] = [];
-    (this.mutableDocument()?.groups ?? []).forEach((group, index) => {
+    for (const group of this.mutableDocument()?.groups ?? []) {
       if (group.nodes.some(node => leaving.has(node))) {
-        commands.push({ op: 'setGroup', index, nodes: group.nodes.filter(node => !leaving.has(node)) });
+        commands.push({ op: 'setGroup', id: group.id, nodes: group.nodes.filter(node => !leaving.has(node)) });
       }
-    });
+    }
+
     return commands;
   }
 
@@ -1041,7 +1129,7 @@ export class GraphStore {
       this.previews.retryLost();
     }
 
-    if (event.kind === 'typesChanged') {
+    if (event.kind === 'typesChanged' || event.delta?.interface) {
       this.refreshCatalogue(next.id).catch((error: unknown) => {
         this.refused(error);
       });

@@ -9,6 +9,8 @@ switch (args) {
         return GraphBake.Run(graph, folder);
     case ["bake-maps", .. var options]:
         return MeshMapCommand.Run(options);
+    case ["bake", var graph, var folder, "--library", var library]:
+        return GraphBake.Run(graph, folder, library);
     case ["library", "new", var path, .. var options]:
         return LibraryCommands.New(path, options);
     case ["library", "check", var path, .. var options]:
@@ -17,7 +19,7 @@ switch (args) {
         await Console.Error.WriteLineAsync(
             """
             Usage:
-              patina version | patina bake <graph.vxtexgraph> <folder>
+              patina version | patina bake <graph.vxtexgraph> <folder> [--library <path>]
             """
             + "\n"
             + MeshMapCommand.Usage

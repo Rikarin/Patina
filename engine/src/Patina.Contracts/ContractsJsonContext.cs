@@ -41,4 +41,7 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(JobPage))]
 [JsonSerializable(typeof(BakeManifest))]
 [JsonSerializable(typeof(GraphMeshMapsRequest))]
+[JsonSerializable(typeof(GraphExtractRequest))]
+[JsonSerializable(typeof(GraphExtraction))]
+[JsonSerializable(typeof(GraphCompoundCopy))]
 public sealed partial class ContractsJsonContext : JsonSerializerContext;
