@@ -28,7 +28,12 @@ sealed class IndexDatabase : IDisposable {
                           ) WITHOUT ROWID;
                           CREATE INDEX file_kind ON file(kind);
 
-                          CREATE TABLE project(rid INTEGER PRIMARY KEY, id TEXT NOT NULL, path TEXT NOT NULL UNIQUE, name TEXT NOT NULL);
+                          CREATE TABLE project(
+                              rid INTEGER PRIMARY KEY,
+                              id TEXT NOT NULL,
+                              path TEXT NOT NULL UNIQUE,
+                              name TEXT NOT NULL
+                          );
                           CREATE INDEX project_id ON project(id);
                           CREATE INDEX project_order ON project(name COLLATE NOCASE, path);
 
@@ -74,7 +79,11 @@ sealed class IndexDatabase : IDisposable {
                           ) WITHOUT ROWID;
                           CREATE INDEX asset_dependency_by_target ON asset_dependency(target, mode, asset);
 
-                          CREATE TABLE problem(path TEXT PRIMARY KEY, code INTEGER NOT NULL, detail TEXT NOT NULL) WITHOUT ROWID;
+                          CREATE TABLE problem(
+                              path TEXT PRIMARY KEY,
+                              code INTEGER NOT NULL,
+                              detail TEXT NOT NULL
+                          ) WITHOUT ROWID;
 
                           CREATE TABLE input_hash(
                               path TEXT PRIMARY KEY,
@@ -84,8 +93,12 @@ sealed class IndexDatabase : IDisposable {
                               hash TEXT NOT NULL
                           ) WITHOUT ROWID;
 
-                          CREATE VIRTUAL TABLE project_search USING fts5(name, tags, path, content='', contentless_delete=1, prefix='2 3');
-                          CREATE VIRTUAL TABLE asset_search USING fts5(name, tags, path, content='', contentless_delete=1, prefix='2 3');
+                          CREATE VIRTUAL TABLE project_search USING fts5(
+                              name, tags, path, content='', contentless_delete=1, prefix='2 3'
+                          );
+                          CREATE VIRTUAL TABLE asset_search USING fts5(
+                              name, tags, path, content='', contentless_delete=1, prefix='2 3'
+                          );
                           """;
 
     readonly string path;

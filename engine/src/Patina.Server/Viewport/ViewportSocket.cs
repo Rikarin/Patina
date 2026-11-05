@@ -6,8 +6,8 @@ using System.Text.Json;
 namespace Patina.Server.Viewport;
 
 /// <summary>
-///     One client on <c>/ws/viewport</c>. Input comes in as JSON text. With <c>?frames=false</c> that is all it does and
-///     the client takes frames from <see cref="ViewportStream" />; otherwise frames go out as binary messages.
+///     One client on <c>/ws/viewport</c>. Input comes in as JSON text. With <c>?frames=false</c> that is all it does
+///     and the client takes frames from <see cref="ViewportStream" />; otherwise frames go out as binary messages.
 /// </summary>
 sealed class ViewportSocket(WebSocket socket, ViewportSession session, bool sendFrames) : IDisposable {
     const int InputBytes = 4096;

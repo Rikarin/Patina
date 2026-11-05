@@ -34,7 +34,8 @@ public sealed class BuildKeyTests {
 
     [Fact]
     public void A_key_is_stable_across_releases_of_this_code() {
-        // Keys name files on farms and other machines, so a change here is a rebuild of every library. Do it on purpose.
+        // Keys name files on farms and other machines, so a change here is a rebuild of every library. Do it on
+        // purpose.
         var asset = new AssetId(Guid.Parse("0190a000-0000-7000-8000-000000000001"));
         var project = Project(AssetReference.Floating(asset));
 

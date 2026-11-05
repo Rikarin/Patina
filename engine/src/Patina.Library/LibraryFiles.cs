@@ -26,7 +26,9 @@ public static class LibraryFiles {
 
     static readonly UTF8Encoding Utf8 = new(false);
 
-    /// <summary>Lays out a new library in <paramref name="root" />, which may exist but must not be a library yet.</summary>
+    /// <summary>
+    ///     Lays out a new library in <paramref name="root" />, which may exist but must not be a library yet.
+    /// </summary>
     public static void CreateLibrary(string root, LibraryDocument document) {
         var file = Path.Combine(root, LibraryLayout.LibraryFile);
         if (File.Exists(file)) {
@@ -43,7 +45,9 @@ public static class LibraryFiles {
         Replace(file, DocumentCodec.Write(document));
     }
 
-    /// <summary>The full path of the document of the project at <paramref name="path" /> below <c>projects/</c>.</summary>
+    /// <summary>
+    ///     The full path of the document of the project at <paramref name="path" /> below <c>projects/</c>.
+    /// </summary>
     public static string ProjectFile(string root, string path) =>
         LibraryLayout.Full(root, $"{LibraryLayout.ProjectsFolder}/{path}/{LibraryLayout.ProjectFile}");
 

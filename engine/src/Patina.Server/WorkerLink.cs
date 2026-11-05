@@ -22,7 +22,9 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
 
     public WorkerStatus Status => status;
 
-    /// <summary>The Worker's connection now, or waits for one: after a crash, that is the next Worker's hello.</summary>
+    /// <summary>
+    ///     The Worker's connection now, or waits for one: after a crash, that is the next Worker's hello.
+    /// </summary>
     public Task<IpcConnection> ConnectionAsync(CancellationToken cancellationToken) {
         lock (changing) {
             return current is { } connection

@@ -87,15 +87,7 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
         var removed = gone.Count;
         foreach (var batch in suspects.Chunk(BatchSize)) {
             cancellationToken.ThrowIfCancellationRequested();
-            var outcomes = new Outcome[batch.Length];
-            Parallel.For(
-                0,
-                batch.Length,
-                new() { CancellationToken = cancellationToken },
-                i => outcomes[i] = Read(batch[i], known.GetValueOrDefault(batch[i].Path).Hash)
-            );
-
-            foreach (var outcome in outcomes) {
+            foreach (var outcome in ReadBatch(batch, known, cancellationToken)) {
                 switch (outcome.Effect) {
                     case Effect.Gone:
                         writer.Remove(outcome.File.Path, outcome.File.Kind);
@@ -114,6 +106,21 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
 
         transaction.Commit();
         return new(found.Count, suspects.Count, changed, removed, clock.Elapsed);
+    }
+
+    static Outcome[] ReadBatch(
+        ScannedFile[] batch,
+        Dictionary<string, FileStamp> known,
+        CancellationToken cancellationToken
+    ) {
+        var outcomes = new Outcome[batch.Length];
+        Parallel.For(
+            0,
+            batch.Length,
+            new() { CancellationToken = cancellationToken },
+            i => outcomes[i] = Read(batch[i], known.GetValueOrDefault(batch[i].Path).Hash)
+        );
+        return outcomes;
     }
 
     static void Pragma(SqliteConnection connection, string sql) {
@@ -280,6 +287,9 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
 
     /// <summary>The prepared statements of one scan.</summary>
     sealed class IndexWriter : IDisposable {
+        const string PathParameter = "@path";
+        const string NameParameter = "@name";
+
         readonly List<SqliteCommand> commands = [];
         readonly SqliteCommand stampFile;
         readonly SqliteCommand deleteFile;
@@ -315,39 +325,41 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
 
             stampFile = Prepare(
                 """
-                INSERT INTO file(path, kind, size, mtime, scanned, hash) VALUES (@path, @kind, @size, @mtime, @scanned, @hash)
-                ON CONFLICT(path) DO UPDATE SET kind = @kind, size = @size, mtime = @mtime, scanned = @scanned, hash = @hash
+                INSERT INTO file(path, kind, size, mtime, scanned, hash)
+                VALUES (@path, @kind, @size, @mtime, @scanned, @hash)
+                ON CONFLICT(path) DO UPDATE
+                SET kind = @kind, size = @size, mtime = @mtime, scanned = @scanned, hash = @hash
                 """,
-                "@path",
+                PathParameter,
                 "@kind",
                 "@size",
                 "@mtime",
                 "@scanned",
                 "@hash"
             );
-            deleteFile = Prepare("DELETE FROM file WHERE path = @path", "@path");
-            deleteProblem = Prepare("DELETE FROM problem WHERE path = @path", "@path");
+            deleteFile = Prepare("DELETE FROM file WHERE path = @path", PathParameter);
+            deleteProblem = Prepare("DELETE FROM problem WHERE path = @path", PathParameter);
             insertProblem = Prepare(
                 "INSERT INTO problem(path, code, detail) VALUES (@path, @code, @detail)",
-                "@path",
+                PathParameter,
                 "@code",
                 "@detail"
             );
-            findProject = Prepare("SELECT rid FROM project WHERE path = @path", "@path");
+            findProject = Prepare("SELECT rid FROM project WHERE path = @path", PathParameter);
             deleteProject = Prepare("DELETE FROM project WHERE rid = @rid", "@rid");
             deleteProjectSearch = Prepare("DELETE FROM project_search WHERE rowid = @rid", "@rid");
             insertProject = Prepare(
                 "INSERT INTO project(id, path, name) VALUES (@id, @path, @name) RETURNING rid",
                 "@id",
-                "@path",
-                "@name"
+                PathParameter,
+                NameParameter
             );
             insertProjectSearch = Prepare(
                 "INSERT INTO project_search(rowid, name, tags, path) VALUES (@rid, @name, @tags, @path)",
                 "@rid",
-                "@name",
+                NameParameter,
                 "@tags",
-                "@path"
+                PathParameter
             );
             insertProjectTag = Prepare(
                 "INSERT OR IGNORE INTO project_tag(project, tag) VALUES (@rid, @tag)",
@@ -363,22 +375,22 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
                 "@mode",
                 "@revision"
             );
-            findAsset = Prepare("SELECT rid FROM asset WHERE path = @path", "@path");
+            findAsset = Prepare("SELECT rid FROM asset WHERE path = @path", PathParameter);
             deleteAsset = Prepare("DELETE FROM asset WHERE rid = @rid", "@rid");
             deleteAssetSearch = Prepare("DELETE FROM asset_search WHERE rowid = @rid", "@rid");
             insertAsset = Prepare(
                 "INSERT INTO asset(id, path, kind, name) VALUES (@id, @path, @kind, @name) RETURNING rid",
                 "@id",
-                "@path",
+                PathParameter,
                 "@kind",
-                "@name"
+                NameParameter
             );
             insertAssetSearch = Prepare(
                 "INSERT INTO asset_search(rowid, name, tags, path) VALUES (@rid, @name, @tags, @path)",
                 "@rid",
-                "@name",
+                NameParameter,
                 "@tags",
-                "@path"
+                PathParameter
             );
             insertAssetTag = Prepare(
                 "INSERT OR IGNORE INTO asset_tag(asset, tag) VALUES (@rid, @tag)",
@@ -403,7 +415,7 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
         }
 
         public void Stamp(ScannedFile file, long scanned, string? hash) {
-            Set(stampFile, "@path", file.Path);
+            Set(stampFile, PathParameter, file.Path);
             Set(stampFile, "@kind", (int)file.Kind);
             Set(stampFile, "@size", file.Size);
             Set(stampFile, "@mtime", file.Time);
@@ -413,7 +425,7 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
         }
 
         public void Remove(string path, TrackedKind kind) {
-            Set(deleteFile, "@path", path);
+            Set(deleteFile, PathParameter, path);
             deleteFile.ExecuteNonQuery();
             ClearDocument(path, kind);
         }
@@ -424,7 +436,7 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
             ClearDocument(path, outcome.File.Kind);
 
             if (outcome.Problem is { } problem) {
-                Set(insertProblem, "@path", path);
+                Set(insertProblem, PathParameter, path);
                 Set(insertProblem, "@code", (int)problem.Code);
                 Set(insertProblem, "@detail", problem.Detail);
                 insertProblem.ExecuteNonQuery();
@@ -442,7 +454,7 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
                 return;
             }
 
-            Set(deleteProblem, "@path", path);
+            Set(deleteProblem, PathParameter, path);
             deleteProblem.ExecuteNonQuery();
             if (kind == TrackedKind.Project) {
                 Drop(findProject, deleteProject, deleteProjectSearch, ProjectPath(path));
@@ -452,7 +464,7 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
         }
 
         static void Drop(SqliteCommand find, SqliteCommand delete, SqliteCommand deleteSearch, string path) {
-            Set(find, "@path", path);
+            Set(find, PathParameter, path);
             if (find.ExecuteScalar() is long rid) {
                 Set(deleteSearch, "@rid", rid);
                 deleteSearch.ExecuteNonQuery();
@@ -463,8 +475,8 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
 
         void Insert(string path, ProjectDocument project) {
             Set(insertProject, "@id", project.Id.ToString());
-            Set(insertProject, "@path", path);
-            Set(insertProject, "@name", project.Name);
+            Set(insertProject, PathParameter, path);
+            Set(insertProject, NameParameter, project.Name);
             var rid = (long)insertProject.ExecuteScalar()!;
 
             Search(insertProjectSearch, rid, project.Name, project.Tags, path);
@@ -474,9 +486,9 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
 
         void Insert(string path, AssetDocument asset) {
             Set(insertAsset, "@id", asset.Id.ToString());
-            Set(insertAsset, "@path", path);
+            Set(insertAsset, PathParameter, path);
             Set(insertAsset, "@kind", asset.Kind);
-            Set(insertAsset, "@name", asset.Name);
+            Set(insertAsset, NameParameter, asset.Name);
             var rid = (long)insertAsset.ExecuteScalar()!;
 
             Search(insertAssetSearch, rid, asset.Name, asset.Tags, path);
@@ -486,9 +498,9 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
 
         static void Search(SqliteCommand insert, long rid, string name, IReadOnlyList<string> tags, string path) {
             Set(insert, "@rid", rid);
-            Set(insert, "@name", name);
+            Set(insert, NameParameter, name);
             Set(insert, "@tags", string.Join(' ', tags));
-            Set(insert, "@path", path);
+            Set(insert, PathParameter, path);
             insert.ExecuteNonQuery();
         }
 

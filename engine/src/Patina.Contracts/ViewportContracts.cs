@@ -10,12 +10,16 @@ public sealed record ViewportCameraState(double Yaw, double Pitch, double Distan
 /// <param name="Path">The file's path, on the Server's machine.</param>
 public sealed record ViewportMeshRequest(string Path);
 
-/// <summary>The reply to <c>GET /api/v1/viewport</c>. The Server owns all of this; a Worker can die without losing it.</summary>
+/// <summary>
+///     The reply to <c>GET /api/v1/viewport</c>. The Server owns all of this; a Worker can die without losing it.
+/// </summary>
 /// <param name="Mesh">The mesh's path, or null when none is open.</param>
 /// <param name="Camera">The camera.</param>
 /// <param name="Width">The size clients asked for, in pixels.</param>
 /// <param name="Height">The size clients asked for, in pixels.</param>
-/// <param name="RenderScale">The share of that size frames are rendered at, which drops while a client cannot keep up.</param>
+/// <param name="RenderScale">
+///     The share of that size frames are rendered at, which drops while a client cannot keep up.
+/// </param>
 /// <param name="Frames">How many frames this Server has published.</param>
 /// <param name="Error">Why the last command failed, or null.</param>
 public sealed record ViewportState(

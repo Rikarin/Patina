@@ -69,15 +69,8 @@ static class LibraryEndpoints {
         string[]? tag,
         int offset = 0,
         int limit = DefaultLimit
-    ) {
-        if (BadPage(offset, limit) is { } bad) {
-            return bad;
-        }
-
-        return host.Library is { } library
-            ? TypedResults.Ok(library.Projects(new(search, tag, offset, limit)))
-            : NoLibrary();
-    }
+    ) =>
+        Listing(host, offset, limit, library => library.Projects(new(search, tag, offset, limit)));
 
     static Results<Created<ProjectSummary>, ProblemHttpResult> CreateProject(
         LibraryHost host,
@@ -128,15 +121,8 @@ static class LibraryEndpoints {
         string[]? tag,
         int offset = 0,
         int limit = DefaultLimit
-    ) {
-        if (BadPage(offset, limit) is { } bad) {
-            return bad;
-        }
-
-        return host.Library is { } library
-            ? TypedResults.Ok(library.Assets(new(search, tag, offset, limit)))
-            : NoLibrary();
-    }
+    ) =>
+        Listing(host, offset, limit, library => library.Assets(new(search, tag, offset, limit)));
 
     static Results<Ok<AssetImpact>, ProblemHttpResult> GetImpact(
         LibraryHost host,
@@ -155,6 +141,19 @@ static class LibraryEndpoints {
         return library.Impact(new(id), offset, limit) is { } impact
             ? TypedResults.Ok(impact)
             : TypedResults.Problem($"No shared asset has the id {id}.", statusCode: StatusCodes.Status404NotFound);
+    }
+
+    static Results<Ok<T>, ProblemHttpResult> Listing<T>(
+        LibraryHost host,
+        int offset,
+        int limit,
+        Func<OpenLibrary, T> page
+    ) {
+        if (BadPage(offset, limit) is { } bad) {
+            return bad;
+        }
+
+        return host.Library is { } library ? TypedResults.Ok(page(library)) : NoLibrary();
     }
 
     static ProblemHttpResult? BadPage(int offset, int limit) =>

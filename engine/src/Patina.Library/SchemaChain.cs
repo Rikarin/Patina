@@ -3,7 +3,9 @@ using YamlDotNet.RepresentationModel;
 
 namespace Patina.Library;
 
-/// <summary>One step of a document's history: rewrites the tree of version <paramref name="From" /> to the next.</summary>
+/// <summary>
+///     One step of a document's history: rewrites the tree of version <paramref name="From" /> to the next.
+/// </summary>
 public sealed record DocumentMigration(int From, Action<YamlMappingNode> Upgrade);
 
 /// <summary>
@@ -27,7 +29,9 @@ public sealed class SchemaChain(int current, params IReadOnlyList<DocumentMigrat
     /// <summary>The chain of a shared asset's sidecar.</summary>
     public static SchemaChain Asset { get; } = new(1);
 
-    /// <summary>Brings <paramref name="root" /> to <see cref="Current" /> in place and returns the file's version.</summary>
+    /// <summary>
+    ///     Brings <paramref name="root" /> to <see cref="Current" /> in place and returns the file's version.
+    /// </summary>
     internal int Upgrade(YamlMappingNode root, string path) {
         if (!root.Children.TryGetValue(VersionKey, out var node)
             || node is not YamlScalarNode { Value: { } text }

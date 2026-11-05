@@ -8,9 +8,8 @@ namespace Patina.Viewport;
 
 /// <summary>
 ///     The built-in light: a neutral studio, written as a cube and baked by Vixen's own
-///     <see cref="EnvironmentPrefilter" />
-///     and <see cref="SphericalHarmonicsL2" />. A gradient room with two soft boxes, because a metal shows what surrounds
-///     it, and a uniform environment would make every metal a flat disc.
+///     <see cref="EnvironmentPrefilter" /> and <see cref="SphericalHarmonicsL2" />. A gradient room with two soft
+///     boxes, because a metal shows what surrounds it, and a uniform environment would make every metal a flat disc.
 /// </summary>
 sealed class ViewportEnvironment {
     const int Size = 128;

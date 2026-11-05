@@ -49,10 +49,9 @@ static class KernelBench {
 
         var total = clock.Elapsed.TotalMilliseconds;
         var ordered = times.Order().ToArray();
+        var median = ordered[ordered.Length / 2];
         Say($"{names.Count} kernels, {(parallel ? "parallel" : "serial")}, hits {cache.Hits}, misses {cache.Misses}");
-        Say(
-            $"total {total:F0} ms; first {times[0]:F0} ms; median {ordered[ordered.Length / 2]:F1} ms; max {ordered[^1]:F0} ms"
-        );
+        Say($"total {total:F0} ms; first {times[0]:F0} ms; median {median:F1} ms; max {ordered[^1]:F0} ms");
         Say($"spir-v bytes {compiled.Sum(Size)}");
         return pipelines ? Pipelines(compiled, pipelineCache, threads) : 0;
     }
@@ -82,7 +81,9 @@ static class KernelBench {
 
     static long Size(EffectData effect) => effect.Stages.Sum(static stage => (long)stage.Bytecode.Length);
 
-    /// <summary>What a Worker pays after the SPIR-V, on the real device: every kernel into a compute pipeline.</summary>
+    /// <summary>
+    ///     What a Worker pays after the SPIR-V, on the real device: every kernel into a compute pipeline.
+    /// </summary>
     static int Pipelines(EffectData[] compiled, string? pipelineCache, bool threads) {
         var open = Stopwatch.StartNew();
         if (!VulkanDevice.TryCreate(new() { PipelineCachePath = pipelineCache }, out var device, out var refusal)) {

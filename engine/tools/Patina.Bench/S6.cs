@@ -14,7 +14,9 @@ static class S6 {
     const int ColdOpenRuns = 7;
     const int SearchRounds = 20;
 
-    /// <summary>What a person types: whole words, short prefixes, two words, a tag, and words nothing matches.</summary>
+    /// <summary>
+    ///     What a person types: whole words, short prefixes, two words, a tag, and words nothing matches.
+    /// </summary>
     static readonly string[] Searches = [
         "crate", "cr", "c", "rust", "rust crate", "oak do", "props", "hero", "00042", "zzzz", "steel sword", "metal"
     ];
@@ -26,7 +28,8 @@ static class S6 {
         var sizes = Measure.Folder(root);
         Line(
             "corpus",
-            $"{options.Projects} projects, {generated.Assets.Count} assets, {sizes.Files} files, {sizes.Bytes >> 20} MiB"
+            $"{options.Projects} projects, {generated.Assets.Count} assets, "
+            + $"{sizes.Files} files, {sizes.Bytes >> 20} MiB"
         );
 
         Build(root);
@@ -158,7 +161,9 @@ static class S6 {
         }
     }
 
-    /// <summary>The browser keeps working while a big rescan writes: the claim write-ahead logging is there for.</summary>
+    /// <summary>
+    ///     The browser keeps working while a big rescan writes: the claim write-ahead logging is there for.
+    /// </summary>
     static void QueriesDuringRescan(string root, OpenLibrary library, GeneratedLibrary generated) {
         var touched = generated.Projects.Take(generated.Projects.Count / 2);
         foreach (var path in touched) {
@@ -188,7 +193,8 @@ static class S6 {
         var impact = library.Impact(generated.Popular, 0, 100)!;
         Line(
             "popular asset",
-            $"{impact.Asset.Path}: {impact.Asset.UsageCount} direct, {impact.Projects} dependent, {impact.Pinned} pinned"
+            $"{impact.Asset.Path}: {impact.Asset.UsageCount} direct, "
+            + $"{impact.Projects} dependent, {impact.Pinned} pinned"
         );
         var times = Enumerable.Range(0, 20)
             .Select(_ => {
@@ -254,9 +260,11 @@ static class S6 {
 
     static string Describe(List<double> times) {
         times.Sort();
+        var median = times[times.Count / 2];
+        var p95 = times[Math.Min(times.Count - 1, times.Count * 95 / 100)];
         return string.Create(
             CultureInfo.InvariantCulture,
-            $"median {times[times.Count / 2]:F2} ms, p95 {times[Math.Min(times.Count - 1, times.Count * 95 / 100)]:F2} ms, max {times[^1]:F2} ms"
+            $"median {median:F2} ms, p95 {p95:F2} ms, max {times[^1]:F2} ms"
         );
     }
 

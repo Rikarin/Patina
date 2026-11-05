@@ -1,5 +1,7 @@
 namespace Patina.Contracts;
 
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field, so fewer parameters means a new API.
+#pragma warning disable SK7005
 /// <summary>The reply to <c>GET /api/v1/library</c>: what opening a library reads, and nothing more.</summary>
 /// <param name="Id">The library's identity, from <c>library.yaml</c>.</param>
 /// <param name="Name">The library's display name.</param>
@@ -25,6 +27,7 @@ public sealed record LibraryInfo(
     int AssetCount,
     bool Indexing
 );
+#pragma warning restore SK7005
 
 /// <summary>One project as the browser shows it. The project itself loads on open.</summary>
 /// <param name="Id">The project's identity.</param>
@@ -43,7 +46,9 @@ public sealed record ProjectPage(IReadOnlyList<ProjectSummary> Items, int Total,
 
 /// <summary>The body of <c>POST /api/v1/library/projects</c>.</summary>
 /// <param name="Name">The project's display name. The Server makes its folder from it.</param>
-/// <param name="Folder">Folders below <c>projects/</c> to put it in, with forward slashes, such as <c>props</c>.</param>
+/// <param name="Folder">
+///     Folders below <c>projects/</c> to put it in, with forward slashes, such as <c>props</c>.
+/// </param>
 /// <param name="Tags">The project's tags.</param>
 public sealed record ProjectCreateRequest(string Name, string? Folder = null, IReadOnlyList<string>? Tags = null);
 

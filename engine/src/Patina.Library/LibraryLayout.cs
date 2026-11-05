@@ -40,7 +40,9 @@ public static class LibraryLayout {
     public static string Full(string root, string relative) =>
         Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar));
 
-    /// <summary>The stored form of <paramref name="full" />: relative to <paramref name="root" />, forward slashes.</summary>
+    /// <summary>
+    ///     The stored form of <paramref name="full" />: relative to <paramref name="root" />, forward slashes.
+    /// </summary>
     public static string Relative(string root, string full) =>
         Path.GetRelativePath(root, full).Replace(Path.DirectorySeparatorChar, '/');
 }

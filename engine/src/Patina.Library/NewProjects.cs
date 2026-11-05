@@ -84,7 +84,7 @@ static class NewProjects {
             && segment[0] != '.'
             && !segment.EndsWith('.')
             && segment == segment.Trim()
-            && !segment.Any(static c => char.IsControl(c) || "\\:*?\"<>|".Contains(c, StringComparison.Ordinal))
+            && !segment.Any(static c => char.IsControl(c) || """\:*?"<>|""".Contains(c, StringComparison.Ordinal))
             && !ReservedNames.Contains(segment.Split('.')[0].ToLower(CultureInfo.InvariantCulture));
         if (!legal) {
             throw new ProjectRefusedException($"'{segment}' cannot be a folder in a library.");

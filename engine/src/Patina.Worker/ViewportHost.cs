@@ -6,9 +6,9 @@ using System.IO.MemoryMappedFiles;
 namespace Patina.Worker;
 
 /// <summary>
-///     The viewport's commands. Everything here is derived: a mesh file read, a device opened, a file mapped. A new Worker
-///     starts empty and the Server tells it the mesh and the camera again, so this holds nothing that cannot be rebuilt.
-///     The device opens on the first command, so a Worker on a machine with no Vulkan still answers health.
+///     The viewport's commands. Everything here is derived: a mesh file read, a device opened, a file mapped. A new
+///     Worker starts empty and the Server tells it the mesh and the camera again, so this holds nothing that cannot be
+///     rebuilt. The device opens on the first command, so a Worker on a machine with no Vulkan still answers health.
 /// </summary>
 sealed class ViewportHost(string shaderCache) : IDisposable {
     ViewportRenderer? renderer;

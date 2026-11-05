@@ -77,7 +77,9 @@ public sealed class ShaderCache(string directory) {
         return Convert.ToHexStringLower(hash.GetHashAndReset());
     }
 
-    /// <summary>Parses only when a miss asks: <see cref="RavenEffectCompiler" />'s constructor is where parsing is.</summary>
+    /// <summary>
+    ///     Parses only when a miss asks: <see cref="RavenEffectCompiler" />'s constructor is where parsing is.
+    /// </summary>
     sealed class Compiling(Func<RavenEffectCompiler> compiler) : IEffectSource {
         public EffectData? TryGet(EffectKey key) => compiler().TryGet(key);
     }
