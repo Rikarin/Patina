@@ -9,7 +9,7 @@ const type: GraphNodeType = {
   hasPreview: true,
   ports: [
     { name: 'Input', direction: 'Input', kind: 'Image', default: [], summary: '' },
-    { name: 'Amount', direction: 'Input', kind: 'Float', default: [0.5], summary: '' },
+    { name: 'Amount', direction: 'Input', kind: 'Float', default: [0.5], summary: '', range: { minimum: 0, softMaximum: 1 } },
     { name: 'Count', direction: 'Input', kind: 'Int', default: [4], summary: '' },
     { name: 'Flip', direction: 'Input', kind: 'Bool', default: [0], summary: '' },
     { name: 'Tint', direction: 'Input', kind: 'Float4', default: [1, 1, 1, 1], summary: '' },
@@ -62,6 +62,15 @@ describe('graph fields', () => {
 
   it('takes a declared range over a guess', () => {
     expect(sliderRange(0.5, 0.5, { minimum: 0, maximum: 0.75 })).toEqual({ min: 0, max: 0.75 });
+  });
+
+  it('gives a port the soft end of its range, and the hard end where there is no soft one', () => {
+    const amount = fieldsOf(type)[0]?.fields.find(field => field.name === 'Amount');
+    expect(amount).toMatchObject({ minimum: 0, maximum: 1 });
+  });
+
+  it('widens past a declared range to reach the value', () => {
+    expect(sliderRange(3, 0.5, { minimum: 0, maximum: 1 })).toEqual({ min: 0, max: 3 });
   });
 
   it("turns lanes into the picker's hex and back", () => {

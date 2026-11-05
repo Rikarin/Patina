@@ -373,14 +373,14 @@ bezel, on all three platforms, in CI.
 > **Status (2026-11-05): the path through the phase works, and the exit is not met.** The evaluator is in Vixen, and a user
 > can open, edit, undo, save and preview a graph through the Server (ADR 0005). S7 holds 60 fps at 500 nodes apart from
 > one zoom stall of about 200 ms (ADR 0006). Left open:
-> - A slider at the head of a 2K, 40-node chain takes about 138 ms, most of it readback one preview at a time.
-> - Value edits on compounds still recompile.
-> - Input ports declare no range, so slider ranges are guessed from defaults.
-> - A compound's interface cannot be authored, and a shipped compound opens read-only (ADR 0007); 32-bit float formats
->   have not landed.
+> - A slider at the head of a 2K, 40-node chain takes about 82 ms, now mostly evaluation and PNG encoding (ADR 0005).
+> - Input ports declare a range where the kernel gives one; the rest are still guessed from defaults.
+> - A compound's interface cannot be authored, and a shipped compound opens read-only (ADR 0007).
+> - `bitDepth` 32 has no UI, and previews and bakes stay 8-bit until a float export lands.
 >
 > New graphs, graph settings, exposed parameters, groups, notes, opening and instancing compounds, bitmaps, the curve
-> editor, gradient ramp, histogram, channel view and full-size images are in (ADRs 0005 and 0007).
+> editor, gradient ramp, histogram, channel view, full-size images, compound refresh without a recompile and 32-bit
+> formats are in (ADRs 0005 and 0007).
 
 **Exit:** a user can build a tiling material from nodes with live thumbnails, and every Vixen node and compound works.
 

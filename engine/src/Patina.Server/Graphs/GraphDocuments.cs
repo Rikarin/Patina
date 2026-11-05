@@ -112,7 +112,8 @@ public static class GraphDocuments {
                         port.Direction.ToString(),
                         port.Kind.ToString(),
                         port.Default,
-                        port.Summary
+                        port.Summary,
+                        RangeOf(port)
                     )
                 )
             ],
@@ -130,6 +131,16 @@ public static class GraphDocuments {
                 )
             ]
         );
+
+    static GraphPortRange? RangeOf(PortDefinition port) {
+        GraphPortRange range = new(
+            Bound(port.Minimum),
+            Bound(port.Maximum),
+            Bound(port.SoftMinimum),
+            Bound(port.SoftMaximum)
+        );
+        return range == new GraphPortRange(null, null, null, null) ? null : range;
+    }
 
     /// <summary>What turns one document into another, whichever way the history moved.</summary>
     public static GraphDelta Delta(NodeGraphAsset before, NodeGraphAsset after) {
@@ -157,9 +168,9 @@ public static class GraphDocuments {
     }
 
     /// <summary>
-    ///     What a Worker holding <paramref name="told" /> needs to reach <paramref name="now" />, if numbers on inputs
-    ///     will do it. Null means anything else changed and it needs the whole document; empty means nothing it
-    ///     computes from changed, as after a move.
+    ///     What a Worker holding <paramref name="told" /> needs to reach <paramref name="now" />, if numbers and texts
+    ///     on nodes will do it. Null means anything else changed and it needs the whole document; empty means nothing
+    ///     it computes from changed, as after a move. A text its compiler cannot refresh from, it compiles.
     /// </summary>
     public static IReadOnlyList<GraphValue>? Values(NodeGraphAsset told, NodeGraphAsset now) {
         if (told.Nodes.Length != now.Nodes.Length
@@ -174,7 +185,7 @@ public static class GraphDocuments {
             var (was, node) = (told.Nodes[i], now.Nodes[i]);
             if (was.Id != node.Id
                 || !string.Equals(was.Type, node.Type, StringComparison.Ordinal)
-                || !SameTexts(was.Texts, node.Texts)) {
+                || LostAText(was, node)) {
                 return null;
             }
 
@@ -183,6 +194,9 @@ public static class GraphDocuments {
 
         return values;
     }
+
+    static bool LostAText(GraphNodeAsset was, GraphNodeAsset node) =>
+        was.Texts.Keys.Any(key => !node.Texts.ContainsKey(key));
 
     static void AddChanges(List<GraphValue> values, GraphNodeAsset was, GraphNodeAsset node) {
         foreach (var (port, lanes) in node.Values) {
@@ -194,6 +208,10 @@ public static class GraphDocuments {
         values.AddRange(
             was.Values.Keys.Where(port => !node.Values.ContainsKey(port))
                 .Select(port => new GraphValue(node.Id, port, null))
+        );
+        values.AddRange(
+            node.Texts.Where(text => was.Texts.GetValueOrDefault(text.Key) != text.Value)
+                .Select(text => new GraphValue(node.Id, text.Key, null, text.Value))
         );
     }
 

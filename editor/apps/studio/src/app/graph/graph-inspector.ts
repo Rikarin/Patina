@@ -254,9 +254,7 @@ export class GraphInspector {
   }
 
   protected rangeOf(field: NumberField, value: number): { min: number; max: number } {
-    return field.source === 'value'
-      ? sliderRange(value, field.fallback[0] ?? 0)
-      : sliderRange(value, Number(field.fallback), field);
+    return sliderRange(value, field.source === 'value' ? (field.fallback[0] ?? 0) : Number(field.fallback), field);
   }
 
   protected setNumber(field: NumberField, value: number | null): void {

@@ -1014,6 +1014,30 @@ export interface components {
       default: number[];
       /** @description One line about it. */
       summary: string;
+      range?: null | components['schemas']['GraphPortRange'];
+    };
+    /** @description What an input port says about its numbers. Any end may be open, as null. */
+    GraphPortRange: {
+      /**
+       * Format: float
+       * @description The smallest number that means anything.
+       */
+      minimum?: null | number;
+      /**
+       * Format: float
+       * @description The largest number that means anything.
+       */
+      maximum?: null | number;
+      /**
+       * Format: float
+       * @description Where a slider starts, when the port's meaning gives that. Numbers go on past it.
+       */
+      softMinimum?: null | number;
+      /**
+       * Format: float
+       * @description Where a slider ends, the same way.
+       */
+      softMaximum?: null | number;
     };
     /** @description Where a node's picture is: `GET /api/v1/previews/{hash}`. Pixels never cross JSON. */
     GraphPreview: {

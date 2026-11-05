@@ -286,11 +286,9 @@ public sealed class GraphProcessTests : IDisposable {
         }
     }
 
-    /// <summary>
-    ///     A compound's contents are an object Vixen's refresh cannot watch, so here a value edit does compile.
-    /// </summary>
+    /// <summary>A number on a compound reaches its inner nodes without a compile (plan §3.2).</summary>
     [Fact]
-    public async Task A_compound_gets_one_preview_per_port_and_a_number_on_it_recompiles() {
+    public async Task A_compound_gets_one_preview_per_port_and_a_number_on_it_does_not_recompile() {
         using var deadline = Deadline(120);
         var (_, state, socket, _) = await OpenSampleAsync(GraphTesting.Sample(), deadline.Token);
         using (socket) {
@@ -317,8 +315,44 @@ public sealed class GraphProcessTests : IDisposable {
                 new GraphSetValue(node, number.Name, [number.Default[0] + 1f])
             );
             var evaluated = await EvaluatedAsync(socket, edit.Revision, deadline.Token);
-            Assert.True(evaluated.Compiled);
+            Assert.False(evaluated.Compiled);
             Assert.DoesNotContain(evaluated.Previews, static p => p.Node is 1 or 2 or 3 or 5);
+
+            // An exposed parameter is a text on the node, and it is a value edit all the same.
+            var knobbed = types.First(static type => type.Path.StartsWith("Patterns/", StringComparison.Ordinal)
+                && type.Settings.Any(static setting => setting.Kind == "Float")
+            );
+            var knob = knobbed.Settings.First(static setting => setting.Kind == "Float");
+            var second = await http.EditAsync(state.Id, deadline.Token, new GraphAddNode(knobbed.Path, 0, 800, -1));
+            var other = Assert.Single(second.Created).Node;
+            await EvaluatedAsync(socket, second.Revision, deadline.Token);
+            var value = ((knob.Minimum ?? 0f) + (knob.Maximum ?? 1f)) / 2f;
+            var turned = await http.EditAsync(
+                state.Id,
+                deadline.Token,
+                new GraphSetText(other, knob.Name, value.ToString("R", CultureInfo.InvariantCulture))
+            );
+            Assert.False((await EvaluatedAsync(socket, turned.Revision, deadline.Token)).Compiled);
+        }
+    }
+
+    /// <summary>Plan §3.2's formats on the whole path: 32 bits and an odd size reach a client.</summary>
+    [Fact]
+    public async Task A_graph_at_32_bits_and_an_odd_size_previews_and_a_slider_does_not_recompile() {
+        using var deadline = Deadline(120);
+        var asset = GraphTesting.Sample();
+        asset.Settings["bitDepth"] = "32";
+        asset.Settings["baseWidth"] = "301";
+        asset.Settings["baseHeight"] = "167";
+        var (_, state, socket, first) = await OpenSampleAsync(asset, deadline.Token);
+        using (socket) {
+            var noise = first.Previews.Single(static preview => preview.Node == 1);
+            Assert.Equal((150, 83), (noise.Width, noise.Height));
+
+            var edit = await http.EditAsync(state.Id, deadline.Token, new GraphSetValue(2, "Hue", [0.25f]));
+            var slid = await EvaluatedAsync(socket, edit.Revision, deadline.Token);
+            Assert.False(slid.Compiled);
+            Assert.Contains(slid.Previews, static preview => preview.Node == 2);
         }
     }
 
