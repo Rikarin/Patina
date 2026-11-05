@@ -1,6 +1,6 @@
 import { evaluateCurve, formatCurves, parseCurves, straightCurves } from './curve';
 import { computeHistogram, isolateChannel, peakOf } from './histogram';
-import { blackToWhite, colourAt, cssOfRamp, formatRamp, parseRamp } from './ramp';
+import { blackToWhite, colourAt, cssOfRamp, formatRamp, parseRamp, roundPosition } from './ramp';
 
 describe('curves', () => {
   it('says nothing for a straight curve, and reads nothing as the identity', () => {
@@ -52,6 +52,15 @@ describe('ramps', () => {
     const inset = [{ position: 0.25, colour: '102030FF' }];
     expect(colourAt(inset, 0)).toBe('102030FF');
     expect(colourAt(inset, 1)).toBe('102030FF');
+  });
+
+  // A hand's raw position came back from the Server rounded, and that change wrote over what was being typed in the box.
+  it('keeps a position as the file does, so the echo of an edit changes nothing', () => {
+    const position = roundPosition(0.26418);
+    const stops = parseRamp(formatRamp([{ position, colour: 'A0522DFF' }]));
+
+    expect(position).toBe(0.264);
+    expect(stops?.[0]?.position).toBe(position);
   });
 
   it('shows as a CSS gradient', () => {

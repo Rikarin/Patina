@@ -43,10 +43,15 @@ export function parseRamp(text: string): readonly RampStop[] | null {
 }
 
 /** The text for {@link parseRamp}. */
+/** A position as the file keeps it, so what the hand makes is what the Server's echo says. */
+export function roundPosition(position: number): number {
+  return Math.round(position * Precision) / Precision;
+}
+
 export function formatRamp(stops: readonly RampStop[]): string {
   const parts = [...stops]
     .sort((a, b) => a.position - b.position)
-    .map(stop => `${String(Math.round(stop.position * Precision) / Precision)} ${stop.colour.toLowerCase()}`);
+    .map(stop => `${String(roundPosition(stop.position))} ${stop.colour.toLowerCase()}`);
   return `${Scheme}${parts.join(',')}`;
 }
 

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, linkedSignal, outp
 import { XuiButtonImports } from '@xui/button';
 import { XuiColorPickerImports } from '@xui/color-picker';
 import { XuiNumericInputImports } from '@xui/numeric-input';
-import { type RampStop, colourAt, cssOfRamp } from './ramp';
+import { type RampStop, colourAt, cssOfRamp, roundPosition } from './ramp';
 
 const NudgeStep = 0.01;
 
@@ -174,7 +174,7 @@ export class GradientRamp {
 
   private pointOf(event: PointerEvent): number {
     const box = (event.currentTarget as Element).closest('[role=group]')?.getBoundingClientRect();
-    return box && box.width > 0 ? clamp((event.clientX - box.left) / box.width) : 0;
+    return box && box.width > 0 ? roundPosition(clamp((event.clientX - box.left) / box.width)) : 0;
   }
 
   /** Moves the selected stop between its neighbours, so that the drag keeps hold of this one. */
@@ -182,7 +182,7 @@ export class GradientRamp {
     const index = this.selectedIndex();
     const before = this.working()[index - 1]?.position ?? 0;
     const after = this.working()[index + 1]?.position ?? 1;
-    this.replace({ position: Math.min(after, Math.max(before, clamp(position))) });
+    this.replace({ position: roundPosition(Math.min(after, Math.max(before, clamp(position)))) });
   }
 
   private replace(change: Partial<RampStop>): void {
