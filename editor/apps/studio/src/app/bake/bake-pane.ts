@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import type { BakeRequest } from '@patina/api-client';
+import type { BakeRequest, JobState } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiInputImports } from '@xui/input';
@@ -25,7 +25,7 @@ const ExtraMaps: readonly { name: string; label: string }[] = [
   { name: 'id', label: 'ID' }
 ];
 
-type PathField = 'high' | 'low' | 'cage' | 'output';
+type PathField = 'high' | 'low' | 'cage' | 'skewMap' | 'output';
 
 /**
  * Asks the Server for a bake and follows it. Everything sent is a path, as for any client (plan §8): a Blender add-on
@@ -60,7 +60,7 @@ type PathField = 'high' | 'low' | 'cage' | 'output';
               [value]="paths()[field.key]"
               (input)="setPath(field.key, text($event))"
             />
-            @if (canPick) {
+            @if (canPick && field.key !== 'skewMap') {
               <button
                 type="button"
                 xuiButton
@@ -223,6 +223,19 @@ type PathField = 'high' | 'low' | 'cage' | 'output';
                 </li>
               }
             </ul>
+            @if (job.bake.space === 'tangent') {
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                variant="ghost"
+                data-testid="bake-show-on-mesh"
+                title="The low mesh with these maps, in the viewport"
+                (click)="showOnMesh(job)"
+              >
+                Show on low mesh
+              </button>
+            }
             @if (graph.document(); as document) {
               <button
                 type="button"
@@ -273,10 +286,17 @@ export class BakePane {
     { key: 'high', label: 'High mesh', placeholder: 'Path on the Server' },
     { key: 'low', label: 'Low mesh', placeholder: 'Path on the Server' },
     { key: 'cage', label: 'Cage', placeholder: 'Optional' },
+    { key: 'skewMap', label: 'Skew map', placeholder: 'Optional: a square grey image' },
     { key: 'output', label: 'Output folder', placeholder: 'Path on the Server' }
   ];
 
-  protected readonly paths = signal<Record<PathField, string>>({ high: '', low: '', cage: '', output: '' });
+  protected readonly paths = signal<Record<PathField, string>>({
+    high: '',
+    low: '',
+    cage: '',
+    skewMap: '',
+    output: ''
+  });
   protected readonly side = signal('2048');
   protected readonly format = signal('png16');
   protected readonly samples = signal(1);
@@ -327,7 +347,7 @@ export class BakePane {
   }
 
   protected request(): BakeRequest {
-    const { high, low, cage, output } = this.paths();
+    const { high, low, cage, skewMap, output } = this.paths();
     return {
       high: high.trim(),
       low: low.trim(),
@@ -341,7 +361,7 @@ export class BakePane {
       searchRadius: this.search(),
       occlusionRadius: 0.5,
       skew: this.skew(),
-      skewMap: null,
+      skewMap: skewMap.trim() || null,
       matchByName: this.match(),
       gutter: 4,
       space: 'tangent',
@@ -353,6 +373,15 @@ export class BakePane {
     this.refused.set(null);
     try {
       await this.store.start(this.request());
+    } catch (error) {
+      this.refused.set(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  protected async showOnMesh(job: JobState): Promise<void> {
+    this.refused.set(null);
+    try {
+      await this.store.showOnMesh(job);
     } catch (error) {
       this.refused.set(error instanceof Error ? error.message : String(error));
     }

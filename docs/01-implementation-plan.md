@@ -358,7 +358,8 @@ beyond namespaces, that's a sign the split is wrong.
 
 > **Status (2026-11-05): done on macOS, unproven on Linux and Windows.** The exit needs all three platforms in CI, and the
 > fixes for the first failures there are not yet confirmed by a CI run. Windows runners have no Vulkan, so its viewport
-> tests skip. Left open: a viewport texture path (factors only), and the 2 cores spent while orbiting (ADR 0003).
+> tests skip. Left open: the 2 cores spent while orbiting (ADR 0003). The viewport now reads textures, so a glTF's PBR
+> material is drawn whole.
 
 **Exit:** the desktop app opens, starts both sidecars, and shows a glTF with a PBR material in a docked viewport, under
 bezel, on all three platforms, in CI.
@@ -418,8 +419,10 @@ bezel, on all three platforms, in CI.
 > ([ADR 0008](adr/0008-baking.md)). GPU traversal has not been started, because the plan keeps one implementation. Everything
 > else below is in: `MapBaker` is threaded with a SAH tree, supersampling, a cage, skew and match-by-name; 16-bit PNG and EXR are
 > in `Core.Imaging`, the EXR codec managed rather than a native library; a bake is a job that survives both processes; and
-> the Bake panel and Mesh Map nodes are wired. Left open: the viewport does not show normal maps, so `patina-bench bake-preview`
-> shades them instead; the tangent basis is per triangle and not MikkTSpace; `patina bake` cannot bind mesh maps.
+> the Bake panel and Mesh Map nodes are wired. The tangent basis is MikkTSpace, shared by the baker and the viewport, so a bake
+> is judged on the low mesh in the viewport, from the panel or `PUT /api/v1/viewport/bake`, and in the maps as a game engine
+> reads them. `patina bake` binds mesh maps, and cage and skew map go through the panel and `bake-maps`. Left open: nobody has
+> judged a real asset.
 
 **Exit:** a high-to-low bake of a real game asset is judged usable by an artist, on a mesh with hard edges.
 

@@ -8,6 +8,7 @@ using System.Net.Http.Json;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using Vixen.Core.Imaging;
 using Vixen.NodeGraph;
 
 namespace Patina.Server.Tests;
@@ -389,6 +390,78 @@ public sealed class BakeProcessTests : IDisposable {
         Assert.DoesNotContain(bound.Diagnostics, static d => d.Severity == "Error");
         Assert.NotEmpty(bound.Previews);
         Assert.True(File.Exists($"{path}.bake"));
+    }
+
+    /// <summary>The farm's path: mesh maps, cage and skew map with no Server and no Worker, file to file.</summary>
+    [Fact]
+    public async Task The_command_line_bakes_with_a_cage_and_a_skew_map_and_a_graph_reads_the_result() {
+        using var deadline = Deadline(120);
+        var request = Request();
+        var skew = Path.Combine(folder.FullName, "skew.png");
+        await File.WriteAllBytesAsync(skew, PngCodec.Encode(new(1, 1, [128, 128, 128, 255])), deadline.Token);
+
+        var (baked, said) = await CommandAsync(
+            deadline.Token,
+            "bake-maps",
+            "--high",
+            request.High,
+            "--low",
+            request.Low,
+            "--cage",
+            request.Low,
+            "--skew",
+            "0.5",
+            "--skew-map",
+            skew,
+            "--maps",
+            "ao",
+            "--resolution",
+            "64",
+            "--rays",
+            "4",
+            "--out",
+            Output
+        );
+        Assert.True(baked == 0, said);
+        Assert.True(File.Exists(Path.Combine(Output, "housing_low_ao.png")));
+
+        var asset = new NodeGraphAsset {
+            Name = "Worn",
+            Nodes = [
+                new() { Id = 1, Type = "Source/Mesh Map", Texts = new() { ["Map"] = "ao" } },
+                new() { Id = 2, Type = "Output/Output", X = 300, Texts = new() { ["Usage"] = "baseColor" } }
+            ],
+            Edges = [new() { FromNode = 1, FromPort = "Out", ToNode = 2, ToPort = "Input" }],
+            Settings = new() { ["baseWidth"] = "64", ["baseHeight"] = "64" }
+        };
+        var graph = GraphTesting.Write(Library, asset, "worn.vxtexgraph");
+        var pictures = Path.Combine(folder.FullName, "pictures");
+
+        var (unbound, refusal) = await CommandAsync(deadline.Token, "bake", graph, pictures);
+        var (bound, reason) = await CommandAsync(deadline.Token, "bake", graph, pictures, "--mesh-maps", Output);
+
+        if (reason.Contains("no Vulkan device", StringComparison.Ordinal)) {
+            Assert.Skip(reason);
+        }
+
+        Assert.NotEqual(0, unbound);
+        Assert.Contains("no bake has been chosen", refusal, StringComparison.Ordinal);
+        Assert.True(bound == 0, reason);
+        Assert.True(File.Exists(Path.Combine(pictures, "baseColor.png")));
+    }
+
+    static async Task<(int Exit, string Said)> CommandAsync(CancellationToken cancellationToken, params string[] arguments) {
+        var info = new ProcessStartInfo("dotnet") { RedirectStandardOutput = true, RedirectStandardError = true };
+        info.ArgumentList.Add(Engine.Dll("Patina.Cli", "patina"));
+        foreach (var argument in arguments) {
+            info.ArgumentList.Add(argument);
+        }
+
+        using var process = Process.Start(info)!;
+        var output = process.StandardOutput.ReadToEndAsync(cancellationToken);
+        var errors = process.StandardError.ReadToEndAsync(cancellationToken);
+        await process.WaitForExitAsync(cancellationToken);
+        return (process.ExitCode, await output + await errors);
     }
 
     async Task<ClientWebSocket> ViewportAsync(CancellationToken cancellationToken) {

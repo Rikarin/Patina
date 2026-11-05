@@ -1,6 +1,6 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -60,6 +60,44 @@ test('a bake runs from the panel and its maps show in the Texture pane', async (
   // The same bake again runs nothing.
   await window.getByTestId('bake-start').click();
   await expect(window.getByTestId('bake-cached')).toBeVisible();
+});
+
+test('a bake can be judged on its low mesh in the viewport, with a cage and a skew map through the panel', async () => {
+  const output = join(scratch, 'maps');
+  const low = join(scratch, 'meshes', 'housing_low.glb');
+  const skew = join(scratch, 'skew.png');
+
+  // A grey picture: one white pixel is an image, and the bake only asks that it be square.
+  writeFileSync(
+    skew,
+    Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGP4DwABAQEAG7buVgAAAABJRU5ErkJggg==',
+      'base64'
+    )
+  );
+
+  await window.getByRole('tab', { name: 'Bake' }).click();
+  await window.getByTestId('bake-high').fill(join(scratch, 'meshes', 'housing_high.glb'));
+  await window.getByTestId('bake-low').fill(low);
+  await window.getByTestId('bake-cage').fill(low);
+  await window.getByTestId('bake-skewMap').fill(skew);
+  await window.getByTestId('bake-output').fill(output);
+  await window.getByTestId('bake-start').click();
+  await expect(window.getByTestId('bake-state')).toHaveText('done', { timeout: 120_000 });
+
+  const frames = () =>
+    window
+      .getByRole('img', { name: 'Viewport' })
+      .getAttribute('data-frames')
+      .then(count => Number(count));
+  const before = await frames();
+
+  await window.getByTestId('bake-show-on-mesh').click();
+
+  await expect(window.getByTestId('viewport-mesh')).toHaveText('housing_low.glb');
+  await expect.poll(frames, { timeout: 30_000 }).toBeGreaterThan(before);
+  mkdirSync(shots, { recursive: true });
+  await window.screenshot({ path: join(shots, 'bake-on-mesh.png') });
 });
 
 test('the panel says why the Server refused a bake', async () => {

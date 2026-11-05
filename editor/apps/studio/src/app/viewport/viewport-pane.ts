@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { desktop } from '../core/desktop';
+import { GraphStore } from '../graph/graph-store';
 import { FramePainter } from './frame-painter';
 import type { ViewportFrame } from './frame-transport';
 import { orbit, zoom } from './orbit';
@@ -27,6 +28,20 @@ import { ViewportClient } from './viewport-client';
     <div class="chrome-bar flex h-9 shrink-0 items-center gap-2 px-2">
       <button type="button" xuiButton size="sm" [disabled]="!canOpen" (click)="open()">Open mesh…</button>
       <span class="readout truncate" data-testid="viewport-mesh">{{ meshName() }}</span>
+      @if (graph.document(); as document) {
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          data-testid="viewport-show-graph"
+          [disabled]="!viewport.mesh()"
+          [title]="'Lays the outputs of ' + document.name + ' over this mesh, as they stand now'"
+          (click)="viewport.showGraph(document.id)"
+        >
+          Show {{ document.name }}
+        </button>
+      }
       <span class="flex-1"></span>
       @if (viewport.stats(); as stats) {
         <span class="readout" data-testid="viewport-stats">
@@ -57,6 +72,7 @@ import { ViewportClient } from './viewport-client';
 })
 export class ViewportPane implements AfterViewInit {
   protected readonly viewport = inject(ViewportClient);
+  protected readonly graph = inject(GraphStore);
   private readonly destroyRef = inject(DestroyRef);
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
   private readonly host = viewChild.required<ElementRef<HTMLElement>>('host');

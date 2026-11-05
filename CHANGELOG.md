@@ -5,6 +5,13 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- ⚠ A baked tangent-space map is now in MikkTSpace, with green up the image, and its rows run from `v = 0`, so a map is the
+  right way up on the mesh in every tool. Maps baked before this are in another basis and upside down; the bake key changed,
+  so they bake again.
+- `.glb` files written by `patina-bench` no longer turn `v` over.
+
 ### Added
 
 - The repository: licence, conventions, Skala gates with an empty baseline, and CI workflows.
@@ -25,7 +32,15 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   New… creates a project.
 - The desktop app, which supervises both processes, and a studio shell with Library, Viewport and Inspector panes.
 - A docked viewport: open a glTF, FBX or OBJ, orbit and zoom it, lit by a built-in studio environment, with the file's
-  metallic-roughness factors. Texture maps are not read yet.
+  metallic-roughness factors.
+- The viewport draws textures: base colour, normal, roughness, metallic and occlusion from a glTF's materials, embedded or
+  beside it, and from files. Base colour is read as sRGB and the rest as linear; a 16-bit PNG or an EXR keeps its depth.
+- `PUT /api/v1/viewport/maps` lays pictures over a mesh by path, `PUT /api/v1/viewport/bake` shows a finished bake on its
+  low mesh, and `PUT /api/v1/viewport/graph` lays a graph's Output nodes over the open mesh. `GET /api/v1/viewport`
+  says what is laid on.
+- The Bake panel shows a finished bake on the low mesh, and takes a skew map. The viewport shows the open graph's outputs.
+- `patina bake --mesh-maps <folder>`, and `patina bake` follows the bake chosen beside a graph.
+- `patina-bench render --bake=<folder> --yaw=<r> --pitch=<r>`, which replaces `bake-preview`.
 - `GET /api/v1/viewport`, `PUT /api/v1/viewport/mesh`, `PUT /api/v1/viewport/camera`, frames from `/api/v1/viewport/frames`,
   and `/ws/viewport` for input.
 - A killed Worker no longer costs the view: the Server keeps it, and the next Worker carries on within two seconds.

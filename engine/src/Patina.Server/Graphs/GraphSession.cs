@@ -255,16 +255,8 @@ public sealed class GraphSession {
         wake();
     }
 
-    /// <summary>The file beside a graph that says which bake it reads.</summary>
-    static string MeshMapsFile(string path) => $"{path}.bake";
-
-    /// <summary>The bake a graph file reads, or null. A file, because the choice outlives the session.</summary>
-    public static string? ReadMeshMaps(string path) {
-        var file = MeshMapsFile(path);
-        return File.Exists(file)
-            ? System.IO.Path.GetFullPath(File.ReadAllText(file).Trim(), System.IO.Path.GetDirectoryName(path)!)
-            : null;
-    }
+    /// <summary>The bake a graph file reads, or null.</summary>
+    public static string? ReadMeshMaps(string path) => GraphMeshMaps.Read(path);
 
     /// <summary>
     ///     Chooses the bake this graph's Mesh Map nodes read. The Worker takes the document again, since the same
@@ -275,7 +267,7 @@ public sealed class GraphSession {
         lock (changing) {
             MeshMaps = folder;
             if (!ReadOnly) {
-                var file = MeshMapsFile(Path);
+                var file = GraphMeshMaps.FileOf(Path);
                 if (folder is null) {
                     File.Delete(file);
                 } else {

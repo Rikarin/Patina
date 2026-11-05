@@ -67,7 +67,20 @@ output and leaves a `<name>.bake.json` beside them with the scale that undoes a 
 A hard edge is two normals on one point, and rays along each corner's normal see different surfaces. Rays now follow the normal
 averaged over the point, while the tangent frame keeps the corner's own. Vixen's `HardEdgeBakeTests` shows the gap closing with
 resolution and the old rays not closing it. The price is that detail beside a hard edge shears, which skew and a skew map trade back.
-`patina-bench bake-preview` shades both for a person to judge. Passing a test does not meet the exit; only an artist can.
+Passing a test does not meet the exit; only an artist can, and they judge it in the viewport: choose the bake and the low mesh shows
+it (`PUT /api/v1/viewport/bake`). `patina-bench render <low> <out.png> <w> <h> --bake=<folder>` draws the same frame with no Server.
+
+## The basis
+
+The basis is MikkTSpace, in Vixen's `MikkTSpace`, a managed port shared by the baker and the viewport. The baker writes the exact
+inverse of the renderer's frame, so what is drawn is what was measured to within 4.8e-7 of a sine on a curved low mesh, against
+9.7e-4 for a projection onto an orthonormal frame. It matches the original compiled, bit for bit, over 2,000 awkward meshes and
+1.78 million corners. Every file that holds a map is v-down: row zero of a picture is `v = 0`, and green points up the image, as glTF
+reads it. Bakes before this were upside down against their own atlas, which `bake-preview` hid by reading `v` the other way; the bake
+key names the basis so the cache cannot hand one back.
+
+The renderer does not use a file's own `TANGENT` attribute. The baker never reads one either, so the two agree, but a map authored
+elsewhere against tangents that were not MikkTSpace will not match.
 
 ## EXR
 

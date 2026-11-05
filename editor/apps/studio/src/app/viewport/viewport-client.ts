@@ -1,6 +1,7 @@
-import { DestroyRef, Injectable, InjectionToken, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, InjectionToken, effect, inject, signal } from '@angular/core';
 import type { ViewportCameraState, ViewportInput } from '@patina/api-client';
 import { unwrap } from '@patina/api-client';
+import { BakeStore } from '../bake/bake-store';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import {
   type FrameTransport,
@@ -35,6 +36,7 @@ export class ViewportClient {
   private readonly connection = inject(SERVER_CONNECTION);
   private readonly createClient = inject(API_CLIENT_FACTORY);
   private readonly createTransport = inject(FRAME_TRANSPORT_FACTORY);
+  private readonly bakes = inject(BakeStore);
   private transport: FrameTransport | null = null;
   private inputNumber = 0;
   private readonly sentAt = new Map<number, number>();
@@ -53,6 +55,21 @@ export class ViewportClient {
   constructor() {
     inject(DestroyRef).onDestroy(() => this.transport?.close());
     void this.start();
+    effect(() => {
+      if (this.bakes.viewportChanged() > 0) {
+        void this.refresh();
+      }
+    });
+  }
+
+  /** Lays a graph's outputs over the mesh on screen. */
+  async showGraph(graph: string): Promise<void> {
+    try {
+      await this.bakes.showGraphOnMesh(graph);
+      this.error.set(null);
+    } catch (error) {
+      this.error.set(error instanceof Error ? error.message : String(error));
+    }
   }
 
   async openMesh(path: string): Promise<void> {
@@ -100,6 +117,13 @@ export class ViewportClient {
       width: frame.width,
       height: frame.height
     });
+  }
+
+  /** Something else changed what the Server shows: the frames say so by themselves, and the label needs telling. */
+  private async refresh(): Promise<void> {
+    const state = unwrap(await this.createClient(await this.connection()).GET('/api/v1/viewport'));
+    this.mesh.set(state.mesh ?? null);
+    this.error.set(state.error ?? null);
   }
 
   private send(input: ViewportInput): void {
