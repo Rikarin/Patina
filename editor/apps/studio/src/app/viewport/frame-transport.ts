@@ -7,6 +7,8 @@ export interface FrameHeader {
   /** The newest input the frame includes. */
   input: number;
   renderMs: number;
+  /** The newest revision of the stack the viewport wears that this frame shows, or 0. */
+  painted: number;
 }
 
 /** One frame: RGBA, tightly packed, top row first. `pixels` is valid until the next frame arrives. */
@@ -35,7 +37,8 @@ export function parseHeader(bytes: ArrayBuffer): FrameHeader | null {
     width: header.getUint32(8, true),
     height: header.getUint32(12, true),
     input: header.getUint32(16, true),
-    renderMs: header.getUint32(20, true) / 1000
+    renderMs: header.getUint32(20, true) / 1000,
+    painted: header.getUint32(24, true)
   };
 }
 

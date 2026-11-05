@@ -19,6 +19,16 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   The composite is the plan's, repaired tile by tile: about 6 ms a stamp at 4K with 20 layers, 38 ms to a client. A Worker that dies
   in a stroke loses nothing. `POST /stacks/{id}/export` writes each map, and `GET /stacks/{id}/pixels` gives a digest of what the
   strokes left, which equals the export's.
+- Painting on a mesh. A stack binds a model (`setModel`) and its maps wear it in the viewport as you paint (`PUT /viewport/stack`), through
+  dirty rectangles, as the bytes an export writes: `GET /stacks/{id}/pixels?sampled=true` reads what each material slot samples, and a test
+  holds it equal to the exported file. Strokes carry a camera (`StackView`) and `POST /viewport/pick` finds a position on the mesh through the
+  Worker. Stamps paint only what the mesh covers, dilate into a gutter, and carry on over seams in the viewport and in the atlas.
+- The Viewport pane paints: a Paint button, Alt to orbit, a brush outline, and a stamp-to-frame readout.
+- The Paint pane has the whole stack: fill, paint, filter and group layers, masks by constant, texture, anchor, generator, bake or paint,
+  all sixteen blend modes, per-layer channels, and a bake for generators to read (`PUT /stacks/{id}/mesh-maps`). `GET /stacks/vocabulary` lists
+  the words these take, so a client keeps no list of its own.
+- Brushes: alphas, rotation, jitter, pressure to size and flow, line and path strokes, and mirroring on the mesh across its X, Y or Z plane.
+- `patina-bench stamps` and `s4-stack`, and `paint.bench.ts`, which measures stamp to frame in a real window.
 - `patina-bench s4`.
 - The repository: licence, conventions, Skala gates with an empty baseline, and CI workflows.
 - `patina-server`: `GET /api/v1/system`, a committed `openapi.json` with a drift test, `--library <path>`, a bearer token

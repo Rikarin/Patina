@@ -67,6 +67,11 @@ sealed class ViewportLiveMap : IDisposable {
         .Select(static value => Decode(value / 255f))
         .ToArray();
 
+    /// <summary>Linear back to sRGB in steps fine enough for the dark end, since a stamp's mips run this per texel.</summary>
+    static readonly byte[] FromLinear = Enumerable.Range(0, 1 << 14)
+        .Select(static value => Coded(value / (float)((1 << 14) - 1)))
+        .ToArray();
+
     readonly VulkanDevice device;
     readonly MapMeaning meaning;
     readonly byte[][] above;
@@ -157,10 +162,11 @@ sealed class ViewportLiveMap : IDisposable {
 
     static float Decode(float value) => value <= 0.04045f ? value / 12.92f : MathF.Pow((value + 0.055f) / 1.055f, 2.4f);
 
-    static byte Encode(float value) {
-        var coded = value <= 0.0031308f ? value * 12.92f : 1.055f * MathF.Pow(value, 1f / 2.4f) - 0.055f;
-        return Byte(coded);
-    }
+    static byte Encode(float value) =>
+        FromLinear[Math.Clamp((int)(value * (FromLinear.Length - 1) + 0.5f), 0, FromLinear.Length - 1)];
+
+    static byte Coded(float value) =>
+        Byte(value <= 0.0031308f ? value * 12.92f : 1.055f * MathF.Pow(value, 1f / 2.4f) - 0.055f);
 
     static byte Byte(float value) => (byte)Math.Clamp((int)(value * 255f + 0.5f), 0, 255);
 

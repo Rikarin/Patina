@@ -1,6 +1,9 @@
 using Patina.Contracts;
 using Patina.Library;
+using Vixen.TextureGraph;
+using Vixen.Texturing;
 using Vixen.Texturing.Layers;
+using Vixen.Texturing.Painting;
 
 namespace Patina.Server.Stacks;
 
@@ -20,6 +23,19 @@ public static class StackDocuments {
     public static string Text(LayerStackAsset document) => LayerStackYaml.Write(document);
 
     public static IReadOnlyList<StackLayer> Layers(IEnumerable<LayerAsset> layers) => [..layers.Select(State)];
+
+    /// <summary>The words a stack's fields take, from the enumerations and libraries that mean them.</summary>
+    public static StackVocabulary Vocabulary { get; } = new(
+        Enum.GetNames<LayerBlendMode>(),
+        [
+            ..Enum.GetValues<LayerFilterKind>()
+                .Select(static kind => new StackFilterKind(kind.ToString(), LayerStackGraph.Filter(kind).Ports))
+        ],
+        Enum.GetNames<LayerMaskSource>(),
+        [..TextureCompoundLibrary.Shipped.Where(static path => path.StartsWith("Generators/", StringComparison.Ordinal))],
+        TextureNodeLibrary.MeshMaps,
+        PaintAlphas.Names
+    );
 
     /// <summary>The stack a new file starts as: a base, and somewhere to paint.</summary>
     public static void Create(string path, int width, int height) {
@@ -67,6 +83,24 @@ public static class StackDocuments {
             layer.Blend.ToString(),
             layer.Channels,
             layer.Paint.Trim().Length > 0,
-            Layers(layer.Children)
+            Layers(layer.Children),
+            layer.Fill.ToString(),
+            Numbers(layer.Values),
+            layer.Textures,
+            layer.Graph,
+            layer.Projection.ToString(),
+            layer.Filter.ToString(),
+            Numbers(layer.Settings),
+            new(
+                layer.Mask.Source.ToString(),
+                layer.Mask.Value,
+                layer.Mask.Asset,
+                layer.Mask.Anchor,
+                layer.Mask.Generator,
+                layer.Mask.Map
+            )
         );
+
+    static Dictionary<string, IReadOnlyList<float>> Numbers(Dictionary<string, float[]> numbers) =>
+        numbers.ToDictionary(static pair => pair.Key, static pair => (IReadOnlyList<float>)pair.Value);
 }

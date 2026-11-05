@@ -28,6 +28,12 @@ static class StackEndpoints {
             stacks.MapGet(route, handler).Describe(name, summary, problems);
 
         Get("/", GetAll, "GetStacks", "The open stacks.");
+        Get(
+            "/vocabulary",
+            static () => TypedResults.Ok(StackDocuments.Vocabulary),
+            "GetStackVocabulary",
+            "The blend modes, filters, mask sources, generators, mesh maps and brush alphas a stack can name."
+        );
         Post("/", Open, "OpenStack", "Opens a layer stack, or joins the session that has it open.", Missing, Refused);
         Post(
             "/new",
@@ -71,6 +77,8 @@ static class StackEndpoints {
             Conflict,
             Unavailable
         );
+        stacks.MapPut("/{id}/mesh-maps", UseMeshMaps)
+            .Describe("SetStackMeshMaps", "Chooses the bake its generators and bake masks read.", Missing);
         Post(
             "/{id}/evaluate",
             Evaluate,
@@ -211,6 +219,19 @@ static class StackEndpoints {
         } catch (TimeoutException e) {
             return TypedResults.Problem(e.Message, statusCode: Unavailable);
         }
+    }
+
+    static Results<NoContent, ProblemHttpResult> UseMeshMaps(
+        string id,
+        StackMeshMapsRequest request,
+        StackSessions sessions
+    ) {
+        if (sessions.Find(id) is not { } session) {
+            return NoSession(id);
+        }
+
+        session.UseMeshMaps(request.Folder is { } folder ? Path.GetFullPath(folder) : null);
+        return TypedResults.NoContent();
     }
 
     static Results<NoContent, ProblemHttpResult> Evaluate(string id, StackSessions sessions) {

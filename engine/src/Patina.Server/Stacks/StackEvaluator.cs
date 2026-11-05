@@ -160,8 +160,9 @@ public sealed class StackEvaluator(
         var held = marks.TryGetValue(session.Id, out var known) ? known : marks[session.Id] = new();
         if (!told.TryGetValue(session.Id, out var state)
             || !ReferenceEquals(state.Connection, connection)
+            || state.MeshMaps != session.MeshMaps
             || !Prefix(state.Base, work.Standing)) {
-            state = new(connection);
+            state = new(connection) { MeshMaps = session.MeshMaps };
             var load = new StackLoad(
                 session.Id,
                 session.Path,
@@ -169,7 +170,7 @@ public sealed class StackEvaluator(
                 session.Set,
                 session.Folder,
                 session.ImageRoots,
-                null,
+                session.MeshMaps,
                 Newest(held, work.Standing),
                 session.Created
             );
@@ -205,7 +206,9 @@ public sealed class StackEvaluator(
 
         // ⚠ The viewport is what a drag watches, and a preview costs an encode per map per stamp. The last part of
         // the stroke has no open strokes, so the maps a client lists catch up as it ends.
-        var side = viewport.Wears(session.Id) && work.Standing.Any(static entry => entry.Open) ? 0 : PreviewSide;
+        var side = viewport.Wears(session.Id) && work.Standing.Any(static entry => entry is { Open: true, View: not null })
+            ? 0
+            : PreviewSide;
         var reply = await connection.SendAsync(
             new() { Type = IpcTypes.StackEvaluate, StackEvaluate = new(session.Id, side, store.Root) },
             cancellationToken
@@ -307,6 +310,8 @@ public sealed class StackEvaluator(
         public IpcConnection Connection { get; } = connection;
 
         public string? Document { get; set; }
+
+        public string? MeshMaps { get; init; }
 
         public Dictionary<long, (int Stamps, bool Open)> Sent { get; } = [];
 

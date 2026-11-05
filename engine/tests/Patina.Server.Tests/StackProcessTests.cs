@@ -138,11 +138,22 @@ public sealed class StackProcessTests : IDisposable {
         var view = await AimAsync(0.5, 0.5, deadline.Token);
         var first = await EditAsync(state.Id, deadline.Token, Across("one", view, 300, 500, 300, false));
         await EvaluatedAsync(socket, first.Revision, deadline.Token);
+
+        // A first stroke named the layer's paint file, so undoing it compiles the plan from before it.
+        await ActAsync(state.Id, "undo", deadline.Token);
+        await SameAsExportAsync(state, "before", deadline.Token);
+        var again = await ActAsync(state.Id, "redo", deadline.Token);
+        await EvaluatedAsync(socket, again.Revision, deadline.Token);
+
         var live = await EditAsync(state.Id, deadline.Token, Across("two", view, 200, 620, 420, true));
         var repaired = await EvaluatedAsync(socket, live.Revision, deadline.Token);
         Assert.True(repaired.Repaired > 0, "The stroke ran whole, so this never reached the viewport as tiles.");
         var closed = await EditAsync(state.Id, deadline.Token, Across("two", view, 620, 200, 200, false));
         await EvaluatedAsync(socket, closed.Revision, deadline.Token);
+
+        // And one in the atlas, as a UV pane sends it, which carries on over the seams it meets.
+        var flat = await PaintAsync(state.Id, "flat", Line(20, 20, 40), false, deadline.Token);
+        await EvaluatedAsync(socket, flat.Revision, deadline.Token);
 
         await SameAsExportAsync(state, "first", deadline.Token);
 
@@ -151,6 +162,60 @@ public sealed class StackProcessTests : IDisposable {
 
         await ActAsync(state.Id, "redo", deadline.Token);
         await SameAsExportAsync(state, "redone", deadline.Token);
+    }
+
+    /// <summary>
+    ///     Every kind of layer the stack has, through the API alone: a fill, a filter, a group holding a layer that moved
+    ///     into it, and masks of each source that need no bake, under sixteen blend modes in turn. What the
+    ///     viewport samples stays what exports, whatever compiled or repaired on the way.
+    /// </summary>
+    [Fact]
+    public async Task Every_kind_of_layer_stays_what_exports() {
+        using var deadline = Deadline(240);
+        var (instance, state) = await StartAsync("Layers.vxlayers", deadline.Token);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        await BindMeshAsync(state.Id, deadline.Token);
+        using var frames = await WearAsync(instance, state.Id, deadline.Token);
+        var words = (await http.GetFromJsonAsync(
+            "/api/v1/stacks/vocabulary",
+            ContractsJsonContext.Default.StackVocabulary,
+            deadline.Token
+        ))!;
+        Assert.Equal(16, words.Blends.Count);
+        Assert.Contains("Generators/Dirt", words.Generators);
+
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackAddLayer("group", "Details"),
+            new StackAddLayer("fill", "Tint", Tint),
+            new StackAddLayer("filter", "Soft", Filter: "Hsl")
+        );
+        var layers = (await StateAsync(state.Id, deadline.Token)).Layers;
+        var (group, fill, filter) = (layers[^3].Id, layers[^2].Id, layers[^1].Id);
+        await EditAsync(state.Id, deadline.Token, new StackNestLayer(fill, group));
+        Assert.Equal(fill, (await StateAsync(state.Id, deadline.Token)).Layers.Single(l => l.Id == group).Children[0].Id);
+
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(filter, Settings: new Dictionary<string, IReadOnlyList<float>> { ["Saturation"] = [0.2f] }),
+            new StackSetLayer(fill, Mask: new("Constant", 0.6f)),
+            new StackSetLayer(group, Mask: new("Anchor", Anchor: "paint"))
+        );
+        var painted = await EditAsync(state.Id, deadline.Token, Across("one", await AimAsync(0.5, 0.5, deadline.Token), 300, 500, 300, false));
+        await EvaluatedAsync(socket, painted.Revision, deadline.Token);
+        await SameAsExportAsync(state, "stack", deadline.Token);
+
+        // A brush on a fill is refused, and on the paint layer's mask it names a canvas of its own.
+        var masked = await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackStroke("mask", "paint", "baseColor", new(30f), Red, Line(60, 60, 20), Mask: true)
+        );
+        await EvaluatedAsync(socket, masked.Revision, deadline.Token);
+        await EditAsync(state.Id, deadline.Token, new StackSetLayer("paint", Blend: "ColourDodge"));
+        await SameAsExportAsync(state, "masked", deadline.Token);
     }
 
     /// <summary>A stroke on a mesh is a list of positions and a camera, so a new Worker lands it in the same texels.</summary>
@@ -390,7 +455,12 @@ public sealed class StackProcessTests : IDisposable {
         var exported = await ExportAsync(state.Id, Path.Combine(folder.FullName, when), token);
         var sampled = await SampledAsync(state.Id, token);
 
-        // Read until the frame's texture has caught up with the document: a pick of the viewport races nothing else.
+        // The viewport hears which stack it wears on its own loop, so on a slow machine it can still be on its way.
+        while (sampled.Count < exported.Count) {
+            await Task.Delay(50, token);
+            sampled = await SampledAsync(state.Id, token);
+        }
+
         foreach (var map in exported) {
             var file = PngCodec.Decode(File.ReadAllBytes(map.File!));
             Assert.Equal(map.Digest, Convert.ToHexStringLower(SHA256.HashData(file.Pixels)));

@@ -121,7 +121,9 @@ public sealed class StackEditorPropertyTests {
     static StackCommand Pick(StackEditor editor, Random random) {
         string[] ids = [..editor.Set.Layers.Select(static layer => layer.Id), "absent"];
         var id = ids[random.Next(ids.Length)];
-        return random.Next(6) switch {
+        return random.Next(8) switch {
+            7 => new StackAddLayer(random.Next(2) == 0 ? "group" : "filter", "Nest", null, random.Next(3) == 0 ? id : null, "Hsl"),
+            6 => new StackNestLayer(id, random.Next(2) == 0 ? ids[random.Next(ids.Length)] : null),
             5 => new StackSetModel(random.Next(3) == 0 ? "" : $"meshes/{random.Next(3)}.glb"),
             0 => new StackAddLayer(random.Next(4) == 0 ? "nonsense" : "fill", $"Layer {random.Next(4)}"),
             1 => new StackRemoveLayer(id),
@@ -131,7 +133,16 @@ public sealed class StackEditorPropertyTests {
                 random.Next(2) == 0 ? "Renamed" : null,
                 random.Next(2) == 0,
                 random.NextSingle() * 1.2f,
-                random.Next(3) == 0 ? "Multiply" : null
+                random.Next(3) == 0 ? "Multiply" : null,
+                random.Next(3) == 0 ? ["baseColor"] : null,
+                random.Next(4) == 0 ? "Texture" : null,
+                random.Next(4) == 0 ? new Dictionary<string, IReadOnlyList<float>> { ["baseColor"] = White } : null,
+                null,
+                null,
+                random.Next(4) == 0 ? "Triplanar" : null,
+                random.Next(4) == 0 ? "Blur" : null,
+                null,
+                random.Next(3) == 0 ? new("Anchor", Anchor: id) : null
             ),
             _ => new StackStroke(
                 $"s{random.Next(3)}",

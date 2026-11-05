@@ -2,16 +2,19 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiInputImports } from '@xui/input';
-import { XuiSwitchImports } from '@xui/switch';
-import { PaintStore, toTexels } from './paint-store';
+import { BrushPanel } from './brush-panel';
+import { LayerPanel } from './layer-panel';
+import { PaintStore, pressureOf, toTexels } from './paint-store';
+import { StrokeGesture } from './stroke-gesture';
 
 /**
- * The layer list and a brush on the composited map. The picture under the brush is the Server's: the same plan that
- * exports, so nothing here composites anything, and a stroke shows when its stamps have come back as a new map.
+ * The stack, the brush, and the atlas to paint on. The picture under the brush is the Server's: the same plan that
+ * exports, so nothing here composites anything, and a stroke shows when its stamps have come back as a new map. With a
+ * mesh bound a stroke here carries on over the seams it crosses, and the Viewport pane paints the mesh itself.
  */
 @Component({
   selector: 'ptn-paint',
-  imports: [XuiButtonImports, XuiCalloutImports, XuiInputImports, XuiSwitchImports],
+  imports: [BrushPanel, LayerPanel, XuiButtonImports, XuiCalloutImports, XuiInputImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
   template: `
@@ -40,7 +43,34 @@ import { PaintStore, toTexels } from './paint-store';
       }
 
       @if (store.state(); as state) {
-        <div class="well relative aspect-square w-full touch-none overflow-hidden" data-testid="paint-canvas">
+        <div class="flex items-center gap-1">
+          <input
+            class="min-w-0 flex-1"
+            xuiInput
+            size="sm"
+            autocomplete="off"
+            aria-label="Mesh file"
+            data-testid="paint-mesh"
+            placeholder="The mesh to paint on"
+            [value]="mesh() ?? state.model"
+            (input)="mesh.set(text($event))"
+          />
+          <button type="button" xuiButton size="sm" variant="ghost" data-testid="paint-mesh-viewport" (click)="adopt()">
+            From viewport
+          </button>
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            data-testid="paint-bind"
+            [disabled]="!(mesh() ?? state.model)"
+            (click)="bind(state.model)"
+          >
+            Paint on mesh
+          </button>
+        </div>
+
+        <div class="well relative aspect-square w-full shrink-0 touch-none overflow-hidden" data-testid="paint-canvas">
           @if (store.picture(); as picture) {
             <img
               class="size-full select-none"
@@ -52,6 +82,7 @@ import { PaintStore, toTexels } from './paint-store';
               (pointermove)="move($event)"
               (pointerup)="up()"
               (pointercancel)="up()"
+              (dblclick)="gesture.finish()"
             />
           }
         </div>
@@ -71,26 +102,7 @@ import { PaintStore, toTexels } from './paint-store';
           }
         </div>
 
-        <div class="flex items-center gap-2">
-          <span class="text-foreground-muted text-xs">Size</span>
-          <input
-            class="min-w-0 flex-1"
-            type="range"
-            min="1"
-            max="256"
-            aria-label="Brush size"
-            data-testid="paint-size"
-            [value]="store.radius()"
-            (input)="store.radius.set(number($event))"
-          />
-          <input
-            type="color"
-            aria-label="Brush colour"
-            data-testid="paint-colour"
-            [value]="store.colour()"
-            (input)="store.colour.set(text($event))"
-          />
-        </div>
+        <ptn-brush-panel />
 
         <div class="flex items-center gap-1">
           <button
@@ -118,33 +130,9 @@ import { PaintStore, toTexels } from './paint-store';
           <button type="button" xuiButton size="sm" variant="ghost" data-testid="paint-save" (click)="store.act('save')">
             Save
           </button>
-          <span class="flex-1"></span>
-          <button type="button" xuiButton size="sm" variant="ghost" data-testid="paint-add" (click)="store.addLayer()">
-            Add layer
-          </button>
         </div>
 
-        <ul class="flex flex-col gap-0.5" aria-label="Layers" data-testid="paint-layers">
-          @for (layer of store.layers(); track layer.id) {
-            <li class="pane flex items-center gap-2 px-2 py-1" [attr.data-testid]="'paint-layer-' + layer.id">
-              <xui-switch
-                [checked]="layer.enabled"
-                [attr.aria-label]="'Show ' + layer.name"
-                (checkedChange)="store.setEnabled(layer, $event)"
-              />
-              <button
-                type="button"
-                class="min-w-0 flex-1 truncate text-left text-xs"
-                [class.font-semibold]="layer.id === store.layer()"
-                [disabled]="layer.kind !== 'paint'"
-                (click)="store.layer.set(layer.id)"
-              >
-                {{ layer.name }}
-              </button>
-              <span class="readout">{{ layer.kind }}</span>
-            </li>
-          }
-        </ul>
+        <ptn-layer-panel />
       }
     </div>
   `
@@ -152,6 +140,9 @@ import { PaintStore, toTexels } from './paint-store';
 export class PaintPane {
   protected readonly store = inject(PaintStore);
   protected readonly path = signal('');
+  /** What the mesh field says while it differs from the document, or null. */
+  protected readonly mesh = signal<string | null>(null);
+  protected readonly gesture = new StrokeGesture(this.store, () => undefined);
 
   private readonly side = computed<readonly [number, number]>(() => {
     const state = this.store.state();
@@ -164,31 +155,39 @@ export class PaintPane {
     return (event.target as HTMLInputElement).value;
   }
 
-  protected number(event: Event): number {
-    return Number((event.target as HTMLInputElement).value);
+  protected async adopt(): Promise<void> {
+    this.mesh.set(await this.store.viewportMesh());
+  }
+
+  protected async bind(held: string): Promise<void> {
+    await this.store.bindMesh(this.mesh() ?? held);
+    this.mesh.set(null);
   }
 
   protected down(event: PointerEvent): void {
     (event.target as HTMLElement).setPointerCapture(event.pointerId);
     this.painting = true;
-    this.store.begin(this.stamp(event));
+    this.gesture.press(this.stamp(event));
   }
 
   protected move(event: PointerEvent): void {
     if (this.painting) {
-      this.store.move(this.stamp(event));
+      this.gesture.move(this.stamp(event));
     }
   }
 
   protected up(): void {
     if (this.painting) {
       this.painting = false;
-      this.store.end();
+      this.gesture.release();
     }
   }
 
   private stamp(event: PointerEvent) {
     const box = (event.target as HTMLElement).getBoundingClientRect();
-    return toTexels(event.clientX - box.left, event.clientY - box.top, box.width, box.height, this.side());
+    return {
+      ...toTexels(event.clientX - box.left, event.clientY - box.top, box.width, box.height, this.side()),
+      pressure: pressureOf(event)
+    };
   }
 }

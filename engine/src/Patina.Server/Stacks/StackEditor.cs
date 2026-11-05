@@ -191,6 +191,7 @@ public sealed class StackEditor : ILayerStackDocument {
         command switch {
             StackAddLayer add => $"Add {add.Name}",
             StackRemoveLayer => "Remove layer",
+            StackNestLayer => "Move layer",
             StackMoveLayer => "Move layer",
             StackSetLayer => "Change layer",
             StackSetModel => "Bind mesh",
@@ -267,6 +268,9 @@ public sealed class StackEditor : ILayerStackDocument {
             case StackSetLayer change:
                 Do(Change(change, set));
                 break;
+            case StackNestLayer nest:
+                Nest(nest, set, Do);
+                break;
             case StackSetModel model:
                 Do(new SetModelCommand(this, model.Model, "Bind mesh"));
                 break;
@@ -287,27 +291,88 @@ public sealed class StackEditor : ILayerStackDocument {
             Set,
             add.Name.Length > 0 ? add.Name.ToLowerInvariant().Replace(' ', '-') : "layer"
         );
+        var filter = LayerFilterKind.Levels;
+        if (add.Filter is { } named && !Enum.TryParse(named, true, out filter)) {
+            throw new StackEditRefusedException($"'{named}' is not a filter.");
+        }
+
         return new(
             this,
-            new(set, null, Set.Layers.Count),
+            Top(set, add.Parent),
             new() {
                 Id = id,
                 Name = add.Name,
                 Kind = kind,
-                Values = add.Values?.ToDictionary(static value => value.Key, static value => value.Value.ToArray())
-                    ?? []
+                Filter = filter,
+                Values = Copied(add.Values) ?? []
             },
             $"Add {add.Name}"
         );
     }
 
-    SetLayerCommand Change(StackSetLayer change, string set) {
-        var layer = Require(change.Layer);
-        var blend = layer.Blend;
-        if (change.Blend is { } name && !Enum.TryParse(name, true, out blend)) {
-            throw new StackEditRefusedException($"'{name}' is not a blend mode.");
+    /// <summary>The slot at the top of a group, or of the stack.</summary>
+    LayerSlot Top(string set, string? parent) {
+        if (parent is null) {
+            return new(set, null, Set.Layers.Count);
         }
 
+        var group = Require(parent);
+        return group.Kind == LayerKind.Group
+            ? new(set, parent, group.Children.Count)
+            : throw new StackEditRefusedException($"'{group.Name}' is not a group.");
+    }
+
+    void Nest(StackNestLayer nest, string set, Action<IAuthoringCommand> run) {
+        var layer = Require(nest.Layer);
+        if (nest.Parent is { } parent && Inside(layer, parent)) {
+            throw new StackEditRefusedException("A group cannot go inside itself.");
+        }
+
+        run(new RemoveLayerCommand(this, new(set, layer.Id), "Move layer"));
+        run(new AddLayerCommand(this, Top(set, nest.Parent), layer, "Move layer"));
+    }
+
+    static bool Inside(LayerAsset layer, string id) =>
+        layer.Id == id || layer.Children.Exists(child => Inside(child, id));
+
+    static Dictionary<string, float[]>? Copied(IReadOnlyDictionary<string, IReadOnlyList<float>>? numbers) =>
+        numbers?.ToDictionary(static value => value.Key, static value => value.Value.ToArray());
+
+    static Dictionary<string, TValue> Merged<TValue>(
+        Dictionary<string, TValue> held,
+        IEnumerable<KeyValuePair<string, TValue>>? changed
+    ) {
+        Dictionary<string, TValue> merged = new(held, StringComparer.Ordinal);
+        foreach (var (key, value) in changed ?? []) {
+            merged[key] = value;
+        }
+
+        return merged;
+    }
+
+    /// <exception cref="StackEditRefusedException">It does not name a value of that enumeration.</exception>
+    static TEnum Parsed<TEnum>(string? name, TEnum held, string what) where TEnum : struct, Enum =>
+        name is null
+            ? held
+            : Enum.TryParse<TEnum>(name, true, out var parsed)
+                ? parsed
+                : throw new StackEditRefusedException($"'{name}' is not a {what}.");
+
+    /// <summary>A mask as asked for, keeping the canvas it may already paint.</summary>
+    static MaskAsset Masked(MaskAsset held, StackMask? mask) =>
+        mask is null
+            ? held
+            : held with {
+                Source = Parsed(mask.Source, held.Source, "mask source"),
+                Value = mask.Value,
+                Asset = mask.Asset,
+                Anchor = mask.Anchor,
+                Generator = mask.Generator,
+                Map = mask.Map
+            };
+
+    SetLayerCommand Change(StackSetLayer change, string set) {
+        var layer = Require(change.Layer);
         if (change.Opacity is < 0f or > 1f) {
             throw new StackEditRefusedException("An opacity is from 0 to 1.");
         }
@@ -320,7 +385,16 @@ public sealed class StackEditor : ILayerStackDocument {
                 Name = change.Name ?? layer.Name,
                 Enabled = change.Enabled ?? layer.Enabled,
                 Opacity = change.Opacity ?? layer.Opacity,
-                Blend = blend
+                Blend = Parsed(change.Blend, layer.Blend, "blend mode"),
+                Channels = change.Channels is { } channels ? [..channels] : layer.Channels,
+                Fill = Parsed(change.Fill, layer.Fill, "kind of fill"),
+                Values = Merged(layer.Values, Copied(change.Values)),
+                Textures = Merged(layer.Textures, change.Textures),
+                Graph = change.Graph ?? layer.Graph,
+                Projection = Parsed(change.Projection, layer.Projection, "projection"),
+                Filter = Parsed(change.Filter, layer.Filter, "filter"),
+                Settings = Merged(layer.Settings, Copied(change.Settings)),
+                Mask = Masked(layer.Mask, change.Mask)
             },
             "Change layer"
         );

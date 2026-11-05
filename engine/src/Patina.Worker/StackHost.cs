@@ -24,6 +24,9 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
     /// <summary>How far a stamp on a mesh is dilated past an island's edge, in texels.</summary>
     const int Gutter = 4;
 
+    /// <summary>How far beyond a stroke's rectangle a repair can move a texel: a bilinear read, and one over.</summary>
+    const int Margin = 2;
+
     readonly PreviewWriter previews = new();
     readonly CompoundShelf compounds = new();
     readonly GraphPictures pictures = new();
@@ -133,13 +136,13 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
             }
 
             var key = bake.KeyOf(output.Image);
-            var known = stack.Fed.TryGetValue(output.Image, out var fed);
+            var known = stack.Fed.TryGetValue(slot, out var fed);
             if (known && fed == key) {
                 continue;
             }
 
             if (known && bake.RepairOf(output.Image) is { Length: > 0 } rects) {
-                TextureRect[] list = [..rects];
+                TextureRect[] list = [..stack.Narrowed(rects)];
                 var patches = bake.Read(output.Image, list);
                 viewport.Live.RepairLive(
                     slot,
@@ -157,8 +160,10 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
                 viewport.Live.SetLive(slot, map.Width, map.Height, map.Pixels);
             }
 
-            stack.Fed[output.Image] = key;
+            stack.Fed[slot] = key;
         }
+
+        stack.Reported();
     }
 
     static ViewportSlot? Slot(string usage) =>
@@ -266,6 +271,8 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
         readonly Dictionary<string, PaintMeshSurface> surfaces = new(StringComparer.Ordinal);
         readonly Dictionary<string, IBrushMask> alphas = new(StringComparer.Ordinal);
         readonly MeshShelf meshes;
+        readonly List<PaintRect> dirtied = [];
+        bool unknown = true;
         LayerStackAsset document;
         bool stale = true;
 
@@ -307,8 +314,12 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
 
         public LayerStackEvaluator Run { get; }
 
-        /// <summary>Which version of each output the viewport holds.</summary>
-        public Dictionary<int, TextureResultKey> Fed { get; } = [];
+        /// <summary>
+        ///     Which version of each map the viewport holds, by slot. ⚠ Not by image: an undone first stroke takes the
+        ///     layer's paint file away, which compiles the old plan back with its old image numbers, and an entry under
+        ///     such a number says the viewport holds a picture it stopped holding two compiles ago.
+        /// </summary>
+        public Dictionary<ViewportSlot, TextureResultKey> Fed { get; } = [];
 
         public string Name => Path.GetFileNameWithoutExtension(path);
 
@@ -335,6 +346,7 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
             for (var index = applied.Count - 1; index >= common; index--) {
                 Close(applied[index]).Undo(Context);
                 applied.RemoveAt(index);
+                unknown = true;
             }
 
             var parts = sync.Parts.ToDictionary(static part => part.Id);
@@ -343,6 +355,7 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
                 if (known.TryGetValue(id, out var stroke)) {
                     Close(stroke).Do(Context);
                     applied.Add(stroke);
+                    unknown = true;
                 } else if (parts.TryGetValue(id, out var part)) {
                     applied.Add(Begin(part));
                 } else {
@@ -353,6 +366,42 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
             foreach (var part in sync.Parts) {
                 Extend(known[part.Id], part);
             }
+        }
+
+        /// <summary>
+        ///     The rectangles of a repair that strokes reached since the viewport last heard. A repair is on the tile
+        ///     cache's whole tiles, which is what a composite wants and far more than a stamp changes, and reading a
+        ///     tile back is most of what a stamp costs on the way to the screen. Each op of a repair reads at most one
+        ///     texel away, or it would not be a repair, so what the strokes touched and a margin is all that moved.
+        ///     An undo says nothing about where, so that sends the whole of each rectangle.
+        /// </summary>
+        public IEnumerable<TextureRect> Narrowed(IEnumerable<TextureRect> rects) {
+            foreach (var rect in rects) {
+                if (unknown) {
+                    yield return rect;
+                    continue;
+                }
+
+                PaintRect tile = new(rect.X, rect.Y, rect.Width, rect.Height);
+                var reached = PaintRect.Empty;
+                foreach (var region in dirtied) {
+                    reached = reached.Union(region.Grow(Margin).Intersect(tile));
+                }
+
+                if (reached.IsEmpty) {
+                    continue;
+                }
+
+                // A mip is made of whole pairs of texels, so the corner goes down to even numbers.
+                var (x, y) = (reached.X & ~1, reached.Y & ~1);
+                yield return new(x, y, reached.EndX - x, reached.EndY - y);
+            }
+        }
+
+        /// <summary>The viewport has heard everything so far.</summary>
+        public void Reported() {
+            dirtied.Clear();
+            unknown = false;
         }
 
         /// <summary>Brings the plan up to the document, which only a change of structure compiles.</summary>
@@ -514,7 +563,7 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
             }
         }
 
-        static void Extend(Applied stroke, StackPaintPart part) {
+        void Extend(Applied stroke, StackPaintPart part) {
             if (stroke.Curve is { } curve) {
                 foreach (var stamp in part.Stamps) {
                     curve.Add(new(stamp.X, stamp.Y));
@@ -524,12 +573,12 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
                     List<Vector2> points = [];
                     curve.Sample(points);
                     foreach (var point in points) {
-                        stroke.Stroke.MoveTo(point);
+                        stroke.Stroke.MoveTo(point, dirtied);
                     }
                 }
             } else {
                 foreach (var stamp in part.Stamps) {
-                    stroke.Stroke.MoveTo(new(stamp.X, stamp.Y), pressure: stamp.Pressure);
+                    stroke.Stroke.MoveTo(new(stamp.X, stamp.Y), dirtied, stamp.Pressure);
                 }
             }
 

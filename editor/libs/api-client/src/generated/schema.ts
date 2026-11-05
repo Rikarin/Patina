@@ -72,6 +72,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/viewport/pick': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** What is under a position in the viewport, and the camera a stroke there carries. */
+    post: operations['PickInViewport'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/viewport/stack': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Puts a stack on its mesh in the viewport, which shows every stroke from then on. */
+    put: operations['ShowStackInViewport'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/viewport/maps': {
     parameters: {
       query?: never;
@@ -502,6 +536,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/stacks/vocabulary': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The blend modes, filters, mask sources, generators, mesh maps and brush alphas a stack can name. */
+    get: operations['GetStackVocabulary'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/stacks/new': {
     parameters: {
       query?: never;
@@ -599,6 +650,23 @@ export interface paths {
     put?: never;
     /** Writes the pixels and then the stack. A file changed on disk refuses this unless force is set. */
     post: operations['SaveStack'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/mesh-maps': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Chooses the bake its generators and bake masks read. */
+    put: operations['SetStackMeshMaps'];
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -1915,7 +1983,7 @@ export interface components {
     StackBrush: {
       /**
        * Format: float
-       * @description In texels.
+       * @description In texels, or in the units of the picture for a stroke with a view.
        */
       radius: number;
       /**
@@ -1942,6 +2010,49 @@ export interface components {
        * @default 0.5
        */
       falloff: number;
+      /** @description A named alpha (Round, Square, Chisel, Cross) or an image relative to the stack, or null. */
+      alpha?: null | string;
+      /**
+       * Format: float
+       * @description Its fixed rotation, in radians.
+       * @default 0
+       */
+      angle: number;
+      /**
+       * @description fixed, along or random.
+       * @default fixed
+       */
+      rotation: string;
+      /**
+       * Format: float
+       * @description How far a stamp strays, as a share of the radius, 0 to 1.
+       * @default 0
+       */
+      positionJitter: number;
+      /**
+       * Format: float
+       * @description How far a stamp turns either way, in radians.
+       * @default 0
+       */
+      angleJitter: number;
+      /**
+       * Format: float
+       * @description How much of its radius a stamp can lose, 0 to 1.
+       * @default 0
+       */
+      sizeJitter: number;
+      /**
+       * Format: float
+       * @description How much of the radius pressure takes off, 0 to 1.
+       * @default 0
+       */
+      pressureSize: number;
+      /**
+       * Format: float
+       * @description How much of the flow pressure takes off, 0 to 1.
+       * @default 0
+       */
+      pressureFlow: number;
     };
     /** @description A channel a stack writes. */
     StackChannel: {
@@ -1956,7 +2067,9 @@ export interface components {
       | components['schemas']['StackCommandStackRemoveLayer']
       | components['schemas']['StackCommandStackMoveLayer']
       | components['schemas']['StackCommandStackSetLayer']
-      | components['schemas']['StackCommandStackStroke'];
+      | components['schemas']['StackCommandStackStroke']
+      | components['schemas']['StackCommandStackSetModel']
+      | components['schemas']['StackCommandStackNestLayer'];
     /** @description Edits applied whole or not at all, as one undo step. */
     StackCommandBatch: {
       /** @description The edits, in order. */
@@ -1976,6 +2089,10 @@ export interface components {
       values?: null | {
         [key: string]: number[];
       };
+      /** @description The group it goes at the top of, or null for the stack itself. */
+      parent?: null | string;
+      /** @description What a filter layer does: Levels, Hsl, Blur, Invert or Grayscale. */
+      filter?: null | string;
     };
     /** @description Moves a layer up or down its list. */
     StackCommandStackMoveLayer: {
@@ -1988,6 +2105,15 @@ export interface components {
        * @description How many places, up the stack when positive.
        */
       delta: number;
+    };
+    /** @description Moves a layer to the top of a group, or of the stack. */
+    StackCommandStackNestLayer: {
+      /** @enum {string} */
+      op: 'nestLayer';
+      /** @description Which. */
+      layer: string;
+      /** @description The group, or null for the stack itself. */
+      parent?: null | string;
     };
     /** @description Removes a layer. */
     StackCommandStackRemoveLayer: {
@@ -2013,6 +2139,36 @@ export interface components {
       opacity?: null | number;
       /** @description Its blend mode. */
       blend?: null | string;
+      /** @description Which channels it writes. Empty means all of them. */
+      channels?: null | string[];
+      /** @description What a fill reads: Constant, Texture or Graph. */
+      fill?: null | string;
+      /** @description What a constant fill writes, replacing what these channels held. */
+      values?: null | {
+        [key: string]: unknown;
+      };
+      /** @description What a texture fill reads, replacing what these channels held. */
+      textures?: null | {
+        [key: string]: string;
+      };
+      /** @description The graph a graph fill reads. */
+      graph?: null | string;
+      /** @description How a fill lands on the mesh: Uv, Triplanar or Planar. */
+      projection?: null | string;
+      /** @description What a filter does. */
+      filter?: null | string;
+      /** @description A filter's numbers, replacing what these names held. */
+      settings?: null | {
+        [key: string]: unknown;
+      };
+      mask?: null | components['schemas']['StackMask'];
+    };
+    /** @description Names the mesh a stack is painted on, which is undone like any other edit. */
+    StackCommandStackSetModel: {
+      /** @enum {string} */
+      op: 'setModel';
+      /** @description A model file, absolute or relative to the stack. Empty takes the mesh away. */
+      model: string;
     };
     /**
      * @description Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one
@@ -2043,6 +2199,14 @@ export interface components {
        * @default false
        */
       mask: boolean;
+      view?: null | components['schemas']['StackView'];
+      /**
+       * @description free follows the stamps; line and path run through them as control points when the stroke ends.
+       * @default free
+       */
+      curve: string;
+      /** @description x, y or z mirrors a stroke on the mesh through that plane of the mesh, or null. */
+      mirror?: null | string;
     };
     /** @description Creates a layer stack: one base fill, and one paint layer over it. */
     StackCreateRequest: {
@@ -2153,6 +2317,13 @@ export interface components {
       /** @description Where, absolute or relative to the library. */
       folder: string;
     };
+    /** @description A filter a layer can be, and the numbers it takes. */
+    StackFilterKind: {
+      /** @description Levels, Hsl, Blur, Invert or Grayscale. */
+      kind: string;
+      /** @description Its numbers' names. */
+      settings: string[];
+    };
     /** @description One layer, without its pixels. */
     StackLayer: {
       /** @description Its identifier, stable across renames. */
@@ -2176,6 +2347,64 @@ export interface components {
       painted: boolean;
       /** @description What a group holds. */
       children: components['schemas']['StackLayer'][];
+      /** @description What a fill reads: Constant, Texture or Graph. */
+      fill: string;
+      /** @description What a constant fill writes to each channel. */
+      values: {
+        [key: string]: number[];
+      };
+      /** @description What a texture fill reads for each channel. */
+      textures: {
+        [key: string]: string;
+      };
+      /** @description The graph a graph fill reads. */
+      graph: string;
+      /** @description How a fill lands on the mesh: Uv, Triplanar or Planar. */
+      projection: string;
+      /** @description What a filter does: Levels, Hsl, Blur, Invert or Grayscale. */
+      filter: string;
+      /** @description A filter's numbers. */
+      settings: {
+        [key: string]: number[];
+      };
+      /** @description Its mask. */
+      mask: components['schemas']['StackMask'];
+    };
+    /** @description What decides where a layer shows. */
+    StackMask: {
+      /** @description None, Constant, Texture, Anchor, Generator, Bake or Paint. */
+      source: string;
+      /**
+       * Format: float
+       * @description A constant mask's value.
+       * @default 1
+       */
+      value: number;
+      /**
+       * @description The image a texture mask reads.
+       * @default
+       */
+      asset: string;
+      /**
+       * @description The layer an anchor mask reads.
+       * @default
+       */
+      anchor: string;
+      /**
+       * @description The compound a generator runs, such as Generators/Dirt.
+       * @default
+       */
+      generator: string;
+      /**
+       * @description The mesh map a bake mask reads.
+       * @default
+       */
+      map: string;
+    };
+    /** @description Chooses the bake a stack's generators and bake masks read. */
+    StackMeshMapsRequest: {
+      /** @description The bake's folder, or null for none. */
+      folder?: null | string;
     };
     /** @description Opens a layer stack. */
     StackOpenRequest: {
@@ -2225,7 +2454,7 @@ export interface components {
        */
       height: number;
     };
-    /** @description Where the brush goes, in texels from the image's top left. */
+    /** @description Where the brush goes: in texels from the image's top left, or on the stroke's picture when it has a view. */
     StackStamp: {
       /**
        * Format: float
@@ -2237,6 +2466,12 @@ export interface components {
        * @description Its row.
        */
       y: number;
+      /**
+       * Format: float
+       * @description How hard, 0 to 1.
+       * @default 1
+       */
+      pressure: number;
     };
     /** @description A whole stack: everything a client needs to draw it, and no pixels. */
     StackState: {
@@ -2282,6 +2517,10 @@ export interface components {
        * @description The newest revision an evaluation has reached.
        */
       settled: number;
+      /** @description The mesh it is painted on, as the document names it, or empty. */
+      model: string;
+      /** @description The bake its generators read, or null. */
+      meshMaps?: null | string;
     };
     /** @description An open stack, for a list. */
     StackSummary: {
@@ -2298,6 +2537,50 @@ export interface components {
       revision: number;
       /** @description Whether it has edits no file holds. */
       dirty: boolean;
+    };
+    /**
+     * @description A camera in the mesh's own space, which a stroke keeps because a position on a picture means nothing without
+     *     it. Any client with a camera can fill this in; `POST /viewport/pick` gives the viewport's.
+     */
+    StackView: {
+      /** @description Where it is: three numbers. */
+      eye: number[];
+      /** @description The unit direction a column grows in: three numbers. */
+      right: number[];
+      /** @description The unit direction a row shrinks in: three numbers. */
+      up: number[];
+      /** @description The unit direction it looks: three numbers. */
+      forward: number[];
+      /**
+       * Format: float
+       * @description In radians.
+       */
+      verticalFieldOfView: number;
+      /**
+       * Format: int32
+       * @description The picture's width, in the units stamps and the brush's radius are in.
+       */
+      width: number;
+      /**
+       * Format: int32
+       * @description Its height.
+       */
+      height: number;
+    };
+    /** @description The words a stack's fields take, so that a client holds no list of its own. */
+    StackVocabulary: {
+      /** @description The sixteen blend modes. */
+      blends: string[];
+      /** @description The filters. */
+      filters: components['schemas']['StackFilterKind'][];
+      /** @description The mask sources. */
+      masks: string[];
+      /** @description The compounds that read a mesh's bakes. */
+      generators: string[];
+      /** @description The maps a bake mask or a generator can read. */
+      meshMaps: string[];
+      /** @description The named brush alphas. */
+      alphas: string[];
     };
     /** @description The reply to `GET /api/v1/system`. */
     SystemInfo: {
@@ -2396,6 +2679,62 @@ export interface components {
       /** @description The file's path, on the Server's machine. */
       path: string;
     };
+    /** @description What a position in the viewport landed on. */
+    ViewportPick: {
+      /** @description Whether it met the mesh. */
+      found: boolean;
+      /** @description The camera it was looked through, which a stroke on the mesh carries. */
+      view: components['schemas']['StackView'];
+      /**
+       * Format: int32
+       * @description The triangle.
+       * @default -1
+       */
+      triangle: number;
+      /**
+       * Format: float
+       * @description The texture coordinate across.
+       * @default 0
+       */
+      u: number;
+      /**
+       * Format: float
+       * @description The texture coordinate down.
+       * @default 0
+       */
+      v: number;
+      /** @description Where on the mesh, in its own space: three numbers. */
+      position?: null | number[];
+    };
+    /** @description Asks what is under a position in the viewport. */
+    ViewportPickRequest: {
+      /**
+       * Format: double
+       * @description Across the picture, 0 to 1.
+       */
+      x: number;
+      /**
+       * Format: double
+       * @description Down it, 0 to 1.
+       */
+      y: number;
+      camera?: null | components['schemas']['ViewportCameraState'];
+      /**
+       * Format: int32
+       * @description The picture's width in the units a stroke will use, or null for the viewport's.
+       */
+      width?: null | number;
+      /**
+       * Format: int32
+       * @description Its height.
+       */
+      height?: null | number;
+    };
+    /** @description Asks the viewport to wear a stack: its mesh, and its maps as the strokes leave them. */
+    ViewportStackRequest: {
+      /** @description The stack session. */
+      stack: string;
+    };
     /** @description The reply to `GET /api/v1/viewport`. The Server owns all of this; a Worker can die without losing it. */
     ViewportState: {
       /** @description The mesh's path, or null when none is open. */
@@ -2426,6 +2765,8 @@ export interface components {
       frames: number;
       /** @description Why the last command failed, or null. */
       error?: null | string;
+      /** @description The stack session it is wearing, or null. */
+      stack?: null | string;
     };
     /** @description The Worker as the Server sees it. All but `Connected` are null while there is none. */
     WorkerStatus: {
@@ -2542,6 +2883,90 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ViewportState'];
+        };
+      };
+    };
+  };
+  PickInViewport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportPickRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportPick'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  ShowStackInViewport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportStackRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportState'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
     };
@@ -3738,6 +4163,26 @@ export interface operations {
       };
     };
   };
+  GetStackVocabulary: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackVocabulary'];
+        };
+      };
+    };
+  };
   CreateStack: {
     parameters: {
       query?: never;
@@ -4026,6 +4471,39 @@ export interface operations {
       };
     };
   };
+  SetStackMeshMaps: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StackMeshMapsRequest'];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   EvaluateStack: {
     parameters: {
       query?: never;
@@ -4059,6 +4537,7 @@ export interface operations {
     parameters: {
       query?: {
         clean?: boolean;
+        sampled?: boolean;
       };
       header?: never;
       path: {

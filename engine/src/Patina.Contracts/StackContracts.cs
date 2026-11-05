@@ -30,6 +30,14 @@ public sealed record StackChannel(string Usage, IReadOnlyList<float> Default);
 /// <param name="Channels">Which channels it writes. Empty means all of them.</param>
 /// <param name="Painted">Whether it names a paint file yet.</param>
 /// <param name="Children">What a group holds.</param>
+/// <param name="Fill">What a fill reads: Constant, Texture or Graph.</param>
+/// <param name="Values">What a constant fill writes to each channel.</param>
+/// <param name="Textures">What a texture fill reads for each channel.</param>
+/// <param name="Graph">The graph a graph fill reads.</param>
+/// <param name="Projection">How a fill lands on the mesh: Uv, Triplanar or Planar.</param>
+/// <param name="Filter">What a filter does: Levels, Hsl, Blur, Invert or Grayscale.</param>
+/// <param name="Settings">A filter's numbers.</param>
+/// <param name="Mask">Its mask.</param>
 public sealed record StackLayer(
     string Id,
     string Name,
@@ -39,8 +47,57 @@ public sealed record StackLayer(
     string Blend,
     IReadOnlyList<string> Channels,
     bool Painted,
-    IReadOnlyList<StackLayer> Children
+    IReadOnlyList<StackLayer> Children,
+    string Fill,
+    IReadOnlyDictionary<string, IReadOnlyList<float>> Values,
+    IReadOnlyDictionary<string, string> Textures,
+    string Graph,
+    string Projection,
+    string Filter,
+    IReadOnlyDictionary<string, IReadOnlyList<float>> Settings,
+    StackMask Mask
 );
+
+/// <summary>What decides where a layer shows.</summary>
+/// <param name="Source">None, Constant, Texture, Anchor, Generator, Bake or Paint.</param>
+/// <param name="Value">A constant mask's value.</param>
+/// <param name="Asset">The image a texture mask reads.</param>
+/// <param name="Anchor">The layer an anchor mask reads.</param>
+/// <param name="Generator">The compound a generator runs, such as Generators/Dirt.</param>
+/// <param name="Map">The mesh map a bake mask reads.</param>
+public sealed record StackMask(
+    string Source,
+    float Value = 1f,
+    string Asset = "",
+    string Anchor = "",
+    string Generator = "",
+    string Map = ""
+);
+
+/// <summary>A filter a layer can be, and the numbers it takes.</summary>
+/// <param name="Kind">Levels, Hsl, Blur, Invert or Grayscale.</param>
+/// <param name="Settings">Its numbers' names.</param>
+public sealed record StackFilterKind(string Kind, IReadOnlyList<string> Settings);
+
+/// <summary>The words a stack's fields take, so that a client holds no list of its own.</summary>
+/// <param name="Blends">The sixteen blend modes.</param>
+/// <param name="Filters">The filters.</param>
+/// <param name="Masks">The mask sources.</param>
+/// <param name="Generators">The compounds that read a mesh's bakes.</param>
+/// <param name="MeshMaps">The maps a bake mask or a generator can read.</param>
+/// <param name="Alphas">The named brush alphas.</param>
+public sealed record StackVocabulary(
+    IReadOnlyList<string> Blends,
+    IReadOnlyList<StackFilterKind> Filters,
+    IReadOnlyList<string> Masks,
+    IReadOnlyList<string> Generators,
+    IReadOnlyList<string> MeshMaps,
+    IReadOnlyList<string> Alphas
+);
+
+/// <summary>Chooses the bake a stack's generators and bake masks read.</summary>
+/// <param name="Folder">The bake's folder, or null for none.</param>
+public sealed record StackMeshMapsRequest(string? Folder);
 
 /// <summary>A map as a small picture, by the hash an event carries.</summary>
 /// <param name="Usage">Which channel.</param>
@@ -87,6 +144,7 @@ public sealed record StackEvaluation(
 /// <param name="Evaluation">The last evaluation, or null.</param>
 /// <param name="Settled">The newest revision an evaluation has reached.</param>
 /// <param name="Model">The mesh it is painted on, as the document names it, or empty.</param>
+/// <param name="MeshMaps">The bake its generators read, or null.</param>
 public sealed record StackState(
     string Id,
     string Path,
@@ -102,7 +160,8 @@ public sealed record StackState(
     IReadOnlyList<StackPreview> Previews,
     StackEvaluation? Evaluation,
     long Settled,
-    string Model
+    string Model,
+    string? MeshMaps = null
 );
 #pragma warning restore SK7005
 
@@ -122,17 +181,27 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackSetLayer), "setLayer")]
 [JsonDerivedType(typeof(StackStroke), "stroke")]
 [JsonDerivedType(typeof(StackSetModel), "setModel")]
+[JsonDerivedType(typeof(StackNestLayer), "nestLayer")]
 public abstract record StackCommand;
 
 /// <summary>Adds a layer at the top of the stack.</summary>
 /// <param name="Kind">fill, paint, filter or group.</param>
 /// <param name="Name">What it is called.</param>
 /// <param name="Values">What a fill writes to each channel, as four numbers. Ignored for other kinds.</param>
+/// <param name="Parent">The group it goes at the top of, or null for the stack itself.</param>
+/// <param name="Filter">What a filter layer does: Levels, Hsl, Blur, Invert or Grayscale.</param>
 public sealed record StackAddLayer(
     string Kind,
     string Name,
-    IReadOnlyDictionary<string, IReadOnlyList<float>>? Values = null
+    IReadOnlyDictionary<string, IReadOnlyList<float>>? Values = null,
+    string? Parent = null,
+    string? Filter = null
 ) : StackCommand;
+
+/// <summary>Moves a layer to the top of a group, or of the stack.</summary>
+/// <param name="Layer">Which.</param>
+/// <param name="Parent">The group, or null for the stack itself.</param>
+public sealed record StackNestLayer(string Layer, string? Parent) : StackCommand;
 
 /// <summary>Removes a layer.</summary>
 /// <param name="Layer">Which.</param>
@@ -149,12 +218,30 @@ public sealed record StackMoveLayer(string Layer, int Delta) : StackCommand;
 /// <param name="Enabled">Whether it composites.</param>
 /// <param name="Opacity">How much of it composites, 0 to 1.</param>
 /// <param name="Blend">Its blend mode.</param>
+/// <param name="Channels">Which channels it writes. Empty means all of them.</param>
+/// <param name="Fill">What a fill reads: Constant, Texture or Graph.</param>
+/// <param name="Values">What a constant fill writes, replacing what these channels held.</param>
+/// <param name="Textures">What a texture fill reads, replacing what these channels held.</param>
+/// <param name="Graph">The graph a graph fill reads.</param>
+/// <param name="Projection">How a fill lands on the mesh: Uv, Triplanar or Planar.</param>
+/// <param name="Filter">What a filter does.</param>
+/// <param name="Settings">A filter's numbers, replacing what these names held.</param>
+/// <param name="Mask">Its mask, which replaces the old one and keeps any painted canvas.</param>
 public sealed record StackSetLayer(
     string Layer,
     string? Name = null,
     bool? Enabled = null,
     float? Opacity = null,
-    string? Blend = null
+    string? Blend = null,
+    IReadOnlyList<string>? Channels = null,
+    string? Fill = null,
+    IReadOnlyDictionary<string, IReadOnlyList<float>>? Values = null,
+    IReadOnlyDictionary<string, string>? Textures = null,
+    string? Graph = null,
+    string? Projection = null,
+    string? Filter = null,
+    IReadOnlyDictionary<string, IReadOnlyList<float>>? Settings = null,
+    StackMask? Mask = null
 ) : StackCommand;
 
 /// <summary>Names the mesh a stack is painted on, which is undone like any other edit.</summary>
