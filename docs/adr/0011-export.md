@@ -159,6 +159,6 @@ opened per line, which is the first thing to change past this scale.
 
 ## Not verified
 
-No file has been loaded in Unreal, Unity or Godot, and none of the three is installed here. KTX2 output passes `ktx validate` in Vixen's
-suite, and DDS was read by `sips` and FFmpeg for the formats they read. Windows and Linux are CI's to prove. All GPU numbers are one
+No file has been loaded in Unreal, Unity or Godot, and none of the three is installed here. The KTX2 files of a real export passed
+`ktx validate --warnings-as-errors`, and DDS was read by `sips` and FFmpeg for the formats they read. Windows and Linux are CI's to prove. All GPU numbers are one
 Apple GPU under load. An engine's own compression of these PNGs is outside what this measures.
