@@ -49,7 +49,10 @@ public static class NamingTemplate {
         return text.ToString().Replace('/', Path.DirectorySeparatorChar);
     }
 
-    /// <summary>A value as part of one file's name. Spaces go too, since engines' importers often refuse them.</summary>
+    /// <summary>
+    ///     A value as part of one file's name. Spaces go too, since engines' importers often refuse
+    ///     them.
+    /// </summary>
     public static string Clean(string value) {
         ArgumentNullException.ThrowIfNull(value);
         var cleaned = new StringBuilder(value.Length);

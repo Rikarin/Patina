@@ -70,9 +70,17 @@ sealed class WorkerLoop(
                 IpcTypes.ViewportMaps => viewport.SetMaps(request),
                 IpcTypes.ViewportCamera => viewport.SetCamera(request),
                 IpcTypes.ViewportRender => viewport.Render(request),
-                IpcTypes.GraphLoad or IpcTypes.GraphEvaluate or IpcTypes.GraphImage or IpcTypes.GraphClose
-                    or IpcTypes.StackLoad or IpcTypes.StackSync or IpcTypes.StackEvaluate or IpcTypes.StackSave
-                    or IpcTypes.StackCheckpoint or IpcTypes.StackPixels or IpcTypes.StackClose => OnDevice(request),
+                IpcTypes.GraphLoad
+                    or IpcTypes.GraphEvaluate
+                    or IpcTypes.GraphImage
+                    or IpcTypes.GraphClose
+                    or IpcTypes.StackLoad
+                    or IpcTypes.StackSync
+                    or IpcTypes.StackEvaluate
+                    or IpcTypes.StackSave
+                    or IpcTypes.StackCheckpoint
+                    or IpcTypes.StackPixels
+                    or IpcTypes.StackClose => OnDevice(request),
                 IpcTypes.BakeStart => bakes.Start(request, link),
                 IpcTypes.BakeCancel => bakes.Cancel(request),
                 IpcTypes.BuildStart => builds.Start(request, link),

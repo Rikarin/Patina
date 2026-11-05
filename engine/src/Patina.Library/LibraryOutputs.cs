@@ -17,7 +17,10 @@ public sealed record OutputSelection(AssetId? Asset = null, IReadOnlyList<Projec
 /// <param name="Output">Its declaration.</param>
 /// <param name="Key">Its key, or null when an input cannot be resolved.</param>
 /// <param name="Reach">How the selected asset reaches it. Moves when no asset was selected.</param>
-/// <param name="Assets">The full path of each shared file it reads, in <see cref="OutputDeclaration.Uses" /> order.</param>
+/// <param name="Assets">
+///     The full path of each shared file it reads, in <see cref="OutputDeclaration.Uses" />
+///     order.
+/// </param>
 /// <param name="Problem">Why it has no key.</param>
 public sealed record ScannedOutput(
     OutputDeclaration Output,
@@ -129,6 +132,7 @@ sealed class LibraryOutputs(string root, IndexDatabase database, LibraryQueries 
         LibraryCheck.InputHashes hashes
     ) {
         string? problem = null;
+
         Revision? Input(string file) {
             var revision = hashes.Get($"{location}/{file}");
             problem = revision is null ? $"it reads {file}, which is not there" : problem;
@@ -137,7 +141,13 @@ sealed class LibraryOutputs(string root, IndexDatabase database, LibraryQueries 
 
         var references = project.References.ToLookup(static r => r.Asset);
         if (output.Uses.FirstOrDefault(used => !references.Contains(used)) is { } stray && stray != default) {
-            return new(output, null, AssetReach.None, [], $"it reads asset {stray}, which the project does not reference");
+            return new(
+                output,
+                null,
+                AssetReach.None,
+                [],
+                $"it reads asset {stray}, which the project does not reference"
+            );
         }
 
         var key = OutputKeys.Compute(output, project, Input, graph, tools);

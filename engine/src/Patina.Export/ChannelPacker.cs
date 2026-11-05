@@ -51,7 +51,7 @@ public static class ChannelPacker {
         var lanes = texture.Channels.Count;
         var samples = new float[width * height * lanes];
         for (var lane = 0; lane < lanes; lane++) {
-            Fill(samples, lane, lanes, width, height, texture, texture.Channels[lane], maps, green);
+            Fill(samples, lane, lanes, (width, height), texture, texture.Channels[lane], maps, green);
         }
 
         return new(width, height, lanes, samples, warnings);
@@ -61,23 +61,17 @@ public static class ChannelPacker {
         float[] samples,
         int lane,
         int lanes,
-        int width,
-        int height,
+        (int Width, int Height) size,
         ExportTexture texture,
         ChannelSource source,
         IReadOnlyDictionary<string, MapPicture> maps,
         GreenAxis green
     ) {
+        var (width, height) = size;
         if (source.Map is not { } name) {
             ForEach(width, height, (x, y) => samples[(y * width + x) * lanes + lane] = source.Constant);
             return;
         }
-
-        var turn = name == ExportMaps.Normal && source.Lane == 1 && maps.TryGetValue(name, out var normal)
-            && normal.Green != green;
-        var colour = ExportMaps.IsColour(name) && source.Lane < 3;
-        var decode = colour && texture.Space == "linear";
-        var encode = !colour && source.Lane < 3 && texture.Space == "srgb";
 
         if (!maps.TryGetValue(name, out var picture)) {
             var value = ExportMaps.Default(name, source.Lane);
@@ -86,6 +80,8 @@ public static class ChannelPacker {
             return;
         }
 
+        var turn = name == ExportMaps.Normal && source.Lane == 1 && picture.Green != green;
+        var transfer = Transfer(name, source.Lane, texture.Space);
         var image = picture.Image;
         var scaled = image.Width != width || image.Height != height;
         ForEach(
@@ -93,11 +89,23 @@ public static class ChannelPacker {
             height,
             (x, y) => {
                 var value = scaled ? Bilinear(image, source.Lane, x, y, width, height) : Lane(image, x, y, source.Lane);
-                value = turn ? 1f - value : value;
-                value = decode ? MipChain.ToLinear(value) : encode ? MipChain.ToSrgb(value) : value;
+                value = transfer(turn ? 1f - value : value);
                 samples[(y * width + x) * lanes + lane] = source.Inverted ? 1f - value : value;
             }
         );
+    }
+
+    /// <summary>What moves a lane's numbers into the file's space. Alpha is never encoded.</summary>
+    static Func<float, float> Transfer(string map, int lane, string space) {
+        if (lane == 3) {
+            return static value => value;
+        }
+
+        return (ExportMaps.IsColour(map), space == "srgb") switch {
+            (true, false) => MipChain.ToLinear,
+            (false, true) => MipChain.ToSrgb,
+            _ => static value => value
+        };
     }
 
     static void ForEach(int width, int height, Action<int, int> set) =>

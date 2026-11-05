@@ -8,8 +8,8 @@ namespace Patina.Server;
 
 /// <summary>
 ///     Runs a build's job on the Server, one step at a time through the Worker. The plan, the keys, the delivery and
-///     the reports are here, and every pixel is the Worker's. A lost Worker puts the job back in the queue, and running it
-///     again plans again, so a finished step is simply no longer in the plan.
+///     the reports are here, and every pixel is the Worker's. A lost Worker puts the job back in the queue, and running
+///     it again plans again, so a finished step is simply no longer in the plan.
 /// </summary>
 sealed class BuildRunner(LibraryHost libraries, ToolCatalog tools) {
     readonly Lock waiting = new();
@@ -30,7 +30,10 @@ sealed class BuildRunner(LibraryHost libraries, ToolCatalog tools) {
 
     /// <summary>Runs a job's build until it ends or its Worker does.</summary>
     /// <returns>The report.</returns>
-    /// <exception cref="BuildExecutorLostException">The Worker went away. The job should go back in the queue.</exception>
+    /// <exception cref="BuildExecutorLostException">
+    ///     The Worker went away. The job should go back in the
+    ///     queue.
+    /// </exception>
     public Task<LibraryReport> RunAsync(
         JobState job,
         IpcConnection connection,
@@ -88,7 +91,10 @@ sealed class BuildRunner(LibraryHost libraries, ToolCatalog tools) {
 
     static async Task CancelAsync(IpcConnection connection, BakeTicket ticket) {
         try {
-            await connection.SendAsync(new() { Type = IpcTypes.BuildCancel, BakeCancel = ticket }, CancellationToken.None);
+            await connection.SendAsync(
+                new() { Type = IpcTypes.BuildCancel, BakeCancel = ticket },
+                CancellationToken.None
+            );
         } catch (Exception e) when (e is IOException or TimeoutException or IpcException) {
             // Its Worker has gone, and the step with it.
         }

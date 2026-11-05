@@ -12,6 +12,8 @@ namespace Patina.Worker;
 /// </summary>
 sealed class ViewportHost(string shaderCache) : IDisposable {
     ViewportRenderer? renderer;
+    ViewportLook? look;
+    string? lookPath;
     OrbitCamera camera = OrbitCamera.Default;
     MemoryMappedFile? frames;
     MemoryMappedViewAccessor? view;
@@ -42,7 +44,7 @@ sealed class ViewportHost(string shaderCache) : IDisposable {
                 )
             );
         try {
-            Renderer().SetLook(maps.Look?.Path);
+            SetLook(maps.Look?.Path);
         } catch (FormatException e) {
             throw new IpcException($"'{maps.Look?.Path}' is not a viewing table: {e.Message}");
         }
@@ -51,6 +53,15 @@ sealed class ViewportHost(string shaderCache) : IDisposable {
 
         static Viewport.ViewportMapFile? File(Ipc.ViewportMapFile? file) =>
             file is null ? null : new(file.Path, file.Hash);
+    }
+
+    /// <summary>Views frames through the <c>.cube</c> at a path, or without one.</summary>
+    /// <exception cref="FormatException">It is not a 3D table.</exception>
+    void SetLook(string? path) {
+        if (path != lookPath) {
+            look = path is null ? null : ViewportLook.Parse(File.ReadAllText(path));
+            lookPath = path;
+        }
     }
 
     public IpcMessage SetCamera(IpcMessage request) {
@@ -71,6 +82,7 @@ sealed class ViewportHost(string shaderCache) : IDisposable {
         Map(render.SharedMemory);
         var start = Stopwatch.GetTimestamp();
         Renderer().Render(camera, render.Width, render.Height, new(memory + render.Offset, bytes));
+        look?.Apply(memory + render.Offset, render.Width, render.Height);
         var elapsed = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
         return new() { Type = IpcTypes.Ok, Frame = new(render.Width, render.Height, elapsed) };
     }

@@ -139,7 +139,9 @@ public sealed class AssetGraph {
 
         void Walk(AssetReference from) {
             if (from.Asset == target) {
-                reach = from.Mode == ReferenceMode.Pinned && reach == AssetReach.None ? AssetReach.Held : AssetReach.Moves;
+                reach = from.Mode == ReferenceMode.Pinned && reach == AssetReach.None
+                    ? AssetReach.Held
+                    : AssetReach.Moves;
                 if (from.Mode != ReferenceMode.Pinned) {
                     return;
                 }
@@ -276,9 +278,9 @@ public static class ExportKeys {
     public const string Tool = "export";
 
     /// <summary>
-    ///     The key. A preset counts by the bytes of its file, and outputs by their keys, so an edit to either re-encodes
-    ///     and nothing else does. The project's name is not in it: names go on when the files are delivered, so two
-    ///     projects with the same maps share one encode.
+    ///     The key. A preset counts by the bytes of its file, and outputs by their keys, so an edit to either
+    ///     re-encodes and nothing else does. The project's name is not in it: names go on when the files are delivered,
+    ///     so two projects with the same maps share one encode.
     /// </summary>
     /// <param name="presetRevision">The hash of the preset's file.</param>
     /// <param name="outputs">The keys of the outputs read, in any order.</param>

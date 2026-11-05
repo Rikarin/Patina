@@ -39,7 +39,10 @@ public sealed record PlannedProject(
 ///     finished has a result under its key, and so is not in the new plan.
 /// </summary>
 public sealed class BuildPlan {
-    /// <summary>The tools whose outputs an export takes: pictures, which a preset reads, and meshes, which go beside.</summary>
+    /// <summary>
+    ///     The tools whose outputs an export takes: pictures, which a preset reads, and meshes, which go
+    ///     beside.
+    /// </summary>
     static readonly HashSet<string> Exported = new(
         [BuildTools.TextureGraph, BuildTools.LayerStack, BakeKeys.Tool, BuildTools.MeshLod],
         StringComparer.Ordinal
@@ -79,22 +82,25 @@ public sealed class BuildPlan {
         return new(planned);
     }
 
-    /// <summary>The preview a client shows. <paramref name="offset" /> and <paramref name="limit" /> page the projects.</summary>
+    /// <summary>
+    ///     The preview a client shows. <paramref name="offset" /> and <paramref name="limit" /> page the
+    ///     projects.
+    /// </summary>
     public BuildPreview Preview(int offset, int limit) {
         var work = Work.OrderBy(static p => p.Project.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(static p => p.Project.Path, StringComparer.Ordinal)
             .ToList();
         var stale = Projects.SelectMany(static p => p.Stale).ToList();
-        return new(
-            work.Count,
-            stale.Count,
-            stale.Count - stale.Select(static o => o.Key).Distinct().Count(),
-            Projects.Sum(static p => p.Fresh),
-            Projects.Sum(static p => p.Pinned),
-            Projects.Sum(static p => p.Exports.Count(static e => !e.Fresh)),
-            Projects.Sum(static p => p.Exports.Count(static e => e.Fresh)),
-            Projects.Sum(static p => p.Unresolved.Count),
-            [
+        return new() {
+            Projects = work.Count,
+            Rebuilds = stale.Count,
+            Shared = stale.Count - stale.Select(static o => o.Key).Distinct().Count(),
+            Fresh = Projects.Sum(static p => p.Fresh),
+            Pinned = Projects.Sum(static p => p.Pinned),
+            Exports = Projects.Sum(static p => p.Exports.Count(static e => !e.Fresh)),
+            ExportsFresh = Projects.Sum(static p => p.Exports.Count(static e => e.Fresh)),
+            Unresolved = Projects.Sum(static p => p.Unresolved.Count),
+            Items = [
                 ..work.Skip(offset)
                     .Take(limit)
                     .Select(static p => new BuildPreviewProject(
@@ -106,9 +112,9 @@ public sealed class BuildPlan {
                         )
                     )
             ],
-            offset,
-            limit
-        );
+            Offset = offset,
+            Limit = limit
+        };
     }
 
     /// <summary>The folder a project's export through a preset goes to.</summary>
@@ -129,7 +135,9 @@ public sealed class BuildPlan {
         var pinned = project.Outputs.Count(static o => o.Reach == AssetReach.Held);
         var unresolved = project.Outputs.Where(static o => o.Key is null).ToList();
 
-        var maps = resolved.Where(static o => Exported.Contains(o.Output.Tool)).Select(static o => o.Key!.Value).ToList();
+        var maps = resolved.Where(static o => Exported.Contains(o.Output.Tool))
+            .Select(static o => o.Key!.Value)
+            .ToList();
         List<PlannedExport> planned = [];
         if (maps.Count > 0 && unresolved.Count == 0 && project.Outputs.Any(static o => o.Reach == AssetReach.Moves)) {
             foreach (var preset in presets) {
@@ -145,7 +153,10 @@ public sealed class BuildPlan {
 
 /// <summary>The tools a project's outputs can name.</summary>
 public static class BuildTools {
-    /// <summary>A graph's Output nodes. It reads the shared graph first in <c>uses</c>, or the first of <c>files</c>.</summary>
+    /// <summary>
+    ///     A graph's Output nodes. It reads the shared graph first in <c>uses</c>, or the first of
+    ///     <c>files</c>.
+    /// </summary>
     public const string TextureGraph = "texture-graph";
 
     /// <summary>A layer stack's maps. It reads the first of <c>files</c>.</summary>
@@ -157,7 +168,10 @@ public static class BuildTools {
 
 /// <summary>Where a build's results live, and what says they are whole.</summary>
 public static class BuildObjects {
-    /// <summary>Moves a finished <c>.part</c> folder into place. If another got there first, it has the same bytes.</summary>
+    /// <summary>
+    ///     Moves a finished <c>.part</c> folder into place. If another got there first, it has the same
+    ///     bytes.
+    /// </summary>
     public static void Publish(string part, string folder) {
         Directory.CreateDirectory(Path.GetDirectoryName(folder)!);
         try {
@@ -176,7 +190,10 @@ public static class BuildObjects {
             : null;
     }
 
-    /// <summary>Marks an output's object whole. Written last, so that a key in the store is a finished result.</summary>
+    /// <summary>
+    ///     Marks an output's object whole. Written last, so that a key in the store is a finished
+    ///     result.
+    /// </summary>
     public static void Commit(ObjectStore objects, BuildKey key, BuildManifest manifest) {
         ArgumentNullException.ThrowIfNull(objects);
         objects.Put(key, JsonSerializer.SerializeToUtf8Bytes(manifest, ContractsJsonContext.Default.BuildManifest));

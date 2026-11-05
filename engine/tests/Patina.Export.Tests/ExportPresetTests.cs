@@ -36,7 +36,11 @@ public sealed class ExportPresetTests : IDisposable {
 
     [Fact]
     public void A_mask_map_holds_what_unity_documents_in_each_lane() {
-        var mask = ExportPresetCatalog.Read(null).Find("unity-hdrp")!.Textures.Single(static t => t.File.EndsWith("_MaskMap", StringComparison.Ordinal));
+        var mask = ExportPresetCatalog.Read(null).Find("unity-hdrp")!.Textures.Single(static t => t.File.EndsWith(
+                "_MaskMap",
+                StringComparison.Ordinal
+            )
+        );
 
         Assert.Equal(
             [
@@ -62,7 +66,10 @@ public sealed class ExportPresetTests : IDisposable {
 
     [Fact]
     public void A_library_preset_wins_over_the_factory_one_of_the_same_id() {
-        File.WriteAllText(Path.Combine(Shared, "unreal.yaml"), Minimal.Replace("id: mine", "id: unreal", StringComparison.Ordinal));
+        File.WriteAllText(
+            Path.Combine(Shared, "unreal.yaml"),
+            Minimal.Replace("id: mine", "id: unreal", StringComparison.Ordinal)
+        );
 
         var preset = ExportPresetCatalog.Read(library.FullName).Find("unreal")!;
 
@@ -107,7 +114,11 @@ public sealed class ExportPresetTests : IDisposable {
     [InlineData("bc6h", 4)]
     public void A_block_format_is_not_given_lanes_it_cannot_hold(string compression, int lanes) {
         var channels = string.Join(", ", Enumerable.Repeat("height", lanes));
-        var text = Minimal.Replace("format: png8", $"format: ktx2\n    compression: {compression}", StringComparison.Ordinal)
+        var text = Minimal.Replace(
+                "format: png8",
+                $"format: ktx2\n    compression: {compression}",
+                StringComparison.Ordinal
+            )
             .Replace("[roughness]", $"[{channels}]", StringComparison.Ordinal);
 
         Assert.Throws<ExportPresetException>(() => ExportPresetReader.Read(text, "test"));

@@ -8,8 +8,8 @@ using System.Net.Http.Json;
 namespace Patina.Server.Tests;
 
 /// <summary>
-///     Builds as a client sees them: the real Server and Worker, paths in and paths out. A build of bakes needs no GPU, so
-///     the kills here run on every platform. What is killed is the process, part-way through a real step.
+///     Builds as a client sees them: the real Server and Worker, paths in and paths out. A build of bakes needs no GPU,
+///     so the kills here run on every platform. What is killed is the process, part-way through a real step.
 /// </summary>
 public sealed class BuildProcessTests : IDisposable {
     const int Projects = 3;
@@ -64,7 +64,8 @@ public sealed class BuildProcessTests : IDisposable {
         return process;
     }
 
-    Process StartWorker() => Start(Engine.Dll("Patina.Worker", "patina-worker"), "--socket", socketPath, "--watch-stdin");
+    Process StartWorker() =>
+        Start(Engine.Dll("Patina.Worker", "patina-worker"), "--socket", socketPath, "--watch-stdin");
 
     Process StartServer() =>
         Start(
@@ -100,7 +101,10 @@ public sealed class BuildProcessTests : IDisposable {
 
     /// <summary>Projects that each bake a mesh pair of their own, slowly enough to be killed in.</summary>
     void WriteLibrary() {
-        LibraryFiles.CreateLibrary(Library, new(LibraryId.From(Guid.NewGuid()), "Game", 1024, [], "pbr", ["unity-urp"]));
+        LibraryFiles.CreateLibrary(
+            Library,
+            new(LibraryId.From(Guid.NewGuid()), "Game", 1024, [], "pbr", ["unity-urp"])
+        );
         for (var project = 0; project < Projects; project++) {
             var path = $"p{project}";
             LibraryFiles.WriteProject(
@@ -133,7 +137,11 @@ public sealed class BuildProcessTests : IDisposable {
     }
 
     static async Task<JobState> OneAsync(HttpClient client, string id, CancellationToken cancellationToken) =>
-        (await client.GetFromJsonAsync($"/api/v1/jobs/{id}", ContractsJsonContext.Default.JobState, cancellationToken))!;
+        (await client.GetFromJsonAsync(
+            $"/api/v1/jobs/{id}",
+            ContractsJsonContext.Default.JobState,
+            cancellationToken
+        ))!;
 
     static async Task<JobState> UntilAsync(
         HttpClient client,
@@ -154,7 +162,12 @@ public sealed class BuildProcessTests : IDisposable {
     static bool Over(JobState job) => job.State is JobStates.Done or JobStates.Failed or JobStates.Cancelled;
 
     static async Task<JobState> BuildAsync(HttpClient client, CancellationToken cancellationToken) {
-        var response = await client.PostAsJsonAsync("/api/v1/builds", new BuildRequest(), ContractsJsonContext.Default.BuildRequest, cancellationToken);
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/builds",
+            new(),
+            ContractsJsonContext.Default.BuildRequest,
+            cancellationToken
+        );
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync(ContractsJsonContext.Default.JobState, cancellationToken))!;
     }
@@ -180,7 +193,7 @@ public sealed class BuildProcessTests : IDisposable {
 
         var preview = await (await http.PostAsJsonAsync(
                 "/api/v1/builds/preview",
-                new BuildRequest(),
+                new(),
                 ContractsJsonContext.Default.BuildRequest,
                 deadline.Token
             ))
@@ -209,7 +222,10 @@ public sealed class BuildProcessTests : IDisposable {
             deadline.Token
         );
         Assert.Equal(Projects, report!.Total);
-        Assert.All(report.Items, static p => Assert.All(p.Exports.SelectMany(static e => e.Files), f => Assert.True(File.Exists(f))));
+        Assert.All(
+            report.Items,
+            static p => Assert.All(p.Exports.SelectMany(static e => e.Files), static f => Assert.True(File.Exists(f)))
+        );
     }
 
     [Fact]
@@ -245,7 +261,7 @@ public sealed class BuildProcessTests : IDisposable {
 
         var response = await http.PostAsJsonAsync(
             "/api/v1/builds",
-            new BuildRequest { Presets = ["nobody"] },
+            new() { Presets = ["nobody"] },
             ContractsJsonContext.Default.BuildRequest,
             deadline.Token
         );

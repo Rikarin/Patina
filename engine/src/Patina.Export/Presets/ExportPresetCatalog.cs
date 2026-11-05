@@ -65,7 +65,8 @@ public static class ExportPresetCatalog {
 
     static IEnumerable<ExportPreset> Factory() {
         var assembly = Assembly.GetExecutingAssembly();
-        var names = assembly.GetManifestResourceNames().Where(static n => n.StartsWith(ResourcePrefix, StringComparison.Ordinal));
+        var names = assembly.GetManifestResourceNames()
+            .Where(static n => n.StartsWith(ResourcePrefix, StringComparison.Ordinal));
         foreach (var name in names) {
             using var reader = new StreamReader(assembly.GetManifestResourceStream(name)!);
             yield return ExportPresetReader.Read(reader.ReadToEnd(), name);

@@ -11,7 +11,7 @@ public sealed class ChannelPackerTests {
     static CancellationToken Token => TestContext.Current.CancellationToken;
 
     static MapPicture Grey(string name, float value, GreenAxis green = GreenAxis.Up, int side = Side) =>
-        new(name, new(side, side, 1, Enumerable.Repeat(value, side * side).ToArray()), green);
+        new(name, new(side, side, 1, [..Enumerable.Repeat(value, side * side)]), green);
 
     static MapPicture Colour(string name, float r, float g, float b, GreenAxis green = GreenAxis.Up) {
         var values = new float[Side * Side * 3];
@@ -24,7 +24,13 @@ public sealed class ChannelPackerTests {
 
     static Dictionary<string, MapPicture> Maps(params MapPicture[] maps) => maps.ToDictionary(static m => m.Name);
 
-    static ExportTexture Texture(string format, string space, string compression = "none", bool mips = false, params ChannelSource[] lanes) =>
+    static ExportTexture Texture(
+        string format,
+        string space,
+        string compression = "none",
+        bool mips = false,
+        params ChannelSource[] lanes
+    ) =>
         new("x", format, compression, "fast", space, mips, lanes);
 
     static ChannelSource Lane(string map, int lane = 0, bool inverted = false) => new(map, lane, inverted, 0);
@@ -111,7 +117,12 @@ public sealed class ChannelPackerTests {
 
         Assert.Equal(1f, packed.Samples[1]);
         Assert.Contains("no opacity map", Assert.Single(packed.Warnings), StringComparison.Ordinal);
-        Assert.False(ChannelPacker.Applies(Texture("png8", "linear", "none", false, Lane("emissive")), Maps(Grey("baseColor", 0.5f))));
+        Assert.False(
+            ChannelPacker.Applies(
+                Texture("png8", "linear", "none", false, Lane("emissive")),
+                Maps(Grey("baseColor", 0.5f))
+            )
+        );
     }
 
     [Fact]
@@ -165,7 +176,15 @@ public sealed class ChannelPackerTests {
     [Fact]
     public void A_ktx2_holds_a_whole_mip_chain_and_decodes_to_the_source() {
         var maps = Maps(Colour("baseColor", 0.2f, 0.4f, 0.8f));
-        var texture = Texture(ExportFormats.Ktx2, "srgb", ExportCompressions.Bc7, true, Lane("baseColor"), Lane("baseColor", 1), Lane("baseColor", 2));
+        var texture = Texture(
+            ExportFormats.Ktx2,
+            "srgb",
+            ExportCompressions.Bc7,
+            true,
+            Lane("baseColor"),
+            Lane("baseColor", 1),
+            Lane("baseColor", 2)
+        );
 
         var (bytes, levels) = ExportEncoder.Encode(ChannelPacker.Pack(texture, maps, GreenAxis.Up), texture, Token);
 
@@ -181,7 +200,14 @@ public sealed class ChannelPackerTests {
     [Fact]
     public void A_two_lane_normal_is_turned_over_before_it_is_compressed() {
         var maps = Maps(Colour("normal", 0.5f, 0.75f, 0.9f));
-        var texture = Texture(ExportFormats.Dds, "linear", ExportCompressions.Bc5, false, Lane("normal"), Lane("normal", 1));
+        var texture = Texture(
+            ExportFormats.Dds,
+            "linear",
+            ExportCompressions.Bc5,
+            false,
+            Lane("normal"),
+            Lane("normal", 1)
+        );
 
         var (bytes, _) = ExportEncoder.Encode(ChannelPacker.Pack(texture, maps, GreenAxis.Down), texture, Token);
 
@@ -194,7 +220,15 @@ public sealed class ChannelPackerTests {
     [Fact]
     public void An_hdr_map_reaches_bc6h_at_its_own_value() {
         var maps = Maps(Colour("emissive", 8f, 2f, 0.5f));
-        var texture = Texture(ExportFormats.Ktx2, "linear", ExportCompressions.Bc6H, false, Lane("emissive"), Lane("emissive", 1), Lane("emissive", 2));
+        var texture = Texture(
+            ExportFormats.Ktx2,
+            "linear",
+            ExportCompressions.Bc6H,
+            false,
+            Lane("emissive"),
+            Lane("emissive", 1),
+            Lane("emissive", 2)
+        );
 
         var (bytes, _) = ExportEncoder.Encode(ChannelPacker.Pack(texture, maps, GreenAxis.Up), texture, Token);
 

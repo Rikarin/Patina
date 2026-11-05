@@ -6,9 +6,10 @@ using System.Text.Json;
 namespace Patina.Export.Builds;
 
 /// <summary>
-///     What a build has done, in a folder of its own under <c>.ptcache/reports</c>: an append-only log while it runs, then
-///     one file per project and one for the library. A restarted build reads the log, because its second plan no longer
-///     shows what the first attempt finished. It is what keeps a step that crashes Workers from looping too: a step started
+///     What a build has done, in a folder of its own under <c>.ptcache/reports</c>: an append-only log while it runs,
+///     then one file per project and one for the library. A restarted build reads the log, because its second plan no
+///     longer shows what the first attempt finished. It is what keeps a step that crashes Workers from looping too: a
+///     step started
 ///     <see cref="MaxStarts" /> times and never ended is reported as failed and passed over.
 /// </summary>
 public sealed class BuildJournal {
@@ -49,7 +50,10 @@ public sealed class BuildJournal {
     /// <summary>Whether Workers keep dying on a step. A step can be started again until this says otherwise.</summary>
     public bool Exhausted(string step) => starts.GetValueOrDefault(step) >= MaxStarts;
 
-    /// <summary>Says a step is about to go to a Worker. On disk before it goes, since the Worker may never answer.</summary>
+    /// <summary>
+    ///     Says a step is about to go to a Worker. On disk before it goes, since the Worker may never
+    ///     answer.
+    /// </summary>
     public void Start(string step) {
         starts[step] = starts.GetValueOrDefault(step) + 1;
         Append(new(step, null, null, null, null, null));
@@ -74,21 +78,21 @@ public sealed class BuildJournal {
     public LibraryReport Totals(int fresh, int exportsFresh, DateTimeOffset? finished = null) {
         var outputs = projects.Values.SelectMany(static p => p.Outputs).ToList();
         var exports = projects.Values.SelectMany(static p => p.Exports).ToList();
-        return new(
-            build,
-            started,
-            finished,
-            projects.Count,
-            outputs.Count(static o => o.Status == BuildStatuses.Built),
-            outputs.Count(static o => o.Status == BuildStatuses.Reused),
-            fresh,
-            outputs.Count(static o => o.Status == BuildStatuses.Failed)
-            + exports.Count(static e => e.Status == BuildStatuses.Failed),
-            exports.Count(static e => e.Status is BuildStatuses.Built or BuildStatuses.Reused),
-            exportsFresh,
-            exports.Sum(static e => (long)e.Files.Count),
-            Folder
-        );
+        return new() {
+            Build = build,
+            Started = started,
+            Finished = finished,
+            Projects = projects.Count,
+            Built = outputs.Count(static o => o.Status == BuildStatuses.Built),
+            Reused = outputs.Count(static o => o.Status == BuildStatuses.Reused),
+            Fresh = fresh,
+            Failed = outputs.Count(static o => o.Status == BuildStatuses.Failed)
+                + exports.Count(static e => e.Status == BuildStatuses.Failed),
+            Exported = exports.Count(static e => e.Status is BuildStatuses.Built or BuildStatuses.Reused),
+            ExportsFresh = exportsFresh,
+            Files = exports.Sum(static e => (long)e.Files.Count),
+            Folder = Folder
+        };
     }
 
     /// <summary>Writes the reports, which are the log's contents arranged for reading.</summary>
@@ -102,7 +106,7 @@ public sealed class BuildJournal {
                 File.WriteAllBytes(
                     Path.Combine(folder, $"{entry.Path.Replace('/', '~')}.{id:N}.json"),
                     JsonSerializer.SerializeToUtf8Bytes(
-                        new ProjectReport(id, entry.Name, entry.Path, entry.Outputs, entry.Exports),
+                        new(id, entry.Name, entry.Path, entry.Outputs, entry.Exports),
                         ContractsJsonContext.Default.ProjectReport
                     )
                 );

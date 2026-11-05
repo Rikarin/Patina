@@ -3237,7 +3237,7 @@
             "format": "int32"
           }
         },
-        "description": "What a build would do, from the build keys and with nothing run. Rebuilds and\nPinned are exact for outputs, where the asset\u0027s impact counts every project that references\nit at all. An asset a project references and no output reads is in neither."
+        "description": "What a build would do, from the build keys and with nothing run. int BuildPreview.Rebuilds and\nint BuildPreview.Pinned are exact for outputs, where the asset\u0027s impact counts every project that references it at\nall. An asset a project references and no output reads is in neither."
       },
       "BuildPreviewProject": {
         "required": [
@@ -3305,7 +3305,7 @@
             "items": {
               "type": "string"
             },
-            "description": "The presets to export through. Null means the library\u0027s \u0060exportTargets\u0060; empty, no export."
+            "description": "The presets to export through. Null means the library\u0027s \u0060exportTargets\u0060; empty, no\nexport."
           },
           "folder": {
             "type": [

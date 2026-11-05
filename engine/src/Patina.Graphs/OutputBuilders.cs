@@ -5,7 +5,6 @@ using Patina.Export.Presets;
 using Patina.Jobs;
 using Patina.Library;
 using System.Globalization;
-using System.Text.Json;
 using Vixen.Core.Imaging;
 using Vixen.Core.Yaml;
 using Vixen.Graphics;
@@ -17,14 +16,19 @@ using Vixen.Texturing.Painting;
 namespace Patina.Graphs;
 
 /// <summary>
-///     What runs a step of a build, in a Worker or in <c>patina build</c>. Each step reads files, evaluates, and leaves a
-///     folder that appears whole. The GPU work goes through <paramref name="gpu" />, which a Worker uses to take turns
-///     with the graphs and stacks it is also answering for.
+///     What runs a step of a build, in a Worker or in <c>patina build</c>. Each step reads files, evaluates, and leaves
+///     a folder that appears whole. The GPU work goes through <paramref name="gpu" />, which a Worker uses to take
+///     turns with the graphs and stacks it is also answering for.
 /// </summary>
 /// <param name="evaluator">The evaluator, opened on first use: a step that needs no GPU needs no device.</param>
 /// <param name="gpu">Runs the part of a step that holds the device.</param>
-public sealed class OutputBuilders(Func<TexturePlanEvaluator> evaluator, Func<Func<TextureRawImage[]>, TextureRawImage[]> gpu) {
-    /// <summary>The prefix of a setting that writes a value into a graph: <c>value:node:port</c>, then numbers.</summary>
+public sealed class OutputBuilders(
+    Func<TexturePlanEvaluator> evaluator,
+    Func<Func<TextureRawImage[]>, TextureRawImage[]> gpu) {
+    /// <summary>
+    ///     The prefix of a setting that writes a value into a graph: <c>value:node:port</c>, then
+    ///     numbers.
+    /// </summary>
     public const string ValuePrefix = "value:";
 
     readonly CompoundShelf compounds = new();
@@ -168,8 +172,13 @@ public sealed class OutputBuilders(Func<TexturePlanEvaluator> evaluator, Func<Fu
     }
 
     /// <summary>
-    ///     The way a map's green runs. A bake's runs up. A graph's <c>Height to Normal</c> runs down (Vixen's README, and
-    ///     a test there), so that is a graph's default, and an output that composes a baked normal says <c>green: up</c>.
+    ///     The way a map's green runs. A bake's runs up. A graph's <c>Height to Normal</c> runs down (Vixen's README,
+    ///     and a test there), so that is a graph's default, and an output that composes a baked normal says
+    ///     <c>
+    ///         green:
+    ///         up
+    ///     </c>
+    ///     .
     /// </summary>
     static GreenAxis GreenOf(OutputStep step, GreenAxis fallback) =>
         step.Settings.GetValueOrDefault("green") switch {
@@ -189,14 +198,17 @@ public sealed class OutputBuilders(Func<TexturePlanEvaluator> evaluator, Func<Fu
         List<BuiltMap> maps = [];
         for (var at = 0; at < usages.Length; at++) {
             var (image, eightBit) = RawPictures.ToFloat(raw[at]);
-            maps.Add(MapPictures.Write(folder, usages[at], image, eightBit, usages[at] == ExportMaps.Normal ? green : null));
+            maps.Add(
+                MapPictures.Write(folder, usages[at], image, eightBit, usages[at] == ExportMaps.Normal ? green : null)
+            );
         }
 
         return new(step.Tool, maps, [], []);
     }
 
     static void Apply(NodeGraphModel graph, IReadOnlyDictionary<string, string> settings) {
-        foreach (var (name, value) in settings.Where(static s => s.Key.StartsWith(ValuePrefix, StringComparison.Ordinal))) {
+        foreach (var (name, value) in settings.Where(static s => s.Key.StartsWith(ValuePrefix, StringComparison.Ordinal)
+                 )) {
             var parts = name.Split(':');
             if (parts.Length != 3 || !int.TryParse(parts[1], CultureInfo.InvariantCulture, out var id)) {
                 throw new InvalidDataException($"'{name}' is not value:<node>:<port>.");
@@ -229,7 +241,10 @@ static class MeshMapSettings {
         };
     }
 
-    /// <summary>A file by its part in the bake. A project's lists are sorted, so a position would mean nothing.</summary>
+    /// <summary>
+    ///     A file by its part in the bake. A project's lists are sorted, so a position would mean
+    ///     nothing.
+    /// </summary>
     static string Role(OutputStep step, string role) {
         if (step.Settings.GetValueOrDefault(role) is not { } named) {
             throw new InvalidDataException($"A mesh-maps output says which of its files is the {role} mesh.");

@@ -104,7 +104,14 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                 journal.Ended(
                     $"unresolved:{project.Project.Path}:{output.Output.Name}",
                     identity,
-                    new OutputReport(output.Output.Name, output.Output.Tool, null, BuildStatuses.Failed, 0, output.Problem)
+                    new OutputReport(
+                        output.Output.Name,
+                        output.Output.Tool,
+                        null,
+                        BuildStatuses.Failed,
+                        0,
+                        output.Problem
+                    )
                 );
             }
 
@@ -112,14 +119,24 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                 await Yield(yield);
                 cancellationToken.ThrowIfCancellationRequested();
                 failed |= !await BuildOutputAsync(journal, identity, project, output, cancellationToken);
-                progress?.Invoke(++done / (double)steps, journal.Totals(fresh, exportsFresh));
+                done++;
+                progress?.Invoke(done / (double)steps, journal.Totals(fresh, exportsFresh));
             }
 
             foreach (var export in project.Exports.Where(static e => !e.Fresh)) {
                 await Yield(yield);
                 cancellationToken.ThrowIfCancellationRequested();
-                await RunExportAsync(journal, identity, project, export, presets[export.Preset.Id], failed, cancellationToken);
-                progress?.Invoke(++done / (double)steps, journal.Totals(fresh, exportsFresh));
+                await RunExportAsync(
+                    journal,
+                    identity,
+                    project,
+                    export,
+                    presets[export.Preset.Id],
+                    failed,
+                    cancellationToken
+                );
+                done++;
+                progress?.Invoke(done / (double)steps, journal.Totals(fresh, exportsFresh));
             }
         }
 
@@ -135,7 +152,9 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
             presets.Add(
                 catalog.Find(id)
                 ?? throw new BuildRefusedException(
-                    $"There is no preset '{id}'. The presets are {string.Join(", ", catalog.Presets.Select(static p => p.Id))}."
+                    $"There is no preset '{id}'. The presets are "
+                    + string.Join(", ", catalog.Presets.Select(static p => p.Id))
+                    + "."
                 )
             );
         }
@@ -163,12 +182,20 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
         var step = $"output:{key.Hex}";
         var declared = output.Output;
         if (objects.Contains(key)) {
-            journal.Ended(step, identity, new OutputReport(declared.Name, declared.Tool, key.Hex, BuildStatuses.Reused, 0, null));
+            journal.Ended(
+                step,
+                identity,
+                new OutputReport(declared.Name, declared.Tool, key.Hex, BuildStatuses.Reused, 0, null)
+            );
             return true;
         }
 
         if (journal.Exhausted(step)) {
-            journal.Ended(step, identity, Failed(declared, key, $"{BuildJournal.MaxStarts} Workers died building this."));
+            journal.Ended(
+                step,
+                identity,
+                Failed(declared, key, $"{BuildJournal.MaxStarts} Workers died building this.")
+            );
             return false;
         }
 
@@ -190,7 +217,14 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
             journal.Ended(
                 step,
                 identity,
-                new OutputReport(declared.Name, declared.Tool, key.Hex, BuildStatuses.Built, timer.Elapsed.TotalSeconds, null)
+                new OutputReport(
+                    declared.Name,
+                    declared.Tool,
+                    key.Hex,
+                    BuildStatuses.Built,
+                    timer.Elapsed.TotalSeconds,
+                    null
+                )
             );
             return true;
         } catch (BuildStepFailedException e) {
@@ -215,7 +249,11 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
         }
 
         if (journal.Exhausted(step)) {
-            journal.Ended(step, identity, FailedExport(preset.Id, $"{BuildJournal.MaxStarts} Workers died exporting this."));
+            journal.Ended(
+                step,
+                identity,
+                FailedExport(preset.Id, $"{BuildJournal.MaxStarts} Workers died exporting this.")
+            );
             return;
         }
 

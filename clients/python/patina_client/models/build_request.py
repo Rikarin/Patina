@@ -29,7 +29,8 @@ class BuildRequest:
             asset (None | Unset | UUID): Only what reads this shared asset, directly or not. Null for the whole library.
             projects (list[UUID] | None | Unset): Only these projects. Null or empty for all of them.
             presets (list[str] | None | Unset): The presets to export through. Null means the library's `exportTargets`;
-                empty, no export.
+                empty, no
+                export.
             folder (None | str | Unset): Where exports go, or null for `exports/` in the library.
      """
 

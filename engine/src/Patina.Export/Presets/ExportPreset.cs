@@ -1,6 +1,9 @@
 namespace Patina.Export.Presets;
 
-/// <summary>Which way a tangent-space normal's green runs in a picture, as an engine reads it or a source wrote it.</summary>
+/// <summary>
+///     Which way a tangent-space normal's green runs in a picture, as an engine reads it or a source wrote
+///     it.
+/// </summary>
 public enum GreenAxis {
     /// <summary>More green points up the image: Y+, often called OpenGL.</summary>
     Up,
@@ -83,17 +86,21 @@ public static class ExportCompressions {
     public const string None = "none";
     public const string Half = "half";
     public const string Wide = "float";
+
+    public static IReadOnlyList<string> All { get; } = [None, Half, Wide, Bc1, Bc3, Bc4, Bc5, Bc6H, Bc7];
+
     public const string Bc1 = "bc1";
     public const string Bc3 = "bc3";
     public const string Bc4 = "bc4";
     public const string Bc5 = "bc5";
     public const string Bc6H = "bc6h";
     public const string Bc7 = "bc7";
-
-    public static IReadOnlyList<string> All { get; } = [None, Half, Wide, Bc1, Bc3, Bc4, Bc5, Bc6H, Bc7];
 }
 
-/// <summary>The maps a preset can read: a graph's Output usages, which is also what a bake's maps are mapped to.</summary>
+/// <summary>
+///     The maps a preset can read: a graph's Output usages, which is also what a bake's maps are mapped
+///     to.
+/// </summary>
 public static class ExportMaps {
     public const string BaseColor = "baseColor";
     public const string Normal = "normal";
@@ -124,10 +131,11 @@ public static class ExportMaps {
 
     /// <summary>Whether a map's numbers are sRGB-encoded rather than linear.</summary>
     /// <remarks>
-    ///     ⚠ Only base colour. Vixen's kernels apply no transfer function, its material bake puts a graph's bytes straight
-    ///     into an sRGB texture, and Patina's viewport reads them as sRGB, so those numbers are sRGB at any depth, whatever
-    ///     a comment in <c>TexturePixels</c> says of linear, and exporting them unchanged is what the viewport showed.
-    ///     Emissive is radiance, which goes past one, and no viewport shows it yet, so its numbers are linear.
+    ///     ⚠ Only base colour. Vixen's kernels apply no transfer function, its material bake puts a graph's bytes
+    ///     straight into an sRGB texture, and Patina's viewport reads them as sRGB, so those numbers are sRGB at any
+    ///     depth, whatever a comment in <c>TexturePixels</c> says of linear, and exporting them unchanged is what the
+    ///     viewport showed. Emissive is radiance, which goes past one, and no viewport shows it yet, so its numbers are
+    ///     linear.
     /// </remarks>
-    public static bool IsColour(string map) => map is BaseColor;
+    public static bool IsColour(string map) => map == BaseColor;
 }

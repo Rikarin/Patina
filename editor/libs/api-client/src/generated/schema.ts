@@ -1059,9 +1059,9 @@ export interface components {
       cached: boolean;
     };
     /**
-     * @description What a build would do, from the build keys and with nothing run. Rebuilds and
-     *     Pinned are exact for outputs, where the asset's impact counts every project that references
-     *     it at all. An asset a project references and no output reads is in neither.
+     * @description What a build would do, from the build keys and with nothing run. int BuildPreview.Rebuilds and
+     *     int BuildPreview.Pinned are exact for outputs, where the asset's impact counts every project that references it at
+     *     all. An asset a project references and no output reads is in neither.
      */
     BuildPreview: {
       /**
@@ -1148,7 +1148,10 @@ export interface components {
       asset?: null | string;
       /** @description Only these projects. Null or empty for all of them. */
       projects?: null | string[];
-      /** @description The presets to export through. Null means the library's `exportTargets`; empty, no export. */
+      /**
+       * @description The presets to export through. Null means the library's `exportTargets`; empty, no
+       *     export.
+       */
       presets?: null | string[];
       /** @description Where exports go, or null for `exports/` in the library. */
       folder?: null | string;

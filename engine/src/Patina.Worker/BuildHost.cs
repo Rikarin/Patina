@@ -1,4 +1,3 @@
-using Patina.Contracts;
 using Patina.Export.Builds;
 using Patina.Graphs;
 using Patina.Ipc;
@@ -7,18 +6,15 @@ namespace Patina.Worker;
 
 /// <summary>
 ///     Runs one step of a build at a time, on a thread of its own, as <see cref="BakeHost" /> runs a bake: a block
-///     compression can outlast any reply, so the IPC loop waits only for the start. The GPU part takes the device's gate,
-///     and everything else is plain threads. Holds nothing a Server's plan cannot make again.
+///     compression can outlast any reply, so the IPC loop waits only for the start. The GPU part takes the device's
+///     gate, and everything else is plain threads. Holds nothing a Server's plan cannot make again.
 /// </summary>
-sealed class BuildHost : IDisposable {
+sealed class BuildHost : OneAtATime {
     const int ReservedCores = 2;
 
-    readonly Lock changing = new();
-    readonly CancellationTokenSource closing = new();
     readonly OutputBuilders builders;
-    Running? running;
 
-    public BuildHost(DeviceHost gpu) {
+    public BuildHost(DeviceHost gpu) : base("building") {
         builders = new(
             () => gpu.Evaluator,
             work => {
@@ -32,47 +28,7 @@ sealed class BuildHost : IDisposable {
     /// <summary>Starts a step. Refuses a second: the Server hands out one at a time.</summary>
     public IpcMessage Start(IpcMessage request, IpcConnection link) {
         var ask = request.BuildStart ?? throw new IpcException("build.start says nothing to do.");
-        lock (changing) {
-            if (running is not null) {
-                return IpcMessage.Fail(request.Id, $"This Worker is already building for {running.Ticket.Job}.");
-            }
-
-            var stop = new CancellationTokenSource();
-            running = new(ask.Ticket, stop);
-            _ = Task.Factory.StartNew(
-                    () => RunAsync(ask, link, stop, closing.Token),
-                    CancellationToken.None,
-                    TaskCreationOptions.LongRunning,
-                    TaskScheduler.Default
-                )
-                .Unwrap();
-        }
-
-        return IpcMessage.Ok(request.Id);
-    }
-
-    /// <summary>Stops the step named, if it is still the one running.</summary>
-    public IpcMessage Cancel(IpcMessage request) {
-        lock (changing) {
-            if (running is { } step && step.Ticket == request.BakeCancel) {
-                step.Stop.Cancel();
-            }
-        }
-
-        return IpcMessage.Ok(request.Id);
-    }
-
-    /// <summary>Stops whatever is running: the link has gone, and the Server plans again when it is back.</summary>
-    public void LinkLost() {
-        lock (changing) {
-            running?.Stop.Cancel();
-        }
-    }
-
-    public void Dispose() {
-        LinkLost();
-        closing.Cancel();
-        closing.Dispose();
+        return Begin(request.Id, ask.Ticket, stop => RunAsync(ask, link, stop, Closing));
     }
 
     async Task RunAsync(
@@ -96,15 +52,11 @@ sealed class BuildHost : IDisposable {
                                         or UnauthorizedAccessException
                                         or OutOfMemoryException
                                         or IpcException
-                                       ) {
+                                   ) {
             ending = new(ask.Ticket, null, null, e.Message);
         }
 
-        lock (changing) {
-            running = null;
-        }
-
-        stop.Dispose();
+        Ended(stop);
         try {
             await link.SendAsync(new() { Type = IpcTypes.BuildEnded, BuildEnded = ending }, cancellationToken)
                 .ConfigureAwait(false);
@@ -115,6 +67,4 @@ sealed class BuildHost : IDisposable {
             // The Server has gone, and it plans again when it is back.
         }
     }
-
-    sealed record Running(BakeTicket Ticket, CancellationTokenSource Stop);
 }

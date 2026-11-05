@@ -11,7 +11,8 @@ namespace Patina.Jobs;
 /// </summary>
 /// <remarks>
 ///     A job that keeps killing its Worker must not keep the machine in a crash loop, so a job is given up on after
-///     <see cref="MaxAttempts" /> Workers have died on it (a build counts per step). A finished job stays as a record of what was made, up to
+///     <see cref="MaxAttempts" /> Workers have died on it (a build counts per step). A finished job stays as a record
+///     of what was made, up to
 ///     <see cref="Remembered" /> of them.
 /// </remarks>
 [SuppressMessage(
@@ -115,10 +116,10 @@ public sealed class JobQueue {
     ///     Hands out the oldest queued job, or null when there is none. Interactive work goes first (plan §5): a bake
     ///     someone is waiting for passes any build, however early the build was asked for.
     /// </summary>
-    public JobState? TakeNext() => Take(interactiveOnly: false);
+    public JobState? TakeNext() => Take(false);
 
     /// <summary>Hands out the oldest queued bake, which a running build lets by between its steps.</summary>
-    public JobState? TakeInteractive() => Take(interactiveOnly: true);
+    public JobState? TakeInteractive() => Take(true);
 
     JobState? Take(bool interactiveOnly) {
         lock (changing) {
@@ -229,9 +230,7 @@ public sealed class JobQueue {
     }
 
     JobState New(string key) =>
-        new() {
-            Id = Guid.NewGuid().ToString("N"), Key = key, State = JobStates.Queued, Created = clock.GetUtcNow()
-        };
+        new() { Id = Guid.NewGuid().ToString("N"), Key = key, State = JobStates.Queued, Created = clock.GetUtcNow() };
 
     /// <summary>What becomes of a running job when whoever had it is gone, by a Worker's death or a Server's.</summary>
     static JobState AfterLoss(JobState job) {

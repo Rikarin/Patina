@@ -65,8 +65,8 @@ static class FanOut {
         using var library = OpenLibrary.Open(root);
         var popular = Popular(root);
         var timer = Stopwatch.StartNew();
-        library.Rescan();
-        Row("first rescan", timer, "");
+        library.Rescan(CancellationToken.None);
+        Row("first rescan", timer, string.Empty);
 
         var executor = new StandIn();
         var build = new BuildPipeline(library, executor, ToolCatalog.Default);
@@ -74,12 +74,22 @@ static class FanOut {
         Report("first build (stand-in maps, real export of them)", first);
 
         Edit(popular);
-        library.Rescan();
+        library.Rescan(CancellationToken.None);
 
         timer.Restart();
-        var plan = BuildPipeline.Plan(library, new() { Asset = popular.Id.Value, Presets = presets }, ToolCatalog.Default, default);
+        var plan = BuildPipeline.Plan(
+            library,
+            new() { Asset = popular.Id.Value, Presets = presets },
+            ToolCatalog.Default,
+            default
+        );
         var preview = plan.Preview(0, 50);
-        Row("impact preview over the shared graph", timer, $"{preview.Projects:N0} projects, {preview.Rebuilds:N0} to build, {preview.Exports:N0} exports, {preview.Pinned:N0} pinned");
+        Row(
+            "impact preview over the shared graph",
+            timer,
+            FormattableString.Invariant($"{preview.Projects:N0} projects, {preview.Rebuilds:N0} to build, ")
+            + FormattableString.Invariant($"{preview.Exports:N0} exports, {preview.Pinned:N0} pinned")
+        );
 
         executor.Reset();
         var second = await Build(build, root, "edit", new() { Presets = presets });
@@ -105,18 +115,19 @@ static class FanOut {
             var popular = Popular(root);
             var executor = new Real_(new(() => evaluator, static work => work()));
             var build = new BuildPipeline(library, executor, ToolCatalog.Default);
-                        Report("first build", await Build(build, root, "first", new() { Presets = presets }));
+            Report("first build", await Build(build, root, "first", new() { Presets = presets }));
 
             Edit(popular);
-            library.Rescan();
+            library.Rescan(CancellationToken.None);
             var timer = Stopwatch.StartNew();
-            var before = Directory.EnumerateFiles(Path.Combine(root, "exports"), "*.*", SearchOption.AllDirectories).Count();
+            var before = Directory.EnumerateFiles(Path.Combine(root, "exports"), "*.*", SearchOption.AllDirectories)
+                .Count();
             Report("rebuild after one edit", await Build(build, root, "edit", new() { Presets = presets }));
             Console.WriteLine(
-                string.Create(
-                    CultureInfo.InvariantCulture,
-                    $"  {timer.Elapsed.TotalSeconds / Math.Max(1, projects) * 1000:F0} ms per project, {before:N0} files in exports"
+                FormattableString.Invariant(
+                    $"  {timer.Elapsed.TotalSeconds / Math.Max(1, projects) * 1000:F0} ms per project, "
                 )
+                + FormattableString.Invariant($"{before:N0} files in exports")
             );
             Report("second build, nothing changed", await Build(build, root, "again", new() { Presets = presets }));
         }
@@ -125,20 +136,27 @@ static class FanOut {
     }
 
     static async Task<LibraryReport> Build(BuildPipeline build, string root, string name, BuildRequest request) {
-        var journal = new BuildJournal(Path.Combine(LibraryLayout.ReportsPath(root), name), name, DateTimeOffset.UtcNow);
+        var journal = new BuildJournal(
+            Path.Combine(LibraryLayout.ReportsPath(root), name),
+            name,
+            DateTimeOffset.UtcNow
+        );
         return await build.RunAsync(journal, request, null, null, TimeProvider.System, default);
     }
 
     static void Report(string what, LibraryReport report) =>
         Console.WriteLine(
-            string.Create(
-                CultureInfo.InvariantCulture,
-                $"{what}: {(report.Finished - report.Started)!.Value.TotalSeconds:F2} s; {report.Projects:N0} projects touched, {report.Built:N0} built, {report.Reused:N0} reused, {report.Fresh:N0} fresh, {report.Exported:N0} exported, {report.ExportsFresh:N0} exports fresh, {report.Files:N0} files, {report.Failed:N0} failed"
-            )
+            FormattableString.Invariant($"{what}: {(report.Finished - report.Started)!.Value.TotalSeconds:F2} s; ")
+            + FormattableString.Invariant($"{report.Projects:N0} projects touched, {report.Built:N0} built, ")
+            + FormattableString.Invariant($"{report.Reused:N0} reused, {report.Fresh:N0} fresh, ")
+            + FormattableString.Invariant($"{report.Exported:N0} exported, {report.ExportsFresh:N0} exports fresh, ")
+            + FormattableString.Invariant($"{report.Files:N0} files, {report.Failed:N0} failed")
         );
 
     static void Row(string what, Stopwatch timer, string note) =>
-        Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"{what}: {timer.Elapsed.TotalMilliseconds:F0} ms {note}"));
+        Console.WriteLine(
+            string.Create(CultureInfo.InvariantCulture, $"{what}: {timer.Elapsed.TotalMilliseconds:F0} ms {note}")
+        );
 
     static (AssetId Id, string Path) Popular(string root) {
         var sidecar = Directory.EnumerateFiles(Path.Combine(root, "shared", "graphs"), "*.asset.yaml").Single();
@@ -149,7 +167,8 @@ static class FanOut {
     /// <summary>A change of the graph's file, as an artist's save is: its seed, so every output moves.</summary>
     static void Edit((AssetId Id, string Path) popular) {
         var text = File.ReadAllText(popular.Path);
-        var edited = text.Replace(": 7", ": 8", StringComparison.Ordinal).Replace(": '7'", ": '8'", StringComparison.Ordinal);
+        var edited = text.Replace(": 7", ": 8", StringComparison.Ordinal)
+            .Replace(": '7'", ": '8'", StringComparison.Ordinal);
         File.WriteAllText(popular.Path, edited == text ? $"{text}\n" : edited);
     }
 
@@ -196,10 +215,6 @@ static class FanOut {
     }
 
     static NodeGraphAsset Graph(int side) {
-        GraphNodeAsset Node(int id, string type, string? usage = null) =>
-            new() { Id = id, Type = type, X = id * 280, Texts = usage is null ? [] : new() { ["Usage"] = usage } };
-        GraphEdgeAsset Edge(int from, int to, string port) => new() { FromNode = from, FromPort = "Out", ToNode = to, ToPort = port };
-
         return new() {
             Name = "Popular",
             Nodes = [
@@ -221,9 +236,18 @@ static class FanOut {
             ],
             Settings = new() { ["seed"] = "7", ["baseWidth"] = $"{side}", ["baseHeight"] = $"{side}" }
         };
+
+        GraphNodeAsset Node(int id, string type, string? usage = null) =>
+            new() { Id = id, Type = type, X = id * 280, Texts = usage is null ? [] : new() { ["Usage"] = usage } };
+
+        GraphEdgeAsset Edge(int from, int to, string port) =>
+            new() { FromNode = from, FromPort = "Out", ToNode = to, ToPort = port };
     }
 
-    /// <summary>Everything but the GPU: four small maps, so that the keys, the objects and the exports are real.</summary>
+    /// <summary>
+    ///     Everything but the GPU: four small maps, so that the keys, the objects and the exports are
+    ///     real.
+    /// </summary>
     sealed class StandIn : IBuildExecutor {
         int outputs;
         int exports;

@@ -6,7 +6,10 @@ using System.Text;
 
 namespace Patina.Export.Tests;
 
-/// <summary>A build over a real library's files and keys, with an executor that writes small files in place of pixels.</summary>
+/// <summary>
+///     A build over a real library's files and keys, with an executor that writes small files in place of
+///     pixels.
+/// </summary>
 public sealed class BuildPropertyTests {
     static CancellationToken Token => TestContext.Current.CancellationToken;
 
@@ -136,15 +139,15 @@ public sealed class BuildPropertyTests {
             .Projects.ToDictionary(static p => p.Id, static p => p.Outputs.Single().Key?.Hex);
 
     /// <summary>
-    ///     The exit of P6 as a property. After any edit, the projects a build touches are exactly those whose keys moved,
-    ///     each new key runs once however many projects share it, and building again does nothing at all.
+    ///     The exit of P6 as a property. After any edit, the projects a build touches are exactly those whose keys
+    ///     moved, each new key runs once however many projects share it, and building again does nothing at all.
     /// </summary>
     [Fact]
     [Trait("Category", "Property")]
     public void A_build_touches_exactly_what_an_edit_moved_and_a_second_does_nothing() =>
         Gen.Select(Wiring, Edits.Array[1, 3])
             .Sample(
-                (wiring, edits) => {
+                static (wiring, edits) => {
                     using var fixture = new Fixture(wiring);
                     using var library = OpenLibrary.Open(fixture.Root);
                     var first = new FakeExecutor();
@@ -158,7 +161,9 @@ public sealed class BuildPropertyTests {
                     }
 
                     var after = Keys(library);
-                    var moved = after.Where(key => key.Value != before[key.Key]).Select(static key => key.Key).ToHashSet();
+                    var moved = after.Where(key => key.Value != before[key.Key])
+                        .Select(static key => key.Key)
+                        .ToHashSet();
                     var second = new FakeExecutor();
                     var report = Build(library, second, "second").GetAwaiter().GetResult();
 

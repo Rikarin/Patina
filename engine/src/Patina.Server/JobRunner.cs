@@ -76,6 +76,7 @@ public sealed class JobRunner : BackgroundService {
     /// </summary>
     async Task RunBuildAsync(IpcConnection connection, JobState job, CancellationToken cancellationToken) {
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
         async Task LetBakesBy() {
             while (queue.TakeInteractive() is { } bake) {
                 await RunAsync(connection, bake, cancellationToken);

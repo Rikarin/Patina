@@ -55,7 +55,10 @@ public static class LibraryLayout {
     /// <summary>What builds left: one folder per build, each of them a report and nothing a build depends on.</summary>
     public static string ReportsPath(string root) => Path.Combine(root, CacheFolder, "reports");
 
-    /// <summary>Where exports go when a build names no other folder. Not the cache: these are what a game takes.</summary>
+    /// <summary>
+    ///     Where exports go when a build names no other folder. Not the cache: these are what a game
+    ///     takes.
+    /// </summary>
     public static string ExportsPath(string root) => Path.Combine(root, "exports");
 
     public static string RevisionPath(string root, Revision revision) =>

@@ -34,24 +34,18 @@ public sealed class ViewportLook {
     }
 
     /// <summary>Reads a tightly packed RGBA frame through the table, in place. Alpha is left alone.</summary>
-    public unsafe void Apply(Span<byte> frame, int width, int height) {
-        fixed (byte* bytes = frame) {
-            var pixels = bytes;
-            Parallel.For(
-                0,
-                height,
-                row => {
-                    var line = pixels + row * width * 4;
-                    Span<float> colour = stackalloc float[3];
-                    for (var x = 0; x < width; x++) {
-                        var pixel = line + x * 4;
-                        Sample(pixel[0], pixel[1], pixel[2], colour);
-                        pixel[0] = (byte)(colour[0] * 255f + 0.5f);
-                        pixel[1] = (byte)(colour[1] * 255f + 0.5f);
-                        pixel[2] = (byte)(colour[2] * 255f + 0.5f);
-                    }
-                }
-            );
+    public unsafe void Apply(byte* frame, int width, int height) {
+        Parallel.For(0, height, row => Line(frame + row * width * 4, width));
+    }
+
+    unsafe void Line(byte* line, int width) {
+        Span<float> colour = stackalloc float[3];
+        for (var x = 0; x < width; x++) {
+            var pixel = line + x * 4;
+            Sample(pixel[0], pixel[1], pixel[2], colour);
+            pixel[0] = (byte)(colour[0] * 255f + 0.5f);
+            pixel[1] = (byte)(colour[1] * 255f + 0.5f);
+            pixel[2] = (byte)(colour[2] * 255f + 0.5f);
         }
     }
 

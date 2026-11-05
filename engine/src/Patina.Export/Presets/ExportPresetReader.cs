@@ -120,7 +120,7 @@ public static class ExportPresetReader {
             ExportCompressions.Bc5 => (2, 2),
             ExportCompressions.Bc1 or ExportCompressions.Bc6H => (3, 3),
             ExportCompressions.Bc3 or ExportCompressions.Bc7 => (3, 4),
-            ExportCompressions.Half or ExportCompressions.Wide or ExportCompressions.None => (1, 4),
+
             _ => (1, 4)
         };
         Require(count >= least && count <= most, $"{where}: {compression} takes {least} to {most} lanes, not {count}.");
@@ -135,7 +135,10 @@ public static class ExportPresetReader {
             !(compression is ExportCompressions.Bc4 or ExportCompressions.Bc5 && space == "srgb"),
             $"{where}: {compression} has no sRGB form."
         );
-        Require(format != ExportFormats.Png16 || space == "linear", $"{where}: a 16-bit PNG here holds linear numbers.");
+        Require(
+            format != ExportFormats.Png16 || space == "linear",
+            $"{where}: a 16-bit PNG here holds linear numbers."
+        );
     }
 
     static ChannelSource Channel(string? text, string where) {

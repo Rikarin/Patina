@@ -104,13 +104,18 @@ static class BuildEndpoints {
         }
     }
 
-    static Results<Accepted<JobState>, ProblemHttpResult> Start(BuildRequest request, LibraryHost host, JobQueue queue) {
+    static Results<Accepted<JobState>, ProblemHttpResult> Start(
+        BuildRequest request,
+        LibraryHost host,
+        JobQueue queue
+    ) {
         if (host.Library is not { } library) {
             return NoLibrary();
         }
 
         var catalog = ExportPresetCatalog.Read(library.RootPath);
-        if ((request.Presets ?? library.Document.ExportTargets).FirstOrDefault(id => catalog.Find(id) is null) is { } bad) {
+        if ((request.Presets ?? library.Document.ExportTargets).FirstOrDefault(id => catalog.Find(id) is null
+            ) is { } bad) {
             return TypedResults.Problem(
                 $"There is no preset '{bad}'.",
                 statusCode: StatusCodes.Status422UnprocessableEntity

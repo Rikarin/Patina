@@ -60,7 +60,6 @@ public static class ExportRun {
                 new(
                     texture.File,
                     name,
-                    extension,
                     texture.Format,
                     texture.Compression,
                     picture.Width,
@@ -90,7 +89,10 @@ public static class ExportRun {
     /// <param name="manifest">What it holds.</param>
     /// <param name="target">The folder they go to.</param>
     /// <param name="values">What the names are made from.</param>
-    /// <param name="beside">Other files that go with them, such as a mesh's levels of detail: from, then its name.</param>
+    /// <param name="beside">
+    ///     Other files that go with them, such as a mesh's levels of detail: from, then its
+    ///     name.
+    /// </param>
     /// <returns>The files, absolute.</returns>
     public static IReadOnlyList<string> Deliver(
         string key,
@@ -106,7 +108,8 @@ public static class ExportRun {
 
         List<string> delivered = [];
         foreach (var file in manifest.Files) {
-            var path = Path.Combine(target, NamingTemplate.Resolve(file.Template, values, file.Extension));
+            var name = NamingTemplate.Resolve(file.Template, values, Path.GetExtension(file.File));
+            var path = Path.Combine(target, name);
             Copy(Path.Combine(folder, file.File), path);
             delivered.Add(path);
         }
@@ -125,7 +128,7 @@ public static class ExportRun {
         LibraryFiles.Replace(
             Path.Combine(target, BuildObjects.DeliveredFile),
             JsonSerializer.SerializeToUtf8Bytes(
-                new ExportDelivery(key, relative),
+                new(key, relative),
                 ContractsJsonContext.Default.ExportDelivery
             )
         );

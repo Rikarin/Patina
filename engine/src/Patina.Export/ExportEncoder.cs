@@ -5,7 +5,10 @@ using Vixen.Graphics;
 
 namespace Patina.Export;
 
-/// <summary>Turns packed lanes into the bytes of one file. All pixels are encoded by Vixen; nothing here is a codec.</summary>
+/// <summary>
+///     Turns packed lanes into the bytes of one file. All pixels are encoded by Vixen; nothing here is a
+///     codec.
+/// </summary>
 public static class ExportEncoder {
     /// <summary>The file's bytes, and how many mip levels it has.</summary>
     /// <param name="picture">The lanes.</param>
@@ -23,7 +26,8 @@ public static class ExportEncoder {
             case ExportFormats.Png8:
                 return (PngCodec.Encode8(image.Width, image.Height, image.Channels, Unsigned<byte>(picture, 255)), 1);
             case ExportFormats.Png16:
-                return (PngCodec.Encode16(image.Width, image.Height, image.Channels, Unsigned<ushort>(picture, 65535)), 1);
+                return (PngCodec.Encode16(image.Width, image.Height, image.Channels, Unsigned<ushort>(picture, 65535)),
+                    1);
             case ExportFormats.Exr16:
                 return (ExrCodec.Encode(image, ExrPixels.Half), 1);
             case ExportFormats.Exr32:
@@ -51,8 +55,9 @@ public static class ExportEncoder {
     }
 
     /// <summary>
-    ///     Mips first and then blocks: reducing blocks means decoding them. A linear source stays at 16 bits or in float
-    ///     through the chain, so a 16-bit height is averaged at 16 bits and only then cut to what the block holds.
+    ///     Mips first and then blocks: reducing blocks means decoding them. A linear source stays at 16 bits or in
+    ///     float through the chain, so a 16-bit height is averaged at 16 bits and only then cut to what the block
+    ///     holds.
     /// </summary>
     static TextureData Texture(PackedPicture picture, ExportTexture texture, CancellationToken cancellationToken) {
         var srgb = texture.Space == "srgb";
@@ -104,13 +109,13 @@ public static class ExportEncoder {
         return texture.Space != "srgb" ? MipOptions.Linear : cutout ? MipOptions.CutoutColour : MipOptions.Colour;
     }
 
-    /// <summary>Lanes into RGBA. A two-lane normal gets its z back, which is what renormalising a chain reads.</summary>
+    /// <summary>
+    ///     Lanes into RGBA. A two-lane normal gets its z back, which is what renormalising a chain
+    ///     reads.
+    /// </summary>
     static void Store(PackedPicture picture, Span<byte> into, PixelFormat format) {
         var texels = picture.Width * picture.Height;
-        var lanes = picture.Lanes;
-        var samples = picture.Samples;
-        var values = new float[4];
-        var unit = format is PixelFormat.Rgba8UNormSrgb or PixelFormat.Rgba16UNorm;
+        Span<float> values = stackalloc float[4];
         var stride = format switch {
             PixelFormat.Rgba8UNormSrgb => 1,
             PixelFormat.Rgba32Float => 4,
@@ -118,25 +123,43 @@ public static class ExportEncoder {
         };
 
         for (var texel = 0; texel < texels; texel++) {
-            values[0] = samples[texel * lanes];
-            values[1] = lanes > 1 ? samples[texel * lanes + 1] : values[0];
-            values[2] = lanes > 2 ? samples[texel * lanes + 2]
-                : lanes == 1 ? values[0]
-                : ReconstructZ(values[0], values[1]);
-            values[3] = lanes > 3 ? samples[texel * lanes + 3] : 1f;
+            Widen(picture, texel, values);
             for (var lane = 0; lane < 4; lane++) {
-                var at = (texel * 4 + lane) * stride;
-                var value = unit ? Math.Clamp(values[lane], 0f, 1f) : values[lane];
-                if (format == PixelFormat.Rgba8UNormSrgb) {
-                    into[at] = (byte)MathF.Round(value * 255f);
-                } else if (format == PixelFormat.Rgba16UNorm) {
-                    BitConverter.TryWriteBytes(into[at..], (ushort)MathF.Round(value * 65535f));
-                } else if (format == PixelFormat.Rgba16Float) {
-                    BitConverter.TryWriteBytes(into[at..], (Half)value);
-                } else {
-                    BitConverter.TryWriteBytes(into[at..], value);
-                }
+                Write(into[((texel * 4 + lane) * stride)..], format, values[lane]);
             }
+        }
+    }
+
+    /// <summary>One texel's lanes as RGBA. A grey lane is every colour, and alpha is opaque unless given.</summary>
+    static void Widen(PackedPicture picture, int texel, Span<float> values) {
+        var lanes = picture.Lanes;
+        var at = texel * lanes;
+        var samples = picture.Samples;
+        values[0] = samples[at];
+        values[1] = lanes > 1 ? samples[at + 1] : samples[at];
+        if (lanes > 2) {
+            values[2] = samples[at + 2];
+        } else {
+            values[2] = lanes == 1 ? samples[at] : ReconstructZ(values[0], values[1]);
+        }
+
+        values[3] = lanes > 3 ? samples[at + 3] : 1f;
+    }
+
+    static void Write(Span<byte> into, PixelFormat format, float value) {
+        switch (format) {
+            case PixelFormat.Rgba8UNormSrgb:
+                into[0] = (byte)MathF.Round(Math.Clamp(value, 0f, 1f) * 255f);
+                break;
+            case PixelFormat.Rgba16UNorm:
+                BitConverter.TryWriteBytes(into, (ushort)MathF.Round(Math.Clamp(value, 0f, 1f) * 65535f));
+                break;
+            case PixelFormat.Rgba16Float:
+                BitConverter.TryWriteBytes(into, (Half)value);
+                break;
+            default:
+                BitConverter.TryWriteBytes(into, value);
+                break;
         }
     }
 

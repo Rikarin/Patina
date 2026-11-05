@@ -20,12 +20,16 @@ public static class MapPictures {
     /// <param name="folder">The object's folder.</param>
     /// <param name="manifest">What it holds.</param>
     /// <exception cref="InvalidDataException">A file is not what the manifest says.</exception>
-    public static IEnumerable<MapPicture> Read(string folder, BuildManifest manifest) {
+    public static IReadOnlyList<MapPicture> Read(string folder, BuildManifest manifest) {
         ArgumentNullException.ThrowIfNull(manifest);
-        foreach (var map in manifest.Maps) {
-            var file = Path.Combine(folder, map.File);
-            yield return new(map.Map, ReadFile(file), map.Green == "down" ? GreenAxis.Down : GreenAxis.Up);
-        }
+        return [
+            ..manifest.Maps.Select(map => new MapPicture(
+                    map.Map,
+                    ReadFile(Path.Combine(folder, map.File)),
+                    map.Green == "down" ? GreenAxis.Down : GreenAxis.Up
+                )
+            )
+        ];
     }
 
     /// <summary>Writes one map as the smallest file that keeps every bit, and says what was written.</summary>
@@ -45,7 +49,7 @@ public static class MapPictures {
     /// <exception cref="InvalidDataException">It is neither a PNG nor an EXR.</exception>
     public static FloatImage ReadFile(string path) {
         var data = File.ReadAllBytes(path);
-        if (Path.GetExtension(path).Equals(".exr", StringComparison.OrdinalIgnoreCase)) {
+        if (Path.GetExtension(path) == ".exr") {
             return ExrCodec.Decode(data);
         }
 
@@ -63,8 +67,9 @@ public static class MapPictures {
     ///     the bake chose, so that a float bake and a 16-bit one export the same file. Green runs up: that is what
     ///     <c>MikkTSpace.Generate</c> makes of v-down coordinates (ADR 0008).
     /// </summary>
-    public static IEnumerable<MapPicture> OfBake(string folder, BakeManifest manifest) {
+    public static IReadOnlyList<MapPicture> OfBake(string folder, BakeManifest manifest) {
         ArgumentNullException.ThrowIfNull(manifest);
+        List<MapPicture> pictures = [];
         foreach (var map in manifest.Result.Maps) {
             if (ExportNameOf(map.Map) is not { } name) {
                 continue;
@@ -75,8 +80,10 @@ public static class MapPictures {
                 image = Centred(image, map);
             }
 
-            yield return new(name, image, GreenAxis.Up);
+            pictures.Add(new(name, image, GreenAxis.Up));
         }
+
+        return pictures;
     }
 
     /// <summary>What a preset calls a baked map, or null when no preset reads it.</summary>

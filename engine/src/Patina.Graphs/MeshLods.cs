@@ -8,8 +8,8 @@ using Vixen.Interchange;
 namespace Patina.Graphs;
 
 /// <summary>
-///     Lower levels of detail of a mesh, through Vixen's <see cref="MeshSimplifier" />. Each level is simplified from the
-///     one before, as its errors say to, and stops where it would have to tear an open border. A level keeps the
+///     Lower levels of detail of a mesh, through Vixen's <see cref="MeshSimplifier" />. Each level is simplified from
+///     the one before, as its errors say to, and stops where it would have to tear an open border. A level keeps the
 ///     source's vertices, so its coordinates and normals are unchanged and maps baked on the source still fit.
 /// </summary>
 static class MeshLods {
@@ -22,7 +22,8 @@ static class MeshLods {
         }
 
         var ratios = Ratios(step.Settings.GetValueOrDefault("ratios", DefaultRatios));
-        var source = ModelGeometry.ToMeshData(MeshMapBakeRun.Read(step.Files[0]).Mesh, "lod");
+        var mesh = MeshMapBakeRun.Read(step.Files[0]).Mesh;
+        var source = ModelGeometry.ToMeshData(mesh, "lod", mesh.TexCoords.ToArray());
         var positions = source.Positions.ToArray();
         var welded = Weld(positions);
         var seam = Seams(source, welded);
@@ -35,7 +36,15 @@ static class MeshLods {
         for (var level = 0; level < ratios.Count; level++) {
             cancellationToken.ThrowIfCancellationRequested();
             var target = Math.Max(1, (int)(whole * ratios[level]));
-            var result = MeshSimplifier.Simplify(positions, welded, seam, error, corners, Border(corners, welded), target);
+            var result = MeshSimplifier.Simplify(
+                positions,
+                welded,
+                seam,
+                error,
+                corners,
+                Border(corners, welded),
+                target
+            );
             foreach (var (vertex, moved) in result.Updates) {
                 error[vertex] = moved;
             }
@@ -56,7 +65,8 @@ static class MeshLods {
     static List<float> Ratios(string text) {
         List<float> ratios = [];
         foreach (var part in text.Split(',')) {
-            if (!float.TryParse(part, NumberStyles.Float, CultureInfo.InvariantCulture, out var ratio) || ratio is <= 0 or >= 1) {
+            if (!float.TryParse(part, NumberStyles.Float, CultureInfo.InvariantCulture, out var ratio)
+                || ratio is <= 0 or >= 1) {
                 throw new InvalidDataException($"A ratio is between nothing and one, and '{part}' is not.");
             }
 
@@ -80,8 +90,8 @@ static class MeshLods {
     }
 
     /// <summary>
-    ///     Welded vertices with more than one coordinate: an atlas seam, which must not close. Normals do not count, since
-    ///     a flat-shaded mesh has a normal per face, and a seam on every vertex simplifies nothing.
+    ///     Welded vertices with more than one coordinate: an atlas seam, which must not close. Normals do not count,
+    ///     since a flat-shaded mesh has a normal per face, and a seam on every vertex simplifies nothing.
     /// </summary>
     static bool[] Seams(MeshData mesh, int[] welded) {
         var seam = new bool[welded.Length];
@@ -133,10 +143,7 @@ static class MeshLods {
         }
 
         return source with {
-            Positions = [..positions],
-            Normals = [..normals],
-            TexCoords = [..coordinates],
-            Indices = indices
+            Positions = [..positions], Normals = [..normals], TexCoords = [..coordinates], Indices = indices
         };
     }
 }

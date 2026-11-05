@@ -2,7 +2,6 @@ using Patina.Contracts;
 using Patina.Export.Builds;
 using Patina.Graphs;
 using Patina.Library;
-using System.Globalization;
 using Vixen.Graphics.Vulkan;
 using Vixen.TextureGraph;
 
@@ -42,10 +41,10 @@ static class BuildCommand {
             if (dryRun) {
                 var preview = BuildPipeline.Plan(library, request, ToolCatalog.Default, stop.Token).Preview(0, 50);
                 Console.WriteLine(
-                    string.Create(
-                        CultureInfo.InvariantCulture,
-                        $"{preview.Projects} projects: {preview.Rebuilds} outputs to build ({preview.Shared} shared), {preview.Fresh} fresh, {preview.Pinned} pinned, {preview.Exports} exports, {preview.Unresolved} unresolved."
-                    )
+                    FormattableString.Invariant($"{preview.Projects} projects: {preview.Rebuilds} outputs to build ")
+                    + FormattableString.Invariant($"({preview.Shared} shared), {preview.Fresh} fresh, ")
+                    + FormattableString.Invariant($"{preview.Pinned} pinned, {preview.Exports} exports, ")
+                    + FormattableString.Invariant($"{preview.Unresolved} unresolved.")
                 );
                 return 0;
             }
@@ -65,10 +64,10 @@ static class BuildCommand {
                 stop.Token
             );
             Console.WriteLine(
-                string.Create(
-                    CultureInfo.InvariantCulture,
-                    $"{report.Projects} projects touched: {report.Built} built, {report.Reused} reused, {report.Fresh} fresh, {report.Exported} exported, {report.ExportsFresh} exports fresh, {report.Failed} failed."
-                )
+                FormattableString.Invariant($"{report.Projects} projects touched: {report.Built} built, ")
+                + FormattableString.Invariant($"{report.Reused} reused, {report.Fresh} fresh, ")
+                + FormattableString.Invariant($"{report.Exported} exported, {report.ExportsFresh} exports fresh, ")
+                + FormattableString.Invariant($"{report.Failed} failed.")
             );
             Console.WriteLine(report.Folder);
             return report.Failed > 0 ? 1 : 0;
@@ -125,15 +124,20 @@ static class BuildCommand {
             }
         }
 
-        return root is null
-            ? null
-            : (root, new() {
-                Asset = asset,
-                Projects = projects.Count > 0 ? projects : null,
-                Presets = none ? [] : presets.Count > 0 ? presets : null,
-                Folder = folder
-            }, dryRun);
+        if (root is null) {
+            return null;
+        }
+
+        var request = new BuildRequest {
+            Asset = asset,
+            Projects = projects.Count > 0 ? projects : null,
+            Presets = none ? [] : Named(presets),
+            Folder = folder
+        };
+        return (root, request, dryRun);
     }
+
+    static List<string>? Named(List<string> presets) => presets.Count > 0 ? presets : null;
 
     /// <summary>Steps in this process, one at a time, off the caller's thread.</summary>
     sealed class LocalExecutor : IBuildExecutor, IDisposable {

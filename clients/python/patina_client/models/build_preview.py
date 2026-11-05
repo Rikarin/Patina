@@ -23,9 +23,9 @@ T = TypeVar("T", bound="BuildPreview")
 
 @_attrs_define
 class BuildPreview:
-    """ What a build would do, from the build keys and with nothing run. Rebuilds and
-    Pinned are exact for outputs, where the asset's impact counts every project that references
-    it at all. An asset a project references and no output reads is in neither.
+    """ What a build would do, from the build keys and with nothing run. int BuildPreview.Rebuilds and
+    int BuildPreview.Pinned are exact for outputs, where the asset's impact counts every project that references it at
+    all. An asset a project references and no output reads is in neither.
 
         Attributes:
             projects (int): Projects with something to do.

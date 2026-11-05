@@ -23,7 +23,6 @@ public sealed record BuildManifest(
 /// <summary>One file a preset made, before a project's name is put on it.</summary>
 /// <param name="Template">The naming template.</param>
 /// <param name="File">Its name in the object's folder.</param>
-/// <param name="Extension">What the delivered file ends in.</param>
 /// <param name="Format">The file format.</param>
 /// <param name="Compression">What is inside it.</param>
 /// <param name="Width">Its width.</param>
@@ -33,7 +32,6 @@ public sealed record BuildManifest(
 public sealed record ExportedFile(
     string Template,
     string File,
-    string Extension,
     string Format,
     string Compression,
     int Width,
@@ -93,7 +91,10 @@ public sealed record BuildRequest {
     /// <summary>Only these projects. Null or empty for all of them.</summary>
     public IReadOnlyList<Guid>? Projects { get; init; }
 
-    /// <summary>The presets to export through. Null means the library's <c>exportTargets</c>; empty, no export.</summary>
+    /// <summary>
+    ///     The presets to export through. Null means the library's <c>exportTargets</c>; empty, no
+    ///     export.
+    /// </summary>
     public IReadOnlyList<string>? Presets { get; init; }
 
     /// <summary>Where exports go, or null for <c>exports/</c> in the library.</summary>
@@ -109,34 +110,44 @@ public sealed record BuildRequest {
 public sealed record BuildPreviewProject(Guid Id, string Name, string Path, int Outputs, int Exports);
 
 /// <summary>
-///     What a build would do, from the build keys and with nothing run. <paramref name="Rebuilds" /> and
-///     <paramref name="Pinned" /> are exact for outputs, where the asset's impact counts every project that references
-///     it at all. An asset a project references and no output reads is in neither.
+///     What a build would do, from the build keys and with nothing run. <see cref="Rebuilds" /> and
+///     <see cref="Pinned" /> are exact for outputs, where the asset's impact counts every project that references it at
+///     all. An asset a project references and no output reads is in neither.
 /// </summary>
-/// <param name="Projects">Projects with something to do.</param>
-/// <param name="Rebuilds">Outputs with no result under their current key, counted once per project.</param>
-/// <param name="Shared">How many of those are the same work as another's, because their keys are equal.</param>
-/// <param name="Fresh">Outputs already built.</param>
-/// <param name="Pinned">Outputs that read the asset through a pin that holds them still.</param>
-/// <param name="Exports">Exports to write.</param>
-/// <param name="ExportsFresh">Exports already in place.</param>
-/// <param name="Unresolved">Outputs that cannot be built: a missing input, an unreadable reference.</param>
-/// <param name="Items">One page of the projects, by name.</param>
-/// <param name="Offset">The offset the page starts at.</param>
-/// <param name="Limit">The most items a page holds.</param>
-public sealed record BuildPreview(
-    int Projects,
-    int Rebuilds,
-    int Shared,
-    int Fresh,
-    int Pinned,
-    int Exports,
-    int ExportsFresh,
-    int Unresolved,
-    IReadOnlyList<BuildPreviewProject> Items,
-    int Offset,
-    int Limit
-);
+public sealed record BuildPreview {
+    /// <summary>Projects with something to do.</summary>
+    public required int Projects { get; init; }
+
+    /// <summary>Outputs with no result under their current key, counted once per project.</summary>
+    public required int Rebuilds { get; init; }
+
+    /// <summary>How many of those are the same work as another's, because their keys are equal.</summary>
+    public required int Shared { get; init; }
+
+    /// <summary>Outputs already built.</summary>
+    public required int Fresh { get; init; }
+
+    /// <summary>Outputs that read the asset through a pin that holds them still.</summary>
+    public required int Pinned { get; init; }
+
+    /// <summary>Exports to write.</summary>
+    public required int Exports { get; init; }
+
+    /// <summary>Exports already in place.</summary>
+    public required int ExportsFresh { get; init; }
+
+    /// <summary>Outputs that cannot be built: a missing input, an unreadable reference.</summary>
+    public required int Unresolved { get; init; }
+
+    /// <summary>One page of the projects, by name.</summary>
+    public required IReadOnlyList<BuildPreviewProject> Items { get; init; }
+
+    /// <summary>The offset the page starts at.</summary>
+    public required int Offset { get; init; }
+
+    /// <summary>The most items a page holds.</summary>
+    public required int Limit { get; init; }
+}
 
 /// <summary>How one output or export came out.</summary>
 public static class BuildStatuses {
@@ -195,32 +206,43 @@ public sealed record ProjectReport(
 );
 
 /// <summary>What a whole build did.</summary>
-/// <param name="Build">The job, or a name a headless build gave itself.</param>
-/// <param name="Started">When it started, in UTC.</param>
-/// <param name="Finished">When it finished, while it has not null.</param>
-/// <param name="Projects">Projects something happened to.</param>
-/// <param name="Built">Outputs that ran.</param>
-/// <param name="Reused">Outputs whose result existed.</param>
-/// <param name="Fresh">Outputs nothing touched.</param>
-/// <param name="Failed">Outputs and exports that could not be made.</param>
-/// <param name="Exported">Exports written.</param>
-/// <param name="ExportsFresh">Exports nothing touched.</param>
-/// <param name="Files">Files written by exports.</param>
-/// <param name="Folder">The folder holding this report and one file per project.</param>
-public sealed record LibraryReport(
-    string Build,
-    DateTimeOffset Started,
-    DateTimeOffset? Finished,
-    int Projects,
-    int Built,
-    int Reused,
-    int Fresh,
-    int Failed,
-    int Exported,
-    int ExportsFresh,
-    long Files,
-    string Folder
-);
+public sealed record LibraryReport {
+    /// <summary>The job, or a name a headless build gave itself.</summary>
+    public required string Build { get; init; }
+
+    /// <summary>When it started, in UTC.</summary>
+    public required DateTimeOffset Started { get; init; }
+
+    /// <summary>When it finished, while it has not null.</summary>
+    public DateTimeOffset? Finished { get; init; }
+
+    /// <summary>Projects something happened to.</summary>
+    public required int Projects { get; init; }
+
+    /// <summary>Outputs that ran.</summary>
+    public required int Built { get; init; }
+
+    /// <summary>Outputs whose result existed.</summary>
+    public required int Reused { get; init; }
+
+    /// <summary>Outputs nothing touched.</summary>
+    public required int Fresh { get; init; }
+
+    /// <summary>Outputs and exports that could not be made.</summary>
+    public required int Failed { get; init; }
+
+    /// <summary>Exports written.</summary>
+    public required int Exported { get; init; }
+
+    /// <summary>Exports nothing touched.</summary>
+    public required int ExportsFresh { get; init; }
+
+    /// <summary>Files written by exports.</summary>
+    public required long Files { get; init; }
+
+    /// <summary>The folder holding this report and one file per project.</summary>
+    public required string Folder { get; init; }
+}
 
 /// <summary>A page of a build's per-project reports.</summary>
 /// <param name="Total">How many there are.</param>
@@ -229,7 +251,10 @@ public sealed record LibraryReport(
 /// <param name="Limit">The most items a page holds.</param>
 public sealed record ProjectReportPage(int Total, IReadOnlyList<ProjectReport> Items, int Offset, int Limit);
 
-/// <summary>The file left beside delivered exports, which is how a build knows they need not be written again.</summary>
+/// <summary>
+///     The file left beside delivered exports, which is how a build knows they need not be written
+///     again.
+/// </summary>
 /// <param name="Key">The export key they came from.</param>
 /// <param name="Files">The files, relative to that folder.</param>
 public sealed record ExportDelivery(string Key, IReadOnlyList<string> Files);
