@@ -10,6 +10,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Patina.Contracts/Patina.Contracts.csproj"/>
+    <!-- For presets, plans and delivery. Encoding is the Worker's: the Server never runs ExportRun.Run. -->
+    <ProjectReference Include="../Patina.Export/Patina.Export.csproj"/>
     <ProjectReference Include="../Patina.Ipc/Patina.Ipc.csproj"/>
     <ProjectReference Include="../Patina.Jobs/Patina.Jobs.csproj"/>
     <ProjectReference Include="../Patina.Library/Patina.Library.csproj"/>

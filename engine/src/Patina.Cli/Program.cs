@@ -9,6 +9,8 @@ switch (args) {
         return MeshMapCommand.Run(options);
     case ["bake", var graph, var folder, .. var options] when GraphBake.Options(options) is var (library, meshMaps):
         return GraphBake.Run(graph, folder, library, meshMaps);
+    case ["build", .. var options]:
+        return await BuildCommand.RunAsync(options);
     case ["library", "new", var path, .. var options]:
         return LibraryCommands.New(path, options);
     case ["library", "check", var path, .. var options]:
@@ -22,6 +24,8 @@ switch (args) {
             """
             + "\n"
             + MeshMapCommand.Usage
+            + "\n"
+            + BuildCommand.Usage
             + "\n"
             + """
                 patina library new <path> [--name <name>]

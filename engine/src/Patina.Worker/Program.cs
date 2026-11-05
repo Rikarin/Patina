@@ -63,5 +63,6 @@ using var gpu = new DeviceHost();
 using var graphs = new GraphHost(gpu);
 using var stacks = new StackHost(gpu);
 using var bakes = new BakeHost();
-await new WorkerLoop(viewport, graphs, stacks, bakes).RunAsync(socketPath, Console.Out, stop.Token);
+using var builds = new BuildHost(gpu);
+await new WorkerLoop(viewport, graphs, stacks, bakes, builds, gpu).RunAsync(socketPath, Console.Out, stop.Token);
 return 0;

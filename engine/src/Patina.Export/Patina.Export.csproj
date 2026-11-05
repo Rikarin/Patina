@@ -1,8 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Writes what Patina makes: baked maps, at the depth asked for. Export presets, channel packing and naming templates arrive in P6.</Description>
+    <Description>Writes what Patina makes: baked maps at the depth asked for, and engine-ready files through export presets, channel packing and naming templates.</Description>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="../../../content/export-presets/*.yaml" LogicalName="preset.%(Filename)%(Extension)"/>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="YamlDotNet"/>
     <ProjectReference Include="../Patina.Contracts/Patina.Contracts.csproj"/>
     <ProjectReference Include="../Patina.Jobs/Patina.Jobs.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.Interchange/Vixen.Interchange.csproj"/>

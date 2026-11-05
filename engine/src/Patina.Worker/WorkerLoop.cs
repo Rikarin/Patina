@@ -5,7 +5,14 @@ using System.Diagnostics;
 namespace Patina.Worker;
 
 /// <summary>Stays connected to the Server until stopped.</summary>
-sealed class WorkerLoop(ViewportHost viewport, GraphHost graphs, StackHost stacks, BakeHost bakes) {
+sealed class WorkerLoop(
+    ViewportHost viewport,
+    GraphHost graphs,
+    StackHost stacks,
+    BakeHost bakes,
+    BuildHost builds,
+    DeviceHost gpu
+) {
     static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
     static readonly long Started = Stopwatch.GetTimestamp();
 
@@ -50,6 +57,7 @@ sealed class WorkerLoop(ViewportHost viewport, GraphHost graphs, StackHost stack
                 await log.WriteLineAsync("patina-worker: the Server disconnected");
             } finally {
                 bakes.LinkLost();
+                builds.LinkLost();
             }
         }
     }
@@ -62,6 +70,21 @@ sealed class WorkerLoop(ViewportHost viewport, GraphHost graphs, StackHost stack
                 IpcTypes.ViewportMaps => viewport.SetMaps(request),
                 IpcTypes.ViewportCamera => viewport.SetCamera(request),
                 IpcTypes.ViewportRender => viewport.Render(request),
+                IpcTypes.GraphLoad or IpcTypes.GraphEvaluate or IpcTypes.GraphImage or IpcTypes.GraphClose
+                    or IpcTypes.StackLoad or IpcTypes.StackSync or IpcTypes.StackEvaluate or IpcTypes.StackSave
+                    or IpcTypes.StackCheckpoint or IpcTypes.StackPixels or IpcTypes.StackClose => OnDevice(request),
+                IpcTypes.BakeStart => bakes.Start(request, link),
+                IpcTypes.BakeCancel => bakes.Cancel(request),
+                IpcTypes.BuildStart => builds.Start(request, link),
+                IpcTypes.BuildCancel => builds.Cancel(request),
+                _ => IpcMessage.Fail(request.Id, $"Unknown request '{request.Type}'.")
+            }
+        );
+
+    /// <summary>What uses the device, in turn with a build's step. Health and bakes never wait for this.</summary>
+    IpcMessage OnDevice(IpcMessage request) {
+        lock (gpu.Gate) {
+            return request.Type switch {
                 IpcTypes.GraphLoad => graphs.Load(request),
                 IpcTypes.GraphEvaluate => graphs.Evaluate(request),
                 IpcTypes.GraphImage => graphs.Image(request),
@@ -71,12 +94,10 @@ sealed class WorkerLoop(ViewportHost viewport, GraphHost graphs, StackHost stack
                 IpcTypes.StackEvaluate => stacks.Evaluate(request),
                 IpcTypes.StackSave or IpcTypes.StackCheckpoint => stacks.Save(request),
                 IpcTypes.StackPixels => stacks.Pixels(request),
-                IpcTypes.StackClose => stacks.Close(request),
-                IpcTypes.BakeStart => bakes.Start(request, link),
-                IpcTypes.BakeCancel => bakes.Cancel(request),
-                _ => IpcMessage.Fail(request.Id, $"Unknown request '{request.Type}'.")
-            }
-        );
+                _ => stacks.Close(request)
+            };
+        }
+    }
 
     static WorkerHealth Health() => new(Stopwatch.GetElapsedTime(Started).TotalSeconds, Environment.WorkingSet);
 }

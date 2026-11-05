@@ -73,7 +73,7 @@ static class ViewportMapEndpoints {
             return TypedResults.Problem($"Job '{request.Job}' has not finished.", statusCode: Refused);
         }
 
-        if (job.Bake.Space != "tangent") {
+        if (job.Bake!.Space != "tangent") {
             return TypedResults.Problem(
                 "This bake is in object space, and the viewport reads tangent-space maps.",
                 statusCode: Refused

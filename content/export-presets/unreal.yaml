@@ -1,0 +1,30 @@
+# Unreal Engine. Files for the editor's importer, which does its own block compression. See docs/adr/0011-export.md.
+version: 1
+id: unreal
+name: Unreal Engine
+engine: Unreal Engine
+# Y-down, the form the engine's "Flip Green Channel" option exists to convert from. Epic documents the option and not
+# the name of the convention, so this rests on long practice and is marked uncertain in the ADR.
+normal: y-down
+textures:
+  - file: T_{project}_D
+    format: png8
+    space: srgb
+    channels: [baseColor.r, baseColor.g, baseColor.b, opacity.r]
+  - file: T_{project}_N
+    format: png8
+    space: linear
+    channels: [normal.r, normal.g, normal.b]
+  # Occlusion, roughness, metallic: the common packing, which needs sRGB off on import. Not an Epic document.
+  - file: T_{project}_ORM
+    format: png8
+    space: linear
+    channels: [occlusion.r, roughness.r, metalness.r]
+  - file: T_{project}_E
+    format: png8
+    space: srgb
+    channels: [emissive.r, emissive.g, emissive.b]
+  - file: T_{project}_H
+    format: png16
+    space: linear
+    channels: [height.r]

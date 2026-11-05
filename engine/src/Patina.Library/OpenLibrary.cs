@@ -136,5 +136,21 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         return new LibraryCheck(RootPath, state, database, tools ?? ToolCatalog.Default).Run(cancellationToken);
     }
 
+    /// <summary>Rescans, then works out every output's key, in the projects a selection names.</summary>
+    /// <param name="selection">Which projects.</param>
+    /// <param name="tools">The installed tool versions, or null for <see cref="ToolCatalog.Default" />.</param>
+    /// <param name="cancellationToken">Stops it between batches.</param>
+    public OutputScan ScanOutputs(
+        OutputSelection selection,
+        ToolCatalog? tools = null,
+        CancellationToken cancellationToken = default
+    ) {
+        Rescan(cancellationToken);
+        return new LibraryOutputs(RootPath, database, queries, tools ?? ToolCatalog.Default).Scan(
+            selection,
+            cancellationToken
+        );
+    }
+
     public void Dispose() => database.Dispose();
 }

@@ -238,7 +238,7 @@ public sealed class JobQueueTests : IDisposable {
         var text = File.ReadAllBytes(Path.Combine(folder.FullName, $"{job.Id}.json"));
         var read = JsonSerializer.Deserialize(text, ContractsJsonContext.Default.JobState)!;
 
-        Assert.Equal(512, read.Bake.Resolution);
+        Assert.Equal(512, read.Bake!.Resolution);
         Assert.Equal("a", read.Key);
     }
 }

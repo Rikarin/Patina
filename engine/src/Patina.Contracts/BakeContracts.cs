@@ -113,8 +113,14 @@ public sealed record JobState {
     /// <summary>When it was asked for, in UTC.</summary>
     public required DateTimeOffset Created { get; init; }
 
-    /// <summary>What to do.</summary>
-    public required BakeRequest Bake { get; init; }
+    /// <summary>The bake to make, when this job is a bake.</summary>
+    public BakeRequest? Bake { get; init; }
+
+    /// <summary>The build to run, when this job is a build.</summary>
+    public BuildRequest? Build { get; init; }
+
+    /// <summary>What a build has done so far, or did.</summary>
+    public LibraryReport? Report { get; init; }
 
     /// <summary>What it made, once done.</summary>
     public BakeResult? Result { get; init; }

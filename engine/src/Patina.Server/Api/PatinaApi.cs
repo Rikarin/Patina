@@ -67,6 +67,7 @@ static class PatinaApi {
         api.MapStackApi();
         app.MapStackSocket();
         api.MapJobApi();
+        api.MapBuildApi();
         app.MapJobSocket();
     }
 
