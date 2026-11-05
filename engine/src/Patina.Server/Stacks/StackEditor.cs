@@ -263,7 +263,12 @@ public sealed class StackEditor : ILayerStackDocument {
         return new(
             this,
             new(set, null, Set.Layers.Count),
-            new() { Id = id, Name = add.Name, Kind = kind },
+            new() {
+                Id = id,
+                Name = add.Name,
+                Kind = kind,
+                Values = add.Values?.ToDictionary(static value => value.Key, static value => value.Value.ToArray()) ?? []
+            },
             $"Add {add.Name}"
         );
     }

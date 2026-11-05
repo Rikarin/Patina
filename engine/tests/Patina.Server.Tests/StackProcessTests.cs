@@ -15,6 +15,8 @@ public sealed class StackProcessTests : IDisposable {
 
     static readonly IReadOnlyList<float> Red = [0.9f, 0.1f, 0.05f, 1f];
 
+    static readonly Dictionary<string, IReadOnlyList<float>> Tint = new() { ["baseColor"] = [0.8f, 0.7f, 0.5f, 1f] };
+
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-stack-");
     readonly string socketPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.sock");
     readonly List<Process> started = [];
@@ -88,7 +90,7 @@ public sealed class StackProcessTests : IDisposable {
 
         // The modes the old pane could not reproduce, with a layer over the stroke to composite through.
         await EditAsync(state.Id, deadline.Token, new StackSetLayer("paint", null, null, 0.7f, "Overlay"));
-        await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Top"));
+        await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Top", Tint));
         var top = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
         await EditAsync(state.Id, deadline.Token, new StackSetLayer(top, null, null, 0.4f, "Multiply"));
         var first = await PaintAsync(state.Id, "a", Line(80, 300, 30), false, deadline.Token);
@@ -147,6 +149,66 @@ public sealed class StackProcessTests : IDisposable {
             Digest(await PixelsAsync(control.Id, false, deadline.Token), "baseColor"),
             Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor")
         );
+    }
+
+    /// <summary>
+    ///     What ADR 0009's end to end figure is: from sending stamps to holding the map they changed, as a client does
+    ///     it, with the Server, the socket and the picture's file in the way. It prints and asserts nothing about time.
+    /// </summary>
+    [Fact]
+    public async Task A_stamp_reaches_a_client_as_a_preview() {
+        using var deadline = Deadline(300);
+        var size = int.TryParse(Environment.GetEnvironmentVariable("PATINA_S4_SIZE"), out var chosen) ? chosen : Side;
+        var worker = StartWorker();
+        var (instance, state) = await AttachAsync("Live.vxlayers", deadline.Token, size);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        await EvaluatedAsync(socket, state.Revision, deadline.Token);
+        for (var layer = 0; layer < 18; layer++) {
+            await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", $"Over {layer}", Tint));
+        }
+
+        var layers = (await StateAsync(state.Id, deadline.Token)).Layers;
+        var last = await EditAsync(
+            state.Id,
+            deadline.Token,
+            [
+                ..layers.Skip(2)
+                    .Select((layer, index) => (StackCommand)new StackSetLayer(
+                            layer.Id,
+                            null,
+                            null,
+                            0.3f,
+                            index % 2 == 0 ? "Multiply" : "Overlay"
+                        )
+                    )
+            ]
+        );
+        await EvaluatedAsync(socket, last.Revision, deadline.Token);
+        var compiled = await PaintAsync(state.Id, "first", Line(100, 100, 2), false, deadline.Token);
+        await EvaluatedAsync(socket, compiled.Revision, deadline.Token);
+
+        List<double> times = [];
+        var repaired = 0;
+        for (var stamp = 0; stamp < 120; stamp++) {
+            var clock = Stopwatch.GetTimestamp();
+            var sent = await PaintAsync(state.Id, "drag", [new(200f + (stamp * 8f), 300f)], true, deadline.Token);
+            var evaluation = await EvaluatedAsync(socket, sent.Revision, deadline.Token);
+            foreach (var preview in evaluation.Previews) {
+                _ = await http.GetByteArrayAsync($"/api/v1/previews/{preview.Hash}", deadline.Token);
+            }
+
+            repaired = evaluation.Repaired;
+            if (stamp > 10) {
+                times.Add(Stopwatch.GetElapsedTime(clock).TotalMilliseconds);
+            }
+        }
+
+        times.Sort();
+        TestContext.Current.TestOutputHelper?.WriteLine(
+            $"S4 end to end, {size}², 20 layers: p50 {times[times.Count / 2]:F1} ms, p95 "
+            + $"{times[times.Count * 95 / 100]:F1} ms, {repaired} ops repaired, Worker {worker.Id}"
+        );
+        Assert.True(repaired > 0);
     }
 
     /// <summary>A stack that saved comes back as the same picture, from the files alone.</summary>
@@ -254,7 +316,7 @@ public sealed class StackProcessTests : IDisposable {
         return (instance, state, worker);
     }
 
-    async Task<(ServerInstance, StackState)> AttachAsync(string name, CancellationToken token) {
+    async Task<(ServerInstance, StackState)> AttachAsync(string name, CancellationToken token, int size = Side) {
         Start(
             Engine.Dll("Patina.Server", "patina-server"),
             "--library",
@@ -268,7 +330,7 @@ public sealed class StackProcessTests : IDisposable {
             if (await registry.FindAsync(Library, token) is { } instance) {
                 http.BaseAddress = new($"http://127.0.0.1:{instance.Port}");
                 http.DefaultRequestHeaders.Authorization = new("Bearer", instance.Token);
-                return (instance, await CreateAsync(name, token));
+                return (instance, await CreateAsync(name, token, size));
             }
 
             await Task.Delay(50, token);
@@ -277,10 +339,10 @@ public sealed class StackProcessTests : IDisposable {
 
     async Task<StackState> OpenControlAsync(string name, CancellationToken token) => await CreateAsync(name, token);
 
-    async Task<StackState> CreateAsync(string name, CancellationToken token) {
+    async Task<StackState> CreateAsync(string name, CancellationToken token, int size = Side) {
         using var response = await http.PostAsJsonAsync(
             "/api/v1/stacks/new",
-            new StackCreateRequest(name, Side, Side),
+            new StackCreateRequest(name, size, size),
             ContractsJsonContext.Default.StackCreateRequest,
             token
         );

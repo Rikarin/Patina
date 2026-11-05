@@ -1468,6 +1468,673 @@
         }
       }
     },
+    "/api/v1/stacks": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "The open stacks.",
+        "operationId": "GetStacks",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StackSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Opens a layer stack, or joins the session that has it open.",
+        "operationId": "OpenStack",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StackOpenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/new": {
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Writes a new stack with a base and a paint layer, and opens it.",
+        "operationId": "CreateStack",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StackCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackState"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "The whole stack, its history and the newest maps.",
+        "operationId": "GetStack",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Ends a session. Unsaved edits refuse this unless discard is set.",
+        "operationId": "CloseStack",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "discard",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/commands": {
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Applies a batch whole or not at all, as one undo step. A stroke is a list of stamps, never pixels.",
+        "operationId": "ApplyStackCommands",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StackCommandBatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackEditResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/undo": {
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Takes back the newest batch, whichever client sent it.",
+        "operationId": "UndoStack",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackEditResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/redo": {
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Puts back the newest undone batch.",
+        "operationId": "RedoStack",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackEditResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/save": {
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Writes the pixels and then the stack. A file changed on disk refuses this unless force is set.",
+        "operationId": "SaveStack",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "force",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackEditResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/evaluate": {
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Composites again, which also rewrites maps a deleted cache has lost.",
+        "operationId": "EvaluateStack",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/pixels": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "A digest of each map as it stands, the same one an export reports, with no pixels in the reply.",
+        "operationId": "GetStackPixels",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "clean",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StackPixels"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/export": {
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Evaluates from nothing and writes each map to a file, and says where and what they hold.",
+        "operationId": "ExportStack",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StackExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StackPixels"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/events": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "The events after a number. /ws/stacks/{id}?since= sends the same events as they happen.",
+        "operationId": "GetStackEvents",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackEventPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/jobs": {
       "get": {
         "tags": [
@@ -4281,6 +4948,864 @@
         },
         "description": "One project as the browser shows it. The project itself loads on open."
       },
+      "StackBrush": {
+        "required": [
+          "radius",
+          "flow",
+          "opacity",
+          "spacing",
+          "falloff"
+        ],
+        "type": "object",
+        "properties": {
+          "radius": {
+            "type": "number",
+            "description": "In texels.",
+            "format": "float"
+          },
+          "flow": {
+            "type": "number",
+            "description": "How much one stamp lays down, 0 to 1.",
+            "format": "float",
+            "default": 1
+          },
+          "opacity": {
+            "type": "number",
+            "description": "How much a whole stroke can lay down, 0 to 1.",
+            "format": "float",
+            "default": 1
+          },
+          "spacing": {
+            "type": "number",
+            "description": "How far apart stamps are, as a share of the radius.",
+            "format": "float",
+            "default": 0.15
+          },
+          "falloff": {
+            "type": "number",
+            "description": "How soft its edge is, 0 to 1.",
+            "format": "float",
+            "default": 0.5
+          }
+        },
+        "description": "A brush. Everything but the radius has the value a new brush has."
+      },
+      "StackChannel": {
+        "required": [
+          "usage",
+          "default"
+        ],
+        "type": "object",
+        "properties": {
+          "usage": {
+            "type": "string",
+            "description": "Its usage: baseColor, roughness and so on."
+          },
+          "default": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "What it starts as."
+          }
+        },
+        "description": "A channel a stack writes."
+      },
+      "StackCommand": {
+        "required": [
+          "op"
+        ],
+        "type": "object",
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/StackCommandStackAddLayer"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackRemoveLayer"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackMoveLayer"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackSetLayer"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackStroke"
+          }
+        ],
+        "description": "One edit of a stack. A batch of these is one undo step.",
+        "discriminator": {
+          "propertyName": "op",
+          "mapping": {
+            "addLayer": "#/components/schemas/StackCommandStackAddLayer",
+            "removeLayer": "#/components/schemas/StackCommandStackRemoveLayer",
+            "moveLayer": "#/components/schemas/StackCommandStackMoveLayer",
+            "setLayer": "#/components/schemas/StackCommandStackSetLayer",
+            "stroke": "#/components/schemas/StackCommandStackStroke"
+          }
+        }
+      },
+      "StackCommandBatch": {
+        "required": [
+          "commands"
+        ],
+        "type": "object",
+        "properties": {
+          "commands": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackCommand"
+            },
+            "description": "The edits, in order."
+          },
+          "label": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What the undo step says."
+          }
+        },
+        "description": "Edits applied whole or not at all, as one undo step."
+      },
+      "StackCommandStackAddLayer": {
+        "required": [
+          "kind",
+          "name",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "addLayer"
+            ],
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "description": "fill, paint, filter or group."
+          },
+          "name": {
+            "type": "string",
+            "description": "What it is called."
+          },
+          "values": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "float"
+              }
+            },
+            "description": "What a fill writes to each channel, as four numbers. Ignored for other kinds."
+          }
+        },
+        "description": "Adds a layer at the top of the stack."
+      },
+      "StackCommandStackMoveLayer": {
+        "required": [
+          "layer",
+          "delta",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "moveLayer"
+            ],
+            "type": "string"
+          },
+          "layer": {
+            "type": "string",
+            "description": "Which."
+          },
+          "delta": {
+            "type": "integer",
+            "description": "How many places, up the stack when positive.",
+            "format": "int32"
+          }
+        },
+        "description": "Moves a layer up or down its list."
+      },
+      "StackCommandStackRemoveLayer": {
+        "required": [
+          "layer",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "removeLayer"
+            ],
+            "type": "string"
+          },
+          "layer": {
+            "type": "string",
+            "description": "Which."
+          }
+        },
+        "description": "Removes a layer."
+      },
+      "StackCommandStackSetLayer": {
+        "required": [
+          "layer",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "setLayer"
+            ],
+            "type": "string"
+          },
+          "layer": {
+            "type": "string",
+            "description": "Which."
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What it is called."
+          },
+          "enabled": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether it composites."
+          },
+          "opacity": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "How much of it composites, 0 to 1.",
+            "format": "float"
+          },
+          "blend": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its blend mode."
+          }
+        },
+        "description": "Changes what a layer\u0027s row shows. What is null stays."
+      },
+      "StackCommandStackStroke": {
+        "required": [
+          "stroke",
+          "layer",
+          "channel",
+          "brush",
+          "colour",
+          "stamps",
+          "op",
+          "open",
+          "mask"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "stroke"
+            ],
+            "type": "string"
+          },
+          "stroke": {
+            "type": "string",
+            "description": "A name the client chose for this drag."
+          },
+          "layer": {
+            "type": "string",
+            "description": "The paint layer."
+          },
+          "channel": {
+            "type": "string",
+            "description": "Which of its channels. Ignored for a mask."
+          },
+          "brush": {
+            "description": "The brush, which the first part decides.",
+            "$ref": "#/components/schemas/StackBrush"
+          },
+          "colour": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Red, green, blue and alpha, 0 to 1, which the first part decides."
+          },
+          "stamps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackStamp"
+            },
+            "description": "Where the brush went since the last part."
+          },
+          "open": {
+            "type": "boolean",
+            "description": "Whether more of this drag is coming.",
+            "default": false
+          },
+          "mask": {
+            "type": "boolean",
+            "description": "Whether this paints the layer\u0027s mask.",
+            "default": false
+          }
+        },
+        "description": "Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one\nStroke and they make one undo step, ended by one with Open false."
+      },
+      "StackCreateRequest": {
+        "required": [
+          "path",
+          "width",
+          "height"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The file to write, absolute or relative to the library."
+          },
+          "width": {
+            "type": "integer",
+            "description": "Its width in texels.",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "description": "Its height in texels.",
+            "format": "int32"
+          }
+        },
+        "description": "Creates a layer stack: one base fill, and one paint layer over it."
+      },
+      "StackDelta": {
+        "required": [
+          "layers",
+          "painted"
+        ],
+        "type": "object",
+        "properties": {
+          "layers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackLayer"
+            },
+            "description": "The stack\u0027s layers now."
+          },
+          "painted": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackPainted"
+            },
+            "description": "Each channel a stroke touched, as layer and usage."
+          }
+        },
+        "description": "What an edit changed, so that a client need not read the whole stack again."
+      },
+      "StackEditResult": {
+        "required": [
+          "revision",
+          "sequence",
+          "history"
+        ],
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "description": "The revision of the document.",
+            "format": "int64"
+          },
+          "sequence": {
+            "type": "integer",
+            "description": "The event it produced.",
+            "format": "int64"
+          },
+          "history": {
+            "description": "The undo history.",
+            "$ref": "#/components/schemas/GraphHistoryState"
+          }
+        },
+        "description": "Where an edit left the session."
+      },
+      "StackEvaluation": {
+        "required": [
+          "revision",
+          "compiled",
+          "ran",
+          "repaired",
+          "reused",
+          "milliseconds",
+          "previews",
+          "diagnostics"
+        ],
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "description": "The revision it was of.",
+            "format": "int64"
+          },
+          "compiled": {
+            "type": "boolean",
+            "description": "Whether the plan had to compile."
+          },
+          "ran": {
+            "type": "integer",
+            "description": "How many ops ran.",
+            "format": "int32"
+          },
+          "repaired": {
+            "type": "integer",
+            "description": "How many of those ran over the tiles a stroke changed rather than the whole image.",
+            "format": "int32"
+          },
+          "reused": {
+            "type": "integer",
+            "description": "How many came from the cache.",
+            "format": "int32"
+          },
+          "milliseconds": {
+            "type": "number",
+            "description": "How long the Worker took.",
+            "format": "double"
+          },
+          "previews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackPreview"
+            },
+            "description": "The maps that changed."
+          },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Why it could not evaluate, or what it warned about."
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why the evaluation failed, or null."
+          }
+        },
+        "description": "How an evaluation went."
+      },
+      "StackEvent": {
+        "required": [
+          "sequence",
+          "kind",
+          "revision",
+          "history"
+        ],
+        "type": "object",
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "description": "Its number.",
+            "format": "int64"
+          },
+          "kind": {
+            "description": "What happened.",
+            "$ref": "#/components/schemas/GraphEventKind"
+          },
+          "revision": {
+            "type": "integer",
+            "description": "The revision of the document after it.",
+            "format": "int64"
+          },
+          "history": {
+            "description": "The undo history after it.",
+            "$ref": "#/components/schemas/GraphHistoryState"
+          },
+          "label": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What the undo step says."
+          },
+          "delta": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What an edit changed.",
+                "$ref": "#/components/schemas/StackDelta"
+              }
+            ]
+          },
+          "evaluation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "How an evaluation went.",
+                "$ref": "#/components/schemas/StackEvaluation"
+              }
+            ]
+          }
+        },
+        "description": "Something that happened to a stack, with the same kinds and numbering as a graph\u0027s events."
+      },
+      "StackEventPage": {
+        "required": [
+          "sequence",
+          "events"
+        ],
+        "type": "object",
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "description": "The newest event\u0027s number.",
+            "format": "int64"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackEvent"
+            },
+            "description": "The events."
+          }
+        },
+        "description": "The events after a number."
+      },
+      "StackExportRequest": {
+        "required": [
+          "folder"
+        ],
+        "type": "object",
+        "properties": {
+          "folder": {
+            "type": "string",
+            "description": "Where, absolute or relative to the library."
+          }
+        },
+        "description": "Writes each channel of a stack to a file."
+      },
+      "StackLayer": {
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "enabled",
+          "opacity",
+          "blend",
+          "channels",
+          "painted",
+          "children"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Its identifier, stable across renames."
+          },
+          "name": {
+            "type": "string",
+            "description": "What it is called."
+          },
+          "kind": {
+            "type": "string",
+            "description": "fill, paint, filter or group."
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether it composites."
+          },
+          "opacity": {
+            "type": "number",
+            "description": "How much of it composites.",
+            "format": "float"
+          },
+          "blend": {
+            "type": "string",
+            "description": "Its blend mode."
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Which channels it writes. Empty means all of them."
+          },
+          "painted": {
+            "type": "boolean",
+            "description": "Whether it names a paint file yet."
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackLayer"
+            },
+            "description": "What a group holds."
+          }
+        },
+        "description": "One layer, without its pixels."
+      },
+      "StackOpenRequest": {
+        "required": [
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "A \u0060.vxlayers\u0060 file, absolute or relative to the library."
+          }
+        },
+        "description": "Opens a layer stack."
+      },
+      "StackPainted": {
+        "required": [
+          "layer",
+          "channel"
+        ],
+        "type": "object",
+        "properties": {
+          "layer": {
+            "type": "string",
+            "description": "The layer."
+          },
+          "channel": {
+            "type": "string",
+            "description": "The channel."
+          }
+        },
+        "description": "A channel a stroke touched."
+      },
+      "StackPixels": {
+        "required": [
+          "usage",
+          "width",
+          "height",
+          "digest"
+        ],
+        "type": "object",
+        "properties": {
+          "usage": {
+            "type": "string",
+            "description": "Which channel."
+          },
+          "width": {
+            "type": "integer",
+            "description": "Its width in pixels.",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "description": "Its height in pixels.",
+            "format": "int32"
+          },
+          "digest": {
+            "type": "string",
+            "description": "SHA-256 of its pixels as 8-bit RGBA, row by row."
+          },
+          "file": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Where it was written, for an export."
+          }
+        },
+        "description": "A digest of a map\u0027s pixels, so that two pictures can be compared with neither crossing the API."
+      },
+      "StackPreview": {
+        "required": [
+          "usage",
+          "hash",
+          "width",
+          "height"
+        ],
+        "type": "object",
+        "properties": {
+          "usage": {
+            "type": "string",
+            "description": "Which channel."
+          },
+          "hash": {
+            "type": "string",
+            "description": "Its name under \u0060/previews/{hash}\u0060."
+          },
+          "width": {
+            "type": "integer",
+            "description": "Its width in pixels.",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "description": "Its height in pixels.",
+            "format": "int32"
+          }
+        },
+        "description": "A map as a small picture, by the hash an event carries."
+      },
+      "StackStamp": {
+        "required": [
+          "x",
+          "y"
+        ],
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number",
+            "description": "Its column.",
+            "format": "float"
+          },
+          "y": {
+            "type": "number",
+            "description": "Its row.",
+            "format": "float"
+          }
+        },
+        "description": "Where the brush goes, in texels from the image\u0027s top left."
+      },
+      "StackState": {
+        "required": [
+          "id",
+          "path",
+          "name",
+          "set",
+          "width",
+          "height",
+          "revision",
+          "sequence",
+          "history",
+          "channels",
+          "layers",
+          "previews",
+          "settled"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The session."
+          },
+          "path": {
+            "type": "string",
+            "description": "Its file."
+          },
+          "name": {
+            "type": "string",
+            "description": "What it is called."
+          },
+          "set": {
+            "type": "string",
+            "description": "The texture set this session paints."
+          },
+          "width": {
+            "type": "integer",
+            "description": "Its width in texels.",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "description": "Its height in texels.",
+            "format": "int32"
+          },
+          "revision": {
+            "type": "integer",
+            "description": "The revision of the document.",
+            "format": "int64"
+          },
+          "sequence": {
+            "type": "integer",
+            "description": "The number of the last event it includes.",
+            "format": "int64"
+          },
+          "history": {
+            "description": "Its undo history.",
+            "$ref": "#/components/schemas/GraphHistoryState"
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackChannel"
+            },
+            "description": "The channels it writes."
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackLayer"
+            },
+            "description": "Its layers, bottom first."
+          },
+          "previews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackPreview"
+            },
+            "description": "The newest maps."
+          },
+          "evaluation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The last evaluation, or null.",
+                "$ref": "#/components/schemas/StackEvaluation"
+              }
+            ]
+          },
+          "settled": {
+            "type": "integer",
+            "description": "The newest revision an evaluation has reached.",
+            "format": "int64"
+          }
+        },
+        "description": "A whole stack: everything a client needs to draw it, and no pixels."
+      },
+      "StackSummary": {
+        "required": [
+          "id",
+          "path",
+          "name",
+          "revision",
+          "dirty"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The session."
+          },
+          "path": {
+            "type": "string",
+            "description": "Its file."
+          },
+          "name": {
+            "type": "string",
+            "description": "What it is called."
+          },
+          "revision": {
+            "type": "integer",
+            "description": "The revision of the document.",
+            "format": "int64"
+          },
+          "dirty": {
+            "type": "boolean",
+            "description": "Whether it has edits no file holds."
+          }
+        },
+        "description": "An open stack, for a list."
+      },
       "SystemInfo": {
         "required": [
           "version",
@@ -4518,6 +6043,9 @@
     },
     {
       "name": "Library"
+    },
+    {
+      "name": "Stacks"
     },
     {
       "name": "Jobs"

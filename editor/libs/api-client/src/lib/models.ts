@@ -55,3 +55,10 @@ export interface ViewportInput {
   input?: number;
   interacting?: boolean;
 }
+export type StackState = components['schemas']['StackState'];
+export type StackLayer = components['schemas']['StackLayer'];
+export type StackPreview = components['schemas']['StackPreview'];
+export type StackEvent = components['schemas']['StackEvent'];
+export type StackCommandBatch = components['schemas']['StackCommandBatch'];
+export type StackStamp = components['schemas']['StackStamp'];
+export type StackEditResult = components['schemas']['StackEditResult'];

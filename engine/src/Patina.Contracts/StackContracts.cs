@@ -124,7 +124,12 @@ public abstract record StackCommand;
 /// <summary>Adds a layer at the top of the stack.</summary>
 /// <param name="Kind">fill, paint, filter or group.</param>
 /// <param name="Name">What it is called.</param>
-public sealed record StackAddLayer(string Kind, string Name) : StackCommand;
+/// <param name="Values">What a fill writes to each channel, as four numbers. Ignored for other kinds.</param>
+public sealed record StackAddLayer(
+    string Kind,
+    string Name,
+    IReadOnlyDictionary<string, IReadOnlyList<float>>? Values = null
+) : StackCommand;
 
 /// <summary>Removes a layer.</summary>
 /// <param name="Layer">Which.</param>

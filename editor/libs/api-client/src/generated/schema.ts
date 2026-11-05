@@ -433,6 +433,195 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/stacks': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The open stacks. */
+    get: operations['GetStacks'];
+    put?: never;
+    /** Opens a layer stack, or joins the session that has it open. */
+    post: operations['OpenStack'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/new': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Writes a new stack with a base and a paint layer, and opens it. */
+    post: operations['CreateStack'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The whole stack, its history and the newest maps. */
+    get: operations['GetStack'];
+    put?: never;
+    post?: never;
+    /** Ends a session. Unsaved edits refuse this unless discard is set. */
+    delete: operations['CloseStack'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/commands': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Applies a batch whole or not at all, as one undo step. A stroke is a list of stamps, never pixels. */
+    post: operations['ApplyStackCommands'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/undo': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Takes back the newest batch, whichever client sent it. */
+    post: operations['UndoStack'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/redo': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Puts back the newest undone batch. */
+    post: operations['RedoStack'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/save': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Writes the pixels and then the stack. A file changed on disk refuses this unless force is set. */
+    post: operations['SaveStack'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/evaluate': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Composites again, which also rewrites maps a deleted cache has lost. */
+    post: operations['EvaluateStack'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/pixels': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** A digest of each map as it stands, the same one an export reports, with no pixels in the reply. */
+    get: operations['GetStackPixels'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/export': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Evaluates from nothing and writes each map to a file, and says where and what they hold. */
+    post: operations['ExportStack'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/events': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The events after a number. /ws/stacks/{id}?since= sends the same events as they happen. */
+    get: operations['GetStackEvents'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/jobs': {
     parameters: {
       query?: never;
@@ -1671,6 +1860,394 @@ export interface components {
        */
       referenceCount: number;
     };
+    /** @description A brush. Everything but the radius has the value a new brush has. */
+    StackBrush: {
+      /**
+       * Format: float
+       * @description In texels.
+       */
+      radius: number;
+      /**
+       * Format: float
+       * @description How much one stamp lays down, 0 to 1.
+       * @default 1
+       */
+      flow: number;
+      /**
+       * Format: float
+       * @description How much a whole stroke can lay down, 0 to 1.
+       * @default 1
+       */
+      opacity: number;
+      /**
+       * Format: float
+       * @description How far apart stamps are, as a share of the radius.
+       * @default 0.15
+       */
+      spacing: number;
+      /**
+       * Format: float
+       * @description How soft its edge is, 0 to 1.
+       * @default 0.5
+       */
+      falloff: number;
+    };
+    /** @description A channel a stack writes. */
+    StackChannel: {
+      /** @description Its usage: baseColor, roughness and so on. */
+      usage: string;
+      /** @description What it starts as. */
+      default: number[];
+    };
+    /** @description One edit of a stack. A batch of these is one undo step. */
+    StackCommand:
+      | components['schemas']['StackCommandStackAddLayer']
+      | components['schemas']['StackCommandStackRemoveLayer']
+      | components['schemas']['StackCommandStackMoveLayer']
+      | components['schemas']['StackCommandStackSetLayer']
+      | components['schemas']['StackCommandStackStroke'];
+    /** @description Edits applied whole or not at all, as one undo step. */
+    StackCommandBatch: {
+      /** @description The edits, in order. */
+      commands: components['schemas']['StackCommand'][];
+      /** @description What the undo step says. */
+      label?: null | string;
+    };
+    /** @description Adds a layer at the top of the stack. */
+    StackCommandStackAddLayer: {
+      /** @enum {string} */
+      op: 'addLayer';
+      /** @description fill, paint, filter or group. */
+      kind: string;
+      /** @description What it is called. */
+      name: string;
+      /** @description What a fill writes to each channel, as four numbers. Ignored for other kinds. */
+      values?: null | {
+        [key: string]: number[];
+      };
+    };
+    /** @description Moves a layer up or down its list. */
+    StackCommandStackMoveLayer: {
+      /** @enum {string} */
+      op: 'moveLayer';
+      /** @description Which. */
+      layer: string;
+      /**
+       * Format: int32
+       * @description How many places, up the stack when positive.
+       */
+      delta: number;
+    };
+    /** @description Removes a layer. */
+    StackCommandStackRemoveLayer: {
+      /** @enum {string} */
+      op: 'removeLayer';
+      /** @description Which. */
+      layer: string;
+    };
+    /** @description Changes what a layer's row shows. What is null stays. */
+    StackCommandStackSetLayer: {
+      /** @enum {string} */
+      op: 'setLayer';
+      /** @description Which. */
+      layer: string;
+      /** @description What it is called. */
+      name?: null | string;
+      /** @description Whether it composites. */
+      enabled?: null | boolean;
+      /**
+       * Format: float
+       * @description How much of it composites, 0 to 1.
+       */
+      opacity?: null | number;
+      /** @description Its blend mode. */
+      blend?: null | string;
+    };
+    /**
+     * @description Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one
+     *     Stroke and they make one undo step, ended by one with Open false.
+     */
+    StackCommandStackStroke: {
+      /** @enum {string} */
+      op: 'stroke';
+      /** @description A name the client chose for this drag. */
+      stroke: string;
+      /** @description The paint layer. */
+      layer: string;
+      /** @description Which of its channels. Ignored for a mask. */
+      channel: string;
+      /** @description The brush, which the first part decides. */
+      brush: components['schemas']['StackBrush'];
+      /** @description Red, green, blue and alpha, 0 to 1, which the first part decides. */
+      colour: number[];
+      /** @description Where the brush went since the last part. */
+      stamps: components['schemas']['StackStamp'][];
+      /**
+       * @description Whether more of this drag is coming.
+       * @default false
+       */
+      open: boolean;
+      /**
+       * @description Whether this paints the layer's mask.
+       * @default false
+       */
+      mask: boolean;
+    };
+    /** @description Creates a layer stack: one base fill, and one paint layer over it. */
+    StackCreateRequest: {
+      /** @description The file to write, absolute or relative to the library. */
+      path: string;
+      /**
+       * Format: int32
+       * @description Its width in texels.
+       */
+      width: number;
+      /**
+       * Format: int32
+       * @description Its height in texels.
+       */
+      height: number;
+    };
+    /** @description What an edit changed, so that a client need not read the whole stack again. */
+    StackDelta: {
+      /** @description The stack's layers now. */
+      layers: components['schemas']['StackLayer'][];
+      /** @description Each channel a stroke touched, as layer and usage. */
+      painted: components['schemas']['StackPainted'][];
+    };
+    /** @description Where an edit left the session. */
+    StackEditResult: {
+      /**
+       * Format: int64
+       * @description The revision of the document.
+       */
+      revision: number;
+      /**
+       * Format: int64
+       * @description The event it produced.
+       */
+      sequence: number;
+      /** @description The undo history. */
+      history: components['schemas']['GraphHistoryState'];
+    };
+    /** @description How an evaluation went. */
+    StackEvaluation: {
+      /**
+       * Format: int64
+       * @description The revision it was of.
+       */
+      revision: number;
+      /** @description Whether the plan had to compile. */
+      compiled: boolean;
+      /**
+       * Format: int32
+       * @description How many ops ran.
+       */
+      ran: number;
+      /**
+       * Format: int32
+       * @description How many of those ran over the tiles a stroke changed rather than the whole image.
+       */
+      repaired: number;
+      /**
+       * Format: int32
+       * @description How many came from the cache.
+       */
+      reused: number;
+      /**
+       * Format: double
+       * @description How long the Worker took.
+       */
+      milliseconds: number;
+      /** @description The maps that changed. */
+      previews: components['schemas']['StackPreview'][];
+      /** @description Why it could not evaluate, or what it warned about. */
+      diagnostics: string[];
+      /** @description Why the evaluation failed, or null. */
+      error?: null | string;
+    };
+    /** @description Something that happened to a stack, with the same kinds and numbering as a graph's events. */
+    StackEvent: {
+      /**
+       * Format: int64
+       * @description Its number.
+       */
+      sequence: number;
+      /** @description What happened. */
+      kind: components['schemas']['GraphEventKind'];
+      /**
+       * Format: int64
+       * @description The revision of the document after it.
+       */
+      revision: number;
+      /** @description The undo history after it. */
+      history: components['schemas']['GraphHistoryState'];
+      /** @description What the undo step says. */
+      label?: null | string;
+      delta?: null | components['schemas']['StackDelta'];
+      evaluation?: null | components['schemas']['StackEvaluation'];
+    };
+    /** @description The events after a number. */
+    StackEventPage: {
+      /**
+       * Format: int64
+       * @description The newest event's number.
+       */
+      sequence: number;
+      /** @description The events. */
+      events: components['schemas']['StackEvent'][];
+    };
+    /** @description Writes each channel of a stack to a file. */
+    StackExportRequest: {
+      /** @description Where, absolute or relative to the library. */
+      folder: string;
+    };
+    /** @description One layer, without its pixels. */
+    StackLayer: {
+      /** @description Its identifier, stable across renames. */
+      id: string;
+      /** @description What it is called. */
+      name: string;
+      /** @description fill, paint, filter or group. */
+      kind: string;
+      /** @description Whether it composites. */
+      enabled: boolean;
+      /**
+       * Format: float
+       * @description How much of it composites.
+       */
+      opacity: number;
+      /** @description Its blend mode. */
+      blend: string;
+      /** @description Which channels it writes. Empty means all of them. */
+      channels: string[];
+      /** @description Whether it names a paint file yet. */
+      painted: boolean;
+      /** @description What a group holds. */
+      children: components['schemas']['StackLayer'][];
+    };
+    /** @description Opens a layer stack. */
+    StackOpenRequest: {
+      /** @description A `.vxlayers` file, absolute or relative to the library. */
+      path: string;
+    };
+    /** @description A channel a stroke touched. */
+    StackPainted: {
+      /** @description The layer. */
+      layer: string;
+      /** @description The channel. */
+      channel: string;
+    };
+    /** @description A digest of a map's pixels, so that two pictures can be compared with neither crossing the API. */
+    StackPixels: {
+      /** @description Which channel. */
+      usage: string;
+      /**
+       * Format: int32
+       * @description Its width in pixels.
+       */
+      width: number;
+      /**
+       * Format: int32
+       * @description Its height in pixels.
+       */
+      height: number;
+      /** @description SHA-256 of its pixels as 8-bit RGBA, row by row. */
+      digest: string;
+      /** @description Where it was written, for an export. */
+      file?: null | string;
+    };
+    /** @description A map as a small picture, by the hash an event carries. */
+    StackPreview: {
+      /** @description Which channel. */
+      usage: string;
+      /** @description Its name under `/previews/{hash}`. */
+      hash: string;
+      /**
+       * Format: int32
+       * @description Its width in pixels.
+       */
+      width: number;
+      /**
+       * Format: int32
+       * @description Its height in pixels.
+       */
+      height: number;
+    };
+    /** @description Where the brush goes, in texels from the image's top left. */
+    StackStamp: {
+      /**
+       * Format: float
+       * @description Its column.
+       */
+      x: number;
+      /**
+       * Format: float
+       * @description Its row.
+       */
+      y: number;
+    };
+    /** @description A whole stack: everything a client needs to draw it, and no pixels. */
+    StackState: {
+      /** @description The session. */
+      id: string;
+      /** @description Its file. */
+      path: string;
+      /** @description What it is called. */
+      name: string;
+      /** @description The texture set this session paints. */
+      set: string;
+      /**
+       * Format: int32
+       * @description Its width in texels.
+       */
+      width: number;
+      /**
+       * Format: int32
+       * @description Its height in texels.
+       */
+      height: number;
+      /**
+       * Format: int64
+       * @description The revision of the document.
+       */
+      revision: number;
+      /**
+       * Format: int64
+       * @description The number of the last event it includes.
+       */
+      sequence: number;
+      /** @description Its undo history. */
+      history: components['schemas']['GraphHistoryState'];
+      /** @description The channels it writes. */
+      channels: components['schemas']['StackChannel'][];
+      /** @description Its layers, bottom first. */
+      layers: components['schemas']['StackLayer'][];
+      /** @description The newest maps. */
+      previews: components['schemas']['StackPreview'][];
+      evaluation?: null | components['schemas']['StackEvaluation'];
+      /**
+       * Format: int64
+       * @description The newest revision an evaluation has reached.
+       */
+      settled: number;
+    };
+    /** @description An open stack, for a list. */
+    StackSummary: {
+      /** @description The session. */
+      id: string;
+      /** @description Its file. */
+      path: string;
+      /** @description What it is called. */
+      name: string;
+      /**
+       * Format: int64
+       * @description The revision of the document.
+       */
+      revision: number;
+      /** @description Whether it has edits no file holds. */
+      dirty: boolean;
+    };
     /** @description The reply to `GET /api/v1/system`. */
     SystemInfo: {
       /** @description The Server's release version. */
@@ -2870,6 +3447,513 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['GraphEventPage'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetStacks: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackSummary'][];
+        };
+      };
+    };
+  };
+  OpenStack: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StackOpenRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackState'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  CreateStack: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StackCreateRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackState'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetStack: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackState'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  CloseStack: {
+    parameters: {
+      query?: {
+        discard?: boolean;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  ApplyStackCommands: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StackCommandBatch'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackEditResult'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  UndoStack: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackEditResult'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  RedoStack: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackEditResult'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SaveStack: {
+    parameters: {
+      query?: {
+        force?: boolean;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackEditResult'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  EvaluateStack: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetStackPixels: {
+    parameters: {
+      query?: {
+        clean?: boolean;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackPixels'][];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  ExportStack: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StackExportRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackPixels'][];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetStackEvents: {
+    parameters: {
+      query?: {
+        since?: number;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackEventPage'];
         };
       };
       /** @description Not Found */

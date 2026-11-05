@@ -7,6 +7,7 @@ import { Inspector } from './graph/graph-inspector';
 import { GraphPane } from './graph/graph-pane';
 import { TextureView } from './graph/texture-view';
 import { LibraryPane } from './library/library-pane';
+import { PaintPane } from './paint/paint-pane';
 import { ViewportPane } from './viewport/viewport-pane';
 
 /** The panes cannot be closed yet: nothing could bring one back until there is a Window menu. */
@@ -40,7 +41,8 @@ const initialLayout: XuiDockManagerLayout = {
         size: 1,
         panes: [
           { ...fixedPane, type: 'contentPane', contentId: 'inspector', header: 'Inspector' },
-          { ...fixedPane, type: 'contentPane', contentId: 'bake', header: 'Bake' }
+          { ...fixedPane, type: 'contentPane', contentId: 'bake', header: 'Bake' },
+          { ...fixedPane, type: 'contentPane', contentId: 'paint', header: 'Paint' }
         ]
       }
     ]
@@ -50,7 +52,7 @@ const initialLayout: XuiDockManagerLayout = {
 /** The app shell: a title bar, the docked panes and the status bar. `chrome-bar` and `readout` are bezel's. */
 @Component({
   selector: 'ptn-root',
-  imports: [BakePane, GraphPane, Inspector, LibraryPane, TextureView, ViewportPane, XuiDockManagerImports],
+  imports: [BakePane, GraphPane, Inspector, LibraryPane, PaintPane, TextureView, ViewportPane, XuiDockManagerImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full flex-col' },
   template: `
@@ -76,6 +78,9 @@ const initialLayout: XuiDockManagerLayout = {
       </ng-template>
       <ng-template xuiDockContent="bake">
         <ptn-bake />
+      </ng-template>
+      <ng-template xuiDockContent="paint">
+        <ptn-paint />
       </ng-template>
     </xui-dock-manager>
 
