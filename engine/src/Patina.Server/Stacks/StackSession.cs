@@ -1,0 +1,348 @@
+using Patina.Contracts;
+using Patina.Ipc;
+using Patina.Library;
+using Patina.Server.Graphs;
+using Patina.Server.Sessions;
+using System.Security.Cryptography;
+using System.Text;
+using Vixen.Texturing.Layers;
+
+namespace Patina.Server.Stacks;
+
+/// <summary>What the evaluation loop has to do for a stack.</summary>
+/// <param name="Revision">The revision this is.</param>
+/// <param name="Document">The document as text.</param>
+/// <param name="Standing">The strokes that stand, in order.</param>
+/// <param name="Forget">Strokes that can never stand again.</param>
+/// <param name="Forced">Whether to evaluate even if the Worker already has this.</param>
+public sealed record StackWork(
+    long Revision,
+    string Document,
+    IReadOnlyList<StackJournalEntry> Standing,
+    IReadOnlyList<long> Forget,
+    bool Forced
+);
+
+/// <summary>
+///     One open stack. The Server owns the document, its history, its numbered events and the journal of strokes; none
+///     of it depends on a Worker, so edits work with none running and the pixels catch up when one connects.
+/// </summary>
+public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
+    readonly StackEditor editor;
+    readonly Dictionary<string, StackPreview> previews = new(StringComparer.Ordinal);
+    readonly HashSet<string> found = new(StringComparer.Ordinal);
+    readonly Action wake;
+    string fileHash;
+    long revision = 1;
+    long settled;
+    bool forced;
+    bool closed;
+    StackEvaluation? evaluation;
+
+    /// <param name="path">Its file.</param>
+    /// <param name="text">The document as text.</param>
+    /// <param name="wake">Tells the evaluation loop to look.</param>
+    public StackSession(string path, string text, Action wake) : base(static item => item.Sequence) {
+        Id = Guid.NewGuid().ToString("N");
+        Path = path;
+        fileHash = Hash(text);
+        editor = new(path, StackDocuments.Parse(text));
+        this.wake = wake;
+        foreach (var paint in PaintFiles.Where(paint => File.Exists(System.IO.Path.GetFullPath(paint, Folder!)))) {
+            found.Add(paint);
+        }
+    }
+
+    public string Id { get; }
+
+    public string Path { get; }
+
+    /// <summary>The folder its compounds come from.</summary>
+    public string? Folder => System.IO.Path.GetDirectoryName(Path);
+
+    /// <summary>The folders a relative image reference is read from, in order.</summary>
+    public IReadOnlyList<string> ImageRoots { get; init; } = [];
+
+    /// <summary>The texture set this session paints.</summary>
+    public string Set {
+        get {
+            lock (Changing) {
+                return editor.Set.Name;
+            }
+        }
+    }
+
+    /// <summary>The paint files the document names, for keeping a copy of what a save overwrites.</summary>
+    public IReadOnlyList<string> PaintFiles {
+        get {
+            lock (Changing) {
+                return [..Named(editor.Document.Sets.SelectMany(static set => set.Layers))];
+            }
+        }
+    }
+
+    /// <summary>
+    ///     The paint files strokes made, standing or undone, that were not there when the session
+    ///     opened.
+    /// </summary>
+    public IReadOnlyList<string> Created {
+        get {
+            lock (Changing) {
+                return [
+                    ..editor.Standing.Concat(editor.Redoable)
+                        .Select(static stroke => stroke.Paint)
+                        .Distinct(StringComparer.Ordinal)
+                        .Where(paint => !found.Contains(paint))
+                ];
+            }
+        }
+    }
+
+    public StackSummary Summary {
+        get {
+            lock (Changing) {
+                return new(Id, Path, editor.Document.Name, revision, editor.History.Dirty);
+            }
+        }
+    }
+
+    public StackState State {
+        get {
+            lock (Changing) {
+                var set = editor.Set;
+                return new(
+                    Id,
+                    Path,
+                    editor.Document.Name,
+                    set.Name,
+                    editor.Document.BaseWidth,
+                    editor.Document.BaseHeight,
+                    revision,
+                    Log.Sequence,
+                    editor.History,
+                    [..set.Channels.Select(static channel => new StackChannel(channel.Usage, channel.Default))],
+                    StackDocuments.Layers(set.Layers),
+                    [..previews.Values],
+                    evaluation,
+                    settled
+                );
+            }
+        }
+    }
+
+    public IReadOnlyList<string> PreviewHashes {
+        get {
+            lock (Changing) {
+                return [..previews.Values.Select(static preview => preview.Hash)];
+            }
+        }
+    }
+
+    /// <summary>Applies a batch whole. A refused batch changes nothing and sends no event.</summary>
+    /// <exception cref="StackEditRefusedException">A command cannot be applied.</exception>
+    public StackEditResult Apply(StackCommandBatch batch) {
+        StackEditResult result;
+        lock (Changing) {
+            var painted = editor.Apply(batch);
+            result = Announce(GraphEventKind.Edited, editor.History.UndoLabel, painted);
+        }
+
+        wake();
+        return result;
+    }
+
+    /// <returns>Null when there was nothing to undo.</returns>
+    public StackEditResult? Undo() => Walk(static editor => editor.Undo(), GraphEventKind.Undone);
+
+    /// <returns>Null when there was nothing to redo.</returns>
+    public StackEditResult? Redo() => Walk(static editor => editor.Redo(), GraphEventKind.Redone);
+
+    /// <summary>
+    ///     What the document says now, and that everything the Worker has been told is about to be on
+    ///     disk.
+    /// </summary>
+    /// <exception cref="GraphFileChangedException">The file changed behind this session.</exception>
+    public string PrepareSave(bool force) {
+        lock (Changing) {
+            if (!force && File.Exists(Path) && Hash(File.ReadAllText(Path)) != fileHash) {
+                throw new GraphFileChangedException($"'{Path}' changed on disk after it was opened.");
+            }
+
+            return StackDocuments.Text(editor.Document);
+        }
+    }
+
+    /// <summary>Writes the document, once the Worker has written its pixels.</summary>
+    public StackEditResult FinishSave(string text) {
+        lock (Changing) {
+            LibraryFiles.Replace(Path, text);
+            fileHash = Hash(text);
+            editor.MarkSaved();
+            return Announce(GraphEventKind.Saved, null, null);
+        }
+    }
+
+    /// <summary>Asks for an evaluation of the stack as it stands.</summary>
+    public void Evaluate() {
+        lock (Changing) {
+            forced = true;
+        }
+
+        wake();
+    }
+
+    /// <summary>Ends the session: followers get a last event.</summary>
+    public void Close() {
+        lock (Changing) {
+            Log.Append(new(Log.Sequence + 1, GraphEventKind.Closed, revision, editor.History));
+            closed = true;
+        }
+    }
+
+    /// <summary>What the evaluation loop should do next, or null.</summary>
+    public StackWork? Pending() {
+        lock (Changing) {
+            if (closed || (settled == revision && !forced)) {
+                return null;
+            }
+
+            return new(revision, StackDocuments.Text(editor.Document), editor.Standing, [..editor.Forgotten], forced);
+        }
+    }
+
+    /// <summary>
+    ///     What a Worker has not been told about these strokes, read under the lock so an edit cannot race
+    ///     it.
+    /// </summary>
+    /// <param name="entries">The strokes.</param>
+    /// <param name="sent">
+    ///     What it has been told: how many stamps of each, and whether that stroke was still
+    ///     open.
+    /// </param>
+    /// <returns>The parts, and what it will have been told after them.</returns>
+    public IReadOnlyList<StackPaintPart> PartsAfter(
+        IReadOnlyList<StackJournalEntry> entries,
+        Dictionary<long, (int Stamps, bool Open)> sent
+    ) {
+        lock (Changing) {
+            List<StackPaintPart> parts = [];
+            foreach (var entry in entries) {
+                var known = sent.TryGetValue(entry.Id, out var told);
+                if (known && told.Stamps == entry.Stamps.Count && told.Open == entry.Open) {
+                    continue;
+                }
+
+                parts.Add(
+                    new(
+                        entry.Id,
+                        entry.Paint,
+                        entry.Usage,
+                        entry.Brush,
+                        entry.Colour,
+                        [..entry.Stamps.Skip(told.Stamps)],
+                        entry.Open
+                    )
+                );
+                sent[entry.Id] = (entry.Stamps.Count, entry.Open);
+            }
+
+            return parts;
+        }
+    }
+
+    /// <summary>Takes an evaluation in and tells the clients, with the maps that changed.</summary>
+    public void Publish(StackWork work, StackResult result) {
+        lock (Changing) {
+            Finish(work);
+            List<StackPreview> changed = [];
+            if (result.Evaluated) {
+                foreach (var preview in result.Previews.Where(p => previews.GetValueOrDefault(p.Usage) != p)) {
+                    changed.Add(preview);
+                    previews[preview.Usage] = preview;
+                }
+            }
+
+            Report(
+                new(
+                    work.Revision,
+                    result.Compiled,
+                    result.Ran,
+                    result.Repaired,
+                    result.Reused,
+                    result.Milliseconds,
+                    changed,
+                    result.Problems,
+                    null
+                )
+            );
+        }
+    }
+
+    /// <summary>Tells the clients why an evaluation failed. The document is untouched.</summary>
+    public void Fail(StackWork work, string reason) {
+        lock (Changing) {
+            Finish(work);
+            Report(new(work.Revision, false, 0, 0, 0, 0, [], [], reason));
+        }
+    }
+
+    /// <summary>The events after a number; a single resync event when they are no longer held.</summary>
+    public StackEventPage EventsAfter(long since) => new(Sequence, After(since));
+
+    /// <inheritdoc />
+    protected override StackEvent Resync() => new(Log.Sequence, GraphEventKind.Resync, revision, editor.History);
+
+    static string Hash(string text) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
+
+    static IEnumerable<string> Named(IEnumerable<LayerAsset> layers) {
+        foreach (var layer in layers) {
+            if (layer.Paint.Trim().Length > 0) {
+                yield return layer.Paint.Trim();
+            }
+
+            if (layer.Mask.Paint.Trim().Length > 0) {
+                yield return layer.Mask.Paint.Trim();
+            }
+
+            foreach (var child in Named(layer.Children)) {
+                yield return child;
+            }
+        }
+    }
+
+    StackEditResult? Walk(Func<StackEditor, string?> move, GraphEventKind kind) {
+        StackEditResult result;
+        lock (Changing) {
+            if (move(editor) is not { } label) {
+                return null;
+            }
+
+            result = Announce(kind, label, []);
+        }
+
+        wake();
+        return result;
+    }
+
+    StackEditResult Announce(GraphEventKind kind, string? label, IReadOnlyList<StackPainted>? painted) {
+        if (painted is not null) {
+            revision++;
+        }
+
+        var delta = painted is null ? null : new StackDelta(StackDocuments.Layers(editor.Set.Layers), painted);
+        var history = editor.History;
+        Log.Append(new(Log.Sequence + 1, kind, revision, history, label, delta));
+        return new(revision, Log.Sequence, history);
+    }
+
+    void Finish(StackWork work) {
+        settled = work.Revision;
+        forced = forced && !work.Forced;
+        editor.Forgotten.RemoveAll(work.Forget.Contains);
+    }
+
+    void Report(StackEvaluation report) {
+        evaluation = report;
+        Log.Append(new(Log.Sequence + 1, GraphEventKind.Evaluated, revision, editor.History, null, null, report));
+    }
+}

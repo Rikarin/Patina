@@ -56,6 +56,20 @@ public static class IpcTypes {
     ///     else is asked, and says how it ends with <see cref="BakeEnded" />, so nothing waits on it and no reply can
     ///     time out on it (ADR 0008).
     /// </summary>
+    public const string StackLoad = "stack.load";
+
+    public const string StackSync = "stack.sync";
+
+    public const string StackEvaluate = "stack.evaluate";
+
+    public const string StackSave = "stack.save";
+
+    public const string StackCheckpoint = "stack.checkpoint";
+
+    public const string StackPixels = "stack.pixels";
+
+    public const string StackClose = "stack.close";
+
     public const string BakeStart = "bake.start";
 
     /// <summary>Server to Worker: stop the bake named by <see cref="IpcMessage.BakeCancel" />.</summary>
@@ -122,6 +136,22 @@ public sealed class IpcMessage {
     public GraphResult? GraphResult { get; set; }
 
     /// <summary>bake.start: what to bake and where it goes.</summary>
+    public StackLoad? StackLoad { get; set; }
+
+    public StackSync? StackSync { get; set; }
+
+    public StackEvaluate? StackEvaluate { get; set; }
+
+    public StackResult? StackResult { get; set; }
+
+    public StackSave? StackSave { get; set; }
+
+    public StackPixelsAsk? StackPixels { get; set; }
+
+    public IReadOnlyList<StackPixels>? StackPicture { get; set; }
+
+    public string? StackClose { get; set; }
+
     public BakeStart? BakeStart { get; set; }
 
     /// <summary>bake.cancel: which bake.</summary>
@@ -237,6 +267,111 @@ public sealed record GraphImageAsk(string Session, int Node, string Port, string
 
 /// <summary>A full-size picture that is now in the cache. The pixels are not in the message.</summary>
 public sealed record GraphFullImage(string Hash, int Width, int Height);
+
+// SK7005: a message record's constructor is its wire shape, one parameter per field.
+#pragma warning disable SK7005
+
+/// <summary>A stack for a Worker to hold.</summary>
+/// <param name="Session">The session.</param>
+/// <param name="Path">Its file, which its paint files are relative to.</param>
+/// <param name="Document">The document as text.</param>
+/// <param name="Set">The texture set it paints.</param>
+/// <param name="Folder">The folder its compounds come from.</param>
+/// <param name="ImageRoots">The folders a relative image reference is read from.</param>
+/// <param name="MeshMaps">The folder of baked maps, or null.</param>
+/// <param name="Checkpoint">A folder of canvases newer than the stack's own files, or null.</param>
+/// <param name="Created">
+///     Paint files this session's strokes made. A journal starts before them, so what a save left in them is not a
+///     base.
+/// </param>
+public sealed record StackLoad(
+    string Session,
+    string Path,
+    string Document,
+    string Set,
+    string? Folder,
+    IReadOnlyList<string> ImageRoots,
+    string? MeshMaps,
+    string? Checkpoint,
+    IReadOnlyList<string> Created
+);
+
+#pragma warning restore SK7005
+
+/// <summary>One stroke of the journal, or the part of it a Worker has not been sent.</summary>
+/// <param name="Id">Its number in the journal.</param>
+/// <param name="Paint">The paint file, relative to the stack.</param>
+/// <param name="Usage">Which channel of it.</param>
+/// <param name="Brush">The brush.</param>
+/// <param name="Colour">The colour, packed 0xAABBGGRR.</param>
+/// <param name="Stamps">Where the brush went.</param>
+/// <param name="Open">Whether more of it is coming.</param>
+public sealed record StackPaintPart(
+    long Id,
+    string Paint,
+    string Usage,
+    StackBrush Brush,
+    uint Colour,
+    IReadOnlyList<StackStamp> Stamps,
+    bool Open
+);
+
+/// <summary>
+///     What the pixels should be: the strokes that stand, in order. The Worker works out how to get
+///     there.
+/// </summary>
+/// <param name="Session">The session.</param>
+/// <param name="Document">The document as text, when it changed.</param>
+/// <param name="Standing">Every stroke that stands, by number, in order.</param>
+/// <param name="Parts">The stamps this Worker has not been sent.</param>
+/// <param name="Forget">Strokes that can never stand again.</param>
+public sealed record StackSync(
+    string Session,
+    string? Document,
+    IReadOnlyList<long> Standing,
+    IReadOnlyList<StackPaintPart> Parts,
+    IReadOnlyList<long> Forget
+);
+
+/// <summary>Asks for the stack to be composited as it stands.</summary>
+/// <param name="Session">The session.</param>
+/// <param name="PreviewSide">The longest side of a preview.</param>
+/// <param name="PreviewFolder">The content-addressed folder previews go in.</param>
+public sealed record StackEvaluate(string Session, int PreviewSide, string PreviewFolder);
+
+/// <summary>How an evaluation went.</summary>
+/// <param name="Compiled">Whether the plan compiled.</param>
+/// <param name="Evaluated">Whether anything was evaluated at all.</param>
+/// <param name="Ran">How many ops ran.</param>
+/// <param name="Repaired">How many ran over tiles rather than a whole image.</param>
+/// <param name="Reused">How many came from the cache.</param>
+/// <param name="Milliseconds">How long it took here.</param>
+/// <param name="Previews">The maps, by hash.</param>
+/// <param name="Problems">Why it could not evaluate.</param>
+public sealed record StackResult(
+    bool Compiled,
+    bool Evaluated,
+    int Ran,
+    int Repaired,
+    int Reused,
+    double Milliseconds,
+    IReadOnlyList<StackPreview> Previews,
+    IReadOnlyList<string> Problems
+);
+
+/// <summary>Writes canvases to a folder: the stack's own for a save, the cache's for a checkpoint.</summary>
+/// <param name="Session">The session.</param>
+/// <param name="Folder">Where to, or null for beside the stack.</param>
+public sealed record StackSave(string Session, string? Folder);
+
+/// <summary>Asks for a digest of each map, and for files when a folder is given.</summary>
+/// <param name="Session">The session.</param>
+/// <param name="Clean">
+///     Whether to evaluate from nothing, as an export does, rather than read what the strokes
+///     left.
+/// </param>
+/// <param name="Folder">Where to write each map, or null to write nothing.</param>
+public sealed record StackPixelsAsk(string Session, bool Clean, string? Folder);
 
 /// <summary>Where a preview lives in the cache, for the Worker that writes it and the Server that serves it.</summary>
 public static class GraphPreviewFiles {

@@ -42,6 +42,22 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
         }
     }
 
+    /// <summary>
+    ///     A connection and some work, if there is work. Waiting for a Worker can take seconds, and only what is newest
+    ///     when one arrives counts, so the work is asked for on both sides of the wait.
+    /// </summary>
+    public async Task<(IpcConnection Connection, TWork Work)?> WhenThereIsWorkAsync<TWork>(
+        Func<TWork?> pending,
+        CancellationToken cancellationToken
+    ) where TWork : class {
+        if (pending() is null) {
+            return null;
+        }
+
+        var connection = await ConnectionAsync(cancellationToken);
+        return pending() is { } work ? (connection, work) : null;
+    }
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
         var socketPath = options.Value.Worker.SocketPath;
         using var listener = IpcSocket.Listen(socketPath);

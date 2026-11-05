@@ -5,6 +5,7 @@ using Patina.Library;
 using Patina.Server;
 using Patina.Server.Api;
 using Patina.Server.Graphs;
+using Patina.Server.Stacks;
 using Patina.Server.Viewport;
 using System.Security.Cryptography;
 using System.Text.Json.Serialization;
@@ -66,6 +67,9 @@ builder.Services.AddSingleton<GraphSessions>();
 builder.Services.AddSingleton<PreviewStore>();
 builder.Services.AddSingleton<GraphEvaluator>();
 builder.Services.AddHostedService(static services => services.GetRequiredService<GraphEvaluator>());
+builder.Services.AddSingleton<StackSessions>();
+builder.Services.AddSingleton<StackEvaluator>();
+builder.Services.AddHostedService(static services => services.GetRequiredService<StackEvaluator>());
 builder.Services.AddSingleton(static services => new JobQueue(
         JobRunner.Folders(services.GetRequiredService<ServerIdentity>()).Jobs
     )

@@ -1,6 +1,7 @@
 using Patina.Contracts;
 using Patina.Ipc;
 using Patina.Library;
+using Patina.Server.Sessions;
 using System.Security.Cryptography;
 using System.Text;
 using Vixen.NodeGraph;
@@ -28,22 +29,15 @@ public sealed record GraphWork(long Revision, NodeGraphAsset Document, bool Forc
 ///     Worker: edits work with none running, and evaluation catches up when one connects. Every client sees the same
 ///     events, and the log lets a client that dropped its socket catch up from the number it last saw.
 /// </summary>
-public sealed class GraphSession {
+public sealed class GraphSession : FollowedSession<GraphEvent>, IFileSession {
     const string OutputNodeType = "Output/Output";
     const string OutputUsageSetting = "Usage";
     const string DefaultOutputUsage = "baseColor";
-
-    const int LogCapacity = 1024;
-
-    readonly Lock changing = new();
     readonly GraphEditor editor;
-    readonly Queue<GraphEvent> log = new();
     readonly Dictionary<(int Node, string Port), GraphPreview> previews = [];
     readonly Action wake;
-    TaskCompletionSource next = NewSignal();
     string fileHash;
     long revision = 1;
-    long sequence;
     long settled;
     bool forced;
     bool reload;
@@ -63,7 +57,7 @@ public sealed class GraphSession {
         string? folder,
         Action wake,
         bool readOnly = false
-    ) {
+    ) : base(static item => item.Sequence) {
         Id = Guid.NewGuid().ToString("N");
         Path = path;
         Folder = folder;
@@ -96,7 +90,7 @@ public sealed class GraphSession {
     /// </summary>
     public IReadOnlyList<NodeTypeDefinition> NodeTypes {
         get {
-            lock (changing) {
+            lock (Changing) {
                 var document = editor.Document;
                 if (document.Interface.Length == 0 && !ReadOnly && !CompoundFolders.Holds(Path)) {
                     return [..Registry.Types];
@@ -117,7 +111,7 @@ public sealed class GraphSession {
 
     public GraphSummary Summary {
         get {
-            lock (changing) {
+            lock (Changing) {
                 return new(Id, Path, editor.Document.Name, revision, editor.History.Dirty);
             }
         }
@@ -125,7 +119,7 @@ public sealed class GraphSession {
 
     /// <summary>The Output nodes writing one of these usages, each as the node and its usage.</summary>
     public IReadOnlyList<(int Node, string Usage)> Outputs(IReadOnlySet<string> usages) {
-        lock (changing) {
+        lock (Changing) {
             return [
                 ..editor.Document.Nodes.Select(GraphDocuments.State)
                     .Where(static node => node.Type == OutputNodeType)
@@ -140,7 +134,7 @@ public sealed class GraphSession {
     /// <summary>The whole document, the number of the last event it includes, and the newest previews.</summary>
     public GraphState State {
         get {
-            lock (changing) {
+            lock (Changing) {
                 var document = editor.Document;
                 HashSet<int> nodes = [..document.Nodes.Select(static node => node.Id)];
                 return new(
@@ -148,7 +142,7 @@ public sealed class GraphSession {
                     Path,
                     document.Name,
                     revision,
-                    sequence,
+                    Log.Sequence,
                     editor.History,
                     [..document.Nodes.Select(GraphDocuments.State)],
                     [..document.Edges.Select(GraphDocuments.State)],
@@ -169,7 +163,7 @@ public sealed class GraphSession {
 
     public IReadOnlyList<string> PreviewHashes {
         get {
-            lock (changing) {
+            lock (Changing) {
                 return [..previews.Values.Select(static preview => preview.Hash)];
             }
         }
@@ -179,7 +173,7 @@ public sealed class GraphSession {
     /// <exception cref="GraphEditRefusedException">A command cannot be applied.</exception>
     public GraphEditResult Apply(GraphCommandBatch batch) {
         GraphEditResult result;
-        lock (changing) {
+        lock (Changing) {
             RefuseIfReadOnly();
             var before = editor.Document;
             var created = editor.Apply(batch);
@@ -202,7 +196,7 @@ public sealed class GraphSession {
         Func<string, (string File, NodeTypeRegistry Registry)> publish
     ) {
         GraphExtraction extraction;
-        lock (changing) {
+        lock (Changing) {
             RefuseIfReadOnly();
             var type = request.Name.Trim();
             var plan = editor.PlanExtraction(type.Split('/')[^1], request.Nodes);
@@ -231,7 +225,7 @@ public sealed class GraphSession {
     /// <exception cref="GraphFileChangedException">The file is not what this session read or wrote.</exception>
     /// <exception cref="GraphEditRefusedException">This graph has no file to write.</exception>
     public GraphEditResult Save(bool force) {
-        lock (changing) {
+        lock (Changing) {
             RefuseIfReadOnly();
             if (!force && File.Exists(Path) && Hash(File.ReadAllText(Path)) != fileHash) {
                 throw new GraphFileChangedException($"'{Path}' changed on disk after it was opened.");
@@ -250,7 +244,7 @@ public sealed class GraphSession {
     ///     again and evaluates it, since the same document now means something else.
     /// </summary>
     public void Republish(NodeTypeRegistry registry) {
-        lock (changing) {
+        lock (Changing) {
             Take(registry);
         }
 
@@ -266,7 +260,7 @@ public sealed class GraphSession {
     /// </summary>
     /// <param name="folder">A folder of baked maps, or null for none.</param>
     public void UseMeshMaps(string? folder) {
-        lock (changing) {
+        lock (Changing) {
             MeshMaps = folder;
             if (!ReadOnly) {
                 var file = GraphMeshMaps.FileOf(Path);
@@ -290,7 +284,7 @@ public sealed class GraphSession {
 
     /// <summary>Asks for an evaluation of the document as it stands, as after deleting the cache.</summary>
     public void Evaluate() {
-        lock (changing) {
+        lock (Changing) {
             forced = true;
         }
 
@@ -299,7 +293,7 @@ public sealed class GraphSession {
 
     /// <summary>Ends the session: followers get a last event.</summary>
     public void Close() {
-        lock (changing) {
+        lock (Changing) {
             Announce(GraphEventKind.Closed, null, null, []);
             closed = true;
         }
@@ -307,22 +301,22 @@ public sealed class GraphSession {
 
     /// <summary>What the evaluation loop should do next, or null.</summary>
     public GraphWork? Pending() {
-        lock (changing) {
+        lock (Changing) {
             return closed || (settled == revision && !forced) ? null : new(revision, editor.Document, forced, reload);
         }
     }
 
     /// <summary>Says a revision needs no evaluation: only positions changed.</summary>
     public void Settle(GraphWork work) {
-        lock (changing) {
+        lock (Changing) {
             Finish(work);
-            Append(new(sequence + 1, GraphEventKind.Settled, revision, editor.History));
+            Log.Append(new(Log.Sequence + 1, GraphEventKind.Settled, revision, editor.History));
         }
     }
 
     /// <summary>Takes an evaluation in and tells the clients, with the previews that changed.</summary>
     public void Publish(GraphWork work, GraphResult result) {
-        lock (changing) {
+        lock (Changing) {
             Finish(work);
             List<GraphPreview> changed = [];
             if (result.Evaluated) {
@@ -365,32 +359,17 @@ public sealed class GraphSession {
 
     /// <summary>Tells the clients why an evaluation failed. The document is untouched.</summary>
     public void Fail(GraphWork work, string reason) {
-        lock (changing) {
+        lock (Changing) {
             Finish(work);
             Report(new(work.Revision, false, 0, 0, 0, [], [], reason));
         }
     }
 
     /// <summary>The events after a number; a single resync event when they are no longer held.</summary>
-    public GraphEventPage EventsAfter(long since) {
-        lock (changing) {
-            var oldest = log.Count > 0 ? log.Peek().Sequence : sequence + 1;
-            if (since > sequence || since < oldest - 1) {
-                return new(sequence, [new(sequence, GraphEventKind.Resync, revision, editor.History)]);
-            }
+    public GraphEventPage EventsAfter(long since) => new(Sequence, After(since));
 
-            return new(sequence, [..log.Where(e => e.Sequence > since)]);
-        }
-    }
-
-    /// <summary>Completes when there is an event after <paramref name="since" />.</summary>
-    public Task WaitAsync(long since, CancellationToken cancellationToken) {
-        lock (changing) {
-            return sequence > since ? Task.CompletedTask : next.Task.WaitAsync(cancellationToken);
-        }
-    }
-
-    static TaskCompletionSource NewSignal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
+    /// <inheritdoc />
+    protected override GraphEvent Resync() => new(Log.Sequence, GraphEventKind.Resync, revision, editor.History);
 
     static string Hash(string text) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
 
@@ -399,12 +378,12 @@ public sealed class GraphSession {
         editor.UseRegistry(registry);
         forced = true;
         reload = true;
-        Append(new(sequence + 1, GraphEventKind.TypesChanged, revision, editor.History));
+        Log.Append(new(Log.Sequence + 1, GraphEventKind.TypesChanged, revision, editor.History));
     }
 
     GraphEditResult? Walk(Func<GraphEditor, string?> move, GraphEventKind kind) {
         GraphEditResult? result;
-        lock (changing) {
+        lock (Changing) {
             var before = editor.Document;
             if (move(editor) is not { } label) {
                 return null;
@@ -429,8 +408,8 @@ public sealed class GraphSession {
 
         var delta = before is null ? null : GraphDocuments.Delta(before, editor.Document);
         var history = editor.History;
-        Append(new(sequence + 1, kind, revision, history, label, delta));
-        return new(revision, sequence, history, created);
+        Log.Append(new(Log.Sequence + 1, kind, revision, history, label, delta));
+        return new(revision, Log.Sequence, history, created);
     }
 
     void Finish(GraphWork work) {
@@ -449,18 +428,6 @@ public sealed class GraphSession {
 
     void Report(GraphEvaluation report) {
         evaluation = report;
-        Append(new(sequence + 1, GraphEventKind.Evaluated, revision, editor.History, null, null, report));
-    }
-
-    void Append(GraphEvent item) {
-        sequence = item.Sequence;
-        log.Enqueue(item);
-        if (log.Count > LogCapacity) {
-            log.Dequeue();
-        }
-
-        var signal = next;
-        next = NewSignal();
-        signal.TrySetResult();
+        Log.Append(new(Log.Sequence + 1, GraphEventKind.Evaluated, revision, editor.History, null, null, report));
     }
 }

@@ -2,8 +2,6 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
 using Patina.Ipc;
 using Patina.Server.Graphs;
-using System.Net.WebSockets;
-using System.Text.Json;
 
 namespace Patina.Server.Api;
 
@@ -116,13 +114,6 @@ static class GraphEndpoints {
     /// <summary>Text messages, one <see cref="GraphEvent" /> each. Its schema comes from <c>/events</c>.</summary>
     public static void MapGraphSocket(this IEndpointRouteBuilder app) =>
         app.Map("/ws/graphs/{id}", FollowAsync).ExcludeFromDescription();
-
-    static void Describe(this RouteHandlerBuilder route, string name, string summary, params int[] problems) {
-        route.WithName(name).WithSummary(summary);
-        foreach (var problem in problems) {
-            route.ProducesProblem(problem);
-        }
-    }
 
     static Ok<IReadOnlyList<GraphSummary>> GetAll(GraphSessions sessions) =>
         TypedResults.Ok<IReadOnlyList<GraphSummary>>([..sessions.All.Select(static s => s.Summary)]);
@@ -315,72 +306,15 @@ static class GraphEndpoints {
         return TypedResults.PhysicalFile(path, "image/png");
     }
 
-    static async Task FollowAsync(string id, HttpContext context, GraphSessions sessions, long? since = null) {
-        if (!context.WebSockets.IsWebSocketRequest) {
-            context.Response.StatusCode = StatusCodes.Status400BadRequest;
-            return;
-        }
-
-        if (sessions.Find(id) is not { } session) {
-            context.Response.StatusCode = StatusCodes.Status404NotFound;
-            return;
-        }
-
-        using var socket = await context.WebSockets.AcceptWebSocketAsync();
-        using var stop = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
-        var listening = WatchForCloseAsync(socket, stop);
-        try {
-            await SendEventsAsync(socket, session, since ?? session.State.Sequence, stop.Token);
-            if (socket.State == WebSocketState.Open) {
-                await socket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, null, context.RequestAborted);
-            }
-        } catch (WebSocketException) {
-            // The client went away without a goodbye.
-        } catch (OperationCanceledException) {
-            // The client left, or the Server is stopping.
-        } finally {
-            await stop.CancelAsync();
-            await listening;
-        }
-    }
-
-    static async Task SendEventsAsync(
-        WebSocket socket,
-        GraphSession session,
-        long since,
-        CancellationToken cancellationToken
-    ) {
-        var cursor = since;
-        while (true) {
-            foreach (var item in session.EventsAfter(cursor).Events) {
-                var message = JsonSerializer.SerializeToUtf8Bytes(item, ContractsJsonContext.Default.GraphEvent);
-                await socket.SendAsync(message, WebSocketMessageType.Text, true, cancellationToken);
-                cursor = item.Sequence;
-                if (item.Kind == GraphEventKind.Closed) {
-                    return;
-                }
-            }
-
-            await session.WaitAsync(cursor, cancellationToken);
-        }
-    }
-
-    /// <summary>Nothing a client sends here means anything; reading is how a socket learns it has closed.</summary>
-    static async Task WatchForCloseAsync(WebSocket socket, CancellationTokenSource stop) {
-        var buffer = new byte[256];
-        try {
-            while (socket.State == WebSocketState.Open) {
-                var received = await socket.ReceiveAsync(buffer, stop.Token);
-                if (received.MessageType == WebSocketMessageType.Close) {
-                    break;
-                }
-            }
-        } catch (Exception e) when (e is WebSocketException or OperationCanceledException) {
-            // Over either way.
-        }
-
-        await stop.CancelAsync();
-    }
+    static Task FollowAsync(string id, HttpContext context, GraphSessions sessions, long? since = null) =>
+        ApiRoutes.FollowAsync(
+            context,
+            sessions.Find(id),
+            ContractsJsonContext.Default.GraphEvent,
+            static item => item.Kind == GraphEventKind.Closed,
+            static item => item.Sequence,
+            since
+        );
 
     static ProblemHttpResult NoSession(string id) =>
         TypedResults.Problem($"There is no open graph '{id}'.", statusCode: StatusCodes.Status404NotFound);
