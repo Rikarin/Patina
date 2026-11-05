@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, linkedSignal, output, signal } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { XuiColorPickerImports } from '@xui/color-picker';
 import { XuiNumericInputImports } from '@xui/numeric-input';
@@ -31,7 +31,7 @@ function clamp(value: number): number {
       (pointermove)="drag($event)"
       (pointerup)="release()"
     >
-      @for (stop of stops(); track $index) {
+      @for (stop of working(); track $index) {
         <button
           class="absolute top-0 bottom-0 w-2 -translate-x-1/2 cursor-grab border"
           type="button"
@@ -74,7 +74,7 @@ function clamp(value: number): number {
           xuiButton
           size="sm"
           variant="ghost"
-          [disabled]="disabled() || stops().length < 2"
+          [disabled]="disabled() || working().length < 2"
           (click)="remove()"
         >
           Remove
@@ -93,8 +93,10 @@ export class GradientRamp {
   readonly stopsChange = output<readonly RampStop[]>();
   readonly released = output();
 
-  protected readonly css = computed(() => cssOfRamp(this.stops()));
-  protected readonly selected = computed(() => this.stops()[this.selectedIndex()] ?? null);
+  /** What the hand has made so far, which the input only reaches on the next change detection. */
+  protected readonly working = linkedSignal(() => this.stops());
+  protected readonly css = computed(() => cssOfRamp(this.working()));
+  protected readonly selected = computed(() => this.working()[this.selectedIndex()] ?? null);
 
   protected grab(event: PointerEvent, index: number): void {
     event.stopPropagation();
@@ -111,10 +113,10 @@ export class GradientRamp {
     }
 
     const position = this.pointOf(event);
-    const stop: RampStop = { position, colour: colourAt(this.stops(), position) };
-    const stops = [...this.stops(), stop].sort((a, b) => a.position - b.position);
+    const stop: RampStop = { position, colour: colourAt(this.working(), position) };
+    const stops = [...this.working(), stop].sort((a, b) => a.position - b.position);
     this.selectedIndex.set(stops.indexOf(stop));
-    this.stopsChange.emit(stops);
+    this.write(stops);
     this.start(event);
   }
 
@@ -133,7 +135,7 @@ export class GradientRamp {
 
   protected nudge(event: KeyboardEvent, index: number): void {
     const step = event.key === 'ArrowRight' ? NudgeStep : event.key === 'ArrowLeft' ? -NudgeStep : 0;
-    const stop = this.stops()[index];
+    const stop = this.working()[index];
     if (stop && step !== 0 && !this.disabled()) {
       event.preventDefault();
       this.selectedIndex.set(index);
@@ -161,7 +163,7 @@ export class GradientRamp {
   protected remove(): void {
     const index = this.selectedIndex();
     this.selectedIndex.set(Math.max(0, index - 1));
-    this.stopsChange.emit(this.stops().filter((_, at) => at !== index));
+    this.write(this.working().filter((_, at) => at !== index));
     this.released.emit();
   }
 
@@ -178,13 +180,18 @@ export class GradientRamp {
   /** Moves the selected stop between its neighbours, so that the drag keeps hold of this one. */
   private place(position: number): void {
     const index = this.selectedIndex();
-    const before = this.stops()[index - 1]?.position ?? 0;
-    const after = this.stops()[index + 1]?.position ?? 1;
+    const before = this.working()[index - 1]?.position ?? 0;
+    const after = this.working()[index + 1]?.position ?? 1;
     this.replace({ position: Math.min(after, Math.max(before, clamp(position))) });
   }
 
   private replace(change: Partial<RampStop>): void {
     const index = this.selectedIndex();
-    this.stopsChange.emit(this.stops().map((stop, at) => (at === index ? { ...stop, ...change } : stop)));
+    this.write(this.working().map((stop, at) => (at === index ? { ...stop, ...change } : stop)));
+  }
+
+  private write(stops: readonly RampStop[]): void {
+    this.working.set(stops);
+    this.stopsChange.emit(stops);
   }
 }

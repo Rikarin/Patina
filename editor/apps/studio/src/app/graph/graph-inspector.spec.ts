@@ -2,6 +2,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import type { GraphNodeType } from '@patina/api-client';
+import { CurveEditor, type Curves, GradientRamp, type RampStop, blackToWhite, straightCurves } from '@patina/studio-ui';
 import { XuiColorPicker } from '@xui/color-picker';
 import { GraphInspector, Inspector } from './graph-inspector';
 import { GraphSelection, GraphSettings, freeParameterName } from './graph-settings';
@@ -158,6 +159,52 @@ describe('Save from a box still being typed in', () => {
     box.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true }));
     expect(store.shortcut).toHaveBeenCalledOnce();
     expect(document.activeElement).not.toBe(box);
+  });
+});
+
+describe('a control dragged faster than change detection', () => {
+  it('keeps every key when a move arrives before the input has caught up', () => {
+    const fixture = TestBed.createComponent(CurveEditor);
+    const written: Curves[] = [];
+    fixture.componentRef.setInput('curves', straightCurves);
+    fixture.componentInstance.curvesChange.subscribe(curves => written.push(curves));
+    fixture.detectChanges();
+    const svg = (fixture.nativeElement as HTMLElement).querySelector('svg');
+    if (!svg) {
+      throw new Error('No curve.');
+    }
+
+    svg.setPointerCapture = () => undefined;
+    svg.getBoundingClientRect = () => new DOMRect(0, 0, 100, 100);
+    const pointer = (type: string, clientX: number, clientY: number) => {
+      svg.dispatchEvent(new MouseEvent(type, { clientX, clientY, bubbles: true }));
+    };
+
+    pointer('pointerdown', 50, 50);
+    pointer('pointermove', 50, 20); // nothing has run change detection since the press
+    expect(written.at(-1)?.r).toEqual([
+      { x: 0, y: 0 },
+      { x: 0.5, y: 0.8 },
+      { x: 1, y: 1 }
+    ]);
+  });
+
+  it('keeps every stop in the same way', () => {
+    const fixture = TestBed.createComponent(GradientRamp);
+    const written: (readonly RampStop[])[] = [];
+    fixture.componentRef.setInput('stops', blackToWhite);
+    fixture.componentInstance.stopsChange.subscribe(stops => written.push(stops));
+    fixture.detectChanges();
+    const bar = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('[role=group]');
+    if (!bar) {
+      throw new Error('No ramp.');
+    }
+
+    bar.setPointerCapture = () => undefined;
+    bar.getBoundingClientRect = () => new DOMRect(0, 0, 100, 10);
+    bar.dispatchEvent(new MouseEvent('pointerdown', { clientX: 25, bubbles: true }));
+    bar.dispatchEvent(new MouseEvent('pointermove', { clientX: 40, bubbles: true }));
+    expect(written.at(-1)?.map(stop => stop.position)).toEqual([0, 0.4, 1]);
   });
 });
 

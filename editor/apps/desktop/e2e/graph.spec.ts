@@ -280,7 +280,7 @@ test('builds a tiling material from a new graph, down to its channels and full s
   await expect(nodes()).toHaveCount(4);
 
   // Each wire answers one diagnostic, and the list changing size is not something to drag through.
-  const unwired = window.getByTestId('graph-diagnostics').getByRole('listitem');
+  const unwired = window.getByTestId('graph-diagnostics').getByRole('listitem').filter({ hasText: 'TG0002' });
   await expect(unwired).toHaveCount(3);
   for (const [from, left] of [
     [1, 2],
@@ -336,6 +336,12 @@ test('builds a tiling material from a new graph, down to its channels and full s
 
   await window.getByTestId('graph-save').click();
   await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
+
+  // The file is the truth: everything above is in it.
+  const file = readFileSync(join(library, 'shared', 'graphs', 'tiling-rust.vxtexgraph'), 'utf8');
+  expect(file).toContain('ramp:0 000000ff,0.45 a0522dff,1 ffffffff');
+  expect(file).toMatch(/curve:r=0 0,0\.5 \d\.\d+,1 1;/);
+  expect(file).toContain("baseWidth: '512'");
 });
 
 test('exposes a parameter, drives a number from it and edits its default', async () => {

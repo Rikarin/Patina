@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, linkedSignal, output, signal } from '@angular/core';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { type CurveChannel, type CurveKey, type Curves, evaluateCurve } from './curve';
 
@@ -109,7 +109,13 @@ export class CurveEditor {
   readonly curvesChange = output<Curves>();
   readonly released = output();
 
-  protected readonly keys = computed(() => this.curves()[this.lane()]);
+  /**
+   * What the hand has made so far. The input only catches up on the next change detection, and a pointer move can
+   * arrive before that: working from the input would then overwrite the neighbour of a key just added.
+   */
+  private readonly working = linkedSignal(() => this.curves());
+
+  protected readonly keys = computed(() => this.working()[this.lane()]);
   protected readonly path = computed(() => pathOf(this.keys()));
   protected readonly stroke = computed(() => strokes[this.channel()]);
 
@@ -209,8 +215,9 @@ export class CurveEditor {
 
   private write(keys: readonly CurveKey[]): void {
     const channel = this.channel();
-    this.curvesChange.emit(
-      channel === 'rgb' ? { ...this.curves(), r: keys, g: keys, b: keys } : { ...this.curves(), [channel]: keys }
-    );
+    const next =
+      channel === 'rgb' ? { ...this.working(), r: keys, g: keys, b: keys } : { ...this.working(), [channel]: keys };
+    this.working.set(next);
+    this.curvesChange.emit(next);
   }
 }
