@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="../../src/Patina.Export/Patina.Export.csproj"/>
+    <ProjectReference Include="../../src/Patina.Graphs/Patina.Graphs.csproj"/>
     <ProjectReference Include="../../tools/Patina.Bench/Patina.Bench.csproj"/>
   </ItemGroup>
 </Project>

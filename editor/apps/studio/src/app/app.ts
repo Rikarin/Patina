@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { type XuiDockManagerLayout, XuiDockManagerImports } from '@xui/dock-manager';
 import { BakePane } from './bake/bake-pane';
+import { ExportPane } from './export/export-pane';
 import { desktop } from './core/desktop';
 import { SystemStatus } from './core/system-status';
 import { Inspector } from './graph/graph-inspector';
@@ -42,6 +43,7 @@ const initialLayout: XuiDockManagerLayout = {
         panes: [
           { ...fixedPane, type: 'contentPane', contentId: 'inspector', header: 'Inspector' },
           { ...fixedPane, type: 'contentPane', contentId: 'bake', header: 'Bake' },
+          { ...fixedPane, type: 'contentPane', contentId: 'export', header: 'Export' },
           { ...fixedPane, type: 'contentPane', contentId: 'paint', header: 'Paint' }
         ]
       }
@@ -52,7 +54,7 @@ const initialLayout: XuiDockManagerLayout = {
 /** The app shell: a title bar, the docked panes and the status bar. `chrome-bar` and `readout` are bezel's. */
 @Component({
   selector: 'ptn-root',
-  imports: [BakePane, GraphPane, Inspector, LibraryPane, PaintPane, TextureView, ViewportPane, XuiDockManagerImports],
+  imports: [BakePane, ExportPane, GraphPane, Inspector, LibraryPane, PaintPane, TextureView, ViewportPane, XuiDockManagerImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full flex-col' },
   template: `
@@ -78,6 +80,9 @@ const initialLayout: XuiDockManagerLayout = {
       </ng-template>
       <ng-template xuiDockContent="bake">
         <ptn-bake />
+      </ng-template>
+      <ng-template xuiDockContent="export">
+        <ptn-export />
       </ng-template>
       <ng-template xuiDockContent="paint">
         <ptn-paint />

@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Export.Builds;
 using Patina.Ipc;
 using Patina.Jobs;
 using Patina.Library;
@@ -15,13 +16,21 @@ public sealed class JobRunner : BackgroundService {
     readonly JobQueue queue;
     readonly BakeCache cache;
     readonly WorkerLink worker;
+    readonly BuildRunner builds;
     readonly ILogger<JobRunner> logger;
 
-    public JobRunner(JobQueue queue, BakeCache cache, WorkerLink worker, ILogger<JobRunner> logger) {
+    public JobRunner(
+        JobQueue queue,
+        BakeCache cache,
+        WorkerLink worker,
+        LibraryHost library,
+        ILogger<JobRunner> logger
+    ) {
         this.queue = queue;
         this.cache = cache;
         this.worker = worker;
         this.logger = logger;
+        builds = new(library, ToolCatalog.Default);
         worker.Reported += Hear;
     }
 
@@ -51,11 +60,51 @@ public sealed class JobRunner : BackgroundService {
 
                 var connection = await worker.ConnectionAsync(stoppingToken);
                 if (queue.TakeNext() is { } job) {
-                    await RunAsync(connection, job, stoppingToken);
+                    await (job.Build is null
+                        ? RunAsync(connection, job, stoppingToken)
+                        : RunBuildAsync(connection, job, stoppingToken));
                 }
             }
         } catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) {
             // Stopping: a running job goes back in the queue when the queue is next opened.
+        }
+    }
+
+    /// <summary>
+    ///     Stays with a build until it is over or its Worker is, letting bakes by between its steps (plan §5). Stopping
+    ///     one stops the step in the Worker: a cancelled build is a build whose finished steps stay finished.
+    /// </summary>
+    async Task RunBuildAsync(IpcConnection connection, JobState job, CancellationToken cancellationToken) {
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        async Task LetBakesBy() {
+            while (queue.TakeInteractive() is { } bake) {
+                await RunAsync(connection, bake, cancellationToken);
+            }
+
+            if (queue.Find(job.Id) is { CancelRequested: true }) {
+                await stop.CancelAsync();
+            }
+        }
+
+        try {
+            var running = builds.RunAsync(job, connection, queue, LetBakesBy, stop.Token);
+            while (!running.IsCompleted) {
+                var changed = queue.Changed(cancellationToken);
+                await Task.WhenAny(running, changed);
+                if (queue.Find(job.Id) is { CancelRequested: true }) {
+                    await stop.CancelAsync();
+                }
+            }
+
+            queue.Complete(job.Id, job.Attempts, await running);
+        } catch (BuildExecutorLostException) {
+            ServerLog.JobWorkerLost(logger, job.Id, job.Attempts);
+            queue.Requeue(job.Id, job.Attempts);
+        } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+            queue.Stopped(job.Id, job.Attempts);
+        } catch (Exception e) when (e is BuildRefusedException or IOException or UnauthorizedAccessException) {
+            queue.Fail(job.Id, job.Attempts, e.Message);
         }
     }
 
@@ -64,7 +113,7 @@ public sealed class JobRunner : BackgroundService {
         var ticket = new BakeTicket(job.Id, job.Attempts);
         try {
             await connection.SendAsync(
-                new() { Type = IpcTypes.BakeStart, BakeStart = new(ticket, job.Bake, cache.FolderOf(job.Key)) },
+                new() { Type = IpcTypes.BakeStart, BakeStart = new(ticket, job.Bake!, cache.FolderOf(job.Key)) },
                 cancellationToken
             );
         } catch (IpcException e) {
@@ -117,6 +166,8 @@ public sealed class JobRunner : BackgroundService {
             } else {
                 queue.Stopped(id, attempt);
             }
+        } else if (message is { Type: IpcTypes.BuildEnded, BuildEnded: { } ended }) {
+            builds.Hear(ended);
         }
     }
 
@@ -129,7 +180,7 @@ public sealed class JobRunner : BackgroundService {
         }
 
         try {
-            queue.Complete(id, attempt, cache.Deliver(job.Key, manifest, job.Bake, false));
+            queue.Complete(id, attempt, cache.Deliver(job.Key, manifest, job.Bake!, false));
         } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
             queue.Fail(id, attempt, e.Message);
         }

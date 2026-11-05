@@ -1,0 +1,135 @@
+using Patina.Export.Presets;
+
+namespace Patina.Export.Tests;
+
+public sealed class ExportPresetTests : IDisposable {
+    const string Minimal = """
+                           version: 1
+                           id: mine
+                           name: Mine
+                           normal: y-up
+                           textures:
+                             - file: "{project}_x"
+                               format: png8
+                               space: linear
+                               channels: [roughness]
+                           """;
+
+    readonly DirectoryInfo library = Directory.CreateTempSubdirectory("patina-presets-");
+
+    string Shared => Directory.CreateDirectory(Path.Combine(library.FullName, "shared", "export-presets")).FullName;
+
+    public void Dispose() => library.Delete(true);
+
+    [Fact]
+    public void The_factory_has_each_engine_with_the_green_it_reads() {
+        var found = ExportPresetCatalog.Read(null);
+
+        Assert.Empty(found.Problems);
+        Assert.Equal(["godot", "unity-hdrp", "unity-urp", "unreal", "vixen"], found.Presets.Select(static p => p.Id));
+        Assert.Equal(GreenAxis.Down, found.Find("unreal")!.Normal);
+        Assert.Equal(GreenAxis.Up, found.Find("unity-urp")!.Normal);
+        Assert.Equal(GreenAxis.Up, found.Find("unity-hdrp")!.Normal);
+        Assert.Equal(GreenAxis.Up, found.Find("godot")!.Normal);
+        Assert.Equal(GreenAxis.Down, found.Find("vixen")!.Normal);
+    }
+
+    [Fact]
+    public void A_mask_map_holds_what_unity_documents_in_each_lane() {
+        var mask = ExportPresetCatalog.Read(null).Find("unity-hdrp")!.Textures.Single(static t => t.File.EndsWith(
+                "_MaskMap",
+                StringComparison.Ordinal
+            )
+        );
+
+        Assert.Equal(
+            [
+                new(ExportMaps.Metalness, 0, false, 0),
+                new(ExportMaps.Occlusion, 0, false, 0),
+                new(ExportMaps.Mask, 0, false, 0),
+                new ChannelSource(ExportMaps.Roughness, 0, true, 0)
+            ],
+            mask.Channels
+        );
+        Assert.Equal("linear", mask.Space);
+    }
+
+    [Fact]
+    public void A_user_adds_a_preset_with_a_file() {
+        File.WriteAllText(Path.Combine(Shared, "mine.yaml"), Minimal);
+
+        var found = ExportPresetCatalog.Read(library.FullName);
+
+        Assert.Equal(6, found.Presets.Count);
+        Assert.Equal(Minimal, ExportPresetCatalog.TextOf(found.Find("mine")!));
+    }
+
+    [Fact]
+    public void A_library_preset_wins_over_the_factory_one_of_the_same_id() {
+        File.WriteAllText(
+            Path.Combine(Shared, "unreal.yaml"),
+            Minimal.Replace("id: mine", "id: unreal", StringComparison.Ordinal)
+        );
+
+        var preset = ExportPresetCatalog.Read(library.FullName).Find("unreal")!;
+
+        Assert.Equal("Mine", preset.Name);
+        Assert.NotNull(preset.Path);
+    }
+
+    [Fact]
+    public void A_broken_file_is_reported_and_takes_nothing_with_it() {
+        File.WriteAllText(Path.Combine(Shared, "broken.yaml"), "version: 1\nid: broken\n");
+
+        var found = ExportPresetCatalog.Read(library.FullName);
+
+        Assert.Equal(5, found.Presets.Count);
+        Assert.Contains("broken.yaml", Assert.Single(found.Problems), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("format: png8", "format: tga", "'tga' is not a format")]
+    [InlineData("normal: y-up", "normal: opengl", "neither y-up nor y-down")]
+    [InlineData("[roughness]", "[smoothness]", "'smoothness' is not a map")]
+    [InlineData("[roughness]", "[roughness.q]", "names no lane")]
+    [InlineData("[roughness]", "[roughness, metalness]", "not two")]
+    [InlineData("{project}_x", "../{project}", "inside the export folder")]
+    [InlineData("{project}_x", "{name}_x", "'{name}' is not a name")]
+    [InlineData("space: linear", "space: linear\n    compresion: bc7", "'compresion' is not a field")]
+    [InlineData("format: png8", "format: exr16", "holds linear")]
+    public void A_preset_that_would_write_the_wrong_thing_is_refused(string from, string to, string says) {
+        var text = Minimal.Replace(from, to, StringComparison.Ordinal);
+        if (says == "holds linear") {
+            text = text.Replace("space: linear", "space: srgb", StringComparison.Ordinal);
+        }
+
+        var refusal = Assert.Throws<ExportPresetException>(() => ExportPresetReader.Read(text, "test"));
+
+        Assert.Contains(says, refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("bc4", 2)]
+    [InlineData("bc5", 3)]
+    [InlineData("bc6h", 4)]
+    public void A_block_format_is_not_given_lanes_it_cannot_hold(string compression, int lanes) {
+        var channels = string.Join(", ", Enumerable.Repeat("height", lanes));
+        var text = Minimal.Replace(
+                "format: png8",
+                $"format: ktx2\n    compression: {compression}",
+                StringComparison.Ordinal
+            )
+            .Replace("[roughness]", $"[{channels}]", StringComparison.Ordinal);
+
+        Assert.Throws<ExportPresetException>(() => ExportPresetReader.Read(text, "test"));
+    }
+
+    [Theory]
+    [InlineData("T_{project}_D", "Old Crate/2", "T_Old_Crate_2_D.png")]
+    [InlineData("{preset}/{project}", "a", "unreal/a.png")]
+    public void A_project_name_cannot_make_a_folder(string template, string project, string expected) {
+        var path = NamingTemplate.Resolve(template, new(project, "unreal"), ".png");
+
+        Assert.Equal(expected.Replace('/', Path.DirectorySeparatorChar), path);
+    }
+}

@@ -18,6 +18,12 @@ sealed class DeviceHost : IDisposable {
     VulkanDevice? device;
     TexturePlanEvaluator? evaluator;
 
+    /// <summary>
+    ///     Taken around anything that uses <see cref="Evaluator" />, which is one thread's at a time: the IPC loop
+    ///     answers graphs and stacks, and a build's steps run beside it on their own thread.
+    /// </summary>
+    public Lock Gate { get; } = new();
+
     public TexturePlanEvaluator Evaluator {
         get {
             if (evaluator is null) {

@@ -181,6 +181,41 @@ sealed class LibraryQueries(IndexDatabase database) {
         return new(summary, projects, pinned, unreadable, items, offset, limit);
     }
 
+    /// <summary>The paths of every project that reaches an asset, pins included, for a build that names one.</summary>
+    public IReadOnlyList<string> ProjectsReaching(AssetId asset) {
+        using var connection = database.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = $"""
+                               {ImpactChains}
+                               SELECT p.path FROM reached JOIN project p ON p.rid = reached.project ORDER BY p.path
+                               """;
+        command.Parameters.AddWithValue("@asset", asset.ToString());
+        using var reader = command.ExecuteReader();
+        List<string> paths = [];
+        while (reader.Read()) {
+            paths.Add(reader.GetString(0));
+        }
+
+        return paths;
+    }
+
+    /// <summary>The path of each named project the index knows.</summary>
+    public IReadOnlyList<string> ProjectPaths(IEnumerable<ProjectId> projects) {
+        using var connection = database.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT path FROM project WHERE id = @id ORDER BY path LIMIT 1";
+        var id = command.Parameters.Add("@id", SqliteType.Text);
+        List<string> paths = [];
+        foreach (var project in projects) {
+            id.Value = project.ToString();
+            if (command.ExecuteScalar() is string path) {
+                paths.Add(path);
+            }
+        }
+
+        return paths;
+    }
+
     static AssetSummary? FindAsset(SqliteConnection connection, AssetId asset) {
         using var command = connection.CreateCommand();
         // Two assets sharing an id are a finding of the check; the first by path is the one that answers until then.

@@ -11,7 +11,7 @@ namespace Patina.Worker;
 ///     applies to a bake however long it takes. It holds a cancellation source and nothing else: a bake is rebuilt from
 ///     the Server's job, so losing the link stops it.
 /// </summary>
-sealed class BakeHost : IDisposable {
+sealed class BakeHost() : OneAtATime("baking") {
     /// <summary>The cores left to the viewport, graph evaluation and the IPC loop.</summary>
     const int ReservedCores = 2;
 
@@ -20,54 +20,10 @@ sealed class BakeHost : IDisposable {
 
     static readonly TimeSpan ReportInterval = TimeSpan.FromMilliseconds(250);
 
-    readonly Lock changing = new();
-    readonly CancellationTokenSource closing = new();
-    Running? running;
-
     /// <summary>Starts a bake. Refuses a second: the Server hands out one at a time.</summary>
     public IpcMessage Start(IpcMessage request, IpcConnection link) {
         var ask = request.BakeStart ?? throw new IpcException("bake.start says nothing to bake.");
-        lock (changing) {
-            if (running is not null) {
-                return IpcMessage.Fail(request.Id, $"This Worker is already baking {running.Ticket.Job}.");
-            }
-
-            var stop = new CancellationTokenSource();
-            running = new(ask.Ticket, stop);
-            _ = Task.Factory.StartNew(
-                    () => RunAsync(ask, link, stop, closing.Token),
-                    CancellationToken.None,
-                    TaskCreationOptions.LongRunning,
-                    TaskScheduler.Default
-                )
-                .Unwrap();
-        }
-
-        return IpcMessage.Ok(request.Id);
-    }
-
-    /// <summary>Stops the bake named, if it is still the one running.</summary>
-    public IpcMessage Cancel(IpcMessage request) {
-        lock (changing) {
-            if (running is { } bake && bake.Ticket == request.BakeCancel) {
-                bake.Stop.Cancel();
-            }
-        }
-
-        return IpcMessage.Ok(request.Id);
-    }
-
-    /// <summary>Stops whatever is running: the link has gone, and the Server will hand the job out again.</summary>
-    public void LinkLost() {
-        lock (changing) {
-            running?.Stop.Cancel();
-        }
-    }
-
-    public void Dispose() {
-        LinkLost();
-        closing.Cancel();
-        closing.Dispose();
+        return Begin(request.Id, ask.Ticket, stop => RunAsync(ask, link, stop, Closing));
     }
 
     async Task RunAsync(
@@ -93,11 +49,7 @@ sealed class BakeHost : IDisposable {
             ending = new(ask.Ticket, null, e.Message);
         }
 
-        lock (changing) {
-            running = null;
-        }
-
-        stop.Dispose();
+        Ended(stop);
         try {
             await link.SendAsync(new() { Type = IpcTypes.BakeEnded, BakeEnded = ending }, cancellationToken)
                 .ConfigureAwait(false);
@@ -108,8 +60,6 @@ sealed class BakeHost : IDisposable {
             // The Server has gone, and it hands this job out again when it is back.
         }
     }
-
-    sealed record Running(BakeTicket Ticket, CancellationTokenSource Stop);
 
     /// <summary>Tells the Server, not often, and never holding up a casting thread while it does.</summary>
     sealed class Reporter(BakeTicket ticket, IpcConnection link, CancellationToken cancellationToken) {

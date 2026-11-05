@@ -223,7 +223,7 @@ type PathField = 'high' | 'low' | 'cage' | 'skewMap' | 'output';
                 </li>
               }
             </ul>
-            @if (job.bake.space === 'tangent') {
+            @if (job.bake?.space === 'tangent') {
               <button
                 type="button"
                 xuiButton

@@ -11,7 +11,8 @@ namespace Patina.Jobs;
 /// </summary>
 /// <remarks>
 ///     A job that keeps killing its Worker must not keep the machine in a crash loop, so a job is given up on after
-///     <see cref="MaxAttempts" /> Workers have died on it. A finished job stays as a record of what was made, up to
+///     <see cref="MaxAttempts" /> Workers have died on it (a build counts per step). A finished job stays as a record
+///     of what was made, up to
 ///     <see cref="Remembered" /> of them.
 /// </remarks>
 [SuppressMessage(
@@ -101,18 +102,31 @@ public sealed class JobQueue {
     }
 
     /// <summary>Takes a new job.</summary>
-    public JobState Enqueue(string key, BakeRequest bake) => Put(New(key, bake) with { State = JobStates.Queued });
+    public JobState Enqueue(string key, BakeRequest bake) =>
+        Put(New(key) with { State = JobStates.Queued, Bake = bake });
+
+    /// <summary>Takes a new build.</summary>
+    public JobState Enqueue(BuildRequest build) => Put(New("build") with { State = JobStates.Queued, Build = build });
 
     /// <summary>Records a job that needed no running, because its result already exists.</summary>
     public JobState Finished(string key, BakeRequest bake, BakeResult result) =>
-        Put(New(key, bake) with { State = JobStates.Done, Progress = 1, Result = result });
+        Put(New(key) with { State = JobStates.Done, Progress = 1, Bake = bake, Result = result });
 
-    /// <summary>Hands out the oldest queued job, or null when there is none.</summary>
-    public JobState? TakeNext() {
+    /// <summary>
+    ///     Hands out the oldest queued job, or null when there is none. Interactive work goes first (plan §5): a bake
+    ///     someone is waiting for passes any build, however early the build was asked for.
+    /// </summary>
+    public JobState? TakeNext() => Take(false);
+
+    /// <summary>Hands out the oldest queued bake, which a running build lets by between its steps.</summary>
+    public JobState? TakeInteractive() => Take(true);
+
+    JobState? Take(bool interactiveOnly) {
         lock (changing) {
             var job = jobs.Values
-                .Where(static job => job.State == JobStates.Queued)
-                .OrderBy(static job => job.Created)
+                .Where(job => job.State == JobStates.Queued && (!interactiveOnly || job.Build is null))
+                .OrderBy(static job => job.Build is null ? 0 : 1)
+                .ThenBy(static job => job.Created)
                 .ThenBy(static job => job.Id)
                 .FirstOrDefault();
             return job is null
@@ -126,6 +140,26 @@ public sealed class JobQueue {
         lock (changing) {
             if (Current(id, attempt) is { } job) {
                 Put(job with { Progress = Math.Clamp(progress, job.Progress, 1) }, false);
+            }
+        }
+    }
+
+    /// <summary>Records how a running build stands, for whoever is following it.</summary>
+    public void Report(string id, int attempt, double progress, LibraryReport report) {
+        lock (changing) {
+            if (Current(id, attempt) is { } job) {
+                Put(job with { Progress = Math.Clamp(progress, job.Progress, 1), Report = report }, false);
+            }
+        }
+    }
+
+    /// <summary>Records that a build finished.</summary>
+    public void Complete(string id, int attempt, LibraryReport report) {
+        lock (changing) {
+            if (Current(id, attempt) is { } job) {
+                var failed = report.Failed > 0 ? $"{report.Failed} of this build's steps failed." : null;
+                Put(job with { State = JobStates.Done, Progress = 1, Report = report, Error = failed });
+                Forget();
             }
         }
     }
@@ -195,19 +229,19 @@ public sealed class JobQueue {
         }
     }
 
-    JobState New(string key, BakeRequest bake) =>
-        new() {
-            Id = Guid.NewGuid().ToString("N"),
-            Key = key,
-            State = JobStates.Queued,
-            Created = clock.GetUtcNow(),
-            Bake = bake
-        };
+    JobState New(string key) =>
+        new() { Id = Guid.NewGuid().ToString("N"), Key = key, State = JobStates.Queued, Created = clock.GetUtcNow() };
 
     /// <summary>What becomes of a running job when whoever had it is gone, by a Worker's death or a Server's.</summary>
     static JobState AfterLoss(JobState job) {
         if (job.CancelRequested) {
             return job with { State = JobStates.Cancelled };
+        }
+
+        // A build counts its own deaths step by step in its journal, since one Worker lost in ten thousand steps says
+        // nothing against the other 9,999, and a step that kills three is reported and passed (BuildJournal).
+        if (job.Build is not null) {
+            return job with { State = JobStates.Queued };
         }
 
         return job.Attempts >= MaxAttempts

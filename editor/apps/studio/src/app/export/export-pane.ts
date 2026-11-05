@@ -1,0 +1,208 @@
+import { ChangeDetectionStrategy, Component, type OnInit, computed, effect, inject, signal } from '@angular/core';
+import type { BuildRequest } from '@patina/api-client';
+import { XuiButtonImports } from '@xui/button';
+import { XuiCalloutImports } from '@xui/callout';
+import { XuiSelectImports } from '@xui/select';
+import { LibrarySelection } from '../library/library-selection';
+import { ExportStore } from './export-store';
+
+/**
+ * Exports the library: choose a preset, see what would change, run it, read what it did. The panel only asks. The Server
+ * plans from build keys, so what the preview says is what runs, and everything sent is an id or a path, as for any client.
+ */
+@Component({
+  selector: 'ptn-export',
+  imports: [XuiButtonImports, XuiCalloutImports, XuiSelectImports],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { class: 'flex h-full min-h-0 flex-col' },
+  template: `
+    <div class="flex min-h-0 flex-1 flex-col gap-2.5 overflow-x-hidden overflow-y-auto p-3">
+      <div class="flex flex-col gap-1">
+        <span class="text-foreground-muted text-xs">Preset</span>
+        <xui-select
+          class="w-full"
+          ariaLabel="Preset"
+          data-testid="export-preset"
+          [items]="presetIds()"
+          [value]="preset()"
+          (valueChange)="choose($event)"
+        />
+      </div>
+
+      @if (chosen(); as info) {
+        <div class="well flex flex-col gap-1 p-2 text-xs" data-testid="export-preset-info">
+          <span>{{ info.engine }}, normal {{ info.normal }}, {{ info.origin }}</span>
+          @for (file of info.files; track file.template) {
+            <span class="readout truncate"
+              >{{ file.template }} · {{ file.format
+              }}{{ file.compression === 'none' ? '' : ' ' + file.compression }}</span
+            >
+          }
+        </div>
+      }
+
+      @for (problem of store.problems(); track problem) {
+        <xui-callout intent="warning">{{ problem }}</xui-callout>
+      }
+
+      <span class="text-foreground-muted text-xs" data-testid="export-scope">
+        {{ asset() ? 'Only what reads ' + asset()?.name : 'The whole library' }}
+      </span>
+
+      @if (store.preview(); as preview) {
+        <div class="well grid grid-cols-[1fr_auto] gap-x-3 p-2 text-xs" data-testid="export-impact">
+          <span>Projects to touch</span>
+          <span class="readout" data-testid="export-impact-projects">{{ preview.projects }}</span>
+          <span>Outputs to build</span>
+          <span class="readout" data-testid="export-impact-rebuilds">{{ preview.rebuilds }}</span>
+          <span>Of those, shared work</span>
+          <span class="readout">{{ preview.shared }}</span>
+          <span>Up to date</span>
+          <span class="readout">{{ preview.fresh }}</span>
+          <span>Exports to write</span>
+          <span class="readout" data-testid="export-impact-exports">{{ preview.exports }}</span>
+          @if (preview.unresolved > 0) {
+            <span>Cannot be built</span>
+            <span class="readout">{{ preview.unresolved }}</span>
+          }
+        </div>
+      }
+
+      <div class="flex gap-1">
+        <button type="button" xuiButton size="sm" data-testid="export-preview" [disabled]="!preset()" (click)="ask()">
+          Preview
+        </button>
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          data-testid="export-start"
+          [disabled]="!preset() || running()"
+          (click)="start()"
+        >
+          Export
+        </button>
+        @if (running()) {
+          <button type="button" xuiButton size="sm" variant="ghost" data-testid="export-cancel" (click)="cancel()">
+            Stop
+          </button>
+        }
+      </div>
+
+      @if (error(); as message) {
+        <xui-callout intent="danger" data-testid="export-error">{{ message }}</xui-callout>
+      }
+
+      @if (store.build(); as build) {
+        <div class="flex items-center justify-between text-xs">
+          <span class="readout" data-testid="export-state">{{ build.state }}</span>
+          <span class="readout" data-testid="export-percent">{{ percent() }}%</span>
+        </div>
+        @if (build.error) {
+          <xui-callout intent="warning">{{ build.error }}</xui-callout>
+        }
+      }
+
+      @if (store.report(); as report) {
+        <div class="well grid grid-cols-[1fr_auto] gap-x-3 p-2 text-xs" data-testid="export-report">
+          <span>Projects touched</span>
+          <span class="readout" data-testid="export-report-projects">{{ report.projects }}</span>
+          <span>Built</span>
+          <span class="readout" data-testid="export-report-built">{{ report.built }}</span>
+          <span>Reused</span>
+          <span class="readout">{{ report.reused }}</span>
+          <span>Files written</span>
+          <span class="readout" data-testid="export-report-files">{{ report.files }}</span>
+          <span>Failed</span>
+          <span class="readout" data-testid="export-report-failed">{{ report.failed }}</span>
+        </div>
+        @for (project of store.projects(); track project.id) {
+          <div class="flex flex-col text-xs" data-testid="export-report-project">
+            <span class="font-semibold">{{ project.name }}</span>
+            @for (done of project.exports; track done.preset) {
+              <span class="text-foreground-muted truncate" [title]="done.folder ?? ''">
+                {{ done.preset }}: {{ done.files.length }} files, {{ done.status }}
+              </span>
+              @for (warning of done.warnings; track warning) {
+                <span class="text-foreground-muted truncate" [title]="warning">{{ warning }}</span>
+              }
+            }
+          </div>
+        }
+        @if (store.projectCount() > store.projects().length) {
+          <span class="text-foreground-muted text-xs">
+            {{ store.projectCount() - store.projects().length }} more in {{ report.folder }}
+          </span>
+        }
+      }
+    </div>
+  `
+})
+export class ExportPane implements OnInit {
+  protected readonly store = inject(ExportStore);
+  private readonly selection = inject(LibrarySelection);
+  protected readonly preset = signal<string | null>(null);
+  protected readonly error = signal<string | null>(null);
+  protected readonly presetIds = computed(() => this.store.presets().map(preset => preset.id));
+  protected readonly chosen = computed(() => this.store.presets().find(preset => preset.id === this.preset()) ?? null);
+  protected readonly running = computed(() => ['queued', 'running'].includes(this.store.build()?.state ?? ''));
+  protected readonly percent = computed(() => Math.round((this.store.build()?.progress ?? 0) * 100));
+
+  /** A shared asset selected in the Library narrows the build to what reads it, which is the impact of editing it. */
+  protected readonly asset = computed(() => {
+    const item = this.selection.item();
+    return item?.kind === 'asset' ? item.asset : null;
+  });
+
+  /** A build that has stopped is read once, whichever way it stopped. */
+  private read = '';
+
+  constructor() {
+    effect(() => {
+      const build = this.store.build();
+      if (build?.state === 'done' && this.read !== build.id) {
+        this.read = build.id;
+        void this.attempt(() => this.store.read(build.id));
+      }
+    });
+  }
+
+  ngOnInit(): void {
+    void this.attempt(async () => {
+      await this.store.load();
+      this.preset.update(preset => preset ?? this.presetIds()[0] ?? null);
+    });
+  }
+
+  protected choose(preset: string | null): void {
+    this.preset.set(preset);
+    this.store.preview.set(null);
+  }
+
+  protected ask(): Promise<void> {
+    return this.attempt(() => this.store.ask(this.request()));
+  }
+
+  protected start(): Promise<void> {
+    return this.attempt(() => this.store.start(this.request()));
+  }
+
+  protected cancel(): Promise<void> {
+    return this.attempt(() => this.store.cancel());
+  }
+
+  private request(): BuildRequest {
+    const preset = this.preset();
+    const asset = this.asset();
+    return { presets: preset ? [preset] : [], ...(asset ? { asset: asset.id } : {}) };
+  }
+
+  private async attempt(work: () => Promise<void>): Promise<void> {
+    this.error.set(null);
+    try {
+      await work();
+    } catch (error) {
+      this.error.set(error instanceof Error ? error.message : String(error));
+    }
+  }
+}

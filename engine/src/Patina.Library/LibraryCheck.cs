@@ -121,6 +121,7 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
     const string UnidentifiedFiles = """
                                      SELECT f.path, '' FROM file f
                                      WHERE f.kind = 2
+                                     AND f.path NOT LIKE 'shared/export-presets/%'
                                      AND NOT EXISTS(SELECT 1 FROM asset a WHERE 'shared/' || a.path = f.path)
                                      """;
 
@@ -202,7 +203,7 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
         }
     }
 
-    static AssetGraph LoadGraph(SqliteConnection connection) {
+    internal static AssetGraph LoadGraph(SqliteConnection connection) {
         var dependencies = new Dictionary<long, List<AssetReference>>();
         using (var command = connection.CreateCommand()) {
             command.CommandText = "SELECT asset, target, mode, revision FROM asset_dependency";
@@ -248,7 +249,7 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
             : AssetReference.Floating(asset);
     }
 
-    static Dictionary<AssetId, string> LoadAssetPaths(SqliteConnection connection) {
+    internal static Dictionary<AssetId, string> LoadAssetPaths(SqliteConnection connection) {
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT id, 'shared/' || path FROM asset ORDER BY path DESC";
         using var reader = command.ExecuteReader();
@@ -337,7 +338,7 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
     ///     Hashes of project files that outputs read, kept across checks. Meshes and paint packs are large, and the
     ///     rule is the scanner's: a file whose size and time are unchanged is not read again.
     /// </summary>
-    sealed class InputHashes {
+    internal sealed class InputHashes {
         readonly string root;
         readonly long started = DateTime.UtcNow.Ticks;
         readonly Dictionary<string, FileStamp> known = new(StringComparer.Ordinal);

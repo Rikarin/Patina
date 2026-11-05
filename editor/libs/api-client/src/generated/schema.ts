@@ -89,6 +89,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/viewport/look': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Views frames through a .cube table. No export sees it. A null path views without one. */
+    put: operations['SetViewportLook'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/viewport/bake': {
     parameters: {
       query?: never;
@@ -132,6 +149,23 @@ export interface paths {
     };
     /** A node's preview as a PNG, by the hash an event carried. It never changes, so cache it for ever. */
     get: operations['GetPreview'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/export/presets': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Every preset this library can use: the factory ones and those in shared/export-presets. */
+    get: operations['GetExportPresets'];
     put?: never;
     post?: never;
     delete?: never;
@@ -775,6 +809,74 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/builds/preview': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** What a build would do, from build keys alone. Nothing runs, and nothing is written. */
+    post: operations['PreviewBuild'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/builds': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Queues a build. It follows as a job, and survives its Worker and the Server. */
+    post: operations['StartBuild'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/builds/{id}/report': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** What a build did to the library, as far as it has got. */
+    get: operations['GetBuildReport'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/builds/{id}/report/projects': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One page of what a finished build did to each project, with the paths of what it wrote. */
+    get: operations['GetBuildProjects'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -955,6 +1057,152 @@ export interface components {
       warnings: string[];
       /** @description Whether this was found in the cache and nothing ran. */
       cached: boolean;
+    };
+    /**
+     * @description What a build would do, from the build keys and with nothing run. int BuildPreview.Rebuilds and
+     *     int BuildPreview.Pinned are exact for outputs, where the asset's impact counts every project that references it at
+     *     all. An asset a project references and no output reads is in neither.
+     */
+    BuildPreview: {
+      /**
+       * Format: int32
+       * @description Projects with something to do.
+       */
+      projects: number;
+      /**
+       * Format: int32
+       * @description Outputs with no result under their current key, counted once per project.
+       */
+      rebuilds: number;
+      /**
+       * Format: int32
+       * @description How many of those are the same work as another's, because their keys are equal.
+       */
+      shared: number;
+      /**
+       * Format: int32
+       * @description Outputs already built.
+       */
+      fresh: number;
+      /**
+       * Format: int32
+       * @description Outputs that read the asset through a pin that holds them still.
+       */
+      pinned: number;
+      /**
+       * Format: int32
+       * @description Exports to write.
+       */
+      exports: number;
+      /**
+       * Format: int32
+       * @description Exports already in place.
+       */
+      exportsFresh: number;
+      /**
+       * Format: int32
+       * @description Outputs that cannot be built: a missing input, an unreadable reference.
+       */
+      unresolved: number;
+      /** @description One page of the projects, by name. */
+      items: components['schemas']['BuildPreviewProject'][];
+      /**
+       * Format: int32
+       * @description The offset the page starts at.
+       */
+      offset: number;
+      /**
+       * Format: int32
+       * @description The most items a page holds.
+       */
+      limit: number;
+    };
+    /** @description What a build would do for one project. */
+    BuildPreviewProject: {
+      /**
+       * Format: uuid
+       * @description The project.
+       */
+      id: string;
+      /** @description Its name. */
+      name: string;
+      /** @description Its path below `projects/`. */
+      path: string;
+      /**
+       * Format: int32
+       * @description The outputs that would be made.
+       */
+      outputs: number;
+      /**
+       * Format: int32
+       * @description The exports that would be written.
+       */
+      exports: number;
+    };
+    /** @description What to build. */
+    BuildRequest: {
+      /**
+       * Format: uuid
+       * @description Only what reads this shared asset, directly or not. Null for the whole library.
+       */
+      asset?: null | string;
+      /** @description Only these projects. Null or empty for all of them. */
+      projects?: null | string[];
+      /**
+       * @description The presets to export through. Null means the library's `exportTargets`; empty, no
+       *     export.
+       */
+      presets?: null | string[];
+      /** @description Where exports go, or null for `exports/` in the library. */
+      folder?: null | string;
+    };
+    /** @description One file of a preset, as a client shows it. */
+    ExportPresetFile: {
+      template: string;
+      format: string;
+      compression: string;
+      space: string;
+      mips: boolean;
+      maps: string[];
+    };
+    /** @description An export preset. */
+    ExportPresetInfo: {
+      /** @description Its id, which a build names. */
+      id: string;
+      /** @description Its label. */
+      name: string;
+      /** @description What it is for. */
+      engine: string;
+      /** @description The green its target reads: y-up or y-down. */
+      normal: string;
+      /** @description Where it comes from: factory or library. */
+      origin: string;
+      /** @description The hash of its file. */
+      revision: string;
+      /** @description What it makes. */
+      files: components['schemas']['ExportPresetFile'][];
+    };
+    /** @description Every preset a library can use, and the files in its folder that are not presets. */
+    ExportPresetList: {
+      presets: components['schemas']['ExportPresetInfo'][];
+      problems: string[];
+    };
+    /** @description One preset in a project's report. */
+    ExportReport: {
+      /** @description The preset. */
+      preset: string;
+      /** @description One of BuildStatuses. */
+      status: string;
+      /** @description Where its files are. */
+      folder?: null | string;
+      /** @description Its files, absolute. */
+      files: string[];
+      /** @description What it left out, and why. */
+      skipped: string[];
+      /** @description What needs a person. */
+      warnings: string[];
+      /** @description Why it failed. */
+      error?: null | string;
     };
     /** @description One edit. Commands in a batch run in order, and every command sees the ones before it. */
     GraphCommand:
@@ -1807,8 +2055,9 @@ export interface components {
        * @description When it was asked for, in UTC.
        */
       created: string;
-      /** @description What to do. */
-      bake: components['schemas']['BakeRequest'];
+      bake?: null | components['schemas']['BakeRequest'];
+      build?: null | components['schemas']['BuildRequest'];
+      report?: null | components['schemas']['LibraryReport'];
       result?: null | components['schemas']['BakeResult'];
       /** @description Why it failed. */
       error?: null | string;
@@ -1855,6 +2104,81 @@ export interface components {
       /** @description Whether a rescan is running; counts and pages may lag the files until it ends. */
       indexing: boolean;
     };
+    /** @description What a whole build did. */
+    LibraryReport: {
+      /** @description The job, or a name a headless build gave itself. */
+      build: string;
+      /**
+       * Format: date-time
+       * @description When it started, in UTC.
+       */
+      started: string;
+      /**
+       * Format: date-time
+       * @description When it finished, while it has not null.
+       */
+      finished?: null | string;
+      /**
+       * Format: int32
+       * @description Projects something happened to.
+       */
+      projects: number;
+      /**
+       * Format: int32
+       * @description Outputs that ran.
+       */
+      built: number;
+      /**
+       * Format: int32
+       * @description Outputs whose result existed.
+       */
+      reused: number;
+      /**
+       * Format: int32
+       * @description Outputs nothing touched.
+       */
+      fresh: number;
+      /**
+       * Format: int32
+       * @description Outputs and exports that could not be made.
+       */
+      failed: number;
+      /**
+       * Format: int32
+       * @description Exports written.
+       */
+      exported: number;
+      /**
+       * Format: int32
+       * @description Exports nothing touched.
+       */
+      exportsFresh: number;
+      /**
+       * Format: int64
+       * @description Files written by exports.
+       */
+      files: number;
+      /** @description The folder holding this report and one file per project. */
+      folder: string;
+    };
+    /** @description One output in a project's report. */
+    OutputReport: {
+      /** @description The output. */
+      name: string;
+      /** @description What builds it. */
+      tool: string;
+      /** @description Its build key, or null when it cannot be computed. */
+      key?: null | string;
+      /** @description One of BuildStatuses. */
+      status: string;
+      /**
+       * Format: double
+       * @description How long it took here.
+       */
+      seconds: number;
+      /** @description Why it failed. */
+      error?: null | string;
+    };
     ProblemDetails: {
       type?: null | string;
       title?: null | string;
@@ -1881,6 +2205,42 @@ export interface components {
        * @description How many projects match, on all pages.
        */
       total: number;
+      /**
+       * Format: int32
+       * @description The offset the page starts at.
+       */
+      offset: number;
+      /**
+       * Format: int32
+       * @description The most items a page holds.
+       */
+      limit: number;
+    };
+    /** @description What a build did to one project. Only a project something happened to has one. */
+    ProjectReport: {
+      /**
+       * Format: uuid
+       * @description The project.
+       */
+      id: string;
+      /** @description Its name. */
+      name: string;
+      /** @description Its path below `projects/`. */
+      path: string;
+      /** @description Its outputs that were touched. */
+      outputs: components['schemas']['OutputReport'][];
+      /** @description Its exports that were touched. */
+      exports: components['schemas']['ExportReport'][];
+    };
+    /** @description A page of a build's per-project reports. */
+    ProjectReportPage: {
+      /**
+       * Format: int32
+       * @description How many there are.
+       */
+      total: number;
+      /** @description This page. */
+      items: components['schemas']['ProjectReport'][];
       /**
        * Format: int32
        * @description The offset the page starts at.
@@ -2373,6 +2733,11 @@ export interface components {
       /** @description The graph's session. */
       graph: string;
     };
+    /** @description Views the frame through a table, which changes what is shown and nothing that is exported. */
+    ViewportLookRequest: {
+      /** @description A `.cube` file, or null to view without one. */
+      path?: null | string;
+    };
     /**
      * @description Pictures to lay over the mesh's own materials, on every part. Each is a path on the Server's machine, and a slot
      *     left null keeps what the material asks for. A filled slot replaces the material's factor too, so what shows
@@ -2390,6 +2755,8 @@ export interface components {
       metallic?: null | string;
       /** @description Ambient occlusion. */
       occlusion?: null | string;
+      /** @description The viewing table, which `PUT /viewport/look` sets and pictures do not touch. */
+      look?: null | string;
     };
     /** @description Asks the viewport to show a mesh. */
     ViewportMeshRequest: {
@@ -2579,6 +2946,39 @@ export interface operations {
       };
     };
   };
+  SetViewportLook: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportLookRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportState'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   ShowBakeInViewport: {
     parameters: {
       query?: never;
@@ -2699,6 +3099,35 @@ export interface operations {
         };
         content: {
           'image/png': string;
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetExportPresets: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ExportPresetList'];
         };
       };
       /** @description Not Found */
@@ -4347,6 +4776,176 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  PreviewBuild: {
+    parameters: {
+      query?: {
+        offset?: number;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['BuildRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['BuildPreview'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  StartBuild: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['BuildRequest'];
+      };
+    };
+    responses: {
+      /** @description Accepted */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['JobState'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetBuildReport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryReport'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetBuildProjects: {
+    parameters: {
+      query?: {
+        offset?: number;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectReportPage'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
       };
       /** @description Not Found */
       404: {

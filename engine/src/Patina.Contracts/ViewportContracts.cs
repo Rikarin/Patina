@@ -21,13 +21,19 @@ public sealed record ViewportMeshRequest(string Path);
 /// <param name="Roughness">Perceptual roughness.</param>
 /// <param name="Metallic">How metallic it is.</param>
 /// <param name="Occlusion">Ambient occlusion.</param>
+/// <param name="Look">The viewing table, which <c>PUT /viewport/look</c> sets and pictures do not touch.</param>
 public sealed record ViewportMapPaths(
     string? BaseColor = null,
     string? Normal = null,
     string? Roughness = null,
     string? Metallic = null,
-    string? Occlusion = null
+    string? Occlusion = null,
+    string? Look = null
 );
+
+/// <summary>Views the frame through a table, which changes what is shown and nothing that is exported.</summary>
+/// <param name="Path">A <c>.cube</c> file, or null to view without one.</param>
+public sealed record ViewportLookRequest(string? Path);
 
 /// <summary>Asks the viewport to show a finished bake on the mesh it was baked onto.</summary>
 /// <param name="Job">The bake's job.</param>

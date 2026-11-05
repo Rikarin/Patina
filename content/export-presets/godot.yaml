@@ -1,0 +1,28 @@
+# Godot 4, StandardMaterial3D or ORMMaterial3D. See docs/adr/0011-export.md.
+version: 1
+id: godot
+name: Godot
+engine: Godot
+normal: y-up
+textures:
+  - file: "{project}_albedo"
+    format: png8
+    space: srgb
+    channels: [baseColor.r, baseColor.g, baseColor.b, opacity.r]
+  - file: "{project}_normal"
+    format: png8
+    space: linear
+    channels: [normal.r, normal.g, normal.b]
+  # Red occlusion, green roughness, blue metallic. Godot's pages name the three and not the order; this is glTF's.
+  - file: "{project}_orm"
+    format: png8
+    space: linear
+    channels: [occlusion.r, roughness.r, metalness.r]
+  - file: "{project}_emission"
+    format: png8
+    space: srgb
+    channels: [emissive.r, emissive.g, emissive.b]
+  - file: "{project}_height"
+    format: png16
+    space: linear
+    channels: [height.r]

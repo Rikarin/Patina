@@ -72,6 +72,18 @@ public static class IpcTypes {
 
     public const string BakeStart = "bake.start";
 
+    /// <summary>
+    ///     Server to Worker: start <see cref="IpcMessage.BuildStart" /> and answer at once, as a bake does. It says how
+    ///     it ends with <see cref="BuildEnded" />, and a build sends these one at a time.
+    /// </summary>
+    public const string BuildStart = "build.start";
+
+    /// <summary>Server to Worker: stop the step named by <see cref="IpcMessage.BakeCancel" />.</summary>
+    public const string BuildCancel = "build.cancel";
+
+    /// <summary>Worker to Server: <see cref="IpcMessage.BuildEnded" />, however it ended.</summary>
+    public const string BuildEnded = "build.ended";
+
     /// <summary>Server to Worker: stop the bake named by <see cref="IpcMessage.BakeCancel" />.</summary>
     public const string BakeCancel = "bake.cancel";
 
@@ -163,6 +175,12 @@ public sealed class IpcMessage {
     /// <summary>bake.ended: how it ended.</summary>
     public BakeEnding? BakeEnded { get; set; }
 
+    /// <summary>build.start: one step of a build.</summary>
+    public BuildStart? BuildStart { get; set; }
+
+    /// <summary>build.ended: how a step ended.</summary>
+    public BuildEnding? BuildEnded { get; set; }
+
     public static IpcMessage Ok(long id) => new() { Type = IpcTypes.Ok, Id = id };
 
     public static IpcMessage Fail(long id, string error) => new() { Type = IpcTypes.Error, Id = id, Error = error };
@@ -190,6 +208,19 @@ public sealed record BakeProgressNote(BakeTicket Ticket, double Fraction);
 /// <param name="Error">Why it could not be done, when it could not.</param>
 public sealed record BakeEnding(BakeTicket Ticket, BakeManifest? Manifest, string? Error);
 
+/// <summary>One step of a build. It is a copy: the Server holds the job, and plans it again after a crash.</summary>
+/// <param name="Ticket">Which attempt this is.</param>
+/// <param name="Output">An output to build, or null.</param>
+/// <param name="Export">A preset to run, or null.</param>
+public sealed record BuildStart(BakeTicket Ticket, OutputStep? Output, ExportStep? Export);
+
+/// <summary>How a step ended. A cancelled step has no manifest and no error.</summary>
+/// <param name="Ticket">Which attempt.</param>
+/// <param name="Output">What an output made.</param>
+/// <param name="Export">What a preset made.</param>
+/// <param name="Error">Why it could not be done.</param>
+public sealed record BuildEnding(BakeTicket Ticket, BuildManifest? Output, ExportManifest? Export, string? Error);
+
 /// <summary>The Worker's hello.</summary>
 public sealed record WorkerHello(int Protocol, string Version, int ProcessId);
 
@@ -199,13 +230,17 @@ public sealed record WorkerHealth(double UptimeSeconds, long WorkingSetBytes);
 /// <summary>A picture on a disk the Worker can read, and the hash of what is in it.</summary>
 public sealed record ViewportMapFile(string Path, string Hash);
 
-/// <summary>The pictures laid over the open mesh's materials. A null slot keeps the material's own.</summary>
+/// <summary>
+///     The pictures laid over the open mesh's materials. A null slot keeps the material's own. <c>Look</c> is a viewing
+///     table for the frame, which goes with them because a Worker that comes back must be told it too.
+/// </summary>
 public sealed record ViewportMapSet(
     ViewportMapFile? BaseColor = null,
     ViewportMapFile? Normal = null,
     ViewportMapFile? Roughness = null,
     ViewportMapFile? Metallic = null,
-    ViewportMapFile? Occlusion = null
+    ViewportMapFile? Occlusion = null,
+    ViewportMapFile? Look = null
 );
 
 /// <summary>An orbit around the model: radians, and a distance in bounding radii.</summary>

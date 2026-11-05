@@ -1,0 +1,4 @@
+# openapi-python-client's settings. The package name is the import name.
+project_name_override: patina-client
+package_name_override: patina_client
+post_hooks: []

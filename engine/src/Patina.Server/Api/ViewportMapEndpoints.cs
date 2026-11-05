@@ -30,6 +30,11 @@ static class ViewportMapEndpoints {
             .WithTags(Tag)
             .WithSummary("Lays pictures over the mesh's own materials. An empty body takes them off.")
             .ProducesProblem(Missing);
+        api.MapPut("/viewport/look", SetLook)
+            .WithName("SetViewportLook")
+            .WithTags(Tag)
+            .WithSummary("Views frames through a .cube table. No export sees it. A null path views without one.")
+            .ProducesProblem(Missing);
         api.MapPut("/viewport/bake", ShowBakeAsync)
             .WithName("ShowBakeInViewport")
             .WithTags(Tag)
@@ -59,6 +64,15 @@ static class ViewportMapEndpoints {
         }
     }
 
+    static Results<Ok<ViewportState>, ProblemHttpResult> SetLook(ViewportLookRequest request, ViewportSession session) {
+        try {
+            session.SetLook(Hash(request.Path));
+            return TypedResults.Ok(session.State);
+        } catch (FileNotFoundException e) {
+            return TypedResults.Problem(e.Message, statusCode: Missing);
+        }
+    }
+
     static async Task<Results<Ok<ViewportState>, ProblemHttpResult>> ShowBakeAsync(
         ViewportBakeRequest request,
         JobQueue queue,
@@ -73,7 +87,7 @@ static class ViewportMapEndpoints {
             return TypedResults.Problem($"Job '{request.Job}' has not finished.", statusCode: Refused);
         }
 
-        if (job.Bake.Space != "tangent") {
+        if (job.Bake!.Space != "tangent") {
             return TypedResults.Problem(
                 "This bake is in object space, and the viewport reads tangent-space maps.",
                 statusCode: Refused

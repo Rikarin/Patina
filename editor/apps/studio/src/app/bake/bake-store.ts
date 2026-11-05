@@ -79,6 +79,16 @@ export class BakeStore {
     void this.follow();
   }
 
+  /** A job as it now stands. Reading this follows it. */
+  find(id: string): JobState | null {
+    return this.byId().get(id) ?? null;
+  }
+
+  /** Holds a job a caller just heard of, which the events carry on from. */
+  track(job: JobState): void {
+    this.put(job);
+  }
+
   /** Asks for a bake. Throws the Server's refusal, which is what the panel shows. */
   async start(request: BakeRequest): Promise<JobState> {
     const client = await this.api();
@@ -99,7 +109,7 @@ export class BakeStore {
     unwrap(
       await client.PUT('/api/v1/graphs/{id}/mesh-maps', {
         params: { path: { id: graph } },
-        body: { folder: job.bake.output }
+        body: { folder: job.bake?.output ?? null }
       })
     );
   }
@@ -125,7 +135,7 @@ export class BakeStore {
       await client.GET('/api/v1/jobs/{id}/previews/{map}', { params: { path: { id: job.id, map } }, parseAs: 'blob' })
     );
     const url = URL.createObjectURL(blob);
-    const side = job.result?.maps.find(file => file.map === map)?.resolution ?? job.bake.resolution;
+    const side = job.result?.maps.find(file => file.map === map)?.resolution ?? job.bake?.resolution ?? 0;
     this.revoke();
     this.shown.set({ job: job.id, map, url, width: side, height: side });
   }

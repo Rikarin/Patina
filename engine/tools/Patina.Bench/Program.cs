@@ -10,6 +10,8 @@ using Vixen.TextureGraph;
 //   s6 <path> [projects] [seed]         generates into an empty folder if needed, then measures spike S6
 //   cold-open <path>                    one cold open, as its own process; s6 starts it
 //   graph <library> <nodes> <name>      adds a real texture graph to a library, for the editor and spike S7
+//   bake-library <path>                 a library with one project that bakes, which needs no GPU
+//   fan-out <folder> [projects] [real] [side] [presets]   edits a material every project reads, and rebuilds
 switch (args) {
     case ["generate", var path, var projects, .. var rest]:
         var generator = new GeneratorOptions(
@@ -53,6 +55,16 @@ switch (args) {
             rest is [var side, ..] ? int.Parse(side, CultureInfo.InvariantCulture) : 4096,
             rest is [_, var rays, ..] ? int.Parse(rays, CultureInfo.InvariantCulture) : 256,
             rest is [_, _, var reach] ? double.Parse(reach, CultureInfo.InvariantCulture) : 0.5
+        );
+    case ["bake-library", var library]:
+        return FanOut.WriteBakeLibrary(Path.GetFullPath(library));
+    case ["fan-out", var folder, .. var rest]:
+        return await FanOut.RunAsync(
+            Path.GetFullPath(folder),
+            rest is [var total, ..] ? int.Parse(total, CultureInfo.InvariantCulture) : 10_000,
+            rest is [_, var pixels, ..] ? int.Parse(pixels, CultureInfo.InvariantCulture) : 100,
+            rest is [_, _, var edge, ..] ? int.Parse(edge, CultureInfo.InvariantCulture) : 256,
+            rest is [_, _, _, var names] ? names.Split(',') : ["unreal", "vixen"]
         );
     case ["graph", var library, var nodes, var name]:
         return GraphFixture.Write(library, int.Parse(nodes, CultureInfo.InvariantCulture), name);

@@ -1,0 +1,32 @@
+# Unity's Universal Render Pipeline, Lit shader. See docs/adr/0011-export.md.
+version: 1
+id: unity-urp
+name: Unity (URP)
+engine: Unity
+normal: y-up
+textures:
+  - file: "{project}_BaseMap"
+    format: png8
+    space: srgb
+    channels: [baseColor.r, baseColor.g, baseColor.b, opacity.r]
+  - file: "{project}_Normal"
+    format: png8
+    space: linear
+    channels: [normal.r, normal.g, normal.b]
+  # Smoothness Source defaults to Metallic Alpha. Smoothness is one minus roughness.
+  - file: "{project}_MetallicSmoothness"
+    format: png8
+    space: linear
+    channels: [metalness.r, metalness.r, metalness.r, 1-roughness.r]
+  - file: "{project}_Occlusion"
+    format: png8
+    space: linear
+    channels: [occlusion.r]
+  - file: "{project}_Emission"
+    format: png8
+    space: srgb
+    channels: [emissive.r, emissive.g, emissive.b]
+  - file: "{project}_Height"
+    format: png16
+    space: linear
+    channels: [height.r]

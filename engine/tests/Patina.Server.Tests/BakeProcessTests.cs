@@ -545,7 +545,7 @@ public sealed class BakeProcessTests : IDisposable {
 
         using var opened = await http.PutAsJsonAsync(
             "/api/v1/viewport/mesh",
-            new(job.Bake.Low),
+            new(job.Bake!.Low),
             ContractsJsonContext.Default.ViewportMeshRequest,
             deadline.Token
         );

@@ -454,6 +454,12 @@ bezel, on all three platforms, in CI.
 
 ### P6: batch and export (5–6 weeks)
 
+> **Status (2026-11-05): the exit is met through the real Worker, and no engine has opened a file yet.** Presets are files, BC7 and
+> BC6H are complete in Vixen, a build is a plan from keys that survives its Worker and the Server, `patina build` and the Export pane
+> run it, and LODs and `.cube` viewing are in. Measured at 10,000 projects with stand-in maps and 500 with real ones
+> ([ADR 0011](adr/0011-export.md)). Not done: layer references, which need a decision about Vixen's stack format, and any
+> check inside Unreal, Unity or Godot.
+
 **Exit:** edit one shared material, and the library rebuilds only what changed and writes engine-ready files.
 
 - Export presets with channel packing and naming templates: Unreal, Unity, Godot, and Vixen.

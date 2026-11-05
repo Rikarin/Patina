@@ -155,6 +155,47 @@
         }
       }
     },
+    "/api/v1/viewport/look": {
+      "put": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "Views frames through a .cube table. No export sees it. A null path views without one.",
+        "operationId": "SetViewportLook",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewportLookRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/viewport/bake": {
       "put": {
         "tags": [
@@ -302,6 +343,37 @@
                 "schema": {
                   "type": "string",
                   "format": "byte"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/export/presets": {
+      "get": {
+        "tags": [
+          "Builds"
+        ],
+        "summary": "Every preset this library can use: the factory ones and those in shared/export-presets.",
+        "operationId": "GetExportPresets",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportPresetList"
                 }
               }
             }
@@ -2528,6 +2600,248 @@
           }
         }
       }
+    },
+    "/api/v1/builds/preview": {
+      "post": {
+        "tags": [
+          "Builds"
+        ],
+        "summary": "What a build would do, from build keys alone. Nothing runs, and nothing is written.",
+        "operationId": "PreviewBuild",
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BuildRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/builds": {
+      "post": {
+        "tags": [
+          "Builds"
+        ],
+        "summary": "Queues a build. It follows as a job, and survives its Worker and the Server.",
+        "operationId": "StartBuild",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BuildRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/builds/{id}/report": {
+      "get": {
+        "tags": [
+          "Builds"
+        ],
+        "summary": "What a build did to the library, as far as it has got.",
+        "operationId": "GetBuildReport",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryReport"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/builds/{id}/report/projects": {
+      "get": {
+        "tags": [
+          "Builds"
+        ],
+        "summary": "One page of what a finished build did to each project, with the paths of what it wrote.",
+        "operationId": "GetBuildProjects",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectReportPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2848,6 +3162,319 @@
           }
         },
         "description": "What a finished bake made."
+      },
+      "BuildPreview": {
+        "required": [
+          "projects",
+          "rebuilds",
+          "shared",
+          "fresh",
+          "pinned",
+          "exports",
+          "exportsFresh",
+          "unresolved",
+          "items",
+          "offset",
+          "limit"
+        ],
+        "type": "object",
+        "properties": {
+          "projects": {
+            "type": "integer",
+            "description": "Projects with something to do.",
+            "format": "int32"
+          },
+          "rebuilds": {
+            "type": "integer",
+            "description": "Outputs with no result under their current key, counted once per project.",
+            "format": "int32"
+          },
+          "shared": {
+            "type": "integer",
+            "description": "How many of those are the same work as another\u0027s, because their keys are equal.",
+            "format": "int32"
+          },
+          "fresh": {
+            "type": "integer",
+            "description": "Outputs already built.",
+            "format": "int32"
+          },
+          "pinned": {
+            "type": "integer",
+            "description": "Outputs that read the asset through a pin that holds them still.",
+            "format": "int32"
+          },
+          "exports": {
+            "type": "integer",
+            "description": "Exports to write.",
+            "format": "int32"
+          },
+          "exportsFresh": {
+            "type": "integer",
+            "description": "Exports already in place.",
+            "format": "int32"
+          },
+          "unresolved": {
+            "type": "integer",
+            "description": "Outputs that cannot be built: a missing input, an unreadable reference.",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BuildPreviewProject"
+            },
+            "description": "One page of the projects, by name."
+          },
+          "offset": {
+            "type": "integer",
+            "description": "The offset the page starts at.",
+            "format": "int32"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "The most items a page holds.",
+            "format": "int32"
+          }
+        },
+        "description": "What a build would do, from the build keys and with nothing run. int BuildPreview.Rebuilds and\nint BuildPreview.Pinned are exact for outputs, where the asset\u0027s impact counts every project that references it at\nall. An asset a project references and no output reads is in neither."
+      },
+      "BuildPreviewProject": {
+        "required": [
+          "id",
+          "name",
+          "path",
+          "outputs",
+          "exports"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The project.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Its name."
+          },
+          "path": {
+            "type": "string",
+            "description": "Its path below \u0060projects/\u0060."
+          },
+          "outputs": {
+            "type": "integer",
+            "description": "The outputs that would be made.",
+            "format": "int32"
+          },
+          "exports": {
+            "type": "integer",
+            "description": "The exports that would be written.",
+            "format": "int32"
+          }
+        },
+        "description": "What a build would do for one project."
+      },
+      "BuildRequest": {
+        "type": "object",
+        "properties": {
+          "asset": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Only what reads this shared asset, directly or not. Null for the whole library.",
+            "format": "uuid"
+          },
+          "projects": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Only these projects. Null or empty for all of them."
+          },
+          "presets": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "The presets to export through. Null means the library\u0027s \u0060exportTargets\u0060; empty, no\nexport."
+          },
+          "folder": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Where exports go, or null for \u0060exports/\u0060 in the library."
+          }
+        },
+        "description": "What to build."
+      },
+      "ExportPresetFile": {
+        "required": [
+          "template",
+          "format",
+          "compression",
+          "space",
+          "mips",
+          "maps"
+        ],
+        "type": "object",
+        "properties": {
+          "template": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "compression": {
+            "type": "string"
+          },
+          "space": {
+            "type": "string"
+          },
+          "mips": {
+            "type": "boolean"
+          },
+          "maps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "One file of a preset, as a client shows it."
+      },
+      "ExportPresetInfo": {
+        "required": [
+          "id",
+          "name",
+          "engine",
+          "normal",
+          "origin",
+          "revision",
+          "files"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Its id, which a build names."
+          },
+          "name": {
+            "type": "string",
+            "description": "Its label."
+          },
+          "engine": {
+            "type": "string",
+            "description": "What it is for."
+          },
+          "normal": {
+            "type": "string",
+            "description": "The green its target reads: y-up or y-down."
+          },
+          "origin": {
+            "type": "string",
+            "description": "Where it comes from: factory or library."
+          },
+          "revision": {
+            "type": "string",
+            "description": "The hash of its file."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExportPresetFile"
+            },
+            "description": "What it makes."
+          }
+        },
+        "description": "An export preset."
+      },
+      "ExportPresetList": {
+        "required": [
+          "presets",
+          "problems"
+        ],
+        "type": "object",
+        "properties": {
+          "presets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExportPresetInfo"
+            }
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "Every preset a library can use, and the files in its folder that are not presets."
+      },
+      "ExportReport": {
+        "required": [
+          "preset",
+          "status",
+          "files",
+          "skipped",
+          "warnings"
+        ],
+        "type": "object",
+        "properties": {
+          "preset": {
+            "type": "string",
+            "description": "The preset."
+          },
+          "status": {
+            "type": "string",
+            "description": "One of BuildStatuses."
+          },
+          "folder": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Where its files are."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Its files, absolute."
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What it left out, and why."
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What needs a person."
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why it failed."
+          }
+        },
+        "description": "One preset in a project\u0027s report."
       },
       "GraphCommand": {
         "required": [
@@ -4836,7 +5463,6 @@
           "key",
           "state",
           "created",
-          "bake",
           "progress",
           "attempts",
           "cancelRequested"
@@ -4871,8 +5497,37 @@
             "format": "date-time"
           },
           "bake": {
-            "description": "What to do.",
-            "$ref": "#/components/schemas/BakeRequest"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The bake to make, when this job is a bake.",
+                "$ref": "#/components/schemas/BakeRequest"
+              }
+            ]
+          },
+          "build": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The build to run, when this job is a build.",
+                "$ref": "#/components/schemas/BuildRequest"
+              }
+            ]
+          },
+          "report": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What a build has done so far, or did.",
+                "$ref": "#/components/schemas/LibraryReport"
+              }
+            ]
           },
           "result": {
             "oneOf": [
@@ -4973,6 +5628,129 @@
         },
         "description": "The reply to \u0060GET /api/v1/library\u0060: what opening a library reads, and nothing more."
       },
+      "LibraryReport": {
+        "required": [
+          "build",
+          "started",
+          "projects",
+          "built",
+          "reused",
+          "fresh",
+          "failed",
+          "exported",
+          "exportsFresh",
+          "files",
+          "folder"
+        ],
+        "type": "object",
+        "properties": {
+          "build": {
+            "type": "string",
+            "description": "The job, or a name a headless build gave itself."
+          },
+          "started": {
+            "type": "string",
+            "description": "When it started, in UTC.",
+            "format": "date-time"
+          },
+          "finished": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When it finished, while it has not null.",
+            "format": "date-time"
+          },
+          "projects": {
+            "type": "integer",
+            "description": "Projects something happened to.",
+            "format": "int32"
+          },
+          "built": {
+            "type": "integer",
+            "description": "Outputs that ran.",
+            "format": "int32"
+          },
+          "reused": {
+            "type": "integer",
+            "description": "Outputs whose result existed.",
+            "format": "int32"
+          },
+          "fresh": {
+            "type": "integer",
+            "description": "Outputs nothing touched.",
+            "format": "int32"
+          },
+          "failed": {
+            "type": "integer",
+            "description": "Outputs and exports that could not be made.",
+            "format": "int32"
+          },
+          "exported": {
+            "type": "integer",
+            "description": "Exports written.",
+            "format": "int32"
+          },
+          "exportsFresh": {
+            "type": "integer",
+            "description": "Exports nothing touched.",
+            "format": "int32"
+          },
+          "files": {
+            "type": "integer",
+            "description": "Files written by exports.",
+            "format": "int64"
+          },
+          "folder": {
+            "type": "string",
+            "description": "The folder holding this report and one file per project."
+          }
+        },
+        "description": "What a whole build did."
+      },
+      "OutputReport": {
+        "required": [
+          "name",
+          "tool",
+          "status",
+          "seconds"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The output."
+          },
+          "tool": {
+            "type": "string",
+            "description": "What builds it."
+          },
+          "key": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its build key, or null when it cannot be computed."
+          },
+          "status": {
+            "type": "string",
+            "description": "One of BuildStatuses."
+          },
+          "seconds": {
+            "type": "number",
+            "description": "How long it took here.",
+            "format": "double"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why it failed."
+          }
+        },
+        "description": "One output in a project\u0027s report."
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -5072,6 +5850,80 @@
           }
         },
         "description": "One page of projects."
+      },
+      "ProjectReport": {
+        "required": [
+          "id",
+          "name",
+          "path",
+          "outputs",
+          "exports"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The project.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Its name."
+          },
+          "path": {
+            "type": "string",
+            "description": "Its path below \u0060projects/\u0060."
+          },
+          "outputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OutputReport"
+            },
+            "description": "Its outputs that were touched."
+          },
+          "exports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExportReport"
+            },
+            "description": "Its exports that were touched."
+          }
+        },
+        "description": "What a build did to one project. Only a project something happened to has one."
+      },
+      "ProjectReportPage": {
+        "required": [
+          "total",
+          "items",
+          "offset",
+          "limit"
+        ],
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "How many there are.",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectReport"
+            },
+            "description": "This page."
+          },
+          "offset": {
+            "type": "integer",
+            "description": "The offset the page starts at.",
+            "format": "int32"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "The most items a page holds.",
+            "format": "int32"
+          }
+        },
+        "description": "A page of a build\u0027s per-project reports."
       },
       "ProjectSummary": {
         "required": [
@@ -6110,6 +6962,19 @@
         },
         "description": "Asks the viewport to lay a graph\u0027s Output nodes over the mesh it is showing, as they stand now."
       },
+      "ViewportLookRequest": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A \u0060.cube\u0060 file, or null to view without one."
+          }
+        },
+        "description": "Views the frame through a table, which changes what is shown and nothing that is exported."
+      },
       "ViewportMapPaths": {
         "type": "object",
         "properties": {
@@ -6147,6 +7012,13 @@
               "string"
             ],
             "description": "Ambient occlusion."
+          },
+          "look": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The viewing table, which \u0060PUT /viewport/look\u0060 sets and pictures do not touch."
           }
         },
         "description": "Pictures to lay over the mesh\u0027s own materials, on every part. Each is a path on the Server\u0027s machine, and a slot\nleft null keeps what the material asks for. A filled slot replaces the material\u0027s factor too, so what shows\nis the picture. Roughness is read from green, metallic from blue and occlusion from red, so one packed file or\nthree grey ones both work. PNG, JPEG and EXR are read, base colour as sRGB and the rest as linear."
@@ -6275,6 +7147,9 @@
     },
     {
       "name": "Graphs"
+    },
+    {
+      "name": "Builds"
     },
     {
       "name": "Library"

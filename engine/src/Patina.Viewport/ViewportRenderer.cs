@@ -103,6 +103,7 @@ public sealed class ViewportRenderer : IDisposable {
         cleanup.Add(() => device.Destroy(meteredExposure));
     }
 
+
     /// <summary>The adapter's name, for logs.</summary>
     public string Adapter => device.Adapter.Name;
 
