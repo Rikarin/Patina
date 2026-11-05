@@ -20,6 +20,10 @@ public sealed class ViewportRenderer : IDisposable {
     const PixelFormat OutputFormat = PixelFormat.Rgba8UNorm;
     const int Samples = 4;
     const float Exposure = 0.9f;
+    const int SettleWidth = 320;
+    const int SettleHeight = 200;
+    const int SettledFrames = 8;
+    const int SettleLimit = 64;
 
     readonly VulkanDevice device;
     readonly EffectLoader loader;
@@ -121,6 +125,7 @@ public sealed class ViewportRenderer : IDisposable {
         var mesh = ViewportMesh.Read(path);
         geometry?.Dispose();
         geometry = new(device, forward, mesh);
+        Settle();
     }
 
     /// <summary>Renders one frame and copies it into <paramref name="destination" />.</summary>
@@ -157,6 +162,24 @@ public sealed class ViewportRenderer : IDisposable {
 
         loader.Release();
         device.Dispose();
+    }
+
+    /// <summary>
+    ///     Draws the mesh until its frames stop changing, so that one camera gives one picture from the first frame a
+    ///     caller sees. Apple's GPUs bin geometry into a buffer that starts small and is sized from frames that have
+    ///     finished, a moment after they finish. A mesh that outgrows it is split, which moves a few pixels where the
+    ///     mesh overlaps itself by a level or two, and no fence says when the new size has arrived. So this waits for
+    ///     the picture: the frames it takes are the ones that carry the size back. The README has the evidence.
+    /// </summary>
+    void Settle() {
+        var frame = new byte[FrameBytes(SettleWidth, SettleHeight)];
+        var previous = new byte[frame.Length];
+        var same = 0;
+        for (var i = 0; i < SettleLimit && same < SettledFrames; i++) {
+            Render(OrbitCamera.Default, SettleWidth, SettleHeight, frame);
+            same = frame.AsSpan().SequenceEqual(previous) ? same + 1 : 0;
+            (frame, previous) = (previous, frame);
+        }
     }
 
     void WriteFrame(OrbitCamera camera, BoundingBox bounds, float aspectRatio) {

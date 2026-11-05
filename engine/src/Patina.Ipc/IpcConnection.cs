@@ -68,12 +68,20 @@ public sealed class IpcConnection : IAsyncDisposable {
         writeLock.Dispose();
     }
 
+    /// <summary>
+    ///     The owner disposes the link when the peer goes, whoever is writing at that moment, so a write that meets a
+    ///     disposed link is one more way of losing the peer. Callers recover from that, and only from that.
+    /// </summary>
     async Task WriteAsync(IpcMessage message, CancellationToken cancellationToken) {
-        await writeLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
-            await IpcFraming.WriteAsync(stream, message, cancellationToken).ConfigureAwait(false);
-        } finally {
-            writeLock.Release();
+            await writeLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try {
+                await IpcFraming.WriteAsync(stream, message, cancellationToken).ConfigureAwait(false);
+            } finally {
+                writeLock.Release();
+            }
+        } catch (ObjectDisposedException e) {
+            throw new IOException("The IPC peer has disconnected.", e);
         }
     }
 
