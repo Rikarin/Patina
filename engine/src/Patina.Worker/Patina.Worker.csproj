@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>The process that will own the GPU device and native parsers. Stateless: it executes what the Server asks and can be restarted at any time. It renders the viewport.</Description>
+    <Description>The process that will own the GPU device and native parsers. Stateless: it executes what the Server asks and can be restarted at any time. It renders the viewport and evaluates texture graphs.</Description>
     <OutputType>Exe</OutputType>
     <AssemblyName>patina-worker</AssemblyName>
     <RootNamespace>Patina.Worker</RootNamespace>
@@ -10,5 +10,10 @@
     <ProjectReference Include="../Patina.Contracts/Patina.Contracts.csproj"/>
     <ProjectReference Include="../Patina.Ipc/Patina.Ipc.csproj"/>
     <ProjectReference Include="../Patina.Viewport/Patina.Viewport.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Tools/Vixen.TextureGraph/Vixen.TextureGraph.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Tools/Vixen.NodeGraph/Vixen.NodeGraph.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Platform/Vixen.Graphics.Vulkan/Vixen.Graphics.Vulkan.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Core/Vixen.Core.Imaging/Vixen.Core.Imaging.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Core/Vixen.Core.Yaml/Vixen.Core.Yaml.csproj"/>
   </ItemGroup>
 </Project>

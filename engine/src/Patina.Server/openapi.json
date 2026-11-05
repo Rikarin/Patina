@@ -114,6 +114,48 @@
         }
       }
     },
+    "/api/v1/previews/{hash}": {
+      "get": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "A node\u0027s preview as a PNG, by the hash an event carried. It never changes, so cache it for ever.",
+        "operationId": "GetPreview",
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library": {
       "get": {
         "tags": [
@@ -551,6 +593,520 @@
           }
         }
       }
+    },
+    "/api/v1/graphs": {
+      "get": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "The open graphs.",
+        "operationId": "GetGraphs",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GraphSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Opens a graph file, or joins the session that has it open, and starts evaluating it.",
+        "operationId": "OpenGraph",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphOpenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graphs/{id}": {
+      "get": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "The whole document, its undo history and the newest previews.",
+        "operationId": "GetGraph",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Ends a session. Unsaved edits refuse this unless discard is set.",
+        "operationId": "CloseGraph",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "discard",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graphs/{id}/node-types": {
+      "get": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Every node this graph can use, with ports and settings, for a palette.",
+        "operationId": "GetGraphNodeTypes",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GraphNodeType"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graphs/{id}/commands": {
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Applies a batch of edits, whole or not at all, as one undo step.",
+        "operationId": "ApplyGraphCommands",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphCommandBatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphEditResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graphs/{id}/undo": {
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Takes back the newest batch, whichever client sent it.",
+        "operationId": "UndoGraph",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphEditResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graphs/{id}/redo": {
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Puts back the newest undone batch.",
+        "operationId": "RedoGraph",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphEditResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graphs/{id}/save": {
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Writes the document to its file. A file changed on disk refuses this unless force is set.",
+        "operationId": "SaveGraph",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "force",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphEditResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graphs/{id}/evaluate": {
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Evaluates again, which also rewrites previews a deleted cache has lost.",
+        "operationId": "EvaluateGraph",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graphs/{id}/events": {
+      "get": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "The events after a number. /ws/graphs/{id}?since= sends the same events as they happen.",
+        "operationId": "GetGraphEvents",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphEventPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -689,6 +1245,1057 @@
           }
         },
         "description": "One shared asset as the browser shows it."
+      },
+      "GraphCommand": {
+        "required": [
+          "op"
+        ],
+        "type": "object",
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphAddNode"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphRemoveNodes"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphMoveNodes"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphConnect"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphDisconnect"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphSetValue"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphSetText"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphSetSetting"
+          }
+        ],
+        "description": "One edit. Commands in a batch run in order, and every command sees the ones before it.",
+        "discriminator": {
+          "propertyName": "op",
+          "mapping": {
+            "addNode": "#/components/schemas/GraphCommandGraphAddNode",
+            "removeNodes": "#/components/schemas/GraphCommandGraphRemoveNodes",
+            "moveNodes": "#/components/schemas/GraphCommandGraphMoveNodes",
+            "connect": "#/components/schemas/GraphCommandGraphConnect",
+            "disconnect": "#/components/schemas/GraphCommandGraphDisconnect",
+            "setValue": "#/components/schemas/GraphCommandGraphSetValue",
+            "setText": "#/components/schemas/GraphCommandGraphSetText",
+            "setSetting": "#/components/schemas/GraphCommandGraphSetSetting"
+          }
+        }
+      },
+      "GraphCommandBatch": {
+        "required": [
+          "commands",
+          "merge"
+        ],
+        "type": "object",
+        "properties": {
+          "commands": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphCommand"
+            },
+            "description": "What to do, in order."
+          },
+          "label": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What the undo history calls it, or null for a name from the commands."
+          },
+          "merge": {
+            "type": "boolean",
+            "description": "True to fold this batch into the last one when both change the same things, so that a whole drag is one undo.\nA client leaves it false on the first batch of a drag.",
+            "default": false
+          }
+        },
+        "description": "Some edits, applied whole or not at all, and undone as one step."
+      },
+      "GraphCommandGraphAddNode": {
+        "required": [
+          "type",
+          "x",
+          "y",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "addNode"
+            ],
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "description": "The node type\u0027s path."
+          },
+          "x": {
+            "type": "number",
+            "description": "Where it goes.",
+            "format": "float"
+          },
+          "y": {
+            "type": "number",
+            "description": "Where it goes.",
+            "format": "float"
+          },
+          "ref": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "A negative number the client picks. Later commands in this batch may use it wherever they name a node, and the\nreply says which identity it became.",
+            "format": "int32"
+          }
+        },
+        "description": "Adds a node."
+      },
+      "GraphCommandGraphConnect": {
+        "required": [
+          "fromNode",
+          "fromPort",
+          "toNode",
+          "toPort",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "connect"
+            ],
+            "type": "string"
+          },
+          "fromNode": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fromPort": {
+            "type": "string"
+          },
+          "toNode": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "toPort": {
+            "type": "string"
+          }
+        },
+        "description": "Wires an output to an input, replacing what was on that input."
+      },
+      "GraphCommandGraphDisconnect": {
+        "required": [
+          "toNode",
+          "toPort",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "disconnect"
+            ],
+            "type": "string"
+          },
+          "toNode": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "toPort": {
+            "type": "string"
+          }
+        },
+        "description": "Takes the wire off an input."
+      },
+      "GraphCommandGraphMoveNodes": {
+        "required": [
+          "positions",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "moveNodes"
+            ],
+            "type": "string"
+          },
+          "positions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphNodePosition"
+            }
+          }
+        },
+        "description": "Moves nodes. A move never evaluates anything."
+      },
+      "GraphCommandGraphRemoveNodes": {
+        "required": [
+          "nodes",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "removeNodes"
+            ],
+            "type": "string"
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        },
+        "description": "Removes nodes, and the wires that touch them."
+      },
+      "GraphCommandGraphSetSetting": {
+        "required": [
+          "key",
+          "value",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "setSetting"
+            ],
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "description": "Sets a setting of the graph: \u0060baseWidth\u0060, \u0060baseHeight\u0060 or \u0060seed\u0060."
+      },
+      "GraphCommandGraphSetText": {
+        "required": [
+          "node",
+          "port",
+          "value",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "setText"
+            ],
+            "type": "string"
+          },
+          "node": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "port": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "description": "Sets a text setting on a node, such as a blend mode."
+      },
+      "GraphCommandGraphSetValue": {
+        "required": [
+          "node",
+          "port",
+          "value",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "setValue"
+            ],
+            "type": "string"
+          },
+          "node": {
+            "type": "integer",
+            "description": "The node.",
+            "format": "int32"
+          },
+          "port": {
+            "type": "string",
+            "description": "The input."
+          },
+          "value": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "One number per lane of the port."
+          }
+        },
+        "description": "Sets the numbers on a node\u0027s input. This is what a slider sends."
+      },
+      "GraphCreatedNode": {
+        "required": [
+          "ref",
+          "node"
+        ],
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "node": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "description": "Which identity a client\u0027s int? GraphAddNode.Ref became."
+      },
+      "GraphDelta": {
+        "required": [
+          "nodes",
+          "removedNodes",
+          "edges",
+          "removedEdges",
+          "settings",
+          "removedSettings"
+        ],
+        "type": "object",
+        "properties": {
+          "nodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphNodeState"
+            },
+            "description": "Nodes that are new or differ, whole."
+          },
+          "removedNodes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Nodes that have gone."
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphEdgeState"
+            },
+            "description": "Wires that are new."
+          },
+          "removedEdges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphEdgeState"
+            },
+            "description": "Wires that have gone."
+          },
+          "settings": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Graph settings that are new or differ."
+          },
+          "removedSettings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Graph settings that have gone."
+          }
+        },
+        "description": "What changed in the document, the same for an edit, an undo and a redo."
+      },
+      "GraphDiagnostic": {
+        "required": [
+          "id",
+          "message",
+          "severity"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "A stable code, such as \u0060TG0005\u0060."
+          },
+          "message": {
+            "type": "string",
+            "description": "What is wrong."
+          },
+          "severity": {
+            "type": "string",
+            "description": "Warning or Error."
+          },
+          "node": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The node it concerns, or null.",
+            "format": "int32"
+          },
+          "port": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The port it concerns, or null."
+          }
+        },
+        "description": "Something a graph\u0027s compiler or its file\u0027s reader has to say."
+      },
+      "GraphEdgeState": {
+        "required": [
+          "fromNode",
+          "fromPort",
+          "toNode",
+          "toPort"
+        ],
+        "type": "object",
+        "properties": {
+          "fromNode": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fromPort": {
+            "type": "string"
+          },
+          "toNode": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "toPort": {
+            "type": "string"
+          }
+        },
+        "description": "One wire, from an output to an input."
+      },
+      "GraphEditResult": {
+        "required": [
+          "revision",
+          "sequence",
+          "history",
+          "created"
+        ],
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "description": "The document\u0027s revision after it.",
+            "format": "int64"
+          },
+          "sequence": {
+            "type": "integer",
+            "description": "The event that announced it.",
+            "format": "int64"
+          },
+          "history": {
+            "description": "The undo history after it.",
+            "$ref": "#/components/schemas/GraphHistoryState"
+          },
+          "created": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphCreatedNode"
+            },
+            "description": "The nodes a batch created under a \u0060ref\u0060."
+          }
+        },
+        "description": "The reply to an edit, an undo, a redo or a save."
+      },
+      "GraphEvaluation": {
+        "required": [
+          "revision",
+          "compiled",
+          "ran",
+          "reused",
+          "milliseconds",
+          "previews",
+          "diagnostics"
+        ],
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "description": "The document revision it shows; during a drag this trails the newest.",
+            "format": "int64"
+          },
+          "compiled": {
+            "type": "boolean",
+            "description": "True if the plan was compiled; false if the numbers were written into the last one."
+          },
+          "ran": {
+            "type": "integer",
+            "description": "How many operations ran. The rest came from the result cache.",
+            "format": "int32"
+          },
+          "reused": {
+            "type": "integer",
+            "description": "How many operations already had a result.",
+            "format": "int32"
+          },
+          "milliseconds": {
+            "type": "number",
+            "description": "How long the Worker took, previews included.",
+            "format": "double"
+          },
+          "previews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphPreview"
+            },
+            "description": "The previews that differ from the last evaluation\u0027s. All of them are in the state."
+          },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphDiagnostic"
+            },
+            "description": "Everything the compiler reported."
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why it did not finish, or null. \u0022No Vulkan\u0022 means the Worker has no GPU."
+          }
+        },
+        "description": "What one evaluation did."
+      },
+      "GraphEvent": {
+        "required": [
+          "sequence",
+          "kind",
+          "revision",
+          "history"
+        ],
+        "type": "object",
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "description": "Its number within the session.",
+            "format": "int64"
+          },
+          "kind": {
+            "description": "What it reports.",
+            "$ref": "#/components/schemas/GraphEventKind"
+          },
+          "revision": {
+            "type": "integer",
+            "description": "The document\u0027s revision when it was sent.",
+            "format": "int64"
+          },
+          "history": {
+            "description": "The undo history when it was sent.",
+            "$ref": "#/components/schemas/GraphHistoryState"
+          },
+          "label": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What the edit, undo or redo was called."
+          },
+          "delta": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What changed in the document.",
+                "$ref": "#/components/schemas/GraphDelta"
+              }
+            ]
+          },
+          "evaluation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What an evaluation did.",
+                "$ref": "#/components/schemas/GraphEvaluation"
+              }
+            ]
+          }
+        },
+        "description": "One numbered event of a session. Sequence numbers rise by one, so a client that sees a gap has missed something\nand reads \u0060/events\u0060 or the state. Every client gets every event, its own edits included."
+      },
+      "GraphEventKind": {
+        "enum": [
+          "edited",
+          "undone",
+          "redone",
+          "saved",
+          "evaluated",
+          "closed",
+          "resync"
+        ],
+        "description": "What an event reports."
+      },
+      "GraphEventPage": {
+        "required": [
+          "sequence",
+          "events"
+        ],
+        "type": "object",
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "description": "The newest event\u0027s number.",
+            "format": "int64"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphEvent"
+            },
+            "description": "The events after the number asked for, oldest first."
+          }
+        },
+        "description": "The events after a number, for a client that does not hold a WebSocket or has missed some."
+      },
+      "GraphHistoryState": {
+        "required": [
+          "canUndo",
+          "canRedo",
+          "dirty"
+        ],
+        "type": "object",
+        "properties": {
+          "canUndo": {
+            "type": "boolean",
+            "description": "Whether there is an edit to undo."
+          },
+          "canRedo": {
+            "type": "boolean",
+            "description": "Whether there is an edit to redo."
+          },
+          "undoLabel": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What undo would take back."
+          },
+          "redoLabel": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What redo would put back."
+          },
+          "dirty": {
+            "type": "boolean",
+            "description": "Whether the document differs from the file."
+          }
+        },
+        "description": "What the undo history offers."
+      },
+      "GraphNodePosition": {
+        "required": [
+          "node",
+          "x",
+          "y"
+        ],
+        "type": "object",
+        "properties": {
+          "node": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "x": {
+            "type": "number",
+            "format": "float"
+          },
+          "y": {
+            "type": "number",
+            "format": "float"
+          }
+        },
+        "description": "Where one node goes."
+      },
+      "GraphNodeState": {
+        "required": [
+          "id",
+          "type",
+          "x",
+          "y",
+          "values",
+          "texts"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "The node\u0027s identity, which is never reused within a session.",
+            "format": "int32"
+          },
+          "type": {
+            "type": "string",
+            "description": "The node type\u0027s path, from \u0060/node-types\u0060."
+          },
+          "x": {
+            "type": "number",
+            "description": "Its position on the canvas.",
+            "format": "float"
+          },
+          "y": {
+            "type": "number",
+            "description": "Its position on the canvas.",
+            "format": "float"
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "float"
+              }
+            },
+            "description": "The numbers set on its inputs, by port. An input left out takes the type\u0027s default."
+          },
+          "texts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "The text settings set on it, by name."
+          }
+        },
+        "description": "A node as a document holds it."
+      },
+      "GraphNodeType": {
+        "required": [
+          "path",
+          "title",
+          "category",
+          "summary",
+          "hasPreview",
+          "ports",
+          "settings"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "What a document stores, such as \u0060Colour/Levels\u0060."
+          },
+          "title": {
+            "type": "string",
+            "description": "The last segment of the path."
+          },
+          "category": {
+            "type": "string",
+            "description": "The path without its title."
+          },
+          "summary": {
+            "type": "string",
+            "description": "One line about it."
+          },
+          "hasPreview": {
+            "type": "boolean",
+            "description": "Whether the type declares that its picture is worth showing."
+          },
+          "ports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphPortDefinition"
+            },
+            "description": "Its inputs and outputs."
+          },
+          "settings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphSettingDefinition"
+            },
+            "description": "Its text settings, set with GraphSetText."
+          }
+        },
+        "description": "A node a client can add, for a palette."
+      },
+      "GraphOpenRequest": {
+        "required": [
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The graph file on the Server\u0027s machine, absolute or relative to the library."
+          }
+        },
+        "description": "Opens a texture graph for editing. Opening a file that is already open joins its session."
+      },
+      "GraphPortDefinition": {
+        "required": [
+          "name",
+          "direction",
+          "kind",
+          "default",
+          "summary"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "What an edge calls it."
+          },
+          "direction": {
+            "type": "string",
+            "description": "Input or Output."
+          },
+          "kind": {
+            "type": "string",
+            "description": "What it carries: Image, Float, Float4 and so on."
+          },
+          "default": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The numbers an unset input takes."
+          },
+          "summary": {
+            "type": "string",
+            "description": "One line about it."
+          }
+        },
+        "description": "One port of a node type."
+      },
+      "GraphPreview": {
+        "required": [
+          "node",
+          "port",
+          "hash",
+          "width",
+          "height"
+        ],
+        "type": "object",
+        "properties": {
+          "node": {
+            "type": "integer",
+            "description": "The node.",
+            "format": "int32"
+          },
+          "port": {
+            "type": "string",
+            "description": "Its output port, or the usage of an Output node."
+          },
+          "hash": {
+            "type": "string",
+            "description": "The SHA-256 of the PNG\u0027s bytes, in lower-case hex."
+          },
+          "width": {
+            "type": "integer",
+            "description": "The PNG\u0027s size in pixels.",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "description": "The PNG\u0027s size in pixels.",
+            "format": "int32"
+          }
+        },
+        "description": "Where a node\u0027s picture is: \u0060GET /api/v1/previews/{hash}\u0060. Pixels never cross JSON."
+      },
+      "GraphSettingDefinition": {
+        "required": [
+          "name",
+          "default",
+          "summary",
+          "kind",
+          "group",
+          "accepted"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "What it is called."
+          },
+          "default": {
+            "type": "string",
+            "description": "Its default, as text."
+          },
+          "summary": {
+            "type": "string",
+            "description": "One line about it."
+          },
+          "kind": {
+            "type": "string",
+            "description": "Text, Bool, Int or Float."
+          },
+          "minimum": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Its lower bound, or null for none.",
+            "format": "float"
+          },
+          "maximum": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Its upper bound, or null for none.",
+            "format": "float"
+          },
+          "group": {
+            "type": "string",
+            "description": "The heading it sits under."
+          },
+          "accepted": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The values it may take; empty for any."
+          }
+        },
+        "description": "A value a node type or a graph lets an author set."
+      },
+      "GraphState": {
+        "required": [
+          "id",
+          "path",
+          "name",
+          "revision",
+          "sequence",
+          "history",
+          "nodes",
+          "edges",
+          "settings",
+          "parameters",
+          "previews",
+          "repairs"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The session."
+          },
+          "path": {
+            "type": "string",
+            "description": "The file."
+          },
+          "name": {
+            "type": "string",
+            "description": "The graph\u0027s name."
+          },
+          "revision": {
+            "type": "integer",
+            "description": "Counts changes to the document, undo included.",
+            "format": "int64"
+          },
+          "sequence": {
+            "type": "integer",
+            "description": "The last event\u0027s number: pass it as \u0060since\u0060 to follow from exactly here.",
+            "format": "int64"
+          },
+          "history": {
+            "description": "The undo history.",
+            "$ref": "#/components/schemas/GraphHistoryState"
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphNodeState"
+            },
+            "description": "The nodes, by identity."
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphEdgeState"
+            },
+            "description": "The wires, by the input they arrive at."
+          },
+          "settings": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Its settings: \u0060baseWidth\u0060, \u0060baseHeight\u0060, \u0060seed\u0060 and any others."
+          },
+          "parameters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphSettingDefinition"
+            },
+            "description": "The parameters the graph exposes."
+          },
+          "previews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphPreview"
+            },
+            "description": "The newest preview of each node."
+          },
+          "repairs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphDiagnostic"
+            },
+            "description": "What reading the file had to drop or fix."
+          },
+          "evaluation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The last evaluation, or null before the first.",
+                "$ref": "#/components/schemas/GraphEvaluation"
+              }
+            ]
+          }
+        },
+        "description": "The reply to \u0060GET /api/v1/graphs/{id}\u0060: the whole document as the Server holds it."
+      },
+      "GraphSummary": {
+        "required": [
+          "id",
+          "path",
+          "name",
+          "revision",
+          "dirty"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "dirty": {
+            "type": "boolean"
+          }
+        },
+        "description": "An open graph, for a list."
       },
       "HostInfo": {
         "required": [
@@ -1185,6 +2792,9 @@
     },
     {
       "name": "Viewport"
+    },
+    {
+      "name": "Graphs"
     },
     {
       "name": "Library"

@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.OpenApi;
-using Microsoft.OpenApi;
 
 namespace Patina.Server.Api;
 
@@ -11,14 +10,15 @@ namespace Patina.Server.Api;
 /// </summary>
 static class OpenApiSchemas {
     public static void MarkNonNullablePropertiesRequired(this OpenApiOptions options) =>
-        options.AddSchemaTransformer(static (schema, _, _) => {
+        options.AddSchemaTransformer(static (schema, context, _) => {
                 if (schema.Properties is { Count: > 0 } properties) {
-                    foreach (var (name, property) in properties) {
-                        if (property is OpenApiSchemaReference
-                            || (property.Type is { } type && !type.HasFlag(JsonSchemaType.Null))) {
-                            (schema.Required ??= new HashSet<string>()).Add(name);
-                        } else {
+                    foreach (var name in properties.Keys) {
+                        // By the declaration: a nullable object is a reference at this point and an enum is not, so
+                        // the schema's own shape would call the first required and the second optional.
+                        if (context.JsonTypeInfo.Properties.Any(p => p.Name == name && p.IsGetNullable)) {
                             schema.Required?.Remove(name);
+                        } else {
+                            (schema.Required ??= new HashSet<string>()).Add(name);
                         }
                     }
                 }

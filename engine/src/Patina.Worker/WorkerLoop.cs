@@ -5,7 +5,7 @@ using System.Diagnostics;
 namespace Patina.Worker;
 
 /// <summary>Stays connected to the Server until stopped.</summary>
-sealed class WorkerLoop(ViewportHost viewport) {
+sealed class WorkerLoop(ViewportHost viewport, GraphHost graphs) {
     static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
     static readonly long Started = Stopwatch.GetTimestamp();
 
@@ -56,6 +56,9 @@ sealed class WorkerLoop(ViewportHost viewport) {
                 IpcTypes.ViewportOpen => viewport.Open(request),
                 IpcTypes.ViewportCamera => viewport.SetCamera(request),
                 IpcTypes.ViewportRender => viewport.Render(request),
+                IpcTypes.GraphLoad => graphs.Load(request),
+                IpcTypes.GraphEvaluate => graphs.Evaluate(request),
+                IpcTypes.GraphClose => graphs.Close(request),
                 _ => IpcMessage.Fail(request.Id, $"Unknown request '{request.Type}'.")
             }
         );

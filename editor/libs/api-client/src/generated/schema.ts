@@ -72,6 +72,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/previews/{hash}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** A node's preview as a PNG, by the hash an event carried. It never changes, so cache it for ever. */
+    get: operations['GetPreview'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library': {
     parameters: {
       query?: never;
@@ -175,6 +192,161 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/graphs': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The open graphs. */
+    get: operations['GetGraphs'];
+    put?: never;
+    /** Opens a graph file, or joins the session that has it open, and starts evaluating it. */
+    post: operations['OpenGraph'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/graphs/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The whole document, its undo history and the newest previews. */
+    get: operations['GetGraph'];
+    put?: never;
+    post?: never;
+    /** Ends a session. Unsaved edits refuse this unless discard is set. */
+    delete: operations['CloseGraph'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/graphs/{id}/node-types': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Every node this graph can use, with ports and settings, for a palette. */
+    get: operations['GetGraphNodeTypes'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/graphs/{id}/commands': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Applies a batch of edits, whole or not at all, as one undo step. */
+    post: operations['ApplyGraphCommands'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/graphs/{id}/undo': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Takes back the newest batch, whichever client sent it. */
+    post: operations['UndoGraph'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/graphs/{id}/redo': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Puts back the newest undone batch. */
+    post: operations['RedoGraph'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/graphs/{id}/save': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Writes the document to its file. A file changed on disk refuses this unless force is set. */
+    post: operations['SaveGraph'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/graphs/{id}/evaluate': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Evaluates again, which also rewrites previews a deleted cache has lost. */
+    post: operations['EvaluateGraph'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/graphs/{id}/events': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The events after a number. /ws/graphs/{id}?since= sends the same events as they happen. */
+    get: operations['GetGraphEvents'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -254,6 +426,426 @@ export interface components {
        * @description How many projects reference the asset directly.
        */
       usageCount: number;
+    };
+    /** @description One edit. Commands in a batch run in order, and every command sees the ones before it. */
+    GraphCommand:
+      | components['schemas']['GraphCommandGraphAddNode']
+      | components['schemas']['GraphCommandGraphRemoveNodes']
+      | components['schemas']['GraphCommandGraphMoveNodes']
+      | components['schemas']['GraphCommandGraphConnect']
+      | components['schemas']['GraphCommandGraphDisconnect']
+      | components['schemas']['GraphCommandGraphSetValue']
+      | components['schemas']['GraphCommandGraphSetText']
+      | components['schemas']['GraphCommandGraphSetSetting'];
+    /** @description Some edits, applied whole or not at all, and undone as one step. */
+    GraphCommandBatch: {
+      /** @description What to do, in order. */
+      commands: components['schemas']['GraphCommand'][];
+      /** @description What the undo history calls it, or null for a name from the commands. */
+      label?: null | string;
+      /**
+       * @description True to fold this batch into the last one when both change the same things, so that a whole drag is one undo.
+       *     A client leaves it false on the first batch of a drag.
+       * @default false
+       */
+      merge: boolean;
+    };
+    /** @description Adds a node. */
+    GraphCommandGraphAddNode: {
+      /** @enum {string} */
+      op: 'addNode';
+      /** @description The node type's path. */
+      type: string;
+      /**
+       * Format: float
+       * @description Where it goes.
+       */
+      x: number;
+      /**
+       * Format: float
+       * @description Where it goes.
+       */
+      y: number;
+      /**
+       * Format: int32
+       * @description A negative number the client picks. Later commands in this batch may use it wherever they name a node, and the
+       *     reply says which identity it became.
+       */
+      ref?: null | number;
+    };
+    /** @description Wires an output to an input, replacing what was on that input. */
+    GraphCommandGraphConnect: {
+      /** @enum {string} */
+      op: 'connect';
+      /** Format: int32 */
+      fromNode: number;
+      fromPort: string;
+      /** Format: int32 */
+      toNode: number;
+      toPort: string;
+    };
+    /** @description Takes the wire off an input. */
+    GraphCommandGraphDisconnect: {
+      /** @enum {string} */
+      op: 'disconnect';
+      /** Format: int32 */
+      toNode: number;
+      toPort: string;
+    };
+    /** @description Moves nodes. A move never evaluates anything. */
+    GraphCommandGraphMoveNodes: {
+      /** @enum {string} */
+      op: 'moveNodes';
+      positions: components['schemas']['GraphNodePosition'][];
+    };
+    /** @description Removes nodes, and the wires that touch them. */
+    GraphCommandGraphRemoveNodes: {
+      /** @enum {string} */
+      op: 'removeNodes';
+      nodes: number[];
+    };
+    /** @description Sets a setting of the graph: `baseWidth`, `baseHeight` or `seed`. */
+    GraphCommandGraphSetSetting: {
+      /** @enum {string} */
+      op: 'setSetting';
+      key: string;
+      value: string;
+    };
+    /** @description Sets a text setting on a node, such as a blend mode. */
+    GraphCommandGraphSetText: {
+      /** @enum {string} */
+      op: 'setText';
+      /** Format: int32 */
+      node: number;
+      port: string;
+      value: string;
+    };
+    /** @description Sets the numbers on a node's input. This is what a slider sends. */
+    GraphCommandGraphSetValue: {
+      /** @enum {string} */
+      op: 'setValue';
+      /**
+       * Format: int32
+       * @description The node.
+       */
+      node: number;
+      /** @description The input. */
+      port: string;
+      /** @description One number per lane of the port. */
+      value: number[];
+    };
+    /** @description Which identity a client's int? GraphAddNode.Ref became. */
+    GraphCreatedNode: {
+      /** Format: int32 */
+      ref: number;
+      /** Format: int32 */
+      node: number;
+    };
+    /** @description What changed in the document, the same for an edit, an undo and a redo. */
+    GraphDelta: {
+      /** @description Nodes that are new or differ, whole. */
+      nodes: components['schemas']['GraphNodeState'][];
+      /** @description Nodes that have gone. */
+      removedNodes: number[];
+      /** @description Wires that are new. */
+      edges: components['schemas']['GraphEdgeState'][];
+      /** @description Wires that have gone. */
+      removedEdges: components['schemas']['GraphEdgeState'][];
+      /** @description Graph settings that are new or differ. */
+      settings: {
+        [key: string]: string;
+      };
+      /** @description Graph settings that have gone. */
+      removedSettings: string[];
+    };
+    /** @description Something a graph's compiler or its file's reader has to say. */
+    GraphDiagnostic: {
+      /** @description A stable code, such as `TG0005`. */
+      id: string;
+      /** @description What is wrong. */
+      message: string;
+      /** @description Warning or Error. */
+      severity: string;
+      /**
+       * Format: int32
+       * @description The node it concerns, or null.
+       */
+      node?: null | number;
+      /** @description The port it concerns, or null. */
+      port?: null | string;
+    };
+    /** @description One wire, from an output to an input. */
+    GraphEdgeState: {
+      /** Format: int32 */
+      fromNode: number;
+      fromPort: string;
+      /** Format: int32 */
+      toNode: number;
+      toPort: string;
+    };
+    /** @description The reply to an edit, an undo, a redo or a save. */
+    GraphEditResult: {
+      /**
+       * Format: int64
+       * @description The document's revision after it.
+       */
+      revision: number;
+      /**
+       * Format: int64
+       * @description The event that announced it.
+       */
+      sequence: number;
+      /** @description The undo history after it. */
+      history: components['schemas']['GraphHistoryState'];
+      /** @description The nodes a batch created under a `ref`. */
+      created: components['schemas']['GraphCreatedNode'][];
+    };
+    /** @description What one evaluation did. */
+    GraphEvaluation: {
+      /**
+       * Format: int64
+       * @description The document revision it shows; during a drag this trails the newest.
+       */
+      revision: number;
+      /** @description True if the plan was compiled; false if the numbers were written into the last one. */
+      compiled: boolean;
+      /**
+       * Format: int32
+       * @description How many operations ran. The rest came from the result cache.
+       */
+      ran: number;
+      /**
+       * Format: int32
+       * @description How many operations already had a result.
+       */
+      reused: number;
+      /**
+       * Format: double
+       * @description How long the Worker took, previews included.
+       */
+      milliseconds: number;
+      /** @description The previews that differ from the last evaluation's. All of them are in the state. */
+      previews: components['schemas']['GraphPreview'][];
+      /** @description Everything the compiler reported. */
+      diagnostics: components['schemas']['GraphDiagnostic'][];
+      /** @description Why it did not finish, or null. "No Vulkan" means the Worker has no GPU. */
+      error?: null | string;
+    };
+    /**
+     * @description One numbered event of a session. Sequence numbers rise by one, so a client that sees a gap has missed something
+     *     and reads `/events` or the state. Every client gets every event, its own edits included.
+     */
+    GraphEvent: {
+      /**
+       * Format: int64
+       * @description Its number within the session.
+       */
+      sequence: number;
+      /** @description What it reports. */
+      kind: components['schemas']['GraphEventKind'];
+      /**
+       * Format: int64
+       * @description The document's revision when it was sent.
+       */
+      revision: number;
+      /** @description The undo history when it was sent. */
+      history: components['schemas']['GraphHistoryState'];
+      /** @description What the edit, undo or redo was called. */
+      label?: null | string;
+      delta?: null | components['schemas']['GraphDelta'];
+      evaluation?: null | components['schemas']['GraphEvaluation'];
+    };
+    /**
+     * @description What an event reports.
+     * @enum {unknown}
+     */
+    GraphEventKind: 'edited' | 'undone' | 'redone' | 'saved' | 'evaluated' | 'closed' | 'resync';
+    /** @description The events after a number, for a client that does not hold a WebSocket or has missed some. */
+    GraphEventPage: {
+      /**
+       * Format: int64
+       * @description The newest event's number.
+       */
+      sequence: number;
+      /** @description The events after the number asked for, oldest first. */
+      events: components['schemas']['GraphEvent'][];
+    };
+    /** @description What the undo history offers. */
+    GraphHistoryState: {
+      /** @description Whether there is an edit to undo. */
+      canUndo: boolean;
+      /** @description Whether there is an edit to redo. */
+      canRedo: boolean;
+      /** @description What undo would take back. */
+      undoLabel?: null | string;
+      /** @description What redo would put back. */
+      redoLabel?: null | string;
+      /** @description Whether the document differs from the file. */
+      dirty: boolean;
+    };
+    /** @description Where one node goes. */
+    GraphNodePosition: {
+      /** Format: int32 */
+      node: number;
+      /** Format: float */
+      x: number;
+      /** Format: float */
+      y: number;
+    };
+    /** @description A node as a document holds it. */
+    GraphNodeState: {
+      /**
+       * Format: int32
+       * @description The node's identity, which is never reused within a session.
+       */
+      id: number;
+      /** @description The node type's path, from `/node-types`. */
+      type: string;
+      /**
+       * Format: float
+       * @description Its position on the canvas.
+       */
+      x: number;
+      /**
+       * Format: float
+       * @description Its position on the canvas.
+       */
+      y: number;
+      /** @description The numbers set on its inputs, by port. An input left out takes the type's default. */
+      values: {
+        [key: string]: number[];
+      };
+      /** @description The text settings set on it, by name. */
+      texts: {
+        [key: string]: string;
+      };
+    };
+    /** @description A node a client can add, for a palette. */
+    GraphNodeType: {
+      /** @description What a document stores, such as `Colour/Levels`. */
+      path: string;
+      /** @description The last segment of the path. */
+      title: string;
+      /** @description The path without its title. */
+      category: string;
+      /** @description One line about it. */
+      summary: string;
+      /** @description Whether the type declares that its picture is worth showing. */
+      hasPreview: boolean;
+      /** @description Its inputs and outputs. */
+      ports: components['schemas']['GraphPortDefinition'][];
+      /** @description Its text settings, set with GraphSetText. */
+      settings: components['schemas']['GraphSettingDefinition'][];
+    };
+    /** @description Opens a texture graph for editing. Opening a file that is already open joins its session. */
+    GraphOpenRequest: {
+      /** @description The graph file on the Server's machine, absolute or relative to the library. */
+      path: string;
+    };
+    /** @description One port of a node type. */
+    GraphPortDefinition: {
+      /** @description What an edge calls it. */
+      name: string;
+      /** @description Input or Output. */
+      direction: string;
+      /** @description What it carries: Image, Float, Float4 and so on. */
+      kind: string;
+      /** @description The numbers an unset input takes. */
+      default: number[];
+      /** @description One line about it. */
+      summary: string;
+    };
+    /** @description Where a node's picture is: `GET /api/v1/previews/{hash}`. Pixels never cross JSON. */
+    GraphPreview: {
+      /**
+       * Format: int32
+       * @description The node.
+       */
+      node: number;
+      /** @description Its output port, or the usage of an Output node. */
+      port: string;
+      /** @description The SHA-256 of the PNG's bytes, in lower-case hex. */
+      hash: string;
+      /**
+       * Format: int32
+       * @description The PNG's size in pixels.
+       */
+      width: number;
+      /**
+       * Format: int32
+       * @description The PNG's size in pixels.
+       */
+      height: number;
+    };
+    /** @description A value a node type or a graph lets an author set. */
+    GraphSettingDefinition: {
+      /** @description What it is called. */
+      name: string;
+      /** @description Its default, as text. */
+      default: string;
+      /** @description One line about it. */
+      summary: string;
+      /** @description Text, Bool, Int or Float. */
+      kind: string;
+      /**
+       * Format: float
+       * @description Its lower bound, or null for none.
+       */
+      minimum?: null | number;
+      /**
+       * Format: float
+       * @description Its upper bound, or null for none.
+       */
+      maximum?: null | number;
+      /** @description The heading it sits under. */
+      group: string;
+      /** @description The values it may take; empty for any. */
+      accepted: string[];
+    };
+    /** @description The reply to `GET /api/v1/graphs/{id}`: the whole document as the Server holds it. */
+    GraphState: {
+      /** @description The session. */
+      id: string;
+      /** @description The file. */
+      path: string;
+      /** @description The graph's name. */
+      name: string;
+      /**
+       * Format: int64
+       * @description Counts changes to the document, undo included.
+       */
+      revision: number;
+      /**
+       * Format: int64
+       * @description The last event's number: pass it as `since` to follow from exactly here.
+       */
+      sequence: number;
+      /** @description The undo history. */
+      history: components['schemas']['GraphHistoryState'];
+      /** @description The nodes, by identity. */
+      nodes: components['schemas']['GraphNodeState'][];
+      /** @description The wires, by the input they arrive at. */
+      edges: components['schemas']['GraphEdgeState'][];
+      /** @description The graph's settings: `baseWidth`, `baseHeight`, `seed` and any others. */
+      settings: {
+        [key: string]: string;
+      };
+      /** @description The parameters the graph exposes. */
+      parameters: components['schemas']['GraphSettingDefinition'][];
+      /** @description The newest preview of each node. */
+      previews: components['schemas']['GraphPreview'][];
+      /** @description What reading the file had to drop or fix. */
+      repairs: components['schemas']['GraphDiagnostic'][];
+      evaluation?: null | components['schemas']['GraphEvaluation'];
+    };
+    /** @description An open graph, for a list. */
+    GraphSummary: {
+      id: string;
+      path: string;
+      name: string;
+      /** Format: int64 */
+      revision: number;
+      dirty: boolean;
     };
     /** @description The machine and runtime a process runs on. */
     HostInfo: {
@@ -591,6 +1183,37 @@ export interface operations {
       };
     };
   };
+  GetPreview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        hash: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'image/png': string;
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   GetLibrary: {
     parameters: {
       query?: never;
@@ -869,6 +1492,398 @@ export interface operations {
         };
         content: {
           'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetGraphs: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphSummary'][];
+        };
+      };
+    };
+  };
+  OpenGraph: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GraphOpenRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphState'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetGraph: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphState'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  CloseGraph: {
+    parameters: {
+      query?: {
+        discard?: boolean;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetGraphNodeTypes: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphNodeType'][];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  ApplyGraphCommands: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GraphCommandBatch'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphEditResult'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  UndoGraph: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphEditResult'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  RedoGraph: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphEditResult'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SaveGraph: {
+    parameters: {
+      query?: {
+        force?: boolean;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphEditResult'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  EvaluateGraph: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Accepted */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetGraphEvents: {
+    parameters: {
+      query?: {
+        since?: number;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphEventPage'];
         };
       };
       /** @description Not Found */

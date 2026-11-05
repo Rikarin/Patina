@@ -60,6 +60,9 @@ static class PatinaApi {
 
         // Binary and endless, so outside the OpenAPI document: docs/adr/0003-frame-transport.md describes it.
         api.MapGet("/viewport/frames", ViewportStream.RunAsync).ExcludeFromDescription();
+
+        api.MapGraphApi();
+        app.MapGraphSocket();
     }
 
     static Results<Ok<ViewportState>, ProblemHttpResult> SetMesh(ViewportMeshRequest request, ViewportSession session) {
