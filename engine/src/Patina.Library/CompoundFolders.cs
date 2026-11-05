@@ -15,6 +15,25 @@ public static class CompoundFolders {
     /// <summary>Whether the graph at <paramref name="graph" /> is itself a compound.</summary>
     public static bool Holds(string graph) => Enclosing(Path.GetDirectoryName(Path.GetFullPath(graph))!) is not null;
 
+    /// <summary>
+    ///     The folders a relative picture reference in the graph at <paramref name="graph" /> is read from, in order:
+    ///     beside it, then the library it is in, which is <paramref name="library" /> or the one around it.
+    /// </summary>
+    public static IReadOnlyList<string> PictureRoots(string graph, string? library = null) {
+        var parent = Path.GetDirectoryName(Path.GetFullPath(graph))!;
+        return (library ?? LibraryAround(parent)) is { } root ? [parent, Path.GetFullPath(root)] : [parent];
+    }
+
+    static string? LibraryAround(string folder) {
+        for (var at = folder; at is not null; at = Path.GetDirectoryName(at)) {
+            if (File.Exists(Path.Combine(at, LibraryLayout.LibraryFile))) {
+                return at;
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>The compounds folder around a folder, looking no further up than its project or library.</summary>
     static string? Enclosing(string folder) {
         for (var at = folder; at is not null; at = Path.GetDirectoryName(at)) {

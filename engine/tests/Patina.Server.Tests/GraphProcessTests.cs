@@ -436,9 +436,87 @@ public sealed class GraphProcessTests : IDisposable {
 
             var wrong = await http.EditAsync(state.Id, deadline.Token, new GraphSetText(6, "Ramp", "ramp:nonsense"));
             var refused = await EvaluatedAsync(socket, wrong.Revision, deadline.Token);
-            Assert.Contains(refused.Diagnostics, static d => d.Id == "PT0001");
+            Assert.Contains(refused.Diagnostics, static d => d is { Node: 6, Port: "Ramp", Severity: "Error" });
         }
     }
+
+    /// <summary>
+    ///     Everything a Worker resolves, through the real command: a bitmap beside the graph, a ramp and a curve written
+    ///     inline, a compound from the folder beside it. The Worker's own full-size picture is the oracle.
+    /// </summary>
+    [Fact]
+    public async Task Patina_bake_reads_what_the_worker_reads_and_writes_the_same_bytes() {
+        using var deadline = Deadline(180);
+        var pixels = Enumerable.Range(0, 4 * 4 * 4).Select(static i => (byte)(i * 4)).ToArray();
+        PngCodec.Save(Path.Combine(Library, "picture.png"), new Bitmap(4, 4, pixels));
+        var compounds = Directory.CreateDirectory(Path.Combine(Library, LibraryLayout.CompoundsFolder)).FullName;
+        GraphTesting.Write(compounds, Tint("Tint"), "Tint.vxtexgraph");
+        static GraphEdgeAsset Edge(int from, int to) =>
+            new() { FromNode = from, FromPort = "Out", ToNode = to, ToPort = "Input" };
+
+        NodeGraphAsset asset = new() {
+            Name = "Everything",
+            Nodes = [
+                new() { Id = 1, Type = "Source/Bitmap", Texts = new() { ["Source"] = "picture.png" } },
+                new() { Id = 2, Type = "Colour/Curve", Texts = new() { ["Curve"] = "curve:r=0 1,1 0;g=0 0,0.5 0.8,1 1" } },
+                new() { Id = 3, Type = "Tint" },
+                new() { Id = 4, Type = "Output/Output", Texts = new() { ["Usage"] = "baseColor" } },
+                new() { Id = 5, Type = "Source/Gradient", Texts = new() { ["Ramp"] = "ramp:0 ff0000ff,1 0000ffff" } },
+                new() { Id = 6, Type = "Output/Output", Texts = new() { ["Usage"] = "emissive" } }
+            ],
+            Edges = [Edge(1, 2), Edge(2, 3), Edge(3, 4), Edge(5, 6)],
+            Settings = new() { ["seed"] = "7", ["baseWidth"] = "64", ["baseHeight"] = "64" }
+        };
+        var (_, state, socket, first) = await OpenSampleAsync(asset, deadline.Token);
+        using (socket) {
+            Assert.DoesNotContain(first.Diagnostics, static d => d.Severity == "Error");
+            var folderOut = Path.Combine(folder.FullName, "bake");
+            var info = new ProcessStartInfo("dotnet") { RedirectStandardOutput = true, RedirectStandardError = true };
+            info.ArgumentList.Add(Engine.Dll("Patina.Cli", "patina"));
+            info.ArgumentList.Add("bake");
+            info.ArgumentList.Add(state.Path);
+            info.ArgumentList.Add(folderOut);
+            using var cli = Process.Start(info)!;
+            var error = cli.StandardError.ReadToEndAsync(deadline.Token);
+            await cli.StandardOutput.ReadToEndAsync(deadline.Token);
+            await cli.WaitForExitAsync(deadline.Token);
+            Assert.True(cli.ExitCode == 0, await error);
+
+            foreach (var (node, usage) in new[] { (4, "baseColor"), (6, "emissive") }) {
+                using var response = await http.PostAsJsonAsync(
+                    $"/api/v1/graphs/{state.Id}/images",
+                    new(node, usage),
+                    ContractsJsonContext.Default.GraphImageRequest,
+                    deadline.Token
+                );
+                response.EnsureSuccessStatusCode();
+                var image = (await response.Content.ReadFromJsonAsync(
+                    ContractsJsonContext.Default.GraphImage,
+                    deadline.Token
+                ))!;
+                var baked = await File.ReadAllBytesAsync(Path.Combine(folderOut, usage + ".png"), deadline.Token);
+                Assert.Equal(image.Hash, Convert.ToHexStringLower(SHA256.HashData(baked)));
+            }
+        }
+    }
+
+    /// <summary>A compound that inverts what it is fed.</summary>
+    static NodeGraphAsset Tint(string name) =>
+        new() {
+            Name = name,
+            Nodes = [
+                new() { Id = 1, Type = SubGraphs.InputType }, new() { Id = 2, Type = "Colour/Invert", X = 200 },
+                new() { Id = 3, Type = SubGraphs.OutputType, X = 400 }
+            ],
+            Edges = [
+                new() { FromNode = 1, FromPort = "Input", ToNode = 2, ToPort = "Input" },
+                new() { FromNode = 2, FromPort = "Out", ToNode = 3, ToPort = "Out" }
+            ],
+            Interface = [
+                new() { Name = "Input", Direction = PortDirection.Input, Kind = PortKind.Image },
+                new() { Name = "Out", Direction = PortDirection.Output, Kind = PortKind.Image }
+            ]
+        };
 
     [Fact]
     public async Task A_full_size_image_is_a_png_by_hash_at_the_size_of_the_graph() {

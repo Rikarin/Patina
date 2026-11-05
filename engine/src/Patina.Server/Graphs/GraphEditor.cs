@@ -28,9 +28,6 @@ public sealed class GraphEditRefusedException : Exception {
 public sealed class GraphEditor {
     const int Capacity = 256;
 
-    /// <summary>What starts a text's key when it is a number's expression, not a setting. Vixen's spelling.</summary>
-    const char ExpressionMarker = '=';
-
     static readonly HeadlessContext Context = new();
 
     readonly NodeGraphModel graph;
@@ -270,8 +267,7 @@ public sealed class GraphEditor {
 
     SetPortTextCommand BuildText(GraphSetText text, Dictionary<int, int> refs) {
         var node = Find(text.Node, refs);
-        if (text.Port is [ExpressionMarker, _, ..]) {
-            var input = text.Port[1..];
+        if (TextureGraphExpressions.IsExpression(text.Port, out var input)) {
             var port = PortOf(node, input, PortDirection.Input);
             return port.Kind is PortKind.Float or PortKind.Int or PortKind.Bool
                 ? new(graph, node.Id, text.Port, text.Value)

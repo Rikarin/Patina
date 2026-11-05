@@ -4,24 +4,25 @@ using Vixen.Interchange;
 using Vixen.NodeGraph;
 using Vixen.TextureGraph;
 
-namespace Patina.Worker;
+namespace Patina.Graphs;
 
 /// <summary>A file a compiled graph read, as it was when it was read.</summary>
-readonly record struct PictureStamp(string Path, long Length, DateTime Written);
+public readonly record struct PictureStamp(string Path, long Length, DateTime Written);
 
 /// <summary>What filling a compilation's external images came to.</summary>
 /// <param name="Refusals">One per image that could not be filled. With any here, the plan cannot run.</param>
 /// <param name="Stamps">The files that were read, to notice one changing.</param>
-sealed record FilledPictures(IReadOnlyList<NodeDiagnostic> Refusals, IReadOnlyList<PictureStamp> Stamps);
+public sealed record FilledPictures(IReadOnlyList<NodeDiagnostic> Refusals, IReadOnlyList<PictureStamp> Stamps);
 
 /// <summary>
-///     Fills the external images a compilation names and cannot carry: bitmaps from files through Vixen's decoder, and
-///     the tables an inline ramp or curve bakes to. Compiling loads them again after every structural edit, so decoded
-///     pixels are kept, up to a budget, under each file's length and time. Everything here can be read again, so a new
-///     Worker starts without it.
+///     Fills the external images a compilation names and cannot carry: bitmaps from files through Vixen's decoder.
+///     Compiling loads them again after every structural edit, so decoded pixels are kept, up to a budget, under each
+///     file's length and time. Everything here can be read again, so a new Worker starts without it.
 /// </summary>
-sealed class GraphPictures {
-    const string Problem = "PT0001";
+public sealed class GraphPictures {
+    /// <summary>What a graph hears when a picture it reads cannot be read.</summary>
+    public const string Problem = "PT0001";
+
     const string MeshMapScheme = "meshmap:";
     const long Budget = 512L * 1024 * 1024;
 
@@ -44,11 +45,6 @@ sealed class GraphPictures {
         foreach (var external in owed) {
             var reference = external.Asset.Trim();
             try {
-                if (GraphTables.Bake(reference) is { } table) {
-                    uploads.Add(plan, external.Image, GraphTables.Entries, 1, table);
-                    continue;
-                }
-
                 if (reference.StartsWith(MeshMapScheme, StringComparison.Ordinal)) {
                     throw new InvalidDataException("it is a measurement of a mesh, and nothing has been baked yet");
                 }

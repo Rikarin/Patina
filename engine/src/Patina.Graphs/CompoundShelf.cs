@@ -1,18 +1,18 @@
 using Vixen.NodeGraph;
 using Vixen.TextureGraph;
 
-namespace Patina.Worker;
+namespace Patina.Graphs;
 
 /// <summary>A folder's compounds, published as node types.</summary>
 /// <param name="Registry">Every node type, the compounds included.</param>
 /// <param name="Source">What a compiler flattens a compound from.</param>
-sealed record PublishedCompounds(NodeTypeRegistry Registry, ISubGraphSource Source);
+public sealed record PublishedCompounds(NodeTypeRegistry Registry, ISubGraphSource Source);
 
 /// <summary>
 ///     The node types of each compound folder. Publishing parses every shipped compound, and every structural edit
 ///     loads a graph again, so a folder is published once and again only when its files change. It is all derived.
 /// </summary>
-sealed class CompoundShelf {
+public sealed class CompoundShelf {
     readonly Dictionary<string, (string Stamp, PublishedCompounds Published)> folders = new(StringComparer.Ordinal);
 
     public PublishedCompounds Of(string? folder) {
