@@ -1,7 +1,10 @@
+using Patina.Contracts;
 using Patina.Ipc;
 using Patina.Viewport;
 using System.Diagnostics;
 using System.IO.MemoryMappedFiles;
+using Vixen.Core.Mathematics;
+using Vixen.Texturing.Painting;
 
 namespace Patina.Worker;
 
@@ -10,7 +13,7 @@ namespace Patina.Worker;
 ///     Worker starts empty and the Server tells it the mesh and the camera again, so this holds nothing that cannot be
 ///     rebuilt. The device opens on the first command, so a Worker on a machine with no Vulkan still answers health.
 /// </summary>
-sealed class ViewportHost(string shaderCache) : IDisposable {
+sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
     ViewportRenderer? renderer;
     ViewportLook? look;
     string? lookPath;
@@ -29,6 +32,57 @@ sealed class ViewportHost(string shaderCache) : IDisposable {
         var path = request.Mesh ?? throw new IpcException("viewport.open names no mesh.");
         Renderer().OpenMesh(path);
         return IpcMessage.Ok(request.Id);
+    }
+
+    /// <summary>The stack the viewport wears, whose maps <see cref="StackHost" /> puts here.</summary>
+    public string? Following { get; private set; }
+
+    public ViewportRenderer Live => Renderer();
+
+    /// <summary>What is under a position on the picture, through the camera asked about. It opens no device.</summary>
+    public IpcMessage Pick(IpcMessage request) {
+        var pick = request.Pick ?? throw new IpcException("viewport.pick says nothing.");
+        var shelf = meshes.Of(pick.Mesh);
+        var (yaw, pitch, distance) = (pick.Camera.Yaw, pick.Camera.Pitch, pick.Camera.Distance);
+        var orbit = new OrbitCamera((float)yaw, (float)pitch, (float)distance);
+        var bounds = shelf.Geometry.Bounds;
+        var (right, up, forward) = orbit.Axes(bounds);
+        var view = new PaintView(
+            orbit.Eye(bounds),
+            right,
+            up,
+            forward,
+            OrbitCamera.FieldOfView,
+            pick.Width,
+            pick.Height
+        );
+        var wire = new StackView(
+            Numbers(view.Eye),
+            Numbers(right),
+            Numbers(up),
+            Numbers(forward),
+            view.VerticalFieldOfView,
+            view.Width,
+            view.Height
+        );
+        var ray = view.RayAt(new((float)(pick.X * pick.Width), (float)(pick.Y * pick.Height)));
+        var found = shelf.Projection.TryHit(ray, out var hit);
+        return new() {
+            Type = IpcTypes.Ok,
+            Picked = found
+                ? new(true, wire, hit.Triangle, hit.Coordinate.X, hit.Coordinate.Y, Numbers(hit.Point))
+                : new(false, wire)
+        };
+    }
+
+    /// <summary>Starts or stops wearing a stack. What it wore comes off, and the stack sends itself again.</summary>
+    public void Follow(string? session) {
+        if (session == Following) {
+            return;
+        }
+
+        renderer?.ClearLive();
+        Following = session;
     }
 
     public IpcMessage SetMaps(IpcMessage request) {
@@ -63,6 +117,8 @@ sealed class ViewportHost(string shaderCache) : IDisposable {
             lookPath = path;
         }
     }
+
+    static float[] Numbers(Vector3 vector) => [vector.X, vector.Y, vector.Z];
 
     public IpcMessage SetCamera(IpcMessage request) {
         var next = request.Camera ?? throw new IpcException("viewport.camera has no camera.");

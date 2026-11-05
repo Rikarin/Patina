@@ -16,7 +16,14 @@ public sealed class StackEditRefusedException : Exception {
 }
 
 /// <summary>A stroke as the journal holds it: where the brush went, in order, which is all a Worker needs.</summary>
-public sealed class StackJournalEntry(long id, StackStroke first, string paint, string usage, uint colour) {
+public sealed class StackJournalEntry(
+    long id,
+    StackStroke first,
+    string paint,
+    string usage,
+    uint colour,
+    string model
+) {
     public long Id { get; } = id;
 
     public string Stroke { get; } = first.Stroke;
@@ -30,6 +37,15 @@ public sealed class StackJournalEntry(long id, StackStroke first, string paint, 
     public StackBrush Brush { get; } = first.Brush;
 
     public uint Colour { get; } = colour;
+
+    /// <summary>The mesh that stood when this was painted: a later binding must not move it.</summary>
+    public string Model { get; } = model;
+
+    public StackView? View { get; } = first.View;
+
+    public string Curve { get; } = first.Curve;
+
+    public string? Mirror { get; } = first.Mirror;
 
     public List<StackStamp> Stamps { get; } = [..first.Stamps];
 
@@ -175,8 +191,10 @@ public sealed class StackEditor : ILayerStackDocument {
         command switch {
             StackAddLayer add => $"Add {add.Name}",
             StackRemoveLayer => "Remove layer",
+            StackNestLayer => "Move layer",
             StackMoveLayer => "Move layer",
             StackSetLayer => "Change layer",
+            StackSetModel => "Bind mesh",
             StackStroke => "Stroke",
             _ => "Edit"
         };
@@ -250,6 +268,12 @@ public sealed class StackEditor : ILayerStackDocument {
             case StackSetLayer change:
                 Do(Change(change, set));
                 break;
+            case StackNestLayer nest:
+                Nest(nest, set, Do);
+                break;
+            case StackSetModel model:
+                Do(new SetModelCommand(this, model.Model, "Bind mesh"));
+                break;
             case StackStroke stroke:
                 Stroke(stroke, step, set, Do);
                 break;
@@ -267,27 +291,88 @@ public sealed class StackEditor : ILayerStackDocument {
             Set,
             add.Name.Length > 0 ? add.Name.ToLowerInvariant().Replace(' ', '-') : "layer"
         );
+        var filter = LayerFilterKind.Levels;
+        if (add.Filter is { } named && !Enum.TryParse(named, true, out filter)) {
+            throw new StackEditRefusedException($"'{named}' is not a filter.");
+        }
+
         return new(
             this,
-            new(set, null, Set.Layers.Count),
+            Top(set, add.Parent),
             new() {
                 Id = id,
                 Name = add.Name,
                 Kind = kind,
-                Values = add.Values?.ToDictionary(static value => value.Key, static value => value.Value.ToArray())
-                    ?? []
+                Filter = filter,
+                Values = Copied(add.Values) ?? []
             },
             $"Add {add.Name}"
         );
     }
 
-    SetLayerCommand Change(StackSetLayer change, string set) {
-        var layer = Require(change.Layer);
-        var blend = layer.Blend;
-        if (change.Blend is { } name && !Enum.TryParse(name, true, out blend)) {
-            throw new StackEditRefusedException($"'{name}' is not a blend mode.");
+    /// <summary>The slot at the top of a group, or of the stack.</summary>
+    LayerSlot Top(string set, string? parent) {
+        if (parent is null) {
+            return new(set, null, Set.Layers.Count);
         }
 
+        var group = Require(parent);
+        return group.Kind == LayerKind.Group
+            ? new(set, parent, group.Children.Count)
+            : throw new StackEditRefusedException($"'{group.Name}' is not a group.");
+    }
+
+    void Nest(StackNestLayer nest, string set, Action<IAuthoringCommand> run) {
+        var layer = Require(nest.Layer);
+        if (nest.Parent is { } parent && Inside(layer, parent)) {
+            throw new StackEditRefusedException("A group cannot go inside itself.");
+        }
+
+        run(new RemoveLayerCommand(this, new(set, layer.Id), "Move layer"));
+        run(new AddLayerCommand(this, Top(set, nest.Parent), layer, "Move layer"));
+    }
+
+    static bool Inside(LayerAsset layer, string id) =>
+        layer.Id == id || layer.Children.Exists(child => Inside(child, id));
+
+    static Dictionary<string, float[]>? Copied(IReadOnlyDictionary<string, IReadOnlyList<float>>? numbers) =>
+        numbers?.ToDictionary(static value => value.Key, static value => value.Value.ToArray());
+
+    static Dictionary<string, TValue> Merged<TValue>(
+        Dictionary<string, TValue> held,
+        IEnumerable<KeyValuePair<string, TValue>>? changed
+    ) {
+        Dictionary<string, TValue> merged = new(held, StringComparer.Ordinal);
+        foreach (var (key, value) in changed ?? []) {
+            merged[key] = value;
+        }
+
+        return merged;
+    }
+
+    /// <exception cref="StackEditRefusedException">It does not name a value of that enumeration.</exception>
+    static TEnum Parsed<TEnum>(string? name, TEnum held, string what) where TEnum : struct, Enum =>
+        name is null
+            ? held
+            : Enum.TryParse<TEnum>(name, true, out var parsed)
+                ? parsed
+                : throw new StackEditRefusedException($"'{name}' is not a {what}.");
+
+    /// <summary>A mask as asked for, keeping the canvas it may already paint.</summary>
+    static MaskAsset Masked(MaskAsset held, StackMask? mask) =>
+        mask is null
+            ? held
+            : held with {
+                Source = Parsed(mask.Source, held.Source, "mask source"),
+                Value = mask.Value,
+                Asset = mask.Asset,
+                Anchor = mask.Anchor,
+                Generator = mask.Generator,
+                Map = mask.Map
+            };
+
+    SetLayerCommand Change(StackSetLayer change, string set) {
+        var layer = Require(change.Layer);
         if (change.Opacity is < 0f or > 1f) {
             throw new StackEditRefusedException("An opacity is from 0 to 1.");
         }
@@ -300,7 +385,16 @@ public sealed class StackEditor : ILayerStackDocument {
                 Name = change.Name ?? layer.Name,
                 Enabled = change.Enabled ?? layer.Enabled,
                 Opacity = change.Opacity ?? layer.Opacity,
-                Blend = blend
+                Blend = Parsed(change.Blend, layer.Blend, "blend mode"),
+                Channels = change.Channels is { } channels ? [..channels] : layer.Channels,
+                Fill = Parsed(change.Fill, layer.Fill, "kind of fill"),
+                Values = Merged(layer.Values, Copied(change.Values)),
+                Textures = Merged(layer.Textures, change.Textures),
+                Graph = change.Graph ?? layer.Graph,
+                Projection = Parsed(change.Projection, layer.Projection, "projection"),
+                Filter = Parsed(change.Filter, layer.Filter, "filter"),
+                Settings = Merged(layer.Settings, Copied(change.Settings)),
+                Mask = Masked(layer.Mask, change.Mask)
             },
             "Change layer"
         );
@@ -317,6 +411,8 @@ public sealed class StackEditor : ILayerStackDocument {
         if (stroke.Brush.Radius <= 0f) {
             throw new StackEditRefusedException("A brush has a radius.");
         }
+
+        Aimed(stroke);
 
         if (!stroke.Mask && Set.Channels.TrueForAll(channel => channel.Usage != stroke.Channel)) {
             throw new StackEditRefusedException($"This stack has no channel '{stroke.Channel}'.");
@@ -351,7 +447,40 @@ public sealed class StackEditor : ILayerStackDocument {
             throw new StackEditRefusedException("One batch paints one channel of a layer once.");
         }
 
-        step.Strokes.Add(new(nextEntry++, stroke, paint, Channel(stroke), Packed(stroke.Colour)));
+        step.Strokes.Add(new(nextEntry++, stroke, paint, Channel(stroke), Packed(stroke.Colour), Document.Model));
+    }
+
+    /// <summary>Refuses what a Worker could not do with a stroke, while nothing has happened yet.</summary>
+    void Aimed(StackStroke stroke) {
+        if (stroke.Curve is not ("free" or "line" or "path")) {
+            throw new StackEditRefusedException($"'{stroke.Curve}' is not a kind of stroke.");
+        }
+
+        if (stroke.Mirror is not (null or "x" or "y" or "z")) {
+            throw new StackEditRefusedException($"'{stroke.Mirror}' is not a plane to mirror through.");
+        }
+
+        if (stroke.Brush.Rotation is not ("fixed" or "along" or "random")) {
+            throw new StackEditRefusedException($"'{stroke.Brush.Rotation}' is not a way for a brush to turn.");
+        }
+
+        if (stroke.View is not { } view) {
+            if (stroke.Mirror is not null) {
+                throw new StackEditRefusedException(
+                    "Only a stroke with a view can be mirrored: a mirror is on the mesh."
+                );
+            }
+
+            return;
+        }
+
+        if (Document.Model.Trim().Length == 0) {
+            throw new StackEditRefusedException("This stack has no mesh to paint on. Bind one first.");
+        }
+
+        if (view is not { Eye.Count: 3, Right.Count: 3, Up.Count: 3, Forward.Count: 3, Width: > 0, Height: > 0 }) {
+            throw new StackEditRefusedException("A view is three vectors of three numbers and a picture with a size.");
+        }
     }
 
     SetLayerCommand Named(LayerAsset before, LayerAsset after, string set) =>

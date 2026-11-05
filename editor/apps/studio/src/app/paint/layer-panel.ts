@@ -1,0 +1,478 @@
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import type { StackLayer, StackMask } from '@patina/api-client';
+import { XuiButtonImports } from '@xui/button';
+import { XuiInputImports } from '@xui/input';
+import { XuiNumericInputImports } from '@xui/numeric-input';
+import { XuiSelectImports } from '@xui/select';
+import { XuiSliderImports } from '@xui/slider';
+import { XuiSwitchImports } from '@xui/switch';
+import { colourOf } from './paint-store';
+import { LiveValue } from './live-value';
+import { PaintStore } from './paint-store';
+
+const Fills: readonly string[] = ['Constant', 'Texture', 'Graph'];
+const Projections: readonly string[] = ['Uv', 'Triplanar', 'Planar'];
+
+/** Four numbers as a swatch's value. */
+export function hexOf(colour: readonly number[] | undefined): string {
+  const [r = 0, g = 0, b = 0] = colour ?? [];
+  const lane = (value: number) =>
+    Math.round(Math.min(1, Math.max(0, value)) * 255)
+      .toString(16)
+      .padStart(2, '0');
+  return `#${lane(r)}${lane(g)}${lane(b)}`;
+}
+
+/**
+ * The stack: every kind of layer, what each one reads, its mask and how it blends. The Server owns all of it, so a
+ * row shows the last event it heard, and a field under the hand shows the hand ({@link LiveValue}).
+ */
+@Component({
+  selector: 'ptn-layer-panel',
+  imports: [
+    XuiButtonImports,
+    XuiInputImports,
+    XuiNumericInputImports,
+    XuiSelectImports,
+    XuiSliderImports,
+    XuiSwitchImports
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { class: 'flex flex-col gap-1.5' },
+  template: `
+    <div class="flex flex-wrap items-center gap-1">
+      <button type="button" xuiButton size="sm" variant="ghost" data-testid="paint-add" (click)="store.addLayer()">
+        Paint
+      </button>
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        data-testid="paint-add-fill"
+        (click)="store.addLayer('fill', 'Fill')"
+      >
+        Fill
+      </button>
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        data-testid="paint-add-filter"
+        (click)="store.addLayer('filter', 'Filter', 'Levels')"
+      >
+        Filter
+      </button>
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        data-testid="paint-add-group"
+        (click)="store.addLayer('group', 'Group')"
+      >
+        Group
+      </button>
+      <span class="flex-1"></span>
+      @if (store.chosen(); as layer) {
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          aria-label="Move layer up"
+          data-testid="paint-up"
+          (click)="store.edit({ op: 'moveLayer', layer: layer.id, delta: 1 })"
+        >
+          ↑
+        </button>
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          aria-label="Move layer down"
+          data-testid="paint-down"
+          (click)="store.edit({ op: 'moveLayer', layer: layer.id, delta: -1 })"
+        >
+          ↓
+        </button>
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          data-testid="paint-remove"
+          (click)="store.edit({ op: 'removeLayer', layer: layer.id })"
+        >
+          Remove
+        </button>
+      }
+    </div>
+
+    <ul class="flex flex-col gap-0.5" aria-label="Layers" data-testid="paint-layers">
+      @for (row of store.layers(); track row.layer.id) {
+        <li
+          class="pane flex items-center gap-2 px-2 py-1"
+          [attr.data-testid]="'paint-layer-' + row.layer.id"
+          [style.margin-left.px]="row.depth * 12"
+        >
+          <xui-switch
+            [attr.aria-label]="'Show ' + row.layer.name"
+            [checked]="row.layer.enabled"
+            (checkedChange)="store.setEnabled(row.layer, $event)"
+          />
+          <button
+            type="button"
+            class="min-w-0 flex-1 truncate text-left text-xs"
+            [class.font-semibold]="row.layer.id === store.layer()"
+            (click)="store.layer.set(row.layer.id)"
+          >
+            {{ row.layer.name }}
+          </button>
+          <span class="readout">{{ row.layer.blend }}</span>
+          <span class="readout">{{ row.layer.kind }}</span>
+        </li>
+      }
+    </ul>
+
+    @if (store.chosen(); as layer) {
+      <div class="well flex flex-col gap-1.5 p-2" data-testid="paint-details">
+        <div class="flex items-center gap-2">
+          <span class="text-foreground-muted w-16 shrink-0 text-xs">Name</span>
+          <input
+            class="min-w-0 flex-1"
+            xuiInput
+            size="sm"
+            autocomplete="off"
+            aria-label="Layer name"
+            data-testid="paint-layer-name"
+            [value]="name.shown()"
+            (input)="name.edit(text($event))"
+            (blur)="commitName(layer)"
+            (keydown.enter)="commitName(layer)"
+          />
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-foreground-muted w-16 shrink-0 text-xs">Opacity</span>
+          <xui-slider
+            class="min-w-0 flex-1"
+            labelStepSize="0"
+            aria-label="Layer opacity"
+            data-testid="paint-layer-opacity"
+            [max]="1"
+            [min]="0"
+            [stepSize]="0.01"
+            [value]="opacity.shown()"
+            (valueChange)="setOpacity(layer, $event)"
+            (pointerup)="opacity.release()"
+          />
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-foreground-muted w-16 shrink-0 text-xs">Blend</span>
+          <xui-select
+            class="min-w-0 flex-1"
+            aria-label="Blend mode"
+            data-testid="paint-layer-blend"
+            [items]="blends()"
+            [value]="layer.blend"
+            (valueChange)="store.edit({ op: 'setLayer', layer: layer.id, blend: $event })"
+          />
+        </div>
+        <div class="flex flex-wrap items-center gap-1">
+          @for (channel of store.state()?.channels ?? []; track channel.usage) {
+            <button
+              type="button"
+              xuiButton
+              size="sm"
+              [attr.data-testid]="'paint-writes-' + channel.usage"
+              [variant]="writes(layer, channel.usage) ? 'default' : 'ghost'"
+              (click)="toggleChannel(layer, channel.usage)"
+            >
+              {{ channel.usage }}
+            </button>
+          }
+        </div>
+
+        @switch (layer.kind) {
+          @case ('fill') {
+            <div class="flex items-center gap-2">
+              <span class="text-foreground-muted w-16 shrink-0 text-xs">Reads</span>
+              <xui-select
+                class="min-w-0 flex-1"
+                aria-label="Fill source"
+                data-testid="paint-fill-source"
+                [items]="fills"
+                [value]="layer.fill"
+                (valueChange)="store.edit({ op: 'setLayer', layer: layer.id, fill: $event })"
+              />
+              <xui-select
+                class="w-24"
+                aria-label="Projection"
+                data-testid="paint-fill-projection"
+                [items]="projections"
+                [value]="layer.projection"
+                (valueChange)="store.edit({ op: 'setLayer', layer: layer.id, projection: $event })"
+              />
+            </div>
+            @for (channel of store.state()?.channels ?? []; track channel.usage) {
+              <div class="flex items-center gap-2">
+                <span class="text-foreground-muted w-20 shrink-0 truncate text-xs">{{ channel.usage }}</span>
+                @switch (layer.fill) {
+                  @case ('Constant') {
+                    <input
+                      type="color"
+                      [attr.aria-label]="channel.usage + ' value'"
+                      [attr.data-testid]="'paint-fill-' + channel.usage"
+                      [value]="hex(layer, channel.usage, channel.default)"
+                      (change)="setValue(layer, channel.usage, text($event))"
+                    />
+                  }
+                  @case ('Texture') {
+                    <input
+                      class="min-w-0 flex-1"
+                      xuiInput
+                      size="sm"
+                      autocomplete="off"
+                      [attr.aria-label]="channel.usage + ' texture'"
+                      [value]="layer.textures[channel.usage] ?? ''"
+                      (change)="setTexture(layer, channel.usage, text($event))"
+                    />
+                  }
+                }
+              </div>
+            }
+            @if (layer.fill === 'Graph') {
+              <input
+                xuiInput
+                size="sm"
+                autocomplete="off"
+                aria-label="Fill graph"
+                placeholder="Graph file or compound path"
+                [value]="layer.graph"
+                (change)="store.edit({ op: 'setLayer', layer: layer.id, graph: text($event) })"
+              />
+            }
+          }
+          @case ('filter') {
+            <div class="flex items-center gap-2">
+              <span class="text-foreground-muted w-16 shrink-0 text-xs">Filter</span>
+              <xui-select
+                class="min-w-0 flex-1"
+                aria-label="Filter"
+                data-testid="paint-filter"
+                [items]="filters()"
+                [value]="layer.filter"
+                (valueChange)="store.edit({ op: 'setLayer', layer: layer.id, filter: $event })"
+              />
+            </div>
+            @for (setting of settings(layer); track setting) {
+              <div class="flex items-center gap-2">
+                <span class="text-foreground-muted w-24 shrink-0 truncate text-xs">{{ setting }}</span>
+                <xui-numeric-input
+                  class="min-w-0 flex-1"
+                  size="sm"
+                  [ariaLabel]="setting"
+                  [stepSize]="0.05"
+                  [value]="layer.settings[setting]?.[0] ?? 0"
+                  (valueChange)="setSetting(layer, setting, $event ?? 0)"
+                />
+              </div>
+            }
+          }
+        }
+
+        <div class="flex items-center gap-2">
+          <span class="text-foreground-muted w-16 shrink-0 text-xs">Mask</span>
+          <xui-select
+            class="min-w-0 flex-1"
+            aria-label="Mask source"
+            data-testid="paint-mask-source"
+            [items]="masks()"
+            [value]="layer.mask.source"
+            (valueChange)="setMask(layer, { source: $event ?? 'None' })"
+          />
+        </div>
+        @switch (layer.mask.source) {
+          @case ('Constant') {
+            <xui-slider
+              labelStepSize="0"
+              aria-label="Mask value"
+              data-testid="paint-mask-value"
+              [max]="1"
+              [min]="0"
+              [stepSize]="0.01"
+              [value]="layer.mask.value"
+              (valueChange)="setMask(layer, { value: $event })"
+            />
+          }
+          @case ('Texture') {
+            <input
+              xuiInput
+              size="sm"
+              autocomplete="off"
+              aria-label="Mask image"
+              [value]="layer.mask.asset"
+              (change)="setMask(layer, { asset: text($event) })"
+            />
+          }
+          @case ('Anchor') {
+            <xui-select
+              aria-label="Anchor layer"
+              data-testid="paint-mask-anchor"
+              [items]="anchors(layer)"
+              [value]="layer.mask.anchor"
+              (valueChange)="setMask(layer, { anchor: $event ?? '' })"
+            />
+          }
+          @case ('Generator') {
+            <xui-select
+              aria-label="Generator"
+              data-testid="paint-mask-generator"
+              [items]="generators()"
+              [value]="layer.mask.generator"
+              (valueChange)="setMask(layer, { generator: $event ?? '' })"
+            />
+          }
+          @case ('Bake') {
+            <xui-select
+              aria-label="Mesh map"
+              data-testid="paint-mask-map"
+              [items]="meshMaps()"
+              [value]="layer.mask.map"
+              (valueChange)="setMask(layer, { map: $event ?? '' })"
+            />
+          }
+        }
+        @if (layer.kind === 'paint') {
+          <label class="flex items-center gap-2 text-xs">
+            <xui-switch
+              ariaLabel="Paint the mask"
+              data-testid="paint-on-mask"
+              [checked]="store.masking()"
+              (checkedChange)="store.masking.set($event)"
+            />
+            Brush paints the mask
+          </label>
+        }
+      </div>
+
+      <div class="flex items-center gap-1">
+        <span class="text-foreground-muted w-20 shrink-0 text-xs">Mesh maps</span>
+        <input
+          class="min-w-0 flex-1"
+          xuiInput
+          size="sm"
+          autocomplete="off"
+          aria-label="Mesh maps folder"
+          data-testid="paint-mesh-maps"
+          placeholder="A finished bake's folder"
+          [value]="store.state()?.meshMaps ?? ''"
+          (change)="store.useMeshMaps(text($event) || null)"
+        />
+      </div>
+    }
+  `
+})
+export class LayerPanel {
+  protected readonly store = inject(PaintStore);
+  protected readonly fills = Fills;
+  protected readonly projections = Projections;
+  protected readonly blends = computed(() => this.store.vocabulary()?.blends ?? []);
+  protected readonly filters = computed(() => this.store.vocabulary()?.filters.map(filter => filter.kind) ?? []);
+  protected readonly masks = computed(() => this.store.vocabulary()?.masks ?? []);
+  protected readonly generators = computed(() => this.store.vocabulary()?.generators ?? []);
+  protected readonly meshMaps = computed(() => this.store.vocabulary()?.meshMaps ?? []);
+  protected readonly name = new LiveValue<string>(() => this.store.chosen()?.name ?? '');
+  protected readonly opacity = new LiveValue<number>(() => this.store.chosen()?.opacity ?? 1);
+  private readonly sending = signal(false);
+  private latest: { layer: string; opacity: number } | null = null;
+
+  constructor() {
+    // Another layer has no draft of this one's.
+    effect(() => {
+      this.store.layer();
+      untracked(() => {
+        this.name.release();
+        this.opacity.release();
+      });
+    });
+  }
+
+  protected text(event: Event): string {
+    return (event.target as HTMLInputElement).value;
+  }
+
+  protected writes(layer: StackLayer, usage: string): boolean {
+    return layer.channels.length === 0 || layer.channels.includes(usage);
+  }
+
+  protected toggleChannel(layer: StackLayer, usage: string): void {
+    const all = this.store.state()?.channels.map(channel => channel.usage) ?? [];
+    const now = layer.channels.length === 0 ? all : layer.channels;
+    const next = now.includes(usage) ? now.filter(channel => channel !== usage) : [...now, usage];
+    void this.store.edit({ op: 'setLayer', layer: layer.id, channels: next.length === all.length ? [] : next });
+  }
+
+  protected commitName(layer: StackLayer): void {
+    const name = this.name.shown();
+    this.name.release();
+    if (name !== layer.name) {
+      void this.store.edit({ op: 'setLayer', layer: layer.id, name });
+    }
+  }
+
+  /** One request out at a time, the newest value next, so that a fast slider costs what the Server can take. */
+  protected setOpacity(layer: StackLayer, opacity: number): void {
+    this.opacity.edit(opacity);
+    this.latest = { layer: layer.id, opacity };
+    void this.sendOpacity();
+  }
+
+  private async sendOpacity(): Promise<void> {
+    if (this.sending()) {
+      return;
+    }
+
+    this.sending.set(true);
+    while (this.latest) {
+      const { layer, opacity } = this.latest;
+      this.latest = null;
+      await this.store.edit({ op: 'setLayer', layer, opacity });
+    }
+
+    this.sending.set(false);
+  }
+
+  protected hex(layer: StackLayer, usage: string, fallback: readonly number[]): string {
+    return hexOf(layer.values[usage] ?? fallback);
+  }
+
+  protected setValue(layer: StackLayer, usage: string, hex: string): void {
+    void this.store.edit({ op: 'setLayer', layer: layer.id, values: { [usage]: colourOf(hex) } });
+  }
+
+  protected setTexture(layer: StackLayer, usage: string, path: string): void {
+    void this.store.edit({ op: 'setLayer', layer: layer.id, textures: { [usage]: path } });
+  }
+
+  protected settings(layer: StackLayer): readonly string[] {
+    return this.store.vocabulary()?.filters.find(filter => filter.kind === layer.filter)?.settings ?? [];
+  }
+
+  protected setSetting(layer: StackLayer, setting: string, value: number): void {
+    void this.store.edit({ op: 'setLayer', layer: layer.id, settings: { [setting]: [value] } });
+  }
+
+  protected anchors(layer: StackLayer): readonly string[] {
+    return this.store
+      .layers()
+      .map(row => row.layer.id)
+      .filter(id => id !== layer.id);
+  }
+
+  protected setMask(layer: StackLayer, change: Partial<StackMask>): void {
+    void this.store.setMask(layer, { ...layer.mask, ...change });
+  }
+}

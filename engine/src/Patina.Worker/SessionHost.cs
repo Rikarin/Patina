@@ -22,6 +22,8 @@ abstract class SessionHost<T> : IDisposable where T : class, IDisposable {
         sessions[id] = session;
     }
 
+    protected bool Holds(string id) => sessions.ContainsKey(id);
+
     protected T Find(string id) =>
         sessions.TryGetValue(id, out var session)
             ? session

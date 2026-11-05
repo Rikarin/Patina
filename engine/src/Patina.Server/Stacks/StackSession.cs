@@ -48,6 +48,7 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         fileHash = Hash(text);
         editor = new(path, StackDocuments.Parse(text));
         this.wake = wake;
+        MeshMaps = GraphMeshMaps.Read(path);
         foreach (var paint in PaintFiles.Where(paint => File.Exists(System.IO.Path.GetFullPath(paint, Folder!)))) {
             found.Add(paint);
         }
@@ -68,6 +69,37 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         get {
             lock (Changing) {
                 return editor.Set.Name;
+            }
+        }
+    }
+
+    /// <summary>The bake generators and bake masks read, kept in a file beside the stack.</summary>
+    public string? MeshMaps { get; private set; }
+
+    /// <summary>Chooses a bake: a new Worker copy loads it, since the images are external to the plan.</summary>
+    public void UseMeshMaps(string? folder) {
+        lock (Changing) {
+            MeshMaps = folder;
+            var file = GraphMeshMaps.FileOf(Path);
+            if (folder is null) {
+                File.Delete(file);
+            } else {
+                File.WriteAllText(file, folder);
+            }
+
+            forced = true;
+            revision++;
+        }
+
+        wake();
+    }
+
+    /// <summary>The mesh's file, or null when the stack names none.</summary>
+    public string? ModelFile {
+        get {
+            lock (Changing) {
+                var model = editor.Document.Model.Trim();
+                return model.Length == 0 ? null : System.IO.Path.GetFullPath(model, Folder!);
             }
         }
     }
@@ -124,7 +156,9 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                     StackDocuments.Layers(set.Layers),
                     [..previews.Values],
                     evaluation,
-                    settled
+                    settled,
+                    editor.Document.Model,
+                    MeshMaps
                 );
             }
         }
@@ -240,7 +274,11 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                         entry.Brush,
                         entry.Colour,
                         [..entry.Stamps.Skip(told.Stamps)],
-                        entry.Open
+                        entry.Open,
+                        entry.Model,
+                        entry.View,
+                        entry.Curve,
+                        entry.Mirror
                     )
                 );
                 sent[entry.Id] = (entry.Stamps.Count, entry.Open);

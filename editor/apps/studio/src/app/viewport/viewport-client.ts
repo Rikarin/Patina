@@ -120,6 +120,10 @@ export class ViewportClient {
   }
 
   /** Something else changed what the Server shows: the frames say so by themselves, and the label needs telling. */
+  async sync(): Promise<void> {
+    await this.refresh();
+  }
+
   private async refresh(): Promise<void> {
     const state = unwrap(await this.createClient(await this.connection()).GET('/api/v1/viewport'));
     this.mesh.set(state.mesh ?? null);

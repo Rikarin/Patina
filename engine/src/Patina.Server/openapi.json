@@ -114,6 +114,108 @@
         }
       }
     },
+    "/api/v1/viewport/pick": {
+      "post": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "What is under a position in the viewport, and the camera a stroke there carries.",
+        "operationId": "PickInViewport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewportPickRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportPick"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/viewport/stack": {
+      "put": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "Puts a stack on its mesh in the viewport, which shows every stroke from then on.",
+        "operationId": "ShowStackInViewport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewportStackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/viewport/maps": {
       "put": {
         "tags": [
@@ -1776,6 +1878,27 @@
         }
       }
     },
+    "/api/v1/stacks/vocabulary": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "The blend modes, filters, mask sources, generators, mesh maps and brush alphas a stack can name.",
+        "operationId": "GetStackVocabulary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackVocabulary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stacks/new": {
       "post": {
         "tags": [
@@ -2150,6 +2273,50 @@
         }
       }
     },
+    "/api/v1/stacks/{id}/mesh-maps": {
+      "put": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Chooses the bake its generators and bake masks read.",
+        "operationId": "SetStackMeshMaps",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StackMeshMapsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stacks/{id}/evaluate": {
       "post": {
         "tags": [
@@ -2202,6 +2369,14 @@
           },
           {
             "name": "clean",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "sampled",
             "in": "query",
             "schema": {
               "type": "boolean",
@@ -5969,13 +6144,20 @@
           "flow",
           "opacity",
           "spacing",
-          "falloff"
+          "falloff",
+          "angle",
+          "rotation",
+          "positionJitter",
+          "angleJitter",
+          "sizeJitter",
+          "pressureSize",
+          "pressureFlow"
         ],
         "type": "object",
         "properties": {
           "radius": {
             "type": "number",
-            "description": "In texels.",
+            "description": "In texels, or in the units of the picture for a stroke with a view.",
             "format": "float"
           },
           "flow": {
@@ -6001,6 +6183,54 @@
             "description": "How soft its edge is, 0 to 1.",
             "format": "float",
             "default": 0.5
+          },
+          "alpha": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A named alpha (Round, Square, Chisel, Cross) or an image relative to the stack, or null."
+          },
+          "angle": {
+            "type": "number",
+            "description": "Its fixed rotation, in radians.",
+            "format": "float",
+            "default": 0
+          },
+          "rotation": {
+            "type": "string",
+            "description": "fixed, along or random.",
+            "default": "fixed"
+          },
+          "positionJitter": {
+            "type": "number",
+            "description": "How far a stamp strays, as a share of the radius, 0 to 1.",
+            "format": "float",
+            "default": 0
+          },
+          "angleJitter": {
+            "type": "number",
+            "description": "How far a stamp turns either way, in radians.",
+            "format": "float",
+            "default": 0
+          },
+          "sizeJitter": {
+            "type": "number",
+            "description": "How much of its radius a stamp can lose, 0 to 1.",
+            "format": "float",
+            "default": 0
+          },
+          "pressureSize": {
+            "type": "number",
+            "description": "How much of the radius pressure takes off, 0 to 1.",
+            "format": "float",
+            "default": 0
+          },
+          "pressureFlow": {
+            "type": "number",
+            "description": "How much of the flow pressure takes off, 0 to 1.",
+            "format": "float",
+            "default": 0
           }
         },
         "description": "A brush. Everything but the radius has the value a new brush has."
@@ -6047,6 +6277,12 @@
           },
           {
             "$ref": "#/components/schemas/StackCommandStackStroke"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackSetModel"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackNestLayer"
           }
         ],
         "description": "One edit of a stack. A batch of these is one undo step.",
@@ -6057,7 +6293,9 @@
             "removeLayer": "#/components/schemas/StackCommandStackRemoveLayer",
             "moveLayer": "#/components/schemas/StackCommandStackMoveLayer",
             "setLayer": "#/components/schemas/StackCommandStackSetLayer",
-            "stroke": "#/components/schemas/StackCommandStackStroke"
+            "stroke": "#/components/schemas/StackCommandStackStroke",
+            "setModel": "#/components/schemas/StackCommandStackSetModel",
+            "nestLayer": "#/components/schemas/StackCommandStackNestLayer"
           }
         }
       },
@@ -6118,6 +6356,20 @@
               }
             },
             "description": "What a fill writes to each channel, as four numbers. Ignored for other kinds."
+          },
+          "parent": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The group it goes at the top of, or null for the stack itself."
+          },
+          "filter": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What a filter layer does: Levels, Hsl, Blur, Invert or Grayscale."
           }
         },
         "description": "Adds a layer at the top of the stack."
@@ -6146,6 +6398,32 @@
           }
         },
         "description": "Moves a layer up or down its list."
+      },
+      "StackCommandStackNestLayer": {
+        "required": [
+          "layer",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "nestLayer"
+            ],
+            "type": "string"
+          },
+          "layer": {
+            "type": "string",
+            "description": "Which."
+          },
+          "parent": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The group, or null for the stack itself."
+          }
+        },
+        "description": "Moves a layer to the top of a group, or of the stack."
       },
       "StackCommandStackRemoveLayer": {
         "required": [
@@ -6210,9 +6488,103 @@
               "string"
             ],
             "description": "Its blend mode."
+          },
+          "channels": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Which channels it writes. Empty means all of them."
+          },
+          "fill": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What a fill reads: Constant, Texture or Graph."
+          },
+          "values": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {},
+            "description": "What a constant fill writes, replacing what these channels held."
+          },
+          "textures": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "What a texture fill reads, replacing what these channels held."
+          },
+          "graph": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The graph a graph fill reads."
+          },
+          "projection": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How a fill lands on the mesh: Uv, Triplanar or Planar."
+          },
+          "filter": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What a filter does."
+          },
+          "settings": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {},
+            "description": "A filter\u0027s numbers, replacing what these names held."
+          },
+          "mask": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Its mask, which replaces the old one and keeps any painted canvas.",
+                "$ref": "#/components/schemas/StackMask"
+              }
+            ]
           }
         },
         "description": "Changes what a layer\u0027s row shows. What is null stays."
+      },
+      "StackCommandStackSetModel": {
+        "required": [
+          "model",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "setModel"
+            ],
+            "type": "string"
+          },
+          "model": {
+            "type": "string",
+            "description": "A model file, absolute or relative to the stack. Empty takes the mesh away."
+          }
+        },
+        "description": "Names the mesh a stack is painted on, which is undone like any other edit."
       },
       "StackCommandStackStroke": {
         "required": [
@@ -6224,7 +6596,8 @@
           "stamps",
           "op",
           "open",
-          "mask"
+          "mask",
+          "curve"
         ],
         "properties": {
           "op": {
@@ -6273,6 +6646,29 @@
             "type": "boolean",
             "description": "Whether this paints the layer\u0027s mask.",
             "default": false
+          },
+          "view": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The camera, which makes this a stroke on the mesh: stamps are positions on its picture, each one is found on the\nsurface by the Worker, and it lands wherever the brush\u0027s disc falls, seams or no seams. Null paints the atlas.",
+                "$ref": "#/components/schemas/StackView"
+              }
+            ]
+          },
+          "curve": {
+            "type": "string",
+            "description": "free follows the stamps; line and path run through them as control points when it ends.",
+            "default": "free"
+          },
+          "mirror": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "x, y or z mirrors a stroke on the mesh through that plane of the mesh, or null."
           }
         },
         "description": "Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one\nStroke and they make one undo step, ended by one with Open false."
@@ -6511,6 +6907,27 @@
         },
         "description": "Writes each channel of a stack to a file."
       },
+      "StackFilterKind": {
+        "required": [
+          "kind",
+          "settings"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "Levels, Hsl, Blur, Invert or Grayscale."
+          },
+          "settings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Its numbers\u0027 names."
+          }
+        },
+        "description": "A filter a layer can be, and the numbers it takes."
+      },
       "StackLayer": {
         "required": [
           "id",
@@ -6521,7 +6938,15 @@
           "blend",
           "channels",
           "painted",
-          "children"
+          "children",
+          "fill",
+          "values",
+          "textures",
+          "graph",
+          "projection",
+          "filter",
+          "settings",
+          "mask"
         ],
         "type": "object",
         "properties": {
@@ -6567,9 +6992,115 @@
               "$ref": "#/components/schemas/StackLayer"
             },
             "description": "What a group holds."
+          },
+          "fill": {
+            "type": "string",
+            "description": "What a fill reads: Constant, Texture or Graph."
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "float"
+              }
+            },
+            "description": "What a constant fill writes to each channel."
+          },
+          "textures": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "What a texture fill reads for each channel."
+          },
+          "graph": {
+            "type": "string",
+            "description": "The graph a graph fill reads."
+          },
+          "projection": {
+            "type": "string",
+            "description": "How a fill lands on the mesh: Uv, Triplanar or Planar."
+          },
+          "filter": {
+            "type": "string",
+            "description": "What a filter does: Levels, Hsl, Blur, Invert or Grayscale."
+          },
+          "settings": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "float"
+              }
+            },
+            "description": "A filter\u0027s numbers."
+          },
+          "mask": {
+            "description": "Its mask.",
+            "$ref": "#/components/schemas/StackMask"
           }
         },
         "description": "One layer, without its pixels."
+      },
+      "StackMask": {
+        "required": [
+          "source",
+          "value",
+          "asset",
+          "anchor",
+          "generator",
+          "map"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "None, Constant, Texture, Anchor, Generator, Bake or Paint."
+          },
+          "value": {
+            "type": "number",
+            "description": "A constant mask\u0027s value.",
+            "format": "float",
+            "default": 1
+          },
+          "asset": {
+            "type": "string",
+            "description": "The image a texture mask reads.",
+            "default": ""
+          },
+          "anchor": {
+            "type": "string",
+            "description": "The layer an anchor mask reads.",
+            "default": ""
+          },
+          "generator": {
+            "type": "string",
+            "description": "The compound a generator runs, such as Generators/Dirt.",
+            "default": ""
+          },
+          "map": {
+            "type": "string",
+            "description": "The mesh map a bake mask reads.",
+            "default": ""
+          }
+        },
+        "description": "What decides where a layer shows."
+      },
+      "StackMeshMapsRequest": {
+        "type": "object",
+        "properties": {
+          "folder": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The bake\u0027s folder, or null for none."
+          }
+        },
+        "description": "Chooses the bake a stack\u0027s generators and bake masks read."
       },
       "StackOpenRequest": {
         "required": [
@@ -6672,7 +7203,8 @@
       "StackStamp": {
         "required": [
           "x",
-          "y"
+          "y",
+          "pressure"
         ],
         "type": "object",
         "properties": {
@@ -6685,9 +7217,15 @@
             "type": "number",
             "description": "Its row.",
             "format": "float"
+          },
+          "pressure": {
+            "type": "number",
+            "description": "How hard, 0 to 1.",
+            "format": "float",
+            "default": 1
           }
         },
-        "description": "Where the brush goes, in texels from the image\u0027s top left."
+        "description": "Where the brush goes: in texels of the image, or on the picture of a stroke with a view."
       },
       "StackState": {
         "required": [
@@ -6703,7 +7241,8 @@
           "channels",
           "layers",
           "previews",
-          "settled"
+          "settled",
+          "model"
         ],
         "type": "object",
         "properties": {
@@ -6783,6 +7322,17 @@
             "type": "integer",
             "description": "The newest revision an evaluation has reached.",
             "format": "int64"
+          },
+          "model": {
+            "type": "string",
+            "description": "The mesh it is painted on, as the document names it, or empty."
+          },
+          "meshMaps": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The bake its generators read, or null."
           }
         },
         "description": "A whole stack: everything a client needs to draw it, and no pixels."
@@ -6820,6 +7370,124 @@
           }
         },
         "description": "An open stack, for a list."
+      },
+      "StackView": {
+        "required": [
+          "eye",
+          "right",
+          "up",
+          "forward",
+          "verticalFieldOfView",
+          "width",
+          "height"
+        ],
+        "type": "object",
+        "properties": {
+          "eye": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Where it is: three numbers."
+          },
+          "right": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The unit direction a column grows in: three numbers."
+          },
+          "up": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The unit direction a row shrinks in: three numbers."
+          },
+          "forward": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The unit direction it looks: three numbers."
+          },
+          "verticalFieldOfView": {
+            "type": "number",
+            "description": "In radians.",
+            "format": "float"
+          },
+          "width": {
+            "type": "integer",
+            "description": "The picture\u0027s width, in the units stamps and the brush\u0027s radius are in.",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "description": "Its height.",
+            "format": "int32"
+          }
+        },
+        "description": "A camera in the mesh\u0027s own space, which a stroke keeps because a position on a picture means nothing without\nit. Any client with a camera can fill this in; \u0060POST /viewport/pick\u0060 gives the viewport\u0027s."
+      },
+      "StackVocabulary": {
+        "required": [
+          "blends",
+          "filters",
+          "masks",
+          "generators",
+          "meshMaps",
+          "alphas"
+        ],
+        "type": "object",
+        "properties": {
+          "blends": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The sixteen blend modes."
+          },
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackFilterKind"
+            },
+            "description": "The filters."
+          },
+          "masks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The mask sources."
+          },
+          "generators": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The compounds that read a mesh\u0027s bakes."
+          },
+          "meshMaps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The maps a bake mask or a generator can read."
+          },
+          "alphas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The named brush alphas."
+          }
+        },
+        "description": "The words a stack\u0027s fields take, so that a client holds no list of its own."
       },
       "SystemInfo": {
         "required": [
@@ -7036,6 +7704,116 @@
         },
         "description": "Asks the viewport to show a mesh."
       },
+      "ViewportPick": {
+        "required": [
+          "found",
+          "view",
+          "triangle",
+          "u",
+          "v"
+        ],
+        "type": "object",
+        "properties": {
+          "found": {
+            "type": "boolean",
+            "description": "Whether it met the mesh."
+          },
+          "view": {
+            "description": "The camera it was looked through, which a stroke on the mesh carries.",
+            "$ref": "#/components/schemas/StackView"
+          },
+          "triangle": {
+            "type": "integer",
+            "description": "The triangle.",
+            "format": "int32",
+            "default": -1
+          },
+          "u": {
+            "type": "number",
+            "description": "The texture coordinate across.",
+            "format": "float",
+            "default": 0
+          },
+          "v": {
+            "type": "number",
+            "description": "The texture coordinate down.",
+            "format": "float",
+            "default": 0
+          },
+          "position": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Where on the mesh, in its own space: three numbers."
+          }
+        },
+        "description": "What a position in the viewport landed on."
+      },
+      "ViewportPickRequest": {
+        "required": [
+          "x",
+          "y"
+        ],
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number",
+            "description": "Across the picture, 0 to 1.",
+            "format": "double"
+          },
+          "y": {
+            "type": "number",
+            "description": "Down it, 0 to 1.",
+            "format": "double"
+          },
+          "camera": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The camera to look through, or null for the viewport\u0027s.",
+                "$ref": "#/components/schemas/ViewportCameraState"
+              }
+            ]
+          },
+          "width": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The picture\u0027s width in the units a stroke will use, or null for the viewport\u0027s.",
+            "format": "int32"
+          },
+          "height": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Its height.",
+            "format": "int32"
+          }
+        },
+        "description": "Asks what is under a position in the viewport."
+      },
+      "ViewportStackRequest": {
+        "required": [
+          "stack"
+        ],
+        "type": "object",
+        "properties": {
+          "stack": {
+            "type": "string",
+            "description": "The stack session."
+          }
+        },
+        "description": "Asks the viewport to wear a stack: its mesh, and its maps as the strokes leave them."
+      },
       "ViewportState": {
         "required": [
           "maps",
@@ -7088,6 +7866,13 @@
               "string"
             ],
             "description": "Why the last command failed, or null."
+          },
+          "stack": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The stack session it is wearing, or null."
           }
         },
         "description": "The reply to \u0060GET /api/v1/viewport\u0060. The Server owns all of this; a Worker can die without losing it."

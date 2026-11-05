@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+using Patina.Viewport;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Globalization;
@@ -17,6 +18,70 @@ namespace Patina.Bench;
 /// </summary>
 static class PaintBench {
     const int Tile = 256;
+
+    /// <summary>Writes S4's stack as files, on a mesh, for a real window to open.</summary>
+    public static int WriteStack(string path, int size, int layerCount, string model) {
+        var folder = Path.GetDirectoryName(Path.GetFullPath(path))!;
+        Directory.CreateDirectory(folder);
+        var stack = Stack(size, layerCount, 5, 1, false) with { Model = model };
+        File.WriteAllText(path, LayerStackYaml.Write(stack));
+        foreach (var layer in stack.Sets[0].Layers) {
+            foreach (var paint in new[] { layer.Paint, layer.Mask.Paint }.Where(static file => file.Length > 0)) {
+                using var file = File.Create(Path.Combine(folder, paint));
+                new PaintCanvas(size, size).Write(file);
+            }
+        }
+
+        Say($"{path}: {layerCount} layers at {size}² on {model}");
+        return 0;
+    }
+
+    /// <summary>What stamps on a mesh cost by themselves: one drag through a camera, and its counters.</summary>
+    public static int Stamps(string model, int size, float radius, int moves, string? file = null) {
+        var clock = Stopwatch.StartNew();
+        var geometry = ViewportGeometry.Read(model);
+        var surface = new PaintMeshSurface(
+            PaintProjection.Over(geometry.Positions, geometry.Coordinates, geometry.Indices),
+            size,
+            size
+        );
+        Say($"read and rastered {clock.Elapsed.TotalMilliseconds:F0} ms, {surface.Charts} charts");
+        var orbit = OrbitCamera.Default;
+        var (right, up, forward) = orbit.Axes(geometry.Bounds);
+        var view = new PaintView(orbit.Eye(geometry.Bounds), right, up, forward, OrbitCamera.FieldOfView, 565, 260);
+        PaintCanvas canvas;
+        if (file is null) {
+            canvas = new(size, size);
+        } else {
+            using var stream = File.OpenRead(file);
+            canvas = PaintCanvas.Read(stream);
+        }
+
+        var brush = PaintBrush.Default with { Radius = radius, Flow = 1f };
+        var stroke = new PaintStroke(
+            canvas.Channel("baseColor"),
+            surface.Coverage,
+            brush,
+            0xFF2020E0u,
+            placement: surface.Through(view)
+        );
+        clock.Restart();
+        List<double> times = [];
+        for (var move = 0; move < moves; move++) {
+            var start = Stopwatch.GetTimestamp();
+            stroke.MoveTo(new(190f + move * 2.5f, 120f + MathF.Sin(move / 6f) * 6f));
+            times.Add(Stopwatch.GetElapsedTime(start).TotalMilliseconds);
+        }
+
+        var elapsed = clock.Elapsed.TotalMilliseconds;
+        times.Sort();
+        Say($"a move p50 {times[times.Count / 2]:F1} ms, worst {times[^1]:F1} ms");
+        Say($"{stroke.StampCount} stamps, {elapsed:F0} ms, {elapsed / stroke.StampCount:F2} ms a stamp");
+        Say(
+            $"{stroke.WeightsEvaluated / stroke.StampCount} weights, {stroke.TexelsScanned / stroke.StampCount} scanned"
+        );
+        return 0;
+    }
 
     public static int Run(Scenario scenario, int layerCount, int channels, bool blurAbove) {
         var (size, _, radius, paintedAt, _, _) = scenario;

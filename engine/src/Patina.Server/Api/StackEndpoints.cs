@@ -28,6 +28,12 @@ static class StackEndpoints {
             stacks.MapGet(route, handler).Describe(name, summary, problems);
 
         Get("/", GetAll, "GetStacks", "The open stacks.");
+        Get(
+            "/vocabulary",
+            static () => TypedResults.Ok(StackDocuments.Vocabulary),
+            "GetStackVocabulary",
+            "The blend modes, filters, mask sources, generators, mesh maps and brush alphas a stack can name."
+        );
         Post("/", Open, "OpenStack", "Opens a layer stack, or joins the session that has it open.", Missing, Refused);
         Post(
             "/new",
@@ -71,6 +77,8 @@ static class StackEndpoints {
             Conflict,
             Unavailable
         );
+        stacks.MapPut("/{id}/mesh-maps", UseMeshMaps)
+            .Describe("SetStackMeshMaps", "Chooses the bake its generators and bake masks read.", Missing);
         Post(
             "/{id}/evaluate",
             Evaluate,
@@ -213,6 +221,19 @@ static class StackEndpoints {
         }
     }
 
+    static Results<NoContent, ProblemHttpResult> UseMeshMaps(
+        string id,
+        StackMeshMapsRequest request,
+        StackSessions sessions
+    ) {
+        if (sessions.Find(id) is not { } session) {
+            return NoSession(id);
+        }
+
+        session.UseMeshMaps(request.Folder is { } folder ? Path.GetFullPath(folder) : null);
+        return TypedResults.NoContent();
+    }
+
     static Results<NoContent, ProblemHttpResult> Evaluate(string id, StackSessions sessions) {
         if (sessions.Find(id) is not { } session) {
             return NoSession(id);
@@ -227,9 +248,10 @@ static class StackEndpoints {
         StackSessions sessions,
         StackEvaluator evaluator,
         CancellationToken cancellationToken,
-        bool clean = false
+        bool clean = false,
+        bool sampled = false
     ) =>
-        ReadAsync(id, sessions, evaluator, clean, null, cancellationToken);
+        ReadAsync(id, sessions, evaluator, clean, null, cancellationToken, sampled);
 
     static async Task<Results<Ok<IReadOnlyList<StackPixels>>, ProblemHttpResult>> Export(
         string id,
@@ -251,14 +273,15 @@ static class StackEndpoints {
         StackEvaluator evaluator,
         bool clean,
         string? folder,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        bool sampled = false
     ) {
         if (sessions.Find(id) is not { } session) {
             return NoSession(id);
         }
 
         try {
-            return TypedResults.Ok(await evaluator.PixelsAsync(session, clean, folder, cancellationToken));
+            return TypedResults.Ok(await evaluator.PixelsAsync(session, clean, folder, cancellationToken, sampled));
         } catch (TimeoutException e) {
             return TypedResults.Problem(e.Message, statusCode: Unavailable);
         } catch (IpcException e) {

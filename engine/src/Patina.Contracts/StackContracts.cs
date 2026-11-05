@@ -30,6 +30,14 @@ public sealed record StackChannel(string Usage, IReadOnlyList<float> Default);
 /// <param name="Channels">Which channels it writes. Empty means all of them.</param>
 /// <param name="Painted">Whether it names a paint file yet.</param>
 /// <param name="Children">What a group holds.</param>
+/// <param name="Fill">What a fill reads: Constant, Texture or Graph.</param>
+/// <param name="Values">What a constant fill writes to each channel.</param>
+/// <param name="Textures">What a texture fill reads for each channel.</param>
+/// <param name="Graph">The graph a graph fill reads.</param>
+/// <param name="Projection">How a fill lands on the mesh: Uv, Triplanar or Planar.</param>
+/// <param name="Filter">What a filter does: Levels, Hsl, Blur, Invert or Grayscale.</param>
+/// <param name="Settings">A filter's numbers.</param>
+/// <param name="Mask">Its mask.</param>
 public sealed record StackLayer(
     string Id,
     string Name,
@@ -39,8 +47,57 @@ public sealed record StackLayer(
     string Blend,
     IReadOnlyList<string> Channels,
     bool Painted,
-    IReadOnlyList<StackLayer> Children
+    IReadOnlyList<StackLayer> Children,
+    string Fill,
+    IReadOnlyDictionary<string, IReadOnlyList<float>> Values,
+    IReadOnlyDictionary<string, string> Textures,
+    string Graph,
+    string Projection,
+    string Filter,
+    IReadOnlyDictionary<string, IReadOnlyList<float>> Settings,
+    StackMask Mask
 );
+
+/// <summary>What decides where a layer shows.</summary>
+/// <param name="Source">None, Constant, Texture, Anchor, Generator, Bake or Paint.</param>
+/// <param name="Value">A constant mask's value.</param>
+/// <param name="Asset">The image a texture mask reads.</param>
+/// <param name="Anchor">The layer an anchor mask reads.</param>
+/// <param name="Generator">The compound a generator runs, such as Generators/Dirt.</param>
+/// <param name="Map">The mesh map a bake mask reads.</param>
+public sealed record StackMask(
+    string Source,
+    float Value = 1f,
+    string Asset = "",
+    string Anchor = "",
+    string Generator = "",
+    string Map = ""
+);
+
+/// <summary>A filter a layer can be, and the numbers it takes.</summary>
+/// <param name="Kind">Levels, Hsl, Blur, Invert or Grayscale.</param>
+/// <param name="Settings">Its numbers' names.</param>
+public sealed record StackFilterKind(string Kind, IReadOnlyList<string> Settings);
+
+/// <summary>The words a stack's fields take, so that a client holds no list of its own.</summary>
+/// <param name="Blends">The sixteen blend modes.</param>
+/// <param name="Filters">The filters.</param>
+/// <param name="Masks">The mask sources.</param>
+/// <param name="Generators">The compounds that read a mesh's bakes.</param>
+/// <param name="MeshMaps">The maps a bake mask or a generator can read.</param>
+/// <param name="Alphas">The named brush alphas.</param>
+public sealed record StackVocabulary(
+    IReadOnlyList<string> Blends,
+    IReadOnlyList<StackFilterKind> Filters,
+    IReadOnlyList<string> Masks,
+    IReadOnlyList<string> Generators,
+    IReadOnlyList<string> MeshMaps,
+    IReadOnlyList<string> Alphas
+);
+
+/// <summary>Chooses the bake a stack's generators and bake masks read.</summary>
+/// <param name="Folder">The bake's folder, or null for none.</param>
+public sealed record StackMeshMapsRequest(string? Folder);
 
 /// <summary>A map as a small picture, by the hash an event carries.</summary>
 /// <param name="Usage">Which channel.</param>
@@ -86,6 +143,8 @@ public sealed record StackEvaluation(
 /// <param name="Previews">The newest maps.</param>
 /// <param name="Evaluation">The last evaluation, or null.</param>
 /// <param name="Settled">The newest revision an evaluation has reached.</param>
+/// <param name="Model">The mesh it is painted on, as the document names it, or empty.</param>
+/// <param name="MeshMaps">The bake its generators read, or null.</param>
 public sealed record StackState(
     string Id,
     string Path,
@@ -100,7 +159,9 @@ public sealed record StackState(
     IReadOnlyList<StackLayer> Layers,
     IReadOnlyList<StackPreview> Previews,
     StackEvaluation? Evaluation,
-    long Settled
+    long Settled,
+    string Model,
+    string? MeshMaps = null
 );
 #pragma warning restore SK7005
 
@@ -119,17 +180,28 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackMoveLayer), "moveLayer")]
 [JsonDerivedType(typeof(StackSetLayer), "setLayer")]
 [JsonDerivedType(typeof(StackStroke), "stroke")]
+[JsonDerivedType(typeof(StackSetModel), "setModel")]
+[JsonDerivedType(typeof(StackNestLayer), "nestLayer")]
 public abstract record StackCommand;
 
 /// <summary>Adds a layer at the top of the stack.</summary>
 /// <param name="Kind">fill, paint, filter or group.</param>
 /// <param name="Name">What it is called.</param>
 /// <param name="Values">What a fill writes to each channel, as four numbers. Ignored for other kinds.</param>
+/// <param name="Parent">The group it goes at the top of, or null for the stack itself.</param>
+/// <param name="Filter">What a filter layer does: Levels, Hsl, Blur, Invert or Grayscale.</param>
 public sealed record StackAddLayer(
     string Kind,
     string Name,
-    IReadOnlyDictionary<string, IReadOnlyList<float>>? Values = null
+    IReadOnlyDictionary<string, IReadOnlyList<float>>? Values = null,
+    string? Parent = null,
+    string? Filter = null
 ) : StackCommand;
+
+/// <summary>Moves a layer to the top of a group, or of the stack.</summary>
+/// <param name="Layer">Which.</param>
+/// <param name="Parent">The group, or null for the stack itself.</param>
+public sealed record StackNestLayer(string Layer, string? Parent) : StackCommand;
 
 /// <summary>Removes a layer.</summary>
 /// <param name="Layer">Which.</param>
@@ -140,38 +212,109 @@ public sealed record StackRemoveLayer(string Layer) : StackCommand;
 /// <param name="Delta">How many places, up the stack when positive.</param>
 public sealed record StackMoveLayer(string Layer, int Delta) : StackCommand;
 
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field.
+#pragma warning disable SK7005
+
 /// <summary>Changes what a layer's row shows. What is null stays.</summary>
 /// <param name="Layer">Which.</param>
 /// <param name="Name">What it is called.</param>
 /// <param name="Enabled">Whether it composites.</param>
 /// <param name="Opacity">How much of it composites, 0 to 1.</param>
 /// <param name="Blend">Its blend mode.</param>
+/// <param name="Channels">Which channels it writes. Empty means all of them.</param>
+/// <param name="Fill">What a fill reads: Constant, Texture or Graph.</param>
+/// <param name="Values">What a constant fill writes, replacing what these channels held.</param>
+/// <param name="Textures">What a texture fill reads, replacing what these channels held.</param>
+/// <param name="Graph">The graph a graph fill reads.</param>
+/// <param name="Projection">How a fill lands on the mesh: Uv, Triplanar or Planar.</param>
+/// <param name="Filter">What a filter does.</param>
+/// <param name="Settings">A filter's numbers, replacing what these names held.</param>
+/// <param name="Mask">Its mask, which replaces the old one and keeps any painted canvas.</param>
 public sealed record StackSetLayer(
     string Layer,
     string? Name = null,
     bool? Enabled = null,
     float? Opacity = null,
-    string? Blend = null
+    string? Blend = null,
+    IReadOnlyList<string>? Channels = null,
+    string? Fill = null,
+    IReadOnlyDictionary<string, IReadOnlyList<float>>? Values = null,
+    IReadOnlyDictionary<string, string>? Textures = null,
+    string? Graph = null,
+    string? Projection = null,
+    string? Filter = null,
+    IReadOnlyDictionary<string, IReadOnlyList<float>>? Settings = null,
+    StackMask? Mask = null
 ) : StackCommand;
+#pragma warning restore SK7005
 
-/// <summary>Where the brush goes, in texels from the image's top left.</summary>
+/// <summary>Names the mesh a stack is painted on, which is undone like any other edit.</summary>
+/// <param name="Model">A model file, absolute or relative to the stack. Empty takes the mesh away.</param>
+public sealed record StackSetModel(string Model) : StackCommand;
+
+/// <summary>Where the brush goes: in texels of the image, or on the picture of a stroke with a view.</summary>
 /// <param name="X">Its column.</param>
 /// <param name="Y">Its row.</param>
-public sealed record StackStamp(float X, float Y);
+/// <param name="Pressure">How hard, 0 to 1.</param>
+public sealed record StackStamp(float X, float Y, float Pressure = 1f);
+
+/// <summary>
+///     A camera in the mesh's own space, which a stroke keeps because a position on a picture means nothing without
+///     it. Any client with a camera can fill this in; <c>POST /viewport/pick</c> gives the viewport's.
+/// </summary>
+/// <param name="Eye">Where it is: three numbers.</param>
+/// <param name="Right">The unit direction a column grows in: three numbers.</param>
+/// <param name="Up">The unit direction a row shrinks in: three numbers.</param>
+/// <param name="Forward">The unit direction it looks: three numbers.</param>
+/// <param name="VerticalFieldOfView">In radians.</param>
+/// <param name="Width">The picture's width, in the units stamps and the brush's radius are in.</param>
+/// <param name="Height">Its height.</param>
+public sealed record StackView(
+    IReadOnlyList<float> Eye,
+    IReadOnlyList<float> Right,
+    IReadOnlyList<float> Up,
+    IReadOnlyList<float> Forward,
+    float VerticalFieldOfView,
+    int Width,
+    int Height
+);
+
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field.
+#pragma warning disable SK7005
 
 /// <summary>A brush. Everything but the radius has the value a new brush has.</summary>
-/// <param name="Radius">In texels.</param>
+/// <param name="Radius">In texels, or in the units of the picture for a stroke with a view.</param>
 /// <param name="Flow">How much one stamp lays down, 0 to 1.</param>
 /// <param name="Opacity">How much a whole stroke can lay down, 0 to 1.</param>
 /// <param name="Spacing">How far apart stamps are, as a share of the radius.</param>
 /// <param name="Falloff">How soft its edge is, 0 to 1.</param>
+/// <param name="Alpha">A named alpha (Round, Square, Chisel, Cross) or an image relative to the stack, or null.</param>
+/// <param name="Angle">Its fixed rotation, in radians.</param>
+/// <param name="Rotation">fixed, along or random.</param>
+/// <param name="PositionJitter">How far a stamp strays, as a share of the radius, 0 to 1.</param>
+/// <param name="AngleJitter">How far a stamp turns either way, in radians.</param>
+/// <param name="SizeJitter">How much of its radius a stamp can lose, 0 to 1.</param>
+/// <param name="PressureSize">How much of the radius pressure takes off, 0 to 1.</param>
+/// <param name="PressureFlow">How much of the flow pressure takes off, 0 to 1.</param>
 public sealed record StackBrush(
     float Radius,
     float Flow = 1f,
     float Opacity = 1f,
     float Spacing = 0.15f,
-    float Falloff = 0.5f
+    float Falloff = 0.5f,
+    string? Alpha = null,
+    float Angle = 0f,
+    string Rotation = "fixed",
+    float PositionJitter = 0f,
+    float AngleJitter = 0f,
+    float SizeJitter = 0f,
+    float PressureSize = 0f,
+    float PressureFlow = 0f
 );
+#pragma warning restore SK7005
+
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field.
+#pragma warning disable SK7005
 
 /// <summary>
 ///     Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one
@@ -185,6 +328,12 @@ public sealed record StackBrush(
 /// <param name="Stamps">Where the brush went since the last part.</param>
 /// <param name="Open">Whether more of this drag is coming.</param>
 /// <param name="Mask">Whether this paints the layer's mask.</param>
+/// <param name="View">
+///     The camera, which makes this a stroke on the mesh: stamps are positions on its picture, each one is found on the
+///     surface by the Worker, and it lands wherever the brush's disc falls, seams or no seams. Null paints the atlas.
+/// </param>
+/// <param name="Curve">free follows the stamps; line and path run through them as control points when it ends.</param>
+/// <param name="Mirror">x, y or z mirrors a stroke on the mesh through that plane of the mesh, or null.</param>
 public sealed record StackStroke(
     string Stroke,
     string Layer,
@@ -193,8 +342,12 @@ public sealed record StackStroke(
     IReadOnlyList<float> Colour,
     IReadOnlyList<StackStamp> Stamps,
     bool Open = false,
-    bool Mask = false
+    bool Mask = false,
+    StackView? View = null,
+    string Curve = "free",
+    string? Mirror = null
 ) : StackCommand;
+#pragma warning restore SK7005
 
 /// <summary>Edits applied whole or not at all, as one undo step.</summary>
 /// <param name="Commands">The edits, in order.</param>

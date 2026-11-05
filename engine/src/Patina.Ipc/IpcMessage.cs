@@ -32,6 +32,18 @@ public static class IpcTypes {
     /// </summary>
     public const string ViewportRender = "viewport.render";
 
+    /// <summary>
+    ///     Server to Worker: what is under <see cref="IpcMessage.Pick" />, on the mesh; answers with
+    ///     <see cref="IpcMessage.Picked" />. It reads the mesh and no device.
+    /// </summary>
+    public const string ViewportPick = "viewport.pick";
+
+    /// <summary>
+    ///     Server to Worker: from now on the viewport wears the stack <see cref="IpcMessage.Following" />, or nothing
+    ///     when that is null. The maps go from the stack's evaluation to the viewport inside the Worker.
+    /// </summary>
+    public const string ViewportStack = "viewport.stack";
+
     /// <summary>Server to Worker: forget any copy of this graph and take <see cref="IpcMessage.GraphLoad" />.</summary>
     public const string GraphLoad = "graph.load";
 
@@ -100,7 +112,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 6;
+    public const int ProtocolVersion = 7;
 
     public string Type { get; set; } = string.Empty;
 
@@ -113,6 +125,30 @@ public sealed class IpcMessage {
 
     /// <summary>The reply to health.</summary>
     public WorkerHealth? Health { get; set; }
+
+    /// <summary>bake.start: what to bake and where it goes.</summary>
+    public StackLoad? StackLoad { get; set; }
+
+    public StackSync? StackSync { get; set; }
+
+    public StackEvaluate? StackEvaluate { get; set; }
+
+    public StackResult? StackResult { get; set; }
+
+    public StackSave? StackSave { get; set; }
+
+    public StackPixelsAsk? StackPixels { get; set; }
+
+    public IReadOnlyList<StackPixels>? StackPicture { get; set; }
+
+    /// <summary>viewport.pick: where to look.</summary>
+    public ViewportPickAsk? Pick { get; set; }
+
+    /// <summary>The reply to viewport.pick.</summary>
+    public ViewportPick? Picked { get; set; }
+
+    /// <summary>viewport.stack: which stack the viewport wears.</summary>
+    public string? Following { get; set; }
 
     /// <summary>viewport.open: the mesh's path, on a disk the Worker can read.</summary>
     public string? Mesh { get; set; }
@@ -128,6 +164,7 @@ public sealed class IpcMessage {
 
     /// <summary>The reply to viewport.render.</summary>
     public ViewportFrame? Frame { get; set; }
+
 
     /// <summary>graph.load: a whole document.</summary>
     public GraphLoad? GraphLoad { get; set; }
@@ -146,21 +183,6 @@ public sealed class IpcMessage {
 
     /// <summary>The reply to graph.evaluate.</summary>
     public GraphResult? GraphResult { get; set; }
-
-    /// <summary>bake.start: what to bake and where it goes.</summary>
-    public StackLoad? StackLoad { get; set; }
-
-    public StackSync? StackSync { get; set; }
-
-    public StackEvaluate? StackEvaluate { get; set; }
-
-    public StackResult? StackResult { get; set; }
-
-    public StackSave? StackSave { get; set; }
-
-    public StackPixelsAsk? StackPixels { get; set; }
-
-    public IReadOnlyList<StackPixels>? StackPicture { get; set; }
 
     public string? StackClose { get; set; }
 
@@ -252,6 +274,15 @@ public sealed record ViewportCamera(double Yaw, double Pitch, double Distance);
 /// </summary>
 public sealed record ViewportRender(int Width, int Height, string SharedMemory, long Offset, long Capacity);
 
+/// <summary>A position on the viewport's picture to find on the mesh.</summary>
+/// <param name="X">Across, 0 to 1.</param>
+/// <param name="Y">Down, 0 to 1.</param>
+/// <param name="Camera">The camera.</param>
+/// <param name="Width">The picture's width in the units the reply's view is in.</param>
+/// <param name="Height">Its height.</param>
+/// <param name="Mesh">The mesh. Only its file is read, so this answers where there is no Vulkan.</param>
+public sealed record ViewportPickAsk(double X, double Y, ViewportCamera Camera, int Width, int Height, string Mesh);
+
 /// <summary>A frame that is now in shared memory.</summary>
 public sealed record ViewportFrame(int Width, int Height, double RenderMilliseconds);
 
@@ -333,6 +364,9 @@ public sealed record StackLoad(
 
 #pragma warning restore SK7005
 
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field.
+#pragma warning disable SK7005
+
 /// <summary>One stroke of the journal, or the part of it a Worker has not been sent.</summary>
 /// <param name="Id">Its number in the journal.</param>
 /// <param name="Paint">The paint file, relative to the stack.</param>
@@ -341,6 +375,10 @@ public sealed record StackLoad(
 /// <param name="Colour">The colour, packed 0xAABBGGRR.</param>
 /// <param name="Stamps">Where the brush went.</param>
 /// <param name="Open">Whether more of it is coming.</param>
+/// <param name="Model">The mesh that stood when it was painted, as the document names it, or empty.</param>
+/// <param name="View">The camera of a stroke on the mesh, or null for one in the atlas.</param>
+/// <param name="Curve">free, line or path.</param>
+/// <param name="Mirror">x, y, z or null.</param>
 public sealed record StackPaintPart(
     long Id,
     string Paint,
@@ -348,8 +386,14 @@ public sealed record StackPaintPart(
     StackBrush Brush,
     uint Colour,
     IReadOnlyList<StackStamp> Stamps,
-    bool Open
+    bool Open,
+    string Model,
+    StackView? View,
+    string Curve,
+    string? Mirror
 );
+
+#pragma warning restore SK7005
 
 /// <summary>
 ///     What the pixels should be: the strokes that stand, in order. The Worker works out how to get
@@ -370,7 +414,7 @@ public sealed record StackSync(
 
 /// <summary>Asks for the stack to be composited as it stands.</summary>
 /// <param name="Session">The session.</param>
-/// <param name="PreviewSide">The longest side of a preview.</param>
+/// <param name="PreviewSide">The longest side of a preview, or 0 for none: a drag the viewport is showing.</param>
 /// <param name="PreviewFolder">The content-addressed folder previews go in.</param>
 public sealed record StackEvaluate(string Session, int PreviewSide, string PreviewFolder);
 
@@ -406,7 +450,8 @@ public sealed record StackSave(string Session, string? Folder);
 ///     left.
 /// </param>
 /// <param name="Folder">Where to write each map, or null to write nothing.</param>
-public sealed record StackPixelsAsk(string Session, bool Clean, string? Folder);
+/// <param name="Viewport">Whether to read what the viewport samples rather than evaluate anything.</param>
+public sealed record StackPixelsAsk(string Session, bool Clean, string? Folder, bool Viewport = false);
 
 /// <summary>Where a preview lives in the cache, for the Worker that writes it and the Server that serves it.</summary>
 public static class GraphPreviewFiles {

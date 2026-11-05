@@ -18,6 +18,27 @@ readonly record struct ViewportPart(int FirstIndex, int IndexCount, int Material
 readonly record struct ViewportMaterial(ModelMaterialFactors Factors, ModelMaterialTextures Textures);
 
 /// <summary>
+///     A model's triangles in the space the viewport draws it, so that a ray from its camera and a stroke's stamps mean
+///     the same thing as the picture.
+/// </summary>
+/// <param name="Positions">The corners.</param>
+/// <param name="Coordinates">Their texture coordinates.</param>
+/// <param name="Indices">Three corners per triangle.</param>
+/// <param name="Bounds">The box round it, which the orbit camera frames.</param>
+/// <param name="HasCoordinates">Whether it has a layout at all.</param>
+public sealed record ViewportGeometry(
+    Vector3[] Positions,
+    Vector2[] Coordinates,
+    int[] Indices,
+    BoundingBox Bounds,
+    bool HasCoordinates
+) {
+    /// <summary>Reads a model file.</summary>
+    /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
+    public static ViewportGeometry Read(string path) => ViewportMesh.Read(path).Geometry();
+}
+
+/// <summary>
 ///     A model flattened for drawing: every part in world space in one vertex array of position, normal, texture
 ///     coordinate and tangent, so a frame binds one buffer. Rebuilt from the file whenever a Worker starts.
 /// </summary>
@@ -106,6 +127,20 @@ sealed class ViewportMesh {
         }
 
         return new([..vertices], [..indices], [..parts], ReadMaterials(read), bounds, hasCoordinates, false);
+    }
+
+    /// <summary>The triangles as a brush reaches them, in the space the viewport draws them in.</summary>
+    public ViewportGeometry Geometry() {
+        var count = Vertices.Length / FloatsPerVertex;
+        var positions = new Vector3[count];
+        var coordinates = new Vector2[count];
+        for (var vertex = 0; vertex < count; vertex++) {
+            var at = vertex * FloatsPerVertex;
+            positions[vertex] = new(Vertices[at], Vertices[at + 1], Vertices[at + 2]);
+            coordinates[vertex] = new(Vertices[at + CoordinateOffset], Vertices[at + CoordinateOffset + 1]);
+        }
+
+        return new(positions, coordinates, [..Indices.Select(static index => (int)index)], Bounds, HasCoordinates);
     }
 
     /// <summary>This mesh with a tangent at every vertex, split wherever two corners do not agree on one.</summary>

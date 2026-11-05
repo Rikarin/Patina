@@ -70,6 +70,7 @@ sealed class WorkerLoop(
                 IpcTypes.ViewportMaps => viewport.SetMaps(request),
                 IpcTypes.ViewportCamera => viewport.SetCamera(request),
                 IpcTypes.ViewportRender => viewport.Render(request),
+                IpcTypes.ViewportPick => viewport.Pick(request),
                 IpcTypes.GraphLoad
                     or IpcTypes.GraphEvaluate
                     or IpcTypes.GraphImage
@@ -80,7 +81,8 @@ sealed class WorkerLoop(
                     or IpcTypes.StackSave
                     or IpcTypes.StackCheckpoint
                     or IpcTypes.StackPixels
-                    or IpcTypes.StackClose => OnDevice(request),
+                    or IpcTypes.StackClose
+                    or IpcTypes.ViewportStack => OnDevice(request),
                 IpcTypes.BakeStart => bakes.Start(request, link),
                 IpcTypes.BakeCancel => bakes.Cancel(request),
                 IpcTypes.BuildStart => builds.Start(request, link),
@@ -93,6 +95,7 @@ sealed class WorkerLoop(
     IpcMessage OnDevice(IpcMessage request) {
         lock (gpu.Gate) {
             return request.Type switch {
+                IpcTypes.ViewportStack => stacks.Follow(request),
                 IpcTypes.GraphLoad => graphs.Load(request),
                 IpcTypes.GraphEvaluate => graphs.Evaluate(request),
                 IpcTypes.GraphImage => graphs.Image(request),

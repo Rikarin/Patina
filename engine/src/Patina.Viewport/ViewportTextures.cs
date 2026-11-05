@@ -61,6 +61,62 @@ sealed class ViewportTextures : IDisposable {
         );
     }
 
+    /// <summary>A cube map for the life of the renderer, released through <paramref name="cleanup" />.</summary>
+    public TextureViewHandle UploadCube(TextureData data, List<Action> cleanup) {
+        var texture = device.CreateTexture(
+            new(
+                data.Format,
+                data.Width,
+                data.Height,
+                TextureUsage.Sampled | TextureUsage.CopyDestination,
+                MipLevels: data.LevelCount,
+                ArrayLayers: CubeMap.Faces,
+                Dimension: TextureDimension.TextureCube,
+                Name: "viewport environment"
+            )
+        );
+        var view = device.CreateTextureView(texture);
+        cleanup.Add(() => {
+                device.Destroy(view);
+                device.Destroy(texture);
+            }
+        );
+
+        var staging = device.CreateBuffer(
+            new(data.ByteLength, BufferUsage.CopySource, MemoryAccess.HostUpload, "viewport environment staging")
+        );
+        device.Write(staging, 0, data.Pixels);
+        using (var commands = device.BeginCommandList(QueueKind.Graphics, "viewport environment")) {
+            commands.Barrier(
+                new BarrierGroup([], [new(texture, ResourceState.Undefined, ResourceState.CopyDestination)])
+            );
+            CopyFaces(commands, data, staging, texture);
+            commands.Barrier(
+                new BarrierGroup([], [new(texture, ResourceState.CopyDestination, ResourceState.ShaderRead)])
+            );
+            commands.Finish();
+            device.GraphicsQueue.Submit([commands]);
+        }
+
+        device.WaitIdle();
+        device.Destroy(staging);
+        return view;
+    }
+
+    static void CopyFaces(ICommandList commands, TextureData data, BufferHandle staging, TextureHandle texture) {
+        foreach (var level in data.Levels) {
+            var faceBytes = level.Length / CubeMap.Faces;
+            for (var face = 0; face < CubeMap.Faces; face++) {
+                commands.CopyBufferToTexture(
+                    staging,
+                    level.Offset + face * faceBytes,
+                    new(texture, level.Level, face),
+                    new(level.Width, level.Height, 1)
+                );
+            }
+        }
+    }
+
     /// <summary>Lets go of everything not used since <see cref="BeginUse" />.</summary>
     public void EndUse() {
         device.WaitIdle();

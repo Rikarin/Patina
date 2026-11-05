@@ -6,6 +6,40 @@ namespace Patina.Contracts;
 /// <param name="Distance">From the model's centre, in bounding radii.</param>
 public sealed record ViewportCameraState(double Yaw, double Pitch, double Distance);
 
+/// <summary>Asks what is under a position in the viewport.</summary>
+/// <param name="X">Across the picture, 0 to 1.</param>
+/// <param name="Y">Down it, 0 to 1.</param>
+/// <param name="Camera">The camera to look through, or null for the viewport's.</param>
+/// <param name="Width">The picture's width in the units a stroke will use, or null for the viewport's.</param>
+/// <param name="Height">Its height.</param>
+public sealed record ViewportPickRequest(
+    double X,
+    double Y,
+    ViewportCameraState? Camera = null,
+    int? Width = null,
+    int? Height = null
+);
+
+/// <summary>What a position in the viewport landed on.</summary>
+/// <param name="Found">Whether it met the mesh.</param>
+/// <param name="View">The camera it was looked through, which a stroke on the mesh carries.</param>
+/// <param name="Triangle">The triangle.</param>
+/// <param name="U">The texture coordinate across.</param>
+/// <param name="V">The texture coordinate down.</param>
+/// <param name="Position">Where on the mesh, in its own space: three numbers.</param>
+public sealed record ViewportPick(
+    bool Found,
+    StackView View,
+    int Triangle = -1,
+    float U = 0f,
+    float V = 0f,
+    IReadOnlyList<float>? Position = null
+);
+
+/// <summary>Asks the viewport to wear a stack: its mesh, and its maps as the strokes leave them.</summary>
+/// <param name="Stack">The stack session.</param>
+public sealed record ViewportStackRequest(string Stack);
+
 /// <summary>Asks the viewport to show a mesh.</summary>
 /// <param name="Path">The file's path, on the Server's machine.</param>
 public sealed record ViewportMeshRequest(string Path);
@@ -54,8 +88,11 @@ public sealed record ViewportGraphRequest(string Graph);
 /// <param name="RenderScale">
 ///     The share of that size frames are rendered at, which drops while a client cannot keep up.
 /// </param>
+/// <param name="Stack">The stack session it is wearing, or null.</param>
 /// <param name="Frames">How many frames this Server has published.</param>
 /// <param name="Error">Why the last command failed, or null.</param>
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field.
+#pragma warning disable SK7005
 public sealed record ViewportState(
     string? Mesh,
     ViewportMapPaths Maps,
@@ -64,8 +101,10 @@ public sealed record ViewportState(
     int Height,
     double RenderScale,
     long Frames,
-    string? Error
+    string? Error,
+    string? Stack = null
 );
+#pragma warning restore SK7005
 
 /// <summary>What a client sends over <c>/ws/viewport</c>, as JSON text. Any field may be left out.</summary>
 /// <param name="Camera">Where to look.</param>

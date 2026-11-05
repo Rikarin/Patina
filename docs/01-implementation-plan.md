@@ -434,12 +434,15 @@ bezel, on all three platforms, in CI.
 
 ### P5: painting (12–16 weeks, the biggest risk)
 
-> **Status (2026-11-05): the foundations are in and the exit is not met.** S4 passed at the median and S5's painting half passed,
-> with a journal ([ADR 0009](adr/0009-painting.md)). The tile store, `.vxpaint` packs, the migration and dirty regions are in Vixen,
-> and its pane stores tiles but still composites with `PaintComposite`, so Vixen's documented mismatch stands there. In Patina a stack
-> is a document on the Server, a stroke is stamps, the plan is the only compositor, and a test holds exported pixels equal to composite
-> pixels. The Paint pane is a layer list and a brush on the 2D map at 512². Not started: the live full-stack viewport, masks in the
-> UI, generators, seams and gutters on a mesh, symmetry, UV-pane painting, UDIM, and everything after them in the list below.
+> **Status (2026-11-05): painting works on a mesh and the exit is not met.** A stack names a model. A stroke is stamps through a camera on a
+> picture, found on the surface by the Worker; only covered texels are painted, each island has a gutter, and a stroke crosses seams in the
+> viewport and in the atlas. The stack's maps wear the mesh in the viewport as you paint, dirty rectangles only, and a test holds the texture each
+> slot samples equal to the exported file ([ADR 0009](adr/0009-painting.md)). Vixen's panes moved onto `LayerStackEvaluator` in the same change,
+> so #849 is gone and there is one implementation. The studio paints in the viewport with a brush, a line, a path, mirrors, alphas, jitter and
+> pressure, and has fill, paint, filter and group layers, masks, anchors, generators over a bake, and all sixteen blend modes; the atlas pane paints
+> as a UV pane. **What stops the exit:** stamp to frame in a real window is 67 to 100 ms at the median for a brush of 48 texels at 4K on 20 layers,
+> and a brush of 96 texels falls behind the pointer, measured under load only, against S4's 50 ms; and no artist has textured a hero prop.
+> Not started: UDIM, multiple texture sets, stencil, clone, smudge, an occlusion test under the brush, mask sub-layers and effects in the UI.
 
 **Exit:** an artist textures a hero prop end to end, and **what they see under the brush is exactly what exports**.
 

@@ -5,6 +5,7 @@ import {
   DestroyRef,
   type ElementRef,
   computed,
+  effect,
   inject,
   signal,
   viewChild
@@ -12,6 +13,8 @@ import {
 import { XuiButtonImports } from '@xui/button';
 import { desktop } from '../core/desktop';
 import { GraphStore } from '../graph/graph-store';
+import { PaintStore, pressureOf } from '../paint/paint-store';
+import { StrokeGesture } from '../paint/stroke-gesture';
 import { FramePainter } from './frame-painter';
 import type { ViewportFrame } from './frame-transport';
 import { orbit, zoom } from './orbit';
@@ -42,7 +45,25 @@ import { ViewportClient } from './viewport-client';
           Show {{ document.name }}
         </button>
       }
+      @if (paint.worn()) {
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          data-testid="viewport-paint"
+          [variant]="painting() ? 'default' : 'ghost'"
+          [title]="'Paints the mesh. Hold Alt to orbit.'"
+          (click)="painting.set(!painting())"
+        >
+          Paint
+        </button>
+      }
       <span class="flex-1"></span>
+      @if (stampMs() !== null) {
+        <span class="readout" data-testid="viewport-stamp" [attr.data-stamp-ms]="stampTimes()">
+          stamp {{ stampMs() }} ms
+        </span>
+      }
       @if (viewport.stats(); as stats) {
         <span class="readout" data-testid="viewport-stats">
           {{ stats.width }}×{{ stats.height }} · {{ stats.fps }} fps · {{ stats.latencyMs.toFixed(0) }} ms
@@ -57,13 +78,33 @@ import { ViewportClient } from './viewport-client';
         role="img"
         [attr.data-frames]="viewport.frames()"
         [class.cursor-grabbing]="dragging()"
-        [class.cursor-grab]="!dragging()"
+        [class.cursor-grab]="!dragging() && !painting()"
+        [class.cursor-crosshair]="painting()"
         (pointerdown)="press($event)"
         (pointermove)="drag($event)"
         (pointerup)="release($event)"
         (pointercancel)="release($event)"
+        (pointerleave)="brushAt.set(null)"
+        (dblclick)="gesture.finish()"
         (wheel)="wheel($event)"
       ></canvas>
+      @if (painting()) {
+        @if (brushAt(); as at) {
+          <div
+            class="pointer-events-none absolute rounded-full border border-white/70 mix-blend-difference"
+            data-testid="viewport-brush"
+            [style.height.px]="paint.radius() * 2"
+            [style.left.px]="at.x - paint.radius()"
+            [style.top.px]="at.y - paint.radius()"
+            [style.width.px]="paint.radius() * 2"
+          ></div>
+        }
+        @if (gesture.points().length > 1) {
+          <svg class="pointer-events-none absolute inset-0 size-full" data-testid="viewport-curve">
+            <polyline class="fill-none stroke-white/70" [attr.points]="curve()" />
+          </svg>
+        }
+      }
       @if (message(); as text) {
         <p class="text-foreground-muted absolute inset-x-0 top-1/2 text-center">{{ text }}</p>
       }
@@ -73,6 +114,7 @@ import { ViewportClient } from './viewport-client';
 export class ViewportPane implements AfterViewInit {
   protected readonly viewport = inject(ViewportClient);
   protected readonly graph = inject(GraphStore);
+  protected readonly paint = inject(PaintStore);
   private readonly destroyRef = inject(DestroyRef);
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
   private readonly host = viewChild.required<ElementRef<HTMLElement>>('host');
@@ -80,6 +122,26 @@ export class ViewportPane implements AfterViewInit {
   private pending: ViewportFrame | null = null;
   private animation = 0;
   private cameraDirty = false;
+  private stroking = false;
+
+  /** Whether a left drag paints rather than orbits. */
+  protected readonly painting = signal(false);
+  /** Where the brush is over the canvas, in the units of a stroke. */
+  protected readonly brushAt = signal<{ x: number; y: number } | null>(null);
+  protected readonly gesture = new StrokeGesture(this.paint, () => this.aim());
+  protected readonly curve = computed(() =>
+    this.gesture
+      .points()
+      .map(point => `${point.x},${point.y}`)
+      .join(' ')
+  );
+
+  protected readonly stampTimes = computed(() => this.paint.stampTimes().join(','));
+  protected readonly stampMs = computed(() => {
+    const times = [...this.paint.stampTimes().slice(-60)].sort((a, b) => a - b);
+    const middle = times[Math.floor(times.length / 2)];
+    return middle === undefined ? null : Math.round(middle);
+  });
 
   protected readonly canOpen = desktop() !== undefined;
   protected readonly dragging = signal(false);
@@ -92,6 +154,17 @@ export class ViewportPane implements AfterViewInit {
 
     return this.viewport.error() ?? (this.viewport.mesh() ? null : 'Open a mesh to see it here.');
   });
+
+  constructor() {
+    // What the viewport shows changed from elsewhere, and the label needs telling.
+    effect(() => {
+      if (this.paint.worn()) {
+        void this.viewport.sync();
+      } else {
+        this.painting.set(false);
+      }
+    });
+  }
 
   ngAfterViewInit(): void {
     const canvas = this.canvas().nativeElement;
@@ -118,19 +191,35 @@ export class ViewportPane implements AfterViewInit {
 
   protected press(event: PointerEvent): void {
     this.canvas().nativeElement.setPointerCapture(event.pointerId);
+    if (this.painting() && event.button === 0 && !event.altKey) {
+      this.stroking = true;
+      this.gesture.press(this.stamp(event));
+      return;
+    }
+
     this.dragging.set(true);
     this.viewport.moveCamera(this.viewport.camera(), true);
   }
 
   protected drag(event: PointerEvent): void {
-    if (this.dragging()) {
+    this.brushAt.set(this.spot(event));
+    if (this.stroking) {
+      // A display frame can hold several pointer moves, and a stroke wants all of them.
+      const moves = event.getCoalescedEvents();
+      for (const move of moves.length > 0 ? moves : [event]) {
+        this.gesture.move(this.stamp(move));
+      }
+    } else if (this.dragging()) {
       this.viewport.camera.set(orbit(this.viewport.camera(), event.movementX, event.movementY));
       this.scheduleCamera();
     }
   }
 
   protected release(event: PointerEvent): void {
-    if (this.dragging()) {
+    if (this.stroking) {
+      this.stroking = false;
+      this.gesture.release();
+    } else if (this.dragging()) {
       this.canvas().nativeElement.releasePointerCapture(event.pointerId);
       this.dragging.set(false);
       this.viewport.moveCamera(this.viewport.camera(), false);
@@ -140,6 +229,21 @@ export class ViewportPane implements AfterViewInit {
   protected wheel(event: WheelEvent): void {
     event.preventDefault();
     this.viewport.moveCamera(zoom(this.viewport.camera(), event.deltaY), false);
+  }
+
+  private spot(event: PointerEvent): { x: number; y: number } {
+    const box = this.canvas().nativeElement.getBoundingClientRect();
+    return { x: event.clientX - box.left, y: event.clientY - box.top };
+  }
+
+  /** A stroke is measured in the canvas's layout pixels, so a brush is the same size whatever the render scale. */
+  private stamp(event: PointerEvent) {
+    return { ...this.spot(event), pressure: pressureOf(event) };
+  }
+
+  private aim() {
+    const { clientWidth, clientHeight } = this.canvas().nativeElement;
+    return { width: clientWidth, height: clientHeight, camera: this.viewport.camera() };
   }
 
   /** Pointer events outrun the display: the camera goes out once per frame, carrying the newest position. */
@@ -171,6 +275,7 @@ export class ViewportPane implements AfterViewInit {
       this.pending = null;
       this.painter.paint(frame);
       this.viewport.framePainted(frame);
+      this.paint.framePainted(frame.painted);
     }
   }
 

@@ -2,18 +2,53 @@ import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core'
 import {
   type Connection,
   type PatinaClient,
+  type StackBrush,
+  type StackCommand,
   type StackCommandBatch,
   type StackEvent,
   type StackLayer,
+  type StackMask,
   type StackPreview,
   type StackStamp,
   type StackState,
+  type StackView,
+  type StackVocabulary,
+  type ViewportCameraState,
   unwrap
 } from '@patina/api-client';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
 
 const ReconnectMs = 1_000;
+
+/** How many stamp-to-frame times are kept, which is what the readout and the bench read. */
+const StampTimes = 2048;
+
+/** What a stroke draws with, beyond its radius. */
+export type BrushSettings = Omit<StackBrush, 'radius'>;
+
+export type PaintTool = 'brush' | 'line' | 'path';
+export type Mirror = 'none' | 'x' | 'y' | 'z';
+
+/** Where a stroke on the mesh is aimed: a picture of this size through this camera. */
+export interface Aim {
+  width: number;
+  height: number;
+  camera: ViewportCameraState;
+}
+
+/** A layer with how deep in groups it is, top of the stack first. */
+export interface LayerRow {
+  layer: StackLayer;
+  depth: number;
+}
+
+/** The stack as a list, each group above what it holds. */
+export function rowsOf(layers: readonly StackLayer[], depth = 0): LayerRow[] {
+  return [...layers]
+    .reverse()
+    .flatMap(layer => [{ layer, depth }, ...rowsOf(layer.children, depth + 1)]);
+}
 
 /** Where a client follows a stack from. */
 export function stackSocketUrl(connection: Connection, id: string, since: number): string {
@@ -50,6 +85,12 @@ export class PaintStore {
   private stroke: string | null = null;
   private strokes = 0;
   private pending: StackStamp[] = [];
+  private view: StackView | null = null;
+  private aiming = false;
+  private ending = false;
+  private oldestStamp = 0;
+  private lastShown = 0;
+  private readonly sentAt = new Map<number, number>();
   private sending: Promise<void> | null = null;
   private shownUrl: string | null = null;
   private wanted: string | null = null;
@@ -61,9 +102,33 @@ export class PaintStore {
   readonly radius = signal(24);
   readonly colour = signal('#d9401a');
   readonly picture = signal<string | null>(null);
+  readonly tool = signal<PaintTool>('brush');
+  readonly mirror = signal<Mirror>('none');
+  /** Whether strokes go to the chosen layer's mask rather than its channels. */
+  readonly masking = signal(false);
+  readonly brush = signal<BrushSettings>({
+    flow: 1,
+    opacity: 1,
+    spacing: 0.15,
+    falloff: 0.5,
+    alpha: 'Round',
+    angle: 0,
+    rotation: 'fixed',
+    positionJitter: 0,
+    angleJitter: 0,
+    sizeJitter: 0,
+    pressureSize: 0,
+    pressureFlow: 0
+  });
+  readonly vocabulary = signal<StackVocabulary | null>(null);
+  /** Whether the viewport is wearing this stack, so a stroke can be made on the mesh. */
+  readonly worn = signal(false);
+  /** From a stamp leaving the pointer to the first frame painted with it, newest last, in milliseconds. */
+  readonly stampTimes = signal<readonly number[]>([]);
 
   /** The layers top first, as a stack reads, with the ones a brush can reach marked by their kind. */
-  readonly layers = computed<readonly StackLayer[]>(() => [...(this.state()?.layers ?? [])].reverse());
+  readonly layers = computed<readonly LayerRow[]>(() => rowsOf(this.state()?.layers ?? []));
+  readonly chosen = computed(() => this.layers().find(row => row.layer.id === this.layer())?.layer ?? null);
 
   constructor() {
     inject(DestroyRef).onDestroy(() => {
@@ -89,22 +154,104 @@ export class PaintStore {
           ? await client.POST('/api/v1/stacks/new', { body: { path, width: 2048, height: 2048 } })
           : await client.POST('/api/v1/stacks', { body: { path } })
       );
+      this.worn.set(false);
       this.adopt(state);
       await this.follow();
+      this.vocabulary.set(unwrap(await client.GET('/api/v1/stacks/vocabulary')));
+      if (state.model) {
+        await this.wear();
+      }
     } catch (failure) {
       this.failure.set(failure instanceof Error ? failure.message : String(failure));
     }
   }
 
-  /** Adds a layer to paint on, at the top. */
-  async addLayer(): Promise<void> {
-    await this.command({ commands: [{ op: 'addLayer', kind: 'paint', name: 'Paint' }] });
+  /** Adds a layer at the top of the stack, or of the chosen group, and chooses it. */
+  async addLayer(kind = 'paint', name = 'Paint', filter?: string): Promise<void> {
+    const chosen = this.chosen();
+    const parent = chosen?.kind === 'group' ? chosen.id : null;
+    const before = new Set(this.layers().map(row => row.layer.id));
+    await this.command({ commands: [{ op: 'addLayer', kind, name, parent, filter: filter ?? null }] });
     await this.refresh();
+    const added = this.layers().find(row => !before.has(row.layer.id));
+    if (added) {
+      this.layer.set(added.layer.id);
+    }
   }
 
   async setEnabled(layer: StackLayer, enabled: boolean): Promise<void> {
-    await this.command({ commands: [{ op: 'setLayer', layer: layer.id, enabled }] });
+    await this.edit({ op: 'setLayer', layer: layer.id, enabled });
+  }
+
+  /** One edit of the document, whose result the stack's events and this read bring back. */
+  async edit(...commands: StackCommand[]): Promise<void> {
+    await this.command({ commands });
     await this.refresh();
+  }
+
+  /** Binds a mesh and puts the stack on it in the viewport. */
+  async bindMesh(path: string): Promise<void> {
+    await this.edit({ op: 'setModel', model: path });
+    await this.wear();
+  }
+
+  /** Puts the stack on its mesh in the viewport, which shows every stroke from then on. */
+  async wear(): Promise<void> {
+    const stack = this.state()?.id;
+    if (!stack) {
+      return;
+    }
+
+    try {
+      const client = await this.api();
+      unwrap(await client.PUT('/api/v1/viewport/stack', { body: { stack } }));
+      this.worn.set(true);
+    } catch (failure) {
+      this.failure.set(failure instanceof Error ? failure.message : String(failure));
+    }
+  }
+
+  /** The mesh the viewport shows, for binding what is already on screen. */
+  async viewportMesh(): Promise<string | null> {
+    const client = await this.api();
+    return unwrap(await client.GET('/api/v1/viewport')).mesh ?? null;
+  }
+
+  /** Chooses the bake generators read. */
+  async useMeshMaps(folder: string | null): Promise<void> {
+    const id = this.state()?.id;
+    if (!id) {
+      return;
+    }
+
+    try {
+      const client = await this.api();
+      unwrap(await client.PUT('/api/v1/stacks/{id}/mesh-maps', { params: { path: { id } }, body: { folder } }));
+      await this.refresh();
+    } catch (failure) {
+      this.failure.set(failure instanceof Error ? failure.message : String(failure));
+    }
+  }
+
+  setMask(layer: StackLayer, mask: StackMask): Promise<void> {
+    return this.edit({ op: 'setLayer', layer: layer.id, mask });
+  }
+
+  /** A frame reached the screen showing this revision of the stack. */
+  framePainted(revision: number): void {
+    this.lastShown = Math.max(this.lastShown, revision);
+    const now = performance.now();
+    const times: number[] = [];
+    for (const [sent, at] of this.sentAt) {
+      if (sent <= revision) {
+        times.push(now - at);
+        this.sentAt.delete(sent);
+      }
+    }
+
+    if (times.length > 0) {
+      this.stampTimes.update(held => [...held, ...times].slice(-StampTimes));
+    }
   }
 
   async act(action: 'undo' | 'redo' | 'save'): Promise<void> {
@@ -113,6 +260,8 @@ export class PaintStore {
       return;
     }
 
+    // An undo that overtook the end of a drag would take back the part before it and leave the rest standing.
+    await this.drained();
     const client = await this.api();
     const path = { params: { path: { id } } };
     unwrap(
@@ -125,15 +274,31 @@ export class PaintStore {
     await this.refresh();
   }
 
-  /** The brush came down on the paint layer chosen. */
-  begin(stamp: StackStamp): void {
+  /** Waits until every stamp the pointer made has reached the Server. */
+  private async drained(): Promise<void> {
+    while (this.sending || this.aiming || this.ending || this.pending.length > 0) {
+      await (this.sending ?? new Promise(done => setTimeout(done)));
+    }
+  }
+
+  /** The brush came down on the layer chosen: on the atlas, or on the mesh when it is aimed. */
+  begin(stamp: StackStamp, aim?: Aim): void {
     this.strokes += 1;
     this.stroke = `drag-${Date.now()}-${this.strokes}`;
+    this.view = null;
+    if (aim) {
+      void this.aimAt(stamp, aim);
+    }
+
     this.move(stamp);
   }
 
   move(stamp: StackStamp): void {
     if (this.stroke) {
+      if (this.pending.length === 0) {
+        this.oldestStamp = performance.now();
+      }
+
       this.pending.push(stamp);
       this.flush(true);
     }
@@ -142,14 +307,58 @@ export class PaintStore {
   /** The brush came up: the last part closes the undo step. */
   end(): void {
     if (this.stroke) {
+      this.ending = true;
       this.flush(false);
     }
   }
 
+  /** A line or a path, all at once: the Worker runs the stroke through these points. */
+  async paintCurve(points: readonly StackStamp[], curve: 'line' | 'path', aim?: Aim): Promise<void> {
+    const layer = this.layer();
+    const [first] = points;
+    if (!layer || !first || points.length < 2) {
+      return;
+    }
+
+    this.strokes += 1;
+    const stroke = `${curve}-${Date.now()}-${this.strokes}`;
+    const view = aim ? await this.pick(first, aim) : null;
+    await this.send(stroke, layer, [...points], false, view, curve, performance.now());
+  }
+
+  /** The camera comes from the Server, and the stroke's first part waits for it: a stamp means nothing without it. */
+  private async aimAt(stamp: StackStamp, aim: Aim): Promise<void> {
+    this.aiming = true;
+    try {
+      this.view = await this.pick(stamp, aim);
+    } catch (failure) {
+      this.failure.set(failure instanceof Error ? failure.message : String(failure));
+      this.stroke = null;
+      this.ending = false;
+      this.pending = [];
+    } finally {
+      this.aiming = false;
+    }
+
+    if (this.stroke) {
+      this.flush(true);
+    }
+  }
+
+  private async pick(stamp: StackStamp, aim: Aim): Promise<StackView> {
+    const client = await this.api();
+    const { width, height, camera } = aim;
+    return unwrap(
+      await client.POST('/api/v1/viewport/pick', {
+        body: { x: stamp.x / width, y: stamp.y / height, camera, width, height }
+      })
+    ).view;
+  }
+
   private flush(open: boolean): void {
-    if (this.sending) {
+    if (this.sending || this.aiming) {
       if (!open) {
-        void this.sending.then(() => this.flush(false));
+        void (this.sending ?? Promise.resolve()).then(() => setTimeout(() => this.flush(false)));
       }
 
       return;
@@ -163,7 +372,7 @@ export class PaintStore {
 
     const stamps = this.pending;
     this.pending = [];
-    this.sending = this.send(stroke, layer, stamps, open).finally(() => {
+    this.sending = this.send(stroke, layer, stamps, open, this.view, 'free', this.oldestStamp).finally(() => {
       this.sending = null;
       if (this.pending.length > 0) {
         this.flush(open && this.stroke !== null);
@@ -171,43 +380,61 @@ export class PaintStore {
     });
     if (!open) {
       this.stroke = null;
+      this.ending = false;
     }
   }
 
-  private async send(stroke: string, layer: string, stamps: StackStamp[], open: boolean): Promise<void> {
-    await this.command({
+  private async send(
+    stroke: string,
+    layer: string,
+    stamps: StackStamp[],
+    open: boolean,
+    view: StackView | null,
+    curve: 'free' | 'line' | 'path',
+    since: number
+  ): Promise<void> {
+    const mirror = this.mirror();
+    const revision = await this.command({
       commands: [
         {
           op: 'stroke',
           stroke,
           layer,
           channel: this.channel(),
-          brush: { radius: this.radius(), flow: 1, opacity: 1, spacing: 0.15, falloff: 0.5 },
+          brush: { ...this.brush(), radius: this.radius() },
           colour: colourOf(this.colour()),
           stamps,
           open,
-          mask: false
+          mask: this.masking(),
+          view,
+          curve,
+          mirror: view && mirror !== 'none' ? mirror : null
         }
       ]
     });
+    if (revision !== null && revision > this.lastShown) {
+      this.sentAt.set(revision, since);
+    }
   }
 
-  private async command(body: StackCommandBatch): Promise<void> {
+  /** Sends a batch, and answers the revision it made, or null when it was refused. */
+  private async command(body: StackCommandBatch): Promise<number | null> {
     const id = this.state()?.id;
     if (!id) {
-      return;
+      return null;
     }
 
     try {
       const client = await this.api();
-      unwrap(
+      return unwrap(
         await client.POST('/api/v1/stacks/{id}/commands', {
           params: { path: { id } },
           body
         })
-      );
+      ).revision;
     } catch (failure) {
       this.failure.set(failure instanceof Error ? failure.message : String(failure));
+      return null;
     }
   }
 
@@ -217,8 +444,9 @@ export class PaintStore {
     this.channel.update(channel =>
       state.channels.some(c => c.usage === channel) ? channel : (state.channels[0]?.usage ?? channel)
     );
-    if (!state.layers.some(layer => layer.id === this.layer())) {
-      this.layer.set([...state.layers].reverse().find(layer => layer.kind === 'paint')?.id ?? null);
+    const rows = rowsOf(state.layers);
+    if (!rows.some(row => row.layer.id === this.layer())) {
+      this.layer.set(rows.find(row => row.layer.kind === 'paint')?.layer.id ?? null);
     }
 
     this.show(state.previews);
@@ -305,6 +533,11 @@ export class PaintStore {
     this.client ??= this.createClient(await this.connection());
     return this.client;
   }
+}
+
+/** How hard a pointer is pressing: a mouse says 0.5 for a button held, and means nothing by it. */
+export function pressureOf(event: PointerEvent): number {
+  return event.pointerType === 'pen' ? event.pressure : 1;
 }
 
 /** A colour swatch's value as the four numbers a stroke carries. */

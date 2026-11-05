@@ -2,6 +2,7 @@ using Patina.Contracts;
 using Patina.Ipc;
 using Patina.Library;
 using Patina.Server.Graphs;
+using Patina.Server.Viewport;
 
 namespace Patina.Server.Stacks;
 
@@ -16,6 +17,7 @@ public sealed class StackEvaluator(
     WorkerLink worker,
     PreviewStore store,
     ServerIdentity identity,
+    ViewportSession viewport,
     ILogger<StackEvaluator> logger
 ) : BackgroundService {
     const int PreviewSide = 512;
@@ -56,12 +58,13 @@ public sealed class StackEvaluator(
         StackSession session,
         bool clean,
         string? folder,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        bool sampled = false
     ) {
         await ReachedAsync(session, cancellationToken);
         var connection = await ConnectionAsync(cancellationToken);
         var reply = await connection.SendAsync(
-            new() { Type = IpcTypes.StackPixels, StackPixels = new(session.Id, clean, folder) },
+            new() { Type = IpcTypes.StackPixels, StackPixels = new(session.Id, clean, folder, sampled) },
             cancellationToken
         );
         return reply.StackPicture ?? [];
@@ -157,8 +160,9 @@ public sealed class StackEvaluator(
         var held = marks.TryGetValue(session.Id, out var known) ? known : marks[session.Id] = new();
         if (!told.TryGetValue(session.Id, out var state)
             || !ReferenceEquals(state.Connection, connection)
+            || state.MeshMaps != session.MeshMaps
             || !Prefix(state.Base, work.Standing)) {
-            state = new(connection);
+            state = new(connection) { MeshMaps = session.MeshMaps };
             var load = new StackLoad(
                 session.Id,
                 session.Path,
@@ -166,7 +170,7 @@ public sealed class StackEvaluator(
                 session.Set,
                 session.Folder,
                 session.ImageRoots,
-                null,
+                session.MeshMaps,
                 Newest(held, work.Standing),
                 session.Created
             );
@@ -199,11 +203,19 @@ public sealed class StackEvaluator(
         );
         state.Document = work.Document;
         told[session.Id] = state;
+
+        // ⚠ The viewport is what a drag watches, and a preview costs an encode per map per stamp. The last part of
+        // the stroke has no open strokes, so the maps a client lists catch up as it ends.
+        var side = viewport.Wears(session.Id)
+            && work.Standing.Any(static entry => entry is { Open: true, View: not null })
+                ? 0
+                : PreviewSide;
         var reply = await connection.SendAsync(
-            new() { Type = IpcTypes.StackEvaluate, StackEvaluate = new(session.Id, PreviewSide, store.Root) },
+            new() { Type = IpcTypes.StackEvaluate, StackEvaluate = new(session.Id, side, store.Root) },
             cancellationToken
         );
         session.Publish(work, reply.StackResult!);
+        viewport.Repainted(session.Id, work.Revision);
         held.Stamps += parts.Sum(static part => part.Stamps.Count);
         await CheckpointAsync(session, connection, work, held, cancellationToken);
     }
@@ -299,6 +311,8 @@ public sealed class StackEvaluator(
         public IpcConnection Connection { get; } = connection;
 
         public string? Document { get; set; }
+
+        public string? MeshMaps { get; init; }
 
         public Dictionary<long, (int Stamps, bool Open)> Sent { get; } = [];
 

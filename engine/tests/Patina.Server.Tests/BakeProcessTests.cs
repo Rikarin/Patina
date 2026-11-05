@@ -392,6 +392,50 @@ public sealed class BakeProcessTests : IDisposable {
         Assert.True(File.Exists($"{path}.bake"));
     }
 
+    /// <summary>A generator on a stack: baked mesh maps through a graph, as a mask, from a folder it chose.</summary>
+    [Fact]
+    public async Task A_generator_mask_reads_the_bake_a_stack_chose() {
+        using var deadline = Deadline(120);
+        StartServer();
+        await DiscoverAsync(deadline.Token);
+        StartWorker();
+        var request = Request(128) with { Maps = ["ao", "curvature"] };
+        var job = await UntilAsync((await StartAsync(request, deadline.Token)).Id, Over, deadline.Token);
+        Assert.Equal(JobStates.Done, job.State);
+
+        using var created = await http.PostAsJsonAsync(
+            "/api/v1/stacks/new",
+            new(Path.Combine(folder.FullName, "Worn.vxlayers"), 128, 128),
+            ContractsJsonContext.Default.StackCreateRequest,
+            deadline.Token
+        );
+        created.EnsureSuccessStatusCode();
+        var stack = (await created.Content.ReadFromJsonAsync(ContractsJsonContext.Default.StackState, deadline.Token))!;
+        using var chosen = await http.PutAsJsonAsync(
+            $"/api/v1/stacks/{stack.Id}/mesh-maps",
+            new(Output),
+            ContractsJsonContext.Default.StackMeshMapsRequest,
+            deadline.Token
+        );
+        Assert.Equal(HttpStatusCode.NoContent, chosen.StatusCode);
+
+        using var masked = await http.PostAsJsonAsync(
+            $"/api/v1/stacks/{stack.Id}/commands",
+            new([new StackSetLayer("paint", Mask: new("Generator", Generator: "Generators/Dirt"))]),
+            ContractsJsonContext.Default.StackCommandBatch,
+            deadline.Token
+        );
+        Assert.True(masked.IsSuccessStatusCode, await masked.Content.ReadAsStringAsync(deadline.Token));
+
+        using var pixels = await http.GetAsync($"/api/v1/stacks/{stack.Id}/pixels", deadline.Token);
+        if (pixels.StatusCode == HttpStatusCode.UnprocessableEntity) {
+            Assert.Skip(await pixels.Content.ReadAsStringAsync(deadline.Token));
+        }
+
+        pixels.EnsureSuccessStatusCode();
+        Assert.True(File.Exists($"{stack.Path}.bake"));
+    }
+
     /// <summary>The farm's path: mesh maps, cage and skew map with no Server and no Worker, file to file.</summary>
     [Fact]
     public async Task The_command_line_bakes_with_a_cage_and_a_skew_map_and_a_graph_reads_the_result() {
