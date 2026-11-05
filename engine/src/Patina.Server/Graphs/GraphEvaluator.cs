@@ -40,13 +40,19 @@ public sealed class GraphEvaluator(
         await ForgetClosedAsync(cancellationToken);
         var worked = false;
         foreach (var session in sessions.All) {
+            if (session.Pending() is null) {
+                continue;
+            }
+
+            // Waiting for a Worker can take seconds, and only what is newest when one arrives counts.
+            var connection = await worker.ConnectionAsync(cancellationToken);
             if (session.Pending() is not { } work) {
                 continue;
             }
 
             worked = true;
             try {
-                await EvaluateAsync(session, work, cancellationToken);
+                await EvaluateAsync(session, connection, work, cancellationToken);
             } catch (Exception e) when (e is IOException or TimeoutException) {
                 // Nothing is lost: the next Worker gets the document and this evaluation runs again.
                 ServerLog.GraphWorkerLost(logger, session.Path);
@@ -60,8 +66,12 @@ public sealed class GraphEvaluator(
         return worked;
     }
 
-    async Task EvaluateAsync(GraphSession session, GraphWork work, CancellationToken cancellationToken) {
-        var connection = await worker.ConnectionAsync(cancellationToken);
+    async Task EvaluateAsync(
+        GraphSession session,
+        IpcConnection connection,
+        GraphWork work,
+        CancellationToken cancellationToken
+    ) {
         var values = told.GetValueOrDefault(session.Id) is { } held && ReferenceEquals(held.Connection, connection)
             ? GraphDocuments.Values(held.Document, work.Document)
             : null;
