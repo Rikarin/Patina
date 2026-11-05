@@ -500,6 +500,28 @@ public sealed class GraphProcessTests : IDisposable {
         }
     }
 
+    /// <summary>
+    ///     ⚠ An image input has no default, so a compound opened on its own reported TG0002 and showed its author
+    ///     nothing. A stand-in feeds it, and is in no client's document.
+    /// </summary>
+    [Fact]
+    public async Task A_compound_with_an_image_input_shows_its_nodes_when_opened_on_its_own() {
+        using var deadline = Deadline(120);
+        var compounds = Directory.CreateDirectory(Path.Combine(Library, LibraryLayout.CompoundsFolder)).FullName;
+        var file = GraphTesting.Write(compounds, Tint("Tint"), "Tint.vxtexgraph");
+        var instance = await StartServerAsync(deadline.Token);
+        var state = await http.OpenAsync(file, deadline.Token);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        StartWorker();
+        var first = await EvaluatedAsync(socket, state.Revision, deadline.Token);
+
+        Assert.DoesNotContain(first.Diagnostics, static d => d.Severity == "Error");
+        var after = await http.StateAsync(state.Id, deadline.Token);
+        Assert.Equal([1, 2, 3], after.Nodes.Select(static node => node.Id));
+        Assert.Contains(after.Previews, static p => p.Node == 2);
+        Assert.DoesNotContain(after.Previews, static p => p.Node > 3);
+    }
+
     /// <summary>A compound that inverts what it is fed.</summary>
     static NodeGraphAsset Tint(string name) =>
         new() {

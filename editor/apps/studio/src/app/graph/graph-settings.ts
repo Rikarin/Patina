@@ -227,37 +227,42 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
       <p class="section-label mt-4 mb-1">Interface</p>
       <div class="flex flex-col gap-1.5">
         @for (port of document?.interface; track port.direction + '/' + port.name) {
-          <div class="flex items-center gap-1" [attr.data-testid]="'port-' + port.name">
-            <span class="readout text-foreground-muted w-8 shrink-0">{{
-              port.direction === 'Input' ? 'In' : 'Out'
-            }}</span>
-            <input
-              class="min-w-0 flex-1"
-              xuiInput
-              size="sm"
-              aria-label="Port name"
-              [disabled]="!store.editable()"
-              [value]="port.name"
-              (change)="renamePort(port, $event)"
-            />
-            <xui-select
-              class="w-20 shrink-0"
-              ariaLabel="Port kind"
-              [disabled]="!store.editable()"
-              [items]="portKinds"
-              [value]="port.kind"
-              (valueChange)="setPortKind(port, $event)"
-            />
-            <button
-              type="button"
-              xuiButton
-              size="sm"
-              variant="ghost"
-              [disabled]="!store.editable()"
-              (click)="store.removePort(port.name, port.direction)"
-            >
-              Remove
-            </button>
+          <div class="well flex flex-col gap-1.5 p-2" [attr.data-testid]="'port-' + port.name">
+            <div class="flex items-center gap-1">
+              <span class="readout text-foreground-muted w-8 shrink-0">{{
+                port.direction === 'Input' ? 'In' : 'Out'
+              }}</span>
+              <input
+                class="min-w-0 flex-1"
+                xuiInput
+                size="sm"
+                aria-label="Port name"
+                [disabled]="!store.editable()"
+                [value]="port.name"
+                (change)="renamePort(port, $event)"
+              />
+            </div>
+            <div class="flex items-center gap-1">
+              <xui-select
+                class="min-w-0 flex-1"
+                ariaLabel="Port kind"
+                [disabled]="!store.editable()"
+                [items]="portKinds"
+                [value]="port.kind"
+                (valueChange)="setPortKind(port, $event)"
+              />
+              <button
+                class="shrink-0"
+                type="button"
+                xuiButton
+                size="sm"
+                variant="ghost"
+                [disabled]="!store.editable()"
+                (click)="store.removePort(port.name, port.direction)"
+              >
+                Remove
+              </button>
+            </div>
           </div>
         } @empty {
           <p class="text-foreground-muted text-xs">This compound has no ports yet.</p>

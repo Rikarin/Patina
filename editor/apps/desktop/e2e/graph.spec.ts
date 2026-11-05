@@ -7,7 +7,7 @@ import {
   type Page
 } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -431,6 +431,81 @@ test('reads a bitmap from beside the graph, and says so when it cannot', async (
   await window.getByTestId('field-Source').getByRole('textbox').fill('gone.png');
   await window.getByTestId('field-Source').getByRole('textbox').press('Enter');
   await expect(window.getByText('PT0001')).toBeVisible();
+});
+
+test('saves a selection as a compound, opens it, authors its ports, and undoes the save', async () => {
+  await openGraph();
+  const output = await hashOf(thumbnail(Nodes));
+  await inspect(2);
+  await node(3)
+    .locator('xui-graph-node-preview')
+    .click({ modifiers: ['Shift'] });
+  await expect(window.getByTestId('inspector-title')).toHaveText('2 nodes');
+
+  await window.getByTestId('graph-save-compound').click();
+  await window.getByTestId('save-compound-name').fill('bad:name');
+  await window.getByTestId('save-compound-save').click();
+  await expect(window.getByTestId('save-compound-refused')).toBeVisible();
+  await window.getByTestId('save-compound-name').fill('Wear/Tinted');
+  await window.getByTestId('save-compound-save').click();
+
+  // Two nodes became one, which is selected, and the picture after it is the same picture.
+  await expect(nodes()).toHaveCount(Nodes - 1);
+  const held = window.locator('[data-testid=graph-node][data-compound="Wear/Tinted"]');
+  await expect(held).toHaveCount(1);
+  await expect(thumbnail(Nodes)).toHaveAttribute('data-hash', output);
+  const file = join(library, 'shared', 'graphs', 'Compounds', 'Wear', 'Tinted.vxtexgraph');
+  expect(readFileSync(file, 'utf8')).toContain('Sub-graph/Input');
+
+  await window.getByTestId('graph-open-compound').click();
+  await expect(window.getByTestId('graph-name')).toHaveText('Tinted');
+  await hashOf(thumbnail(2)); // its author sees it, though nothing feeds its input here
+  await window.getByTestId('graph-settings').click();
+  await window.getByTestId('port-add-input').click();
+  await expect(window.getByTestId('port-Input2')).toBeVisible();
+  await window.getByTestId('port-Input2').getByLabel('Port name').fill('Amount');
+  await window.getByTestId('port-Input2').getByLabel('Port name').press('Enter');
+  await expect(window.getByTestId('port-Amount')).toBeVisible();
+  await window.getByTestId('graph-save').click();
+  await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
+  await window.screenshot({ path: join(shots, 'graph-compound-interface.png') });
+  expect(readFileSync(file, 'utf8')).toContain('name: Amount');
+
+  // Undoing the save brings the nodes back, and the file stays for whoever else holds it.
+  await window.getByTestId('graph-crumb').click();
+  await expect(window.getByTestId('graph-name')).toHaveText(Name);
+  await window.getByTestId('graph-undo').click();
+  await expect(nodes()).toHaveCount(Nodes);
+  await expect(thumbnail(Nodes)).toHaveAttribute('data-hash', output);
+  expect(existsSync(file)).toBe(true);
+});
+
+test('copies a shipped compound beside the graph so that it can be edited', async () => {
+  await openGraph();
+  await addNodeAt('Patterns/Cells', 60, 60);
+  await hashOf(thumbnail(Nodes + 1));
+  await window.getByTestId('graph-open-compound').click();
+  await expect(window.getByTestId('graph-read-only')).toBeVisible();
+
+  await window.getByTestId('graph-copy-compound').click();
+  await expect(window.getByTestId('graph-read-only')).toHaveCount(0);
+  await expect(window.getByTestId('graph-name')).toHaveText('Cells Copy');
+  await expect(window.getByTestId('graph-add')).toBeEnabled();
+  expect(existsSync(join(library, 'shared', 'graphs', 'Compounds', 'Patterns', 'Cells Copy.vxtexgraph'))).toBe(true);
+});
+
+test('a graph computes at 32 bits from its settings, and the file says so', async () => {
+  await openGraph();
+  await hashOf(thumbnail(1));
+  await window.getByTestId('graph-settings').click();
+  await window.getByTestId('setting-bitDepth').getByRole('combobox').click();
+  await window.getByRole('option', { name: '32' }).click();
+  await expect(window.getByTestId('graph-unsaved')).toBeVisible();
+  await expect(window.getByTestId('graph-evaluation')).toHaveText(/ran, \d+ ms|Up to date/);
+  await hashOf(thumbnail(1));
+  await window.getByTestId('graph-save').click();
+  await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
+  expect(readFileSync(join(library, 'shared', 'graphs', File), 'utf8')).toContain("bitDepth: '32'");
 });
 
 test('Undo, Redo and Save work from the Inspector, and several nodes say so', async () => {

@@ -13,6 +13,9 @@ public sealed record PublishedCompounds(NodeTypeRegistry Registry, ISubGraphSour
 ///     loads a graph again, so a folder is published once and again only when its files change. It is all derived.
 /// </summary>
 public sealed class CompoundShelf {
+    const string Noise = "Source/Noise";
+    const string NoiseOutput = "Out";
+
     readonly Dictionary<string, (string Stamp, PublishedCompounds Published)> folders = new(StringComparer.Ordinal);
 
     public PublishedCompounds Of(string? folder) {
@@ -31,20 +34,40 @@ public sealed class CompoundShelf {
 
     /// <summary>
     ///     A compound's document as a graph in its own right. Its boundary nodes stand for a graph that holds it, which
-    ///     here does not exist, so they go, and the inputs they fed take their defaults.
+    ///     here does not exist, so they go. A number they fed takes its default. An image has none, and a compound
+    ///     whose nodes will not compile is one its author cannot see, so a noise stands in for every image input.
     /// </summary>
     public static NodeGraphAsset WithoutBoundaries(NodeGraphAsset document) {
         HashSet<int> boundary = [
             ..document.Nodes.Where(static node => SubGraphs.IsBoundary(node.Type)).Select(static node => node.Id)
         ];
-        return boundary.Count == 0
-            ? document
-            : document with {
-                Nodes = [..document.Nodes.Where(node => !boundary.Contains(node.Id))],
-                Edges = [
-                    ..document.Edges.Where(edge => !boundary.Contains(edge.FromNode) && !boundary.Contains(edge.ToNode))
-                ]
-            };
+        if (boundary.Count == 0) {
+            return document;
+        }
+
+        HashSet<string> images = [
+            ..document.Interface
+                .Where(static port => port is { Direction: PortDirection.Input, Kind: PortKind.Image })
+                .Select(static port => port.Name)
+        ];
+        var standIn = document.Nodes.Max(static node => node.Id) + 1;
+        GraphEdgeAsset[] fed = [
+            ..document.Edges.Where(edge => boundary.Contains(edge.FromNode)
+                    && !boundary.Contains(edge.ToNode)
+                    && images.Contains(edge.FromPort)
+                )
+                .Select(edge => edge with { FromNode = standIn, FromPort = NoiseOutput })
+        ];
+        return document with {
+            Nodes = [
+                ..document.Nodes.Where(node => !boundary.Contains(node.Id)),
+                ..fed.Length > 0 ? [new GraphNodeAsset { Id = standIn, Type = Noise }] : Array.Empty<GraphNodeAsset>()
+            ],
+            Edges = [
+                ..document.Edges.Where(edge => !boundary.Contains(edge.FromNode) && !boundary.Contains(edge.ToNode)),
+                ..fed
+            ]
+        };
     }
 
     static string Stamp(string? folder) {
