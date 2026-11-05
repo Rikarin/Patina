@@ -74,9 +74,7 @@ public sealed class ViewportRendererTests : IDisposable {
         var same = Render(renderer, OrbitCamera.Default);
         var after = Render(renderer, OrbitCamera.Default with { Yaw = OrbitCamera.Default.Yaw + 1f });
 
-        // One level of rounding comes and goes under load on the same input, so the same picture means within that.
-        Assert.Equal(before.Length, same.Length);
-        Assert.True(before.Zip(same).All(static pair => Math.Abs(pair.First - pair.Second) <= 1));
+        Assert.Equal(before, same);
         Assert.NotEqual(before, after);
     }
 
