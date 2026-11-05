@@ -23,6 +23,12 @@ public static class BakeInputs {
     /// <summary>The largest atlas edge. Larger than the cached maps a laptop can hold, not than a farm can.</summary>
     const int MaxResolution = 16384;
 
+    /// <summary>
+    ///     What a map's numbers are relative to, and how its rows run. A bake made before this was a per-triangle
+    ///     basis upside down, and a cache hit must not hand one back.
+    /// </summary>
+    const string TangentBasis = "mikktspace, v down";
+
     const int MaxSupersampling = 8;
     const int MaxRays = 8192;
 
@@ -103,7 +109,8 @@ public static class BakeInputs {
             ["skew"] = Text(request.Skew),
             ["match"] = request.MatchByName ? "1" : "0",
             ["gutter"] = Text(request.Gutter),
-            ["space"] = request.Space
+            ["space"] = request.Space,
+            ["basis"] = TangentBasis
         };
 
     static string Text(int value) => value.ToString(CultureInfo.InvariantCulture);

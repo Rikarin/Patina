@@ -29,6 +29,10 @@ public sealed record GraphWork(long Revision, NodeGraphAsset Document, bool Forc
 ///     events, and the log lets a client that dropped its socket catch up from the number it last saw.
 /// </summary>
 public sealed class GraphSession {
+    const string OutputNodeType = "Output/Output";
+    const string OutputUsageSetting = "Usage";
+    const string DefaultOutputUsage = "baseColor";
+
     const int LogCapacity = 1024;
 
     readonly Lock changing = new();
@@ -116,6 +120,18 @@ public sealed class GraphSession {
             lock (changing) {
                 return new(Id, Path, editor.Document.Name, revision, editor.History.Dirty);
             }
+        }
+    }
+
+    /// <summary>The Output nodes writing one of these usages, each as the node and its usage.</summary>
+    public IReadOnlyList<(int Node, string Usage)> Outputs(IReadOnlySet<string> usages) {
+        lock (changing) {
+            return [
+                ..editor.Document.Nodes.Select(GraphDocuments.State)
+                    .Where(static node => node.Type == OutputNodeType)
+                    .Select(static node => (node.Id, node.Texts.GetValueOrDefault(OutputUsageSetting, DefaultOutputUsage)))
+                    .Where(output => usages.Contains(output.Item2))
+            ];
         }
     }
 

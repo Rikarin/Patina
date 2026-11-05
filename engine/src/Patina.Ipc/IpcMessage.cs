@@ -17,6 +17,12 @@ public static class IpcTypes {
     /// <summary>Server to Worker: read the mesh at <see cref="IpcMessage.Mesh" />.</summary>
     public const string ViewportOpen = "viewport.open";
 
+    /// <summary>
+    ///     Server to Worker: lay <see cref="IpcMessage.Maps" /> over the open mesh. The message holds paths and hashes,
+    ///     and a Worker that has read a hash does not read it again.
+    /// </summary>
+    public const string ViewportMaps = "viewport.maps";
+
     /// <summary>Server to Worker: use <see cref="IpcMessage.Camera" /> from now on.</summary>
     public const string ViewportCamera = "viewport.camera";
 
@@ -68,7 +74,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 5;
+    public const int ProtocolVersion = 6;
 
     public string Type { get; set; } = string.Empty;
 
@@ -84,6 +90,9 @@ public sealed class IpcMessage {
 
     /// <summary>viewport.open: the mesh's path, on a disk the Worker can read.</summary>
     public string? Mesh { get; set; }
+
+    /// <summary>viewport.maps: the pictures.</summary>
+    public ViewportMapSet? Maps { get; set; }
 
     /// <summary>viewport.camera: the camera.</summary>
     public ViewportCamera? Camera { get; set; }
@@ -156,6 +165,18 @@ public sealed record WorkerHello(int Protocol, string Version, int ProcessId);
 
 /// <summary>The Worker's health: enough for a client to tell that it is alive and what it costs.</summary>
 public sealed record WorkerHealth(double UptimeSeconds, long WorkingSetBytes);
+
+/// <summary>A picture on a disk the Worker can read, and the hash of what is in it.</summary>
+public sealed record ViewportMapFile(string Path, string Hash);
+
+/// <summary>The pictures laid over the open mesh's materials. A null slot keeps the material's own.</summary>
+public sealed record ViewportMapSet(
+    ViewportMapFile? BaseColor = null,
+    ViewportMapFile? Normal = null,
+    ViewportMapFile? Roughness = null,
+    ViewportMapFile? Metallic = null,
+    ViewportMapFile? Occlusion = null
+);
 
 /// <summary>An orbit around the model: radians, and a distance in bounding radii.</summary>
 public sealed record ViewportCamera(double Yaw, double Pitch, double Distance);

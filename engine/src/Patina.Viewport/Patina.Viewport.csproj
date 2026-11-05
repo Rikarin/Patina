@@ -3,6 +3,9 @@
     <Description>The small PBR forward renderer: a mesh, an environment and a tonemap, offscreen on Vulkan and read back. It runs in the Worker, written in Raven on Vixen's Brdf and Ibl, and holds nothing that cannot be rebuilt.</Description>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Patina.Viewport.Tests"/>
+  </ItemGroup>
+  <ItemGroup>
     <!-- Patina's own shaders. The library's are Vixen's files at their own path: one copy, none here. -->
     <EmbeddedResource Include="Shaders/*.rvn" LogicalName="Patina.Viewport.Shaders.%(Filename)%(Extension)"/>
     <EmbeddedResource Include="../../../external/Vixen/Raven/Library/Core/*.rvn" LogicalName="Patina.Viewport.Library.Core.%(Filename)%(Extension)"/>

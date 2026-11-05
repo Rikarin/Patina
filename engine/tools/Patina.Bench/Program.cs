@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 using Patina.Bench;
+using Patina.Viewport;
 using System.Globalization;
 using Vixen.TextureGraph;
 
@@ -53,23 +54,21 @@ switch (args) {
             rest is [_, var rays, ..] ? int.Parse(rays, CultureInfo.InvariantCulture) : 256,
             rest is [_, _, var reach] ? double.Parse(reach, CultureInfo.InvariantCulture) : 0.5
         );
-    case ["bake-preview", var low, var normal, var occlusion, var picture, var yaw, var pitch]:
-        return BakePreview.Run(
-            low,
-            normal,
-            occlusion == "-" ? null : occlusion,
-            picture,
-            float.Parse(yaw, CultureInfo.InvariantCulture),
-            float.Parse(pitch, CultureInfo.InvariantCulture)
-        );
     case ["graph", var library, var nodes, var name]:
         return GraphFixture.Write(library, int.Parse(nodes, CultureInfo.InvariantCulture), name);
-    case ["render", var mesh, var png, var width, var height]:
+    case ["render", var mesh, var png, var width, var height, .. var options]:
         return RenderBench.Run(
             mesh,
             png,
             int.Parse(width, CultureInfo.InvariantCulture),
-            int.Parse(height, CultureInfo.InvariantCulture)
+            int.Parse(height, CultureInfo.InvariantCulture),
+            Option(options, "--bake="),
+            Option(options, "--yaw=") is { } yaw
+                ? OrbitCamera.Default with {
+                    Yaw = float.Parse(yaw, CultureInfo.InvariantCulture),
+                    Pitch = float.Parse(Option(options, "--pitch=") ?? "0.35", CultureInfo.InvariantCulture)
+                }
+                : null
         );
     default:
         await Console.Error.WriteLineAsync(
@@ -79,9 +78,8 @@ switch (args) {
                    patina-bench mesh <file.glb>
                    patina-bench bake-pair <folder> [cell]
                    patina-bench s9 <folder> [resolution] [rays] [reach]
-                   patina-bench bake-preview <low> <normal.png> <ao.png or -> <out.png> <yaw> <pitch>
                    patina-bench graph <library> <nodes> <name>
-                   patina-bench render <mesh> <out.png> <width> <height>
+                   patina-bench render <mesh> <out.png> <width> <height> [--bake=<folder>] [--yaw=<r>] [--pitch=<r>]
                    patina-bench generate <path> <projects> [seed]
                    patina-bench s6 <path> [projects] [seed]
             """

@@ -59,6 +59,7 @@ sealed class WorkerLoop(ViewportHost viewport, GraphHost graphs, BakeHost bakes)
             request.Type switch {
                 IpcTypes.Health => new() { Type = IpcTypes.Ok, Health = Health() },
                 IpcTypes.ViewportOpen => viewport.Open(request),
+                IpcTypes.ViewportMaps => viewport.SetMaps(request),
                 IpcTypes.ViewportCamera => viewport.SetCamera(request),
                 IpcTypes.ViewportRender => viewport.Render(request),
                 IpcTypes.GraphLoad => graphs.Load(request),

@@ -33,6 +33,8 @@ public sealed class ViewportRenderer : IDisposable {
     readonly Pass sky;
     readonly Pass tonemap;
     readonly SamplerHandle sampler;
+    readonly SamplerHandle mapSampler;
+    readonly ViewportTextures textures;
     readonly TextureViewHandle environmentView;
     readonly BufferHandle frameConstants;
     readonly BufferHandle skyConstants;
@@ -44,6 +46,8 @@ public sealed class ViewportRenderer : IDisposable {
     readonly ConstantBlock skyBlock;
     Geometry? geometry;
     Targets? targets;
+    string? meshFolder;
+    ViewportMaps maps = ViewportMaps.None;
 
     ViewportRenderer(VulkanDevice device, ShaderCache cache) {
         this.device = device;
@@ -51,6 +55,10 @@ public sealed class ViewportRenderer : IDisposable {
         var shaders = new ViewportShaders(cache);
         sampler = device.CreateSampler(SamplerDescription.LinearClamp);
         cleanup.Add(() => device.Destroy(sampler));
+        mapSampler = device.CreateSampler(SamplerDescription.LinearRepeat with { Anisotropy = 8f, Name = "viewport maps" });
+        cleanup.Add(() => device.Destroy(mapSampler));
+        textures = new(device);
+        cleanup.Add(textures.Dispose);
         environmentView = UploadEnvironment();
 
         var hdr = new[] { new ColourTargetState(HdrFormat, BlendState.Opaque) };
@@ -121,11 +129,28 @@ public sealed class ViewportRenderer : IDisposable {
 
     /// <summary>Replaces the mesh with the one in a file.</summary>
     /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
+    /// <exception cref="InvalidDataException">A material's image is not one this reads.</exception>
+    /// <exception cref="IOException">A material's image cannot be read.</exception>
     public void OpenMesh(string path) {
         var mesh = ViewportMesh.Read(path);
-        geometry?.Dispose();
-        geometry = new(device, forward, mesh);
+        maps = ViewportMaps.None;
+        meshFolder = Path.GetDirectoryName(Path.GetFullPath(path));
+        Show(mesh);
         Settle();
+    }
+
+    /// <summary>Replaces the pictures laid over the mesh's own materials.</summary>
+    /// <exception cref="InvalidOperationException">No mesh is open.</exception>
+    /// <exception cref="InvalidDataException">A picture is not one this reads.</exception>
+    /// <exception cref="IOException">A picture cannot be read.</exception>
+    public void SetMaps(ViewportMaps replacement) {
+        ArgumentNullException.ThrowIfNull(replacement);
+        if (geometry is not { } scene) {
+            throw new InvalidOperationException("No mesh is open.");
+        }
+
+        maps = replacement;
+        Show(scene.Mesh);
     }
 
     /// <summary>Renders one frame and copies it into <paramref name="destination" />.</summary>
@@ -162,6 +187,53 @@ public sealed class ViewportRenderer : IDisposable {
 
         loader.Release();
         device.Dispose();
+    }
+
+    /// <summary>Puts a mesh on the GPU with the materials it has now, and drops the textures it no longer reaches.</summary>
+    void Show(ViewportMesh mesh) {
+        var ready = maps.Normal is not null || mesh.WantsTangents ? mesh.WithTangents() : mesh;
+        var next = ReferenceEquals(ready, geometry?.Mesh) ? geometry! : new Geometry(device, ready);
+        textures.BeginUse();
+        var sets = next.Bind(forward, material => Material(material, ready));
+        if (!ReferenceEquals(next, geometry)) {
+            geometry?.Dispose();
+            geometry = next;
+        }
+
+        geometry.Use(sets);
+        textures.EndUse();
+    }
+
+    /// <summary>A material with the pictures laid over it, each slot read as what it means.</summary>
+    MaterialBinding Material(ViewportMaterial material, ViewportMesh mesh) {
+        var folder = meshFolder ?? string.Empty;
+        var own = material.Textures;
+
+        TextureViewHandle Slot(ViewportMapFile? file, ModelTexture? image, MapMeaning meaning, TextureViewHandle empty) =>
+            file is not null
+                ? textures.Of(file, meaning)
+                : image is not null
+                    ? textures.Of(image, folder, meaning)
+                    : empty;
+
+        var factors = material.Factors;
+        var colour = maps.BaseColor is null ? factors.BaseColor : new Vector4(1f, 1f, 1f, 1f);
+        var normal = mesh.HasTangents ? Slot(maps.Normal, own.Normal, MapMeaning.Normal, textures.Open) : textures.Open;
+        var hasNormal = mesh.HasTangents && (maps.Normal is not null || own.Normal is not null);
+
+        return new(
+            new(colour.X, colour.Y, colour.Z),
+            maps.Metallic is null ? factors.Metallic : 1f,
+            maps.Roughness is null ? factors.Roughness : 1f,
+            maps.Normal is null ? own.NormalScale : 1f,
+            hasNormal,
+            Slot(maps.BaseColor, own.BaseColor, MapMeaning.Colour, textures.White),
+            normal,
+            Slot(maps.Roughness, own.MetallicRoughness, MapMeaning.Measurement, textures.Open),
+            Slot(maps.Metallic, own.MetallicRoughness, MapMeaning.Measurement, textures.Open),
+            Slot(maps.Occlusion, own.Occlusion, MapMeaning.Measurement, textures.Open),
+            mapSampler
+        );
     }
 
     /// <summary>
@@ -238,8 +310,8 @@ public sealed class ViewportRenderer : IDisposable {
         commands.BindDescriptorSet(DescriptorSetSlot.PerFrame, frameSet);
         commands.BindVertexBuffer(0, scene.Vertices);
         commands.BindIndexBuffer(scene.Indices, IndexFormat.UInt32);
-        foreach (var (part, material) in scene.Parts) {
-            commands.BindDescriptorSet(DescriptorSetSlot.PerMaterial, material);
+        foreach (var part in scene.Mesh.Parts) {
+            commands.BindDescriptorSet(DescriptorSetSlot.PerMaterial, scene.SetOf(part));
             commands.DrawIndexed(part.IndexCount, firstIndex: part.FirstIndex);
         }
 
@@ -295,19 +367,18 @@ public sealed class ViewportRenderer : IDisposable {
         return new(effect, pipeline);
     }
 
-    /// <summary>Raven numbers a shader's inputs, so the mesh's two attributes are found by name.</summary>
+    /// <summary>Raven numbers a shader's inputs, so the mesh's attributes are found by name.</summary>
     static VertexBufferLayout VerticesOf(Effect effect) {
-        var position = effect.VertexInputs.First(static input => input.Name.EndsWith(
-                "position",
-                StringComparison.Ordinal
-            )
-        );
-        var normal = effect.VertexInputs.First(static input => input.Name.EndsWith("normal", StringComparison.Ordinal));
+        uint Location(string name) =>
+            (uint)effect.VertexInputs.First(input => input.Name.EndsWith(name, StringComparison.Ordinal)).Location;
+
         return new(
             ViewportMesh.FloatsPerVertex * sizeof(float),
             [
-                new((uint)position.Location, VertexFormat.Float32X3, 0),
-                new((uint)normal.Location, VertexFormat.Float32X3, 3 * sizeof(float))
+                new(Location("position"), VertexFormat.Float32X3, 0),
+                new(Location("normal"), VertexFormat.Float32X3, 3 * sizeof(float)),
+                new(Location("texCoord"), VertexFormat.Float32X2, 6 * sizeof(float)),
+                new(Location("tangent"), VertexFormat.Float32X4, 8 * sizeof(float))
             ]
         );
     }
@@ -397,61 +468,112 @@ public sealed class ViewportRenderer : IDisposable {
 
     readonly record struct Pass(Effect Effect, PipelineHandle Pipeline);
 
-    /// <summary>The GPU's copy of a mesh, and one descriptor set per part's material.</summary>
+    /// <summary>What one material binds.</summary>
+    readonly record struct MaterialBinding(
+        Vector3 BaseColor,
+        float Metallic,
+        float Roughness,
+        float NormalScale,
+        bool UsesNormalMap,
+        TextureViewHandle BaseColorMap,
+        TextureViewHandle NormalMap,
+        TextureViewHandle RoughnessMap,
+        TextureViewHandle MetallicMap,
+        TextureViewHandle OcclusionMap,
+        SamplerHandle Sampler
+    );
+
+    /// <summary>The GPU's copy of a mesh, and one descriptor set per material in it.</summary>
     sealed class Geometry : IDisposable {
         readonly VulkanDevice device;
-        readonly List<BufferHandle> buffers = [];
-        readonly List<DescriptorSetHandle> sets = [];
+        readonly BufferHandle vertices;
+        readonly BufferHandle indices;
+        readonly List<(DescriptorSetHandle Set, BufferHandle Constants)> bound = [];
+        DescriptorSetHandle[] sets = [];
 
-        public Geometry(VulkanDevice device, Pass forward, ViewportMesh mesh) {
+        public Geometry(VulkanDevice device, ViewportMesh mesh) {
             this.device = device;
             Mesh = mesh;
-            Vertices = Upload(mesh.Vertices, BufferUsage.Vertex, "viewport vertices");
-            Indices = Upload(mesh.Indices, BufferUsage.Index, "viewport indices");
-            var block = forward.Effect.BlockOf(DescriptorSetSlot.PerMaterial);
-            Parts = [..mesh.Parts.Select(part => (part, Material(forward, block, part)))];
+            vertices = Upload<float>(mesh.Vertices, BufferUsage.Vertex, "viewport vertices");
+            indices = Upload<uint>(mesh.Indices, BufferUsage.Index, "viewport indices");
         }
 
         public ViewportMesh Mesh { get; }
 
-        public BufferHandle Vertices { get; }
+        public BufferHandle Vertices => vertices;
 
-        public BufferHandle Indices { get; }
+        public BufferHandle Indices => indices;
 
-        public (ViewportPart Part, DescriptorSetHandle Material)[] Parts { get; }
+        public DescriptorSetHandle SetOf(ViewportPart part) => sets[Math.Clamp(part.Material, 0, sets.Length - 1)];
 
-        public void Dispose() {
-            device.WaitIdle();
-            foreach (var set in sets) {
-                device.Destroy(set);
+        /// <summary>Makes a set for every material, to be swapped in by <see cref="Use" /> once it is all there.</summary>
+        public List<(DescriptorSetHandle Set, BufferHandle Constants)> Bind(
+            Pass forward,
+            Func<ViewportMaterial, MaterialBinding> describe
+        ) {
+            var block = forward.Effect.BlockOf(DescriptorSetSlot.PerMaterial);
+            List<(DescriptorSetHandle, BufferHandle)> made = [];
+            foreach (var material in Mesh.Materials) {
+                made.Add(Material(forward, block, describe(material)));
             }
 
-            foreach (var buffer in buffers) {
-                device.Destroy(buffer);
-            }
+            return made;
         }
 
-        DescriptorSetHandle Material(Pass forward, EffectBlock block, ViewportPart part) {
-            var colour = part.Material.BaseColor;
+        public void Use(List<(DescriptorSetHandle Set, BufferHandle Constants)> next) {
+            Release();
+            bound.AddRange(next);
+            sets = [..next.Select(static pair => pair.Set)];
+        }
+
+        public void Dispose() {
+            Release();
+            device.Destroy(vertices);
+            device.Destroy(indices);
+        }
+
+        void Release() {
+            device.WaitIdle();
+            foreach (var (set, constants) in bound) {
+                device.Destroy(set);
+                device.Destroy(constants);
+            }
+
+            bound.Clear();
+        }
+
+        (DescriptorSetHandle, BufferHandle) Material(Pass forward, EffectBlock block, MaterialBinding material) {
             var constants = new ConstantBlock(block)
-                .Set("baseColor", new Vector3(colour.X, colour.Y, colour.Z))
-                .Set("metallic", part.Material.Metallic)
-                .Set("roughness", part.Material.Roughness);
+                .Set("baseColor", material.BaseColor)
+                .Set("metallic", material.Metallic)
+                .Set("roughness", material.Roughness)
+                .Set("normalScale", material.NormalScale)
+                .Set("usesNormalMap", material.UsesNormalMap ? 1f : 0f);
             var buffer = Upload(constants.Bytes, BufferUsage.Uniform, "viewport material");
             var set = device.CreateDescriptorSet(
                 forward.Effect.SetLayouts[(int)DescriptorSetSlot.PerMaterial],
                 "viewport material"
             );
-            device.UpdateDescriptorSet(set, [DescriptorWrite.Uniform(block.Binding, buffer)]);
-            sets.Add(set);
-            return set;
+            uint Binding(string name) => forward.Effect.BindingOf(name)!.Value.Binding;
+            device.UpdateDescriptorSet(
+                set,
+                [
+                    DescriptorWrite.Uniform(block.Binding, buffer),
+                    DescriptorWrite.Texture(Binding("baseColorMap"), material.BaseColorMap),
+                    DescriptorWrite.Texture(Binding("normalMap"), material.NormalMap),
+                    DescriptorWrite.Texture(Binding("roughnessMap"), material.RoughnessMap),
+                    DescriptorWrite.Texture(Binding("metallicMap"), material.MetallicMap),
+                    DescriptorWrite.Texture(Binding("occlusionMap"), material.OcclusionMap),
+                    DescriptorWrite.SamplerAt(Binding("mapSampler"), material.Sampler)
+                ]
+            );
+            return (set, buffer);
         }
 
         BufferHandle Upload<T>(ReadOnlySpan<T> data, BufferUsage usage, string name) where T : unmanaged {
             var bytes = MemoryMarshal.AsBytes(data);
             var buffer = device.CreateBuffer(new(bytes.Length, usage, MemoryAccess.HostUpload, name));
             device.Write(buffer, 0, bytes);
-            buffers.Add(buffer);
             return buffer;
         }
     }

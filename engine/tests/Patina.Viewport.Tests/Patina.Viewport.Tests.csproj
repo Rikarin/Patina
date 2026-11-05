@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="../../src/Patina.Viewport/Patina.Viewport.csproj"/>
+    <ProjectReference Include="../../src/Patina.Export/Patina.Export.csproj"/>
   </ItemGroup>
 </Project>

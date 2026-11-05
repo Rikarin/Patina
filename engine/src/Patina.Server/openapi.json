@@ -114,6 +114,169 @@
         }
       }
     },
+    "/api/v1/viewport/maps": {
+      "put": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "Lays pictures over the mesh\u0027s own materials. An empty body takes them off.",
+        "operationId": "SetViewportMaps",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewportMapPaths"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/viewport/bake": {
+      "put": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "Shows a finished bake\u0027s normal and occlusion maps on the mesh it was baked onto.",
+        "operationId": "ShowBakeInViewport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewportBakeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/viewport/graph": {
+      "put": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "Lays a graph\u0027s Output nodes over the mesh, as they stand now. Ask again to see a later edit.",
+        "operationId": "ShowGraphInViewport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewportGraphRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/previews/{hash}": {
       "get": {
         "tags": [
@@ -4370,6 +4533,19 @@
         },
         "description": "One page of tags, by name."
       },
+      "ViewportBakeRequest": {
+        "required": [
+          "job"
+        ],
+        "type": "object",
+        "properties": {
+          "job": {
+            "type": "string",
+            "description": "The bake\u0027s job."
+          }
+        },
+        "description": "Asks the viewport to show a finished bake on the mesh it was baked onto."
+      },
       "ViewportCameraState": {
         "required": [
           "yaw",
@@ -4396,6 +4572,60 @@
         },
         "description": "The viewport\u0027s camera: an orbit around the model."
       },
+      "ViewportGraphRequest": {
+        "required": [
+          "graph"
+        ],
+        "type": "object",
+        "properties": {
+          "graph": {
+            "type": "string",
+            "description": "The graph\u0027s session."
+          }
+        },
+        "description": "Asks the viewport to lay a graph\u0027s Output nodes over the mesh it is showing, as they stand now."
+      },
+      "ViewportMapPaths": {
+        "type": "object",
+        "properties": {
+          "baseColor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The base colour."
+          },
+          "normal": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A tangent-space normal map in MikkTSpace, with green up the image."
+          },
+          "roughness": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Perceptual roughness."
+          },
+          "metallic": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How metallic it is."
+          },
+          "occlusion": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Ambient occlusion."
+          }
+        },
+        "description": "Pictures to lay over the mesh\u0027s own materials, on every part. Each is a path on the Server\u0027s machine, and a slot\nleft null keeps what the material asks for. A filled slot replaces the material\u0027s factor too, so what shows\nis the picture. Roughness is read from green, metallic from blue and occlusion from red, so one packed file or\nthree grey ones both work. PNG, JPEG and EXR are read, base colour as sRGB and the rest as linear."
+      },
       "ViewportMeshRequest": {
         "required": [
           "path"
@@ -4411,6 +4641,7 @@
       },
       "ViewportState": {
         "required": [
+          "maps",
           "camera",
           "width",
           "height",
@@ -4425,6 +4656,10 @@
               "string"
             ],
             "description": "The mesh\u0027s path, or null when none is open."
+          },
+          "maps": {
+            "description": "The pictures laid over the mesh\u0027s own materials.",
+            "$ref": "#/components/schemas/ViewportMapPaths"
           },
           "camera": {
             "description": "The camera.",
