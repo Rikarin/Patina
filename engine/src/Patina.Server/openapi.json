@@ -5808,7 +5808,7 @@
           },
           "curve": {
             "type": "string",
-            "description": "free follows the stamps; line and path run through them as control points when the stroke ends.",
+            "description": "free follows the stamps; line and path run through them as control points when it ends.",
             "default": "free"
           },
           "mirror": {
@@ -6373,7 +6373,7 @@
             "default": 1
           }
         },
-        "description": "Where the brush goes: in texels from the image\u0027s top left, or on the stroke\u0027s picture when it has a view."
+        "description": "Where the brush goes: in texels of the image, or on the picture of a stroke with a view."
       },
       "StackState": {
         "required": [

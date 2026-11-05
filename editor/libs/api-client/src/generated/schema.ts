@@ -2201,7 +2201,7 @@ export interface components {
       mask: boolean;
       view?: null | components['schemas']['StackView'];
       /**
-       * @description free follows the stamps; line and path run through them as control points when the stroke ends.
+       * @description free follows the stamps; line and path run through them as control points when it ends.
        * @default free
        */
       curve: string;
@@ -2454,7 +2454,7 @@ export interface components {
        */
       height: number;
     };
-    /** @description Where the brush goes: in texels from the image's top left, or on the stroke's picture when it has a view. */
+    /** @description Where the brush goes: in texels of the image, or on the picture of a stroke with a view. */
     StackStamp: {
       /**
        * Format: float
