@@ -76,7 +76,7 @@ type PathField = 'high' | 'low' | 'cage' | 'output';
         </div>
       }
 
-      <div class="grid grid-cols-2 gap-2">
+      <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
         <div class="flex min-w-0 flex-col gap-1">
           <span class="text-foreground-muted text-xs">Resolution</span>
           <xui-select

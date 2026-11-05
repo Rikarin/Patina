@@ -494,7 +494,7 @@ public static class BakeFixture {
     }
 
     static Vector3 Surface(float u, float v, float bump) {
-        var point = MeshFixture.TorusKnot(u, v, 0.11f + (bump * 0.05f * Bump(u, v)));
+        var point = MeshFixture.TorusKnot(u, v, 0.11f + bump * 0.05f * Bump(u, v));
         return new(point.X, point.Y, point.Z);
     }
 

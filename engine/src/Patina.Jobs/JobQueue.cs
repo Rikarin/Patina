@@ -101,14 +101,11 @@ public sealed class JobQueue {
     }
 
     /// <summary>Takes a new job.</summary>
-    public JobState Enqueue(string key, BakeRequest bake) {
-        return Put(New(key, bake) with { State = JobStates.Queued });
-    }
+    public JobState Enqueue(string key, BakeRequest bake) => Put(New(key, bake) with { State = JobStates.Queued });
 
     /// <summary>Records a job that needed no running, because its result already exists.</summary>
-    public JobState Finished(string key, BakeRequest bake, BakeResult result) {
-        return Put(New(key, bake) with { State = JobStates.Done, Progress = 1, Result = result });
-    }
+    public JobState Finished(string key, BakeRequest bake, BakeResult result) =>
+        Put(New(key, bake) with { State = JobStates.Done, Progress = 1, Result = result });
 
     /// <summary>Hands out the oldest queued job, or null when there is none.</summary>
     public JobState? TakeNext() {
