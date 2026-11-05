@@ -3,7 +3,7 @@ import { type GraphState, createPatinaClient } from '@patina/api-client';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { LibrarySelection } from '../library/library-selection';
 import { GRAPH_SOCKET, GraphStore, socketUrl } from './graph-store';
-import { FakeSocket, clean, dirty, edited, evaluated, node, noiseType, state } from './graph-testing';
+import { FakeSocket, clean, dirty, edited, evaluated, noDelta, node, noiseType, state } from './graph-testing';
 
 const editReply = (sequence: number) =>
   Response.json({ revision: sequence + 1, sequence, history: dirty, created: [] });
@@ -26,6 +26,7 @@ function harness(opening: GraphState = state()): Harness {
     'POST graphs': () => Response.json(opening),
     'GET graphs/g1': () => Response.json(opening),
     'GET graphs/g1/node-types': () => Response.json([noiseType]),
+    'GET graphs/g1/compounds': () => Response.json([]),
     'POST graphs/g1/commands': () => editReply(1),
     'POST graphs/g1/undo': () => editReply(2),
     'POST graphs/g1/save': () => editReply(2),
@@ -356,8 +357,8 @@ describe('GraphStore', () => {
     test.socket().dropped();
     await vi.advanceTimersByTimeAsync(1_000);
 
-    expect(test.requests.at(-2)?.key).toBe('POST graphs');
-    expect(test.requests.at(-2)?.body).toEqual({ path: '/lib/shared/graphs/a.vxtexgraph' });
+    expect(test.requests.at(-3)?.key).toBe('POST graphs');
+    expect(test.requests.at(-3)?.body).toEqual({ path: '/lib/shared/graphs/a.vxtexgraph' });
     expect(test.store.notice()).toContain('Edits since the last save are gone');
     expect(test.store.document()?.nodes.has(3)).toBe(false);
     expect(test.sockets).toHaveLength(2);
@@ -453,5 +454,268 @@ describe('GraphStore', () => {
     });
 
     expect(store.selection().size).toBe(0);
+  });
+});
+
+describe('what a graph holds besides its nodes', () => {
+  async function opened(opening: GraphState = state()): Promise<Harness> {
+    const test = harness(opening);
+    await test.store.open('a.vxtexgraph');
+    test.socket().opened();
+    return test;
+  }
+
+  const sent = (test: Harness) => test.commands().flatMap(batch => batch.commands);
+
+  it('asks the Server to create a graph, then opens the path it answers with', async () => {
+    const test = harness();
+    test.routes['POST library/graphs'] = () =>
+      Response.json({ path: 'shared/graphs/rust.vxtexgraph' }, { status: 201 });
+    await test.store.create('Rust', null);
+    expect(test.requests.find(request => request.key === 'POST library/graphs')?.body).toEqual({
+      name: 'Rust',
+      project: null
+    });
+    expect(test.requests.find(request => request.key === 'POST graphs')?.body).toEqual({
+      path: 'shared/graphs/rust.vxtexgraph'
+    });
+    expect(test.store.session().kind).toBe('open');
+  });
+
+  it('lets a refused name reach whoever asked', async () => {
+    const test = harness();
+    test.routes['POST library/graphs'] = () => Response.json({ detail: 'It exists already.' }, { status: 409 });
+    await expect(test.store.create('Rust', null)).rejects.toThrow('It exists already.');
+  });
+
+  it('sends graph settings, and shows them only once the delta arrives', async () => {
+    const test = await opened();
+    test.store.setSetting('seed', '9');
+    await vi.waitFor(() => {
+      expect(sent(test)).toEqual([{ op: 'setSetting', key: 'seed', value: '9' }]);
+    });
+    expect(test.store.document()?.settings['seed']).toBe('7');
+    test.socket().send({
+      sequence: 1,
+      kind: 'edited',
+      revision: 2,
+      history: dirty,
+      delta: { ...noDelta, settings: { seed: '9' } }
+    });
+    expect(test.store.document()?.settings['seed']).toBe('9');
+  });
+
+  const wear = {
+    name: 'Wear',
+    default: '0.5',
+    summary: '',
+    kind: 'Float',
+    minimum: 0,
+    maximum: 1,
+    group: '',
+    accepted: []
+  };
+
+  it('folds a parameter slider into one step, and keeps the hand ahead of the delta', async () => {
+    const test = await opened(state({ parameters: [wear] }));
+    test.store.setParameterDefault(wear, '0.6');
+    expect(test.store.parameterDefault(wear)).toBe('0.6');
+    await vi.waitFor(() => {
+      expect(test.commands().length).toBe(1);
+    });
+    test.store.setParameterDefault(wear, '0.7');
+    await vi.waitFor(() => {
+      expect(test.commands().length).toBe(2);
+    });
+    expect(test.commands().map(batch => batch.merge)).toEqual([false, true]);
+    test.store.endGesture();
+  });
+
+  it('takes the whole parameter, group and note lists from a delta', async () => {
+    const test = await opened();
+    test.socket().send({
+      sequence: 1,
+      kind: 'edited',
+      revision: 2,
+      history: dirty,
+      delta: {
+        ...noDelta,
+        parameters: [wear],
+        groups: [{ title: 'Base', nodes: [1] }],
+        comments: [{ text: 'Hello', x: 1, y: 2, width: 200, height: 100 }]
+      }
+    });
+    const document = test.store.document();
+    expect(document?.parameters).toEqual([wear]);
+    expect(document?.groups[0]?.title).toBe('Base');
+    expect(document?.comments[0]?.text).toBe('Hello');
+  });
+
+  it('groups the selection, taking its nodes out of the frames they were in', async () => {
+    const test = await opened(state({ groups: [{ title: 'Old', nodes: [1, 2] }] }));
+    test.store.select([1]);
+    test.store.groupSelection();
+    await vi.waitFor(() => {
+      expect(sent(test)).toEqual([
+        { op: 'setGroup', index: 0, nodes: [2] },
+        { op: 'addGroup', title: 'Group', nodes: [1] }
+      ]);
+    });
+  });
+
+  it('moves a node between frames when it comes to rest, and leaves the rest alone', async () => {
+    const test = await opened(
+      state({
+        groups: [
+          { title: 'A', nodes: [1] },
+          { title: 'B', nodes: [] }
+        ]
+      })
+    );
+    test.store.regroup([{ node: 1, group: 'group-0' }]);
+    expect(test.commands()).toEqual([]);
+    test.store.regroup([{ node: 1, group: 'group-1' }]);
+    await vi.waitFor(() => {
+      expect(sent(test)).toEqual([
+        { op: 'setGroup', index: 0, nodes: [] },
+        { op: 'setGroup', index: 1, nodes: [1] }
+      ]);
+    });
+  });
+
+  it('selects a new note, and forgets a selected note that has gone', async () => {
+    const test = await opened();
+    await test.store.addComment({ x: 1, y: 2 });
+    expect(sent(test)).toEqual([{ op: 'addComment', text: 'Note', x: 1, y: 2 }]);
+    expect(test.store.selectedNote()).toBe(0);
+    test.socket().send({
+      sequence: 1,
+      kind: 'edited',
+      revision: 2,
+      history: dirty,
+      delta: { ...noDelta, comments: [] }
+    });
+    expect(test.store.selectedNote()).toBeNull();
+  });
+
+  it('asks for the node types again when a compound was saved', async () => {
+    const test = await opened();
+    const types = () => test.requests.filter(request => request.key === 'GET graphs/g1/node-types').length;
+    expect(types()).toBe(1);
+    test.socket().send({ sequence: 1, kind: 'typesChanged', revision: 1, history: clean });
+    await vi.waitFor(() => {
+      expect(types()).toBe(2);
+    });
+  });
+});
+
+describe('going into a compound', () => {
+  const compound = state({ id: 'g2', path: '/lib/Compounds/Mine.vxtexgraph', name: 'Mine', nodes: [], edges: [] });
+
+  async function inside(outer: GraphState = state(), inner: GraphState = compound): Promise<Harness> {
+    const test = harness(outer);
+    test.routes['GET graphs/g1/compounds'] = () => Response.json([{ type: 'Mine', path: inner.path, readOnly: false }]);
+    await test.store.open('a.vxtexgraph');
+    test.routes['POST graphs'] = () => Response.json(inner);
+    test.routes['GET graphs/g2/node-types'] = () => Response.json([noiseType]);
+    test.routes['GET graphs/g2/compounds'] = () => Response.json([]);
+    test.routes['DELETE graphs/g2'] = () => new Response(null, { status: 204 });
+    await test.store.enterCompound('Mine');
+    test.routes['POST graphs'] = () => Response.json(outer);
+    return test;
+  }
+
+  it('opens it and keeps the way back, leaving the outer session open', async () => {
+    const test = await inside();
+    expect(test.store.document()?.id).toBe('g2');
+    expect(test.store.trail().map(crumb => crumb.name)).toEqual(['A']);
+    expect(test.requests.some(request => request.key === 'DELETE graphs/g1')).toBe(false);
+  });
+
+  it('comes back by closing the compound and joining the outer session', async () => {
+    const test = await inside();
+    await test.store.back(0);
+    expect(test.requests.some(request => request.key === 'DELETE graphs/g2')).toBe(true);
+    expect(test.store.document()?.id).toBe('g1');
+    expect(test.store.trail()).toEqual([]);
+  });
+
+  it('asks before leaving a compound with unsaved edits', async () => {
+    const test = await inside(state(), { ...compound, history: dirty });
+    await test.store.back(0);
+    expect(test.store.leaving()).toEqual({ kind: 'back', index: 0 });
+    expect(test.store.document()?.id).toBe('g2');
+    await test.store.resolveLeaving('discard');
+    expect(test.store.document()?.id).toBe('g1');
+  });
+
+  it('counts unsaved edits on the way in, and saves them when asked to leave everything', async () => {
+    const test = await inside(state({ history: dirty }));
+    test.routes['POST graphs/g2/save'] = () => editReply(2);
+    expect(test.store.unsaved()).toBe(true);
+    await test.store.close();
+    expect(test.store.leaving()).toEqual({ kind: 'close' });
+    await test.store.resolveLeaving('save');
+    expect(test.requests.some(request => request.key === 'POST graphs/g1/save')).toBe(true);
+    expect(test.requests.some(request => request.key === 'DELETE graphs/g1')).toBe(true);
+    expect(test.store.session().kind).toBe('none');
+  });
+});
+
+describe('leaving the app', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('says whether there is anything to lose, and quits only after the answer', async () => {
+    const said: boolean[] = [];
+    let requested: () => void = () => undefined;
+    const quit = vi.fn();
+    vi.stubGlobal('patina', {
+      setUnsaved: (unsaved: boolean) => said.push(unsaved),
+      onQuitRequested: (listener: () => void) => {
+        requested = listener;
+      },
+      quit
+    });
+    const test = harness(state({ history: dirty }));
+    await test.store.open('a.vxtexgraph');
+    TestBed.tick();
+    expect(said.at(-1)).toBe(true);
+
+    requested();
+    expect(test.store.leaving()).toEqual({ kind: 'quit' });
+    await test.store.resolveLeaving('cancel');
+    expect(quit).not.toHaveBeenCalled();
+
+    requested();
+    await test.store.resolveLeaving('discard');
+    expect(quit).toHaveBeenCalledOnce();
+  });
+});
+
+describe('the shortcuts', () => {
+  const press = (key: string, modifiers: KeyboardEventInit = { ctrlKey: true }) =>
+    new KeyboardEvent('keydown', { key, cancelable: true, ...modifiers });
+
+  it('undoes, redoes and saves, and claims nothing else', async () => {
+    const test = harness();
+    test.routes['POST graphs/g1/redo'] = () => editReply(2);
+    await test.store.open('a.vxtexgraph');
+
+    expect(test.store.shortcut(press('a'))).toBe(false);
+    expect(test.store.shortcut(press('z', {}))).toBe(false);
+
+    const undo = press('z');
+    expect(test.store.shortcut(undo)).toBe(true);
+    expect(undo.defaultPrevented).toBe(true);
+    expect(test.store.shortcut(press('z', { metaKey: true, shiftKey: true }))).toBe(true);
+    expect(test.store.shortcut(press('s'))).toBe(true);
+    await vi.waitFor(() => {
+      const keys = test.requests.map(request => request.key);
+      expect(keys).toContain('POST graphs/g1/undo');
+      expect(keys).toContain('POST graphs/g1/redo');
+      expect(keys).toContain('POST graphs/g1/save');
+    });
   });
 });

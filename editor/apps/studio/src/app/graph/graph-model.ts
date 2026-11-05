@@ -1,9 +1,11 @@
 import type {
+  GraphCommentState,
   GraphDelta,
   GraphDiagnostic,
   GraphEdgeState,
   GraphEvaluation,
   GraphEvent,
+  GraphGroupState,
   GraphHistoryState,
   GraphNodeState,
   GraphPreview,
@@ -25,10 +27,18 @@ export interface GraphDocument {
   edges: ReadonlyMap<string, GraphEdgeState>;
   settings: Readonly<Record<string, string>>;
   parameters: readonly GraphSettingDefinition[];
+  /** Frames round some nodes. A command names one by its place here. */
+  groups: readonly GraphGroupState[];
+  /** Notes on the canvas. A command names one by its place here. */
+  comments: readonly GraphCommentState[];
   /** The newest preview of each node. A node has one image output, so a node is enough of a key. */
   previews: ReadonlyMap<number, GraphPreview>;
   repairs: readonly GraphDiagnostic[];
   evaluation: GraphEvaluation | null;
+  /** The newest revision with nothing left to evaluate. Below {@link revision}, evaluation is behind. */
+  settled: number;
+  /** True for a compound that ships with Patina. */
+  readOnly: boolean;
 }
 
 /** What to do with an event, given what the client holds. */
@@ -50,9 +60,13 @@ export function documentOf(state: GraphState): GraphDocument {
     edges: new Map(state.edges.map(edge => [edgeKey(edge), edge])),
     settings: state.settings,
     parameters: state.parameters,
+    groups: state.groups,
+    comments: state.comments,
     previews: new Map(state.previews.map(preview => [preview.node, preview])),
     repairs: state.repairs,
-    evaluation: state.evaluation ?? null
+    evaluation: state.evaluation ?? null,
+    settled: state.settled,
+    readOnly: state.readOnly
   };
 }
 
@@ -88,8 +102,13 @@ export function applyEvent(document: GraphDocument, event: GraphEvent): GraphDoc
     applyDelta(next, event.delta);
   }
 
+  if (event.kind === 'settled') {
+    next.settled = event.revision;
+  }
+
   if (event.evaluation) {
     next.evaluation = event.evaluation;
+    next.settled = event.evaluation.revision;
     if (event.evaluation.previews.length > 0) {
       // Only what differs from the last evaluation is listed, so everything else stays as it is.
       const previews = new Map(next.previews);
@@ -134,6 +153,9 @@ function applyDelta(document: GraphDocument, delta: GraphDelta): void {
   document.nodes = nodes;
   document.edges = edges;
   document.settings = withSettings(document.settings, delta);
+  document.parameters = delta.parameters ?? document.parameters;
+  document.groups = delta.groups ?? document.groups;
+  document.comments = delta.comments ?? document.comments;
 }
 
 function withSettings(settings: Readonly<Record<string, string>>, delta: GraphDelta): Record<string, string> {
@@ -149,4 +171,24 @@ function withSettings(settings: Readonly<Record<string, string>>, delta: GraphDe
 /** What the compiler says now and what reading the file had to fix, the newest evaluation first. */
 export function diagnosticsOf(document: GraphDocument): readonly GraphDiagnostic[] {
   return [...(document.evaluation?.diagnostics ?? []), ...document.repairs];
+}
+
+/** What the toolbar says about the last evaluation, or nothing when there is nothing to say. */
+export function evaluationSummary(document: GraphDocument): string {
+  if (document.settled < document.revision) {
+    return 'Evaluating…';
+  }
+
+  const evaluation = document.evaluation;
+  if (!evaluation || evaluation.error) {
+    return '';
+  }
+
+  if (evaluation.diagnostics.some(item => item.severity === 'Error')) {
+    return 'Not evaluated';
+  }
+
+  return evaluation.ran === 0
+    ? 'Up to date'
+    : `${String(evaluation.ran)} ran, ${evaluation.milliseconds.toFixed(0)} ms`;
 }

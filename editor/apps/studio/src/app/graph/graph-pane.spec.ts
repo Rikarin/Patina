@@ -39,6 +39,10 @@ async function render(status: ServerState = online(true)) {
       return Promise.resolve(Response.json(state()));
     }
 
+    if (path.endsWith('compounds')) {
+      return Promise.resolve(Response.json([]));
+    }
+
     return Promise.resolve(Response.json(path.endsWith('node-types') ? [noiseType] : state()));
   };
   TestBed.configureTestingModule({

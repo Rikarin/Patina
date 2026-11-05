@@ -1,0 +1,172 @@
+import { signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import type { GraphNodeType } from '@patina/api-client';
+import { XuiColorPicker } from '@xui/color-picker';
+import { GraphInspector, Inspector } from './graph-inspector';
+import { GraphSelection, GraphSettings, freeParameterName } from './graph-settings';
+import { GraphStore } from './graph-store';
+import { node } from './graph-testing';
+
+const tintType: GraphNodeType = {
+  path: 'Colour/Tint',
+  title: 'Tint',
+  category: 'Colour',
+  summary: '',
+  hasPreview: true,
+  ports: [{ name: 'Colour', direction: 'Input', kind: 'Float4', default: [1, 0, 0, 1], summary: '' }],
+  settings: []
+};
+
+function fakeStore() {
+  return {
+    types: signal(new Map([[tintType.path, tintType]])),
+    compounds: signal(new Map()),
+    document: signal(null),
+    selection: signal(new Set<number>()),
+    selectedNode: signal(null),
+    selectedNote: signal<number | null>(null),
+    graphInspected: signal(false),
+    editable: signal(true),
+    valueOf: vi.fn((_node: number, _port: string, fallback: readonly number[]) => fallback),
+    textOf: vi.fn((_node: number, _port: string, fallback: string) => fallback),
+    setValue: vi.fn(),
+    setText: vi.fn(),
+    endGesture: vi.fn(),
+    shortcut: vi.fn(() => true)
+  };
+}
+
+describe('the colour control', () => {
+  function render() {
+    const store = fakeStore();
+    TestBed.configureTestingModule({ providers: [{ provide: GraphStore, useValue: store }] });
+    const fixture = TestBed.createComponent(GraphInspector);
+    fixture.componentRef.setInput('node', { ...node(1), type: tintType.path });
+    fixture.detectChanges();
+    const picker = fixture.debugElement.query(By.directive(XuiColorPicker));
+    return { store, picker: picker.componentInstance as XuiColorPicker };
+  }
+
+  it("shows the lanes as the picker's hex", () => {
+    expect(render().picker.value()).toBe('#FF0000FF');
+  });
+
+  it('writes a new colour as lanes, and writes nothing for the colour it already holds', () => {
+    const { store, picker } = render();
+    picker.value.set('#FF0000FF');
+    expect(store.setValue).not.toHaveBeenCalled();
+    picker.value.set('#00FF0080');
+    expect(store.setValue).toHaveBeenCalledWith(1, 'Colour', [0, 1, 0, 128 / 255]);
+  });
+
+  it('ignores what the picker sends while it is still being typed', () => {
+    const { store, picker } = render();
+    picker.value.set('#00F');
+    expect(store.setValue).not.toHaveBeenCalled();
+  });
+});
+
+/** The Inspector's own logic around what its panes hold, which have tests of their own. */
+const selectionOrBox = `
+  @if (store.selection().size > 1) {
+    <ptn-graph-selection />
+  }
+  <input data-testid="box" />
+`;
+
+describe('the Inspector', () => {
+  function render(arrange: (store: ReturnType<typeof fakeStore>) => void = () => undefined) {
+    const store = fakeStore();
+    arrange(store);
+    TestBed.configureTestingModule({ providers: [{ provide: GraphStore, useValue: store }] });
+    TestBed.overrideComponent(Inspector, {
+      set: { imports: [GraphSelection, GraphSettings], template: selectionOrBox }
+    });
+    const fixture = TestBed.createComponent(Inspector);
+    fixture.detectChanges();
+    return { store, fixture };
+  }
+
+  const key = (target: Element) => {
+    target.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }));
+  };
+
+  it('says how many nodes are selected rather than showing one of them', () => {
+    const { fixture } = render(store => {
+      store.selection.set(new Set([1, 2]));
+      Object.assign(store, {
+        document: signal({
+          nodes: new Map([
+            [1, { ...node(1), type: tintType.path }],
+            [2, node(2)]
+          ])
+        })
+      });
+    });
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('[data-testid=inspector-title]')?.textContent).toBe('2 nodes');
+    expect(element.querySelector('[data-testid=selection-list]')?.textContent).toContain('Tint');
+  });
+
+  it('passes Undo to the graph from a control', () => {
+    const { store, fixture } = render(held => {
+      Object.assign(held, { document: signal({ nodes: new Map() }) });
+    });
+    const box = (fixture.nativeElement as HTMLElement).querySelector('[data-testid=box]');
+    if (box) {
+      key(box);
+    }
+
+    expect(store.shortcut).toHaveBeenCalledOnce();
+  });
+
+  it('leaves Undo to a box with text still being typed, until it is committed', () => {
+    const { store, fixture } = render(held => {
+      Object.assign(held, { document: signal({ nodes: new Map() }) });
+    });
+    const box = (fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>('[data-testid=box]');
+    if (!box) {
+      throw new Error('No box.');
+    }
+
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+    key(box);
+    expect(store.shortcut).not.toHaveBeenCalled();
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+    key(box);
+    expect(store.shortcut).toHaveBeenCalledOnce();
+  });
+});
+
+describe('Save from a box still being typed in', () => {
+  it('commits the text by leaving the box, then saves', () => {
+    const store = fakeStore();
+    Object.assign(store, { document: signal({ nodes: new Map() }) });
+    TestBed.configureTestingModule({ providers: [{ provide: GraphStore, useValue: store }] });
+    TestBed.overrideComponent(Inspector, { set: { imports: [], template: '<input data-testid="box" />' } });
+    const fixture = TestBed.createComponent(Inspector);
+    fixture.detectChanges();
+    const box = (fixture.nativeElement as HTMLElement).querySelector('input');
+    if (!box) {
+      throw new Error('No box.');
+    }
+
+    (fixture.nativeElement as HTMLElement).ownerDocument.body.append(fixture.nativeElement as HTMLElement);
+    box.focus();
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+    box.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true }));
+    expect(store.shortcut).toHaveBeenCalledOnce();
+    expect(document.activeElement).not.toBe(box);
+  });
+});
+
+describe('freeParameterName', () => {
+  const named = (name: string) => ({ name, default: '', summary: '', kind: 'Float', group: '', accepted: [] });
+
+  it('finds a name the graph does not use', () => {
+    expect(freeParameterName([])).toBe('Parameter1');
+    expect(freeParameterName([named('Parameter2')])).toBe('Parameter3');
+    expect(freeParameterName([named('Wear'), named('Parameter3')])).toBe('Parameter4');
+  });
+});

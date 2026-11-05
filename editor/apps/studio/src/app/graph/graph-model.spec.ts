@@ -1,4 +1,4 @@
-import { applyEvent, classify, diagnosticsOf, documentOf, edgeKey } from './graph-model';
+import { applyEvent, classify, diagnosticsOf, documentOf, edgeKey, evaluationSummary } from './graph-model';
 import { clean, edited, evaluated, node, noDelta, state } from './graph-testing';
 
 describe('graph events', () => {
@@ -105,5 +105,53 @@ describe('graph events', () => {
     const next = applyEvent(documentOf(state({ repairs: [repair] })), event);
 
     expect(diagnosticsOf(next)).toEqual([problem, repair]);
+  });
+});
+
+describe('evaluationSummary', () => {
+  const evaluation = {
+    revision: 3,
+    compiled: false,
+    ran: 4,
+    reused: 1,
+    milliseconds: 12.4,
+    previews: [],
+    diagnostics: []
+  };
+  const summary = (overrides: Parameters<typeof state>[0]) => evaluationSummary(documentOf(state(overrides)));
+
+  it('says what the last evaluation did', () => {
+    expect(summary({ revision: 3, settled: 3, evaluation })).toBe('4 ran, 12 ms');
+  });
+
+  it('never leaves an old count showing while an edit is on its way', () => {
+    expect(summary({ revision: 4, settled: 3, evaluation })).toBe('Evaluating…');
+  });
+
+  it('says a graph is up to date rather than that nothing ran in no time', () => {
+    expect(summary({ revision: 3, settled: 3, evaluation: { ...evaluation, ran: 0, milliseconds: 0.2 } })).toBe(
+      'Up to date'
+    );
+  });
+
+  it('does not call a graph that did not compile evaluated', () => {
+    const diagnostics = [{ id: 'TG0001', message: 'No such type.', severity: 'Error' }];
+    expect(summary({ revision: 3, settled: 3, evaluation: { ...evaluation, ran: 0, diagnostics } })).toBe(
+      'Not evaluated'
+    );
+  });
+
+  it('keeps an evaluation current past a revision that needed none', () => {
+    const document = documentOf(state({ revision: 3, settled: 3, evaluation, sequence: 5 }));
+    const moved = applyEvent(document, {
+      sequence: 6,
+      kind: 'edited',
+      revision: 4,
+      history: clean,
+      delta: noDelta
+    });
+    expect(evaluationSummary(moved)).toBe('Evaluating…');
+    const settled = applyEvent(moved, { sequence: 7, kind: 'settled', revision: 4, history: clean });
+    expect(evaluationSummary(settled)).toBe('4 ran, 12 ms');
   });
 });

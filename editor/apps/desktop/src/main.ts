@@ -35,6 +35,10 @@ protocol.registerSchemesAsPrivileged([
 let sidecars: Sidecars | null = null;
 let window: BrowserWindow | null = null;
 let quitting = false;
+/** What the renderer last said: whether quitting now would lose edits. */
+let unsaved = false;
+/** The user has answered, so the next quit goes through. */
+let quitConfirmed = false;
 
 function backend(): Sidecars {
   sidecars ??= new Sidecars(process.env['PATINA_LIBRARY'] ?? null, statuses =>
@@ -107,13 +111,28 @@ function createWindow(): void {
 
     return { action: 'deny' };
   });
-  window.on('closed', () => (window = null));
+  window.on('close', event => {
+    if (holdForUnsaved()) {
+      event.preventDefault();
+    }
+  });
+  window.on('closed', () => {
+    window = null;
+    unsaved = false;
+  });
   window
     .loadURL(devServer ?? `${Scheme}://studio/index.html`)
     .catch((error: unknown) => console.error('Patina: the studio did not load', error));
 }
 
 function handleIpc(): void {
+  ipcMain.on('patina:unsaved', (_event, value: unknown) => {
+    unsaved = value === true;
+  });
+  ipcMain.on('patina:quit', () => {
+    quitConfirmed = true;
+    app.quit();
+  });
   ipcMain.handle('patina:connection', () => backend().start());
   ipcMain.handle('patina:sidecars', () => sidecars?.statuses() ?? []);
   ipcMain.handle('patina:sidecars:logs', () => sidecars?.logs() ?? { worker: [], server: [] });
@@ -169,7 +188,23 @@ app.on('window-all-closed', () => {
   }
 });
 
+/** With edits that would be lost, asks the renderer to ask the user, and says that it has. */
+function holdForUnsaved(): boolean {
+  // A renderer that has crashed cannot answer, and its edits are safe on the Server only until it stops anyway.
+  if (!unsaved || quitConfirmed || quitting || !window || window.webContents.isCrashed()) {
+    return false;
+  }
+
+  window.webContents.send('patina:quit-requested');
+  return true;
+}
+
 app.on('before-quit', event => {
+  if (holdForUnsaved()) {
+    event.preventDefault();
+    return;
+  }
+
   if (quitting || !sidecars) {
     return;
   }

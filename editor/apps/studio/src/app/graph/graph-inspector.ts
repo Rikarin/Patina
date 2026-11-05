@@ -1,5 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import type { GraphNodeState } from '@patina/api-client';
+import {
+  CurveEditor,
+  type Curves,
+  GradientRamp,
+  type RampStop,
+  formatCurves,
+  formatRamp,
+  parseCurves,
+  parseRamp
+} from '@patina/studio-ui';
+import { XuiButtonImports } from '@xui/button';
 import { XuiColorPickerImports } from '@xui/color-picker';
 import { XuiFormFieldImports } from '@xui/form-field';
 import { XuiInputImports } from '@xui/input';
@@ -8,7 +19,8 @@ import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { LibraryInspector } from '../library/library-inspector';
-import { type GraphField, fieldsOf, hexOfLanes, lanesOfHex, sliderRange } from './graph-fields';
+import { type GraphField, expressionKey, fieldsOf, hexOfLanes, lanesOfHex, sliderRange } from './graph-fields';
+import { GraphNoteInspector, GraphSelection, GraphSettings } from './graph-settings';
 import { GraphStore } from './graph-store';
 
 type NumberField = Extract<GraphField, { control: 'number' }>;
@@ -19,6 +31,9 @@ const SliderSteps = 1000;
 @Component({
   selector: 'ptn-graph-inspector',
   imports: [
+    CurveEditor,
+    GradientRamp,
+    XuiButtonImports,
     XuiColorPickerImports,
     XuiFormFieldImports,
     XuiInputImports,
@@ -34,6 +49,18 @@ const SliderSteps = 1000;
     <p class="section-label mb-1">{{ category() }}</p>
     @if (summary(); as text) {
       <p class="text-foreground-muted mb-3 text-xs">{{ text }}</p>
+    }
+    @if (compound()) {
+      <button
+        class="mb-3"
+        type="button"
+        xuiButton
+        size="sm"
+        data-testid="graph-open-compound"
+        (click)="store.enterCompound(node().type)"
+      >
+        Open compound
+      </button>
     }
 
     @for (group of groups(); track group.name) {
@@ -83,7 +110,34 @@ const SliderSteps = 1000;
                     [value]="current"
                     (valueChange)="setNumber(field, $event)"
                   />
+                  @if (field.source === 'value') {
+                    <button
+                      type="button"
+                      xuiButton
+                      size="sm"
+                      variant="ghost"
+                      title="Drive this from a parameter"
+                      [attr.aria-label]="field.name + ' expression'"
+                      [attr.data-testid]="'expression-toggle-' + field.name"
+                      [active]="showsExpression(field.name)"
+                      (click)="toggleExpression(field.name)"
+                    >
+                      =
+                    </button>
+                  }
                 </div>
+                @if (field.source === 'value' && showsExpression(field.name)) {
+                  <input
+                    xuiInput
+                    size="sm"
+                    placeholder="Parameter * 2"
+                    [attr.aria-label]="field.name + ' expression text'"
+                    [attr.data-testid]="'expression-' + field.name"
+                    [disabled]="!store.editable()"
+                    [value]="expressionOf(field.name)"
+                    (change)="setExpression(field.name, $event)"
+                  />
+                }
               }
               @case ('switch') {
                 <xui-switch
@@ -103,12 +157,50 @@ const SliderSteps = 1000;
               }
               @case ('choice') {
                 <xui-select
-                  [ariaLabel]="field.name"
+                  [aria-label]="field.name"
                   [disabled]="!store.editable()"
                   [items]="field.choices"
                   [value]="textOf(field)"
                   (valueChange)="setChoice(field, $event)"
                 />
+              }
+              @case ('curve') {
+                @if (curvesOf(field); as curves) {
+                  <ptn-curve-editor
+                    [curves]="curves"
+                    [disabled]="!store.editable()"
+                    (curvesChange)="setCurves(field, $event)"
+                    (released)="release()"
+                  />
+                } @else {
+                  <input
+                    xuiInput
+                    size="sm"
+                    [attr.aria-label]="field.name"
+                    [disabled]="!store.editable()"
+                    [value]="textOf(field)"
+                    (change)="setText(field, $event)"
+                  />
+                }
+              }
+              @case ('ramp') {
+                @if (stopsOf(field); as stops) {
+                  <ptn-gradient-ramp
+                    [disabled]="!store.editable()"
+                    [stops]="stops"
+                    (released)="release()"
+                    (stopsChange)="setStops(field, $event)"
+                  />
+                } @else {
+                  <input
+                    xuiInput
+                    size="sm"
+                    [attr.aria-label]="field.name"
+                    [disabled]="!store.editable()"
+                    [value]="textOf(field)"
+                    (change)="setText(field, $event)"
+                  />
+                }
               }
               @case ('text') {
                 <input
@@ -144,6 +236,9 @@ export class GraphInspector {
     const type = this.type();
     return type ? fieldsOf(type) : [];
   });
+  protected readonly compound = computed(() => this.store.compounds().has(this.node().type));
+  /** Expression boxes opened by hand. One that holds text is open anyway. */
+  private readonly openExpressions = signal<ReadonlySet<string>>(new Set());
 
   protected release(): void {
     this.store.endGesture();
@@ -208,6 +303,46 @@ export class GraphInspector {
     }
   }
 
+  protected expressionOf(port: string): string {
+    return this.store.textOf(this.node().id, expressionKey(port), '');
+  }
+
+  protected showsExpression(port: string): boolean {
+    return this.openExpressions().has(port) || this.expressionOf(port) !== '';
+  }
+
+  protected toggleExpression(port: string): void {
+    this.openExpressions.update(open => {
+      const next = new Set(open);
+      if (!next.delete(port)) {
+        next.add(port);
+      }
+
+      return next;
+    });
+  }
+
+  protected setExpression(port: string, event: Event): void {
+    this.store.setText(this.node().id, expressionKey(port), (event.target as HTMLInputElement).value.trim());
+    this.store.endGesture();
+  }
+
+  protected curvesOf(field: Extract<GraphField, { control: 'curve' }>): Curves | null {
+    return parseCurves(this.textOf(field));
+  }
+
+  protected setCurves(field: Extract<GraphField, { control: 'curve' }>, curves: Curves): void {
+    this.store.setText(this.node().id, field.name, formatCurves(curves));
+  }
+
+  protected stopsOf(field: Extract<GraphField, { control: 'ramp' }>): readonly RampStop[] | null {
+    return parseRamp(this.textOf(field));
+  }
+
+  protected setStops(field: Extract<GraphField, { control: 'ramp' }>, stops: readonly RampStop[]): void {
+    this.store.setText(this.node().id, field.name, formatRamp(stops));
+  }
+
   protected textOf(field: Extract<GraphField, { source: 'text' }>): string {
     return this.store.textOf(this.node().id, field.name, field.fallback);
   }
@@ -219,21 +354,33 @@ export class GraphInspector {
     }
   }
 
-  protected setText(field: Extract<GraphField, { control: 'text' }>, event: Event): void {
+  protected setText(field: Extract<GraphField, { source: 'text' }>, event: Event): void {
     this.store.setText(this.node().id, field.name, (event.target as HTMLInputElement).value);
     this.store.endGesture();
   }
 }
 
-/** The Inspector pane: a selected graph node, or else whatever the Library has selected. */
+/** The Inspector pane: what is selected on the canvas, the graph itself, or else whatever the Library has selected. */
 @Component({
   selector: 'ptn-inspector',
-  imports: [GraphInspector, LibraryInspector],
+  imports: [GraphInspector, GraphNoteInspector, GraphSelection, GraphSettings, LibraryInspector],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'block h-full min-h-0' },
+  host: {
+    class: 'block h-full min-h-0',
+    '(change)': 'typing = null',
+    '(focusout)': 'typing = null',
+    '(input)': 'typed($event)',
+    '(keydown)': 'onKeydown($event)'
+  },
   template: `
-    @if (store.selectedNode(); as node) {
+    @if (store.selection().size > 1) {
+      <ptn-graph-selection />
+    } @else if (store.selectedNode(); as node) {
       <ptn-graph-inspector [node]="node" />
+    } @else if (store.selectedNote() !== null) {
+      <ptn-graph-note [index]="store.selectedNote() ?? 0" />
+    } @else if (store.graphInspected()) {
+      <ptn-graph-settings />
     } @else {
       <ptn-library-inspector />
     }
@@ -241,4 +388,24 @@ export class GraphInspector {
 })
 export class Inspector {
   protected readonly store = inject(GraphStore);
+  /** The box holding text not yet committed: Undo there undoes the typing, as anywhere. */
+  protected typing: EventTarget | null = null;
+
+  protected typed(event: Event): void {
+    this.typing = event.target;
+  }
+
+  protected onKeydown(event: KeyboardEvent): void {
+    if (this.store.document() === null) {
+      return;
+    }
+
+    if (event.target !== this.typing) {
+      this.store.shortcut(event);
+    } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+      // Leaving the box commits what it holds, so that this saves what the user can see.
+      (event.target as HTMLElement).blur();
+      this.store.shortcut(event);
+    }
+  }
 }

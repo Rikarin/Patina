@@ -12,5 +12,14 @@ contextBridge.exposeInMainWorld('patina', {
     ipcRenderer.on('patina:sidecars', (_event, statuses: unknown) => listener(statuses));
   },
   logs: () => ipcRenderer.invoke('patina:sidecars:logs'),
-  openMesh: () => ipcRenderer.invoke('patina:openMesh')
+  openMesh: () => ipcRenderer.invoke('patina:openMesh'),
+  setUnsaved: (unsaved: boolean) => {
+    ipcRenderer.send('patina:unsaved', unsaved);
+  },
+  onQuitRequested: (listener: () => void) => {
+    ipcRenderer.on('patina:quit-requested', () => listener());
+  },
+  quit: () => {
+    ipcRenderer.send('patina:quit');
+  }
 });

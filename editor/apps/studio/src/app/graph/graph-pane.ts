@@ -19,6 +19,7 @@ import {
   type XuiGraphConnection,
   type XuiGraphConnectionDrop,
   type XuiGraphEdge,
+  type XuiGraphNodeMove,
   type XuiGraphPoint,
   XuiNodeGraph,
   XuiNodeGraphImports,
@@ -30,12 +31,16 @@ import { XuiSpinnerImports } from '@xui/spinner';
 import { XuiTagImports } from '@xui/tag';
 import { SystemStatus } from '../core/system-status';
 import { isWireable } from './graph-fields';
-import { diagnosticsOf, edgeKey } from './graph-model';
+import { diagnosticsOf, edgeKey, evaluationSummary } from './graph-model';
 import { GraphStore } from './graph-store';
+import { NewGraphDialog } from './new-graph-dialog';
 
 const NodeWidth = 176;
 const CategoryColours = 8;
 const FitPadding = 48;
+const NotePrefix = 'note-';
+const GroupPrefix = 'group-';
+const NoteOffset = 40;
 const portTypes = xuiGraphChartPortTypes(['Image']);
 
 interface PortView {
@@ -53,6 +58,18 @@ interface NodeView {
   title: string;
   accent: string;
   ports: readonly PortView[];
+  position: XuiGraphPoint;
+  /** The frame it sits in, by the id xUI knows that frame by. */
+  group: string | undefined;
+  /** The graph behind it, when it is a compound. */
+  compound: string | null;
+}
+
+interface NoteView {
+  index: number;
+  key: string;
+  text: string;
+  width: number;
   position: XuiGraphPoint;
 }
 
@@ -101,15 +118,40 @@ export class GraphThumbnail {
 /** The toolbar, the canvas and what the Server has to say about the open graph. */
 @Component({
   selector: 'ptn-graph-canvas',
-  imports: [GraphThumbnail, XuiButtonImports, XuiCalloutImports, XuiNodeGraphImports, XuiOmnibarImports, XuiTagImports],
+  imports: [
+    GraphThumbnail,
+    NewGraphDialog,
+    XuiButtonImports,
+    XuiCalloutImports,
+    XuiNodeGraphImports,
+    XuiOmnibarImports,
+    XuiTagImports
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col', '(keydown)': 'onKeydown($event)' },
   template: `
     @let current = document();
     <div class="chrome-bar flex h-9 shrink-0 items-center gap-1 px-2">
+      @for (crumb of store.trail(); track crumb.id) {
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          data-testid="graph-crumb"
+          [title]="crumb.path"
+          (click)="store.back($index)"
+        >
+          {{ crumb.name }}
+        </button>
+        <span class="text-foreground-muted" aria-hidden="true">/</span>
+      }
       <span class="truncate font-medium" data-testid="graph-name" [title]="current?.path ?? ''">{{
         current?.name
       }}</span>
+      @if (current?.readOnly) {
+        <xui-tag class="ms-1 shrink-0" minimal data-testid="graph-read-only">Ships with Patina</xui-tag>
+      }
       @if (current?.history?.dirty) {
         <xui-tag class="ms-1 shrink-0" color="warning" minimal data-testid="graph-unsaved">Unsaved</xui-tag>
       }
@@ -120,11 +162,47 @@ export class GraphThumbnail {
         xuiButton
         size="sm"
         variant="ghost"
+        data-testid="graph-settings"
+        [active]="store.graphInspected()"
+        (click)="store.inspectGraph()"
+      >
+        Graph
+      </button>
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        data-testid="graph-note"
+        [disabled]="!store.editable()"
+        (click)="addNote()"
+      >
+        Note
+      </button>
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        data-testid="graph-group"
+        [disabled]="!store.editable() || store.selection().size === 0"
+        (click)="store.groupSelection()"
+      >
+        Group
+      </button>
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
         data-testid="graph-add"
         [disabled]="!store.editable()"
         (click)="openPalette(null)"
       >
         Add node
+      </button>
+      <button type="button" xuiButton size="sm" variant="ghost" data-testid="graph-new" (click)="creating.set(true)">
+        New
       </button>
       <button
         type="button"
@@ -209,19 +287,43 @@ export class GraphThumbnail {
       (connect)="connect($event)"
       (connectionDrop)="openDropPalette($event)"
       (deleteSelection)="remove($event)"
-      (nodeMove)="store.endMove()"
+      (nodeMove)="settle($event)"
       (selectionChange)="select($event)"
     >
+      @for (group of document()?.groups; track $index) {
+        <xui-graph-group
+          data-testid="graph-frame"
+          [color]="'var(--color-chart-' + (($index % 8) + 1) + ')'"
+          [groupId]="groupPrefix + $index"
+          [label]="group.title"
+        />
+      }
+      @for (note of notes(); track note.index) {
+        <xui-graph-node
+          data-testid="graph-note-card"
+          [attr.data-note]="note.index"
+          [label]="'Note'"
+          [nodeId]="note.key"
+          [position]="note.position"
+          [width]="note.width"
+          (positionChange)="store.moveComment(note.index, $event)"
+        >
+          <p class="m-0 p-2 text-xs whitespace-pre-wrap">{{ note.text }}</p>
+        </xui-graph-node>
+      }
       @for (view of views(); track view.id) {
         <xui-graph-node
           data-testid="graph-node"
           [accent]="view.accent"
+          [attr.data-compound]="view.compound"
           [attr.data-node]="view.id"
+          [group]="view.group"
           [label]="view.title"
           [nodeId]="view.key"
           [portLayout]="'columns'"
           [position]="view.position"
           [width]="nodeWidth"
+          (dblclick)="enter(view)"
           (positionChange)="move(view.id, $event)"
         >
           <xui-graph-node-preview><ptn-graph-thumbnail [node]="view.id" /></xui-graph-node-preview>
@@ -258,6 +360,8 @@ export class GraphThumbnail {
       </ul>
     }
 
+    <ptn-new-graph [(open)]="creating" />
+
     <xui-omnibar
       ariaLabel="Add a node"
       noResultsText="No node by that name"
@@ -288,7 +392,9 @@ export class GraphCanvas {
   protected readonly document = this.store.document;
   protected readonly portTypes = portTypes;
   protected readonly nodeWidth = NodeWidth;
+  protected readonly groupPrefix = GroupPrefix;
   protected readonly paletteOpen = signal(false);
+  protected readonly creating = signal(false);
   /** The port kind a dropped wire needs, while the palette is open for one. */
   private readonly paletteFilter = signal<'Input' | 'Output' | null>(null);
 
@@ -305,18 +411,50 @@ export class GraphCanvas {
       : types.filter(type => type.ports.some(port => port.direction === filter && port.kind === 'Image'));
   });
 
+  /** The frame each node sits in. xUI gives a node one frame, so the first that names it wins. */
+  private readonly frames = computed(() => {
+    const frames = new Map<number, string>();
+    (this.document()?.groups ?? []).forEach((group, index) => {
+      for (const node of group.nodes) {
+        if (!frames.has(node)) {
+          frames.set(node, `${GroupPrefix}${String(index)}`);
+        }
+      }
+    });
+    return frames;
+  });
+
   protected readonly views = computed(() => {
     const nodes = this.document()?.nodes;
     const types = this.store.types();
     const drafts = this.store.positions();
+    const frames = this.frames();
+    const compounds = this.store.compounds();
     const views: NodeView[] = [];
     for (const node of nodes?.values() ?? []) {
       const view = this.viewOf(node, types.get(node.type));
       const draft = drafts.get(String(node.id));
-      views.push(draft ? { ...view, position: draft } : view);
+      const group = frames.get(node.id);
+      const compound = compounds.has(node.type) ? node.type : null;
+      views.push(
+        draft || group !== view.group || compound !== view.compound
+          ? { ...view, position: draft ?? view.position, group, compound }
+          : view
+      );
     }
 
     return views;
+  });
+
+  protected readonly notes = computed(() => {
+    const drafts = this.store.positions();
+    return (this.document()?.comments ?? []).map((comment, index): NoteView => ({
+      index,
+      key: `${NotePrefix}${String(index)}`,
+      text: comment.text,
+      width: comment.width,
+      position: drafts.get(`note/${String(index)}`) ?? { x: comment.x, y: comment.y }
+    }));
   });
 
   protected readonly edges = computed(
@@ -330,10 +468,8 @@ export class GraphCanvas {
   });
 
   protected readonly evaluated = computed(() => {
-    const evaluation = this.document()?.evaluation;
-    return evaluation && !evaluation.error
-      ? `${String(evaluation.ran)} ran, ${evaluation.milliseconds.toFixed(0)} ms`
-      : '';
+    const document = this.document();
+    return document ? evaluationSummary(document) : '';
   });
 
   protected readonly workerMissing = computed(() => {
@@ -357,7 +493,11 @@ export class GraphCanvas {
 
     // The canvas selects what the store says, whichever side changed it.
     effect(() => {
-      const wanted = [...this.store.selection()].map(String);
+      const note = this.store.selectedNote();
+      const wanted = [
+        ...[...this.store.selection()].map(String),
+        ...(note === null ? [] : [`${NotePrefix}${String(note)}`])
+      ];
       const canvas = this.graph().store;
       untracked(() => {
         const held = canvas.selectedNodes();
@@ -377,7 +517,7 @@ export class GraphCanvas {
         document &&
         width > 0 &&
         measured &&
-        canvas.nodes().length === document.nodes.size &&
+        canvas.nodes().length === document.nodes.size + document.comments.length &&
         document.id !== this.fitted
       ) {
         this.fitted = document.id;
@@ -433,11 +573,44 @@ export class GraphCanvas {
   }
 
   protected select(selection: { nodes: string[] }): void {
-    this.store.select(selection.nodes.map(Number));
+    const nodes = selection.nodes.filter(key => !key.startsWith(NotePrefix));
+    this.store.select(nodes.map(Number));
+    const note = selection.nodes.find(key => key.startsWith(NotePrefix));
+    this.store.selectNote(nodes.length === 0 && note !== undefined ? Number(note.slice(NotePrefix.length)) : null);
   }
 
   protected remove(selection: { nodes: string[]; edges: string[] }): void {
-    this.store.remove(selection.nodes.map(Number), selection.edges);
+    const nodes = selection.nodes.filter(key => !key.startsWith(NotePrefix));
+    this.store.remove(nodes.map(Number), selection.edges);
+    const notes = selection.nodes
+      .filter(key => key.startsWith(NotePrefix))
+      .map(key => Number(key.slice(NotePrefix.length)));
+    for (const index of notes.sort((a, b) => b - a)) {
+      this.store.removeComment(index);
+    }
+  }
+
+  /** A drag came to rest. Dropping a node on a frame, or off one, changes its group. */
+  protected settle(move: XuiGraphNodeMove): void {
+    this.store.endMove();
+    if (move.source === 'node') {
+      this.store.regroup(
+        move.nodes
+          .filter(item => !item.nodeId.startsWith(NotePrefix))
+          .map(item => ({ node: Number(item.nodeId), group: item.group }))
+      );
+    }
+  }
+
+  protected enter(view: NodeView): void {
+    if (view.compound !== null) {
+      void this.store.enterCompound(view.compound);
+    }
+  }
+
+  protected addNote(): void {
+    const { x, y } = this.viewCentre();
+    void this.store.addComment({ x: x - NoteOffset, y: y - NoteOffset });
   }
 
   protected reveal(item: GraphDiagnostic): void {
@@ -454,17 +627,13 @@ export class GraphCanvas {
     }
 
     const command = event.metaKey || event.ctrlKey;
-    const key = event.key.toLowerCase();
-    if (command && key === 'z') {
+    if (this.store.shortcut(event)) {
+      return;
+    }
+
+    if (command && event.key.toLowerCase() === 'g') {
       event.preventDefault();
-      if (event.shiftKey) {
-        this.store.redo();
-      } else {
-        this.store.undo();
-      }
-    } else if (command && key === 's') {
-      event.preventDefault();
-      void this.store.save();
+      this.store.groupSelection();
     } else if (event.key === ' ' && this.store.editable() && !target.closest('button, [role=button]')) {
       event.preventDefault();
       this.openPalette(null);
@@ -494,7 +663,9 @@ export class GraphCanvas {
         title: type?.title ?? node.type,
         accent: accentOf(type?.category ?? ''),
         ports,
-        position: { x: node.x, y: node.y }
+        position: { x: node.x, y: node.y },
+        group: undefined,
+        compound: null
       };
       this.nodeViews.set(node, view);
     }
@@ -520,7 +691,14 @@ export class GraphCanvas {
 /** The Graph dock pane: the states around a graph, and the graph. */
 @Component({
   selector: 'ptn-graph',
-  imports: [GraphCanvas, XuiButtonImports, XuiDialogImports, XuiNonIdealStateImports, XuiSpinnerImports],
+  imports: [
+    GraphCanvas,
+    NewGraphDialog,
+    XuiButtonImports,
+    XuiDialogImports,
+    XuiNonIdealStateImports,
+    XuiSpinnerImports
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
   template: `
@@ -532,7 +710,11 @@ export class GraphCanvas {
           title="No graph open"
           description="Select a graph in the Library's Shared Assets, then choose Open in the Inspector."
           data-testid="graph-none"
-        />
+        >
+          <button action type="button" xuiButton size="sm" data-testid="graph-new" (click)="creating.set(true)">
+            New graph
+          </button>
+        </xui-non-ideal-state>
       }
       @case ('opening') {
         <div class="grid flex-1 place-items-center">
@@ -547,6 +729,11 @@ export class GraphCanvas {
           [description]="session.reason"
         >
           <button action type="button" xuiButton size="sm" (click)="store.reopen()">Try again</button>
+          @if (store.trail().length > 0) {
+            <button action type="button" xuiButton size="sm" (click)="store.back(store.trail().length - 1)">
+              Back
+            </button>
+          }
         </xui-non-ideal-state>
       }
       @case ('ended') {
@@ -570,7 +757,9 @@ export class GraphCanvas {
       [open]="store.leaving() !== null"
       (openChange)="$event || store.resolveLeaving('cancel')"
     >
-      <xui-dialog-body>{{ store.document()?.name }} has edits that are not in its file.</xui-dialog-body>
+      <xui-dialog-body data-testid="graph-leaving">
+        {{ store.document()?.name }} has edits that are not in its file.
+      </xui-dialog-body>
       <xui-dialog-footer>
         <button type="button" xuiButton variant="ghost" (click)="store.resolveLeaving('cancel')">Cancel</button>
         <button type="button" xuiButton data-testid="graph-discard" (click)="store.resolveLeaving('discard')">
@@ -596,8 +785,11 @@ export class GraphCanvas {
         </button>
       </xui-dialog-footer>
     </xui-dialog>
+
+    <ptn-new-graph [(open)]="creating" />
   `
 })
 export class GraphPane {
   protected readonly store = inject(GraphStore);
+  protected readonly creating = signal(false);
 }
