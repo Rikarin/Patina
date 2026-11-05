@@ -3,6 +3,7 @@ using Patina.Contracts;
 using Patina.Library;
 using Patina.Server.Viewport;
 using System.Buffers.Binary;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Net.WebSockets;
@@ -25,6 +26,7 @@ public sealed class ViewportProcessTests : IDisposable {
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-viewport-");
     readonly string socketPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.sock");
     readonly List<Process> started = [];
+    readonly ConcurrentQueue<string> output = new();
 
     string Library => Directory.CreateDirectory(Path.Combine(folder.FullName, "Game.ptlib")).FullName;
 
@@ -42,6 +44,11 @@ public sealed class ViewportProcessTests : IDisposable {
             process.Dispose();
         }
 
+        // What the processes said is the only account of a Server that stopped itself.
+        foreach (var line in output) {
+            TestContext.Current.TestOutputHelper?.WriteLine(line);
+        }
+
         File.Delete(socketPath);
         folder.Delete(true);
     }
@@ -56,12 +63,19 @@ public sealed class ViewportProcessTests : IDisposable {
         }
 
         var process = Process.Start(info)!;
-        process.OutputDataReceived += static (_, _) => { };
-        process.ErrorDataReceived += static (_, _) => { };
+        var name = Path.GetFileNameWithoutExtension(dll);
+        process.OutputDataReceived += (_, line) => Keep(name, line.Data);
+        process.ErrorDataReceived += (_, line) => Keep(name, line.Data);
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
         started.Add(process);
         return process;
+    }
+
+    void Keep(string name, string? line) {
+        if (line is not null) {
+            output.Enqueue($"{name}: {line}");
+        }
     }
 
     Process StartWorker() =>
@@ -392,6 +406,21 @@ public sealed class FrameMemoryTests : IDisposable {
         var again = await memory.RentAsync(TestContext.Current.CancellationToken);
 
         Assert.Same(held[0], again);
+    }
+
+    /// <summary>The session offers to whoever was subscribed a moment ago, and that client may have gone.</summary>
+    [Fact]
+    public async Task A_frame_offered_to_a_client_that_has_left_goes_back_to_the_pool() {
+        var outbox = new FrameOutbox();
+        outbox.Dispose();
+        var held = new List<FrameSlot>();
+        for (var i = 0; i < 4; i++) {
+            held.Add(await memory.RentAsync(TestContext.Current.CancellationToken));
+        }
+
+        outbox.Offer(new(held[0], new byte[ViewportSession.HeaderBytes], 0));
+
+        Assert.Same(held[0], await memory.RentAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]

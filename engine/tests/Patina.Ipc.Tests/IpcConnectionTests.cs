@@ -109,6 +109,29 @@ public sealed class IpcConnectionTests : IDisposable {
         }
     }
 
+    /// <summary>A Server killed its own host this way: the link went while the render loop was mid-write.</summary>
+    [Fact]
+    public async Task A_write_under_way_when_the_link_is_disposed_is_a_lost_peer() {
+        var stream = new StalledStream();
+        var connection = new IpcConnection(stream, Reply);
+        connection.Start();
+        var send = connection.SendAsync(new() { Type = IpcTypes.Health }, Token);
+        await stream.Writing.WaitAsync(TimeSpan.FromSeconds(5), Token);
+
+        await connection.DisposeAsync();
+        stream.BreakPipe();
+
+        await Assert.ThrowsAsync<IOException>(() => send);
+    }
+
+    [Fact]
+    public async Task A_send_to_a_disposed_link_is_a_lost_peer() {
+        var connection = new IpcConnection(new StalledStream(), Reply);
+        await connection.DisposeAsync();
+
+        await Assert.ThrowsAsync<IOException>(() => connection.SendAsync(new() { Type = IpcTypes.Health }, Token));
+    }
+
     [Fact]
     public async Task Connect_waits_for_a_listener_that_is_still_starting() {
         var connect = IpcSocket.ConnectAsync(socketPath, TimeSpan.FromSeconds(10), Token);
@@ -142,5 +165,55 @@ public sealed class IpcConnectionTests : IDisposable {
         StdinWatch.Start(new MemoryStream([1, 2, 3]), closed.SetResult);
 
         await closed.Task.WaitAsync(TimeSpan.FromSeconds(5), Token);
+    }
+
+    /// <summary>Reads nothing until disposed, and holds a write until the test breaks the pipe under it.</summary>
+    sealed class StalledStream : Stream {
+        readonly TaskCompletionSource<int> disposed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        readonly TaskCompletionSource writing = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        readonly TaskCompletionSource broken = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task Writing => writing.Task;
+
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => true;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public void BreakPipe() => broken.TrySetException(new IOException("Broken pipe"));
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+            new(disposed.Task);
+
+        public override async ValueTask WriteAsync(
+            ReadOnlyMemory<byte> buffer,
+            CancellationToken cancellationToken = default
+        ) {
+            writing.TrySetResult();
+            await broken.Task;
+        }
+
+        public override void Flush() { }
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        protected override void Dispose(bool disposing) {
+            disposed.TrySetResult(0);
+            base.Dispose(disposing);
+        }
     }
 }
