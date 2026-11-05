@@ -73,21 +73,27 @@ sealed class GraphHost : IDisposable {
 
     /// <summary>
     ///     Puts every picture the cache lacks into it. An unchanged result keeps its file, so only what ran costs
-    ///     anything. Reads share the device and take turns; encoding is most of the cost and has no such limit.
+    ///     anything. The reads are one submission, so a preview costs a copy rather than a wait for the device, and
+    ///     encoding has no such limit.
     /// </summary>
     GraphResultPreview[] Write(TextureBake bake, IReadOnlyList<GraphPreviewImage> images, string folder) {
-        Dictionary<TextureResultKey, Bitmap> fresh = [];
+        Dictionary<TextureResultKey, int> owed = [];
         foreach (var image in images) {
             var key = bake.KeyOf(image.Image);
-            if (!fresh.ContainsKey(key)
+            if (!owed.ContainsKey(key)
                 && (!written.TryGetValue(key, out var known)
                     || !File.Exists(GraphPreviewFiles.PathOf(folder, known.Hash)))) {
-                fresh[key] = bake.Read(image.Image);
+                owed[key] = image.Image;
             }
         }
 
+        var pictures = bake.Read([..owed.Values]);
+
         var encoded = new ConcurrentDictionary<TextureResultKey, Written>();
-        Parallel.ForEach(fresh, picture => encoded[picture.Key] = Encode(picture.Value, folder));
+        Parallel.ForEach(
+            owed.Keys.Zip(pictures),
+            picture => encoded[picture.First] = Encode(picture.Second, folder)
+        );
         foreach (var (key, picture) in encoded) {
             written[key] = picture;
         }

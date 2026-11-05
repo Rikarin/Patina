@@ -285,11 +285,9 @@ public sealed class GraphProcessTests : IDisposable {
         }
     }
 
-    /// <summary>
-    ///     A compound's contents are an object Vixen's refresh cannot watch, so here a value edit does compile.
-    /// </summary>
+    /// <summary>The rule holds through a compound: a number on one reaches its inner nodes without a compile (plan §3.2).</summary>
     [Fact]
-    public async Task A_compound_gets_one_preview_per_port_and_a_number_on_it_recompiles() {
+    public async Task A_compound_gets_one_preview_per_port_and_a_number_on_it_does_not_recompile() {
         using var deadline = Deadline(120);
         var (_, state, socket, _) = await OpenSampleAsync(GraphTesting.Sample(), deadline.Token);
         using (socket) {
@@ -316,7 +314,7 @@ public sealed class GraphProcessTests : IDisposable {
                 new GraphSetValue(node, number.Name, [number.Default[0] + 1f])
             );
             var evaluated = await EvaluatedAsync(socket, edit.Revision, deadline.Token);
-            Assert.True(evaluated.Compiled);
+            Assert.False(evaluated.Compiled);
             Assert.DoesNotContain(evaluated.Previews, static p => p.Node is 1 or 2 or 3 or 5);
         }
     }
