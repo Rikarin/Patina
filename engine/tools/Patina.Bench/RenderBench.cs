@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+using Patina.Export;
 using Patina.Viewport;
 using System.Diagnostics;
 using System.Globalization;
@@ -13,7 +14,13 @@ namespace Patina.Bench;
 static class RenderBench {
     const int Frames = 240;
 
-    public static int Run(string mesh, string png, int width, int height) {
+    /// <param name="mesh">The mesh.</param>
+    /// <param name="png">Where the first frame goes.</param>
+    /// <param name="width">The frame's width.</param>
+    /// <param name="height">The frame's height.</param>
+    /// <param name="bake">A folder a bake was delivered to, to lay over the mesh, or null.</param>
+    /// <param name="camera">The first frame's camera, or null for the default.</param>
+    public static int Run(string mesh, string png, int width, int height, string? bake, OrbitCamera? camera) {
         var start = Stopwatch.StartNew();
         var cache = new ShaderCache(ShaderCache.DefaultDirectory);
         if (!ViewportRenderer.TryCreate(cache, out var created, out var refusal)) {
@@ -27,10 +34,15 @@ static class RenderBench {
         start.Restart();
         renderer.OpenMesh(mesh);
         Say($"mesh open in {start.Elapsed.TotalMilliseconds:F0} ms");
+        if (bake is not null) {
+            start.Restart();
+            renderer.SetMaps(Maps(bake));
+            Say($"maps on in {start.Elapsed.TotalMilliseconds:F0} ms");
+        }
 
         var pixels = new byte[ViewportRenderer.FrameBytes(width, height)];
         start.Restart();
-        renderer.Render(OrbitCamera.Default, width, height, pixels);
+        renderer.Render(camera ?? OrbitCamera.Default, width, height, pixels);
         Say($"first frame in {start.Elapsed.TotalMilliseconds:F0} ms");
         File.WriteAllBytes(png, PngCodec.Encode(new(width, height, pixels)));
 
@@ -48,6 +60,13 @@ static class RenderBench {
         var p99 = times[(int)(Frames * 0.99)];
         Say($"{width}x{height}: {fps:F1} fps, median {median:F2} ms, p99 {p99:F2} ms");
         return 0;
+    }
+
+    static ViewportMaps Maps(string folder) {
+        return new(Normal: Of("normal"), Occlusion: Of("ao"));
+
+        ViewportMapFile? Of(string map) =>
+            BakedMapPicture.Find(folder, map) is { } found ? new(found.Path, found.Path) : null;
     }
 
     static void Say(FormattableString line) => Console.WriteLine(line.ToString(CultureInfo.InvariantCulture));

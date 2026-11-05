@@ -51,6 +51,7 @@ public sealed class ViewportSession(
     readonly string framesPath = options.Value.Worker.FramesPath;
 
     string? mesh;
+    ViewportMapSet maps = new();
     ViewportCameraState camera = new(0.6, 0.35, 2.2);
     int width = DefaultWidth;
     int height = DefaultHeight;
@@ -59,23 +60,41 @@ public sealed class ViewportSession(
     long revision = 1;
     long frames;
     string? error;
+    string? mapsError;
     long rendered;
     IpcConnection? told;
     string? toldMesh;
+    ViewportMapSet? toldMaps;
     ViewportCameraState? toldCamera;
 
     public ViewportState State {
         get {
             lock (changing) {
-                return new(mesh, camera, width, height, scale.Value, frames, error);
+                return new(mesh, Paths(maps), camera, width, height, scale.Value, frames, error ?? mapsError);
             }
         }
     }
 
-    public void SetMesh(string path) {
+    public void SetMesh(string path) => Show(path, new());
+
+    /// <summary>Shows a mesh and pictures together, so that no frame has the one without the other.</summary>
+    public void Show(string path, ViewportMapSet pictures) {
         lock (changing) {
             mesh = path;
+            maps = pictures;
             error = null;
+            mapsError = null;
+            revision++;
+        }
+
+        Wake();
+    }
+
+    /// <summary>Lays pictures over the open mesh. A mesh leaving takes its pictures with it.</summary>
+    public void SetMaps(ViewportMapSet pictures) {
+        lock (changing) {
+            maps = pictures;
+            mapsError = null;
             revision++;
         }
 
@@ -150,9 +169,13 @@ public sealed class ViewportSession(
     async Task DrawAsync(Work work, CancellationToken cancellationToken) {
         var connection = await worker.ConnectionAsync(cancellationToken);
         if (!ReferenceEquals(connection, told) || work.Mesh != toldMesh) {
-            (toldMesh, toldCamera) = (null, null);
+            (toldMesh, toldCamera, toldMaps) = (null, null, null);
             await connection.SendAsync(new() { Type = IpcTypes.ViewportOpen, Mesh = work.Mesh }, cancellationToken);
-            (told, toldMesh) = (connection, work.Mesh);
+            (told, toldMesh, toldMaps) = (connection, work.Mesh, new());
+        }
+
+        if (work.Maps != toldMaps) {
+            await TellMapsAsync(connection, work.Maps, cancellationToken);
         }
 
         if (work.Camera != toldCamera) {
@@ -164,11 +187,29 @@ public sealed class ViewportSession(
         await RenderAsync(connection, work, cancellationToken);
     }
 
+    /// <summary>
+    ///     A picture that cannot be read costs the picture and not the view: the error stays on the state, which a
+    ///     frame clears for anything else, and the mesh goes on being drawn with what the Worker still has.
+    /// </summary>
+    async Task TellMapsAsync(IpcConnection connection, ViewportMapSet pictures, CancellationToken cancellationToken) {
+        toldMaps = null;
+        try {
+            await connection.SendAsync(new() { Type = IpcTypes.ViewportMaps, Maps = pictures }, cancellationToken);
+        } catch (IpcException e) {
+            ServerLog.ViewportFailed(logger, e.Message);
+            lock (changing) {
+                mapsError = e.Message;
+            }
+        }
+
+        toldMaps = pictures;
+    }
+
     (Work? Work, long Revision) Snapshot() {
         lock (changing) {
             return subscribers.Count == 0
                 ? (null, revision)
-                : (new(mesh, camera, width, height, scale.Value, interacting, lastInput), revision);
+                : (new(mesh, maps, camera, width, height, scale.Value, interacting, lastInput), revision);
         }
     }
 
@@ -256,8 +297,18 @@ public sealed class ViewportSession(
         }
     }
 
+    static ViewportMapPaths Paths(ViewportMapSet set) =>
+        new(
+            set.BaseColor?.Path,
+            set.Normal?.Path,
+            set.Roughness?.Path,
+            set.Metallic?.Path,
+            set.Occlusion?.Path
+        );
+
     readonly record struct Work(
         string? Mesh,
+        ViewportMapSet Maps,
         ViewportCameraState Camera,
         int Width,
         int Height,

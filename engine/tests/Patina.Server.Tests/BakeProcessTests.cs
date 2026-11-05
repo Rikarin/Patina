@@ -1,11 +1,14 @@
 using Patina.Bench;
 using Patina.Contracts;
 using Patina.Library;
+using System.Buffers.Binary;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
 using System.Net.WebSockets;
+using System.Text;
 using System.Text.Json;
+using Vixen.Core.Imaging;
 using Vixen.NodeGraph;
 
 namespace Patina.Server.Tests;
@@ -15,6 +18,8 @@ namespace Patina.Server.Tests;
 ///     out. S5's kill lands here, in the middle of a bake.
 /// </summary>
 public sealed class BakeProcessTests : IDisposable {
+    const int ViewportFrameHeader = 32;
+
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-bake-");
     readonly string socketPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.sock");
     readonly List<Process> started = [];
@@ -385,6 +390,327 @@ public sealed class BakeProcessTests : IDisposable {
         Assert.DoesNotContain(bound.Diagnostics, static d => d.Severity == "Error");
         Assert.NotEmpty(bound.Previews);
         Assert.True(File.Exists($"{path}.bake"));
+    }
+
+    /// <summary>The farm's path: mesh maps, cage and skew map with no Server and no Worker, file to file.</summary>
+    [Fact]
+    public async Task The_command_line_bakes_with_a_cage_and_a_skew_map_and_a_graph_reads_the_result() {
+        using var deadline = Deadline(120);
+        var request = Request();
+        var skew = Path.Combine(folder.FullName, "skew.png");
+        await File.WriteAllBytesAsync(skew, PngCodec.Encode(new(1, 1, [128, 128, 128, 255])), deadline.Token);
+
+        var (baked, said) = await CommandAsync(
+            deadline.Token,
+            "bake-maps",
+            "--high",
+            request.High,
+            "--low",
+            request.Low,
+            "--cage",
+            request.Low,
+            "--skew",
+            "0.5",
+            "--skew-map",
+            skew,
+            "--maps",
+            "ao",
+            "--resolution",
+            "64",
+            "--rays",
+            "4",
+            "--out",
+            Output
+        );
+        Assert.True(baked == 0, said);
+        Assert.True(File.Exists(Path.Combine(Output, "housing_low_ao.png")));
+
+        var asset = new NodeGraphAsset {
+            Name = "Worn",
+            Nodes = [
+                new() { Id = 1, Type = "Source/Mesh Map", Texts = new() { ["Map"] = "ao" } },
+                new() { Id = 2, Type = "Output/Output", X = 300, Texts = new() { ["Usage"] = "baseColor" } }
+            ],
+            Edges = [new() { FromNode = 1, FromPort = "Out", ToNode = 2, ToPort = "Input" }],
+            Settings = new() { ["baseWidth"] = "64", ["baseHeight"] = "64" }
+        };
+        var graph = GraphTesting.Write(Library, asset, "worn.vxtexgraph");
+        var pictures = Path.Combine(folder.FullName, "pictures");
+
+        var (unbound, refusal) = await CommandAsync(deadline.Token, "bake", graph, pictures);
+        var (bound, reason) = await CommandAsync(deadline.Token, "bake", graph, pictures, "--mesh-maps", Output);
+
+        if (reason.Contains("no Vulkan device", StringComparison.Ordinal)) {
+            Assert.Skip(reason);
+        }
+
+        Assert.NotEqual(0, unbound);
+        Assert.Contains("no bake has been chosen", refusal, StringComparison.Ordinal);
+        Assert.True(bound == 0, reason);
+        Assert.True(File.Exists(Path.Combine(pictures, "baseColor.png")));
+    }
+
+    static async Task<(int Exit, string Said)> CommandAsync(
+        CancellationToken cancellationToken,
+        params string[] arguments
+    ) {
+        var info = new ProcessStartInfo("dotnet") { RedirectStandardOutput = true, RedirectStandardError = true };
+        info.ArgumentList.Add(Engine.Dll("Patina.Cli", "patina"));
+        foreach (var argument in arguments) {
+            info.ArgumentList.Add(argument);
+        }
+
+        using var process = Process.Start(info)!;
+        var output = process.StandardOutput.ReadToEndAsync(cancellationToken);
+        var errors = process.StandardError.ReadToEndAsync(cancellationToken);
+        await process.WaitForExitAsync(cancellationToken);
+        return (process.ExitCode, await output + await errors);
+    }
+
+    async Task<ClientWebSocket> ViewportAsync(CancellationToken cancellationToken) {
+        var instance = (await new InstanceRegistry(DiscoveryFile).FindAsync(Library, cancellationToken))!;
+        var socket = new ClientWebSocket();
+        await socket.ConnectAsync(
+            new($"ws://127.0.0.1:{instance.Port}/ws/viewport?access_token={instance.Token}"),
+            cancellationToken
+        );
+        return socket;
+    }
+
+    static Task SendAsync(ClientWebSocket socket, ViewportInput input, CancellationToken cancellationToken) =>
+        socket.SendAsync(
+            Encoding.UTF8.GetBytes(JsonSerializer.Serialize(input, ContractsJsonContext.Default.ViewportInput)),
+            WebSocketMessageType.Text,
+            true,
+            cancellationToken
+        );
+
+    async Task<ViewportState> ViewportStateAsync(CancellationToken cancellationToken) =>
+        (await http.GetFromJsonAsync(
+            "/api/v1/viewport",
+            ContractsJsonContext.Default.ViewportState,
+            cancellationToken
+        ))!;
+
+    /// <summary>One whole frame, or skips the test where the Worker has no Vulkan.</summary>
+    async Task<byte[]> FrameAsync(ClientWebSocket socket, CancellationToken cancellationToken) {
+        using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var buffer = new byte[16 * 1024 * 1024];
+        var length = 0;
+        var receive = socket.ReceiveAsync(buffer.AsMemory(length), patience.Token).AsTask();
+        while (true) {
+            if (await Task.WhenAny(receive, Task.Delay(250, cancellationToken)) != receive) {
+                if ((await ViewportStateAsync(cancellationToken)).Error is { } error
+                    && error.StartsWith("No Vulkan", StringComparison.Ordinal)) {
+                    await patience.CancelAsync();
+                    Assert.Skip(error);
+                }
+
+                continue;
+            }
+
+            var part = await receive;
+            length += part.Count;
+            if (part.EndOfMessage) {
+                return buffer[..length];
+            }
+
+            receive = socket.ReceiveAsync(buffer.AsMemory(length), patience.Token).AsTask();
+        }
+    }
+
+    static bool SamePicture(byte[] one, byte[] two) =>
+        one.Length == two.Length
+        && Enumerable.Range(ViewportFrameHeader, one.Length - ViewportFrameHeader)
+            .All(at => Math.Abs(one[at] - two[at]) <= 3);
+
+    /// <summary>
+    ///     What an artist judges a bake on, by a client that is not the editor: choose the bake and the low mesh shows
+    ///     it. The Server holds the choice, so the Worker that dies with it loses nothing.
+    /// </summary>
+    [Fact]
+    public async Task A_bake_shows_on_its_low_mesh_and_outlives_the_worker() {
+        using var deadline = Deadline(180);
+        StartServer();
+        await DiscoverAsync(deadline.Token);
+        var worker = StartWorker();
+        var job = await UntilAsync((await StartAsync(Request(256), deadline.Token)).Id, Over, deadline.Token);
+        Assert.Equal(JobStates.Done, job.State);
+
+        using var socket = await ViewportAsync(deadline.Token);
+        await SendAsync(socket, new(Width: 160, Height: 100, Input: 1), deadline.Token);
+        while ((await ViewportStateAsync(deadline.Token)).Width != 160) {
+            await Task.Delay(10, deadline.Token);
+        }
+
+        using var opened = await http.PutAsJsonAsync(
+            "/api/v1/viewport/mesh",
+            new(job.Bake.Low),
+            ContractsJsonContext.Default.ViewportMeshRequest,
+            deadline.Token
+        );
+        opened.EnsureSuccessStatusCode();
+        var bare = await FrameAsync(socket, deadline.Token);
+
+        using var shown = await http.PutAsJsonAsync(
+            "/api/v1/viewport/bake",
+            new(job.Id),
+            ContractsJsonContext.Default.ViewportBakeRequest,
+            deadline.Token
+        );
+        shown.EnsureSuccessStatusCode();
+        var state = (await shown.Content.ReadFromJsonAsync(
+            ContractsJsonContext.Default.ViewportState,
+            deadline.Token
+        ))!;
+        Assert.Equal(job.Bake.Low, state.Mesh);
+        Assert.EndsWith("_normal.png", state.Maps.Normal, StringComparison.Ordinal);
+        Assert.EndsWith("_ao.png", state.Maps.Occlusion, StringComparison.Ordinal);
+
+        var baked = await FrameAsync(socket, deadline.Token);
+        Assert.False(SamePicture(bare, baked));
+
+        worker.Kill();
+        await worker.WaitForExitAsync(deadline.Token);
+        await SendAsync(socket, new(Input: 9), deadline.Token);
+        await Task.Delay(100, deadline.Token);
+        StartWorker();
+
+        var again = await FrameAsync(socket, deadline.Token);
+        while (BinaryPrimitives.ReadUInt32LittleEndian(again.AsSpan(16)) != 9) {
+            again = await FrameAsync(socket, deadline.Token);
+        }
+
+        Assert.True(SamePicture(baked, again), "A new Worker drew something else.");
+    }
+
+    [Fact]
+    public async Task A_graph_s_outputs_lie_on_the_open_mesh() {
+        using var deadline = Deadline(120);
+        StartServer();
+        await DiscoverAsync(deadline.Token);
+        StartWorker();
+        var request = Request();
+        var asset = new NodeGraphAsset {
+            Name = "Painted",
+            Nodes = [
+                new() { Id = 1, Type = "Source/Gradient" },
+                new() { Id = 2, Type = "Output/Output", X = 300, Texts = new() { ["Usage"] = "roughness" } },
+                new() { Id = 3, Type = "Output/Output", X = 300, Texts = new() { ["Usage"] = "emissive" } }
+            ],
+            Edges = [
+                new() { FromNode = 1, FromPort = "Out", ToNode = 2, ToPort = "Input" },
+                new() { FromNode = 1, FromPort = "Out", ToNode = 3, ToPort = "Input" }
+            ],
+            Settings = new() { ["baseWidth"] = "64", ["baseHeight"] = "64" }
+        };
+        var graph = await http.OpenAsync(GraphTesting.Write(Library, asset, "painted.vxtexgraph"), deadline.Token);
+
+        using var early = await http.PutAsJsonAsync(
+            "/api/v1/viewport/graph",
+            new(graph.Id),
+            ContractsJsonContext.Default.ViewportGraphRequest,
+            deadline.Token
+        );
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, early.StatusCode);
+
+        using var socket = await ViewportAsync(deadline.Token);
+        using var opened = await http.PutAsJsonAsync(
+            "/api/v1/viewport/mesh",
+            new(request.Low),
+            ContractsJsonContext.Default.ViewportMeshRequest,
+            deadline.Token
+        );
+        opened.EnsureSuccessStatusCode();
+        await FrameAsync(socket, deadline.Token);
+
+        ViewportState? shown = null;
+        while (shown is null) {
+            using var response = await http.PutAsJsonAsync(
+                "/api/v1/viewport/graph",
+                new(graph.Id),
+                ContractsJsonContext.Default.ViewportGraphRequest,
+                deadline.Token
+            );
+            if (response.IsSuccessStatusCode) {
+                shown = await response.Content.ReadFromJsonAsync(
+                    ContractsJsonContext.Default.ViewportState,
+                    deadline.Token
+                );
+            } else {
+                // The Worker holds no picture until the graph's first evaluation.
+                Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+                await Task.Delay(100, deadline.Token);
+            }
+        }
+
+        Assert.True(File.Exists(shown.Maps.Roughness), shown.Maps.Roughness);
+        Assert.Null(shown.Maps.BaseColor);
+        await FrameAsync(socket, deadline.Token);
+        Assert.Null((await ViewportStateAsync(deadline.Token)).Error);
+    }
+
+    [Fact]
+    public async Task A_picture_the_worker_cannot_read_costs_the_picture_and_not_the_view() {
+        using var deadline = Deadline(120);
+        StartServer();
+        await DiscoverAsync(deadline.Token);
+        StartWorker();
+        var request = Request();
+        using var socket = await ViewportAsync(deadline.Token);
+        using var opened = await http.PutAsJsonAsync(
+            "/api/v1/viewport/mesh",
+            new(request.Low),
+            ContractsJsonContext.Default.ViewportMeshRequest,
+            deadline.Token
+        );
+        opened.EnsureSuccessStatusCode();
+        await FrameAsync(socket, deadline.Token);
+
+        var broken = Path.Combine(folder.FullName, "broken.png");
+        await File.WriteAllBytesAsync(broken, [1, 2, 3], deadline.Token);
+        using var laid = await http.PutAsJsonAsync(
+            "/api/v1/viewport/maps",
+            new(BaseColor: broken),
+            ContractsJsonContext.Default.ViewportMapPaths,
+            deadline.Token
+        );
+        laid.EnsureSuccessStatusCode();
+        await SendAsync(socket, new(new(1d, 0.2d, 2.5d)), deadline.Token);
+        await FrameAsync(socket, deadline.Token);
+
+        Assert.NotNull((await ViewportStateAsync(deadline.Token)).Error);
+    }
+
+    [Fact]
+    public async Task What_cannot_be_shown_is_refused_and_says_why() {
+        using var deadline = Deadline(120);
+        StartServer();
+        await DiscoverAsync(deadline.Token);
+
+        async Task<HttpStatusCode> ShowAsync(string id) {
+            using var response = await http.PutAsJsonAsync(
+                "/api/v1/viewport/bake",
+                new(id),
+                ContractsJsonContext.Default.ViewportBakeRequest,
+                deadline.Token
+            );
+            return response.StatusCode;
+        }
+
+        Assert.Equal(HttpStatusCode.NotFound, await ShowAsync("nothing"));
+
+        // No Worker, so this job stays queued.
+        var queued = await StartAsync(Request(), deadline.Token);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, await ShowAsync(queued.Id));
+
+        using var missing = await http.PutAsJsonAsync(
+            "/api/v1/viewport/maps",
+            new(Normal: Path.Combine(folder.FullName, "gone.png")),
+            ContractsJsonContext.Default.ViewportMapPaths,
+            deadline.Token
+        );
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
     }
 
     static async Task<ClientWebSocket> FollowAsync(

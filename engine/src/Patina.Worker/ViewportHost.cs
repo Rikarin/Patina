@@ -29,6 +29,24 @@ sealed class ViewportHost(string shaderCache) : IDisposable {
         return IpcMessage.Ok(request.Id);
     }
 
+    public IpcMessage SetMaps(IpcMessage request) {
+        var maps = request.Maps ?? throw new IpcException("viewport.maps names no maps.");
+        Renderer()
+            .SetMaps(
+                new(
+                    File(maps.BaseColor),
+                    File(maps.Normal),
+                    File(maps.Roughness),
+                    File(maps.Metallic),
+                    File(maps.Occlusion)
+                )
+            );
+        return IpcMessage.Ok(request.Id);
+
+        static Viewport.ViewportMapFile? File(Ipc.ViewportMapFile? file) =>
+            file is null ? null : new(file.Path, file.Hash);
+    }
+
     public IpcMessage SetCamera(IpcMessage request) {
         var next = request.Camera ?? throw new IpcException("viewport.camera has no camera.");
         camera = new((float)next.Yaw, (float)next.Pitch, (float)next.Distance);

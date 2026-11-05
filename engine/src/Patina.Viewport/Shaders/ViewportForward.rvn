@@ -22,28 +22,59 @@ shader ViewportForward {
     var baseColor: float3
     var metallic: float
     var roughness: float
+    var normalScale: float
+    var usesNormalMap: float
+    var baseColorMap: Texture2D
+    var normalMap: Texture2D
+    var roughnessMap: Texture2D
+    var metallicMap: Texture2D
+    var occlusionMap: Texture2D
+    var mapSampler: Sampler
 
     stream var worldPosition: float3
     stream var worldNormal: float3
+    stream var surfaceUv: float2
+    stream var worldTangent: float4
 
     [VertexShader]
     [Semantic("SV_Position")]
-    func Vertex(position: float3, normal: float3): float4 {
+    func Vertex(position: float3, normal: float3, texCoord: float2, tangent: float4): float4 {
         worldPosition = position
         worldNormal = normal
+        surfaceUv = texCoord
+        worldTangent = tangent
         return viewProjection * float4(position, 1f)
+    }
+
+    // The MikkTSpace pixel shader: the frame stays as interpolated, unnormalised, and the bitangent is made here.
+    // Vixen's baker writes the exact inverse of this, so the two must only ever change together.
+    func ShadedNormal(): float3 {
+        if (usesNormalMap <= 0f) {
+            return Math.SafeNormalize(worldNormal)
+        }
+
+        val stored = normalMap.Sample(mapSampler, surfaceUv).rgb * 2f - float3(1f, 1f, 1f)
+        val t = worldTangent.xyz
+        val b = cross(worldNormal, t) * (worldTangent.w < 0f ? -1f : 1f)
+        return Math.SafeNormalize(t * (stored.x * normalScale) + b * (stored.y * normalScale) + worldNormal * stored.z)
     }
 
     [FragmentShader]
     [Semantic("SV_Target")]
     func Fragment(): float4 {
-        val n = Math.SafeNormalize(worldNormal)
+        val n = ShadedNormal()
         val v = Math.SafeNormalize(cameraPosition - worldPosition)
-        val perceptual = clamp(roughness, 0.045f, 1f)
-        val f0 = Brdf.F0FromMetalness(baseColor, metallic, 0.04f)
-        val diffuseColor = baseColor * (1f - metallic)
+        val albedo = baseColor * baseColorMap.Sample(mapSampler, surfaceUv).rgb
+        val metal = metallic * metallicMap.Sample(mapSampler, surfaceUv).b
+        val perceptual = clamp(roughness * roughnessMap.Sample(mapSampler, surfaceUv).g, 0.045f, 1f)
+        val occlusion = occlusionMap.Sample(mapSampler, surfaceUv).r
+        val f0 = Brdf.F0FromMetalness(albedo, metal, 0.04f)
+        val diffuseColor = albedo * (1f - metal)
 
-        return float4(Direct(n, v, perceptual, f0, diffuseColor) + Ambient(n, v, perceptual, f0, diffuseColor), 1f)
+        return float4(
+            Direct(n, v, perceptual, f0, diffuseColor) + Ambient(n, v, perceptual, f0, diffuseColor) * occlusion,
+            1f
+        )
     }
 
     func Direct(n: float3, v: float3, perceptual: float, f0: float3, diffuseColor: float3): float3 {

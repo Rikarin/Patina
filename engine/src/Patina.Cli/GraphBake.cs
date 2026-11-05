@@ -16,10 +16,32 @@ namespace Patina.Cli;
 ///     as the Worker does, through the same compound shelf and picture resolver, so a graph that previews also bakes.
 /// </summary>
 internal static class GraphBake {
+    /// <summary>The options after the folder, or null when they are not options this takes.</summary>
+    public static (string? Library, string? MeshMaps)? Options(string[] options) {
+        (string? Library, string? MeshMaps) found = default;
+        for (var at = 0; at + 1 < options.Length; at += 2) {
+            switch (options[at]) {
+                case "--library":
+                    found.Library = options[at + 1];
+                    break;
+                case "--mesh-maps":
+                    found.MeshMaps = Path.GetFullPath(options[at + 1]);
+                    break;
+                default:
+                    return null;
+            }
+        }
+
+        return options.Length % 2 == 0 ? found : null;
+    }
+
     /// <param name="graph">The graph file.</param>
     /// <param name="folder">Where the PNGs go.</param>
     /// <param name="library">The library its pictures may be under, or null for the one around it, if any.</param>
-    public static int Run(string graph, string folder, string? library = null) {
+    /// <param name="meshMaps">
+    ///     The folder its Mesh Map nodes read a bake from, or null for the one chosen beside the graph, if any.
+    /// </param>
+    public static int Run(string graph, string folder, string? library = null, string? meshMaps = null) {
         if (!File.Exists(graph)) {
             Console.Error.WriteLine($"There is no file at '{graph}'.");
             return 2;
@@ -59,7 +81,7 @@ internal static class GraphBake {
 
             var owed = TextureGraphExternals.Upload(uploads, plan, compiler.Externals);
             var roots = CompoundFolders.PictureRoots(graph, library);
-            var filled = new GraphPictures().Fill(uploads, plan, owed, roots, null);
+            var filled = new GraphPictures().Fill(uploads, plan, owed, roots, meshMaps ?? GraphMeshMaps.Read(graph));
 
             if (filled.Refusals.Count > 0) {
                 foreach (var problem in filled.Refusals) {

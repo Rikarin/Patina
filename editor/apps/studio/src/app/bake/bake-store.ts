@@ -63,6 +63,9 @@ export class BakeStore {
 
   readonly reachable = signal(true);
 
+  /** Counts the times this client changed what the viewport shows, for whichever viewport pane is open. */
+  readonly viewportChanged = signal(0);
+
   constructor() {
     inject(DestroyRef).onDestroy(() => {
       this.stopped = true;
@@ -99,6 +102,20 @@ export class BakeStore {
         body: { folder: job.bake.output }
       })
     );
+  }
+
+  /** Shows a finished bake on the mesh it was baked onto, in every client's viewport: the Server holds the choice. */
+  async showOnMesh(job: JobState): Promise<void> {
+    const client = await this.api();
+    unwrap(await client.PUT('/api/v1/viewport/bake', { body: { job: job.id } }));
+    this.viewportChanged.update(count => count + 1);
+  }
+
+  /** Lays a graph's outputs over the mesh in the viewport, as they stand now. */
+  async showGraphOnMesh(graph: string): Promise<void> {
+    const client = await this.api();
+    unwrap(await client.PUT('/api/v1/viewport/graph', { body: { graph } }));
+    this.viewportChanged.update(count => count + 1);
   }
 
   /** Shows one map of a finished job in the Texture pane. */

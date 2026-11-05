@@ -29,6 +29,10 @@ public sealed record GraphWork(long Revision, NodeGraphAsset Document, bool Forc
 ///     events, and the log lets a client that dropped its socket catch up from the number it last saw.
 /// </summary>
 public sealed class GraphSession {
+    const string OutputNodeType = "Output/Output";
+    const string OutputUsageSetting = "Usage";
+    const string DefaultOutputUsage = "baseColor";
+
     const int LogCapacity = 1024;
 
     readonly Lock changing = new();
@@ -116,6 +120,20 @@ public sealed class GraphSession {
             lock (changing) {
                 return new(Id, Path, editor.Document.Name, revision, editor.History.Dirty);
             }
+        }
+    }
+
+    /// <summary>The Output nodes writing one of these usages, each as the node and its usage.</summary>
+    public IReadOnlyList<(int Node, string Usage)> Outputs(IReadOnlySet<string> usages) {
+        lock (changing) {
+            return [
+                ..editor.Document.Nodes.Select(GraphDocuments.State)
+                    .Where(static node => node.Type == OutputNodeType)
+                    .Select(static node => (node.Id,
+                            node.Texts.GetValueOrDefault(OutputUsageSetting, DefaultOutputUsage))
+                    )
+                    .Where(output => usages.Contains(output.Item2))
+            ];
         }
     }
 
@@ -239,16 +257,8 @@ public sealed class GraphSession {
         wake();
     }
 
-    /// <summary>The file beside a graph that says which bake it reads.</summary>
-    static string MeshMapsFile(string path) => $"{path}.bake";
-
-    /// <summary>The bake a graph file reads, or null. A file, because the choice outlives the session.</summary>
-    public static string? ReadMeshMaps(string path) {
-        var file = MeshMapsFile(path);
-        return File.Exists(file)
-            ? System.IO.Path.GetFullPath(File.ReadAllText(file).Trim(), System.IO.Path.GetDirectoryName(path)!)
-            : null;
-    }
+    /// <summary>The bake a graph file reads, or null.</summary>
+    public static string? ReadMeshMaps(string path) => GraphMeshMaps.Read(path);
 
     /// <summary>
     ///     Chooses the bake this graph's Mesh Map nodes read. The Worker takes the document again, since the same
@@ -259,7 +269,7 @@ public sealed class GraphSession {
         lock (changing) {
             MeshMaps = folder;
             if (!ReadOnly) {
-                var file = MeshMapsFile(Path);
+                var file = GraphMeshMaps.FileOf(Path);
                 if (folder is null) {
                     File.Delete(file);
                 } else {

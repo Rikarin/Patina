@@ -72,6 +72,57 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/viewport/maps': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Lays pictures over the mesh's own materials. An empty body takes them off. */
+    put: operations['SetViewportMaps'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/viewport/bake': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Shows a finished bake's normal and occlusion maps on the mesh it was baked onto. */
+    put: operations['ShowBakeInViewport'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/viewport/graph': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Lays a graph's Output nodes over the mesh, as they stand now. Ask again to see a later edit. */
+    put: operations['ShowGraphInViewport'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/previews/{hash}': {
     parameters: {
       query?: never;
@@ -1717,6 +1768,11 @@ export interface components {
        */
       limit: number;
     };
+    /** @description Asks the viewport to show a finished bake on the mesh it was baked onto. */
+    ViewportBakeRequest: {
+      /** @description The bake's job. */
+      job: string;
+    };
     /** @description The viewport's camera: an orbit around the model. */
     ViewportCameraState: {
       /**
@@ -1735,6 +1791,29 @@ export interface components {
        */
       distance: number;
     };
+    /** @description Asks the viewport to lay a graph's Output nodes over the mesh it is showing, as they stand now. */
+    ViewportGraphRequest: {
+      /** @description The graph's session. */
+      graph: string;
+    };
+    /**
+     * @description Pictures to lay over the mesh's own materials, on every part. Each is a path on the Server's machine, and a slot
+     *     left null keeps what the material asks for. A filled slot replaces the material's factor too, so what shows
+     *     is the picture. Roughness is read from green, metallic from blue and occlusion from red, so one packed file or
+     *     three grey ones both work. PNG, JPEG and EXR are read, base colour as sRGB and the rest as linear.
+     */
+    ViewportMapPaths: {
+      /** @description The base colour. */
+      baseColor?: null | string;
+      /** @description A tangent-space normal map in MikkTSpace, with green up the image. */
+      normal?: null | string;
+      /** @description Perceptual roughness. */
+      roughness?: null | string;
+      /** @description How metallic it is. */
+      metallic?: null | string;
+      /** @description Ambient occlusion. */
+      occlusion?: null | string;
+    };
     /** @description Asks the viewport to show a mesh. */
     ViewportMeshRequest: {
       /** @description The file's path, on the Server's machine. */
@@ -1744,6 +1823,8 @@ export interface components {
     ViewportState: {
       /** @description The mesh's path, or null when none is open. */
       mesh?: null | string;
+      /** @description The pictures laid over the mesh's own materials. */
+      maps: components['schemas']['ViewportMapPaths'];
       /** @description The camera. */
       camera: components['schemas']['ViewportCameraState'];
       /**
@@ -1884,6 +1965,141 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ViewportState'];
+        };
+      };
+    };
+  };
+  SetViewportMaps: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportMapPaths'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportState'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  ShowBakeInViewport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportBakeRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportState'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  ShowGraphInViewport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportGraphRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportState'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
     };

@@ -125,4 +125,30 @@ describe('BakeStore', () => {
   it('builds a socket address that matches its server', () => {
     expect(jobSocketUrl({ baseUrl: 'https://host:1', token: null }, 3)).toBe('wss://host:1/ws/jobs?since=3');
   });
+
+  it('shows a finished bake on its low mesh by asking the Server, and says the viewport changed', async () => {
+    let asked: unknown;
+    const { store } = setup({
+      ...empty,
+      'PUT viewport/bake': request => {
+        asked = request.clone();
+        return Response.json({ mesh: '/m/low.glb' });
+      }
+    });
+
+    await store.showOnMesh(job({ state: 'done' }));
+
+    expect(await (asked as Request).json()).toEqual({ job: 'j1' });
+    expect(store.viewportChanged()).toBe(1);
+  });
+
+  it('throws what the Server refused, and the viewport has not changed', async () => {
+    const { store } = setup({
+      ...empty,
+      'PUT viewport/graph': () => Response.json({ detail: 'Open a mesh first' }, { status: 422 })
+    });
+
+    await expect(store.showGraphOnMesh('g1')).rejects.toThrow('Open a mesh first');
+    expect(store.viewportChanged()).toBe(0);
+  });
 });

@@ -122,7 +122,7 @@ public static class MeshMapBakeRun {
         return maps;
     }
 
-    /// <summary>A grey image as a mask, bottom row first as the baker's atlas is.</summary>
+    /// <summary>A grey image as a mask, its rows the atlas's rows: the first is v = 0, as in every baked map.</summary>
     static BakeMask SkewMask(string path) {
         var (width, height, channels, samples) = PngCodec.Decode16(File.ReadAllBytes(path));
         if (width != height) {
@@ -130,10 +130,8 @@ public static class MeshMapBakeRun {
         }
 
         var values = new float[width * height];
-        for (var y = 0; y < height; y++) {
-            for (var x = 0; x < width; x++) {
-                values[(height - 1 - y) * width + x] = samples[(y * width + x) * channels] / (float)ushort.MaxValue;
-            }
+        for (var at = 0; at < values.Length; at++) {
+            values[at] = samples[at * channels] / (float)ushort.MaxValue;
         }
 
         return new(width, values);

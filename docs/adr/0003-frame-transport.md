@@ -41,6 +41,23 @@ rows above upload a texture but draw with no program; the pane row is the real p
 Run `pnpm exec playwright test --config apps/desktop/e2e/bench.config.ts` for everything except shared memory, whose harness
 is `apps/desktop/e2e/spike-shm/`.
 
+### With textures
+
+The renderer alone, `patina-bench render <mesh> <out.png> 2502 1724`, 240 frames of a spinning camera. Before and after were
+alternated in one sitting, on a machine with other builds running (load average 125 to 225), so read the medians, and read them
+against each other.
+
+| Scene | Median | fps |
+|---|---|---|
+| The fixture, before textures | 2.48 to 2.54 ms | 344 to 383 |
+| The fixture, with the textured forward pass | 2.52 to 2.59 ms | 280 to 384 |
+| The hard-edged housing's low mesh, with a 2048 normal and occlusion map | 2.68 to 4.44 ms, rising with the load | 138 to 308 |
+
+The fixture has no texture coordinates, so that row is what the wider vertex and five samples of a one-pixel texture cost a mesh with no
+maps: about 0.05 ms, or 2%. A frame was 2.2 ms of a 16.7 ms budget and stays so, and this does not move the 2 cores spent orbiting,
+which are the two copies of the frame named below. Tangents are only made when a normal map asks: laying a bake over a mesh of two
+million triangles took 3.1 s including its two PNGs, inside the Worker's 30 s reply limit.
+
 ## What the numbers mean
 
 - **The WebSocket limit is Chromium's receive path, not the engine.** About 190 MB/s at every size, with the renderer at
@@ -86,5 +103,5 @@ stops competing with Angular on the main thread. That is not done.
 
 ## Not measured
 
-Windows, Linux and any non-Apple GPU, where readback is not unified memory and will cost far more than 2 ms. A heavy mesh.
+Textured frames on an idle machine, or through the whole pane. Windows, Linux and any non-Apple GPU, where readback is not unified memory and will cost far more than 2 ms. A heavy mesh.
 Two clients at once. `sharedTexture`. A 120 Hz display.
