@@ -7,6 +7,9 @@ const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const mesh = resolve(__dirname, '../../../../content/fixtures/viewport-test.glb');
 const shots = resolve(__dirname, '../../../dist/e2e-results');
 
+/** Linux CI runs under Xvfb with no GPU, and Chromium no longer falls back to software WebGL unless told to. */
+const softwareWebGl = process.platform === 'linux' ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : [];
+
 let scratch: string;
 let app: ElectronApplication;
 let window: Page;
@@ -14,7 +17,7 @@ let window: Page;
 test.beforeEach(async () => {
   scratch = mkdtempSync(join(tmpdir(), 'patina-e2e-'));
   app = await electron.launch({
-    args: [main],
+    args: [...softwareWebGl, main],
     env: { ...process.env, PATINA_USER_DATA: join(scratch, 'user-data') }
   });
   window = await app.firstWindow();
