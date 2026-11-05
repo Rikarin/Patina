@@ -4,14 +4,14 @@ using Vixen.Interchange;
 namespace Patina.Viewport;
 
 /// <summary>
-///     Whether this copy of the engine can use its native libraries where it stands: <c>patina-worker --check-natives</c>,
-///     for a build, a publish or an installed app (ADR 0010).
+///     Whether this copy of the engine can use its native libraries where it stands, for a build, a publish or an
+///     installed app: <c>patina-worker --check-natives</c> (ADR 0010).
 /// </summary>
 public static class NativeCheck {
     /// <summary>
-    ///     Reads a triangle and fails unless the application's own Assimp answered, since a library found on the machine
-    ///     would pass here and be missing on the next one. Vulkan is reported and does not fail it: a Worker with no
-    ///     device still reads meshes and answers health.
+    ///     Reads a triangle and fails unless the application's own Assimp answered, since a library found on the
+    ///     machine would pass here and be missing on the next one. Vulkan is reported and does not fail it: a Worker
+    ///     with no device still reads meshes and answers health.
     /// </summary>
     /// <param name="output">Where the report goes.</param>
     /// <returns>The exit code: 0 when a mesh reads through the application's own Assimp.</returns>
@@ -39,8 +39,7 @@ public static class NativeCheck {
 
             output.WriteLine($"assimp: not the application's own copy, which belongs in {applicationDirectory}");
             return 1;
-        }
-        catch (DllNotFoundException exception) {
+        } catch (DllNotFoundException exception) {
             output.WriteLine($"assimp: {exception.Message}");
             return 1;
         }

@@ -11,7 +11,7 @@ public sealed class NativeCheckTests {
         Assert.Contains($"assimp: {AppContext.BaseDirectory}", report.ToString(), StringComparison.Ordinal);
     }
 
-    /// <summary>Assimp answering from anywhere else fails, so a machine's copy cannot hide a package without one.</summary>
+    /// <summary>Assimp from anywhere else fails, so a machine's copy cannot hide a package without one.</summary>
     [Fact]
     public void An_assimp_from_elsewhere_fails_the_check() {
         using var report = new StringWriter();
