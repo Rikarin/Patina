@@ -7,6 +7,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Reading a mesh on Linux no longer needs a system Assimp. The engine carries its own, 5.4.1 where Ubuntu's was 5.3, so a
+  distribution without `libassimp5`, such as Ubuntu 26.04, can open meshes. It needs glibc 2.33 and `libstdc++` from GCC 11.
 - ⚠ A baked tangent-space map is now in MikkTSpace, with green up the image, and its rows run from `v = 0`, so a map is the
   right way up on the mesh in every tool. Maps baked before this are in another basis and upside down; the bake key changed,
   so they bake again.
@@ -20,6 +22,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   in a stroke loses nothing. `POST /stacks/{id}/export` writes each map, and `GET /stacks/{id}/pixels` gives a digest of what the
   strokes left, which equals the export's.
 - `patina-bench s4`.
+- `patina-worker --check-natives` says which Vulkan device and which Assimp this copy of the engine finds, and reads a mesh.
+  Packaging runs it on what it just built.
 - The repository: licence, conventions, Skala gates with an empty baseline, and CI workflows.
 - `patina-server`: `GET /api/v1/system`, a committed `openapi.json` with a drift test, `--library <path>`, a bearer token
   and a per-user discovery file that keeps one Server per library.
