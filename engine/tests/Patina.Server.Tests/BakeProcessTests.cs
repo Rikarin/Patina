@@ -450,7 +450,10 @@ public sealed class BakeProcessTests : IDisposable {
         Assert.True(File.Exists(Path.Combine(pictures, "baseColor.png")));
     }
 
-    static async Task<(int Exit, string Said)> CommandAsync(CancellationToken cancellationToken, params string[] arguments) {
+    static async Task<(int Exit, string Said)> CommandAsync(
+        CancellationToken cancellationToken,
+        params string[] arguments
+    ) {
         var info = new ProcessStartInfo("dotnet") { RedirectStandardOutput = true, RedirectStandardError = true };
         info.ArgumentList.Add(Engine.Dll("Patina.Cli", "patina"));
         foreach (var argument in arguments) {
@@ -483,7 +486,11 @@ public sealed class BakeProcessTests : IDisposable {
         );
 
     async Task<ViewportState> ViewportStateAsync(CancellationToken cancellationToken) =>
-        (await http.GetFromJsonAsync("/api/v1/viewport", ContractsJsonContext.Default.ViewportState, cancellationToken))!;
+        (await http.GetFromJsonAsync(
+            "/api/v1/viewport",
+            ContractsJsonContext.Default.ViewportState,
+            cancellationToken
+        ))!;
 
     /// <summary>One whole frame, or skips the test where the Worker has no Vulkan.</summary>
     async Task<byte[]> FrameAsync(ClientWebSocket socket, CancellationToken cancellationToken) {
@@ -518,8 +525,8 @@ public sealed class BakeProcessTests : IDisposable {
             .All(at => Math.Abs(one[at] - two[at]) <= 3);
 
     /// <summary>
-    ///     What an artist judges a bake on, by a client that is not the editor: choose the bake and the low mesh shows it.
-    ///     The Server holds the choice, so the Worker that dies with it loses nothing.
+    ///     What an artist judges a bake on, by a client that is not the editor: choose the bake and the low mesh shows
+    ///     it. The Server holds the choice, so the Worker that dies with it loses nothing.
     /// </summary>
     [Fact]
     public async Task A_bake_shows_on_its_low_mesh_and_outlives_the_worker() {
@@ -552,7 +559,10 @@ public sealed class BakeProcessTests : IDisposable {
             deadline.Token
         );
         shown.EnsureSuccessStatusCode();
-        var state = (await shown.Content.ReadFromJsonAsync(ContractsJsonContext.Default.ViewportState, deadline.Token))!;
+        var state = (await shown.Content.ReadFromJsonAsync(
+            ContractsJsonContext.Default.ViewportState,
+            deadline.Token
+        ))!;
         Assert.Equal(job.Bake.Low, state.Mesh);
         Assert.EndsWith("_normal.png", state.Maps.Normal, StringComparison.Ordinal);
         Assert.EndsWith("_ao.png", state.Maps.Occlusion, StringComparison.Ordinal);
@@ -623,7 +633,10 @@ public sealed class BakeProcessTests : IDisposable {
                 deadline.Token
             );
             if (response.IsSuccessStatusCode) {
-                shown = await response.Content.ReadFromJsonAsync(ContractsJsonContext.Default.ViewportState, deadline.Token);
+                shown = await response.Content.ReadFromJsonAsync(
+                    ContractsJsonContext.Default.ViewportState,
+                    deadline.Token
+                );
             } else {
                 // The Worker holds no picture until the graph's first evaluation.
                 Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);

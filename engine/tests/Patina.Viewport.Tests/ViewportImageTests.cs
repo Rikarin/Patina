@@ -17,9 +17,15 @@ public sealed class ViewportImageTests {
 
     [Fact]
     public void Colour_is_sRGB_and_a_measurement_is_not() {
-        Assert.Equal(PixelFormat.Rgba8UNormSrgb, ViewportImage.Decode(Checker(0, 255), ".png", MapMeaning.Colour).Format);
+        Assert.Equal(
+            PixelFormat.Rgba8UNormSrgb,
+            ViewportImage.Decode(Checker(0, 255), ".png", MapMeaning.Colour).Format
+        );
         Assert.Equal(PixelFormat.Rgba8UNorm, ViewportImage.Decode(Checker(0, 255), ".png", MapMeaning.Normal).Format);
-        Assert.Equal(PixelFormat.Rgba8UNorm, ViewportImage.Decode(Checker(0, 255), ".png", MapMeaning.Measurement).Format);
+        Assert.Equal(
+            PixelFormat.Rgba8UNorm,
+            ViewportImage.Decode(Checker(0, 255), ".png", MapMeaning.Measurement).Format
+        );
     }
 
     [Fact]
@@ -35,7 +41,9 @@ public sealed class ViewportImageTests {
 
     [Fact]
     public void A_sixteen_bit_map_keeps_more_than_eight_bits() {
-        var samples = new ushort[] { 32768, 32768, 65535, 32900, 32768, 65535, 32768, 32900, 65535, 32900, 32900, 65535 };
+        var samples = new ushort[] {
+            32768, 32768, 65535, 32900, 32768, 65535, 32768, 32900, 65535, 32900, 32900, 65535
+        };
         var picture = PngCodec.Encode16(2, 2, 3, samples);
 
         var texture = ViewportImage.Decode(picture, ".png", MapMeaning.Normal);
@@ -72,5 +80,5 @@ public sealed class ViewportImageTests {
 
     [Fact]
     public void Bytes_that_are_no_image_are_refused() =>
-        Assert.ThrowsAny<Exception>(() => ViewportImage.Decode([1, 2, 3], ".png", MapMeaning.Colour));
+        Assert.ThrowsAny<Exception>(static () => ViewportImage.Decode([1, 2, 3], ".png", MapMeaning.Colour));
 }

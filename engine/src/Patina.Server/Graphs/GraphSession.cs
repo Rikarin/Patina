@@ -129,7 +129,9 @@ public sealed class GraphSession {
             return [
                 ..editor.Document.Nodes.Select(GraphDocuments.State)
                     .Where(static node => node.Type == OutputNodeType)
-                    .Select(static node => (node.Id, node.Texts.GetValueOrDefault(OutputUsageSetting, DefaultOutputUsage)))
+                    .Select(static node => (node.Id,
+                            node.Texts.GetValueOrDefault(OutputUsageSetting, DefaultOutputUsage))
+                    )
                     .Where(output => usages.Contains(output.Item2))
             ];
         }

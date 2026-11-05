@@ -23,9 +23,10 @@ readonly record struct ViewportMaterial(ModelMaterialFactors Factors, ModelMater
 /// </summary>
 /// <remarks>
 ///     ⚠ <b>Tangents are one per triangle corner and a vertex is what is left after a weld</b>, so
-///     <see cref="WithTangents" /> rebuilds the indices. The cost is why it is not always done: it reads the whole mesh,
-///     and only a normal map needs the answer. Positions and normals are made as <c>ModelGeometry.Flatten</c> makes
-///     them, so the baker and this run <see cref="MikkTSpace" /> over the same numbers.
+///     <see cref="WithTangents" /> rebuilds the indices. The cost is why it is not always done: it reads the whole
+///     mesh, and only a normal map needs the answer. Positions and normals are made as
+///     <c>ModelGeometry.Flatten</c> makes them, so the baker and this run <see cref="MikkTSpace" /> over the same
+///     numbers.
 /// </remarks>
 sealed class ViewportMesh {
     /// <summary>Position 3, normal 3, texture coordinate 2, tangent 4.</summary>
@@ -181,7 +182,8 @@ sealed class ViewportMesh {
             var coordinate = hasCoordinates ? mesh.TexCoords[i] : default;
             vertices.AddRange(
                 [
-                    position.X, position.Y, position.Z, normal.X, normal.Y, normal.Z, coordinate.X, coordinate.Y, 0f, 0f,
+                    position.X, position.Y, position.Z, normal.X, normal.Y, normal.Z, coordinate.X, coordinate.Y, 0f,
+                    0f,
                     0f, 0f
                 ]
             );

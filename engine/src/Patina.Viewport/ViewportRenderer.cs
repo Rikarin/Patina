@@ -55,7 +55,9 @@ public sealed class ViewportRenderer : IDisposable {
         var shaders = new ViewportShaders(cache);
         sampler = device.CreateSampler(SamplerDescription.LinearClamp);
         cleanup.Add(() => device.Destroy(sampler));
-        mapSampler = device.CreateSampler(SamplerDescription.LinearRepeat with { Anisotropy = 8f, Name = "viewport maps" });
+        mapSampler = device.CreateSampler(
+            SamplerDescription.LinearRepeat with { Anisotropy = 8f, Name = "viewport maps" }
+        );
         cleanup.Add(() => device.Destroy(mapSampler));
         textures = new(device);
         cleanup.Add(textures.Dispose);
@@ -189,7 +191,7 @@ public sealed class ViewportRenderer : IDisposable {
         device.Dispose();
     }
 
-    /// <summary>Puts a mesh on the GPU with the materials it has now, and drops the textures it no longer reaches.</summary>
+    /// <summary>Puts a mesh on the GPU with its materials as they stand, dropping textures no longer used.</summary>
     void Show(ViewportMesh mesh) {
         var ready = maps.Normal is not null || mesh.WantsTangents ? mesh.WithTangents() : mesh;
         var next = ReferenceEquals(ready, geometry?.Mesh) ? geometry! : new Geometry(device, ready);
@@ -209,13 +211,6 @@ public sealed class ViewportRenderer : IDisposable {
         var folder = meshFolder ?? string.Empty;
         var own = material.Textures;
 
-        TextureViewHandle Slot(ViewportMapFile? file, ModelTexture? image, MapMeaning meaning, TextureViewHandle empty) =>
-            file is not null
-                ? textures.Of(file, meaning)
-                : image is not null
-                    ? textures.Of(image, folder, meaning)
-                    : empty;
-
         var factors = material.Factors;
         var colour = maps.BaseColor is null ? factors.BaseColor : new Vector4(1f, 1f, 1f, 1f);
         var normal = mesh.HasTangents ? Slot(maps.Normal, own.Normal, MapMeaning.Normal, textures.Open) : textures.Open;
@@ -227,13 +222,27 @@ public sealed class ViewportRenderer : IDisposable {
             maps.Roughness is null ? factors.Roughness : 1f,
             maps.Normal is null ? own.NormalScale : 1f,
             hasNormal,
-            Slot(maps.BaseColor, own.BaseColor, MapMeaning.Colour, textures.White),
-            normal,
-            Slot(maps.Roughness, own.MetallicRoughness, MapMeaning.Measurement, textures.Open),
-            Slot(maps.Metallic, own.MetallicRoughness, MapMeaning.Measurement, textures.Open),
-            Slot(maps.Occlusion, own.Occlusion, MapMeaning.Measurement, textures.Open),
+            new(
+                Slot(maps.BaseColor, own.BaseColor, MapMeaning.Colour, textures.White),
+                normal,
+                Slot(maps.Roughness, own.MetallicRoughness, MapMeaning.Measurement, textures.Open),
+                Slot(maps.Metallic, own.MetallicRoughness, MapMeaning.Measurement, textures.Open),
+                Slot(maps.Occlusion, own.Occlusion, MapMeaning.Measurement, textures.Open)
+            ),
             mapSampler
         );
+
+        TextureViewHandle Slot(
+            ViewportMapFile? file,
+            ModelTexture? image,
+            MapMeaning meaning,
+            TextureViewHandle empty
+        ) =>
+            file is not null
+                ? textures.Of(file, meaning)
+                : image is not null
+                    ? textures.Of(image, folder, meaning)
+                    : empty;
     }
 
     /// <summary>
@@ -369,9 +378,6 @@ public sealed class ViewportRenderer : IDisposable {
 
     /// <summary>Raven numbers a shader's inputs, so the mesh's attributes are found by name.</summary>
     static VertexBufferLayout VerticesOf(Effect effect) {
-        uint Location(string name) =>
-            (uint)effect.VertexInputs.First(input => input.Name.EndsWith(name, StringComparison.Ordinal)).Location;
-
         return new(
             ViewportMesh.FloatsPerVertex * sizeof(float),
             [
@@ -381,6 +387,9 @@ public sealed class ViewportRenderer : IDisposable {
                 new(Location("tangent"), VertexFormat.Float32X4, 8 * sizeof(float))
             ]
         );
+
+        uint Location(string name) =>
+            (uint)effect.VertexInputs.First(input => input.Name.EndsWith(name, StringComparison.Ordinal)).Location;
     }
 
     ShaderHandle Module(Effect effect, ShaderStage stage) {
@@ -475,12 +484,17 @@ public sealed class ViewportRenderer : IDisposable {
         float Roughness,
         float NormalScale,
         bool UsesNormalMap,
-        TextureViewHandle BaseColorMap,
-        TextureViewHandle NormalMap,
-        TextureViewHandle RoughnessMap,
-        TextureViewHandle MetallicMap,
-        TextureViewHandle OcclusionMap,
+        MaterialMaps Maps,
         SamplerHandle Sampler
+    );
+
+    /// <summary>One material's five textures.</summary>
+    readonly record struct MaterialMaps(
+        TextureViewHandle BaseColor,
+        TextureViewHandle Normal,
+        TextureViewHandle Roughness,
+        TextureViewHandle Metallic,
+        TextureViewHandle Occlusion
     );
 
     /// <summary>The GPU's copy of a mesh, and one descriptor set per material in it.</summary>
@@ -494,8 +508,8 @@ public sealed class ViewportRenderer : IDisposable {
         public Geometry(VulkanDevice device, ViewportMesh mesh) {
             this.device = device;
             Mesh = mesh;
-            vertices = Upload<float>(mesh.Vertices, BufferUsage.Vertex, "viewport vertices");
-            indices = Upload<uint>(mesh.Indices, BufferUsage.Index, "viewport indices");
+            vertices = Upload(mesh.Vertices, BufferUsage.Vertex, "viewport vertices");
+            indices = Upload(mesh.Indices, BufferUsage.Index, "viewport indices");
         }
 
         public ViewportMesh Mesh { get; }
@@ -506,7 +520,7 @@ public sealed class ViewportRenderer : IDisposable {
 
         public DescriptorSetHandle SetOf(ViewportPart part) => sets[Math.Clamp(part.Material, 0, sets.Length - 1)];
 
-        /// <summary>Makes a set for every material, to be swapped in by <see cref="Use" /> once it is all there.</summary>
+        /// <summary>Makes a set for every material, for <see cref="Use" /> to swap in once it is all there.</summary>
         public List<(DescriptorSetHandle Set, BufferHandle Constants)> Bind(
             Pass forward,
             Func<ViewportMaterial, MaterialBinding> describe
@@ -559,11 +573,11 @@ public sealed class ViewportRenderer : IDisposable {
                 set,
                 [
                     DescriptorWrite.Uniform(block.Binding, buffer),
-                    DescriptorWrite.Texture(Binding("baseColorMap"), material.BaseColorMap),
-                    DescriptorWrite.Texture(Binding("normalMap"), material.NormalMap),
-                    DescriptorWrite.Texture(Binding("roughnessMap"), material.RoughnessMap),
-                    DescriptorWrite.Texture(Binding("metallicMap"), material.MetallicMap),
-                    DescriptorWrite.Texture(Binding("occlusionMap"), material.OcclusionMap),
+                    DescriptorWrite.Texture(Binding("baseColorMap"), material.Maps.BaseColor),
+                    DescriptorWrite.Texture(Binding("normalMap"), material.Maps.Normal),
+                    DescriptorWrite.Texture(Binding("roughnessMap"), material.Maps.Roughness),
+                    DescriptorWrite.Texture(Binding("metallicMap"), material.Maps.Metallic),
+                    DescriptorWrite.Texture(Binding("occlusionMap"), material.Maps.Occlusion),
                     DescriptorWrite.SamplerAt(Binding("mapSampler"), material.Sampler)
                 ]
             );

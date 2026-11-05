@@ -10,8 +10,8 @@ namespace Patina.Server.Api;
 
 /// <summary>
 ///     What the viewport lays over a mesh: pictures by path, a finished bake on its low mesh, or a graph's outputs. Any
-///     client can do all three (plan §8). A request holds paths and the Server adds each file's hash, so the Worker only
-///     ever reads a picture when it is a new picture, and pixels stay out of the API.
+///     client can do all three (plan §8). A request holds paths and the Server adds each file's hash, so the Worker
+///     only reads a picture when it is a new picture, and pixels stay out of the API.
 /// </summary>
 static class ViewportMapEndpoints {
     const string Tag = "Viewport";
@@ -142,7 +142,13 @@ static class ViewportMapEndpoints {
     }
 
     static ViewportMapSet Hashed(ViewportMapPaths paths) =>
-        new(Hash(paths.BaseColor), Hash(paths.Normal), Hash(paths.Roughness), Hash(paths.Metallic), Hash(paths.Occlusion));
+        new(
+            Hash(paths.BaseColor),
+            Hash(paths.Normal),
+            Hash(paths.Roughness),
+            Hash(paths.Metallic),
+            Hash(paths.Occlusion)
+        );
 
     /// <exception cref="FileNotFoundException">The file is not there.</exception>
     static ViewportMapFile? Hash(string? path) {

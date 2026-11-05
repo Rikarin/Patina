@@ -5,21 +5,29 @@ million triangles, under 2 minutes on a current laptop. **If it fails:** bring f
 
 ## S9: failed, and the choice it leaves
 
-`patina-bench s9 <folder>` runs the real path, file to file. The mesh is a bumpy torus knot of 2,000,000 triangles, and the low
-is a smooth one with a full atlas: 16.6 million covered texels, the worst an atlas can be, so 4.27 billion occlusion rays. An M1 Max
-has 8 performance and 2 efficiency cores.
+`patina-bench s9 <folder> 4096 256 0.5` runs the real path, file to file. The mesh is a bumpy torus knot of 2,000,000 triangles, and
+the low is a smooth one with a full atlas: 16,777,216 covered texels, the worst an atlas can be, so 4.29 billion occlusion rays. An M1
+Max has 8 performance and 2 efficiency cores.
 
 | Measure | Result |
 |---|---|
 | Vixen's baker as it stood, one thread | 0.19 M rays/s, an extrapolated 6.1 hours |
-| Threaded, SAH, four wide, on a loaded machine | 332 s wall, 2,761 CPU-seconds, 12.9 M rays/s |
-| The best those CPU-seconds allow on 10 idle cores | 276 s |
+| Threaded, SAH, four wide, `patina-bench s9`, on a loaded machine | 447 s wall, 2,920 CPU-seconds, 9.6 M rays/s, 3.2 GB resident |
+| The best those CPU-seconds allow on 10 idle cores | 292 s |
 | Target | 120 s |
 
-The wall time was measured with other builds running (load average 23 to 187), so it overstates the cost; the CPU time is
-what to read, and it fails by a factor of 2.3 however idle the machine is. Efficiency cores make the real floor higher. A real
-atlas covers about 70%, which is about 193 s. Against that, shortening the rays helps: a reach of a tenth of the diagonal rather than a
-half was about 1.5 times faster.
+The wall time was measured with other builds running (load average 46 to 482), so it overstates the cost; the CPU time is what to read,
+and it fails by a factor of 2.4 however idle the machine is. Efficiency cores make the real floor higher.
+
+Three numbers this ADR first gave were weaker than they read, and are corrected here:
+
+- **The 4K figures were not from `patina-bench s9`.** They were 332 s wall and 2,761 CPU-seconds from a scratch harness, which is
+  gone, on 16.6 million texels. The table is now the command anyone can run again. The command needed no change to reach 4K.
+- **"A real atlas covers about 70%, which is about 193 s" is arithmetic**, 70% of the idle-machine floor, and nothing measured it.
+  The same sum on the new CPU time gives 204 s.
+- **"A reach of a tenth of the diagonal is about 1.5 times faster" was measured at 1024, under load, by wall time.** By CPU time at
+  1024 and 256 rays, in two runs each, it is 1.25 times: 184 and 186 CPU-seconds at a reach of a half, 148 and 148 at a tenth. No 4K
+  run has measured it.
 
 **The CPU is not going to get there on its own.** Per ray, one-threaded, the tree cost 320 ns on 2,000 triangles and 680 ns on two
 million, so more than half is cache misses, and arithmetic can only win back the rest. Removing the division, a branch-free push

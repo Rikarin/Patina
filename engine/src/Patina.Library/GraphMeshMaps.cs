@@ -1,6 +1,6 @@
 namespace Patina.Library;
 
-/// <summary>Which bake a graph's Mesh Map nodes read: a one-line file beside the graph, so the choice outlives a session.</summary>
+/// <summary>Which bake a graph's Mesh Map nodes read: a one-line file beside it, which outlives a session.</summary>
 public static class GraphMeshMaps {
     /// <summary>The file beside a graph that says which bake it reads.</summary>
     public static string FileOf(string graph) => $"{graph}.bake";

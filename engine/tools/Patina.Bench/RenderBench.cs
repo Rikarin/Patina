@@ -63,10 +63,10 @@ static class RenderBench {
     }
 
     static ViewportMaps Maps(string folder) {
+        return new(Normal: Of("normal"), Occlusion: Of("ao"));
+
         ViewportMapFile? Of(string map) =>
             BakedMapPicture.Find(folder, map) is { } found ? new(found.Path, found.Path) : null;
-
-        return new(Normal: Of("normal"), Occlusion: Of("ao"));
     }
 
     static void Say(FormattableString line) => Console.WriteLine(line.ToString(CultureInfo.InvariantCulture));

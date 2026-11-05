@@ -415,7 +415,7 @@ bezel, on all three platforms, in CI.
 
 > **Status (2026-11-05): the path works from panel to maps, the exit is not met, and S9 failed.** An owner has to judge the
 > pictures, on an artist's asset rather than the generated pair, and decide what S9's result means: threaded CPU occlusion takes
-> 2,761 CPU-seconds for 4K at 256 rays over two million triangles, so at best 4.6 minutes against a 2-minute target
+> 2,920 CPU-seconds for 4K at 256 rays over two million triangles, so at best 4.9 minutes against a 2-minute target
 > ([ADR 0008](adr/0008-baking.md)). GPU traversal has not been started, because the plan keeps one implementation. Everything
 > else below is in: `MapBaker` is threaded with a SAH tree, supersampling, a cage, skew and match-by-name; 16-bit PNG and EXR are
 > in `Core.Imaging`, the EXR codec managed rather than a native library; a bake is a job that survives both processes; and

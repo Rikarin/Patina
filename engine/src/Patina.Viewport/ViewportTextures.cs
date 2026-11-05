@@ -64,7 +64,8 @@ sealed class ViewportTextures : IDisposable {
     /// <summary>Lets go of everything not used since <see cref="BeginUse" />.</summary>
     public void EndUse() {
         device.WaitIdle();
-        foreach (var (key, entry) in entries.Where(static pair => pair.Value is { Used: false, Permanent: false }).ToArray()) {
+        foreach (var (key, entry) in entries.Where(static pair => pair.Value is { Used: false, Permanent: false })
+                     .ToArray()) {
             Destroy(entry);
             entries.Remove(key);
         }

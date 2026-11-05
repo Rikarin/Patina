@@ -32,7 +32,13 @@ static class ViewportImage {
         var kind = extension.ToLowerInvariant();
         if (kind == ".exr") {
             var image = ExrCodec.Decode(bytes);
-            return Wide(Rgba(image.Width, image.Height, image.Channels, image.Samples), image.Width, image.Height, meaning, true);
+            return Wide(
+                Rgba(image.Width, image.Height, image.Channels, image.Samples),
+                image.Width,
+                image.Height,
+                meaning,
+                true
+            );
         }
 
         if (kind == ".png" && IsSixteenBit(bytes)) {
@@ -56,7 +62,8 @@ static class ViewportImage {
     static bool IsSixteenBit(byte[] bytes) => bytes.Length > 24 && bytes[24] == 16;
 
     static TextureData Eight(byte[] bytes, string extension) {
-        var decoder = ImageDecoders.BuiltIn.FirstOrDefault(d => d.Extensions.Contains(extension, StringComparer.Ordinal))
+        var decoder = ImageDecoders.BuiltIn.FirstOrDefault(d => d.Extensions.Contains(extension, StringComparer.Ordinal)
+            )
             ?? throw new InvalidDataException($"'{extension}' is not an image format the viewport reads.");
         using var stream = new MemoryStream(bytes);
         return decoder.Decode(stream, extension);
@@ -101,21 +108,10 @@ static class ViewportImage {
     }
 
     static TextureData Wide(float[] pixels, int width, int height, MapMeaning meaning, bool isFloat) {
-        switch (meaning) {
-            case MapMeaning.Colour when !isFloat:
-                Parallel.For(0, pixels.Length / 4, at => ToLinear(pixels, at * 4));
-                break;
-            case MapMeaning.Normal when isFloat && IsSigned(pixels):
-                Parallel.For(
-                    0,
-                    pixels.Length / 4,
-                    at => {
-                        for (var lane = 0; lane < 3; lane++) {
-                            pixels[at * 4 + lane] = pixels[at * 4 + lane] * 0.5f + 0.5f;
-                        }
-                    }
-                );
-                break;
+        if (meaning == MapMeaning.Colour && !isFloat) {
+            Parallel.For(0, pixels.Length / 4, at => ToLinear(pixels, at * 4));
+        } else if (meaning == MapMeaning.Normal && isFloat && IsSigned(pixels)) {
+            Parallel.For(0, pixels.Length, at => pixels[at] = (at & 3) == 3 ? pixels[at] : pixels[at] * 0.5f + 0.5f);
         }
 
         var texture = new TextureData(PixelFormat.Rgba16Float, width, height);
@@ -149,7 +145,14 @@ static class ViewportImage {
         }
     }
 
-    static float[] Halve(float[] source, int width, int height, out int nextWidth, out int nextHeight, MapMeaning meaning) {
+    static float[] Halve(
+        float[] source,
+        int width,
+        int height,
+        out int nextWidth,
+        out int nextHeight,
+        MapMeaning meaning
+    ) {
         var (toWidth, toHeight) = (Math.Max(width / 2, 1), Math.Max(height / 2, 1));
         var result = new float[toWidth * toHeight * 4];
         Parallel.For(
@@ -165,9 +168,9 @@ static class ViewportImage {
                     for (var lane = 0; lane < 4; lane++) {
                         result[into + lane] = 0.25f
                             * (source[(rowA * width + columnA) * 4 + lane]
-                               + source[(rowA * width + columnB) * 4 + lane]
-                               + source[(rowB * width + columnA) * 4 + lane]
-                               + source[(rowB * width + columnB) * 4 + lane]);
+                                + source[(rowA * width + columnB) * 4 + lane]
+                                + source[(rowB * width + columnA) * 4 + lane]
+                                + source[(rowB * width + columnB) * 4 + lane]);
                     }
 
                     if (meaning == MapMeaning.Normal) {

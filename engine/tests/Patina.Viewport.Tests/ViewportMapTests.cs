@@ -48,7 +48,7 @@ public sealed class ViewportMapTests : IDisposable {
         return worst;
     }
 
-    /// <summary>A square facing +Z of side two, with u along +X and v down it, as glTF and a picture have them.</summary>
+    /// <summary>A square facing +Z of side two, with u along +X and v down it, as glTF has them.</summary>
     string Square(string name, Vector3? normal = null) {
         var n = normal ?? Vector3.UnitZ;
         var path = In(name);
@@ -92,7 +92,8 @@ public sealed class ViewportMapTests : IDisposable {
         return In(name);
     }
 
-    static ViewportMapFile File_(string path) => new(path, Convert.ToHexStringLower(File.ReadAllBytes(path)[^32..]) + path);
+    static ViewportMapFile File_(string path) =>
+        new(path, Convert.ToHexStringLower(File.ReadAllBytes(path)[^32..]) + path);
 
     [Fact]
     public void A_colour_is_the_same_colour_in_every_format_it_arrives_in() {
@@ -102,8 +103,8 @@ public sealed class ViewportMapTests : IDisposable {
         renderer.SetMaps(new(BaseColor: File_(Picture("eight.png", 188, 188, 188))));
         var eight = Render(renderer);
 
-        var encoded = (ushort)(188 * 257);
-        File.WriteAllBytes(In("sixteen.png"), PngCodec.Encode16(1, 1, 3, [encoded, encoded, encoded]));
+        const ushort Encoded = 188 * 257;
+        File.WriteAllBytes(In("sixteen.png"), PngCodec.Encode16(1, 1, 3, [Encoded, Encoded, Encoded]));
         renderer.SetMaps(new(BaseColor: File_(In("sixteen.png"))));
         var sixteen = Render(renderer);
 
@@ -205,13 +206,14 @@ public sealed class ViewportMapTests : IDisposable {
         Render(renderer);
     }
 
-    /// <summary>A glTF with a material, made by hand: the top half of its picture is red and the bottom half blue.</summary>
+    /// <summary>A glTF with a material, made by hand: its picture's top half is red and its bottom half blue.</summary>
     string TexturedGltf(bool embedded) {
         var pixels = new byte[2 * 2 * 4];
         for (var row = 0; row < 2; row++) {
             for (var column = 0; column < 2; column++) {
                 var at = (row * 2 + column) * 4;
-                (pixels[at], pixels[at + 2], pixels[at + 3]) = ((byte)(row == 0 ? 220 : 0), (byte)(row == 0 ? 0 : 220), 255);
+                (pixels[at], pixels[at + 2], pixels[at + 3]) = ((byte)(row == 0 ? 220 : 0), (byte)(row == 0 ? 0 : 220),
+                    255);
             }
         }
 
@@ -237,33 +239,36 @@ public sealed class ViewportMapTests : IDisposable {
 
         var data = Convert.ToBase64String(binary.ToArray());
         var json = $$"""
-            {
-              "asset": { "version": "2.0" },
-              "scene": 0, "scenes": [{ "nodes": [0] }], "nodes": [{ "mesh": 0 }],
-              "images": [{ "uri": "{{uri}}" }],
-              "textures": [{ "source": 0 }],
-              "materials": [{ "pbrMetallicRoughness": {
-                "baseColorTexture": { "index": 0 }, "metallicFactor": 0.0, "roughnessFactor": 1.0
-              } }],
-              "meshes": [{ "primitives": [{
-                "attributes": { "POSITION": 0, "NORMAL": 1, "TEXCOORD_0": 2 }, "indices": 3, "material": 0
-              }] }],
-              "buffers": [{ "uri": "data:application/octet-stream;base64,{{data}}", "byteLength": {{binary.Length}} }],
-              "bufferViews": [
-                { "buffer": 0, "byteOffset": 0, "byteLength": 48 },
-                { "buffer": 0, "byteOffset": 48, "byteLength": 48 },
-                { "buffer": 0, "byteOffset": 96, "byteLength": 32 },
-                { "buffer": 0, "byteOffset": 128, "byteLength": 12 }
-              ],
-              "accessors": [
-                { "bufferView": 0, "componentType": 5126, "count": 4, "type": "VEC3",
-                  "min": [-1, -1, 0], "max": [1, 1, 0] },
-                { "bufferView": 1, "componentType": 5126, "count": 4, "type": "VEC3" },
-                { "bufferView": 2, "componentType": 5126, "count": 4, "type": "VEC2" },
-                { "bufferView": 3, "componentType": 5123, "count": 6, "type": "SCALAR" }
-              ]
-            }
-            """;
+                     {
+                       "asset": { "version": "2.0" },
+                       "scene": 0, "scenes": [{ "nodes": [0] }], "nodes": [{ "mesh": 0 }],
+                       "images": [{ "uri": "{{uri}}" }],
+                       "textures": [{ "source": 0 }],
+                       "materials": [{ "pbrMetallicRoughness": {
+                         "baseColorTexture": { "index": 0 }, "metallicFactor": 0.0, "roughnessFactor": 1.0
+                       } }],
+                       "meshes": [{ "primitives": [{
+                         "attributes": { "POSITION": 0, "NORMAL": 1, "TEXCOORD_0": 2 }, "indices": 3, "material": 0
+                       }] }],
+                       "buffers": [{
+                         "uri": "data:application/octet-stream;base64,{{data}}",
+                         "byteLength": {{binary.Length}}
+                       }],
+                       "bufferViews": [
+                         { "buffer": 0, "byteOffset": 0, "byteLength": 48 },
+                         { "buffer": 0, "byteOffset": 48, "byteLength": 48 },
+                         { "buffer": 0, "byteOffset": 96, "byteLength": 32 },
+                         { "buffer": 0, "byteOffset": 128, "byteLength": 12 }
+                       ],
+                       "accessors": [
+                         { "bufferView": 0, "componentType": 5126, "count": 4, "type": "VEC3",
+                           "min": [-1, -1, 0], "max": [1, 1, 0] },
+                         { "bufferView": 1, "componentType": 5126, "count": 4, "type": "VEC3" },
+                         { "bufferView": 2, "componentType": 5126, "count": 4, "type": "VEC2" },
+                         { "bufferView": 3, "componentType": 5123, "count": 6, "type": "SCALAR" }
+                       ]
+                     }
+                     """;
         var path = In(embedded ? "embedded.gltf" : "beside.gltf");
         File.WriteAllText(path, json);
         return path;
@@ -294,7 +299,8 @@ public sealed class ViewportMapTests : IDisposable {
 
         Vector3 Surface(float around, float up) {
             var radius = 1f + ripple * MathF.Sin(around * 24f) * MathF.Sin(up * 24f);
-            return new Vector3(MathF.Cos(around) * MathF.Cos(up), MathF.Sin(up), MathF.Sin(around) * MathF.Cos(up)) * radius;
+            return new Vector3(MathF.Cos(around) * MathF.Cos(up), MathF.Sin(up), MathF.Sin(around) * MathF.Cos(up))
+                * radius;
         }
 
         for (var side = 0; side <= sides; side++) {
