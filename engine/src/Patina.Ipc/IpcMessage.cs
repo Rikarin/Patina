@@ -247,7 +247,9 @@ public sealed record GraphImageAsk(string Session, int Node, string Port, string
 /// <summary>A full-size picture that is now in the cache. The pixels are not in the message.</summary>
 public sealed record GraphFullImage(string Hash, int Width, int Height);
 
-/// <summary>Where a preview lives in the cache, for the Worker that writes it and the Server that serves it.</summary>
+// SK7005: a message record's constructor is its wire shape, one parameter per field.
+#pragma warning disable SK7005
+
 /// <summary>A stack for a Worker to hold.</summary>
 /// <param name="Session">The session.</param>
 /// <param name="Path">Its file, which its paint files are relative to.</param>
@@ -258,7 +260,8 @@ public sealed record GraphFullImage(string Hash, int Width, int Height);
 /// <param name="MeshMaps">The folder of baked maps, or null.</param>
 /// <param name="Checkpoint">A folder of canvases newer than the stack's own files, or null.</param>
 /// <param name="Created">
-///     Paint files this session's strokes made. A journal starts before them, so what a save left in them is not a base.
+///     Paint files this session's strokes made. A journal starts before them, so what a save left in them is not a
+///     base.
 /// </param>
 public sealed record StackLoad(
     string Session,
@@ -271,6 +274,8 @@ public sealed record StackLoad(
     string? Checkpoint,
     IReadOnlyList<string> Created
 );
+
+#pragma warning restore SK7005
 
 /// <summary>One stroke of the journal, or the part of it a Worker has not been sent.</summary>
 /// <param name="Id">Its number in the journal.</param>
@@ -290,7 +295,10 @@ public sealed record StackPaintPart(
     bool Open
 );
 
-/// <summary>What the pixels should be: the strokes that stand, in order. The Worker works out how to get there.</summary>
+/// <summary>
+///     What the pixels should be: the strokes that stand, in order. The Worker works out how to get
+///     there.
+/// </summary>
 /// <param name="Session">The session.</param>
 /// <param name="Document">The document as text, when it changed.</param>
 /// <param name="Standing">Every stroke that stands, by number, in order.</param>
@@ -337,10 +345,14 @@ public sealed record StackSave(string Session, string? Folder);
 
 /// <summary>Asks for a digest of each map, and for files when a folder is given.</summary>
 /// <param name="Session">The session.</param>
-/// <param name="Clean">Whether to evaluate from nothing, as an export does, rather than read what the strokes left.</param>
+/// <param name="Clean">
+///     Whether to evaluate from nothing, as an export does, rather than read what the strokes
+///     left.
+/// </param>
 /// <param name="Folder">Where to write each map, or null to write nothing.</param>
 public sealed record StackPixelsAsk(string Session, bool Clean, string? Folder);
 
+/// <summary>Where a preview lives in the cache, for the Worker that writes it and the Server that serves it.</summary>
 public static class GraphPreviewFiles {
     public const string Extension = ".png";
 

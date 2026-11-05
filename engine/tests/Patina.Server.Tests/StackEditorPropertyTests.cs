@@ -25,9 +25,7 @@ public sealed class StackEditorPropertyTests {
                         var random = new Random(seed);
                         var history = editor.Standing.Count;
                         try {
-                            editor.Apply(
-                                new([..Enumerable.Range(0, random.Next(1, 4)).Select(_ => Pick(editor, random))])
-                            );
+                            editor.Apply(new(Picks(editor, random)));
                         } catch (StackEditRefusedException) {
                             Assert.Equal(before, StackDocuments.Text(editor.Document));
                             Assert.Equal(history, editor.Standing.Count);
@@ -93,6 +91,15 @@ public sealed class StackEditorPropertyTests {
             [..Enumerable.Range(0, stamps).Select(static index => new StackStamp(index, index))],
             open
         );
+
+    static List<StackCommand> Picks(StackEditor editor, Random random) {
+        List<StackCommand> commands = [];
+        for (var count = random.Next(1, 4); count > 0; count--) {
+            commands.Add(Pick(editor, random));
+        }
+
+        return commands;
+    }
 
     static StackCommand Pick(StackEditor editor, Random random) {
         string[] ids = [..editor.Set.Layers.Select(static layer => layer.Id), "absent"];

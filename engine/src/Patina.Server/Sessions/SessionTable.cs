@@ -10,7 +10,8 @@ public interface IFileSession {
 }
 
 /// <summary>
-///     The open sessions of one kind. One file has one session, so two clients that open it share its edits and its undo.
+///     The open sessions of one kind. One file has one session, so two clients that open it share its edits and its
+///     undo.
 /// </summary>
 /// <typeparam name="T">What a session is.</typeparam>
 public sealed class SessionTable<T> : IDisposable where T : class, IFileSession {

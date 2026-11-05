@@ -1,5 +1,4 @@
 using Patina.Contracts;
-using Patina.Ipc;
 using System.Globalization;
 using Vixen.Authoring;
 using Vixen.Texturing.Layers;
@@ -191,10 +190,7 @@ public sealed class StackEditor : ILayerStackDocument {
         var open = undoable[^1].Strokes;
         List<(StackJournalEntry Entry, StackStroke Part)> parts = [];
         foreach (var part in batch.Commands.Cast<StackStroke>()) {
-            var entry = open.FirstOrDefault(entry =>
-                entry.Open && entry.Stroke == part.Stroke && entry.Layer == part.Layer && Channel(part) == entry.Usage
-            );
-            if (entry is null) {
+            if (Continued(open, part) is not { } entry) {
                 return null;
             }
 
@@ -209,9 +205,17 @@ public sealed class StackEditor : ILayerStackDocument {
         return [..parts.Select(static part => new StackPainted(part.Entry.Layer, part.Entry.Usage))];
     }
 
+    static StackJournalEntry? Continued(List<StackJournalEntry> open, StackStroke part) =>
+        open.Find(entry =>
+            entry.Open && entry.Stroke == part.Stroke && entry.Layer == part.Layer && Channel(part) == entry.Usage
+        );
+
     static string Channel(StackStroke stroke) => stroke.Mask ? PaintReference.Mask : stroke.Channel;
 
-    /// <summary>A step that begins, or an undo, ends the drag before it: a client that vanished cannot hold history.</summary>
+    /// <summary>
+    ///     A step that begins, or an undo, ends the drag before it: a client that vanished cannot hold
+    ///     history.
+    /// </summary>
     void EndDrag() {
         if (undoable.Count > 0) {
             foreach (var stroke in undoable[^1].Strokes) {

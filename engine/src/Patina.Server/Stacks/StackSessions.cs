@@ -2,7 +2,10 @@ using Patina.Server.Sessions;
 
 namespace Patina.Server.Stacks;
 
-/// <summary>The open stacks. One file has one session, so two clients that open it share its edits and its undo.</summary>
+/// <summary>
+///     The open stacks. One file has one session, so two clients that open it share its edits and its
+///     undo.
+/// </summary>
 public sealed class StackSessions(ServerIdentity identity) : IDisposable {
     readonly SessionTable<StackSession> table = new();
 

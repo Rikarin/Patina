@@ -7,7 +7,8 @@ using Patina.Server.Stacks;
 namespace Patina.Server.Api;
 
 /// <summary>
-///     Layer stacks: open a file, edit it in undoable batches, paint it with lists of stamps, follow the numbered events.
+///     Layer stacks: open a file, edit it in undoable batches, paint it with lists of stamps, follow the numbered
+///     events.
 ///     No pixels are in these replies: an event carries hashes, and <c>/previews/{hash}</c> serves the files.
 /// </summary>
 static class StackEndpoints {

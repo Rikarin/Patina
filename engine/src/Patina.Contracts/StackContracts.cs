@@ -17,6 +17,9 @@ public sealed record StackCreateRequest(string Path, int Width, int Height);
 /// <param name="Default">What it starts as.</param>
 public sealed record StackChannel(string Usage, IReadOnlyList<float> Default);
 
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field, so fewer parameters means a new API.
+#pragma warning disable SK7005
+
 /// <summary>One layer, without its pixels.</summary>
 /// <param name="Id">Its identifier, stable across renames.</param>
 /// <param name="Name">What it is called.</param>
@@ -67,9 +70,6 @@ public sealed record StackEvaluation(
     IReadOnlyList<string> Diagnostics,
     string? Error
 );
-
-// SK7005: a wire record's constructor is its JSON shape, one parameter per field, so fewer parameters means a new API.
-#pragma warning disable SK7005
 
 /// <summary>A whole stack: everything a client needs to draw it, and no pixels.</summary>
 /// <param name="Id">The session.</param>

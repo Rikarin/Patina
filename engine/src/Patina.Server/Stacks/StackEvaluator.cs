@@ -46,7 +46,10 @@ public sealed class StackEvaluator(
         return session.FinishSave(text);
     }
 
-    /// <summary>A digest of each map, from what the strokes left or from nothing, and files when a folder is given.</summary>
+    /// <summary>
+    ///     A digest of each map, from what the strokes left or from nothing, and files when a folder is
+    ///     given.
+    /// </summary>
     /// <exception cref="TimeoutException">No Worker came.</exception>
     /// <exception cref="IpcException">It would not evaluate.</exception>
     public async Task<IReadOnlyList<StackPixels>> PixelsAsync(
@@ -77,7 +80,10 @@ public sealed class StackEvaluator(
         }
     }
 
-    /// <summary>The newest checkpoint on the way to these strokes: an undone stroke is in none that can be used.</summary>
+    /// <summary>
+    ///     The newest checkpoint on the way to these strokes: an undone stroke is in none that can be
+    ///     used.
+    /// </summary>
     static string? Newest(Marks held, IReadOnlyList<StackJournalEntry> standing) =>
         held.Checkpoints.LastOrDefault(mark => Prefix(mark.Standing, standing))?.Folder ?? held.Base;
 
@@ -296,7 +302,10 @@ public sealed class StackEvaluator(
 
         public Dictionary<long, (int Stamps, bool Open)> Sent { get; } = [];
 
-        /// <summary>The strokes a checkpoint already holds, which the Worker has no record of and cannot undo.</summary>
+        /// <summary>
+        ///     The strokes a checkpoint already holds, which the Worker has no record of and cannot
+        ///     undo.
+        /// </summary>
         public IReadOnlyList<long> Base { get; set; } = [];
     }
 

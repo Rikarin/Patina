@@ -14,7 +14,8 @@ namespace Patina.Worker;
 
 /// <summary>
 ///     Layer stacks. Everything here is derived from what the Server holds: the document and the journal of strokes. A
-///     stroke is stamped and composited here, in tiles, through the plan, and a Worker that dies costs the time to stamp
+///     stroke is stamped and composited here, in tiles, through the plan, and a Worker that dies costs the time to
+///     stamp
 ///     again (ADR 0009). All the painting is Vixen's; what is here is holding sessions and answering the socket.
 /// </summary>
 sealed class StackHost(DeviceHost gpu) : SessionHost<StackHost.Session> {
@@ -90,7 +91,8 @@ sealed class StackHost(DeviceHost gpu) : SessionHost<StackHost.Session> {
     }
 
     /// <summary>
-    ///     What each map holds, read from the strokes' repairs or evaluated from nothing, in the bytes an export writes:
+    ///     What each map holds, read from the strokes' repairs or evaluated from nothing, in the bytes an export
+    ///     writes:
     ///     the hash that says the two are one picture without a pixel crossing the socket.
     /// </summary>
     public IpcMessage Pixels(IpcMessage request) {

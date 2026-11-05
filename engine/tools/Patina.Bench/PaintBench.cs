@@ -17,19 +17,9 @@ namespace Patina.Bench;
 /// </summary>
 static class PaintBench {
     const int Tile = 256;
-    const int TilesEachWay = 3;
 
-    public static int Run(
-        int size,
-        int layerCount,
-        int channels,
-        int stamps,
-        int radius,
-        int paintedAt,
-        bool whole,
-        bool everyChannel,
-        bool blurAbove
-    ) {
+    public static int Run(Scenario scenario, int layerCount, int channels, bool blurAbove) {
+        var (size, _, radius, paintedAt, _, _) = scenario;
         if (!VulkanDevice.TryCreate(new(), out var device, out var refusal)) {
             Console.Error.WriteLine($"No Vulkan device: {refusal}");
             return 1;
@@ -53,9 +43,8 @@ static class PaintBench {
                 return 1;
             }
 
-            Say(
-                $"compiled in {clock.Elapsed.TotalMilliseconds:F0} ms: {plan.Ops.Length} ops, {plan.Images.Length} images"
-            );
+            Say($"compiled in {clock.Elapsed.TotalMilliseconds:F0} ms");
+            Say($"{plan.Ops.Length} ops, {plan.Images.Length} images");
             foreach (var group in plan.Ops.GroupBy(op => (op.Kernel, plan.Images[op.Output].Format))) {
                 Say($"  {group.Count()} × {group.Key.Kernel} → {group.Key.Format}");
             }
@@ -88,7 +77,7 @@ static class PaintBench {
             run.Evaluate().Dispose();
             Say($"first evaluation {clock.Elapsed.TotalMilliseconds:F0} ms, cache {evaluator.Results.Bytes >> 20} MiB");
 
-            Stroke(run, canvases, evaluator, folder, stack, new(size, stamps, radius, paintedAt, whole, everyChannel));
+            Stroke(run, canvases, evaluator, folder, stack, scenario);
         }
 
         return 0;
@@ -145,9 +134,8 @@ static class PaintBench {
             }
 
             if (stamp == stamps / 2) {
-                Say(
-                    $"mid-stroke: {tiles.Count} tiles, {bake.Repaired} repaired of {bake.Ran.Length} run, {bake.Dispatches} dispatches, {bytes >> 10} KiB read, cache {evaluator.Results.Bytes >> 20} MiB"
-                );
+                Say($"mid-stroke: {tiles.Count} tiles, {bake.Repaired} repaired of {bake.Ran.Length} run");
+                Say($"{bake.Dispatches} dispatches, {bytes >> 10} KiB read, cache {evaluator.Results.Bytes >> 20} MiB");
             }
         }
 
@@ -236,7 +224,13 @@ static class PaintBench {
         };
     }
 
-    readonly record struct Scenario(int Size, int Stamps, int Radius, int PaintedAt, bool Whole, bool EveryChannel);
+    public readonly record struct Scenario(
+        int Size,
+        int Stamps,
+        int Radius,
+        int PaintedAt,
+        bool Whole,
+        bool EveryChannel);
 
     static void Say(FormattableString line) => Console.WriteLine(line.ToString(CultureInfo.InvariantCulture));
 
@@ -263,9 +257,8 @@ static class PaintBench {
 
         static void Line(string name, List<double> values) {
             var sorted = values.Order().ToArray();
-            Say(
-                $"{name,-22} p50 {sorted[sorted.Length / 2]:F2}  p95 {sorted[sorted.Length * 95 / 100]:F2}  max {sorted[^1]:F2} ms ({sorted.Length} samples)"
-            );
+            var (median, high) = (sorted[sorted.Length / 2], sorted[sorted.Length * 95 / 100]);
+            Say($"{name,-22} p50 {median:F2}  p95 {high:F2}  max {sorted[^1]:F2} ms ({sorted.Length} samples)");
         }
     }
 }

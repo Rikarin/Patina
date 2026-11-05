@@ -14,7 +14,10 @@ static class ApiRoutes {
         }
     }
 
-    /// <summary>Serves numbered events over a WebSocket, as text messages, until the last one or the client goes.</summary>
+    /// <summary>
+    ///     Serves numbered events over a WebSocket, as text messages, until the last one or the client
+    ///     goes.
+    /// </summary>
     /// <param name="context">The request.</param>
     /// <param name="source">The session, or null when there is none.</param>
     /// <param name="type">How an event is written.</param>

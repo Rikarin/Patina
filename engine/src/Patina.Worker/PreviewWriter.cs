@@ -1,4 +1,3 @@
-using Patina.Graphs;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using Vixen.Core.Imaging;

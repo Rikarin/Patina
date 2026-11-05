@@ -48,7 +48,8 @@ public sealed class StackProcessTests : IDisposable {
     }
 
     /// <summary>
-    ///     A drag sent in parts is one undo step, composited as tiles through the plan, and an undo and a redo come back
+    ///     A drag sent in parts is one undo step, composited as tiles through the plan, and an undo and a redo come
+    ///     back
     ///     to the same picture, down to the digest.
     /// </summary>
     [Fact]
@@ -249,7 +250,8 @@ public sealed class StackProcessTests : IDisposable {
     }
 
     /// <summary>
-    ///     A long session is bounded by checkpoints, and a checkpoint is not allowed to take undo away: a new Worker asked
+    ///     A long session is bounded by checkpoints, and a checkpoint is not allowed to take undo away: a new Worker
+    ///     asked
     ///     to go behind one starts from further back.
     /// </summary>
     [Fact]
@@ -284,7 +286,8 @@ public sealed class StackProcessTests : IDisposable {
     }
 
     /// <summary>
-    ///     A first stroke makes a file, and a save writes it. A new Worker replaying that stroke must not start from the
+    ///     A first stroke makes a file, and a save writes it. A new Worker replaying that stroke must not start from
+    ///     the
     ///     file, or the stroke lands twice and its undo reaches a picture nobody painted.
     /// </summary>
     [Fact]
@@ -307,9 +310,15 @@ public sealed class StackProcessTests : IDisposable {
         worker.Kill();
         await worker.WaitForExitAsync(deadline.Token);
         StartWorker();
-        Assert.Equal(Digest(painted, "baseColor"), Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor"));
+        Assert.Equal(
+            Digest(painted, "baseColor"),
+            Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor")
+        );
         await ActAsync(state.Id, "undo", deadline.Token);
-        Assert.Equal(Digest(blank, "baseColor"), Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor"));
+        Assert.Equal(
+            Digest(blank, "baseColor"),
+            Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor")
+        );
     }
 
     static string Digest(IReadOnlyList<StackPixels> maps, string usage) =>

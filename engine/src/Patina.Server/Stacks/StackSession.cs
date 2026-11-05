@@ -81,7 +81,10 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         }
     }
 
-    /// <summary>The paint files strokes made, standing or undone, that were not there when the session opened.</summary>
+    /// <summary>
+    ///     The paint files strokes made, standing or undone, that were not there when the session
+    ///     opened.
+    /// </summary>
     public IReadOnlyList<string> Created {
         get {
             lock (Changing) {
@@ -154,7 +157,10 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     /// <returns>Null when there was nothing to redo.</returns>
     public StackEditResult? Redo() => Walk(static editor => editor.Redo(), GraphEventKind.Redone);
 
-    /// <summary>What the document says now, and that everything the Worker has been told is about to be on disk.</summary>
+    /// <summary>
+    ///     What the document says now, and that everything the Worker has been told is about to be on
+    ///     disk.
+    /// </summary>
     /// <exception cref="GraphFileChangedException">The file changed behind this session.</exception>
     public string PrepareSave(bool force) {
         lock (Changing) {
@@ -204,9 +210,15 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         }
     }
 
-    /// <summary>What a Worker has not been told about these strokes, read under the lock so an edit cannot race it.</summary>
+    /// <summary>
+    ///     What a Worker has not been told about these strokes, read under the lock so an edit cannot race
+    ///     it.
+    /// </summary>
     /// <param name="entries">The strokes.</param>
-    /// <param name="sent">What it has been told: how many stamps of each, and whether that stroke was still open.</param>
+    /// <param name="sent">
+    ///     What it has been told: how many stamps of each, and whether that stroke was still
+    ///     open.
+    /// </param>
     /// <returns>The parts, and what it will have been told after them.</returns>
     public IReadOnlyList<StackPaintPart> PartsAfter(
         IReadOnlyList<StackJournalEntry> entries,
@@ -244,11 +256,9 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
             Finish(work);
             List<StackPreview> changed = [];
             if (result.Evaluated) {
-                foreach (var preview in result.Previews) {
-                    if (previews.GetValueOrDefault(preview.Usage) != preview) {
-                        changed.Add(preview);
-                        previews[preview.Usage] = preview;
-                    }
+                foreach (var preview in result.Previews.Where(p => previews.GetValueOrDefault(p.Usage) != p)) {
+                    changed.Add(preview);
+                    previews[preview.Usage] = preview;
                 }
             }
 

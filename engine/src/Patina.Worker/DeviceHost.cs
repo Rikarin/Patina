@@ -9,7 +9,10 @@ namespace Patina.Worker;
 ///     budget. The device opens on the first use, so a Worker with no Vulkan still answers health.
 /// </summary>
 sealed class DeviceHost : IDisposable {
-    /// <summary>What a stack's outputs and the pool under a stroke need, or the pool is rebuilt per stamp (ADR 0009).</summary>
+    /// <summary>
+    ///     What a stack's outputs and the pool under a stroke need, or the pool is rebuilt per stamp (ADR
+    ///     0009).
+    /// </summary>
     const long ResultBudget = 6L << 30;
 
     VulkanDevice? device;
