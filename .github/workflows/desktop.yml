@@ -25,7 +25,7 @@ jobs:
         include:
           - { os: macos-latest, name: macos-arm64 }
           - { os: windows-latest, name: windows-x64 }
-          - { os: ubuntu-latest, name: linux-x64 }
+          - { os: ubuntu-24.04, name: linux-x64 }
     runs-on: ${{ matrix.os }}
     defaults:
       run:
