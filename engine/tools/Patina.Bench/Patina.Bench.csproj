@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>The spikes' measurements, so that the numbers in docs/adr can be run again: a seeded library generator and S6, kernels, and the viewport.</Description>
+    <Description>The spikes' measurements, so that the numbers in docs/adr can be run again: a seeded library generator and S6, kernels, the viewport and S9, and the high and low pair the bake path is tested on.</Description>
     <OutputType>Exe</OutputType>
     <AssemblyName>patina-bench</AssemblyName>
     <RootNamespace>Patina.Bench</RootNamespace>

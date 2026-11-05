@@ -37,6 +37,15 @@ export type GraphEditResult = components['schemas']['GraphEditResult'];
  */
 export type GraphEvent = components['schemas']['GraphEvent'];
 
+export type BakeRequest = components['schemas']['BakeRequest'];
+export type BakeResult = components['schemas']['BakeResult'];
+export type BakedMapFile = components['schemas']['BakedMapFile'];
+export type JobPage = components['schemas']['JobPage'];
+export type JobState = components['schemas']['JobState'];
+
+/** One change to a job. `/jobs/events` has its schema, and `/ws/jobs?since=` sends the same events as they happen. */
+export type JobEvent = components['schemas']['JobEvent'];
+
 /** What a client sends over `/ws/viewport`. WebSockets are outside the OpenAPI document, so this is written by hand. */
 export interface ViewportInput {
   camera?: ViewportCameraState;

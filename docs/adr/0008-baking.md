@@ -1,0 +1,86 @@
+# ADR 0008: Baking (spike S9, and how a bake runs)
+
+**Status:** S9 failed, 2026-11-05. The rest is accepted. **Pass criterion (plan §6):** threaded CPU occlusion, 4K, 256 rays, two
+million triangles, under 2 minutes on a current laptop. **If it fails:** bring forward GPU traversal in Raven compute.
+
+## S9: failed, and the choice it leaves
+
+`patina-bench s9 <folder>` runs the real path, file to file. The mesh is a bumpy torus knot of 2,000,000 triangles, and the low
+is a smooth one with a full atlas: 16.6 million covered texels, the worst an atlas can be, so 4.27 billion occlusion rays. An M1 Max
+has 8 performance and 2 efficiency cores.
+
+| Measure | Result |
+|---|---|
+| Vixen's baker as it stood, one thread | 0.19 M rays/s, an extrapolated 6.1 hours |
+| Threaded, SAH, four wide, on a loaded machine | 332 s wall, 2,761 CPU-seconds, 12.9 M rays/s |
+| The best those CPU-seconds allow on 10 idle cores | 276 s |
+| Target | 120 s |
+
+The wall time was measured with other builds running (load average 23 to 187), so it overstates the cost; the CPU time is
+what to read, and it fails by a factor of 2.3 however idle the machine is. Efficiency cores make the real floor higher. A real
+atlas covers about 70%, which is about 193 s. Against that, shortening the rays helps: a reach of a tenth of the diagonal rather than a
+half was about 1.5 times faster.
+
+**The CPU is not going to get there on its own.** Per ray, one-threaded, the tree cost 320 ns on 2,000 triangles and 680 ns on two
+million, so more than half is cache misses, and arithmetic can only win back the rest. Removing the division, a branch-free push
+and any-hit ordering each moved it by 10% or less, and the branch-free push lost on the large mesh. The other ways down are Embree,
+which is a native library per platform, and GPU traversal, which the plan names.
+
+**Not started: GPU traversal.** The plan says one implementation, and starting it is a decision about Raven compute, MoltenVK and
+Worker scheduling that this phase should not make by momentum. Everything else in P4 stands either way: a GPU path would replace
+`BakeTree` and the rays, and keep the cage, skew, parts, charts, files and jobs. Until then a 4K, 256-ray bake of a dense mesh takes
+minutes, and 2K at 64 rays takes seconds, which is usable. Whether that is enough is the owner's call.
+
+## How a bake runs beside everything else
+
+The Worker answers IPC one request at a time, and a reply over 30 s counts as a lost Worker. Neither changes.
+
+**`bake.start` answers at once.** The bake runs on a thread of its own, and tells the Server how it is going with `bake.progress` and
+`bake.ended`, which are requests in the other direction. So the loop is never waiting on a bake, the viewport and graph evaluation
+carry on through it, health probes are answered, and no reply can time out however long a bake takes. Two tests hold this, as an
+order and not a timing: `A_graph_evaluates_while_a_bake_runs` looks at the job after the evaluation arrives, and
+`The_worker_keeps_answering_through_a_bake` waits out two health probes mid-bake.
+
+A second process per bake was the alternative, and would have isolated a crash in a bake from the viewport. It was turned down
+because the Server starts no process (plan §8), and the Worker that holds a bake and the one a supervisor restarts should be the same
+thing. The cost is that a bake that crashes the Worker takes the viewport with it, for the second that S5 measured.
+
+A bake casts on all cores but two, which are left to the viewport, evaluation and the loop. A long bake still slows them by
+competing for memory.
+
+## Jobs
+
+The Server owns them. Each job is one JSON file under `.ptcache/jobs`, replaced atomically. Deleting that folder loses what was asked
+for and not yet made, which a client can ask again. A running job is only ever a job that can be run again, so:
+
+- A Worker's connection closing puts its job back in the queue. S5's bake half is `A_killed_worker_loses_no_job_and_its_successor_runs_it`.
+- A Server starting finds a running job and does the same: `A_killed_server_comes_back_to_its_queue`.
+- Three dead Workers fail a job, across restarts too, so that a job that crashes the machine cannot loop.
+- A report carries its attempt, so a Worker that lost a job cannot touch the next attempt.
+
+Results are cached by `BakeKeys`: inputs count by content and by role, and paths do not count. A bake is made in a `.part` folder and
+moved into place, so a folder in the cache is whole. The Worker writes only there; the Server copies the maps to the requested
+output and leaves a `<name>.bake.json` beside them with the scale that undoes a signed map's encoding.
+
+## Hard edges
+
+A hard edge is two normals on one point, and rays along each corner's normal see different surfaces. Rays now follow the normal
+averaged over the point, while the tangent frame keeps the corner's own. Vixen's `HardEdgeBakeTests` shows the gap closing with
+resolution and the old rays not closing it. The price is that detail beside a hard edge shears, which skew and a skew map trade back.
+`patina-bench bake-preview` shades both for a person to judge. Passing a test does not meet the exit; only an artist can.
+
+## EXR
+
+The plan expected a native library. **A managed writer was compared first, and won.**
+
+| | OpenEXR through a native library | `ExrCodec` in `Core.Imaging` |
+|---|---|---|
+| Licence | BSD-3-Clause, compatible with GPL-3.0-or-later | Vixen's Apache-2.0 |
+| Packaging | OpenEXR, Imath, libdeflate and OpenJPH, built and signed for three platforms, in `native-dependencies.json`, in every workflow | Nothing |
+| Reach | Everything the format has | Scanline, ZIP, half and float, one to four channels |
+| Size | Tens of thousands of lines | About 300 lines over `System.IO.Compression` |
+| Risk | ABI, packaging and a native crash in the Worker | A format misread, which tests against FFmpeg's decoder and macOS's image reader rule out |
+
+A bake writes flat images, so that subset is all it needs. A reader refuses the rest. `THIRD-PARTY-NOTICES.md` and
+`build/native-dependencies.json` do not change, and nothing new installs on any platform in CI or the app. Choosing PIZ or a tiled
+file later would reopen this.

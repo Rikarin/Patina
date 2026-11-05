@@ -45,7 +45,8 @@ public static class IpcTypes {
     public const string GraphClose = "graph.close";
 
     /// <summary>
-    ///     Server to Worker: start <see cref="IpcMessage.BakeStart" /> and answer at once. The bake runs beside whatever
+    ///     Server to Worker: start <see cref="IpcMessage.BakeStart" /> and answer at once. The bake runs beside
+    ///     whatever
     ///     else is asked, and says how it ends with <see cref="BakeEnded" />, so nothing waits on it and no reply can
     ///     time out on it (ADR 0008).
     /// </summary>
@@ -133,7 +134,9 @@ public sealed class IpcMessage {
 /// <param name="Attempt">Which attempt.</param>
 public sealed record BakeTicket(string Job, int Attempt);
 
-/// <summary>A bake for the Worker to run. It is a copy: the Server has the job, and sends it again after a crash.</summary>
+/// <summary>
+///     A bake for the Worker to run. It is a copy: the Server has the job, and sends it again after a crash.
+/// </summary>
 /// <param name="Ticket">Which attempt this is.</param>
 /// <param name="Request">What to bake.</param>
 /// <param name="Folder">The folder to make, which is the cache's for this key.</param>

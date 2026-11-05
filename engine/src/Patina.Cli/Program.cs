@@ -18,10 +18,14 @@ switch (args) {
             """
             Usage:
               patina version | patina bake <graph.vxtexgraph> <folder>
-            """ + "\n" + MeshMapCommand.Usage + "\n" + """
-              patina library new <path> [--name <name>]
-              patina library check <path> [--all]
             """
+            + "\n"
+            + MeshMapCommand.Usage
+            + "\n"
+            + """
+                patina library new <path> [--name <name>]
+                patina library check <path> [--all]
+              """
         );
         return 2;
 }

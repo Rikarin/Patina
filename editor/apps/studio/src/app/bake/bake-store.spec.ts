@@ -1,0 +1,128 @@
+import { TestBed } from '@angular/core/testing';
+import { type JobState, createPatinaClient } from '@patina/api-client';
+import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
+import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
+import { BakeStore, jobSocketUrl } from './bake-store';
+
+const bake = { high: '/m/high.glb', low: '/m/low.glb', output: '/out' };
+
+function job(overrides: Partial<JobState> = {}): JobState {
+  return {
+    id: 'j1',
+    key: 'k',
+    state: 'running',
+    progress: 0,
+    attempts: 1,
+    created: '2026-11-05T00:00:00Z',
+    bake,
+    cancelRequested: false,
+    ...overrides
+  } as JobState;
+}
+
+/** A Server: each route answers from the table, and a socket that a test can speak through. */
+function speak(socket: GraphSocket | undefined, message: unknown): void {
+  const hear = socket?.onmessage as ((event: MessageEvent) => void) | null | undefined;
+  hear?.({ data: JSON.stringify(message) } as MessageEvent);
+}
+
+function setup(routes: Record<string, (request: Request) => Response>) {
+  const sockets: GraphSocket[] = [];
+  const urls: string[] = [];
+  const answer = (input: RequestInfo | URL) => {
+    const request = input as Request;
+    const key = `${request.method} ${new URL(request.url).pathname.replace('/api/v1/', '')}`;
+    const route = routes[key];
+    return Promise.resolve(route ? route(request) : Response.json({ detail: `no route for ${key}` }, { status: 500 }));
+  };
+  TestBed.configureTestingModule({
+    providers: [
+      { provide: SERVER_CONNECTION, useValue: () => Promise.resolve({ baseUrl: 'http://server', token: 'secret' }) },
+      {
+        provide: API_CLIENT_FACTORY,
+        useValue: (connection: { baseUrl: string; token: string | null }) => createPatinaClient(connection, answer)
+      },
+      {
+        provide: GRAPH_SOCKET,
+        useValue: (url: string) => {
+          urls.push(url);
+          const socket = { onopen: null, onmessage: null, onclose: null, close: vi.fn() } as unknown as GraphSocket;
+          sockets.push(socket);
+          return socket;
+        }
+      }
+    ]
+  });
+  return { store: TestBed.inject(BakeStore), sockets, urls };
+}
+
+const empty = { 'GET jobs': () => Response.json({ jobs: [], sequence: 7 }) };
+
+async function settled(): Promise<void> {
+  await new Promise(resolve => setTimeout(resolve));
+}
+
+describe('BakeStore', () => {
+  it('follows the jobs socket from the sequence the Server gave it', async () => {
+    const { urls } = setup(empty);
+    await settled();
+
+    expect(urls[0]).toContain('/ws/jobs?since=7');
+    expect(urls[0]).toContain('access_token=secret');
+  });
+
+  it('shows a started bake and the events that move it on', async () => {
+    const { store, sockets } = setup({
+      ...empty,
+      'POST jobs/bakes': () => Response.json(job(), { status: 202 })
+    });
+    await settled();
+    await store.start(bake as never);
+
+    expect(store.current()?.state).toBe('running');
+
+    speak(sockets[0], { sequence: 8, job: job({ progress: 0.5 }) });
+
+    expect(store.current()?.progress).toBe(0.5);
+  });
+
+  it('keeps following a job another client started without taking the panel over', async () => {
+    const { store, sockets } = setup(empty);
+    await settled();
+
+    speak(sockets[0], { sequence: 8, job: job({ id: 'other' }) });
+
+    expect(store.current()).toBeNull();
+  });
+
+  it('passes on the Server refusing a bake', async () => {
+    const { store } = setup({
+      ...empty,
+      'POST jobs/bakes': () => Response.json({ detail: "'tga' is not a format." }, { status: 422 })
+    });
+    await settled();
+
+    await expect(store.start(bake as never)).rejects.toThrow(/not a format/);
+  });
+
+  it('hides a map by dropping its picture', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:map');
+    URL.revokeObjectURL = vi.fn();
+    const { store } = setup({
+      ...empty,
+      'GET jobs/j1/previews/normal': () => new Response(new Blob(['png'], { type: 'image/png' }))
+    });
+    await settled();
+
+    await store.show(job({ state: 'done' }), 'normal');
+    expect(store.shown()?.map).toBe('normal');
+
+    store.hide();
+    expect(store.shown()).toBeNull();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:map');
+  });
+
+  it('builds a socket address that matches its server', () => {
+    expect(jobSocketUrl({ baseUrl: 'https://host:1', token: null }, 3)).toBe('wss://host:1/ws/jobs?since=3');
+  });
+});

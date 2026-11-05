@@ -4,45 +4,61 @@ namespace Patina.Contracts;
 ///     A high-to-low bake. Everything is a path on the Server's machine, and the results are files there: a client
 ///     sends paths and gets paths, whichever client it is (plan §8).
 /// </summary>
-/// <param name="High">The detailed mesh.</param>
-/// <param name="Low">The mesh baked onto, which must have texture coordinates.</param>
-/// <param name="Output">The folder the maps are written to.</param>
-/// <param name="Cage">A mesh with the low mesh's faces, moved outward, which the rays start from.</param>
-/// <param name="Resolution">The atlas's edge, in texels.</param>
-/// <param name="Maps">
-///     What to bake beyond <c>normal</c> and <c>height</c>, which are always baked: <c>ao</c>, <c>bent</c>,
-///     <c>curvature</c>, <c>thickness</c>, <c>position</c>, <c>world</c>, <c>id</c>.
-/// </param>
-/// <param name="Format"><c>png8</c>, <c>png16</c>, <c>exr16</c> or <c>exr32</c>.</param>
-/// <param name="Supersampling">How many samples along each side of a texel.</param>
-/// <param name="OcclusionRays">How many rays a texel's occlusion is estimated with.</param>
-/// <param name="SearchRadius">How far a ray looks, as a fraction of the high mesh's diagonal.</param>
-/// <param name="OcclusionRadius">How far an occluder counts, as a fraction of the diagonal.</param>
-/// <param name="Skew">How far rays lean from the smoothed direction towards the low mesh's own normal, 0 to 1.</param>
-/// <param name="SkewMap">A grey image saying where to apply the skew, or null for everywhere.</param>
-/// <param name="MatchByName">Whether a part of the low mesh only strikes the high part of the same name.</param>
-/// <param name="Gutter">How many texels of dilation surround each chart.</param>
-/// <param name="Space"><c>tangent</c> or <c>object</c>.</param>
-/// <param name="Name">The stem of each file's name, or null for the low mesh's.</param>
-public sealed record BakeRequest(
-    string High,
-    string Low,
-    string Output,
-    string? Cage = null,
-    int Resolution = 2048,
-    IReadOnlyList<string>? Maps = null,
-    string Format = "png16",
-    int Supersampling = 1,
-    int OcclusionRays = 64,
-    double SearchRadius = 0.05,
-    double OcclusionRadius = 0.5,
-    double Skew = 0,
-    string? SkewMap = null,
-    bool MatchByName = false,
-    int Gutter = 4,
-    string Space = "tangent",
-    string? Name = null
-);
+public sealed record BakeRequest {
+    /// <summary>The detailed mesh.</summary>
+    public required string High { get; init; }
+
+    /// <summary>The mesh baked onto, which must have texture coordinates.</summary>
+    public required string Low { get; init; }
+
+    /// <summary>The folder the maps are written to.</summary>
+    public required string Output { get; init; }
+
+    /// <summary>A mesh with the low mesh's faces, moved outward, which the rays start from.</summary>
+    public string? Cage { get; init; }
+
+    /// <summary>The atlas's edge, in texels.</summary>
+    public int Resolution { get; init; } = 2048;
+
+    /// <summary>
+    ///     What to bake beyond <c>normal</c> and <c>height</c>, which are always baked: <c>ao</c>, <c>bent</c>,
+    ///     <c>curvature</c>, <c>thickness</c>, <c>position</c>, <c>world</c>, <c>id</c>.
+    /// </summary>
+    public IReadOnlyList<string>? Maps { get; init; }
+
+    /// <summary><c>png8</c>, <c>png16</c>, <c>exr16</c> or <c>exr32</c>.</summary>
+    public string Format { get; init; } = "png16";
+
+    /// <summary>How many samples along each side of a texel.</summary>
+    public int Supersampling { get; init; } = 1;
+
+    /// <summary>How many rays a texel's occlusion is estimated with.</summary>
+    public int OcclusionRays { get; init; } = 64;
+
+    /// <summary>How far a ray looks, as a fraction of the high mesh's diagonal.</summary>
+    public double SearchRadius { get; init; } = 0.05;
+
+    /// <summary>How far an occluder counts, as a fraction of the diagonal.</summary>
+    public double OcclusionRadius { get; init; } = 0.5;
+
+    /// <summary>How far rays lean from the smoothed direction towards the low mesh's own normal, 0 to 1.</summary>
+    public double Skew { get; init; }
+
+    /// <summary>A grey image saying where to apply the skew, or null for everywhere.</summary>
+    public string? SkewMap { get; init; }
+
+    /// <summary>Whether a part of the low mesh only strikes the high part of the same name.</summary>
+    public bool MatchByName { get; init; }
+
+    /// <summary>How many texels of dilation surround each chart.</summary>
+    public int Gutter { get; init; } = 4;
+
+    /// <summary><c>tangent</c> or <c>object</c>.</summary>
+    public string Space { get; init; } = "tangent";
+
+    /// <summary>The stem of each file's name, or null for the low mesh's.</summary>
+    public string? Name { get; init; }
+}
 
 /// <summary>One baked map, as a file.</summary>
 /// <param name="Map">What it measures.</param>
@@ -78,28 +94,37 @@ public static class JobStates {
 }
 
 /// <summary>A piece of work the Server owns, which outlives the Worker running it and the Server itself.</summary>
-/// <param name="Id">Its identity.</param>
-/// <param name="Key">The build key of what it makes.</param>
-/// <param name="State">One of <see cref="JobStates" />.</param>
-/// <param name="Progress">How far through it is, 0 to 1.</param>
-/// <param name="Attempts">How many Workers have started it.</param>
-/// <param name="Created">When it was asked for, in UTC.</param>
-/// <param name="Bake">What to do.</param>
-/// <param name="Result">What it made, once done.</param>
-/// <param name="Error">Why it failed.</param>
-/// <param name="CancelRequested">Whether a client has asked for it to stop.</param>
-public sealed record JobState(
-    string Id,
-    string Key,
-    string State,
-    double Progress,
-    int Attempts,
-    DateTimeOffset Created,
-    BakeRequest Bake,
-    BakeResult? Result = null,
-    string? Error = null,
-    bool CancelRequested = false
-);
+public sealed record JobState {
+    /// <summary>Its identity.</summary>
+    public required string Id { get; init; }
+
+    /// <summary>The build key of what it makes.</summary>
+    public required string Key { get; init; }
+
+    /// <summary>One of <see cref="JobStates" />.</summary>
+    public required string State { get; init; }
+
+    /// <summary>How far through it is, 0 to 1.</summary>
+    public double Progress { get; init; }
+
+    /// <summary>How many Workers have started it.</summary>
+    public int Attempts { get; init; }
+
+    /// <summary>When it was asked for, in UTC.</summary>
+    public required DateTimeOffset Created { get; init; }
+
+    /// <summary>What to do.</summary>
+    public required BakeRequest Bake { get; init; }
+
+    /// <summary>What it made, once done.</summary>
+    public BakeResult? Result { get; init; }
+
+    /// <summary>Why it failed.</summary>
+    public string? Error { get; init; }
+
+    /// <summary>Whether a client has asked for it to stop.</summary>
+    public bool CancelRequested { get; init; }
+}
 
 /// <summary>A job changing. Numbered, so a client that dropped its socket can ask what it missed.</summary>
 /// <param name="Sequence">The number, rising with each event.</param>

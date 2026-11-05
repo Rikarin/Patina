@@ -6,20 +6,26 @@ namespace Patina.Jobs.Tests;
 
 /// <summary>The queue on its own: what survives a Worker and a Server is decided here.</summary>
 public sealed class JobQueueTests : IDisposable {
-    static readonly BakeRequest Bake = new("high.glb", "low.glb", "out");
+    static readonly BakeRequest Bake = new() { High = "high.glb", Low = "low.glb", Output = "out" };
     static readonly BakeResult Made = new([new("normal", "normal.png", 64, 0)], 10, 0, [], false);
 
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-jobs-");
 
     public void Dispose() => folder.Delete(true);
 
-    JobQueue Open() => new(folder.FullName);
+    JobQueue Open() => new(folder.FullName, new Ticking());
+
+    /// <summary>A clock that moves on each time it is read, so that one job is older than another.</summary>
+    sealed class Ticking : TimeProvider {
+        DateTimeOffset now = DateTimeOffset.UnixEpoch;
+
+        public override DateTimeOffset GetUtcNow() => now = now.AddSeconds(1);
+    }
 
     [Fact]
     public void A_job_is_handed_out_once_and_oldest_first() {
         var queue = Open();
         var first = queue.Enqueue("a", Bake);
-        Thread.Sleep(2);
         var second = queue.Enqueue("b", Bake);
 
         Assert.Equal(first.Id, queue.TakeNext()!.Id);
@@ -59,7 +65,9 @@ public sealed class JobQueueTests : IDisposable {
         Assert.Null(queue.TakeNext());
     }
 
-    /// <summary>The Server restarting finds the running job back in the queue, and the finished one still finished.</summary>
+    /// <summary>
+    ///     The Server restarting finds the running job back in the queue, and the finished one still finished.
+    /// </summary>
     [Fact]
     public void A_restart_puts_a_running_job_back_and_keeps_what_was_finished() {
         var queue = Open();
@@ -95,7 +103,6 @@ public sealed class JobQueueTests : IDisposable {
     public void Cancelling_stops_a_queued_job_and_asks_a_running_one() {
         var queue = Open();
         var running = queue.Enqueue("a", Bake);
-        Thread.Sleep(2);
         var waiting = queue.Enqueue("b", Bake);
         queue.TakeNext();
 
@@ -167,56 +174,61 @@ public sealed class JobQueueTests : IDisposable {
     [Fact]
     [Trait("Category", "Property")]
     public void Jobs_only_move_forward_whatever_happens() =>
-        Gen.Int[0, 6].Array[1, 80].Sample(steps => {
-            var scratch = Directory.CreateTempSubdirectory("patina-jobs-");
-            try {
-                var queue = new JobQueue(scratch.FullName);
-                var finished = new Dictionary<string, JobState>();
-                var last = (Id: "", Attempt: 0);
+        Gen.Int[0, 6]
+            .Array[1, 80]
+            .Sample(
+                static steps => {
+                    var scratch = Directory.CreateTempSubdirectory("patina-jobs-");
+                    try {
+                        var queue = new JobQueue(scratch.FullName);
+                        var finished = new Dictionary<string, JobState>();
+                        var last = (Id: string.Empty, Attempt: 0);
 
-                foreach (var step in steps) {
-                    switch (step) {
-                        case 0:
-                            queue.Enqueue("key", Bake);
-                            break;
-                        case 1:
-                            if (queue.TakeNext() is { } taken) {
-                                last = (taken.Id, taken.Attempts);
+                        foreach (var step in steps) {
+                            switch (step) {
+                                case 0:
+                                    queue.Enqueue("key", Bake);
+                                    break;
+                                case 1:
+                                    if (queue.TakeNext() is { } taken) {
+                                        last = (taken.Id, taken.Attempts);
+                                    }
+
+                                    break;
+                                case 2:
+                                    queue.Requeue(last.Id, last.Attempt);
+                                    break;
+                                case 3:
+                                    queue.Complete(last.Id, last.Attempt, Made);
+                                    break;
+                                case 4:
+                                    queue.Cancel(last.Id);
+                                    break;
+                                case 5:
+                                    queue.Report(last.Id, last.Attempt, 0.5);
+                                    break;
+                                default:
+                                    queue = new(scratch.FullName);
+                                    break;
                             }
 
-                            break;
-                        case 2:
-                            queue.Requeue(last.Id, last.Attempt);
-                            break;
-                        case 3:
-                            queue.Complete(last.Id, last.Attempt, Made);
-                            break;
-                        case 4:
-                            queue.Cancel(last.Id);
-                            break;
-                        case 5:
-                            queue.Report(last.Id, last.Attempt, 0.5);
-                            break;
-                        default:
-                            queue = new(scratch.FullName);
-                            break;
-                    }
+                            foreach (var job in queue.Page().Jobs) {
+                                Assert.InRange(job.Attempts, 0, JobQueue.MaxAttempts);
+                                if (finished.TryGetValue(job.Id, out var was)) {
+                                    Assert.Equal(was.State, job.State);
+                                }
 
-                    foreach (var job in queue.Page().Jobs) {
-                        Assert.InRange(job.Attempts, 0, JobQueue.MaxAttempts);
-                        if (finished.TryGetValue(job.Id, out var was)) {
-                            Assert.Equal(was.State, job.State);
+                                if (job.State is JobStates.Done or JobStates.Failed or JobStates.Cancelled) {
+                                    finished[job.Id] = job;
+                                }
+                            }
                         }
-
-                        if (job.State is JobStates.Done or JobStates.Failed or JobStates.Cancelled) {
-                            finished[job.Id] = job;
-                        }
+                    } finally {
+                        scratch.Delete(true);
                     }
-                }
-            } finally {
-                scratch.Delete(true);
-            }
-        }, iter: 150);
+                },
+                iter: 150
+            );
 
     /// <summary>The file is the job: nothing about it is held only in memory, the progress aside.</summary>
     [Fact]

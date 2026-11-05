@@ -218,7 +218,10 @@ public sealed class GraphSession {
                     File.Delete(file);
                 } else {
                     // Relative, so that a library can move and take its bakes with it.
-                    LibraryFiles.Replace(file, System.IO.Path.GetRelativePath(System.IO.Path.GetDirectoryName(Path)!, folder));
+                    LibraryFiles.Replace(
+                        file,
+                        System.IO.Path.GetRelativePath(System.IO.Path.GetDirectoryName(Path)!, folder)
+                    );
                 }
             }
 

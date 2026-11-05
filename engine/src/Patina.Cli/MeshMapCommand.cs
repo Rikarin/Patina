@@ -12,12 +12,12 @@ namespace Patina.Cli;
 ///     run a Worker does, and it can share a cache with one.
 /// </summary>
 internal static class MeshMapCommand {
-    public const string Usage = """
-          patina bake-maps --high <mesh> --low <mesh> --out <folder> [--cage <mesh>] [--resolution <n>]
-                [--maps ao,curvature,...] [--format png8|png16|exr16|exr32] [--supersampling <n>] [--rays <n>]
-                [--search <fraction>] [--reach <fraction>] [--skew <0-1>] [--skew-map <png>] [--match-by-name]
-                [--gutter <n>] [--space tangent|object] [--name <stem>] [--threads <n>] [--cache <folder>]
-        """;
+    public const string Usage =
+        "  patina bake-maps --high <mesh> --low <mesh> --out <folder> [--cage <mesh>] [--resolution <n>]\n"
+        + "        [--maps ao,curvature,...] [--format png8|png16|exr16|exr32] [--supersampling <n>]\n"
+        + "        [--rays <n>] [--search <fraction>] [--reach <fraction>] [--skew <0-1>] [--skew-map <png>]\n"
+        + "        [--match-by-name] [--gutter <n>] [--space tangent|object] [--name <stem>]\n"
+        + "        [--threads <n>] [--cache <folder>]";
 
     public static int Run(string[] options) {
         BakeRequest request;
@@ -48,7 +48,10 @@ internal static class MeshMapCommand {
             var result = cache.Deliver(key, manifest, request, cached);
             Console.Error.WriteLine();
             Console.Error.WriteLine(
-                string.Create(CultureInfo.InvariantCulture, $"{result.Covered} texels, {result.Missed} found no surface.")
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"{result.Covered} texels, {result.Missed} found no surface."
+                )
             );
             foreach (var warning in result.Warnings) {
                 Console.Error.WriteLine(warning);
@@ -110,24 +113,24 @@ internal static class MeshMapCommand {
             ? list.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             : null;
 
-        return new(
-            Path.GetFullPath(Required("high")),
-            Path.GetFullPath(Required("low")),
-            Path.GetFullPath(Required("out")),
-            named.GetValueOrDefault("cage") is { } cage ? Path.GetFullPath(cage) : null,
-            Number("resolution", 2048),
-            maps,
-            named.GetValueOrDefault("format", "png16"),
-            Number("supersampling", 1),
-            Number("rays", 64),
-            Fraction("search", 0.05),
-            Fraction("reach", 0.5),
-            Fraction("skew", 0),
-            named.GetValueOrDefault("skew-map") is { } skew ? Path.GetFullPath(skew) : null,
-            match,
-            Number("gutter", 4),
-            named.GetValueOrDefault("space", "tangent"),
-            named.GetValueOrDefault("name")
-        );
+        return new() {
+            High = Path.GetFullPath(Required("high")),
+            Low = Path.GetFullPath(Required("low")),
+            Output = Path.GetFullPath(Required("out")),
+            Cage = named.GetValueOrDefault("cage") is { } cage ? Path.GetFullPath(cage) : null,
+            Resolution = Number("resolution", 2048),
+            Maps = maps,
+            Format = named.GetValueOrDefault("format", "png16"),
+            Supersampling = Number("supersampling", 1),
+            OcclusionRays = Number("rays", 64),
+            SearchRadius = Fraction("search", 0.05),
+            OcclusionRadius = Fraction("reach", 0.5),
+            Skew = Fraction("skew", 0),
+            SkewMap = named.GetValueOrDefault("skew-map") is { } skew ? Path.GetFullPath(skew) : null,
+            MatchByName = match,
+            Gutter = Number("gutter", 4),
+            Space = named.GetValueOrDefault("space", "tangent"),
+            Name = named.GetValueOrDefault("name")
+        };
     }
 }

@@ -102,7 +102,9 @@ public sealed class JobRunner : BackgroundService {
         }
     }
 
-    /// <summary>What the Worker says about a bake, on the link's own loop, so nothing here may wait on the link.</summary>
+    /// <summary>
+    ///     What the Worker says about a bake, on the link's own loop, so nothing here may wait on the link.
+    /// </summary>
     void Hear(IpcMessage message) {
         if (message is { Type: IpcTypes.BakeProgress, BakeProgress: { } progress }) {
             queue.Report(progress.Ticket.Job, progress.Ticket.Attempt, progress.Fraction);
@@ -118,7 +120,9 @@ public sealed class JobRunner : BackgroundService {
         }
     }
 
-    /// <summary>Puts the maps where the request wanted them. Off the link's loop, since the files can be large.</summary>
+    /// <summary>
+    ///     Puts the maps where the request wanted them. Off the link's loop, since the files can be large.
+    /// </summary>
     void Deliver(string id, int attempt, BakeManifest manifest) {
         if (queue.Find(id) is not { } job) {
             return;

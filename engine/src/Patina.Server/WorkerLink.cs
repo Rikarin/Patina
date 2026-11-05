@@ -23,7 +23,8 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
     public WorkerStatus Status => status;
 
     /// <summary>
-    ///     Something the Worker said that nobody asked it: how a job is going. Raised on the link's own loop, so a handler
+    ///     Something the Worker said that nobody asked it: how a job is going. Raised on the link's own loop, so a
+    ///     handler
     ///     returns at once.
     /// </summary>
     public event Action<IpcMessage>? Reported;

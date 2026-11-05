@@ -61,9 +61,9 @@ static class GraphTables {
         for (var entry = 0; entry < Entries; entry++) {
             var colour = evaluate(entry / (float)(Entries - 1));
             pixels[entry * HexChannels] = Quantise(colour.R);
-            pixels[(entry * HexChannels) + 1] = Quantise(colour.G);
-            pixels[(entry * HexChannels) + 2] = Quantise(colour.B);
-            pixels[(entry * HexChannels) + 3] = Quantise(colour.A);
+            pixels[entry * HexChannels + 1] = Quantise(colour.G);
+            pixels[entry * HexChannels + 2] = Quantise(colour.B);
+            pixels[entry * HexChannels + 3] = Quantise(colour.A);
         }
 
         return pixels;
@@ -82,10 +82,10 @@ static class GraphTables {
                 var (start, from) = stops[i - 1];
                 var t = end > start ? (position - start) / (end - start) : 1f;
                 return new(
-                    from.R + ((to.R - from.R) * t),
-                    from.G + ((to.G - from.G) * t),
-                    from.B + ((to.B - from.B) * t),
-                    from.A + ((to.A - from.A) * t)
+                    from.R + (to.R - from.R) * t,
+                    from.G + (to.G - from.G) * t,
+                    from.B + (to.B - from.B) * t,
+                    from.A + (to.A - from.A) * t
                 );
             }
         }

@@ -12,7 +12,9 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
     public sealed class Pair : IDisposable {
         readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-pair-");
 
-        public Pair() => BakeFixture.Write(folder.FullName, 0.02f);
+        public Pair() {
+            BakeFixture.Write(folder.FullName, 0.02f);
+        }
 
         public string High => Path.Combine(folder.FullName, BakeFixture.HighFile);
 
@@ -33,7 +35,16 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
     string Into(string name) => Path.Combine(folder.FullName, name);
 
     BakeRequest Request(string format = BakeInputs.Png16) =>
-        new(pair.High, pair.Low, folder.FullName, Resolution: 128, Format: format, SearchRadius: 0.05, Maps: ["ao"], OcclusionRays: 8);
+        new() {
+            High = pair.High,
+            Low = pair.Low,
+            Output = folder.FullName,
+            Resolution = 128,
+            Format = format,
+            SearchRadius = 0.05,
+            Maps = ["ao"],
+            OcclusionRays = 8
+        };
 
     [Fact]
     public void A_bake_leaves_a_manifest_and_a_file_for_each_map() {
@@ -47,7 +58,10 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
 
         Assert.Equal(manifest, BakeCache.ReadManifest(Into("bake")), new ByName());
         Assert.True(manifest.Result.Covered > 0);
-        Assert.True(manifest.Result.Missed * 20 < manifest.Result.Covered, $"{manifest.Result.Missed} texels found nothing.");
+        Assert.True(
+            manifest.Result.Missed * 20 < manifest.Result.Covered,
+            $"{manifest.Result.Missed} texels found nothing."
+        );
     }
 
     sealed class ByName : IEqualityComparer<BakeManifest?> {
@@ -63,7 +77,13 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
     [InlineData(BakeInputs.Exr16)]
     [InlineData(BakeInputs.Exr32)]
     public void Every_format_reads_back_as_the_same_picture(string format) {
-        var manifest = MeshMapBakeRun.Run(Request(format), Into("bake"), 0, null, TestContext.Current.CancellationToken);
+        var manifest = MeshMapBakeRun.Run(
+            Request(format),
+            Into("bake"),
+            0,
+            null,
+            TestContext.Current.CancellationToken
+        );
         var reference = PngCodec.Load(Path.Combine(Into("bake"), "normal.preview.png"));
         var normal = manifest.Result.Maps.Single(static map => map.Map == "normal");
         var read = BakedMapPicture.Read(Path.Combine(Into("bake"), normal.Path), normal, format);
@@ -79,7 +99,13 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
     /// <summary>A map's depth is real: a 16-bit file holds levels an 8-bit one cannot.</summary>
     [Fact]
     public void A_sixteen_bit_map_has_more_than_256_levels() {
-        var manifest = MeshMapBakeRun.Run(Request() with { Resolution = 256 }, Into("bake"), 0, null, TestContext.Current.CancellationToken);
+        var manifest = MeshMapBakeRun.Run(
+            Request() with { Resolution = 256 },
+            Into("bake"),
+            0,
+            null,
+            TestContext.Current.CancellationToken
+        );
         var file = manifest.Result.Maps.Single(static map => map.Map == "normal").Path;
         var (_, _, _, samples) = PngCodec.Decode16(File.ReadAllBytes(Path.Combine(Into("bake"), file)));
 
@@ -128,7 +154,13 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
     [Fact]
     public void Matching_by_name_keeps_the_strap_out_of_the_body_and_it_shows() {
         BakeManifest Bake(bool match, string name) =>
-            MeshMapBakeRun.Run(Request() with { MatchByName = match, SearchRadius = 0.2, Maps = null }, Into(name), 0, null, TestContext.Current.CancellationToken);
+            MeshMapBakeRun.Run(
+                Request() with { MatchByName = match, SearchRadius = 0.2, Maps = null },
+                Into(name),
+                0,
+                null,
+                TestContext.Current.CancellationToken
+            );
 
         Bake(false, "bare");
         Bake(true, "matched");
@@ -149,7 +181,13 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
     [Fact]
     public void A_low_with_no_atlas_is_refused_with_a_reason() {
         var refusal = Assert.Throws<InvalidDataException>(() =>
-            MeshMapBakeRun.Run(Request() with { Low = pair.High }, Into("bake"), 0, null, TestContext.Current.CancellationToken)
+            MeshMapBakeRun.Run(
+                Request() with { Low = pair.High },
+                Into("bake"),
+                0,
+                null,
+                TestContext.Current.CancellationToken
+            )
         );
 
         Assert.Contains("texture coordinates", refusal.Message, StringComparison.Ordinal);

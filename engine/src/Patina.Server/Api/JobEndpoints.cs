@@ -8,7 +8,8 @@ using System.Text.Json;
 namespace Patina.Server.Api;
 
 /// <summary>
-///     Jobs: ask for a bake with paths, follow it through numbered events, stop it, and get paths back. Any client can do
+///     Jobs: ask for a bake with paths, follow it through numbered events, stop it, and get paths back. Any client
+///     can do
 ///     all of it (plan §8). Pixels are never in these replies; <c>/jobs/{id}/previews/{map}</c> serves a picture for a
 ///     client that wants to look at one, and the maps themselves are files.
 /// </summary>
@@ -43,7 +44,8 @@ static class JobEndpoints {
             .ProducesProblem(Missing);
     }
 
-    public static void MapJobSocket(this IEndpointRouteBuilder app) => app.Map("/ws/jobs", FollowAsync).ExcludeFromDescription();
+    public static void MapJobSocket(this IEndpointRouteBuilder app) =>
+        app.Map("/ws/jobs", FollowAsync).ExcludeFromDescription();
 
     static async Task<Results<Accepted<JobState>, ProblemHttpResult>> BakeAsync(
         BakeRequest request,
@@ -78,7 +80,12 @@ static class JobEndpoints {
     static Ok<IReadOnlyList<JobEvent>> GetEvents(JobQueue queue, long after = 0) =>
         TypedResults.Ok(queue.Since(after) ?? []);
 
-    static Results<PhysicalFileHttpResult, ProblemHttpResult> GetPreview(string id, string map, JobQueue queue, BakeCache cache) =>
+    static Results<PhysicalFileHttpResult, ProblemHttpResult> GetPreview(
+        string id,
+        string map,
+        JobQueue queue,
+        BakeCache cache
+    ) =>
         queue.Find(id) is { } job && cache.Preview(job.Key, map) is { } path
             ? TypedResults.PhysicalFile(path, "image/png")
             : TypedResults.Problem($"Job '{id}' has no picture of '{map}'.", statusCode: StatusCodes.Status404NotFound);
@@ -107,7 +114,12 @@ static class JobEndpoints {
         }
     }
 
-    static async Task SendEventsAsync(WebSocket socket, JobQueue queue, long after, CancellationToken cancellationToken) {
+    static async Task SendEventsAsync(
+        WebSocket socket,
+        JobQueue queue,
+        long after,
+        CancellationToken cancellationToken
+    ) {
         while (socket.State == WebSocketState.Open) {
             var changed = queue.Changed(cancellationToken);
             foreach (var change in queue.Since(after) ?? []) {

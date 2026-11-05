@@ -631,7 +631,6 @@ export interface components {
       /**
        * Format: int32
        * @description The atlas's edge, in texels.
-       * @default 2048
        */
       resolution: number;
       /**
@@ -639,58 +638,43 @@ export interface components {
        *     `curvature`, `thickness`, `position`, `world`, `id`.
        */
       maps?: null | string[];
-      /**
-       * @description `png8`, `png16`, `exr16` or `exr32`.
-       * @default png16
-       */
+      /** @description `png8`, `png16`, `exr16` or `exr32`. */
       format: string;
       /**
        * Format: int32
        * @description How many samples along each side of a texel.
-       * @default 1
        */
       supersampling: number;
       /**
        * Format: int32
        * @description How many rays a texel's occlusion is estimated with.
-       * @default 64
        */
       occlusionRays: number;
       /**
        * Format: double
        * @description How far a ray looks, as a fraction of the high mesh's diagonal.
-       * @default 0.05
        */
       searchRadius: number;
       /**
        * Format: double
        * @description How far an occluder counts, as a fraction of the diagonal.
-       * @default 0.5
        */
       occlusionRadius: number;
       /**
        * Format: double
        * @description How far rays lean from the smoothed direction towards the low mesh's own normal, 0 to 1.
-       * @default 0
        */
       skew: number;
       /** @description A grey image saying where to apply the skew, or null for everywhere. */
       skewMap?: null | string;
-      /**
-       * @description Whether a part of the low mesh only strikes the high part of the same name.
-       * @default false
-       */
+      /** @description Whether a part of the low mesh only strikes the high part of the same name. */
       matchByName: boolean;
       /**
        * Format: int32
        * @description How many texels of dilation surround each chart.
-       * @default 4
        */
       gutter: number;
-      /**
-       * @description `tangent` or `object`.
-       * @default tangent
-       */
+      /** @description `tangent` or `object`. */
       space: string;
       /** @description The stem of each file's name, or null for the low mesh's. */
       name?: null | string;
@@ -1454,10 +1438,7 @@ export interface components {
       result?: null | components['schemas']['BakeResult'];
       /** @description Why it failed. */
       error?: null | string;
-      /**
-       * @description Whether a client has asked for it to stop.
-       * @default false
-       */
+      /** @description Whether a client has asked for it to stop. */
       cancelRequested: boolean;
     };
     /** @description The reply to `GET /api/v1/library`: what opening a library reads, and nothing more. */

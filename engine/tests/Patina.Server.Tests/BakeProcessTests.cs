@@ -19,6 +19,7 @@ public sealed class BakeProcessTests : IDisposable {
     readonly string socketPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.sock");
     readonly List<Process> started = [];
     readonly HttpClient http = new();
+    readonly HttpClient restarted = new();
 
     string Library => Directory.CreateDirectory(Path.Combine(folder.FullName, "Game.ptlib")).FullName;
 
@@ -41,6 +42,7 @@ public sealed class BakeProcessTests : IDisposable {
         }
 
         http.Dispose();
+        restarted.Dispose();
         File.Delete(socketPath);
         try {
             folder.Delete(true);
@@ -101,22 +103,27 @@ public sealed class BakeProcessTests : IDisposable {
 
     BakeRequest Request(int resolution = 64, int rays = 8) {
         BakeFixture.Write(Meshes, 0.02f);
-        return new(
-            Path.Combine(Meshes, BakeFixture.HighFile),
-            Path.Combine(Meshes, BakeFixture.LowFile),
-            Output,
-            Resolution: resolution,
-            Maps: ["ao"],
-            OcclusionRays: rays,
-            SearchRadius: 0.05
-        );
+        return new() {
+            High = Path.Combine(Meshes, BakeFixture.HighFile),
+            Low = Path.Combine(Meshes, BakeFixture.LowFile),
+            Output = Output,
+            Resolution = resolution,
+            Maps = ["ao"],
+            OcclusionRays = rays,
+            SearchRadius = 0.05
+        };
     }
 
     /// <summary>A bake that takes long enough to be interrupted on a loaded machine and still finishes.</summary>
     BakeRequest Slow() => Request(1024, 256);
 
     async Task<JobState> StartAsync(BakeRequest request, CancellationToken cancellationToken) {
-        using var response = await http.PostAsJsonAsync("/api/v1/jobs/bakes", request, ContractsJsonContext.Default.BakeRequest, cancellationToken);
+        using var response = await http.PostAsJsonAsync(
+            "/api/v1/jobs/bakes",
+            request,
+            ContractsJsonContext.Default.BakeRequest,
+            cancellationToken
+        );
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync(ContractsJsonContext.Default.JobState, cancellationToken))!;
     }
@@ -173,7 +180,10 @@ public sealed class BakeProcessTests : IDisposable {
         worker.Kill(true);
         await worker.WaitForExitAsync(deadline.Token);
 
-        var again = await StartAsync(Request() with { Output = Path.Combine(Output, "elsewhere"), Name = "other" }, deadline.Token);
+        var again = await StartAsync(
+            Request() with { Output = Path.Combine(Output, "elsewhere"), Name = "other" },
+            deadline.Token
+        );
 
         Assert.Equal(JobStates.Done, again.State);
         Assert.True(again.Result!.Cached);
@@ -229,7 +239,8 @@ public sealed class BakeProcessTests : IDisposable {
         while (true) {
             var instance = await new InstanceRegistry(DiscoveryFile).FindAsync(Library, deadline.Token);
             if (instance is not null && new Uri($"http://127.0.0.1:{instance.Port}") != address) {
-                using var client = new HttpClient { BaseAddress = new($"http://127.0.0.1:{instance.Port}") };
+                var client = restarted;
+                client.BaseAddress = new($"http://127.0.0.1:{instance.Port}");
                 client.DefaultRequestHeaders.Authorization = new("Bearer", instance.Token);
 
                 // The old Worker reconnects by itself and is handed the job from the start.
@@ -274,8 +285,10 @@ public sealed class BakeProcessTests : IDisposable {
 
     /// <summary>
     ///     ADR 0008: a long bake holds up nothing. The Worker goes on answering the Server's health probe, which comes
-    ///     every five seconds and costs it the link when unanswered, and reports at the same time. Waiting out two probes
-    ///     mid-bake is the assertion: the reply is a fresh uptime while the same job is still running on the same attempt.
+    ///     every five seconds and costs it the link when unanswered, and reports at the same time. Waiting out two
+    ///     probes
+    ///     mid-bake is the assertion: the reply is a fresh uptime while the same job is still running on the same
+    ///     attempt.
     /// </summary>
     [Fact]
     public async Task The_worker_keeps_answering_through_a_bake() {
@@ -337,7 +350,7 @@ public sealed class BakeProcessTests : IDisposable {
         await DiscoverAsync(deadline.Token);
         var instance = (await new InstanceRegistry(DiscoveryFile).FindAsync(Library, deadline.Token))!;
         StartWorker();
-        var job = await UntilAsync((await StartAsync(Request(128, 8), deadline.Token)).Id, Over, deadline.Token);
+        var job = await UntilAsync((await StartAsync(Request(128), deadline.Token)).Id, Over, deadline.Token);
         Assert.Equal(JobStates.Done, job.State);
 
         var asset = new NodeGraphAsset {
@@ -355,7 +368,10 @@ public sealed class BakeProcessTests : IDisposable {
 
         // Nothing chosen yet, and the graph says so rather than reading black.
         var unbound = await NextAsync(socket, state.Revision, deadline.Token);
-        Assert.Contains(unbound.Diagnostics, static d => d.Message.Contains("no bake has been chosen", StringComparison.Ordinal));
+        Assert.Contains(
+            unbound.Diagnostics,
+            static d => d.Message.Contains("no bake has been chosen", StringComparison.Ordinal)
+        );
 
         using var chosen = await http.PutAsJsonAsync(
             $"/api/v1/graphs/{state.Id}/mesh-maps",
@@ -378,14 +394,21 @@ public sealed class BakeProcessTests : IDisposable {
     ) {
         var socket = new ClientWebSocket();
         await socket.ConnectAsync(
-            new($"ws://127.0.0.1:{instance.Port}/ws/graphs/{state.Id}?since={state.Sequence}&access_token={instance.Token}"),
+            new(
+                $"ws://127.0.0.1:{instance.Port}/ws/graphs/{state.Id}"
+                + $"?since={state.Sequence}&access_token={instance.Token}"
+            ),
             cancellationToken
         );
         return socket;
     }
 
     /// <summary>The next evaluation of a revision or later, or skips the test where the Worker has no Vulkan.</summary>
-    static async Task<GraphEvaluation> NextAsync(ClientWebSocket socket, long revision, CancellationToken cancellationToken) {
+    static async Task<GraphEvaluation> NextAsync(
+        ClientWebSocket socket,
+        long revision,
+        CancellationToken cancellationToken
+    ) {
         var buffer = new byte[1 << 20];
         while (true) {
             var length = 0;
@@ -406,7 +429,11 @@ public sealed class BakeProcessTests : IDisposable {
         }
     }
 
-    static async Task<GraphEvaluation> EvaluatedAsync(ClientWebSocket socket, long revision, CancellationToken cancellationToken) {
+    static async Task<GraphEvaluation> EvaluatedAsync(
+        ClientWebSocket socket,
+        long revision,
+        CancellationToken cancellationToken
+    ) {
         var evaluation = await NextAsync(socket, revision, cancellationToken);
         Assert.Null(evaluation.Error);
         return evaluation;
@@ -423,16 +450,22 @@ public sealed class BakeProcessTests : IDisposable {
         await DiscoverAsync(deadline.Token);
         var instance = (await new InstanceRegistry(DiscoveryFile).FindAsync(Library, deadline.Token))!;
         using var socket = new ClientWebSocket();
-        await socket.ConnectAsync(new($"ws://127.0.0.1:{instance.Port}/ws/jobs?since=0&access_token={instance.Token}"), deadline.Token);
+        await socket.ConnectAsync(
+            new($"ws://127.0.0.1:{instance.Port}/ws/jobs?since=0&access_token={instance.Token}"),
+            deadline.Token
+        );
         StartWorker();
 
-        await StartAsync(Request(128, 8), deadline.Token);
+        await StartAsync(Request(128), deadline.Token);
 
         var buffer = new byte[1 << 20];
         var numbers = new List<long>();
         while (true) {
             var received = await socket.ReceiveAsync(buffer, deadline.Token);
-            var change = JsonSerializer.Deserialize(buffer.AsSpan(0, received.Count), ContractsJsonContext.Default.JobEvent)!;
+            var change = JsonSerializer.Deserialize(
+                buffer.AsSpan(0, received.Count),
+                ContractsJsonContext.Default.JobEvent
+            )!;
             numbers.Add(change.Sequence);
             if (Over(change.Job)) {
                 Assert.Equal(JobStates.Done, change.Job.State);
@@ -451,12 +484,24 @@ public sealed class BakeProcessTests : IDisposable {
         StartServer();
         await DiscoverAsync(deadline.Token);
 
-        var missing = new BakeRequest("/nowhere/high.glb", "/nowhere/low.glb", Output);
-        using var notFound = await http.PostAsJsonAsync("/api/v1/jobs/bakes", missing, ContractsJsonContext.Default.BakeRequest, deadline.Token);
-        using var refused = await http.PostAsJsonAsync("/api/v1/jobs/bakes", Request() with { Format = "tga" }, ContractsJsonContext.Default.BakeRequest, deadline.Token);
+        var missing = new BakeRequest { High = "/nowhere/high.glb", Low = "/nowhere/low.glb", Output = Output };
+        using var notFound = await http.PostAsJsonAsync(
+            "/api/v1/jobs/bakes",
+            missing,
+            ContractsJsonContext.Default.BakeRequest,
+            deadline.Token
+        );
+        using var refused = await http.PostAsJsonAsync(
+            "/api/v1/jobs/bakes",
+            Request() with { Format = "tga" },
+            ContractsJsonContext.Default.BakeRequest,
+            deadline.Token
+        );
 
         Assert.Equal(HttpStatusCode.NotFound, notFound.StatusCode);
         Assert.Equal(HttpStatusCode.UnprocessableEntity, refused.StatusCode);
-        Assert.Empty((await http.GetFromJsonAsync("/api/v1/jobs", ContractsJsonContext.Default.JobPage, deadline.Token))!.Jobs);
+        Assert.Empty(
+            (await http.GetFromJsonAsync("/api/v1/jobs", ContractsJsonContext.Default.JobPage, deadline.Token))!.Jobs
+        );
     }
 }

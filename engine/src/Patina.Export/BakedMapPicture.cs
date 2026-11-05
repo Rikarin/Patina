@@ -15,7 +15,8 @@ public static class BakedMapPicture {
             return null;
         }
 
-        foreach (var file in Directory.EnumerateFiles(folder, $"*.{BakeCache.ManifestFile}").Order(StringComparer.Ordinal)) {
+        foreach (var file in Directory.EnumerateFiles(folder, $"*.{BakeCache.ManifestFile}")
+                     .Order(StringComparer.Ordinal)) {
             var manifest = System.Text.Json.JsonSerializer.Deserialize(
                 File.ReadAllBytes(file),
                 ContractsJsonContext.Default.BakeManifest
@@ -45,10 +46,10 @@ public static class BakedMapPicture {
 
         for (var at = 0; at < width * height; at++) {
             for (var lane = 0; lane < 3; lane++) {
-                pixels[(at * 4) + lane] = (byte)(samples[(at * channels) + (channels == 1 ? 0 : lane)] >> 8);
+                pixels[at * 4 + lane] = (byte)(samples[at * channels + (channels == 1 ? 0 : lane)] >> 8);
             }
 
-            pixels[(at * 4) + 3] = byte.MaxValue;
+            pixels[at * 4 + 3] = byte.MaxValue;
         }
 
         return new(width, height, pixels);
@@ -61,12 +62,12 @@ public static class BakedMapPicture {
 
         for (var at = 0; at < image.Width * image.Height; at++) {
             for (var lane = 0; lane < 3; lane++) {
-                var value = image.Samples[(at * image.Channels) + (image.Channels == 1 ? 0 : lane)];
-                value = signed ? (value / scale * 0.5f) + 0.5f : value;
-                pixels[(at * 4) + lane] = (byte)MathF.Round(Math.Clamp(value, 0f, 1f) * byte.MaxValue);
+                var value = image.Samples[at * image.Channels + (image.Channels == 1 ? 0 : lane)];
+                value = signed ? value / scale * 0.5f + 0.5f : value;
+                pixels[at * 4 + lane] = (byte)MathF.Round(Math.Clamp(value, 0f, 1f) * byte.MaxValue);
             }
 
-            pixels[(at * 4) + 3] = byte.MaxValue;
+            pixels[at * 4 + 3] = byte.MaxValue;
         }
 
         return new(image.Width, image.Height, pixels);

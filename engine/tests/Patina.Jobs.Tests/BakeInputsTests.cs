@@ -15,7 +15,8 @@ public sealed class BakeInputsTests : IDisposable {
         return path;
     }
 
-    BakeRequest Request() => new(File("high.glb", "high"), File("low.glb", "low"), folder.FullName);
+    BakeRequest Request() =>
+        new() { High = File("high.glb", "high"), Low = File("low.glb", "low"), Output = folder.FullName };
 
     static string Key(BakeRequest request) => BakeInputs.KeyOf(request, ToolCatalog.Default).Hex;
 
@@ -101,14 +102,18 @@ public sealed class BakeInputsTests : IDisposable {
 
     [Fact]
     public void An_unknown_map_is_refused_and_says_what_the_maps_are() {
-        var refusal = Assert.Throws<BakeRefusedException>(() => BakeInputs.Check(Request() with { Maps = ["occlusion"] }));
+        var refusal = Assert.Throws<BakeRefusedException>(() =>
+            BakeInputs.Check(Request() with { Maps = ["occlusion"] })
+        );
 
         Assert.Contains("ao", refusal.Message, StringComparison.Ordinal);
     }
 
     [Fact]
     public void A_missing_file_is_named() {
-        var refusal = Assert.Throws<FileNotFoundException>(() => BakeInputs.Check(Request() with { High = "/nowhere.glb" }));
+        var refusal = Assert.Throws<FileNotFoundException>(() =>
+            BakeInputs.Check(Request() with { High = "/nowhere.glb" })
+        );
 
         Assert.Contains("/nowhere.glb", refusal.Message, StringComparison.Ordinal);
     }

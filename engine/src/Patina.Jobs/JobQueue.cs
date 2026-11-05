@@ -14,7 +14,11 @@ namespace Patina.Jobs;
 ///     <see cref="MaxAttempts" /> Workers have died on it. A finished job stays as a record of what was made, up to
 ///     <see cref="Remembered" /> of them.
 /// </remarks>
-[SuppressMessage("Naming", "CA1711", Justification = "A queue of jobs is what it is, and no collection is mistaken for it.")]
+[SuppressMessage(
+    "Naming",
+    "CA1711",
+    Justification = "A queue of jobs is what it is, and no collection is mistaken for it."
+)]
 public sealed class JobQueue {
     /// <summary>How many Workers a job may be started on before it is given up on.</summary>
     public const int MaxAttempts = 3;
@@ -27,6 +31,7 @@ public sealed class JobQueue {
 
     readonly Lock changing = new();
     readonly string folder;
+    readonly TimeProvider clock;
     readonly Dictionary<string, JobState> jobs = [];
     readonly Queue<JobEvent> log = new();
     TaskCompletionSource next = NewSignal();
@@ -34,8 +39,10 @@ public sealed class JobQueue {
 
     /// <summary>Opens the queue in a folder, picking up whatever was left there.</summary>
     /// <param name="folder">Where the jobs live.</param>
-    public JobQueue(string folder) {
+    /// <param name="clock">What says when a job was asked for, which is the queue's order.</param>
+    public JobQueue(string folder, TimeProvider? clock = null) {
         this.folder = folder;
+        this.clock = clock ?? TimeProvider.System;
         Directory.CreateDirectory(folder);
 
         foreach (var file in Directory.EnumerateFiles(folder, "*.json")) {
@@ -57,7 +64,10 @@ public sealed class JobQueue {
     /// <summary>Every job, newest first, and the sequence to follow from.</summary>
     public JobPage Page() {
         lock (changing) {
-            return new([..jobs.Values.OrderByDescending(static job => job.Created).ThenBy(static job => job.Id)], sequence);
+            return new(
+                [..jobs.Values.OrderByDescending(static job => job.Created).ThenBy(static job => job.Id)],
+                sequence
+            );
         }
     }
 
@@ -92,14 +102,12 @@ public sealed class JobQueue {
 
     /// <summary>Takes a new job.</summary>
     public JobState Enqueue(string key, BakeRequest bake) {
-        var job = new JobState(Guid.NewGuid().ToString("N"), key, JobStates.Queued, 0, 0, DateTimeOffset.UtcNow, bake);
-        return Put(job);
+        return Put(New(key, bake) with { State = JobStates.Queued });
     }
 
     /// <summary>Records a job that needed no running, because its result already exists.</summary>
     public JobState Finished(string key, BakeRequest bake, BakeResult result) {
-        var job = new JobState(Guid.NewGuid().ToString("N"), key, JobStates.Done, 1, 0, DateTimeOffset.UtcNow, bake, result);
-        return Put(job);
+        return Put(New(key, bake) with { State = JobStates.Done, Progress = 1, Result = result });
     }
 
     /// <summary>Hands out the oldest queued job, or null when there is none.</summary>
@@ -110,7 +118,9 @@ public sealed class JobQueue {
                 .OrderBy(static job => job.Created)
                 .ThenBy(static job => job.Id)
                 .FirstOrDefault();
-            return job is null ? null : Put(job with { State = JobStates.Running, Attempts = job.Attempts + 1, Progress = 0 });
+            return job is null
+                ? null
+                : Put(job with { State = JobStates.Running, Attempts = job.Attempts + 1, Progress = 0 });
         }
     }
 
@@ -118,7 +128,7 @@ public sealed class JobQueue {
     public void Report(string id, int attempt, double progress) {
         lock (changing) {
             if (Current(id, attempt) is { } job) {
-                Put(job with { Progress = Math.Clamp(progress, job.Progress, 1) }, persist: false);
+                Put(job with { Progress = Math.Clamp(progress, job.Progress, 1) }, false);
             }
         }
     }
@@ -172,7 +182,9 @@ public sealed class JobQueue {
         lock (changing) {
             return jobs.GetValueOrDefault(id) switch {
                 null => null,
-                { State: JobStates.Queued } job => Put(job with { State = JobStates.Cancelled, CancelRequested = true }),
+                { State: JobStates.Queued } job => Put(
+                    job with { State = JobStates.Cancelled, CancelRequested = true }
+                ),
                 { State: JobStates.Running } job => Put(job with { CancelRequested = true }),
                 var job => job
             };
@@ -185,6 +197,15 @@ public sealed class JobQueue {
             return jobs.Values.FirstOrDefault(static job => job is { State: JobStates.Running, CancelRequested: true });
         }
     }
+
+    JobState New(string key, BakeRequest bake) =>
+        new() {
+            Id = Guid.NewGuid().ToString("N"),
+            Key = key,
+            State = JobStates.Queued,
+            Created = clock.GetUtcNow(),
+            Bake = bake
+        };
 
     /// <summary>What becomes of a running job when whoever had it is gone, by a Worker's death or a Server's.</summary>
     static JobState AfterLoss(JobState job) {

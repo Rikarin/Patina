@@ -46,7 +46,8 @@ public static class LibraryLayout {
     public static string BakesPath(string root) => Path.Combine(root, CacheFolder, "objects", "bakes");
 
     /// <summary>
-    ///     Where jobs are kept. Under the cache because a job is a request and not a document: deleting the folder loses
+    ///     Where jobs are kept. Under the cache because a job is a request and not a document: deleting the folder
+    ///     loses
     ///     what was asked for and not yet made, which a client can ask again, and nothing that was made.
     /// </summary>
     public static string JobsPath(string root) => Path.Combine(root, CacheFolder, "jobs");

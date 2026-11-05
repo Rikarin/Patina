@@ -41,7 +41,9 @@ public static class MeshMapBakeRun {
         cancellationToken.ThrowIfCancellationRequested();
 
         if (low.Mesh.TexCoords.Length != low.Mesh.CornerCount) {
-            throw new InvalidDataException($"'{request.Low}' has no texture coordinates, so there is no atlas to bake into.");
+            throw new InvalidDataException(
+                $"'{request.Low}' has no texture coordinates, so there is no atlas to bake into."
+            );
         }
 
         var cage = request.Cage is { } path ? Read(path).Mesh : null;
@@ -51,7 +53,7 @@ public static class MeshMapBakeRun {
             high.Mesh,
             low.Mesh,
             Settings(request, high, low, cage, threads),
-            fraction => progress?.Invoke(ReadingShare + ((1 - ReadingShare) * fraction)),
+            fraction => progress?.Invoke(ReadingShare + (1 - ReadingShare) * fraction),
             cancellationToken
         );
 
@@ -130,7 +132,7 @@ public static class MeshMapBakeRun {
         var values = new float[width * height];
         for (var y = 0; y < height; y++) {
             for (var x = 0; x < width; x++) {
-                values[((height - 1 - y) * width) + x] = samples[((y * width) + x) * channels] / (float)ushort.MaxValue;
+                values[(height - 1 - y) * width + x] = samples[(y * width + x) * channels] / (float)ushort.MaxValue;
             }
         }
 
@@ -150,7 +152,11 @@ public static class MeshMapBakeRun {
             files.Add(new(map, file, plane.Resolution, plane.Scale));
         }
 
-        var manifest = new BakeManifest(name, request.Format, new(files, maps.Covered, maps.Missed, maps.Warnings, false));
+        var manifest = new BakeManifest(
+            name,
+            request.Format,
+            new(files, maps.Covered, maps.Missed, maps.Warnings, false)
+        );
         File.WriteAllBytes(
             Path.Combine(folder, BakeCache.ManifestFile),
             JsonSerializer.SerializeToUtf8Bytes(manifest, ContractsJsonContext.Default.BakeManifest)

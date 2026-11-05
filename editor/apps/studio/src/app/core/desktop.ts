@@ -18,6 +18,8 @@ export interface DesktopBridge {
   logs(): Promise<Record<SidecarStatus['name'], string[]>>;
   /** Asks the user for a mesh file: its path, or null if they cancelled. */
   openMesh(): Promise<string | null>;
+  /** Asks the user for a folder: its path, or null if they cancelled. */
+  openFolder(): Promise<string | null>;
   /** Tells the app whether quitting would lose anything, which is what decides whether it asks. */
   setUnsaved(unsaved: boolean): void;
   /** The user asked to quit with something unsaved. The app waits for {@link quit}. */

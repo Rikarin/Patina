@@ -27,7 +27,8 @@ public static class BakeInputs {
     const int MaxRays = 8192;
 
     /// <summary>The maps a request may ask for by name, in the order they are reported.</summary>
-    public static IReadOnlyList<string> Maps { get; } = ["ao", "bent", "curvature", "thickness", "position", "world", "id"];
+    public static IReadOnlyList<string> Maps { get; } =
+        ["ao", "bent", "curvature", "thickness", "position", "world", "id"];
 
     /// <summary>The maps every bake makes.</summary>
     public static IReadOnlyList<string> Always { get; } = ["normal", "height"];
@@ -37,7 +38,10 @@ public static class BakeInputs {
     /// <exception cref="FileNotFoundException">An input file is not there.</exception>
     public static void Check(BakeRequest request) {
         Require(request.Resolution is >= 16 and <= MaxResolution, $"The resolution must be 16 to {MaxResolution}.");
-        Require(request.Supersampling is >= 1 and <= MaxSupersampling, $"Supersampling must be 1 to {MaxSupersampling}.");
+        Require(
+            request.Supersampling is >= 1 and <= MaxSupersampling,
+            $"Supersampling must be 1 to {MaxSupersampling}."
+        );
         Require(request.OcclusionRays is >= 1 and <= MaxRays, $"Occlusion rays must be 1 to {MaxRays}.");
         Require(request.Gutter is >= 0 and <= 64, "The gutter must be 0 to 64 texels.");
         Require(request.SearchRadius > 0, "The search radius must be more than nothing.");
@@ -70,7 +74,8 @@ public static class BakeInputs {
         );
 
     static Dictionary<string, string> Files(BakeRequest request) {
-        Dictionary<string, string> files = new(StringComparer.Ordinal) { ["high"] = request.High, ["low"] = request.Low };
+        Dictionary<string, string> files =
+            new(StringComparer.Ordinal) { ["high"] = request.High, ["low"] = request.Low };
         if (request.Cage is { } cage) {
             files["cage"] = cage;
         }
@@ -86,7 +91,10 @@ public static class BakeInputs {
     static Dictionary<string, string> Settings(BakeRequest request) =>
         new(StringComparer.Ordinal) {
             ["resolution"] = Text(request.Resolution),
-            ["maps"] = string.Join(',', (request.Maps ?? []).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)),
+            ["maps"] = string.Join(
+                ',',
+                (request.Maps ?? []).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)
+            ),
             ["format"] = request.Format,
             ["supersampling"] = Text(request.Supersampling),
             ["rays"] = Text(request.OcclusionRays),

@@ -66,8 +66,14 @@ builder.Services.AddSingleton<GraphSessions>();
 builder.Services.AddSingleton<PreviewStore>();
 builder.Services.AddSingleton<GraphEvaluator>();
 builder.Services.AddHostedService(static services => services.GetRequiredService<GraphEvaluator>());
-builder.Services.AddSingleton(static services => new JobQueue(JobRunner.Folders(services.GetRequiredService<ServerIdentity>()).Jobs));
-builder.Services.AddSingleton(static services => new BakeCache(JobRunner.Folders(services.GetRequiredService<ServerIdentity>()).Bakes));
+builder.Services.AddSingleton(static services => new JobQueue(
+        JobRunner.Folders(services.GetRequiredService<ServerIdentity>()).Jobs
+    )
+);
+builder.Services.AddSingleton(static services => new BakeCache(
+        JobRunner.Folders(services.GetRequiredService<ServerIdentity>()).Bakes
+    )
+);
 builder.Services.AddHostedService<JobRunner>();
 builder.Services.AddHostedService<DiscoveryPublisher>();
 

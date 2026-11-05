@@ -1777,8 +1777,7 @@
           "resolution": {
             "type": "integer",
             "description": "The atlas\u0027s edge, in texels.",
-            "format": "int32",
-            "default": 2048
+            "format": "int32"
           },
           "maps": {
             "type": [
@@ -1792,38 +1791,32 @@
           },
           "format": {
             "type": "string",
-            "description": "\u0060png8\u0060, \u0060png16\u0060, \u0060exr16\u0060 or \u0060exr32\u0060.",
-            "default": "png16"
+            "description": "\u0060png8\u0060, \u0060png16\u0060, \u0060exr16\u0060 or \u0060exr32\u0060."
           },
           "supersampling": {
             "type": "integer",
             "description": "How many samples along each side of a texel.",
-            "format": "int32",
-            "default": 1
+            "format": "int32"
           },
           "occlusionRays": {
             "type": "integer",
             "description": "How many rays a texel\u0027s occlusion is estimated with.",
-            "format": "int32",
-            "default": 64
+            "format": "int32"
           },
           "searchRadius": {
             "type": "number",
             "description": "How far a ray looks, as a fraction of the high mesh\u0027s diagonal.",
-            "format": "double",
-            "default": 0.05
+            "format": "double"
           },
           "occlusionRadius": {
             "type": "number",
             "description": "How far an occluder counts, as a fraction of the diagonal.",
-            "format": "double",
-            "default": 0.5
+            "format": "double"
           },
           "skew": {
             "type": "number",
             "description": "How far rays lean from the smoothed direction towards the low mesh\u0027s own normal, 0 to 1.",
-            "format": "double",
-            "default": 0
+            "format": "double"
           },
           "skewMap": {
             "type": [
@@ -1834,19 +1827,16 @@
           },
           "matchByName": {
             "type": "boolean",
-            "description": "Whether a part of the low mesh only strikes the high part of the same name.",
-            "default": false
+            "description": "Whether a part of the low mesh only strikes the high part of the same name."
           },
           "gutter": {
             "type": "integer",
             "description": "How many texels of dilation surround each chart.",
-            "format": "int32",
-            "default": 4
+            "format": "int32"
           },
           "space": {
             "type": "string",
-            "description": "\u0060tangent\u0060 or \u0060object\u0060.",
-            "default": "tangent"
+            "description": "\u0060tangent\u0060 or \u0060object\u0060."
           },
           "name": {
             "type": [
@@ -3632,10 +3622,10 @@
           "id",
           "key",
           "state",
-          "progress",
-          "attempts",
           "created",
           "bake",
+          "progress",
+          "attempts",
           "cancelRequested"
         ],
         "type": "object",
@@ -3691,8 +3681,7 @@
           },
           "cancelRequested": {
             "type": "boolean",
-            "description": "Whether a client has asked for it to stop.",
-            "default": false
+            "description": "Whether a client has asked for it to stop."
           }
         },
         "description": "A piece of work the Server owns, which outlives the Worker running it and the Server itself."

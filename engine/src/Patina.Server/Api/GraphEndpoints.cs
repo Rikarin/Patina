@@ -130,7 +130,11 @@ static class GraphEndpoints {
         }
     }
 
-    static Results<NoContent, ProblemHttpResult> UseMeshMaps(string id, GraphMeshMapsRequest request, GraphSessions sessions) {
+    static Results<NoContent, ProblemHttpResult> UseMeshMaps(
+        string id,
+        GraphMeshMapsRequest request,
+        GraphSessions sessions
+    ) {
         if (sessions.Find(id) is not { } session) {
             return NoSession(id);
         }

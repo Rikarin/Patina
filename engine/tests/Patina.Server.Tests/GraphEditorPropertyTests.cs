@@ -119,7 +119,7 @@ public sealed class GraphEditorPropertyTests {
         );
 
     static GraphSettingDefinition Parameter(string name, float value) =>
-        new(name, value.ToString(CultureInfo.InvariantCulture), "", "Float", 0f, 1f, "", []);
+        new(name, value.ToString(CultureInfo.InvariantCulture), string.Empty, "Float", 0f, 1f, string.Empty, []);
 
     static GraphCommand RandomCommand(Random random, NodeGraphAsset document) {
         return random.Next(19) switch {

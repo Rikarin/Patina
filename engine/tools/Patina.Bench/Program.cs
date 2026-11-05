@@ -53,6 +53,15 @@ switch (args) {
             rest is [_, var rays, ..] ? int.Parse(rays, CultureInfo.InvariantCulture) : 256,
             rest is [_, _, var reach] ? double.Parse(reach, CultureInfo.InvariantCulture) : 0.5
         );
+    case ["bake-preview", var low, var normal, var occlusion, var picture, var yaw, var pitch]:
+        return BakePreview.Run(
+            low,
+            normal,
+            occlusion == "-" ? null : occlusion,
+            picture,
+            float.Parse(yaw, CultureInfo.InvariantCulture),
+            float.Parse(pitch, CultureInfo.InvariantCulture)
+        );
     case ["graph", var library, var nodes, var name]:
         return GraphFixture.Write(library, int.Parse(nodes, CultureInfo.InvariantCulture), name);
     case ["render", var mesh, var png, var width, var height]:
@@ -70,6 +79,7 @@ switch (args) {
                    patina-bench mesh <file.glb>
                    patina-bench bake-pair <folder> [cell]
                    patina-bench s9 <folder> [resolution] [rays] [reach]
+                   patina-bench bake-preview <low> <normal.png> <ao.png or -> <out.png> <yaw> <pitch>
                    patina-bench graph <library> <nodes> <name>
                    patina-bench render <mesh> <out.png> <width> <height>
                    patina-bench generate <path> <projects> [seed]
