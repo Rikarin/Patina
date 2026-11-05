@@ -2,7 +2,9 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { type XuiDockManagerLayout, XuiDockManagerImports } from '@xui/dock-manager';
 import { desktop } from './core/desktop';
 import { SystemStatus } from './core/system-status';
-import { LibraryInspector } from './library/library-inspector';
+import { Inspector } from './graph/graph-inspector';
+import { GraphPane } from './graph/graph-pane';
+import { TextureView } from './graph/texture-view';
 import { LibraryPane } from './library/library-pane';
 import { ViewportPane } from './viewport/viewport-pane';
 
@@ -15,7 +17,23 @@ const initialLayout: XuiDockManagerLayout = {
     orientation: 'horizontal',
     panes: [
       { ...fixedPane, type: 'contentPane', contentId: 'library', header: 'Library', size: 1 },
-      { ...fixedPane, type: 'contentPane', contentId: 'viewport', header: 'Viewport', size: 3 },
+      {
+        type: 'splitPane',
+        orientation: 'vertical',
+        size: 3,
+        panes: [
+          {
+            type: 'splitPane',
+            orientation: 'horizontal',
+            size: 2,
+            panes: [
+              { ...fixedPane, type: 'contentPane', contentId: 'viewport', header: 'Viewport', size: 2 },
+              { ...fixedPane, type: 'contentPane', contentId: 'texture', header: 'Texture', size: 1 }
+            ]
+          },
+          { ...fixedPane, type: 'contentPane', contentId: 'graph', header: 'Graph', size: 3 }
+        ]
+      },
       { ...fixedPane, type: 'contentPane', contentId: 'inspector', header: 'Inspector', size: 1 }
     ]
   }
@@ -24,7 +42,7 @@ const initialLayout: XuiDockManagerLayout = {
 /** The app shell: a title bar, the docked panes and the status bar. `chrome-bar` and `readout` are bezel's. */
 @Component({
   selector: 'ptn-root',
-  imports: [LibraryInspector, LibraryPane, ViewportPane, XuiDockManagerImports],
+  imports: [GraphPane, Inspector, LibraryPane, TextureView, ViewportPane, XuiDockManagerImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full flex-col' },
   template: `
@@ -39,8 +57,14 @@ const initialLayout: XuiDockManagerLayout = {
       <ng-template xuiDockContent="viewport">
         <ptn-viewport />
       </ng-template>
+      <ng-template xuiDockContent="texture">
+        <ptn-texture-view />
+      </ng-template>
+      <ng-template xuiDockContent="graph">
+        <ptn-graph />
+      </ng-template>
       <ng-template xuiDockContent="inspector">
-        <ptn-library-inspector />
+        <ptn-inspector />
       </ng-template>
     </xui-dock-manager>
 

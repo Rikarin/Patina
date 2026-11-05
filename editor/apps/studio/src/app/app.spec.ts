@@ -39,10 +39,10 @@ const system = {
 };
 
 describe('App', () => {
-  it('docks the Library, Viewport and Inspector panes', async () => {
+  it('docks the Library, Viewport, Texture, Graph and Inspector panes', async () => {
     const element = await render({ kind: 'connecting' });
 
-    for (const pane of ['Library', 'Viewport', 'Inspector']) {
+    for (const pane of ['Library', 'Viewport', 'Texture', 'Graph', 'Inspector']) {
       expect(element.textContent).toContain(pane);
     }
   });

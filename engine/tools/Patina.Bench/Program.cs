@@ -8,6 +8,7 @@ using Vixen.TextureGraph;
 //   generate <path> <projects> [seed]   writes a library
 //   s6 <path> [projects] [seed]         generates into an empty folder if needed, then measures spike S6
 //   cold-open <path>                    one cold open, as its own process; s6 starts it
+//   graph <library> <nodes> <name>      adds a real texture graph to a library, for the editor and spike S7
 switch (args) {
     case ["generate", var path, var projects, .. var rest]:
         var generator = new GeneratorOptions(
@@ -41,6 +42,8 @@ switch (args) {
         );
     case ["mesh", var path]:
         return MeshFixture.Write(path);
+    case ["graph", var library, var nodes, var name]:
+        return GraphFixture.Write(library, int.Parse(nodes, CultureInfo.InvariantCulture), name);
     case ["render", var mesh, var png, var width, var height]:
         return RenderBench.Run(
             mesh,
@@ -54,6 +57,7 @@ switch (args) {
             Usage: patina-bench kernels <cache folder> [--parallel] [--pipelines] [--pipeline-threads]
                        [--pipeline-cache=<file>] [--format=<format>] [--salt=<n>]
                    patina-bench mesh <file.glb>
+                   patina-bench graph <library> <nodes> <name>
                    patina-bench render <mesh> <out.png> <width> <height>
                    patina-bench generate <path> <projects> [seed]
                    patina-bench s6 <path> [projects] [seed]
