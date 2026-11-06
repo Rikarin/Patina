@@ -289,6 +289,24 @@ export class ProjectStore {
     }
   }
 
+  /** Asks the user for a picture and brings it into the project, for a layer or a mask to read. */
+  async pickPicture(): Promise<string | null> {
+    const project = this.current();
+    const picture = await desktop()?.openImage();
+    if (!project || !picture) {
+      return null;
+    }
+
+    try {
+      const client = await this.library.api();
+      const body = { project: project.path, picture };
+      return unwrap(await client.POST('/api/v1/library/project/pictures', { body })).path;
+    } catch (failure) {
+      this.mutableFailure.set(messageOf(failure));
+      return null;
+    }
+  }
+
   /** Asks the user for a mesh and uses it. */
   async pickMesh(): Promise<void> {
     const mesh = await desktop()?.openMesh();

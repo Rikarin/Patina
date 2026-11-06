@@ -62,19 +62,22 @@ type PathField = 'high' | 'low' | 'cage' | 'skewMap' | 'output';
               [attr.aria-label]="field.label"
               [attr.data-testid]="'bake-' + field.key"
               [placeholder]="field.placeholder"
-              [value]="paths()[field.key]"
+              [readOnly]="canPick"
+              [title]="paths()[field.key]"
+              [value]="canPick ? nameOf(paths()[field.key]) : paths()[field.key]"
               (input)="setPath(field.key, text($event))"
             />
-            @if (canPick && field.key !== 'skewMap') {
+            @if (canPick) {
               <button
                 type="button"
                 xuiButton
                 size="sm"
                 variant="ghost"
                 [attr.aria-label]="'Choose ' + field.label"
+                [attr.data-testid]="'bake-choose-' + field.key"
                 (click)="pick(field.key)"
               >
-                …
+                Choose…
               </button>
             }
           </div>
@@ -357,6 +360,10 @@ export class BakePane {
     return (event.target as HTMLInputElement).value;
   }
 
+  protected nameOf(path: string): string {
+    return path.split(/[\\/]/u).pop() ?? path;
+  }
+
   protected setPath(field: PathField, value: string): void {
     this.paths.update(paths => ({ ...paths, [field]: value }));
   }
@@ -376,7 +383,11 @@ export class BakePane {
 
   protected async pick(field: PathField): Promise<void> {
     const bridge = desktop();
-    const path = await (field === 'output' ? bridge?.openFolder() : bridge?.openMesh());
+    const path = await (field === 'output'
+      ? bridge?.openFolder()
+      : field === 'skewMap'
+        ? bridge?.openImage()
+        : bridge?.openMesh());
     if (path) {
       this.setPath(field, path);
     }

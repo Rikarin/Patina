@@ -181,6 +181,15 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
+    /// <summary>Brings a picture into a project, so that the project travels with what it reads.</summary>
+    /// <returns>Its path below the library.</returns>
+    /// <exception cref="FileNotFoundException">The project or the picture is not there.</exception>
+    public string AddPicture(string path, string picture) {
+        lock (createGate) {
+            return ProjectFiles.AddPicture(RootPath, path, picture);
+        }
+    }
+
     /// <summary>The file a new document of a project would have.</summary>
     /// <exception cref="ProjectExistsException">It is taken.</exception>
     /// <exception cref="ProjectRefusedException">The name cannot name a file.</exception>

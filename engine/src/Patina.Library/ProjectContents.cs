@@ -11,6 +11,7 @@ namespace Patina.Library;
 static class ProjectFiles {
     const int MaxFiles = 2000;
     const string BakeFolder = "bakes";
+    const string PictureFolder = "pictures";
     const string StackExtension = ".vxlayers";
 
     static readonly FrozenSet<string> MeshExtensions =
@@ -65,6 +66,24 @@ static class ProjectFiles {
         var others = document.Meshes.Where(m => m.File != file);
         LibraryFiles.WriteProject(root, path, document with { Meshes = [..others, added] });
         return added;
+    }
+
+    /// <summary>Brings a picture into a project's pictures folder, unless it is in the project already.</summary>
+    public static string AddPicture(string root, string path, string picture) {
+        var (full, _) = Project(root, path);
+        if (!File.Exists(picture)) {
+            throw new FileNotFoundException($"There is no file '{picture}'.", picture);
+        }
+
+        var source = Path.GetFullPath(picture);
+        if (source.StartsWith(full + Path.DirectorySeparatorChar, StringComparison.Ordinal)) {
+            return Below(path, Path.GetRelativePath(full, source).Replace('\\', '/'));
+        }
+
+        Directory.CreateDirectory(Path.Combine(full, PictureFolder));
+        var name = Path.GetFileName(source);
+        File.Copy(source, Path.Combine(full, PictureFolder, name), true);
+        return Below(path, $"{PictureFolder}/{name}");
     }
 
     /// <summary>The name a new document's file gets.</summary>

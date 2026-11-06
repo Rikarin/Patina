@@ -57,6 +57,7 @@ public sealed record ProjectPage(IReadOnlyList<ProjectSummary> Items, int Total,
 ///     Null is <c>texturing</c> with a mesh and nothing without one.
 /// </param>
 /// <param name="Image">The picture an <c>image-material</c> starts from, on the Server\'s machine.</param>
+/// <param name="High">The detailed mesh it bakes from, on the Server's machine.</param>
 public sealed record ProjectCreateRequest(
     string Name,
     string? Folder = null,
@@ -64,7 +65,8 @@ public sealed record ProjectCreateRequest(
     string? Mesh = null,
     int? Resolution = null,
     string? Kind = null,
-    string? Image = null
+    string? Image = null,
+    string? High = null
 );
 
 /// <summary>A result of a bake in a project's folder.</summary>
@@ -126,6 +128,15 @@ public sealed record ProjectDocumentRequest(
     int? Resolution = null,
     string? Image = null
 );
+
+/// <summary>The body of <c>POST /api/v1/library/project/pictures</c>.</summary>
+/// <param name="Project">The project, below <c>projects/</c>.</param>
+/// <param name="Picture">A picture file on the Server's machine.</param>
+public sealed record ProjectPictureRequest(string Project, string Picture);
+
+/// <summary>A picture a project now holds.</summary>
+/// <param name="Path">Its path below the library, which a layer or a mask reads.</param>
+public sealed record ProjectPicture(string Path);
 
 /// <summary>The body of <c>PATCH /api/v1/library/project/document</c>.</summary>
 /// <param name="Project">The project, below <c>projects/</c>.</param>

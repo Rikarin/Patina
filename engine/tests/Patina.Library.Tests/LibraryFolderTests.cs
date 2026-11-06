@@ -39,6 +39,20 @@ public sealed class LibraryFolderTests : IDisposable {
     }
 
     [Fact]
+    public void A_picture_is_copied_into_the_project_unless_it_is_there() {
+        var made = library.CreateProject(new("Crate"));
+        var outside = Path.Combine(root, "rust.png");
+        File.WriteAllBytes(outside, [1, 2, 3]);
+
+        var path = library.AddPicture(made.Path, outside);
+
+        Assert.Equal($"projects/{made.Path}/pictures/rust.png", path);
+        Assert.True(File.Exists(Path.Combine(root, path)));
+        Assert.Equal(path, library.AddPicture(made.Path, Path.Combine(root, path)));
+        Assert.Throws<FileNotFoundException>(() => library.AddPicture(made.Path, Path.Combine(root, "none.png")));
+    }
+
+    [Fact]
     public void A_colour_has_to_be_one() =>
         Assert.Throws<ProjectRefusedException>(() => library.CreateFolder(string.Empty, "Red", "red"));
 

@@ -8,6 +8,7 @@ import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { colourOf } from './paint-store';
 import { LiveValue } from './live-value';
+import { ProjectStore } from '../library/project-store';
 import { PaintStore } from './paint-store';
 
 const Fills: readonly string[] = ['Constant', 'Texture', 'Graph'];
@@ -188,29 +189,28 @@ export function hexOf(colour: readonly number[] | undefined): string {
                     />
                   }
                   @case ('Texture') {
-                    <input
-                      class="min-w-0 flex-1"
-                      xuiInput
+                    <span class="min-w-0 flex-1 truncate text-xs" [title]="layer.textures[channel.usage] ?? ''">
+                      {{ fileOf(layer.textures[channel.usage]) || 'None' }}
+                    </span>
+                    <button
+                      type="button"
+                      xuiButton
                       size="sm"
-                      autocomplete="off"
-                      [attr.aria-label]="channel.usage + ' texture'"
-                      [value]="layer.textures[channel.usage] ?? ''"
-                      (change)="setTexture(layer, channel.usage, text($event))"
-                    />
+                      variant="ghost"
+                      [attr.aria-label]="'Choose ' + channel.usage + ' picture'"
+                      [attr.data-testid]="'paint-texture-' + channel.usage"
+                      (click)="chooseTexture(layer, channel.usage)"
+                    >
+                      Choose…
+                    </button>
                   }
                 }
               </div>
             }
             @if (layer.fill === 'Graph') {
-              <input
-                xuiInput
-                size="sm"
-                autocomplete="off"
-                aria-label="Fill graph"
-                placeholder="Graph file or compound path"
-                [value]="layer.graph"
-                (change)="store.edit({ op: 'setLayer', layer: layer.id, graph: text($event) })"
-              />
+              <p class="text-foreground-muted text-xs" data-testid="paint-fill-graph">
+                {{ layer.graph ? 'From ' + layer.graph.split('/').pop() : 'Choose a graph from the Materials shelf.' }}
+              </p>
             }
           }
           @case ('filter') {
@@ -266,14 +266,12 @@ export function hexOf(colour: readonly number[] | undefined): string {
             />
           }
           @case ('Texture') {
-            <input
-              xuiInput
-              size="sm"
-              autocomplete="off"
-              aria-label="Mask image"
-              [value]="layer.mask.asset"
-              (change)="setMask(layer, { asset: text($event) })"
-            />
+            <div class="flex items-center gap-2">
+              <span class="min-w-0 flex-1 truncate text-xs" [title]="layer.mask.asset">{{ fileOf(layer.mask.asset) || 'None' }}</span>
+              <button type="button" xuiButton size="sm" variant="ghost" data-testid="paint-mask-picture" (click)="chooseMaskPicture(layer)">
+                Choose…
+              </button>
+            </div>
           }
           @case ('Anchor') {
             <xui-select
@@ -356,25 +354,15 @@ export function hexOf(colour: readonly number[] | undefined): string {
         }
       </div>
 
-      <div class="flex items-center gap-1">
-        <span class="text-foreground-muted w-20 shrink-0 text-xs">Mesh maps</span>
-        <input
-          class="min-w-0 flex-1"
-          xuiInput
-          size="sm"
-          autocomplete="off"
-          aria-label="Mesh maps folder"
-          data-testid="paint-mesh-maps"
-          placeholder="A finished bake's folder"
-          [value]="store.state()?.meshMaps ?? ''"
-          (change)="store.useMeshMaps(text($event) || null)"
-        />
-      </div>
+      <p class="text-foreground-muted text-xs" data-testid="paint-mesh-maps">
+        {{ store.state()?.meshMaps ? 'Using the bake.' : 'No bake yet.' }}
+      </p>
     }
   `
 })
 export class LayerPanel {
   protected readonly store = inject(PaintStore);
+  private readonly project = inject(ProjectStore);
   protected readonly fills = Fills;
   protected readonly projections = Projections;
   protected readonly axes = Axes;
@@ -481,6 +469,24 @@ export class LayerPanel {
   }
 
   protected readonly hexOf = hexOf;
+
+  protected fileOf(path: string | undefined): string {
+    return path?.split('/').pop() ?? '';
+  }
+
+  protected async chooseTexture(layer: StackLayer, usage: string): Promise<void> {
+    const picture = await this.project.pickPicture();
+    if (picture) {
+      this.setTexture(layer, usage, picture);
+    }
+  }
+
+  protected async chooseMaskPicture(layer: StackLayer): Promise<void> {
+    const picture = await this.project.pickPicture();
+    if (picture) {
+      this.setMask(layer, { asset: picture });
+    }
+  }
 
   protected same(left: readonly number[] | null | undefined, right: readonly number[]): boolean {
     return !!left && right.every((lane, index) => Math.abs(lane - (left[index] ?? 0)) < 0.002);

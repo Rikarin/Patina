@@ -56,6 +56,9 @@ static class LibraryTreeEndpoints {
         library.MapPost("/project/documents", AddDocument)
             .Described("AddProjectDocument", "Makes a document of a kind in a project.");
 
+        library.MapPost("/project/pictures", AddPicture)
+            .Described("AddProjectPicture", "Brings a picture into a project, for a layer or a mask to read.");
+
         library.MapPatch("/project/document", SetDocumentMesh)
             .Described("SetDocumentMesh", "Puts a texturing document on another mesh of its project.");
 
@@ -218,6 +221,9 @@ static class LibraryTreeEndpoints {
                 return TypedResults.Ok(library.Contents(request.Project));
             }
         );
+
+    static Results<Ok<ProjectPicture>, ProblemHttpResult> AddPicture(LibraryHost host, ProjectPictureRequest request) =>
+        Guarded(host, library => TypedResults.Ok(new ProjectPicture(library.AddPicture(request.Project, request.Picture))));
 
     static Results<Ok<ProjectContents>, ProblemHttpResult> AddDocument(
         LibraryHost host,

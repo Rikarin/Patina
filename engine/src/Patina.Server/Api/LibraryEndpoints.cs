@@ -126,7 +126,7 @@ static class LibraryEndpoints {
             }
 
             var project = library.CreateProject(new(request.Name, request.Folder, request.Tags));
-            var added = request.Mesh is { } source ? library.AddMesh(project.Path, source, null) : null;
+            var added = request.Mesh is { } source ? library.AddMesh(project.Path, source, request.High) : null;
             if (kind is not null) {
                 LibraryTreeEndpoints.MakeDocument(
                     library,

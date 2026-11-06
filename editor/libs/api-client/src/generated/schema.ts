@@ -435,6 +435,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/project/pictures': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Brings a picture into a project, for a layer or a mask to read. */
+    post: operations['AddProjectPicture'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/project/document': {
     parameters: {
       query?: never;
@@ -2553,6 +2570,8 @@ export interface components {
       kind?: null | string;
       /** @description The picture an `image-material` starts from, on the Server\'s machine. */
       image?: null | string;
+      /** @description The detailed mesh it bakes from, on the Server's machine. */
+      high?: null | string;
     };
     /** @description Something in a project that can be opened and edited (ADR 0012). */
     ProjectDocumentInfo: {
@@ -2658,6 +2677,18 @@ export interface components {
        * @description The most items a page holds.
        */
       limit: number;
+    };
+    /** @description A picture a project now holds. */
+    ProjectPicture: {
+      /** @description Its path below the library, which a layer or a mask reads. */
+      path: string;
+    };
+    /** @description The body of `POST /api/v1/library/project/pictures`. */
+    ProjectPictureRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /** @description A picture file on the Server's machine. */
+      picture: string;
     };
     /** @description The body of `PATCH /api/v1/library/project`. */
     ProjectRenameRequest: {
@@ -3171,7 +3202,7 @@ export interface components {
        * @default
        */
       map: string;
-      /** @description The colour a bake mask selects from its map, as red, green and blue, or null for all of it. */
+      /** @description The colour a bake mask selects from its map, as three numbers, or null for all of it. */
       colour?: null | number[];
       /**
        * Format: float
@@ -4835,6 +4866,57 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AddProjectPicture: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectPictureRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectPicture'];
         };
       };
       /** @description Bad Request */

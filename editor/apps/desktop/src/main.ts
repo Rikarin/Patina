@@ -44,10 +44,21 @@ let quitConfirmed = false;
 
 function backend(): Sidecars {
   // PATINA_LIBRARY is for scripts and tests. People get the library they last had open.
-  sidecars ??= new Sidecars(process.env['PATINA_LIBRARY'] || places().last(), statuses =>
+  sidecars ??= new Sidecars(startingLibrary(), statuses =>
     window?.webContents.send('patina:sidecars', statuses)
   );
   return sidecars;
+}
+
+/** The library to start in. One that has gone is said so once, and the app starts with none. */
+function startingLibrary(): string | null {
+  const asked = process.env['PATINA_LIBRARY'];
+  if (asked && !LibraryPlace.isLibrary(asked)) {
+    dialog.showErrorBox('This is not a library', `${asked} has no library.yaml.`);
+    return null;
+  }
+
+  return asked || places().last();
 }
 
 let libraryPlaces: LibraryPlace | null = null;

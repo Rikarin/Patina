@@ -73,6 +73,15 @@ import { ProjectStore } from './project-store';
               }
             </div>
           </div>
+          @if (kind() === 'texturing' && canPick) {
+            <div class="flex flex-col gap-1">
+              <span class="section-label">High Poly Mesh</span>
+              <div class="flex items-center gap-2">
+                <span class="min-w-0 flex-1 truncate" data-testid="new-project-high-name">{{ highName() || 'Optional' }}</span>
+                <button type="button" xuiButton size="sm" data-testid="new-project-high" (click)="pickHigh()">Choose…</button>
+              </div>
+            </div>
+          }
           <label class="flex flex-col gap-1">
             <span class="section-label">Resolution</span>
             <select
@@ -112,6 +121,13 @@ export class NewProjectDialog {
     }
   }
 
+  protected async pickHigh(): Promise<void> {
+    const mesh = await desktop()?.openMesh();
+    if (mesh) {
+      this.high.set(mesh);
+    }
+  }
+
   protected async pickImage(): Promise<void> {
     const image = await desktop()?.openImage();
     if (image) {
@@ -145,6 +161,8 @@ export class NewProjectDialog {
   protected readonly kind = linkedSignal(() => this.startKind());
   protected readonly mesh = signal('');
   protected readonly image = signal('');
+  protected readonly high = signal('');
+  protected readonly highName = computed(() => this.high().split(/[\\/]/u).pop() ?? '');
   protected readonly imageName = computed(() => this.image().split(/[\\/]/u).pop() ?? '');
   protected readonly resolution = signal(2048);
   protected readonly meshName = computed(() => this.mesh().split(/[\\/]/).pop() ?? '');
@@ -188,11 +206,13 @@ export class NewProjectDialog {
         mesh: this.mesh().trim() || null,
         resolution: this.resolution(),
         kind: this.kind(),
-        image: this.image() || null
+        image: this.image() || null,
+        high: this.high() || null
       });
       this.name.set('');
       this.mesh.set('');
       this.image.set('');
+      this.high.set('');
       this.tags.set([]);
       this.open.set(false);
       await this.tree.reload();

@@ -38,6 +38,13 @@ export class SystemStatus {
         clearTimeout(this.timer);
       }
     });
+    // A Server that cannot start never answers, so its supervisor is the one who can say so.
+    desktop()?.onSidecars(statuses => {
+      const failed = statuses.find(status => status.state === 'failed');
+      if (failed) {
+        this.mutableState.set({ kind: 'offline', reason: failed.detail ?? `The ${failed.name} stopped.` });
+      }
+    });
     void this.refresh();
   }
 
