@@ -30,7 +30,7 @@ test.afterEach(async () => {
 });
 
 test('a preset is chosen, its impact shown, and the report names what was written', async () => {
-  await window.getByRole('tab', { name: 'Export' }).click();
+  await window.getByTestId('open-export').click();
   await expect(window.getByTestId('export-preset-info')).toContainText('Godot');
 
   await window.getByTestId('export-preview').click();

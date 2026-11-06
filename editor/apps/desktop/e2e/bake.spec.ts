@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { leave, newLibrary, newProject } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net10.0/patina-bench.dll');
@@ -24,17 +25,19 @@ test.beforeEach(async () => {
   });
   window = await app.firstWindow();
   await expect(window.getByRole('status', { name: 'Server status' })).toContainText('Worker connected');
+  await newLibrary(app, window, join(scratch, 'Game.ptlib'));
+  await newProject(app, window, 'Housing', join(scratch, 'meshes', 'housing_low.glb'));
 });
 
 test.afterEach(async () => {
-  await app.close();
-  rmSync(scratch, { recursive: true, force: true });
+  await leave(app);
+  rmSync(scratch, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
 });
 
 test('a bake runs from the panel and its maps show in the Texture pane', async () => {
   const output = join(scratch, 'maps');
 
-  await window.getByRole('tab', { name: 'Bake' }).click();
+  await window.getByTestId('open-bake').click();
   await window.getByTestId('bake-high').fill(join(scratch, 'meshes', 'housing_high.glb'));
   await window.getByTestId('bake-low').fill(join(scratch, 'meshes', 'housing_low.glb'));
   await window.getByTestId('bake-output').fill(output);
@@ -58,6 +61,7 @@ test('a bake runs from the panel and its maps show in the Texture pane', async (
   await window.screenshot({ path: join(shots, 'bake-panel.png') });
 
   // The same bake again runs nothing.
+  await window.getByTestId('open-bake').click();
   await window.getByTestId('bake-start').click();
   await expect(window.getByTestId('bake-cached')).toBeVisible();
 });
@@ -76,7 +80,7 @@ test('a bake can be judged on its low mesh in the viewport, with a cage and a sk
     )
   );
 
-  await window.getByRole('tab', { name: 'Bake' }).click();
+  await window.getByTestId('open-bake').click();
   await window.getByTestId('bake-high').fill(join(scratch, 'meshes', 'housing_high.glb'));
   await window.getByTestId('bake-low').fill(low);
   await window.getByTestId('bake-cage').fill(low);
@@ -101,7 +105,7 @@ test('a bake can be judged on its low mesh in the viewport, with a cage and a sk
 });
 
 test('the panel says why the Server refused a bake', async () => {
-  await window.getByRole('tab', { name: 'Bake' }).click();
+  await window.getByTestId('open-bake').click();
   await window.getByTestId('bake-high').fill('/nowhere/high.glb');
   await window.getByTestId('bake-low').fill('/nowhere/low.glb');
   await window.getByTestId('bake-output').fill(scratch);

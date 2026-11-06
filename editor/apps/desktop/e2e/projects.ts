@@ -23,19 +23,24 @@ export async function newLibrary(app: ElectronApplication, window: Page, path: s
 }
 
 /** Makes a project the way a person does, which also opens it. */
-export async function newProject(app: ElectronApplication, window: Page, name: string, mesh?: string): Promise<void> {
+export async function newProject(
+  app: ElectronApplication,
+  window: Page,
+  name: string,
+  mesh?: string,
+  kind = mesh ? 'texturing' : 'layered-material'
+): Promise<void> {
   await window.getByTestId('library-new-project').click();
   await window.getByTestId('new-project-name').fill(name);
-  if (!mesh) {
-    await window.getByTestId('new-project-kind').selectOption('layered-material');
-  } else {
+  await window.getByTestId('new-project-kind').selectOption(kind);
+  if (mesh) {
     await answerOpen(app, mesh);
     await window.getByTestId('new-project-mesh').click();
     await expect(window.getByTestId('new-project-mesh-name')).toHaveText(mesh.split('/').pop() ?? mesh);
   }
 
   await window.getByRole('button', { name: 'Create' }).click();
-  await expect(window.getByTestId('paint-project')).toHaveText(name, { timeout: 60_000 });
+  await expect(window.getByTestId('document-tab-name').filter({ hasText: name })).toBeVisible({ timeout: 60_000 });
 }
 
 /** Ends the app with no one to answer its question about unsaved paint. */

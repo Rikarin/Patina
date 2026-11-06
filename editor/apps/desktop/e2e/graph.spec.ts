@@ -104,7 +104,7 @@ async function server(): Promise<{ baseUrl: string; token: string }> {
 }
 
 test('opens a graph from the Library, edits it, and sees live thumbnails', async () => {
-  await expect(window.getByTestId('graph-none')).toBeVisible();
+  await expect(window.getByTestId('start-texturing')).toBeVisible();
   await openGraph();
   await expect(window.getByTestId('graph-name')).toHaveText(Name);
   await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
@@ -244,7 +244,8 @@ async function addNodeAt(search: string, x: number, y: number): Promise<void> {
 }
 
 async function newGraph(name: string): Promise<void> {
-  await window.getByTestId('graph-new').click();
+  await window.getByRole('radio', { name: 'Shared Assets' }).click();
+  await window.getByTestId('library-new-graph').click();
   await window.getByTestId('new-graph-name').fill(name);
   await window.getByTestId('new-graph-create').click();
   await expect(window.getByTestId('graph-name')).toHaveText(name);
@@ -389,7 +390,7 @@ test('groups nodes, keeps notes, and both survive a save and a reopen', async ()
   await window.getByTestId('graph-save').click();
   await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
   await window.getByTestId('graph-close').click();
-  await expect(window.getByTestId('graph-none')).toBeVisible();
+  await expect(window.getByTestId('start-texturing')).toBeVisible();
   await window.getByTestId('open-graph').click();
   await expect(window.getByTestId('graph-frame')).toContainText('Base');
   await expect(window.getByTestId('graph-note-card')).toContainText('Rust gathers in the seams');
@@ -435,7 +436,7 @@ test('reads a bitmap from beside the graph, and says so when it cannot', async (
 
 test('the minimap leaves a small canvas, and steps aside for a wire on a large one', async () => {
   await app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1280, 800);
+    BrowserWindow.getAllWindows()[0]?.setContentSize(1000, 460);
   });
   await newGraph('Under The Minimap');
   await expect(window.getByTestId('graph-canvas')).toBeVisible();
@@ -579,16 +580,16 @@ test('asks before quitting with unsaved edits', async () => {
   void app.evaluate(({ app: electronApp }) => {
     electronApp.quit();
   });
-  await expect(window.getByTestId('graph-leaving')).toBeVisible();
+  await expect(window.getByTestId('app-quitting')).toBeVisible();
   await window.getByRole('button', { name: 'Cancel' }).click();
-  await expect(window.getByTestId('graph-leaving')).toHaveCount(0);
+  await expect(window.getByTestId('app-quitting')).toHaveCount(0);
   await expect(window.getByTestId('graph-name')).toHaveText(Name);
 
   const closed = app.waitForEvent('close');
   void app.evaluate(({ app: electronApp }) => {
     electronApp.quit();
   });
-  await expect(window.getByTestId('graph-leaving')).toBeVisible();
-  await window.getByTestId('graph-discard').click();
+  await expect(window.getByTestId('app-quitting')).toBeVisible();
+  await window.getByRole('button', { name: "Don't Save" }).click();
   await closed;
 });

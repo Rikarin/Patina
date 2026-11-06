@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
@@ -7,8 +7,7 @@ import { ProjectStore } from '../library/project-store';
 import { XuiInputImports } from '@xui/input';
 import { BrushPanel } from './brush-panel';
 import { LayerPanel } from './layer-panel';
-import { PaintStore, pressureOf, toTexels } from './paint-store';
-import { StrokeGesture } from './stroke-gesture';
+import { PaintStore } from './paint-store';
 
 /**
  * The stack, the brush, and the atlas to paint on. The picture under the brush is the Server's: the same plan that
@@ -42,23 +41,6 @@ import { StrokeGesture } from './stroke-gesture';
             }
           </div>
         }
-
-        <div class="well relative aspect-square w-full shrink-0 touch-none overflow-hidden" data-testid="paint-canvas">
-          @if (store.picture(); as picture) {
-            <img
-              class="size-full select-none"
-              alt="The composited map"
-              draggable="false"
-              data-testid="paint-picture"
-              [src]="picture"
-              (pointerdown)="down($event)"
-              (pointermove)="move($event)"
-              (pointerup)="up()"
-              (pointercancel)="up()"
-              (dblclick)="gesture.finish()"
-            />
-          }
-        </div>
 
         <div class="flex flex-wrap items-center gap-1">
           @for (channel of state.channels; track channel.usage) {
@@ -120,8 +102,8 @@ import { StrokeGesture } from './stroke-gesture';
       } @else {
         <xui-non-ideal-state
           class="flex-1"
-          title="No project open"
-          description="Open a project from the Library to paint it."
+          title="Nothing open"
+          description="Open a texturing or layered material document."
           data-testid="paint-none"
         />
       }
@@ -132,39 +114,4 @@ export class PaintPane {
   protected readonly store = inject(PaintStore);
   protected readonly project = inject(ProjectStore);
   protected readonly canPick = desktop() !== undefined;
-  protected readonly gesture = new StrokeGesture(this.store, () => undefined);
-
-  private readonly side = computed<readonly [number, number]>(() => {
-    const state = this.store.state();
-    return [state?.width ?? 1, state?.height ?? 1];
-  });
-
-  private painting = false;
-
-  protected down(event: PointerEvent): void {
-    (event.target as HTMLElement).setPointerCapture(event.pointerId);
-    this.painting = true;
-    this.gesture.press(this.stamp(event));
-  }
-
-  protected move(event: PointerEvent): void {
-    if (this.painting) {
-      this.gesture.move(this.stamp(event));
-    }
-  }
-
-  protected up(): void {
-    if (this.painting) {
-      this.painting = false;
-      this.gesture.release();
-    }
-  }
-
-  private stamp(event: PointerEvent) {
-    const box = (event.target as HTMLElement).getBoundingClientRect();
-    return {
-      ...toTexels(event.clientX - box.left, event.clientY - box.top, box.width, box.height, this.side()),
-      pressure: pressureOf(event)
-    };
-  }
 }

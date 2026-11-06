@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { XuiDialogImports } from '@xui/dialog';
 import { type XuiDockManagerLayout, XuiDockManagerImports } from '@xui/dock-manager';
 import { BakePane } from './bake/bake-pane';
+import { BakeStore } from './bake/bake-store';
 import { ExportPane } from './export/export-pane';
 import { desktop } from './core/desktop';
 import { SystemStatus } from './core/system-status';
@@ -11,53 +12,11 @@ import { GraphPane } from './graph/graph-pane';
 import { TextureView } from './graph/texture-view';
 import { LibraryPane } from './library/library-pane';
 import { ProjectStore } from './library/project-store';
-import { GraphStore } from './graph/graph-store';
-import { PaintStore } from './paint/paint-store';
+import { keepLayout, layoutOf, showing } from './core/workspaces';
+import { StartPane } from './core/start-pane';
+import { PaintAtlas } from './paint/paint-atlas';
 import { PaintPane } from './paint/paint-pane';
 import { ViewportPane } from './viewport/viewport-pane';
-
-/** The panes cannot be closed yet: nothing could bring one back until there is a Window menu. */
-const fixedPane = { allowClose: false } as const;
-
-/** Where Paint sits in its tab group, which opening a project brings to the front. */
-const PaintTab = 1;
-
-const initialLayout: XuiDockManagerLayout = {
-  rootPane: {
-    type: 'splitPane',
-    orientation: 'horizontal',
-    panes: [
-      { ...fixedPane, type: 'contentPane', contentId: 'library', header: 'Library', size: 1 },
-      {
-        type: 'splitPane',
-        orientation: 'vertical',
-        size: 3,
-        panes: [
-          {
-            type: 'splitPane',
-            orientation: 'horizontal',
-            size: 2,
-            panes: [
-              { ...fixedPane, type: 'contentPane', contentId: 'viewport', header: 'Viewport', size: 2 },
-              { ...fixedPane, type: 'contentPane', contentId: 'texture', header: 'Texture', size: 1 }
-            ]
-          },
-          { ...fixedPane, type: 'contentPane', contentId: 'graph', header: 'Graph', size: 3 }
-        ]
-      },
-      {
-        type: 'tabGroupPane',
-        size: 1,
-        panes: [
-          { ...fixedPane, type: 'contentPane', contentId: 'inspector', header: 'Inspector' },
-          { ...fixedPane, type: 'contentPane', contentId: 'paint', header: 'Paint' },
-          { ...fixedPane, type: 'contentPane', contentId: 'bake', header: 'Bake' },
-          { ...fixedPane, type: 'contentPane', contentId: 'export', header: 'Export' }
-        ]
-      }
-    ]
-  }
-};
 
 /** The app shell: a title bar, the docked panes and the status bar. `chrome-bar` and `readout` are bezel's. */
 @Component({
@@ -68,7 +27,9 @@ const initialLayout: XuiDockManagerLayout = {
     GraphPane,
     Inspector,
     LibraryPane,
+    PaintAtlas,
     PaintPane,
+    StartPane,
     TextureView,
     ViewportPane,
     XuiButtonImports,
@@ -79,10 +40,45 @@ const initialLayout: XuiDockManagerLayout = {
   host: { class: 'flex h-full flex-col' },
   template: `
     <header class="chrome-bar window-drag flex h-10 shrink-0 items-center gap-2 px-3" [class.pl-20]="traffic()">
-      <span class="font-semibold" data-testid="app-title">{{ title() || 'Patina' }}</span>
+      <span class="shrink-0 font-semibold" data-testid="app-title" [title]="title()">Patina</span>
+      <div class="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto" role="tablist" aria-label="Open documents">
+        @for (tab of project.tabs(); track tab.path) {
+          <div
+            class="flex items-center gap-1 rounded px-2 py-0.5 text-sm"
+            [class.bg-selection]="tab.path === project.active()?.path"
+            data-testid="document-tab"
+            [attr.data-kind]="tab.kind"
+          >
+            <button
+              type="button"
+              class="max-w-40 truncate"
+              role="tab"
+              data-testid="document-tab-name"
+              [attr.aria-selected]="tab.path === project.active()?.path"
+              [title]="tab.path"
+              (click)="project.activate(tab.path)"
+            >
+              {{ tab.name }}{{ tab.dirty ? ' •' : '' }}
+            </button>
+            <button type="button" [attr.aria-label]="'Close ' + tab.name" data-testid="document-tab-close" (click)="project.closeTab(tab.path)">
+              ×
+            </button>
+          </div>
+        }
+      </div>
+      <div class="flex shrink-0 items-center gap-1">
+        <button type="button" xuiButton size="sm" variant="ghost" data-testid="open-bake" (click)="baking.set(true)">Bake…</button>
+        <button type="button" xuiButton size="sm" variant="ghost" data-testid="open-export" (click)="exporting.set(true)">Export…</button>
+      </div>
     </header>
 
-    <xui-dock-manager class="min-h-0 flex-1" [(layout)]="layout">
+    <xui-dock-manager class="min-h-0 flex-1" [layout]="layout()" (layoutChange)="keep($event)">
+      <ng-template xuiDockContent="start">
+        <ptn-start />
+      </ng-template>
+      <ng-template xuiDockContent="atlas">
+        <ptn-paint-atlas />
+      </ng-template>
       <ng-template xuiDockContent="library">
         <ptn-library />
       </ng-template>
@@ -97,12 +93,6 @@ const initialLayout: XuiDockManagerLayout = {
       </ng-template>
       <ng-template xuiDockContent="inspector">
         <ptn-inspector />
-      </ng-template>
-      <ng-template xuiDockContent="bake">
-        <ptn-bake />
-      </ng-template>
-      <ng-template xuiDockContent="export">
-        <ptn-export />
       </ng-template>
       <ng-template xuiDockContent="paint">
         <ptn-paint />
@@ -128,23 +118,46 @@ const initialLayout: XuiDockManagerLayout = {
       }
     </footer>
 
+    <xui-dialog size="lg" title="Bake" [(open)]="baking">
+      <xui-dialog-body>
+        <div class="flex h-[70vh] min-h-0 flex-col"><ptn-bake /></div>
+      </xui-dialog-body>
+    </xui-dialog>
+    <xui-dialog size="lg" title="Export" [(open)]="exporting">
+      <xui-dialog-body>
+        <div class="flex h-[70vh] min-h-0 flex-col"><ptn-export /></div>
+      </xui-dialog-body>
+    </xui-dialog>
+
     <xui-dialog
       size="sm"
       title="Unsaved changes"
-      [open]="project.leaving() !== null"
-      (openChange)="$event || project.resolveLeaving('cancel')"
+      [open]="project.closing() !== null"
+      (openChange)="$event || project.resolveClosing('cancel')"
     >
-      <xui-dialog-body data-testid="project-leaving">
-        {{ project.current()?.name }} has paint that is not saved.
-      </xui-dialog-body>
+      <xui-dialog-body data-testid="project-leaving">This document has changes that are not saved.</xui-dialog-body>
       <xui-dialog-footer>
-        <button type="button" xuiButton variant="ghost" (click)="project.resolveLeaving('cancel')">Cancel</button>
-        <button type="button" xuiButton variant="ghost" data-testid="project-discard" (click)="project.resolveLeaving('discard')">
+        <button type="button" xuiButton variant="ghost" (click)="project.resolveClosing('cancel')">Cancel</button>
+        <button type="button" xuiButton variant="ghost" data-testid="project-discard" (click)="project.resolveClosing('discard')">
           Don't Save
         </button>
-        <button type="button" xuiButton color="primary" data-testid="project-save" (click)="project.resolveLeaving('save')">
+        <button type="button" xuiButton color="primary" data-testid="project-save" (click)="project.resolveClosing('save')">
           Save
         </button>
+      </xui-dialog-footer>
+    </xui-dialog>
+
+    <xui-dialog
+      size="sm"
+      title="Quit Patina?"
+      [open]="project.quitting()"
+      (openChange)="$event || project.resolveQuitting('cancel')"
+    >
+      <xui-dialog-body data-testid="app-quitting">{{ project.unsavedTabs().length }} document(s) have unsaved changes.</xui-dialog-body>
+      <xui-dialog-footer>
+        <button type="button" xuiButton variant="ghost" (click)="project.resolveQuitting('cancel')">Cancel</button>
+        <button type="button" xuiButton variant="ghost" (click)="project.resolveQuitting('discard')">Don't Save</button>
+        <button type="button" xuiButton color="primary" (click)="project.resolveQuitting('save')">Save All</button>
       </xui-dialog-footer>
     </xui-dialog>
   `
@@ -152,15 +165,17 @@ const initialLayout: XuiDockManagerLayout = {
 export class App {
   protected readonly status = inject(SystemStatus);
   protected readonly project = inject(ProjectStore);
-  private readonly paint = inject(PaintStore);
-  private readonly graph = inject(GraphStore);
-  protected readonly layout = signal(initialLayout);
+  private readonly bakes = inject(BakeStore);
+  protected readonly baking = signal(false);
+  protected readonly exporting = signal(false);
+  /** The layout of what is in front. Each kind of document keeps its own (ADR 0012). */
+  protected readonly layout = linkedSignal(() => layoutOf(this.project.workspace()));
   /** What is open, which is also what the window says. */
   protected readonly title = computed(() => {
     const state = this.status.state();
     const library = state.kind === 'online' ? state.system.library?.split(/[\\/]/).pop()?.replace(/\.ptlib$/, '') : null;
-    const name = this.project.current()?.name;
-    const dirty = this.paint.state()?.history.dirty ? ' •' : '';
+    const name = this.project.active()?.name;
+    const dirty = this.project.active()?.dirty ? ' •' : '';
     return [name ? `${name}${dirty}` : null, library].filter(Boolean).join(' — ');
   });
   private readonly fullScreen = signal(false);
@@ -169,11 +184,19 @@ export class App {
   protected readonly traffic = computed(() => desktop()?.platform === 'darwin' && !this.fullScreen());
 
   constructor() {
+    // A picture chosen in the Bake dialog is one the user wants to look at.
+    effect(() => {
+      if (this.bakes.shown()) {
+        this.baking.set(false);
+        this.layout.update(layout => showing(layout, 'texture'));
+      }
+    });
+
     const bridge = desktop();
     bridge?.onFullScreen(fullScreen => this.fullScreen.set(fullScreen));
     bridge?.onCommand(command => {
       if (command === 'save') {
-        void (this.paint.state()?.history.dirty ? this.paint.act('save') : this.graph.save());
+        void this.project.saveActive();
       }
     });
     if (bridge) {
@@ -181,31 +204,10 @@ export class App {
         bridge.setTitle(this.title());
       });
     }
-
-    // Opening a project is asking to paint it.
-    let seen = 0;
-    effect(() => {
-      const opened = this.project.opened();
-      if (opened !== seen) {
-        seen = opened;
-        untracked(() => this.showPaint());
-      }
-    });
   }
 
-  private showPaint(): void {
-    const layout = this.layout();
-    const root = layout.rootPane;
-    if (root.type !== 'splitPane') {
-      return;
-    }
-
-    this.layout.set({
-      ...layout,
-      rootPane: {
-        ...root,
-        panes: root.panes.map(pane => (pane.type === 'tabGroupPane' ? { ...pane, selectedIndex: PaintTab } : pane))
-      }
-    });
+  protected keep(layout: XuiDockManagerLayout): void {
+    keepLayout(this.project.workspace(), layout);
+    this.layout.set(layout);
   }
 }

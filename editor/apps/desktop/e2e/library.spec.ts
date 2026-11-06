@@ -83,7 +83,7 @@ test('a new project reaches the list through the index', async () => {
   await expect(window.getByTestId('new-project-name')).toBeVisible(); // Enter in the tag field does not submit
   await window.getByRole('button', { name: 'Create' }).click();
 
-  await expect(window.getByTestId('inspector-title')).toHaveText('Zebra Crate');
+  await expect(window.getByTestId('document-tab-name')).toHaveText('Zebra Crate');
   await expect(count()).toHaveText(`${Projects + 1} projects`);
   await window.getByTestId('library-search').fill('zebra');
   await expect(rows().first()).toContainText('zebra-crate');

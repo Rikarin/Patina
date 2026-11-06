@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, model, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, linkedSignal, model, signal } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiDialogImports } from '@xui/dialog';
@@ -114,6 +114,8 @@ export class NewProjectDialog {
   readonly open = model(false);
   /** The folder it goes in, where empty is the top of the library. */
   readonly folder = input('');
+  /** The kind it starts as. */
+  readonly startKind = input('texturing');
 
   protected readonly name = signal('');
   protected readonly canPick = desktop() !== undefined;
@@ -123,7 +125,7 @@ export class NewProjectDialog {
     { value: 'layered-material', label: 'Layered Material: layers with no mesh' },
     { value: 'graph', label: 'Material Graph: nodes' }
   ];
-  protected readonly kind = signal('texturing');
+  protected readonly kind = linkedSignal(() => this.startKind());
   protected readonly mesh = signal('');
   protected readonly resolution = signal(2048);
   protected readonly meshName = computed(() => this.mesh().split(/[\\/]/).pop() ?? '');

@@ -2,6 +2,7 @@ import { _electron as electron, expect, test, type ElectronApplication, type Pag
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { leave, newLibrary, newProject } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const mesh = resolve(__dirname, '../../../../content/fixtures/viewport-test.glb');
@@ -27,9 +28,18 @@ test.beforeEach(async () => {
   }, mesh);
 });
 
+/** A mesh reaches the viewport through a project. */
+async function openMesh(): Promise<void> {
+  await newLibrary(app, window, join(scratch, 'Game.ptlib'));
+  await newProject(app, window, 'Test', undefined, 'graph');
+  await window.getByRole('tab', { name: 'Preview' }).click();
+  await window.getByRole('button', { name: 'Open mesh…' }).click();
+  await expect(window.getByTestId('viewport-mesh')).toHaveText('viewport-test.glb', { timeout: 30_000 });
+}
+
 test.afterEach(async () => {
-  await app.close();
-  rmSync(scratch, { recursive: true, force: true });
+  await leave(app);
+  rmSync(scratch, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
 });
 
 const canvas = () => window.getByRole('img', { name: 'Viewport' });
@@ -77,7 +87,7 @@ test('a glTF opened in the docked viewport shows up lit, and a drag orbits it', 
   await expect(window.getByRole('status', { name: 'Server status' })).toContainText('Worker connected');
   await expect(window.locator('html')).toHaveAttribute('data-skin', 'bezel');
 
-  await window.getByRole('button', { name: 'Open mesh…' }).click();
+  await openMesh();
   await expect(window.getByTestId('viewport-mesh')).toHaveText('viewport-test.glb');
   await expect.poll(frames).toBeGreaterThan(0);
 
@@ -107,7 +117,7 @@ test('a glTF opened in the docked viewport shows up lit, and a drag orbits it', 
 });
 
 test('killing the Worker keeps the view, and frames come back from its successor', async () => {
-  await window.getByRole('button', { name: 'Open mesh…' }).click();
+  await openMesh();
   await expect.poll(frames).toBeGreaterThan(0);
 
   const [worker] = await window.evaluate(() =>

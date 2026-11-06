@@ -278,7 +278,7 @@ export class LibraryTree {
   protected isOpen(row: TreeRow): boolean {
     return (
       (row.kind === 'project' && this.project.current()?.path === row.path) ||
-      (row.kind === 'document' && this.project.document()?.path === row.path)
+      (row.kind === 'document' && this.project.active()?.path === row.path)
     );
   }
 
@@ -426,8 +426,9 @@ export class LibraryTree {
     const row = this.deleting();
     this.deleting.set(null);
     if (row) {
-      await this.leaveIfInside([row.path]);
-      await this.tree.deleteFolder(row.path, true);
+      if (await this.project.release([row.path])) {
+        await this.tree.deleteFolder(row.path, true);
+      }
     }
   }
 
@@ -486,8 +487,9 @@ export class LibraryTree {
     this.dragged = [];
     this.dropInto.set(null);
     if (canDrop(paths, into)) {
-      await this.leaveIfInside(paths);
-      await this.tree.move(paths, into);
+      if (await this.project.release(paths)) {
+        await this.tree.move(paths, into);
+      }
     }
   }
 
@@ -512,8 +514,9 @@ export class LibraryTree {
     }
 
     if (row.kind === 'folder') {
-      await this.leaveIfInside([row.path]);
-      await this.tree.renameFolder(row.path, name);
+      if (await this.project.release([row.path])) {
+        await this.tree.renameFolder(row.path, name);
+      }
     } else if (row.kind === 'project') {
       await this.tree.renameProject(row.path, name);
     }
@@ -596,14 +599,6 @@ export class LibraryTree {
     }
 
     return row.kind === 'project' ? parentOf(row.path) : row.kind === 'document' ? parentOf(row.project) : row.path;
-  }
-
-  /** A project that is open cannot move, so moving it closes it; its paint has to be saved by then. */
-  private async leaveIfInside(paths: readonly string[]): Promise<void> {
-    const open = this.project.current()?.path;
-    if (open && paths.some(path => open === path || open.startsWith(`${path}/`))) {
-      await this.project.close();
-    }
   }
 
   private show(row: TreeRow): void {

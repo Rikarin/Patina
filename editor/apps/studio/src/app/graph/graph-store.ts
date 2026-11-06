@@ -1,5 +1,4 @@
 import { DestroyRef, Injectable, InjectionToken, computed, effect, inject, signal, untracked } from '@angular/core';
-import { UnsavedWork } from '../core/unsaved-work';
 import {
   ApiError,
   type Connection,
@@ -95,7 +94,6 @@ export function socketUrl(connection: Connection, id: string, since: number): st
 @Injectable({ providedIn: 'root' })
 export class GraphStore {
   private readonly connection = inject(SERVER_CONNECTION);
-  private readonly work = inject(UnsavedWork);
   private readonly createClient = inject(API_CLIENT_FACTORY);
   private readonly openSocket = inject(GRAPH_SOCKET);
   private readonly mutableSession = signal<GraphSessionState>({ kind: 'none' });
@@ -194,29 +192,14 @@ export class GraphStore {
         });
       }
     });
-
-    // The desktop app asks before it quits, so it has to know whether there is anything to ask about.
-    const bridge = desktop();
-    if (bridge) {
-      effect(() => {
-        this.work.report('graph', this.unsaved());
-      });
-      bridge.onQuitRequested(() => {
-        // Unsaved paint asks first, and comes back through askToQuit.
-        if (!this.work.has('paint')) {
-          this.askToQuit();
-        }
-      });
-    }
   }
 
-  /** The app is quitting: asks about this graph if it needs it, and otherwise lets the app go. */
-  askToQuit(): void {
-    if (this.unsaved()) {
-      this.mutableLeaving.set({ kind: 'quit' });
-    } else {
-      desktop()?.quit();
-    }
+  /** Lets go of the graph, which stays open on the Server with its edits and history, to come back to. */
+  detach(): void {
+    this.endSession();
+    this.mutableTrail.set([]);
+    this.mutableDocument.set(null);
+    this.mutableSession.set({ kind: 'none' });
   }
 
   /** A node's thumbnail. */
@@ -231,13 +214,8 @@ export class GraphStore {
       return;
     }
 
-    if (this.unsaved()) {
-      this.mutableLeaving.set({ kind: 'open', path });
-      return;
-    }
-
     if (document) {
-      await this.closeAll(false);
+      this.detach();
     }
 
     await this.start(path);

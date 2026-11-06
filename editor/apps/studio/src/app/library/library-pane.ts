@@ -1,5 +1,5 @@
 import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, viewChild, untracked } from '@angular/core';
 import type { AssetSummary, ProjectSummary } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiInputImports } from '@xui/input';
@@ -14,7 +14,9 @@ import { counted, nextIndex } from './list-keys';
 import { desktop } from '../core/desktop';
 import { LibraryTree } from './library-tree';
 import { LibraryTreeStore } from './library-tree-store';
+import { NewGraphDialog } from '../graph/new-graph-dialog';
 import { NewProjectDialog } from './new-project-dialog';
+import { ProjectStore } from './project-store';
 import { ViewportFit } from './viewport-fit';
 
 type ViewName = 'projects' | 'assets';
@@ -36,6 +38,7 @@ function isAsset(row: LibraryRow): row is AssetSummary {
   selector: 'ptn-library',
   imports: [
     LibraryTree,
+    NewGraphDialog,
     NewProjectDialog,
     ScrollingModule,
     ViewportFit,
@@ -204,24 +207,29 @@ function isAsset(row: LibraryRow): row is AssetSummary {
         }
 
         <footer class="chrome-bar flex h-8 shrink-0 items-center gap-2 px-2">
-          <span class="readout truncate" data-testid="library-count">{{ countText() }}</span>
+          <span class="readout min-w-0 flex-1 truncate" data-testid="library-count">{{ countText() }}</span>
           @if (state.info.indexing) {
             <span class="text-foreground-muted flex items-center gap-1 text-xs" data-testid="library-indexing">
               <xui-spinner size="xs" aria-hidden="true" />
               Indexing
             </span>
           }
-          <span class="flex-1"></span>
+          @if (viewName() === 'assets') {
+            <button type="button" xuiButton size="sm" data-testid="library-new-graph" (click)="creatingGraph.set(true)">
+              New Graph…
+            </button>
+          }
           @if (viewName() === 'projects') {
             <button type="button" xuiButton size="sm" variant="ghost" data-testid="library-new-folder" (click)="newFolder()">
-              New Folder
+              Folder
             </button>
             <button type="button" xuiButton size="sm" data-testid="library-new-project" (click)="newProjectIn(treeStore.target())">
-              New Project…
+              Project…
             </button>
           }
         </footer>
-        <ptn-new-project [(open)]="creating" [folder]="creatingIn()" />
+        <ptn-new-project [(open)]="creating" [folder]="creatingIn()" [startKind]="creatingKind()" />
+        <ptn-new-graph [(open)]="creatingGraph" />
       }
     }
   `
@@ -229,6 +237,7 @@ function isAsset(row: LibraryRow): row is AssetSummary {
 export class LibraryPane {
   protected readonly store = inject(LibraryStore);
   protected readonly treeStore = inject(LibraryTreeStore);
+  private readonly project = inject(ProjectStore);
   private readonly selection = inject(LibrarySelection);
   private readonly tree = viewChild<LibraryTree>('tree');
   private readonly viewport = viewChild(CdkVirtualScrollViewport);
@@ -238,6 +247,8 @@ export class LibraryPane {
   protected readonly viewName = signal<ViewName>('projects');
   protected readonly creating = signal(false);
   protected readonly creatingIn = signal('');
+  protected readonly creatingGraph = signal(false);
+  protected readonly creatingKind = signal('texturing');
   protected readonly canPick = desktop() !== undefined;
   protected readonly noLibraryText = this.canPick
     ? 'A library holds one game\'s projects and the assets they share.'
@@ -323,6 +334,13 @@ export class LibraryPane {
     void desktop()
       ?.recentLibraries()
       .then(paths => this.recent.set(paths));
+    effect(() => {
+      const asked = this.project.newKind();
+      if (asked) {
+        this.creatingKind.set(asked.kind);
+        untracked(() => this.newProjectIn(this.treeStore.target()));
+      }
+    });
     desktop()?.onCommand(command => {
       if (command === 'newProject') {
         this.newProjectIn(this.treeStore.target());

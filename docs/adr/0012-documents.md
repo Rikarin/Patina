@@ -1,7 +1,6 @@
 # ADR 0012: A project holds typed documents, and each opens its own workspace
 
-**Status:** proposed, 2026-11-06. Nothing here is built. It replaces the `mesh` and `stack` fields added to `project.yaml` on the
-`patina/library-project` branch, which have not been merged.
+**Status:** accepted, 2026-11-06, and being built in the order below on `patina/library-project`.
 
 ## What is wrong
 
@@ -149,9 +148,10 @@ panes: they are dialogs started from a Texturing document, which already knows i
 
 ### 5. Refactoring
 
-- **Studio.** `GraphStore` (1,299 lines) and `PaintStore` are root singletons, so only one of each can exist. They become per-document
-  services provided by a document tab. This is the largest change and most others wait on it. A `DocumentHost` owns the open tabs, and
-  `UnsavedWork` reports by document, not by kind.
+- **Studio.** The first draft made `GraphStore` and `PaintStore` per-document. That turned out to be unnecessary: the Server already
+  holds every open session with its edits and history, so a tab is a path, and going to one joins its session again. The two stores
+  show whichever document is in front, and `ProjectStore` owns the tabs. This follows "the Server owns all state", and it leaves two
+  large stores alone. A tab behind keeps the unsaved flag it last reported.
 - **Server.** `SessionTable` already holds many sessions per file, so little changes. `ViewportSession` is one global state, and it
   becomes "shows this document", with the active tab deciding, which avoids a Worker renderer per tab.
 - **Contracts.** `GET /library/project` returns documents. `POST /library/project/documents` makes one of a kind. `GET /library/materials`

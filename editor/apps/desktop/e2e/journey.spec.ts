@@ -53,6 +53,8 @@ test('a new user makes a library, groups projects in folders, and comes back to 
   // First launch: nothing mentions a command line.
   await expect(window.getByText('No library open').first()).toBeVisible();
   await expect(window.locator('body')).not.toContainText('--library');
+  await expect(window.locator('body')).not.toContainText('Viewport');
+  await expect(window.locator('body')).not.toContainText('Graph');
 
   await answerSave(library);
   await window.getByTestId('library-new').click();
@@ -69,7 +71,7 @@ test('a new user makes a library, groups projects in folders, and comes back to 
   await window.getByRole('button', { name: 'Create' }).click();
   await expect(window.getByTestId('paint-project')).toHaveText('Housing', { timeout: 30_000 });
   await expect(window.getByTestId('paint-mesh-name')).toHaveText('housing_low.glb');
-  await expect(window.getByTestId('app-title')).toContainText('Housing');
+  await expect(window.getByTestId('document-tab-name')).toContainText('Housing');
   expect(existsSync(join(library, 'projects', 'housing', 'housing_low.glb'))).toBe(true);
   await expect(row('housing')).toBeVisible();
 
@@ -107,7 +109,7 @@ test('a new user makes a library, groups projects in folders, and comes back to 
   // The open one is closed for the move, and opens again from its new place.
   await drag('door', 'Hero Props');
   await expect(row('Hero Props/door')).toBeVisible({ timeout: 15_000 });
-  await expect(window.getByTestId('paint-none')).toBeVisible();
+  await expect(window.getByTestId('document-tab')).toHaveCount(0);
 
   // A folder moves too, and can be renamed.
   await row('Hero Props/Doors').click({ button: 'right' });
@@ -169,7 +171,15 @@ test('painted work asks before the project is left', async () => {
   await window.mouse.up();
   await expect(window.getByTestId('paint-unsaved')).toBeVisible({ timeout: 15_000 });
 
-  await row('first').dblclick();
+  // Going to another document keeps this one open, edits and all.
+  await window.getByTestId('document-tab-name').filter({ hasText: 'First' }).click();
+  await expect(window.getByTestId('paint-project')).toHaveText('First', { timeout: 30_000 });
+  await window.getByTestId('document-tab-name').filter({ hasText: 'Second' }).click();
+  await expect(window.getByTestId('paint-project')).toHaveText('Second', { timeout: 30_000 });
+  await expect(window.getByTestId('paint-unsaved')).toBeVisible({ timeout: 15_000 });
+
+  // Closing it is the moment that asks.
+  await window.getByTestId('document-tab').filter({ hasText: 'Second' }).getByTestId('document-tab-close').click();
   await expect(window.getByTestId('project-leaving')).toBeVisible();
   await window.getByTestId('project-save').click();
   await expect(window.getByTestId('paint-project')).toHaveText('First', { timeout: 30_000 });

@@ -29,7 +29,9 @@ import { ViewportClient } from './viewport-client';
   host: { class: 'flex h-full min-h-0 flex-col' },
   template: `
     <div class="chrome-bar flex h-9 shrink-0 items-center gap-2 px-2">
-      <button type="button" xuiButton size="sm" [disabled]="!canOpen" (click)="open()">Open mesh…</button>
+      @if (!paint.worn()) {
+        <button type="button" xuiButton size="sm" [disabled]="!canOpen" (click)="open()">Open mesh…</button>
+      }
       <span class="readout truncate" data-testid="viewport-mesh">{{ meshName() }}</span>
       @if (graph.document(); as document) {
         <button

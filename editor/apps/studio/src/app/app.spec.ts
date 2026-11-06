@@ -39,11 +39,16 @@ const system = {
 };
 
 describe('App', () => {
-  it('docks the Library, Viewport, Texture, Graph and Inspector panes', async () => {
+  it('starts with the Library and nothing that would be empty', async () => {
     const element = await render({ kind: 'connecting' });
 
-    for (const pane of ['Library', 'Viewport', 'Texture', 'Graph', 'Inspector']) {
+    for (const pane of ['Library', 'Start', 'Inspector']) {
       expect(element.textContent).toContain(pane);
+    }
+
+    for (const pane of ['Viewport', 'Texture', 'Graph']) {
+      expect(element.querySelector(`[data-pane="${pane}"]`)).toBeNull();
+      expect(element.textContent).not.toContain(pane);
     }
   });
 
