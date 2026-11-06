@@ -70,16 +70,15 @@ public sealed class StackEvaluator(
         return reply.StackPicture ?? [];
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
-        try {
-            while (true) {
-                await sessions.WaitAsync(stoppingToken);
-                while (await DrainAsync(stoppingToken)) {
-                    // Another pass: something may have changed while the last stack was evaluating.
-                }
+    protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
+        ServiceLoop.RunAsync(logger, nameof(StackEvaluator), LoopAsync, stoppingToken);
+
+    async Task LoopAsync(CancellationToken stoppingToken) {
+        while (true) {
+            await sessions.WaitAsync(stoppingToken);
+            while (await DrainAsync(stoppingToken)) {
+                // Another pass: something may have changed while the last stack was evaluating.
             }
-        } catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) {
-            // Stopping: nothing to report.
         }
     }
 
@@ -162,7 +161,9 @@ public sealed class StackEvaluator(
             ServerLog.GraphWorkerLost(logger, session.Path);
             session.Evaluate();
             await Task.Delay(LostWorkerPause, cancellationToken);
-        } catch (IpcException e) {
+        } catch (Exception e) when (e is not OperationCanceledException) {
+            // One stack's fault stays that stack's, and the Worker may be holding less than it was told.
+            told.Remove(session.Id);
             ServerLog.GraphFailed(logger, session.Path, e.Message);
             session.Fail(ready.Value.Work, e.Message);
         }

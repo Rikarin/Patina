@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Sockets;
+using System.Text.Json;
 
 namespace Patina.Ipc;
 
@@ -104,6 +105,7 @@ public sealed class IpcConnection : IAsyncDisposable {
                                         or SocketException
                                         or ObjectDisposedException
                                         or InvalidDataException
+                                        or JsonException
                                         or OperationCanceledException) {
             // A peer that went away, or one that broke the framing: the link is over either way.
         } finally {

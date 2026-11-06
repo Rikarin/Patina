@@ -60,16 +60,27 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
         var socketPath = options.Value.Worker.SocketPath;
-        using var listener = IpcSocket.Listen(socketPath);
+        Socket listener;
         try {
-            while (!stoppingToken.IsCancellationRequested) {
-                var socket = await listener.AcceptAsync(stoppingToken);
-                await ServeAsync(new NetworkStream(socket, true), stoppingToken);
-            }
-        } catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) {
-            // Stopping: nothing to report.
+            listener = IpcSocket.Listen(socketPath);
+        } catch (Exception e) when (e is SocketException or IOException or UnauthorizedAccessException) {
+            // No Worker can ever connect, so this is the one fault that ends the Server, and it must not look clean.
+            Environment.ExitCode = 1;
+            throw;
+        }
+
+        using var held = listener;
+        try {
+            await ServiceLoop.RunAsync(logger, nameof(WorkerLink), token => AcceptingAsync(listener, token), stoppingToken);
         } finally {
             File.Delete(socketPath);
+        }
+    }
+
+    async Task AcceptingAsync(Socket listener, CancellationToken stoppingToken) {
+        while (!stoppingToken.IsCancellationRequested) {
+            var socket = await listener.AcceptAsync(stoppingToken);
+            await ServeAsync(new NetworkStream(socket, true), stoppingToken);
         }
     }
 

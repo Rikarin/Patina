@@ -24,16 +24,15 @@ public sealed class GraphEvaluator(
     readonly Dictionary<string, Told> told = new(StringComparer.Ordinal);
     int untilTrim = TrimInterval;
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
-        try {
-            while (true) {
-                await sessions.WaitAsync(stoppingToken);
-                while (await DrainAsync(stoppingToken)) {
-                    // Another pass: something may have changed while the last graph was evaluating.
-                }
+    protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
+        ServiceLoop.RunAsync(logger, nameof(GraphEvaluator), LoopAsync, stoppingToken);
+
+    async Task LoopAsync(CancellationToken stoppingToken) {
+        while (true) {
+            await sessions.WaitAsync(stoppingToken);
+            while (await DrainAsync(stoppingToken)) {
+                // Another pass: something may have changed while the last graph was evaluating.
             }
-        } catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) {
-            // Stopping: nothing to report.
         }
     }
 
@@ -75,7 +74,8 @@ public sealed class GraphEvaluator(
                 // Nothing is lost: the next Worker gets the document and this evaluation runs again.
                 ServerLog.GraphWorkerLost(logger, session.Path);
                 await Task.Delay(LostWorkerPause, cancellationToken);
-            } catch (IpcException e) {
+            } catch (Exception e) when (e is not OperationCanceledException) {
+                // One graph's fault stays that graph's.
                 ServerLog.GraphFailed(logger, session.Path, e.Message);
                 session.Fail(work, e.Message);
             }

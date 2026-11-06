@@ -12,6 +12,8 @@ namespace Patina.Server;
 ///     it again plans again, so a finished step is simply no longer in the plan.
 /// </summary>
 sealed class BuildRunner(LibraryHost libraries, ToolCatalog tools) {
+    static readonly TimeSpan StopPatience = TimeSpan.FromSeconds(30);
+
     readonly Lock waiting = new();
     Step? current;
 
@@ -82,7 +84,13 @@ sealed class BuildRunner(LibraryHost libraries, ToolCatalog tools) {
             }
         } catch (OperationCanceledException) {
             await CancelAsync(connection, ticket);
-            await step.Ended.Task.WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None);
+            try {
+                await step.Ended.Task.WaitAsync(StopPatience, CancellationToken.None);
+            } catch (TimeoutException e) {
+                // A step that ignores being stopped is the Worker's to answer for, and the job stops regardless.
+                throw new BuildExecutorLostException(e.Message, e);
+            }
+
             throw;
         }
 

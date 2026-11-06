@@ -203,13 +203,8 @@ public sealed class ViewportSession(
         }
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
-        try {
-            await LoopAsync(stoppingToken);
-        } catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) {
-            // Stopping: nothing to report.
-        }
-    }
+    protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
+        ServiceLoop.RunAsync(logger, nameof(ViewportSession), LoopAsync, stoppingToken);
 
     async Task LoopAsync(CancellationToken cancellationToken) {
         while (true) {

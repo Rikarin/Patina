@@ -256,7 +256,11 @@ static class MeshMapSettings {
     }
 
     static int Int(IReadOnlyDictionary<string, string> settings, string name, int fallback) =>
-        settings.TryGetValue(name, out var text) ? int.Parse(text, CultureInfo.InvariantCulture) : fallback;
+        !settings.TryGetValue(name, out var text)
+            ? fallback
+            : int.TryParse(text, CultureInfo.InvariantCulture, out var number)
+                ? number
+                : throw new InvalidDataException($"The setting '{name}' has to be a whole number, and it is '{text}'.");
 }
 
 /// <summary>A plan image's bytes as numbers, keeping how many bits they had.</summary>

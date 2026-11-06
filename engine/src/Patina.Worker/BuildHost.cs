@@ -47,12 +47,8 @@ sealed class BuildHost : OneAtATime {
             };
         } catch (OperationCanceledException) {
             ending = new(ask.Ticket, null, null, null);
-        } catch (Exception e) when (e is BuildStepFailedException
-                                        or IOException
-                                        or UnauthorizedAccessException
-                                        or OutOfMemoryException
-                                        or IpcException
-                                   ) {
+        } catch (Exception e) {
+            // Whatever went wrong, the Server is waiting on this step and hears how it ended.
             ending = new(ask.Ticket, null, null, e.Message);
         }
 
