@@ -56,16 +56,47 @@ public sealed record ProjectDocument(
     IReadOnlyList<AssetReference> References,
     IReadOnlyList<OutputDeclaration> Outputs
 ) {
-    /// <summary>The mesh the project textures: a file in its folder, or null before it has one.</summary>
-    public string? Mesh { get; init; }
+    /// <summary>The meshes in the project's folder.</summary>
+    public IReadOnlyList<ProjectMesh> Meshes { get; init; } = [];
 
-    /// <summary>The layer stack the project paints: a file in its folder, or null before it has one.</summary>
-    public string? Stack { get; init; }
+    /// <summary>What can be opened and edited in the project (ADR 0012).</summary>
+    public IReadOnlyList<ProjectItem> Documents { get; init; } = [];
+}
+
+/// <summary>A mesh a project owns.</summary>
+/// <param name="Id">Its identity, which a document refers to it by.</param>
+/// <param name="File">Its file, relative to the project.</param>
+/// <param name="High">The detailed mesh it bakes from, relative to the project, or null.</param>
+public sealed record ProjectMesh(AssetId Id, string File, string? High = null);
+
+/// <summary>A document a project lists.</summary>
+/// <param name="Id">Its identity, which a reference to it survives a move by.</param>
+/// <param name="Kind">One of <see cref="DocumentKinds" />.</param>
+/// <param name="File">Its file, relative to the project.</param>
+/// <param name="Name">Its display name.</param>
+/// <param name="Mesh">The mesh it is on. A <c>texturing</c> document has one and no other kind does.</param>
+public sealed record ProjectItem(AssetId Id, string Kind, string File, string Name, AssetId? Mesh = null);
+
+/// <summary>What a document is for, which decides the workspace it opens in (ADR 0012).</summary>
+public static class DocumentKinds {
+    /// <summary>Layers and paint on a mesh, ending in textures for one asset.</summary>
+    public const string Texturing = "texturing";
+
+    /// <summary>Layers with no mesh, making a material others can use.</summary>
+    public const string LayeredMaterial = "layered-material";
+
+    /// <summary>A material made from one photograph.</summary>
+    public const string ImageMaterial = "image-material";
+
+    /// <summary>A node graph, making a material, a mask, a brush or a filter.</summary>
+    public const string Graph = "graph";
+
+    public static bool Known(string kind) => kind is Texturing or LayeredMaterial or ImageMaterial or Graph;
 }
 
 /// <summary>
-///     <c>folder.yaml</c>: what a folder of projects remembers. It exists even with nothing to say, because Git keeps no
-///     empty folder.
+///     <c>folder.yaml</c>: what a folder of projects remembers. It exists even with nothing to say, because Git keeps
+///     no empty folder.
 /// </summary>
 /// <param name="Color">The folder's colour as <c>#rrggbb</c>, or null for none.</param>
 public sealed record FolderDocument(string? Color = null);

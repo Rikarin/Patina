@@ -295,7 +295,8 @@ sealed class LibraryQueries(IndexDatabase database) {
             conditions.Add(
                 folder.Length == 0
                     ? $"instr({alias}.path, '/') = 0"
-                    : $"{alias}.path >= @from AND {alias}.path < @to AND instr(substr({alias}.path, length(@from) + 1), '/') = 0"
+                    : $"{alias}.path >= @from AND {alias}.path < @to "
+                    + $"AND instr(substr({alias}.path, length(@from) + 1), '/') = 0"
             );
         }
 

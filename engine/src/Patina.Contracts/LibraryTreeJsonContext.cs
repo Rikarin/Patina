@@ -1,0 +1,22 @@
+using System.Text.Json.Serialization;
+
+namespace Patina.Contracts;
+
+/// <summary>What the Library's tree and a project's contents put on the wire.</summary>
+[JsonSourceGenerationOptions(
+    WriteIndented = true,
+    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+)]
+[JsonSerializable(typeof(ProjectContents))]
+[JsonSerializable(typeof(ProjectMeshRequest))]
+[JsonSerializable(typeof(ProjectDocumentRequest))]
+[JsonSerializable(typeof(ProjectDocumentMeshRequest), TypeInfoPropertyName = nameof(ProjectDocumentMeshRequest))]
+[JsonSerializable(typeof(ProjectRenameRequest))]
+[JsonSerializable(typeof(FolderList))]
+[JsonSerializable(typeof(FolderSummary))]
+[JsonSerializable(typeof(FolderCreateRequest), TypeInfoPropertyName = nameof(FolderCreateRequest))]
+[JsonSerializable(typeof(FolderUpdateRequest))]
+[JsonSerializable(typeof(LibraryMoveRequest))]
+[JsonSerializable(typeof(LibraryMoved))]
+public sealed partial class LibraryTreeJsonContext : JsonSerializerContext;

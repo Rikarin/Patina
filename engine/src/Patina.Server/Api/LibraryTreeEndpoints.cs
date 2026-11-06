@@ -8,8 +8,8 @@ using Patina.Server.Viewport;
 namespace Patina.Server.Api;
 
 /// <summary>
-///     Folders of projects, and what a project holds. Files are the truth, so these change the disk and ask for a rescan,
-///     and a client sees the listings move once the index has caught up.
+///     Folders of projects, and what a project holds. Files are the truth, so these change the disk and ask for a
+///     rescan, and a client sees the listings move once the index has caught up.
 /// </summary>
 static class LibraryTreeEndpoints {
     const string Tag = "Library";
@@ -21,86 +21,81 @@ static class LibraryTreeEndpoints {
         var library = api.MapGroup("/library").WithTags(Tag);
 
         library.MapGet("/folders", GetFolders)
-            .WithName("GetFolders")
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .WithSummary("The folders directly in a folder, where no parent is the top of the library.");
+            .Described("GetFolders", "The folders directly in a folder, where no parent is the top of the library.");
 
         library.MapPost("/folders", CreateFolder)
-            .WithName("CreateFolder")
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status409Conflict)
-            .WithSummary("Makes a folder.");
+            .Described("CreateFolder", "Makes a folder.");
 
         library.MapPatch("/folders", UpdateFolder)
-            .WithName("UpdateFolder")
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status409Conflict)
-            .WithSummary("Renames a folder or changes its colour. Nothing in it may be open to rename it.");
+            .Described(
+                "UpdateFolder",
+                "Renames a folder or changes its colour. Nothing in it may be open to rename it."
+            );
 
         library.MapDelete("/folders", DeleteFolder)
-            .WithName("DeleteFolder")
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status409Conflict)
-            .WithSummary("Deletes a folder, never a project: `lift` moves what it holds up a level first.");
+            .Described(
+                "DeleteFolder",
+                "Deletes a folder, never a project: `lift` moves what it holds up a level first."
+            );
 
         library.MapPost("/move", Move)
-            .WithName("MoveInLibrary")
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status409Conflict)
-            .WithSummary("Moves folders and projects into a folder, all of them or none. Nothing moved may be open.");
+            .Described(
+                "MoveInLibrary",
+                "Moves folders and projects into a folder, all of them or none. Nothing moved may be open."
+            );
 
         library.MapGet("/project", GetProject)
-            .WithName("GetProjectContents")
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .WithSummary("What a project holds. Read from its folder, so it works before the index has caught up.");
+            .Described(
+                "GetProjectContents",
+                "What a project holds. Read from its folder, so it works before the index has caught up."
+            );
 
-        library.MapPut("/project", PutProject)
-            .WithName("SetProjectContents")
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .WithSummary("Gives a project a mesh, and a layer stack if it has none.");
+        library.MapPost("/project/meshes", AddMesh)
+            .Described("AddProjectMesh", "Brings a mesh into a project, and its detailed mesh if it has one.");
+
+        library.MapPost("/project/documents", AddDocument)
+            .Described("AddProjectDocument", "Makes a document of a kind in a project.");
+
+        library.MapPatch("/project/document", SetDocumentMesh)
+            .Described("SetDocumentMesh", "Puts a texturing document on another mesh of its project.");
 
         library.MapPatch("/project", RenameProject)
-            .WithName("RenameProject")
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .WithSummary("Gives a project a new display name. Its folder stays.");
+            .Described("RenameProject", "Gives a project a new display name. Its folder stays.");
     }
 
-    /// <summary>Writes the project's stack, so that every new project opens ready to paint.</summary>
-    public static void Furnish(
-        OpenLibrary library,
-        string project,
-        string? mesh,
-        int? resolution,
-        StackSessions stacks
-    ) {
-        var model = library.UseMesh(project, mesh);
-        var contents = library.Contents(project);
-        var side = resolution ?? DefaultResolution;
-        if (contents.Stack is { } stack && File.Exists(Path.GetFullPath(stack, library.RootPath))) {
-            var file = Path.GetFullPath(stack, library.RootPath);
-            if (model is not null && stacks.All.All(session => session.Path != file)) {
-                StackDocuments.SetModel(file, model);
-            }
-
-            return;
+    /// <summary>Makes a document and its file.</summary>
+    /// <exception cref="ProjectRefusedException">The kind cannot be made, or the mesh is missing.</exception>
+    public static void MakeDocument(OpenLibrary library, ProjectDocumentRequest request) {
+        var side = request.Resolution ?? DefaultResolution;
+        switch (request.Kind) {
+            case DocumentKinds.Graph:
+                var text = GraphDocuments.Text(GraphDocuments.New(request.Name));
+                library.CreateGraph(new(request.Name, request.Project), text);
+                break;
+            case DocumentKinds.LayeredMaterial:
+                MakeStack(library, request, side, null);
+                break;
+            case DocumentKinds.Texturing:
+                var contents = library.Contents(request.Project);
+                var mesh = contents.Meshes.FirstOrDefault(m => m.Id == request.Mesh && m.Id is not null)
+                    ?? throw new ProjectRefusedException("A texturing document needs a mesh of its project.");
+                MakeStack(library, request, side, mesh);
+                break;
+            default:
+                throw new ProjectRefusedException($"'{request.Kind}' cannot be made yet.");
         }
-
-        var name = OpenLibrary.StackName(project);
-        var full = Path.GetFullPath($"{LibraryLayout.ProjectsFolder}/{project}/{name}", library.RootPath);
-        if (!File.Exists(full)) {
-            StackDocuments.Create(full, side, side, model);
-        }
-
-        library.UseStack(project, name);
     }
+
+    static void MakeStack(OpenLibrary library, ProjectDocumentRequest request, int side, ProjectMeshInfo? mesh) {
+        var file = library.NewDocumentFile(request.Project, request.Name, StackDocuments.Extension);
+        var model = mesh is null ? null : Relative(request.Project, mesh.Path);
+        StackDocuments.Create(library.ProjectFile(request.Project, file), side, side, model);
+        var on = mesh?.Id is { } id ? new AssetId(id) : (AssetId?)null;
+        library.AddDocument(request.Project, request.Kind, file, request.Name, on);
+    }
+
+    static string Relative(string project, string below) =>
+        below[$"{LibraryLayout.ProjectsFolder}/{project}/".Length..];
 
     /// <summary>What a request's resolution has to be, or the refusal.</summary>
     public static ProblemHttpResult? BadResolution(int? resolution) =>
@@ -110,6 +105,14 @@ static class LibraryTreeEndpoints {
                 $"A resolution is {MinResolution} to {MaxResolution}.",
                 statusCode: StatusCodes.Status400BadRequest
             );
+
+    /// <summary>Names a route, says what it does, and what it can answer other than success.</summary>
+    static void Described(this RouteHandlerBuilder route, string name, string summary) =>
+        route.WithName(name)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .WithSummary(summary);
 
     static Results<Ok<FolderList>, ProblemHttpResult> GetFolders(LibraryHost host, string? parent) =>
         Guarded(host, library => TypedResults.Ok(new FolderList(library.Folders(parent ?? string.Empty))));
@@ -194,10 +197,19 @@ static class LibraryTreeEndpoints {
     static Results<Ok<ProjectContents>, ProblemHttpResult> GetProject(LibraryHost host, string path) =>
         Guarded(host, library => TypedResults.Ok(library.Contents(path)));
 
-    static Results<Ok<ProjectContents>, ProblemHttpResult> PutProject(
+    static Results<Ok<ProjectContents>, ProblemHttpResult> AddMesh(LibraryHost host, ProjectMeshRequest request) =>
+        Guarded(
+            host,
+            library => {
+                library.AddMesh(request.Project, request.Mesh, request.High);
+                host.RequestRescan();
+                return TypedResults.Ok(library.Contents(request.Project));
+            }
+        );
+
+    static Results<Ok<ProjectContents>, ProblemHttpResult> AddDocument(
         LibraryHost host,
-        StackSessions stacks,
-        ProjectContentsRequest request
+        ProjectDocumentRequest request
     ) {
         if (BadResolution(request.Resolution) is { } bad) {
             return bad;
@@ -206,12 +218,33 @@ static class LibraryTreeEndpoints {
         return Guarded(
             host,
             library => {
-                Furnish(library, request.Path, request.Mesh, request.Resolution, stacks);
+                MakeDocument(library, request);
                 host.RequestRescan();
-                return TypedResults.Ok(library.Contents(request.Path));
+                return TypedResults.Ok(library.Contents(request.Project));
             }
         );
     }
+
+    static Results<Ok<ProjectContents>, ProblemHttpResult> SetDocumentMesh(
+        LibraryHost host,
+        StackSessions stacks,
+        ProjectDocumentMeshRequest request
+    ) =>
+        Guarded(
+            host,
+            library => {
+                var changed = library.SetDocumentMesh(request.Project, new(request.Document), new(request.Mesh));
+                var contents = library.Contents(request.Project);
+                var mesh = contents.Meshes.First(m => m.Id == request.Mesh);
+                var file = library.ProjectFile(request.Project, changed.File);
+                if (stacks.All.All(session => session.Path != file)) {
+                    StackDocuments.SetModel(file, Relative(request.Project, mesh.Path));
+                }
+
+                host.RequestRescan();
+                return TypedResults.Ok(contents);
+            }
+        );
 
     static Results<Ok<ProjectContents>, ProblemHttpResult> RenameProject(
         LibraryHost host,
@@ -266,18 +299,23 @@ public sealed class LibraryItemOpenException : Exception {
 sealed class Holders(GraphSessions graphs, StackSessions stacks, ViewportSession viewport) {
     /// <exception cref="LibraryItemOpenException">Something below these paths is open.</exception>
     public void Refuse(OpenLibrary library, IReadOnlyList<string> paths) {
-        IEnumerable<string> open = [
+        List<string> held = [
             ..graphs.All.Select(static s => s.Path),
             ..stacks.All.Select(static s => s.Path),
             ..viewport.State.Mesh is { } mesh ? [mesh] : Array.Empty<string>()
         ];
-        var held = open.ToList();
         foreach (var path in paths) {
-            var below = Path.GetFullPath($"{LibraryLayout.ProjectsFolder}/{path}", library.RootPath)
-                + Path.DirectorySeparatorChar;
-            if (held.FirstOrDefault(file => file.StartsWith(below, StringComparison.Ordinal)) is { } file) {
+            if (Holder(
+                    held,
+                    Path.GetFullPath($"{LibraryLayout.ProjectsFolder}/{path}", library.RootPath)
+                ) is { } file) {
                 throw new LibraryItemOpenException($"'{Path.GetFileName(file)}' in '{path}' is open. Close it first.");
             }
         }
+    }
+
+    static string? Holder(List<string> held, string folder) {
+        var below = folder + Path.DirectorySeparatorChar;
+        return held.Find(file => file.StartsWith(below, StringComparison.Ordinal));
     }
 }

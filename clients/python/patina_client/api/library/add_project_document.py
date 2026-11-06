@@ -10,14 +10,14 @@ from ... import errors
 
 from ...models.problem_details import ProblemDetails
 from ...models.project_contents import ProjectContents
-from ...models.project_contents_request import ProjectContentsRequest
+from ...models.project_document_request import ProjectDocumentRequest
 from typing import cast
 
 
 
 def _get_kwargs(
     *,
-    body: ProjectContentsRequest,
+    body: ProjectDocumentRequest,
 
 ) -> dict[str, Any]:
     headers: dict[str, Any] = {}
@@ -28,8 +28,8 @@ def _get_kwargs(
     
 
     _kwargs: dict[str, Any] = {
-        "method": "put",
-        "url": "/api/v1/library/project",
+        "method": "post",
+        "url": "/api/v1/library/project/documents",
     }
 
     _kwargs["json"] = body.to_dict()
@@ -63,6 +63,13 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Res
 
         return response_404
 
+    if response.status_code == 409:
+        response_409 = ProblemDetails.from_dict(response.json())
+
+
+
+        return response_409
+
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
     else:
@@ -81,14 +88,13 @@ def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Res
 def sync_detailed(
     *,
     client: AuthenticatedClient | Client,
-    body: ProjectContentsRequest,
+    body: ProjectDocumentRequest,
 
 ) -> Response[ProblemDetails | ProjectContents]:
-    """ Gives a project a mesh, and a layer stack if it has none.
+    """ Makes a document of a kind in a project.
 
     Args:
-        body (ProjectContentsRequest): The body of `PUT /api/v1/library/project`: gives a project
-            what it lacks.
+        body (ProjectDocumentRequest): The body of `POST /api/v1/library/project/documents`.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -113,14 +119,13 @@ def sync_detailed(
 def sync(
     *,
     client: AuthenticatedClient | Client,
-    body: ProjectContentsRequest,
+    body: ProjectDocumentRequest,
 
 ) -> ProblemDetails | ProjectContents | None:
-    """ Gives a project a mesh, and a layer stack if it has none.
+    """ Makes a document of a kind in a project.
 
     Args:
-        body (ProjectContentsRequest): The body of `PUT /api/v1/library/project`: gives a project
-            what it lacks.
+        body (ProjectDocumentRequest): The body of `POST /api/v1/library/project/documents`.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -140,14 +145,13 @@ body=body,
 async def asyncio_detailed(
     *,
     client: AuthenticatedClient | Client,
-    body: ProjectContentsRequest,
+    body: ProjectDocumentRequest,
 
 ) -> Response[ProblemDetails | ProjectContents]:
-    """ Gives a project a mesh, and a layer stack if it has none.
+    """ Makes a document of a kind in a project.
 
     Args:
-        body (ProjectContentsRequest): The body of `PUT /api/v1/library/project`: gives a project
-            what it lacks.
+        body (ProjectDocumentRequest): The body of `POST /api/v1/library/project/documents`.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -172,14 +176,13 @@ async def asyncio_detailed(
 async def asyncio(
     *,
     client: AuthenticatedClient | Client,
-    body: ProjectContentsRequest,
+    body: ProjectDocumentRequest,
 
 ) -> ProblemDetails | ProjectContents | None:
-    """ Gives a project a mesh, and a layer stack if it has none.
+    """ Makes a document of a kind in a project.
 
     Args:
-        body (ProjectContentsRequest): The body of `PUT /api/v1/library/project`: gives a project
-            what it lacks.
+        body (ProjectDocumentRequest): The body of `POST /api/v1/library/project/documents`.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.

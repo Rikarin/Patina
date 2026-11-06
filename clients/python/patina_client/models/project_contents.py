@@ -8,12 +8,13 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
-from ..types import UNSET, Unset
 from typing import cast
 from uuid import UUID
 
 if TYPE_CHECKING:
+  from ..models.project_document_info import ProjectDocumentInfo
   from ..models.project_file import ProjectFile
+  from ..models.project_mesh_info import ProjectMeshInfo
 
 
 
@@ -25,25 +26,25 @@ T = TypeVar("T", bound="ProjectContents")
 
 @_attrs_define
 class ProjectContents:
-    """ A project as it opens: what it paints, on what, and everything else in its folder.
+    """ A project as it opens.
 
         Attributes:
             id (UUID): The project's GUID.
             name (str): Its display name.
             path (str): Its path below `projects/`.
-            bakes (str): Where its bakes go, below the library.
-            files (list[ProjectFile]): The documents in its folder.
-            mesh (None | str | Unset): Its mesh, below the library, or null before it has one.
-            stack (None | str | Unset): Its layer stack, below the library, or null before it has one.
+            meshes (list[ProjectMeshInfo]): Its meshes.
+            documents (list[ProjectDocumentInfo]): What can be opened in it.
+            bake_folder (str): Where its bakes go, below the library.
+            bakes (list[ProjectFile]): The bakes it has.
      """
 
     id: UUID
     name: str
     path: str
-    bakes: str
-    files: list[ProjectFile]
-    mesh: None | str | Unset = UNSET
-    stack: None | str | Unset = UNSET
+    meshes: list[ProjectMeshInfo]
+    documents: list[ProjectDocumentInfo]
+    bake_folder: str
+    bakes: list[ProjectFile]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -51,33 +52,37 @@ class ProjectContents:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.project_document_info import ProjectDocumentInfo # noqa: PLC0415
         from ..models.project_file import ProjectFile # noqa: PLC0415
+        from ..models.project_mesh_info import ProjectMeshInfo # noqa: PLC0415
         id = str(self.id)
 
         name = self.name
 
         path = self.path
 
-        bakes = self.bakes
-
-        files = []
-        for files_item_data in self.files:
-            files_item = files_item_data.to_dict()
-            files.append(files_item)
+        meshes = []
+        for meshes_item_data in self.meshes:
+            meshes_item = meshes_item_data.to_dict()
+            meshes.append(meshes_item)
 
 
 
-        mesh: None | str | Unset
-        if isinstance(self.mesh, Unset):
-            mesh = UNSET
-        else:
-            mesh = self.mesh
+        documents = []
+        for documents_item_data in self.documents:
+            documents_item = documents_item_data.to_dict()
+            documents.append(documents_item)
 
-        stack: None | str | Unset
-        if isinstance(self.stack, Unset):
-            stack = UNSET
-        else:
-            stack = self.stack
+
+
+        bake_folder = self.bake_folder
+
+        bakes = []
+        for bakes_item_data in self.bakes:
+            bakes_item = bakes_item_data.to_dict()
+            bakes.append(bakes_item)
+
+
 
 
         field_dict: dict[str, Any] = {}
@@ -86,13 +91,11 @@ class ProjectContents:
             "id": id,
             "name": name,
             "path": path,
+            "meshes": meshes,
+            "documents": documents,
+            "bakeFolder": bake_folder,
             "bakes": bakes,
-            "files": files,
         })
-        if mesh is not UNSET:
-            field_dict["mesh"] = mesh
-        if stack is not UNSET:
-            field_dict["stack"] = stack
 
         return field_dict
 
@@ -100,7 +103,9 @@ class ProjectContents:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.project_document_info import ProjectDocumentInfo # noqa: PLC0415
         from ..models.project_file import ProjectFile # noqa: PLC0415
+        from ..models.project_mesh_info import ProjectMeshInfo # noqa: PLC0415
         d = dict(src_dict)
         id = UUID(d.pop("id"))
 
@@ -111,46 +116,46 @@ class ProjectContents:
 
         path = d.pop("path")
 
-        bakes = d.pop("bakes")
-
-        files = []
-        _files = d.pop("files")
-        for files_item_data in (_files):
-            files_item = ProjectFile.from_dict(files_item_data)
+        meshes = []
+        _meshes = d.pop("meshes")
+        for meshes_item_data in (_meshes):
+            meshes_item = ProjectMeshInfo.from_dict(meshes_item_data)
 
 
 
-            files.append(files_item)
+            meshes.append(meshes_item)
 
 
-        def _parse_mesh(data: object) -> None | str | Unset:
-            if data is None:
-                return data
-            if isinstance(data, Unset):
-                return data
-            return cast(None | str | Unset, data)
-
-        mesh = _parse_mesh(d.pop("mesh", UNSET))
+        documents = []
+        _documents = d.pop("documents")
+        for documents_item_data in (_documents):
+            documents_item = ProjectDocumentInfo.from_dict(documents_item_data)
 
 
-        def _parse_stack(data: object) -> None | str | Unset:
-            if data is None:
-                return data
-            if isinstance(data, Unset):
-                return data
-            return cast(None | str | Unset, data)
 
-        stack = _parse_stack(d.pop("stack", UNSET))
+            documents.append(documents_item)
+
+
+        bake_folder = d.pop("bakeFolder")
+
+        bakes = []
+        _bakes = d.pop("bakes")
+        for bakes_item_data in (_bakes):
+            bakes_item = ProjectFile.from_dict(bakes_item_data)
+
+
+
+            bakes.append(bakes_item)
 
 
         project_contents = cls(
             id=id,
             name=name,
             path=path,
+            meshes=meshes,
+            documents=documents,
+            bake_folder=bake_folder,
             bakes=bakes,
-            files=files,
-            mesh=mesh,
-            stack=stack,
         )
 
 

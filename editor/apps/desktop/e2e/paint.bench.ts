@@ -31,9 +31,27 @@ test('a stamp reaches the screen through the real window', async () => {
   mkdirSync(project);
   copyFileSync(join(scratch, 'meshes', 'housing_low.glb'), join(project, 'housing_low.glb'));
   execFileSync('dotnet', [bench, 's4-stack', join(project, 'S4.vxlayers'), 'housing_low.glb', Size, Layers]);
+  const mesh = randomUUID();
   writeFileSync(
     join(project, 'project.yaml'),
-    `schema: 2\nid: ${randomUUID()}\nname: S4\ntags: []\nmesh: housing_low.glb\nstack: S4.vxlayers\nreferences: []\noutputs: []\n`
+    [
+      'schema: 2',
+      `id: ${randomUUID()}`,
+      'name: S4',
+      'tags: []',
+      'meshes:',
+      `  - id: ${mesh}`,
+      '    file: housing_low.glb',
+      'documents:',
+      `  - id: ${randomUUID()}`,
+      '    kind: texturing',
+      '    name: S4',
+      '    file: S4.vxlayers',
+      `    mesh: ${mesh}`,
+      'references: []',
+      'outputs: []',
+      ''
+    ].join('\n')
   );
   const app = await electron.launch({
     args: [main],

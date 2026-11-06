@@ -1,5 +1,5 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
-import { type FolderSummary, type ProjectSummary, unwrap } from '@patina/api-client';
+import { type FolderSummary, type ProjectDocumentInfo, type ProjectSummary, unwrap } from '@patina/api-client';
 import { LibraryStore } from './library-store';
 
 const PageSize = 200;
@@ -25,7 +25,8 @@ export interface FolderContents {
 
 export type TreeRow =
   | { kind: 'folder'; path: string; depth: number; folder: FolderSummary; expanded: boolean }
-  | { kind: 'project'; path: string; depth: number; project: ProjectSummary }
+  | { kind: 'project'; path: string; depth: number; project: ProjectSummary; expanded: boolean }
+  | { kind: 'document'; path: string; depth: number; document: ProjectDocumentInfo; project: string }
   | { kind: 'more'; path: string; depth: number; remaining: number };
 
 /** The folder a path sits in, where empty is the top. */
@@ -38,6 +39,7 @@ export function parentOf(path: string): string {
 export function flatten(
   contents: ReadonlyMap<string, FolderContents>,
   expanded: ReadonlySet<string>,
+  documents: ReadonlyMap<string, readonly ProjectDocumentInfo[]> = new Map(),
   folder = '',
   depth = 0
 ): TreeRow[] {
@@ -51,12 +53,18 @@ export function flatten(
     const open = expanded.has(child.path);
     rows.push({ kind: 'folder', path: child.path, depth, folder: child, expanded: open });
     if (open) {
-      rows.push(...flatten(contents, expanded, child.path, depth + 1));
+      rows.push(...flatten(contents, expanded, documents, child.path, depth + 1));
     }
   }
 
   for (const project of held.projects) {
-    rows.push({ kind: 'project', path: project.path, depth, project });
+    const open = expanded.has(project.path);
+    rows.push({ kind: 'project', path: project.path, depth, project, expanded: open });
+    if (open) {
+      for (const document of documents.get(project.path) ?? []) {
+        rows.push({ kind: 'document', path: document.path, depth: depth + 1, document, project: project.path });
+      }
+    }
   }
 
   if (held.projects.length < held.total) {
@@ -84,12 +92,13 @@ export function canDrop(paths: readonly string[], into: string): boolean {
 export class LibraryTreeStore {
   private readonly library = inject(LibraryStore);
   private readonly contents = signal<ReadonlyMap<string, FolderContents>>(new Map());
+  private readonly documents = signal<ReadonlyMap<string, readonly ProjectDocumentInfo[]>>(new Map());
   private readonly mutableExpanded = signal<ReadonlySet<string>>(new Set(loadExpanded()));
   private readonly mutableSelected = signal<ReadonlySet<string>>(new Set());
   private readonly mutableFailure = signal<string | null>(null);
   private anchor: string | null = null;
 
-  readonly rows = computed(() => flatten(this.contents(), this.mutableExpanded()));
+  readonly rows = computed(() => flatten(this.contents(), this.mutableExpanded(), this.documents()));
   readonly selected = this.mutableSelected.asReadonly();
   readonly failure = this.mutableFailure.asReadonly();
   /** Whether the top of the library has been read. */
@@ -103,6 +112,10 @@ export class LibraryTreeStore {
 
     // A project just made is chosen before the index lists it, and only a folder is sure to be on screen.
     const row = this.rows().find(candidate => candidate.path === path);
+    if (row?.kind === 'document') {
+      return parentOf(row.project);
+    }
+
     return row?.kind === 'folder' ? path : parentOf(path);
   });
 
@@ -127,7 +140,18 @@ export class LibraryTreeStore {
     }
 
     this.setExpanded(path, true);
-    await this.read(path);
+    await this.attempt(() => this.read(path));
+  }
+
+  /** Shows what a project holds. */
+  async toggleProject(path: string): Promise<void> {
+    if (this.mutableExpanded().has(path)) {
+      this.setExpanded(path, false);
+      return;
+    }
+
+    this.setExpanded(path, true);
+    await this.attempt(() => this.readProject(path));
   }
 
   async expand(path: string): Promise<void> {
@@ -154,7 +178,9 @@ export class LibraryTreeStore {
   /** Chooses a row: on its own, added with Ctrl or Cmd, or as a range with Shift. */
   choose(path: string, mode: 'only' | 'toggle' | 'range' = 'only'): void {
     if (mode === 'range' && this.anchor !== null) {
-      const paths = this.rows().filter(row => row.kind !== 'more').map(row => row.path);
+      const paths = this.rows()
+        .filter(row => row.kind === 'folder' || row.kind === 'project')
+        .map(row => row.path);
       const [from, to] = [paths.indexOf(this.anchor), paths.indexOf(path)].sort((a, b) => a - b);
       if (from !== undefined && to !== undefined && from >= 0) {
         this.mutableSelected.set(new Set(paths.slice(from, to + 1)));
@@ -274,7 +300,18 @@ export class LibraryTreeStore {
     saveExpanded(renamed);
   }
 
+  private async readProject(path: string): Promise<void> {
+    const client = await this.library.api();
+    const held = unwrap(await client.GET('/api/v1/library/project', { params: { query: { path } } }));
+    this.documents.update(all => new Map(all).set(path, held.documents));
+  }
+
   private async read(folder: string): Promise<void> {
+    if (this.documentsOf(folder)) {
+      await this.readProject(folder);
+      return;
+    }
+
     const client = await this.library.api();
     try {
       const [folders, page] = await Promise.all([
@@ -290,6 +327,11 @@ export class LibraryTreeStore {
 
       this.setExpanded(folder, false);
     }
+  }
+
+  /** Whether an open path is a project and not a folder. */
+  private documentsOf(path: string): boolean {
+    return this.documents().has(path) || this.rows().some(row => row.path === path && row.kind === 'project');
   }
 
   private async projects(folder: string, offset: number) {

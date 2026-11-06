@@ -106,9 +106,13 @@ from .library_report import LibraryReport
 from .output_report import OutputReport
 from .problem_details import ProblemDetails
 from .project_contents import ProjectContents
-from .project_contents_request import ProjectContentsRequest
 from .project_create_request import ProjectCreateRequest
+from .project_document_info import ProjectDocumentInfo
+from .project_document_mesh_request import ProjectDocumentMeshRequest
+from .project_document_request import ProjectDocumentRequest
 from .project_file import ProjectFile
+from .project_mesh_info import ProjectMeshInfo
+from .project_mesh_request import ProjectMeshRequest
 from .project_page import ProjectPage
 from .project_rename_request import ProjectRenameRequest
 from .project_report import ProjectReport
@@ -280,9 +284,13 @@ __all__ = (
     "OutputReport",
     "ProblemDetails",
     "ProjectContents",
-    "ProjectContentsRequest",
     "ProjectCreateRequest",
+    "ProjectDocumentInfo",
+    "ProjectDocumentMeshRequest",
+    "ProjectDocumentRequest",
     "ProjectFile",
+    "ProjectMeshInfo",
+    "ProjectMeshRequest",
     "ProjectPage",
     "ProjectRenameRequest",
     "ProjectReport",

@@ -20,12 +20,12 @@ T = TypeVar("T", bound="ProjectFile")
 
 @_attrs_define
 class ProjectFile:
-    """ A document in a project's folder.
+    """ A result of a bake in a project's folder.
 
         Attributes:
-            kind (str): `mesh`, `stack`, `graph` or `bake`.
-            name (str): Its file name.
-            path (str): Its path below the library, which the graph and stack routes take.
+            kind (str): What it is.
+            name (str): Its name.
+            path (str): Its path below the library.
      """
 
     kind: str

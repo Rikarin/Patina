@@ -76,6 +76,7 @@ test('a new user makes a library, groups projects in folders, and comes back to 
   // A second project, closed, so that it can move.
   await window.getByTestId('library-new-project').click();
   await window.getByTestId('new-project-name').fill('Door');
+  await window.getByTestId('new-project-kind').selectOption('layered-material');
   await window.getByRole('button', { name: 'Create' }).click();
   await expect(window.getByTestId('paint-project')).toHaveText('Door', { timeout: 30_000 });
 
@@ -127,6 +128,11 @@ test('a new user makes a library, groups projects in folders, and comes back to 
 
   // Deleting a folder never deletes a project: what it holds moves up a level.
   await window.getByTestId('paint-mesh-name').waitFor();
+
+  // A project opens to show what it holds, and a graph joins it as a document with a kind.
+  await row('Hero Props/Metal Doors/housing').getByTestId('tree-toggle').click();
+  await expect(row('projects/Hero Props/Metal Doors/housing/housing.vxlayers')).toContainText('Housing');
+
   await row('Hero Props').click({ button: 'right' });
   await window.getByTestId('menu-delete').click();
   await expect(window.getByTestId('tree-delete')).toContainText('holds 2 project');
@@ -145,6 +151,7 @@ test('painted work asks before the project is left', async () => {
   for (const name of ['First', 'Second']) {
     await window.getByTestId('library-new-project').click();
     await window.getByTestId('new-project-name').fill(name);
+    await window.getByTestId('new-project-kind').selectOption('layered-material');
     await window.getByRole('button', { name: 'Create' }).click();
     await expect(window.getByTestId('paint-project')).toHaveText(name, { timeout: 30_000 });
   }

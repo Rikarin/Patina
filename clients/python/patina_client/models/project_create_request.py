@@ -30,7 +30,11 @@ class ProjectCreateRequest:
             tags (list[str] | None | Unset): The project's tags.
             mesh (None | str | Unset): A mesh file on the Server's machine to copy in. Null leaves the project to get one
                 later.
-            resolution (int | None | Unset): The width and height of the project's stack. Null is 2048.
+            resolution (int | None | Unset): The width and height of a stack it starts with. Null is 2048.
+            kind (None | str | Unset): The document it starts with: `texturing`, `layered-material` or `graph`. Null is
+                `texturing`
+                with
+                a mesh and nothing without one.
      """
 
     name: str
@@ -38,6 +42,7 @@ class ProjectCreateRequest:
     tags: list[str] | None | Unset = UNSET
     mesh: None | str | Unset = UNSET
     resolution: int | None | Unset = UNSET
+    kind: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -75,6 +80,12 @@ class ProjectCreateRequest:
         else:
             resolution = self.resolution
 
+        kind: None | str | Unset
+        if isinstance(self.kind, Unset):
+            kind = UNSET
+        else:
+            kind = self.kind
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -89,6 +100,8 @@ class ProjectCreateRequest:
             field_dict["mesh"] = mesh
         if resolution is not UNSET:
             field_dict["resolution"] = resolution
+        if kind is not UNSET:
+            field_dict["kind"] = kind
 
         return field_dict
 
@@ -147,12 +160,23 @@ class ProjectCreateRequest:
         resolution = _parse_resolution(d.pop("resolution", UNSET))
 
 
+        def _parse_kind(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        kind = _parse_kind(d.pop("kind", UNSET))
+
+
         project_create_request = cls(
             name=name,
             folder=folder,
             tags=tags,
             mesh=mesh,
             resolution=resolution,
+            kind=kind,
         )
 
 

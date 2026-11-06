@@ -15,6 +15,14 @@ const RowHeight = 28;
 const Indent = 14;
 const DragType = 'application/x-patina-library';
 
+/** What each kind of document is called (ADR 0012). */
+const KindNames: Readonly<Record<string, string>> = {
+  texturing: 'Texturing',
+  'layered-material': 'Layered Material',
+  'image-material': 'Image Material',
+  graph: 'Material Graph'
+};
+
 interface MenuAt {
   x: number;
   y: number;
@@ -65,9 +73,9 @@ interface MenuAt {
           [attr.data-path]="row.path"
           [attr.data-kind]="row.kind"
           [attr.aria-level]="row.depth + 1"
-          [attr.aria-expanded]="row.kind === 'folder' ? row.expanded : null"
+          [attr.aria-expanded]="row.kind === 'folder' || row.kind === 'project' ? row.expanded : null"
           [attr.aria-selected]="tree.selected().has(row.path)"
-          [attr.draggable]="row.kind !== 'more' && renaming() !== row.path"
+          [attr.draggable]="(row.kind === 'folder' || row.kind === 'project') && renaming() !== row.path"
           [class.bg-selection]="tree.selected().has(row.path) || (dropInto() === row.path && row.kind === 'folder')"
           [style.height.px]="rowHeight"
           [style.padding-inline-start.px]="row.depth * indent + 4"
@@ -97,8 +105,25 @@ interface MenuAt {
                 />
               </svg>
             }
-            @case ('project') {
+            @case ('document') {
               <span class="size-4 shrink-0"></span>
+              <span class="text-foreground-muted w-4 shrink-0 text-center text-xs" [title]="kindName(row.document.kind)">
+                {{ kindMark(row.document.kind) }}
+              </span>
+            }
+            @case ('project') {
+              <button
+                type="button"
+                class="text-foreground-muted grid size-4 shrink-0 place-items-center"
+                tabindex="-1"
+                data-testid="tree-toggle"
+                [attr.aria-label]="row.expanded ? 'Close ' + row.project.name : 'Open ' + row.project.name"
+                (click)="toggleProject($event, row.path)"
+              >
+                <svg viewBox="0 0 16 16" class="size-3" [class.rotate-90]="row.expanded" aria-hidden="true">
+                  <path d="M6 3l5 5-5 5z" fill="currentColor" />
+                </svg>
+              </button>
               <svg viewBox="0 0 16 16" class="text-foreground-muted size-4 shrink-0" aria-hidden="true">
                 <path d="M8 1.5l5.5 3v7L8 14.5l-5.5-3v-7zM8 8l5.5-3.5M8 8v6.5M8 8L2.5 4.5" fill="none" stroke="currentColor" />
               </svg>
@@ -144,7 +169,7 @@ interface MenuAt {
         (click)="$event.stopPropagation()"
         (keydown.escape)="menu.set(null)"
       >
-        @if (at.row?.kind === 'project') {
+        @if (at.row?.kind === 'project' || at.row?.kind === 'document') {
           <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="menu-open" (click)="act(openRow)">
             Open
           </button>
@@ -155,7 +180,7 @@ interface MenuAt {
         <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="menu-new-folder" (click)="act(newFolder)">
           New Folder
         </button>
-        @if (at.row && at.row.kind !== 'more') {
+        @if (at.row?.kind === 'folder' || at.row?.kind === 'project') {
           <div class="border-hairline my-1 border-t"></div>
           <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="menu-rename" (click)="act(rename)">
             Rename
@@ -241,11 +266,33 @@ export class LibraryTree {
   }
 
   protected labelOf(row: TreeRow): string {
-    return row.kind === 'folder' ? row.folder.name : row.kind === 'project' ? row.project.name : '';
+    return row.kind === 'folder'
+      ? row.folder.name
+      : row.kind === 'project'
+        ? row.project.name
+        : row.kind === 'document'
+          ? row.document.name
+          : '';
   }
 
   protected isOpen(row: TreeRow): boolean {
-    return row.kind === 'project' && this.project.current()?.path === row.path;
+    return (
+      (row.kind === 'project' && this.project.current()?.path === row.path) ||
+      (row.kind === 'document' && this.project.document()?.path === row.path)
+    );
+  }
+
+  protected kindName(kind: string): string {
+    return KindNames[kind] ?? kind;
+  }
+
+  protected kindMark(kind: string): string {
+    return (KindNames[kind] ?? kind).slice(0, 1);
+  }
+
+  protected toggleProject(event: Event, path: string): void {
+    event.stopPropagation();
+    void this.tree.toggleProject(path);
   }
 
   protected toggle(event: Event, path: string): void {
@@ -266,6 +313,11 @@ export class LibraryTree {
       return;
     }
 
+    if (row.kind === 'document') {
+      this.tree.choose(row.path);
+      return;
+    }
+
     this.tree.choose(row.path, event.shiftKey ? 'range' : event.metaKey || event.ctrlKey ? 'toggle' : 'only');
     this.show(row);
   }
@@ -282,6 +334,8 @@ export class LibraryTree {
       void this.tree.toggle(row.path);
     } else if (row.kind === 'project') {
       void this.project.open(row.path);
+    } else if (row.kind === 'document') {
+      void this.project.openDocument(row.project, row.path);
     }
   }
 
@@ -312,7 +366,7 @@ export class LibraryTree {
     const row = this.rowAt(event);
     event.preventDefault();
     event.stopPropagation();
-    if (row && row.kind !== 'more' && !this.tree.selected().has(row.path)) {
+    if (row && row.kind !== 'more' && row.kind !== 'document' && !this.tree.selected().has(row.path)) {
       this.tree.choose(row.path);
       this.show(row);
     }
@@ -393,7 +447,7 @@ export class LibraryTree {
 
   protected start(event: DragEvent): void {
     const row = this.rowAt(event);
-    if (row === null || row.kind === 'more') {
+    if (row === null || row.kind === 'more' || row.kind === 'document') {
       event.preventDefault();
       return;
     }
@@ -533,7 +587,7 @@ export class LibraryTree {
       return '';
     }
 
-    return row.kind === 'folder' ? row.path : row.kind === 'project' ? parentOf(row.path) : row.path;
+    return this.folderOf(row);
   }
 
   private folderOf(row: TreeRow | null): string {
@@ -541,7 +595,7 @@ export class LibraryTree {
       return '';
     }
 
-    return row.kind === 'project' ? parentOf(row.path) : row.path;
+    return row.kind === 'project' ? parentOf(row.path) : row.kind === 'document' ? parentOf(row.project) : row.path;
   }
 
   /** A project that is open cannot move, so moving it closes it; its paint has to be saved by then. */

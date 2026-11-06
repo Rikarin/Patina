@@ -51,44 +51,84 @@ public sealed record ProjectPage(IReadOnlyList<ProjectSummary> Items, int Total,
 /// </param>
 /// <param name="Tags">The project's tags.</param>
 /// <param name="Mesh">A mesh file on the Server's machine to copy in. Null leaves the project to get one later.</param>
-/// <param name="Resolution">The width and height of the project's stack. Null is 2048.</param>
+/// <param name="Resolution">The width and height of a stack it starts with. Null is 2048.</param>
+/// <param name="Kind">
+///     The document it starts with: <c>texturing</c>, <c>layered-material</c> or <c>graph</c>. Null is <c>texturing</c>
+///     with
+///     a mesh and nothing without one.
+/// </param>
 public sealed record ProjectCreateRequest(
     string Name,
     string? Folder = null,
     IReadOnlyList<string>? Tags = null,
     string? Mesh = null,
-    int? Resolution = null
+    int? Resolution = null,
+    string? Kind = null
 );
 
-/// <summary>A document in a project's folder.</summary>
-/// <param name="Kind"><c>mesh</c>, <c>stack</c>, <c>graph</c> or <c>bake</c>.</param>
-/// <param name="Name">Its file name.</param>
-/// <param name="Path">Its path below the library, which the graph and stack routes take.</param>
+/// <summary>A result of a bake in a project's folder.</summary>
+/// <param name="Kind">What it is.</param>
+/// <param name="Name">Its name.</param>
+/// <param name="Path">Its path below the library.</param>
 public sealed record ProjectFile(string Kind, string Name, string Path);
 
-/// <summary>A project as it opens: what it paints, on what, and everything else in its folder.</summary>
+/// <summary>A mesh in a project.</summary>
+/// <param name="Id">Its id. Null until the project lists it.</param>
+/// <param name="Path">Its path below the library.</param>
+/// <param name="High">The detailed mesh it bakes from, below the library.</param>
+public sealed record ProjectMeshInfo(Guid? Id, string Path, string? High);
+
+/// <summary>Something in a project that can be opened and edited (ADR 0012).</summary>
+/// <param name="Id">Its GUID. Null until the project lists it.</param>
+/// <param name="Kind"><c>texturing</c>, <c>layered-material</c>, <c>image-material</c> or <c>graph</c>.</param>
+/// <param name="Name">Its display name.</param>
+/// <param name="Path">Its path below the library, which the graph and stack routes take.</param>
+/// <param name="Mesh">The id of the mesh it is on.</param>
+public sealed record ProjectDocumentInfo(Guid? Id, string Kind, string Name, string Path, Guid? Mesh);
+
+/// <summary>A project as it opens.</summary>
 /// <param name="Id">The project's GUID.</param>
 /// <param name="Name">Its display name.</param>
 /// <param name="Path">Its path below <c>projects/</c>.</param>
-/// <param name="Mesh">Its mesh, below the library, or null before it has one.</param>
-/// <param name="Stack">Its layer stack, below the library, or null before it has one.</param>
-/// <param name="Bakes">Where its bakes go, below the library.</param>
-/// <param name="Files">The documents in its folder.</param>
+/// <param name="Meshes">Its meshes.</param>
+/// <param name="Documents">What can be opened in it.</param>
+/// <param name="BakeFolder">Where its bakes go, below the library.</param>
+/// <param name="Bakes">The bakes it has.</param>
 public sealed record ProjectContents(
     Guid Id,
     string Name,
     string Path,
-    string? Mesh,
-    string? Stack,
-    string Bakes,
-    IReadOnlyList<ProjectFile> Files
+    IReadOnlyList<ProjectMeshInfo> Meshes,
+    IReadOnlyList<ProjectDocumentInfo> Documents,
+    string BakeFolder,
+    IReadOnlyList<ProjectFile> Bakes
 );
 
-/// <summary>The body of <c>PUT /api/v1/library/project</c>: gives a project what it lacks.</summary>
-/// <param name="Path">The project, below <c>projects/</c>.</param>
-/// <param name="Mesh">A mesh file on the Server's machine to use. Null leaves the mesh as it is.</param>
-/// <param name="Resolution">The width and height of a stack it does not have yet. Null is 2048.</param>
-public sealed record ProjectContentsRequest(string Path, string? Mesh = null, int? Resolution = null);
+/// <summary>The body of <c>POST /api/v1/library/project/meshes</c>.</summary>
+/// <param name="Project">The project, below <c>projects/</c>.</param>
+/// <param name="Mesh">A mesh file on the Server's machine.</param>
+/// <param name="High">The detailed mesh it bakes from.</param>
+public sealed record ProjectMeshRequest(string Project, string Mesh, string? High = null);
+
+/// <summary>The body of <c>POST /api/v1/library/project/documents</c>.</summary>
+/// <param name="Project">The project, below <c>projects/</c>.</param>
+/// <param name="Kind"><c>texturing</c>, <c>layered-material</c> or <c>graph</c>.</param>
+/// <param name="Name">Its display name. Its file is made from it.</param>
+/// <param name="Mesh">The mesh a <c>texturing</c> document is on.</param>
+/// <param name="Resolution">The width and height of a stack. Null is 2048.</param>
+public sealed record ProjectDocumentRequest(
+    string Project,
+    string Kind,
+    string Name,
+    Guid? Mesh = null,
+    int? Resolution = null
+);
+
+/// <summary>The body of <c>PATCH /api/v1/library/project/document</c>.</summary>
+/// <param name="Project">The project, below <c>projects/</c>.</param>
+/// <param name="Document">The texturing document.</param>
+/// <param name="Mesh">The mesh it goes on.</param>
+public sealed record ProjectDocumentMeshRequest(string Project, Guid Document, Guid Mesh);
 
 /// <summary>The body of <c>PATCH /api/v1/library/project</c>.</summary>
 /// <param name="Path">The project, below <c>projects/</c>.</param>

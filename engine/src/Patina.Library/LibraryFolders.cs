@@ -11,7 +11,8 @@ public sealed record LibraryFolder(string Path, string Name, string? Color);
 /// <summary>
 ///     The folders that group a library's projects. A folder here is a folder on disk, because a library is a Git
 ///     repository people also read as files, and every project keeps its GUID when one moves, so nothing that refers to
-///     it notices. The index knows nothing of folders: it holds projects, and a listing of one folder costs one directory.
+///     it notices. The index knows nothing of folders: it holds projects, and a listing of one folder costs one
+///     directory.
 /// </summary>
 static partial class LibraryFolders {
     /// <summary>The folders directly in <paramref name="parent" />, by name.</summary>
@@ -49,7 +50,7 @@ static partial class LibraryFolders {
 
     /// <summary>Gives a folder a colour, or none.</summary>
     /// <exception cref="FileNotFoundException">There is no such folder.</exception>
-    /// <exception cref="ProjectRefusedException">The colour is not one, or the path is the top of the library.</exception>
+    /// <exception cref="ProjectRefusedException">It is no colour, or the path is the top of the library.</exception>
     public static void Recolour(string root, string path, string? color) {
         var document = new FolderDocument(Colour(color));
         Write(Required(root, Existing(path)), document);
@@ -119,8 +120,8 @@ static partial class LibraryFolders {
     }
 
     /// <summary>
-    ///     Deletes a folder. One with something in it is refused unless <paramref name="lift" /> says to move what is in
-    ///     it up a level first, so this never deletes a project.
+    ///     Deletes a folder. One with something in it is refused unless <paramref name="lift" /> says to move what is
+    ///     in it up a level first, so this never deletes a project.
     /// </summary>
     /// <exception cref="FileNotFoundException">There is no such folder.</exception>
     /// <exception cref="ProjectExistsException">It holds something.</exception>

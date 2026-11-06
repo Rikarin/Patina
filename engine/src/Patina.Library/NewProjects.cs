@@ -100,6 +100,18 @@ static class NewProjects {
         return $"{LibraryLayout.ProjectsFolder}/{project}/{file}";
     }
 
+    /// <summary>The stem of a file for a name in a project.</summary>
+    /// <exception cref="ProjectRefusedException">The name has nothing to make a file from.</exception>
+    internal static string FileStem(string name) {
+        var slug = Slug(DisplayName(name));
+        if (slug.Length == 0) {
+            throw new ProjectRefusedException("A name needs a letter or a digit, to name its file.");
+        }
+
+        Require(slug);
+        return slug;
+    }
+
     /// <summary>The folder for a name: lower case, with letters and digits kept and every other run a hyphen.</summary>
     internal static string Slug(string name) {
         var slug = new StringBuilder();

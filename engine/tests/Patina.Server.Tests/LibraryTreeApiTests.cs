@@ -52,11 +52,75 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
 
         var contents = await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=crate", Token);
-        Assert.Equal("projects/crate/Low Poly.glb", contents!.Mesh);
-        Assert.Equal("projects/crate/crate.vxlayers", contents.Stack);
-        var opened = await client.PostAsJsonAsync("/api/v1/stacks", new { path = contents.Stack }, Token);
+        Assert.Equal("projects/crate/Low Poly.glb", Assert.Single(contents!.Meshes).Path);
+        var document = Assert.Single(contents.Documents);
+        Assert.Equal(("texturing", "projects/crate/crate.vxlayers"), (document.Kind, document.Path));
+        var opened = await client.PostAsJsonAsync("/api/v1/stacks", new { path = document.Path }, Token);
         Assert.Equal(HttpStatusCode.OK, opened.StatusCode);
         Assert.Contains("Low Poly.glb", await opened.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("layered-material", ".vxlayers")]
+    [InlineData("graph", ".vxtexgraph")]
+    public async Task A_project_starts_as_the_kind_asked_for(string kind, string extension) {
+        var created = await client.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new ProjectCreateRequest("Rust", Kind: kind),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+
+        var contents = await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=rust", Token);
+
+        var document = Assert.Single(contents!.Documents);
+        Assert.Equal((kind, $"projects/rust/rust{extension}"), (document.Kind, document.Path));
+    }
+
+    [Fact]
+    public async Task A_texturing_project_needs_a_mesh() {
+        var created = await client.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new ProjectCreateRequest("Crate", Kind: "texturing"),
+            Token
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, created.StatusCode);
+        Assert.False(Directory.Exists(Path.Combine(server.Library, "projects", "crate")));
+    }
+
+    [Fact]
+    public async Task A_document_is_added_to_a_project_and_moves_to_another_mesh() {
+        var (first, second) = (Path.Combine(files.FullName, "a.glb"), Path.Combine(files.FullName, "b.glb"));
+        File.WriteAllText(first, "mesh");
+        File.WriteAllText(second, "mesh");
+        await client.PostAsJsonAsync("/api/v1/library/projects", new ProjectCreateRequest("Crate", Mesh: first), Token);
+
+        var added = await client.PostAsJsonAsync(
+            "/api/v1/library/project/meshes",
+            new ProjectMeshRequest("crate", second),
+            Token
+        );
+        var contents = await added.Content.ReadFromJsonAsync<ProjectContents>(Token);
+        var other = contents!.Meshes.First(static m => m.Path.EndsWith("b.glb", StringComparison.Ordinal));
+        var graph = await client.PostAsJsonAsync(
+            "/api/v1/library/project/documents",
+            new ProjectDocumentRequest("crate", "graph", "Rust"),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.OK, graph.StatusCode);
+        var moved = await client.PatchAsJsonAsync(
+            "/api/v1/library/project/document",
+            new ProjectDocumentMeshRequest("crate", contents.Documents[0].Id!.Value, other.Id!.Value),
+            Token
+        );
+
+        Assert.Equal(HttpStatusCode.OK, moved.StatusCode);
+        var stack = await File.ReadAllTextAsync(
+            Path.Combine(server.Library, "projects", "crate", "crate.vxlayers"),
+            Token
+        );
+        Assert.Contains("b.glb", stack, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -72,22 +136,15 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
     }
 
     [Fact]
-    public async Task A_project_with_nothing_in_it_is_furnished_when_asked() {
-        await client.PostAsJsonAsync("/api/v1/library/projects", new ProjectCreateRequest("Crate"), Token);
-        File.Delete(Path.Combine(server.Library, "projects", "crate", "crate.vxlayers"));
-
-        var put = await client.PutAsJsonAsync("/api/v1/library/project", new ProjectContentsRequest("crate"), Token);
-
-        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
-        Assert.True(File.Exists(Path.Combine(server.Library, "projects", "crate", "crate.vxlayers")));
-    }
-
-    [Fact]
     public async Task What_is_open_cannot_move() {
         await client.PostAsJsonAsync("/api/v1/library/folders", new FolderCreateRequest("Props"), Token);
-        await client.PostAsJsonAsync("/api/v1/library/projects", new ProjectCreateRequest("Crate"), Token);
+        await client.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new ProjectCreateRequest("Crate", Kind: "layered-material"),
+            Token
+        );
         var contents = await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=crate", Token);
-        await client.PostAsJsonAsync("/api/v1/stacks", new { path = contents!.Stack }, Token);
+        await client.PostAsJsonAsync("/api/v1/stacks", new { path = contents!.Documents[0].Path }, Token);
 
         var moved = await client.PostAsJsonAsync(
             "/api/v1/library/move",

@@ -26,7 +26,9 @@ export async function newLibrary(app: ElectronApplication, window: Page, path: s
 export async function newProject(app: ElectronApplication, window: Page, name: string, mesh?: string): Promise<void> {
   await window.getByTestId('library-new-project').click();
   await window.getByTestId('new-project-name').fill(name);
-  if (mesh) {
+  if (!mesh) {
+    await window.getByTestId('new-project-kind').selectOption('layered-material');
+  } else {
     await answerOpen(app, mesh);
     await window.getByTestId('new-project-mesh').click();
     await expect(window.getByTestId('new-project-mesh-name')).toHaveText(mesh.split('/').pop() ?? mesh);

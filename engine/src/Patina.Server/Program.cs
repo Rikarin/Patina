@@ -11,8 +11,9 @@ using System.Security.Cryptography;
 using System.Text.Json.Serialization;
 
 // Patina.Server: the REST API, and the owner of all domain state (plan §3.1). It starts with `--library <path>`, which
-// `--create-library true` lays out first if it has to, and needs nothing else, it starts no other process, and a Worker connects to its socket when there is one. Listens on
-// loopback unless given other URLs, which then need an access token (Api/Access.cs).
+// `--create-library true` lays out first if it has to, and needs nothing else. It starts no other process, and a
+// Worker connects to its socket when there is one. Listens on loopback unless given other URLs, which then need an
+// access token (Api/Access.cs).
 
 // Rooted at the program's own folder, with no configuration reload: the default roots it at the working directory and
 // watches it recursively for appsettings.json changes. Patina has no appsettings.json; its settings come from the
@@ -52,6 +53,7 @@ builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.W
 builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection("Patina"));
 builder.Services.ConfigureHttpJsonOptions(static o => {
         o.SerializerOptions.TypeInfoResolverChain.Insert(0, ContractsJsonContext.Default);
+        o.SerializerOptions.TypeInfoResolverChain.Insert(1, LibraryTreeJsonContext.Default);
         // Numbers are numbers: the web default also accepts "1", which turns every number in the OpenAPI document
         // (and so in generated clients) into number | string.
         o.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;

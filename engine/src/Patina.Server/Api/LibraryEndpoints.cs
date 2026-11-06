@@ -112,8 +112,24 @@ static class LibraryEndpoints {
                 OpenLibrary.RequireMesh(mesh);
             }
 
+            var kind = request.Kind ?? (request.Mesh is null ? null : DocumentKinds.Texturing);
+            if (kind is not (null or DocumentKinds.Graph or DocumentKinds.LayeredMaterial or DocumentKinds.Texturing)) {
+                throw new ProjectRefusedException($"'{kind}' cannot be made yet.");
+            }
+
+            if (kind == DocumentKinds.Texturing && request.Mesh is null) {
+                throw new ProjectRefusedException("A texturing project needs a mesh.");
+            }
+
             var project = library.CreateProject(new(request.Name, request.Folder, request.Tags));
-            LibraryTreeEndpoints.Furnish(library, project.Path, request.Mesh, request.Resolution, stacks);
+            var added = request.Mesh is { } source ? library.AddMesh(project.Path, source, null) : null;
+            if (kind is not null) {
+                LibraryTreeEndpoints.MakeDocument(
+                    library,
+                    new(project.Path, kind, request.Name, added?.Id.Value, request.Resolution)
+                );
+            }
+
             host.RequestRescan();
             return TypedResults.Created((string?)null, project);
         } catch (FileNotFoundException e) {

@@ -1135,6 +1135,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       },
@@ -1425,48 +1435,9 @@
                 }
               }
             }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "Library"
-        ],
-        "summary": "Gives a project a mesh, and a layer stack if it has none.",
-        "operationId": "SetProjectContents",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProjectContentsRequest"
-              }
-            }
           },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProjectContents"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -1516,6 +1487,199 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project/meshes": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Brings a mesh into a project, and its detailed mesh if it has one.",
+        "operationId": "AddProjectMesh",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectMeshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project/documents": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Makes a document of a kind in a project.",
+        "operationId": "AddProjectDocument",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectDocumentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project/document": {
+      "patch": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Puts a texturing document on another mesh of its project.",
+        "operationId": "SetDocumentMesh",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectDocumentMeshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -6571,8 +6735,10 @@
           "id",
           "name",
           "path",
-          "bakes",
-          "files"
+          "meshes",
+          "documents",
+          "bakeFolder",
+          "bakes"
         ],
         "type": "object",
         "properties": {
@@ -6589,61 +6755,33 @@
             "type": "string",
             "description": "Its path below \u0060projects/\u0060."
           },
-          "mesh": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Its mesh, below the library, or null before it has one."
+          "meshes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectMeshInfo"
+            },
+            "description": "Its meshes."
           },
-          "stack": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Its layer stack, below the library, or null before it has one."
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectDocumentInfo"
+            },
+            "description": "What can be opened in it."
           },
-          "bakes": {
+          "bakeFolder": {
             "type": "string",
             "description": "Where its bakes go, below the library."
           },
-          "files": {
+          "bakes": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ProjectFile"
             },
-            "description": "The documents in its folder."
+            "description": "The bakes it has."
           }
         },
-        "description": "A project as it opens: what it paints, on what, and everything else in its folder."
-      },
-      "ProjectContentsRequest": {
-        "required": [
-          "path"
-        ],
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": "string",
-            "description": "The project, below \u0060projects/\u0060."
-          },
-          "mesh": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "A mesh file on the Server\u0027s machine to use. Null leaves the mesh as it is."
-          },
-          "resolution": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "The width and height of a stack it does not have yet. Null is 2048.",
-            "format": "int32"
-          }
-        },
-        "description": "The body of \u0060PUT /api/v1/library/project\u0060: gives a project what it lacks."
+        "description": "A project as it opens."
       },
       "ProjectCreateRequest": {
         "required": [
@@ -6684,11 +6822,121 @@
               "null",
               "integer"
             ],
-            "description": "The width and height of the project\u0027s stack. Null is 2048.",
+            "description": "The width and height of a stack it starts with. Null is 2048.",
             "format": "int32"
+          },
+          "kind": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The document it starts with: \u0060texturing\u0060, \u0060layered-material\u0060 or \u0060graph\u0060. Null is \u0060texturing\u0060\nwith\na mesh and nothing without one."
           }
         },
         "description": "The body of \u0060POST /api/v1/library/projects\u0060."
+      },
+      "ProjectDocumentInfo": {
+        "required": [
+          "kind",
+          "name",
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its GUID. Null until the project lists it.",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "description": "\u0060texturing\u0060, \u0060layered-material\u0060, \u0060image-material\u0060 or \u0060graph\u0060."
+          },
+          "name": {
+            "type": "string",
+            "description": "Its display name."
+          },
+          "path": {
+            "type": "string",
+            "description": "Its path below the library, which the graph and stack routes take."
+          },
+          "mesh": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The id of the mesh it is on.",
+            "format": "uuid"
+          }
+        },
+        "description": "Something in a project that can be opened and edited (ADR 0012)."
+      },
+      "ProjectDocumentMeshRequest": {
+        "required": [
+          "project",
+          "document",
+          "mesh"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "document": {
+            "type": "string",
+            "description": "The texturing document.",
+            "format": "uuid"
+          },
+          "mesh": {
+            "type": "string",
+            "description": "The mesh it goes on.",
+            "format": "uuid"
+          }
+        },
+        "description": "The body of \u0060PATCH /api/v1/library/project/document\u0060."
+      },
+      "ProjectDocumentRequest": {
+        "required": [
+          "project",
+          "kind",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "kind": {
+            "type": "string",
+            "description": "\u0060texturing\u0060, \u0060layered-material\u0060 or \u0060graph\u0060."
+          },
+          "name": {
+            "type": "string",
+            "description": "Its display name. Its file is made from it."
+          },
+          "mesh": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The mesh a \u0060texturing\u0060 document is on.",
+            "format": "uuid"
+          },
+          "resolution": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The width and height of a stack. Null is 2048.",
+            "format": "int32"
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/project/documents\u0060."
       },
       "ProjectFile": {
         "required": [
@@ -6700,18 +6948,71 @@
         "properties": {
           "kind": {
             "type": "string",
-            "description": "\u0060mesh\u0060, \u0060stack\u0060, \u0060graph\u0060 or \u0060bake\u0060."
+            "description": "What it is."
           },
           "name": {
             "type": "string",
-            "description": "Its file name."
+            "description": "Its name."
           },
           "path": {
             "type": "string",
-            "description": "Its path below the library, which the graph and stack routes take."
+            "description": "Its path below the library."
           }
         },
-        "description": "A document in a project\u0027s folder."
+        "description": "A result of a bake in a project\u0027s folder."
+      },
+      "ProjectMeshInfo": {
+        "required": [
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its id. Null until the project lists it.",
+            "format": "uuid"
+          },
+          "path": {
+            "type": "string",
+            "description": "Its path below the library."
+          },
+          "high": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The detailed mesh it bakes from, below the library."
+          }
+        },
+        "description": "A mesh in a project."
+      },
+      "ProjectMeshRequest": {
+        "required": [
+          "project",
+          "mesh"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "mesh": {
+            "type": "string",
+            "description": "A mesh file on the Server\u0027s machine."
+          },
+          "high": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The detailed mesh it bakes from."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/project/meshes\u0060."
       },
       "ProjectPage": {
         "required": [

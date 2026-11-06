@@ -94,10 +94,14 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
 
         Interlocked.Increment(ref unscannedWrites);
+        if (graph.Project?.Trim().Trim('/') is { Length: > 0 } project) {
+            AddDocument(project, DocumentKinds.Graph, Path.GetFileName(path), graph.Name.Trim(), null);
+        }
+
         return path;
     }
 
-    /// <summary>The folders directly in a folder below <c>projects/</c>, with how many projects each holds at any depth.</summary>
+    /// <summary>The folders directly in a folder below <c>projects/</c>, with their projects at any depth.</summary>
     /// <exception cref="FileNotFoundException">There is no such folder.</exception>
     /// <exception cref="ProjectRefusedException">The path is not one a library can hold.</exception>
     public IReadOnlyList<FolderSummary> Folders(string parent) => [
@@ -159,28 +163,47 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     /// <exception cref="ProjectRefusedException">It is not a mesh.</exception>
     public static void RequireMesh(string mesh) => ProjectFiles.Require(mesh);
 
-    /// <summary>The name a project's first stack gets.</summary>
-    public static string StackName(string project) => ProjectFiles.StackName(project);
-
     /// <summary>What a project's folder holds.</summary>
     /// <exception cref="FileNotFoundException">There is no such project.</exception>
     public ProjectContents Contents(string path) => ProjectFiles.Read(RootPath, path);
 
-    /// <summary>Brings a mesh into a project and names it. <see cref="Rescan" /> is the caller's to run.</summary>
-    /// <returns>The mesh's file in the project, or null when it still has none.</returns>
-    public string? UseMesh(string path, string? mesh) {
+    /// <summary>The full path of a file a project holds, from its path relative to the project.</summary>
+    public string ProjectFile(string path, string file) =>
+        LibraryLayout.Full(RootPath, $"{LibraryLayout.ProjectsFolder}/{LibraryFolders.Existing(path)}/{file}");
+
+    /// <summary>Brings a mesh into a project, and its detailed mesh if it has one.</summary>
+    /// <returns>The mesh as the project lists it.</returns>
+    public ProjectMesh AddMesh(string path, string mesh, string? high) {
         lock (createGate) {
-            var used = ProjectFiles.UseMesh(RootPath, path, mesh);
+            var added = ProjectFiles.AddMesh(RootPath, path, mesh, high);
             Interlocked.Increment(ref unscannedWrites);
-            return used;
+            return added;
         }
     }
 
-    /// <summary>Names the stack a project paints. <see cref="Rescan" /> is the caller's to run.</summary>
-    public void UseStack(string path, string stack) {
+    /// <summary>The file a new document of a project would have.</summary>
+    /// <exception cref="ProjectExistsException">It is taken.</exception>
+    /// <exception cref="ProjectRefusedException">The name cannot name a file.</exception>
+    public string NewDocumentFile(string path, string name, string extension) =>
+        ProjectFiles.NewFile(RootPath, path, name, extension);
+
+    /// <summary>Lists a document whose file exists, so that it has a kind and a GUID.</summary>
+    public ProjectItem AddDocument(string path, string kind, string file, string name, AssetId? mesh) {
         lock (createGate) {
-            ProjectFiles.UseStack(RootPath, path, stack);
+            var added = ProjectFiles.AddDocument(RootPath, path, kind, file, name, mesh);
             Interlocked.Increment(ref unscannedWrites);
+            return added;
+        }
+    }
+
+    /// <summary>Puts a texturing document on another mesh of its project.</summary>
+    /// <exception cref="FileNotFoundException">The project, document or mesh is not there.</exception>
+    /// <exception cref="ProjectRefusedException">The document is not one a mesh belongs to.</exception>
+    public ProjectItem SetDocumentMesh(string path, AssetId document, AssetId mesh) {
+        lock (createGate) {
+            var changed = ProjectFiles.SetMesh(RootPath, path, document, mesh);
+            Interlocked.Increment(ref unscannedWrites);
+            return changed;
         }
     }
 

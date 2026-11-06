@@ -10,28 +10,33 @@ from ..types import UNSET, Unset
 
 from ..types import UNSET, Unset
 from typing import cast
+from uuid import UUID
 
 
 
 
 
 
-T = TypeVar("T", bound="ProjectContentsRequest")
+T = TypeVar("T", bound="ProjectDocumentRequest")
 
 
 
 @_attrs_define
-class ProjectContentsRequest:
-    """ The body of `PUT /api/v1/library/project`: gives a project what it lacks.
+class ProjectDocumentRequest:
+    """ The body of `POST /api/v1/library/project/documents`.
 
         Attributes:
-            path (str): The project, below `projects/`.
-            mesh (None | str | Unset): A mesh file on the Server's machine to use. Null leaves the mesh as it is.
-            resolution (int | None | Unset): The width and height of a stack it does not have yet. Null is 2048.
+            project (str): The project, below `projects/`.
+            kind (str): `texturing`, `layered-material` or `graph`.
+            name (str): Its display name. Its file is made from it.
+            mesh (None | Unset | UUID): The mesh a `texturing` document is on.
+            resolution (int | None | Unset): The width and height of a stack. Null is 2048.
      """
 
-    path: str
-    mesh: None | str | Unset = UNSET
+    project: str
+    kind: str
+    name: str
+    mesh: None | Unset | UUID = UNSET
     resolution: int | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -40,11 +45,17 @@ class ProjectContentsRequest:
 
 
     def to_dict(self) -> dict[str, Any]:
-        path = self.path
+        project = self.project
+
+        kind = self.kind
+
+        name = self.name
 
         mesh: None | str | Unset
         if isinstance(self.mesh, Unset):
             mesh = UNSET
+        elif isinstance(self.mesh, UUID):
+            mesh = str(self.mesh)
         else:
             mesh = self.mesh
 
@@ -58,7 +69,9 @@ class ProjectContentsRequest:
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update({
-            "path": path,
+            "project": project,
+            "kind": kind,
+            "name": name,
         })
         if mesh is not UNSET:
             field_dict["mesh"] = mesh
@@ -72,14 +85,28 @@ class ProjectContentsRequest:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         d = dict(src_dict)
-        path = d.pop("path")
+        project = d.pop("project")
 
-        def _parse_mesh(data: object) -> None | str | Unset:
+        kind = d.pop("kind")
+
+        name = d.pop("name")
+
+        def _parse_mesh(data: object) -> None | Unset | UUID:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            try:
+                if not isinstance(data, str):
+                    raise TypeError()
+                mesh_type_1 = UUID(data)
+
+
+
+                return mesh_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | Unset | UUID, data)
 
         mesh = _parse_mesh(d.pop("mesh", UNSET))
 
@@ -94,15 +121,17 @@ class ProjectContentsRequest:
         resolution = _parse_resolution(d.pop("resolution", UNSET))
 
 
-        project_contents_request = cls(
-            path=path,
+        project_document_request = cls(
+            project=project,
+            kind=kind,
+            name=name,
             mesh=mesh,
             resolution=resolution,
         )
 
 
-        project_contents_request.additional_properties = d
-        return project_contents_request
+        project_document_request.additional_properties = d
+        return project_document_request
 
     @property
     def additional_keys(self) -> list[str]:

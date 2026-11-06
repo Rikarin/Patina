@@ -392,14 +392,64 @@ export interface paths {
     };
     /** What a project holds. Read from its folder, so it works before the index has caught up. */
     get: operations['GetProjectContents'];
-    /** Gives a project a mesh, and a layer stack if it has none. */
-    put: operations['SetProjectContents'];
+    put?: never;
     post?: never;
     delete?: never;
     options?: never;
     head?: never;
     /** Gives a project a new display name. Its folder stays. */
     patch: operations['RenameProject'];
+    trace?: never;
+  };
+  '/api/v1/library/project/meshes': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Brings a mesh into a project, and its detailed mesh if it has one. */
+    post: operations['AddProjectMesh'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/project/documents': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Makes a document of a kind in a project. */
+    post: operations['AddProjectDocument'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/project/document': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Puts a texturing document on another mesh of its project. */
+    patch: operations['SetDocumentMesh'];
     trace?: never;
   };
   '/api/v1/graphs': {
@@ -2361,7 +2411,7 @@ export interface components {
       detail?: null | string;
       instance?: null | string;
     };
-    /** @description A project as it opens: what it paints, on what, and everything else in its folder. */
+    /** @description A project as it opens. */
     ProjectContents: {
       /**
        * Format: uuid
@@ -2372,26 +2422,14 @@ export interface components {
       name: string;
       /** @description Its path below `projects/`. */
       path: string;
-      /** @description Its mesh, below the library, or null before it has one. */
-      mesh?: null | string;
-      /** @description Its layer stack, below the library, or null before it has one. */
-      stack?: null | string;
+      /** @description Its meshes. */
+      meshes: components['schemas']['ProjectMeshInfo'][];
+      /** @description What can be opened in it. */
+      documents: components['schemas']['ProjectDocumentInfo'][];
       /** @description Where its bakes go, below the library. */
-      bakes: string;
-      /** @description The documents in its folder. */
-      files: components['schemas']['ProjectFile'][];
-    };
-    /** @description The body of `PUT /api/v1/library/project`: gives a project what it lacks. */
-    ProjectContentsRequest: {
-      /** @description The project, below `projects/`. */
-      path: string;
-      /** @description A mesh file on the Server's machine to use. Null leaves the mesh as it is. */
-      mesh?: null | string;
-      /**
-       * Format: int32
-       * @description The width and height of a stack it does not have yet. Null is 2048.
-       */
-      resolution?: null | number;
+      bakeFolder: string;
+      /** @description The bakes it has. */
+      bakes: components['schemas']['ProjectFile'][];
     };
     /** @description The body of `POST /api/v1/library/projects`. */
     ProjectCreateRequest: {
@@ -2405,18 +2443,98 @@ export interface components {
       mesh?: null | string;
       /**
        * Format: int32
-       * @description The width and height of the project's stack. Null is 2048.
+       * @description The width and height of a stack it starts with. Null is 2048.
        */
       resolution?: null | number;
+      /**
+       * @description The document it starts with: `texturing`, `layered-material` or `graph`. Null is `texturing`
+       *     with
+       *     a mesh and nothing without one.
+       */
+      kind?: null | string;
     };
-    /** @description A document in a project's folder. */
-    ProjectFile: {
-      /** @description `mesh`, `stack`, `graph` or `bake`. */
+    /** @description Something in a project that can be opened and edited (ADR 0012). */
+    ProjectDocumentInfo: {
+      /**
+       * Format: uuid
+       * @description Its GUID. Null until the project lists it.
+       */
+      id?: null | string;
+      /** @description `texturing`, `layered-material`, `image-material` or `graph`. */
       kind: string;
-      /** @description Its file name. */
+      /** @description Its display name. */
       name: string;
       /** @description Its path below the library, which the graph and stack routes take. */
       path: string;
+      /**
+       * Format: uuid
+       * @description The id of the mesh it is on.
+       */
+      mesh?: null | string;
+    };
+    /** @description The body of `PATCH /api/v1/library/project/document`. */
+    ProjectDocumentMeshRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /**
+       * Format: uuid
+       * @description The texturing document.
+       */
+      document: string;
+      /**
+       * Format: uuid
+       * @description The mesh it goes on.
+       */
+      mesh: string;
+    };
+    /** @description The body of `POST /api/v1/library/project/documents`. */
+    ProjectDocumentRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /** @description `texturing`, `layered-material` or `graph`. */
+      kind: string;
+      /** @description Its display name. Its file is made from it. */
+      name: string;
+      /**
+       * Format: uuid
+       * @description The mesh a `texturing` document is on.
+       */
+      mesh?: null | string;
+      /**
+       * Format: int32
+       * @description The width and height of a stack. Null is 2048.
+       */
+      resolution?: null | number;
+    };
+    /** @description A result of a bake in a project's folder. */
+    ProjectFile: {
+      /** @description What it is. */
+      kind: string;
+      /** @description Its name. */
+      name: string;
+      /** @description Its path below the library. */
+      path: string;
+    };
+    /** @description A mesh in a project. */
+    ProjectMeshInfo: {
+      /**
+       * Format: uuid
+       * @description Its id. Null until the project lists it.
+       */
+      id?: null | string;
+      /** @description Its path below the library. */
+      path: string;
+      /** @description The detailed mesh it bakes from, below the library. */
+      high?: null | string;
+    };
+    /** @description The body of `POST /api/v1/library/project/meshes`. */
+    ProjectMeshRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /** @description A mesh file on the Server's machine. */
+      mesh: string;
+      /** @description The detailed mesh it bakes from. */
+      high?: null | string;
     };
     /** @description One page of projects. */
     ProjectPage: {
@@ -4188,6 +4306,15 @@ export interface operations {
           'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
     };
   };
   CreateFolder: {
@@ -4429,41 +4556,8 @@ export interface operations {
           'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
-    };
-  };
-  SetProjectContents: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['ProjectContentsRequest'];
-      };
-    };
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ProjectContents'];
-        };
-      };
-      /** @description Bad Request */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Not Found */
-      404: {
+      /** @description Conflict */
+      409: {
         headers: {
           [name: string]: unknown;
         };
@@ -4506,6 +4600,168 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AddProjectMesh: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectMeshRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AddProjectDocument: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectDocumentRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetDocumentMesh: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectDocumentMeshRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
         headers: {
           [name: string]: unknown;
         };

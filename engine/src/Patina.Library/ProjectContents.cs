@@ -1,88 +1,115 @@
 using Patina.Contracts;
+using System.Collections.Frozen;
 
 namespace Patina.Library;
 
-/// <summary>What is in a project's folder, read when it opens: a project's files are not in the index (plan §5).</summary>
+/// <summary>
+///     What a project holds. Its contents are read when it opens, because a project's own files are not in the index
+///     (plan §5). A file that <c>project.yaml</c> does not list yet, from before it listed anything or copied in by
+///     hand, is still shown, with no id, so nothing in a project's folder is out of reach.
+/// </summary>
 static class ProjectFiles {
     const int MaxFiles = 2000;
     const string BakeFolder = "bakes";
-
-    /// <summary>The file extensions a project's mesh can have, with their dots.</summary>
-    public static readonly string[] MeshExtensions = [".glb", ".gltf", ".fbx", ".obj"];
-
     const string StackExtension = ".vxlayers";
 
-    /// <summary>The documents in a project, by kind and then name, with paths below the library.</summary>
+    static readonly FrozenSet<string> MeshExtensions =
+        new[] { ".glb", ".gltf", ".fbx", ".obj" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Everything in a project, with paths below the library.</summary>
     public static ProjectContents Read(string root, string path) {
         var (full, document) = Project(root, path);
-        List<ProjectFile> files = [];
-        var options = new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = 0 };
-        foreach (var file in Directory.EnumerateFiles(full, "*", options).Take(MaxFiles)) {
-            var relative = Path.GetRelativePath(full, file).Replace('\\', '/');
-            if (Kind(relative) is { } kind) {
-                files.Add(new(kind, Path.GetFileName(file), Below(path, relative)));
-            }
-        }
-
-        var bakes = Path.Combine(full, BakeFolder);
-        if (Directory.Exists(bakes)) {
-            files.AddRange(
-                LibraryScanner.VisibleFolders(bakes)
-                    .Select(bake => new ProjectFile(
-                            "bake",
-                            Path.GetFileName(bake),
-                            Below(path, $"{BakeFolder}/{Path.GetFileName(bake)}")
-                        )
+        var files = Files(full);
+        var meshes = document.Meshes.Select(mesh => Listed(path, mesh)).ToList();
+        meshes.AddRange(
+            files.Where(f => IsMesh(f) && !document.Meshes.Any(m => m.File == f || m.High == f))
+                .Select(f => new ProjectMeshInfo(null, Below(path, f), null))
+        );
+        var documents = document.Documents.Select(item => Listed(path, item)).ToList();
+        documents.AddRange(
+            files.Where(f => Unlisted(f) is not null && document.Documents.All(d => d.File != f))
+                .Select(f => new ProjectDocumentInfo(
+                        null,
+                        Unlisted(f)!,
+                        Path.GetFileNameWithoutExtension(f),
+                        Below(path, f),
+                        null
                     )
-            );
-        }
-
+                )
+        );
         return new(
             document.Id.Value,
             document.Name,
             path,
-            document.Mesh is { } mesh ? Below(path, mesh) : null,
-            document.Stack is { } stack ? Below(path, stack) : null,
+            meshes,
+            documents,
             Below(path, BakeFolder),
-            [
-                ..files.OrderBy(static f => f.Kind, StringComparer.Ordinal)
-                    .ThenBy(static f => f.Name, StringComparer.Ordinal)
-            ]
+            Bakes(full, path)
         );
     }
 
-    /// <summary>
-    ///     Brings a mesh into a project, unless it is in there already, and names it. The stack's file is the caller's to
-    ///     write, because a stack is the Server's format and not the library's.
-    /// </summary>
-    /// <param name="root">The library.</param>
-    /// <param name="path">The project, below <c>projects/</c>.</param>
-    /// <param name="mesh">A mesh file to use, or null to leave it as it is.</param>
-    /// <exception cref="FileNotFoundException">The project or the mesh is not there.</exception>
-    /// <exception cref="ProjectRefusedException">The file is not a mesh.</exception>
-    public static string? UseMesh(string root, string path, string? mesh) {
+    /// <summary>Brings a mesh into a project, unless it is in there already, and lists it.</summary>
+    /// <exception cref="FileNotFoundException">The project or a mesh is not there.</exception>
+    /// <exception cref="ProjectRefusedException">A file is not a mesh.</exception>
+    public static ProjectMesh AddMesh(string root, string path, string mesh, string? high) {
         var (full, document) = Project(root, path);
-        if (mesh is null) {
-            return document.Mesh;
-        }
-
-        var name = Path.GetFileName(mesh);
-        var inside = Path.GetFullPath(mesh).StartsWith(full + Path.DirectorySeparatorChar, StringComparison.Ordinal);
         Require(mesh);
-        if (!inside) {
-            File.Copy(mesh, Path.Combine(full, name), true);
-        } else {
-            name = Path.GetRelativePath(full, mesh).Replace('\\', '/');
+        if (high is not null) {
+            Require(high);
         }
 
-        LibraryFiles.WriteProject(root, path, document with { Mesh = name });
-        return name;
+        var added = new ProjectMesh(AssetId.New(), Bring(full, mesh), high is null ? null : Bring(full, high));
+        var others = document.Meshes.Where(m => m.File != added.File);
+        LibraryFiles.WriteProject(root, path, document with { Meshes = [..others, added] });
+        return added;
     }
 
-    /// <summary>Names the stack a project paints.</summary>
-    public static void UseStack(string root, string path, string stack) {
+    /// <summary>The name a new document's file gets.</summary>
+    public static string NewFile(string root, string path, string name, string extension) {
+        var (full, _) = Project(root, path);
+        var file = NewProjects.FileStem(name) + extension;
+        return File.Exists(Path.Combine(full, file))
+            ? throw new ProjectExistsException($"'{name}' already exists in this project.")
+            : file;
+    }
+
+    /// <summary>Lists a document whose file exists.</summary>
+    /// <exception cref="ProjectRefusedException">The kind and the mesh disagree.</exception>
+    public static ProjectItem AddDocument(
+        string root,
+        string path,
+        string kind,
+        string file,
+        string name,
+        AssetId? mesh
+    ) {
         var (_, document) = Project(root, path);
-        LibraryFiles.WriteProject(root, path, document with { Stack = stack });
+        if (kind == DocumentKinds.Texturing != mesh.HasValue) {
+            throw new ProjectRefusedException("A texturing document is on a mesh, and no other kind is.");
+        }
+
+        var added = new ProjectItem(AssetId.New(), kind, file, NewProjects.DisplayName(name), mesh);
+        LibraryFiles.WriteProject(root, path, document with { Documents = [..document.Documents, added] });
+        return added;
+    }
+
+    /// <summary>Puts a texturing document on another mesh.</summary>
+    public static ProjectItem SetMesh(string root, string path, AssetId id, AssetId mesh) {
+        var (_, document) = Project(root, path);
+        if (document.Meshes.All(m => m.Id != mesh)) {
+            throw new FileNotFoundException($"This project has no mesh {mesh}.");
+        }
+
+        var item = document.Documents.FirstOrDefault(d => d.Id == id)
+            ?? throw new FileNotFoundException($"This project has no document {id}.");
+        if (item.Kind != DocumentKinds.Texturing) {
+            throw new ProjectRefusedException($"'{item.Name}' is not on a mesh.");
+        }
+
+        var changed = item with { Mesh = mesh };
+        List<ProjectItem> documents = [..document.Documents.Select(d => d.Id == id ? changed : d)];
+        LibraryFiles.WriteProject(root, path, document with { Documents = documents });
+        return changed;
     }
 
     /// <summary>Gives a project a new display name. Its folder stays, so what refers to it by path does too.</summary>
@@ -93,14 +120,13 @@ static class ProjectFiles {
         LibraryFiles.WriteProject(root, path, document with { Name = trimmed });
     }
 
-    /// <summary>The file a mesh should be, checked before anything is written.</summary>
+    /// <summary>Checks a file can be a mesh, before anything is written.</summary>
     /// <exception cref="FileNotFoundException">It is not there.</exception>
     /// <exception cref="ProjectRefusedException">It is not a mesh.</exception>
     public static void Require(string mesh) {
-        if (!MeshExtensions.Contains(Path.GetExtension(mesh), StringComparer.OrdinalIgnoreCase)) {
-            throw new ProjectRefusedException(
-                $"'{Path.GetFileName(mesh)}' is not a mesh: use {string.Join(", ", MeshExtensions)}."
-            );
+        if (!IsMesh(mesh)) {
+            var known = string.Join(", ", MeshExtensions.Order(StringComparer.Ordinal));
+            throw new ProjectRefusedException($"'{Path.GetFileName(mesh)}' is not a mesh: use {known}.");
         }
 
         if (!File.Exists(mesh)) {
@@ -108,12 +134,19 @@ static class ProjectFiles {
         }
     }
 
-    /// <summary>The name a project's first stack gets.</summary>
-    public static string StackName(string path) => Path.GetFileName(path) + StackExtension;
+    static string Bring(string full, string mesh) {
+        var source = Path.GetFullPath(mesh);
+        if (source.StartsWith(full + Path.DirectorySeparatorChar, StringComparison.Ordinal)) {
+            return Path.GetRelativePath(full, source).Replace('\\', '/');
+        }
+
+        var name = Path.GetFileName(source);
+        File.Copy(source, Path.Combine(full, name), true);
+        return name;
+    }
 
     static (string Full, ProjectDocument Document) Project(string root, string path) {
-        var clean = LibraryFolders.Existing(path);
-        var file = LibraryFiles.ProjectFile(root, clean);
+        var file = LibraryFiles.ProjectFile(root, LibraryFolders.Existing(path));
         if (!File.Exists(file)) {
             throw new FileNotFoundException($"There is no project '{path}' in this library.", path);
         }
@@ -121,15 +154,39 @@ static class ProjectFiles {
         return (Path.GetDirectoryName(file)!, DocumentCodec.ReadProject(File.ReadAllText(file), file).Document);
     }
 
-    static string? Kind(string relative) {
-        if (relative.StartsWith(BakeFolder + "/", StringComparison.Ordinal)) {
-            return null;
-        }
+    /// <summary>The files in a project, relative to it, leaving out what its bakes wrote.</summary>
+    static List<string> Files(string full) => [
+        ..Directory.EnumerateFiles(full, "*", new EnumerationOptions { RecurseSubdirectories = true })
+            .Select(file => Path.GetRelativePath(full, file).Replace('\\', '/'))
+            .Where(static file => !file.StartsWith(BakeFolder + "/", StringComparison.Ordinal))
+            .Take(MaxFiles)
+    ];
 
-        var extension = Path.GetExtension(relative);
-        return MeshExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase) ? "mesh"
-            : string.Equals(extension, StackExtension, StringComparison.OrdinalIgnoreCase) ? "stack"
-            : string.Equals(extension, LibraryLayout.GraphExtension, StringComparison.OrdinalIgnoreCase) ? "graph"
+    static List<ProjectFile> Bakes(string full, string path) {
+        var bakes = Path.Combine(full, BakeFolder);
+        return Directory.Exists(bakes)
+            ? [
+                ..LibraryScanner.VisibleFolders(bakes)
+                    .Select(static bake => Path.GetFileName(bake))
+                    .Select(bake => new ProjectFile("bake", bake, Below(path, $"{BakeFolder}/{bake}")))
+            ]
+            : [];
+    }
+
+    static ProjectMeshInfo Listed(string path, ProjectMesh mesh) =>
+        new(mesh.Id.Value, Below(path, mesh.File), mesh.High is { } high ? Below(path, high) : null);
+
+    static ProjectDocumentInfo Listed(string path, ProjectItem item) =>
+        new(item.Id.Value, item.Kind, item.Name, Below(path, item.File), item.Mesh?.Value);
+
+    static bool IsMesh(string file) => MeshExtensions.Contains(Path.GetExtension(file));
+
+    /// <summary>The kind a file not yet listed is taken for. A stack that names no mesh still opens as one.</summary>
+    static string? Unlisted(string file) {
+        var extension = Path.GetExtension(file);
+        return string.Equals(extension, StackExtension, StringComparison.OrdinalIgnoreCase) ? DocumentKinds.Texturing
+            : string.Equals(extension, LibraryLayout.GraphExtension, StringComparison.OrdinalIgnoreCase) ? DocumentKinds
+                .Graph
             : null;
     }
 

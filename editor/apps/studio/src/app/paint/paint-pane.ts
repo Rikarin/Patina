@@ -32,10 +32,10 @@ import { StrokeGesture } from './stroke-gesture';
             <span class="min-w-0 flex-1 leading-tight">
               <span class="block truncate font-semibold" data-testid="paint-project">{{ open.name }}</span>
               <span class="text-foreground-muted block truncate text-xs" data-testid="paint-mesh-name">
-                {{ project.meshName() ?? 'No mesh yet' }}
+                {{ project.meshName() ?? project.document()?.name }}
               </span>
             </span>
-            @if (canPick) {
+            @if (canPick && project.document()?.kind === 'texturing') {
               <button type="button" xuiButton size="sm" variant="ghost" data-testid="paint-mesh" (click)="project.pickMesh()">
                 {{ project.meshName() ? 'Change Mesh…' : 'Choose Mesh…' }}
               </button>

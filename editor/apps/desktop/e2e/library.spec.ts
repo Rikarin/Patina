@@ -77,6 +77,7 @@ test('a new project reaches the list through the index', async () => {
   await window.getByTestId('library-new-project').click();
   await expect(window.getByTestId('new-project-name')).toBeFocused();
   await window.getByTestId('new-project-name').fill('Zebra Crate');
+  await window.getByTestId('new-project-kind').selectOption('layered-material');
   await window.locator('xui-tag-input input').fill('striped');
   await window.locator('xui-tag-input input').press('Enter');
   await expect(window.getByTestId('new-project-name')).toBeVisible(); // Enter in the tag field does not submit
@@ -95,6 +96,7 @@ test('a new project reaches the list through the index', async () => {
 test('the Server says why a new project is refused', async () => {
   await window.getByTestId('library-new-project').click();
   await window.getByTestId('new-project-name').fill('---');
+  await window.getByTestId('new-project-kind').selectOption('graph');
   await window.getByRole('button', { name: 'Create' }).click();
 
   await expect(window.getByTestId('new-project-refused')).toContainText('a letter or a digit');

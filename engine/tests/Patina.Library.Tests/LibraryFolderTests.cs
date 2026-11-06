@@ -64,7 +64,7 @@ public sealed class LibraryFolderTests : IDisposable {
         Assert.Equal((made.Id, "Props/crate"), (found.Id, found.Path));
         Assert.Empty(library.Projects(new(Folder: string.Empty)).Items);
         Assert.Equal(1, Assert.Single(library.Folders(string.Empty)).ProjectCount);
-        Assert.Contains(library.Contents("Props/crate").Files, static f => f.Kind == "stack");
+        Assert.Single(library.Contents("Props/crate").Documents);
     }
 
     [Fact]
@@ -144,18 +144,82 @@ public sealed class LibraryFolderTests : IDisposable {
     }
 
     [Fact]
-    public void A_project_remembers_its_mesh_and_stack_across_a_rewrite() {
+    public void A_project_remembers_its_meshes_and_documents_across_a_rewrite() {
         var made = library.CreateProject(new("Crate"));
-        var mesh = Path.Combine(folder.FullName, "low.glb");
-        File.WriteAllText(mesh, "mesh");
+        var low = Path.Combine(folder.FullName, "low.glb");
+        var high = Path.Combine(folder.FullName, "high.glb");
+        File.WriteAllText(low, "mesh");
+        File.WriteAllText(high, "mesh");
 
-        Assert.Equal("low.glb", library.UseMesh(made.Path, mesh));
-        library.UseStack(made.Path, "crate.vxlayers");
+        var mesh = library.AddMesh(made.Path, low, high);
+        library.AddDocument(made.Path, DocumentKinds.Texturing, "crate.vxlayers", "Crate", mesh.Id);
 
         var contents = library.Contents(made.Path);
-        Assert.Equal("projects/crate/low.glb", contents.Mesh);
-        Assert.Equal("projects/crate/crate.vxlayers", contents.Stack);
-        Assert.Equal("projects/crate/bakes", contents.Bakes);
+        var listed = Assert.Single(contents.Meshes);
+        Assert.Equal(("projects/crate/low.glb", "projects/crate/high.glb"), (listed.Path, listed.High));
+        var document = Assert.Single(contents.Documents);
+        Assert.Equal(
+            ("texturing", "projects/crate/crate.vxlayers", mesh.Id.Value),
+            (document.Kind, document.Path, document.Mesh)
+        );
+        Assert.Equal("projects/crate/bakes", contents.BakeFolder);
+    }
+
+    [Fact]
+    public void A_texturing_document_needs_a_mesh_and_no_other_kind_has_one() {
+        var made = library.CreateProject(new("Crate"));
+
+        Assert.Throws<ProjectRefusedException>(() =>
+            library.AddDocument(made.Path, DocumentKinds.Texturing, "a.vxlayers", "A", null)
+        );
+        Assert.Throws<ProjectRefusedException>(() =>
+            library.AddDocument(made.Path, DocumentKinds.Graph, "b.vxtexgraph", "B", AssetId.New())
+        );
+    }
+
+    [Fact]
+    public void A_file_the_project_does_not_list_is_still_shown() {
+        var made = library.CreateProject(new("Crate"));
+        File.WriteAllText(Path.Combine(root, "projects", made.Path, "old.vxlayers"), "x");
+        File.WriteAllText(Path.Combine(root, "projects", made.Path, "old.glb"), "x");
+
+        var contents = library.Contents(made.Path);
+
+        Assert.Null(Assert.Single(contents.Documents).Id);
+        Assert.Null(Assert.Single(contents.Meshes).Id);
+    }
+
+    [Fact]
+    public void A_graph_made_in_a_project_is_listed_with_a_kind() {
+        var made = library.CreateProject(new("Crate"));
+
+        library.CreateGraph(new("Rust", made.Path), "graph");
+
+        var listed = Assert.Single(library.Contents(made.Path).Documents);
+        Assert.Equal((DocumentKinds.Graph, "Rust"), (listed.Kind, listed.Name));
+        Assert.NotNull(listed.Id);
+    }
+
+    [Theory]
+    [InlineData("kind: painting\n    name: A\n    file: a.vxlayers", "no kind")]
+    [InlineData("kind: graph\n    name: A\n    file: ../a.vxtexgraph", "outside")]
+    [InlineData("kind: texturing\n    name: A\n    file: a.vxlayers", "on a mesh")]
+    public void A_project_that_lists_nonsense_is_refused(string fields, string expected) {
+        var text = $"""
+                    schema: 2
+                    id: 0190b3a0-0000-7000-8000-000000000001
+                    name: Bad
+                    tags: []
+                    documents:
+                      - id: 0190b3a0-0000-7000-8000-000000000002
+                        {fields}
+                    references: []
+                    outputs: []
+                    """;
+
+        var problem = Assert.Throws<LibraryFormatException>(() => DocumentCodec.ReadProject(text, "project.yaml"));
+
+        Assert.Contains(expected, problem.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -171,7 +235,8 @@ public sealed class LibraryFolderTests : IDisposable {
 
         var read = DocumentCodec.ReadProject(Text, "project.yaml");
 
-        Assert.Equal((1, null, null), (read.FileSchema, read.Document.Mesh, read.Document.Stack));
+        Assert.Equal(1, read.FileSchema);
+        Assert.Empty(read.Document.Documents);
     }
 
     [Fact]
@@ -180,6 +245,6 @@ public sealed class LibraryFolderTests : IDisposable {
         File.WriteAllText(file, "x");
         var made = library.CreateProject(new("Crate"));
 
-        Assert.Throws<ProjectRefusedException>(() => library.UseMesh(made.Path, file));
+        Assert.Throws<ProjectRefusedException>(() => library.AddMesh(made.Path, file, null));
     }
 }

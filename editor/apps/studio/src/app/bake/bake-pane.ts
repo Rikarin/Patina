@@ -320,14 +320,16 @@ export class BakePane {
     // An opened project already knows what to bake and where the maps belong.
     effect(() => {
       const project = this.project.current();
+      const mesh = this.project.mesh();
       const status = this.status.state();
       const library = status.kind === 'online' ? status.system.library : null;
       if (project && library) {
         untracked(() => {
           this.paths.update(paths => ({
             ...paths,
-            low: project.mesh ? `${library}/${project.mesh}` : paths.low,
-            output: `${library}/${project.bakes}/maps`
+            low: mesh ? `${library}/${mesh.path}` : paths.low,
+            high: mesh?.high ? `${library}/${mesh.high}` : paths.high,
+            output: `${library}/${project.bakeFolder}/maps`
           }));
         });
       }

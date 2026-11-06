@@ -37,6 +37,14 @@ import { ProjectStore } from './project-store';
               (input)="name.set(text($event))"
             />
           </xui-form-field>
+          <label class="flex flex-col gap-1">
+            <span class="section-label">Start with</span>
+            <select class="well h-7 w-full px-1" data-testid="new-project-kind" (change)="kind.set(text($event))">
+              @for (option of kinds; track option.value) {
+                <option [value]="option.value" [selected]="option.value === kind()">{{ option.label }}</option>
+              }
+            </select>
+          </label>
           <div class="flex flex-col gap-1">
             <span class="section-label">Mesh</span>
             <div class="flex items-center gap-2">
@@ -110,13 +118,22 @@ export class NewProjectDialog {
   protected readonly name = signal('');
   protected readonly canPick = desktop() !== undefined;
   protected readonly sides = [512, 1024, 2048, 4096];
+  protected readonly kinds = [
+    { value: 'texturing', label: 'Texturing: paint a mesh' },
+    { value: 'layered-material', label: 'Layered Material: layers with no mesh' },
+    { value: 'graph', label: 'Material Graph: nodes' }
+  ];
+  protected readonly kind = signal('texturing');
   protected readonly mesh = signal('');
   protected readonly resolution = signal(2048);
   protected readonly meshName = computed(() => this.mesh().split(/[\\/]/).pop() ?? '');
   protected readonly tags = signal<string[]>([]);
   protected readonly refused = signal<string | null>(null);
   private readonly saving = signal(false);
-  protected readonly canCreate = computed(() => this.name().trim() !== '' && !this.saving());
+  /** Texturing is painting on something, so it waits for a mesh. */
+  protected readonly canCreate = computed(
+    () => this.name().trim() !== '' && !this.saving() && (this.kind() !== 'texturing' || this.mesh().trim() !== '')
+  );
 
   constructor() {
     effect(() => {
@@ -144,7 +161,8 @@ export class NewProjectDialog {
         folder: this.folder() || null,
         tags: this.tags(),
         mesh: this.mesh().trim() || null,
-        resolution: this.resolution()
+        resolution: this.resolution(),
+        kind: this.kind()
       });
       this.name.set('');
       this.mesh.set('');

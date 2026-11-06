@@ -23,7 +23,7 @@ public sealed class SchemaChain(int current, params IReadOnlyList<DocumentMigrat
     /// <summary>The chain of <c>library.yaml</c>. Version 1 is where these start, so it has no steps yet.</summary>
     public static SchemaChain Library { get; } = new(1);
 
-    /// <summary>The chain of <c>project.yaml</c>. Version 2 adds an optional mesh and stack, so 1 upgrades as it is.</summary>
+    /// <summary>The chain of <c>project.yaml</c>. Version 2 adds meshes and documents; 1 upgrades as it is.</summary>
     public static SchemaChain Project { get; } = new(2, new DocumentMigration(1, static _ => { }));
 
     /// <summary>The chain of <c>folder.yaml</c>.</summary>
