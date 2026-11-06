@@ -71,6 +71,11 @@ public sealed class StackEvaluator(
         bool sampled = false
     ) {
         await ReachedAsync(session, cancellationToken);
+        if (session.EvaluationError is { } failed) {
+            // The real reason. The Worker can only say it does not hold a stack that never loaded.
+            throw new IpcException(failed);
+        }
+
         var connection = await ConnectionAsync(cancellationToken);
         var reply = await connection.SendAsync(
             new() { Type = IpcTypes.StackPixels, StackPixels = new(session.Id, clean, folder, sampled) },
@@ -144,6 +149,10 @@ public sealed class StackEvaluator(
         using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         patience.CancelAfter(WorkerPatience);
         try {
+            if (session.EvaluationError is { } failed) {
+                throw new IpcException(failed);
+            }
+
             var connection = await worker.ConnectionAsync(patience.Token);
             var reply = await connection.SendAsync(
                 new() { Type = IpcTypes.StackThumbnails, StackThumbnails = new(session.Id, store.Root) },

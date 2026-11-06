@@ -48,7 +48,7 @@ public static class CacheSweep {
         var paint = LibraryLayout.PaintPath(root);
         if (Directory.Exists(paint)) {
             foreach (var session in Directory.EnumerateDirectories(paint)) {
-                Directory.Delete(session, true);
+                Remove(session);
                 removed++;
             }
         }
@@ -82,11 +82,16 @@ public static class CacheSweep {
         return found.Count;
     }
 
+    /// <summary>Clearing up must never stop a start: what cannot go now goes on the next one.</summary>
     static void Remove(string path) {
-        if (Directory.Exists(path)) {
-            Directory.Delete(path, true);
-        } else if (File.Exists(path)) {
-            File.Delete(path);
+        try {
+            if (Directory.Exists(path)) {
+                Directory.Delete(path, true);
+            } else if (File.Exists(path)) {
+                File.Delete(path);
+            }
+        } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
+            // Something still holds it, which on Windows can be the process that has just died.
         }
     }
 }

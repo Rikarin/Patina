@@ -80,8 +80,17 @@ public sealed class FrameMemory : IDisposable {
         foreach (var stale in Directory.EnumerateFiles(folder, WorkerOptions.FramesPattern)) {
             var parts = System.IO.Path.GetFileName(stale).Split('-');
             if (parts.Length == 3 && int.TryParse(parts[1], out var owner) && !Alive(owner)) {
-                File.Delete(stale);
+                TryDelete(stale);
             }
+        }
+    }
+
+    /// <summary>Tidying up must never stop a Server: Windows keeps a dead process's mapping for a moment.</summary>
+    static void TryDelete(string file) {
+        try {
+            File.Delete(file);
+        } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
+            // The next Server sweeps it.
         }
     }
 

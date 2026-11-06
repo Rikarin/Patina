@@ -426,6 +426,15 @@ public sealed class GraphSession : FollowedSession<GraphEvent>, IFileSession {
         }
     }
 
+    /// <summary>Why the last evaluation failed, if it did.</summary>
+    public string? EvaluationError {
+        get {
+            lock (Changing) {
+                return evaluation?.Error;
+            }
+        }
+    }
+
     void Report(GraphEvaluation report) {
         evaluation = report;
         Log.Append(new(Log.Sequence + 1, GraphEventKind.Evaluated, revision, editor.History, null, null, report));

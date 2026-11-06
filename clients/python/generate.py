@@ -30,9 +30,15 @@ def generate(into: pathlib.Path) -> None:
     )
 
 
+def same_text(left: pathlib.Path, right: pathlib.Path) -> bool:
+    # The generator writes the platform's line endings, and the repository holds LF on every platform.
+    return left.read_bytes().replace(b"\r\n", b"\n") == right.read_bytes().replace(b"\r\n", b"\n")
+
+
 def differs(left: pathlib.Path, right: pathlib.Path) -> list[str]:
     compare = filecmp.dircmp(left, right, ignore=["__pycache__"])
-    found = compare.left_only + compare.right_only + compare.diff_files
+    found = compare.left_only + compare.right_only
+    found += [name for name in compare.common_files if not same_text(left / name, right / name)]
     for name, below in compare.subdirs.items():
         found += [f"{name}/{inner}" for inner in differs(left / name, right / name)]
     return found

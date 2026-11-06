@@ -398,6 +398,10 @@ static class LibraryTreeEndpoints {
             try {
                 return await evaluator.ImageAsync(session, node, usage, cancellationToken);
             } catch (IpcException) when (!cancellationToken.IsCancellationRequested) {
+                if (session.EvaluationError is { } failed) {
+                    throw new ProjectRefusedException(failed);
+                }
+
                 await Task.Delay(BrushRetry, cancellationToken);
             }
         }
