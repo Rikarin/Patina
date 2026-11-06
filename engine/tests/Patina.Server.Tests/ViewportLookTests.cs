@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Patina.Ipc;
 using Patina.Server.Viewport;
 
 namespace Patina.Server.Tests;
@@ -26,7 +25,7 @@ public sealed class ViewportLookTests {
         session.SetLook(new(Table, "hash"));
         session.Wear("session", "/meshes/prop.glb");
 
-        session.SetMaps(new ViewportMapSet());
+        session.SetMaps(new());
 
         Assert.Equal(Table, session.State.Maps.Look);
         Assert.Null(session.State.Stack);

@@ -9,11 +9,13 @@ from attrs import field as _attrs_field
 from ..types import UNSET, Unset
 
 from ..models.stack_command_stack_stroke_op import StackCommandStackStrokeOp
+from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
   from ..models.stack_brush import StackBrush
   from ..models.stack_stamp import StackStamp
+  from ..models.stack_view import StackView
 
 
 
@@ -38,6 +40,10 @@ class StackCommandStackStroke:
             stamps (list[StackStamp]): Where the brush went since the last part.
             open_ (bool): Whether more of this drag is coming. Default: False.
             mask (bool): Whether this paints the layer's mask. Default: False.
+            curve (str): free follows the stamps; line and path run through them as control points when it ends. Default:
+                'free'.
+            view (None | StackView | Unset):
+            mirror (None | str | Unset): x, y or z mirrors a stroke on the mesh through that plane of the mesh, or null.
      """
 
     op: StackCommandStackStrokeOp
@@ -49,6 +55,9 @@ class StackCommandStackStroke:
     stamps: list[StackStamp]
     open_: bool = False
     mask: bool = False
+    curve: str = 'free'
+    view: None | StackView | Unset = UNSET
+    mirror: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -58,6 +67,7 @@ class StackCommandStackStroke:
     def to_dict(self) -> dict[str, Any]:
         from ..models.stack_brush import StackBrush # noqa: PLC0415
         from ..models.stack_stamp import StackStamp # noqa: PLC0415
+        from ..models.stack_view import StackView # noqa: PLC0415
         op = self.op.value
 
         stroke = self.stroke
@@ -83,6 +93,22 @@ class StackCommandStackStroke:
 
         mask = self.mask
 
+        curve = self.curve
+
+        view: dict[str, Any] | None | Unset
+        if isinstance(self.view, Unset):
+            view = UNSET
+        elif isinstance(self.view, StackView):
+            view = self.view.to_dict()
+        else:
+            view = self.view
+
+        mirror: None | str | Unset
+        if isinstance(self.mirror, Unset):
+            mirror = UNSET
+        else:
+            mirror = self.mirror
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -96,7 +122,12 @@ class StackCommandStackStroke:
             "stamps": stamps,
             "open": open_,
             "mask": mask,
+            "curve": curve,
         })
+        if view is not UNSET:
+            field_dict["view"] = view
+        if mirror is not UNSET:
+            field_dict["mirror"] = mirror
 
         return field_dict
 
@@ -106,6 +137,7 @@ class StackCommandStackStroke:
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.stack_brush import StackBrush # noqa: PLC0415
         from ..models.stack_stamp import StackStamp # noqa: PLC0415
+        from ..models.stack_view import StackView # noqa: PLC0415
         d = dict(src_dict)
         op = StackCommandStackStrokeOp(d.pop("op"))
 
@@ -140,6 +172,38 @@ class StackCommandStackStroke:
 
         mask = d.pop("mask")
 
+        curve = d.pop("curve")
+
+        def _parse_view(data: object) -> None | StackView | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                view_type_1 = StackView.from_dict(data)
+
+
+
+                return view_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackView | Unset, data)
+
+        view = _parse_view(d.pop("view", UNSET))
+
+
+        def _parse_mirror(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        mirror = _parse_mirror(d.pop("mirror", UNSET))
+
+
         stack_command_stack_stroke = cls(
             op=op,
             stroke=stroke,
@@ -150,6 +214,9 @@ class StackCommandStackStroke:
             stamps=stamps,
             open_=open_,
             mask=mask,
+            curve=curve,
+            view=view,
+            mirror=mirror,
         )
 
 

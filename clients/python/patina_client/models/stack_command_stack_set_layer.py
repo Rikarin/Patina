@@ -12,6 +12,11 @@ from ..models.stack_command_stack_set_layer_op import StackCommandStackSetLayerO
 from ..types import UNSET, Unset
 from typing import cast
 
+if TYPE_CHECKING:
+  from ..models.stack_command_stack_set_layer_settings_type_1 import StackCommandStackSetLayerSettingsType1
+  from ..models.stack_command_stack_set_layer_textures_type_1 import StackCommandStackSetLayerTexturesType1
+  from ..models.stack_command_stack_set_layer_values_type_1 import StackCommandStackSetLayerValuesType1
+  from ..models.stack_mask import StackMask
 
 
 
@@ -32,6 +37,18 @@ class StackCommandStackSetLayer:
             enabled (bool | None | Unset): Whether it composites.
             opacity (float | None | Unset): How much of it composites, 0 to 1.
             blend (None | str | Unset): Its blend mode.
+            channels (list[str] | None | Unset): Which channels it writes. Empty means all of them.
+            fill (None | str | Unset): What a fill reads: Constant, Texture or Graph.
+            values (None | StackCommandStackSetLayerValuesType1 | Unset): What a constant fill writes, replacing what these
+                channels held.
+            textures (None | StackCommandStackSetLayerTexturesType1 | Unset): What a texture fill reads, replacing what
+                these channels held.
+            graph (None | str | Unset): The graph a graph fill reads.
+            projection (None | str | Unset): How a fill lands on the mesh: Uv, Triplanar or Planar.
+            filter_ (None | str | Unset): What a filter does.
+            settings (None | StackCommandStackSetLayerSettingsType1 | Unset): A filter's numbers, replacing what these names
+                held.
+            mask (None | StackMask | Unset):
      """
 
     op: StackCommandStackSetLayerOp
@@ -40,6 +57,15 @@ class StackCommandStackSetLayer:
     enabled: bool | None | Unset = UNSET
     opacity: float | None | Unset = UNSET
     blend: None | str | Unset = UNSET
+    channels: list[str] | None | Unset = UNSET
+    fill: None | str | Unset = UNSET
+    values: None | StackCommandStackSetLayerValuesType1 | Unset = UNSET
+    textures: None | StackCommandStackSetLayerTexturesType1 | Unset = UNSET
+    graph: None | str | Unset = UNSET
+    projection: None | str | Unset = UNSET
+    filter_: None | str | Unset = UNSET
+    settings: None | StackCommandStackSetLayerSettingsType1 | Unset = UNSET
+    mask: None | StackMask | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -47,6 +73,10 @@ class StackCommandStackSetLayer:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.stack_command_stack_set_layer_settings_type_1 import StackCommandStackSetLayerSettingsType1 # noqa: PLC0415
+        from ..models.stack_command_stack_set_layer_textures_type_1 import StackCommandStackSetLayerTexturesType1 # noqa: PLC0415
+        from ..models.stack_command_stack_set_layer_values_type_1 import StackCommandStackSetLayerValuesType1 # noqa: PLC0415
+        from ..models.stack_mask import StackMask # noqa: PLC0415
         op = self.op.value
 
         layer = self.layer
@@ -75,6 +105,72 @@ class StackCommandStackSetLayer:
         else:
             blend = self.blend
 
+        channels: list[str] | None | Unset
+        if isinstance(self.channels, Unset):
+            channels = UNSET
+        elif isinstance(self.channels, list):
+            channels = self.channels
+
+
+        else:
+            channels = self.channels
+
+        fill: None | str | Unset
+        if isinstance(self.fill, Unset):
+            fill = UNSET
+        else:
+            fill = self.fill
+
+        values: dict[str, Any] | None | Unset
+        if isinstance(self.values, Unset):
+            values = UNSET
+        elif isinstance(self.values, StackCommandStackSetLayerValuesType1):
+            values = self.values.to_dict()
+        else:
+            values = self.values
+
+        textures: dict[str, Any] | None | Unset
+        if isinstance(self.textures, Unset):
+            textures = UNSET
+        elif isinstance(self.textures, StackCommandStackSetLayerTexturesType1):
+            textures = self.textures.to_dict()
+        else:
+            textures = self.textures
+
+        graph: None | str | Unset
+        if isinstance(self.graph, Unset):
+            graph = UNSET
+        else:
+            graph = self.graph
+
+        projection: None | str | Unset
+        if isinstance(self.projection, Unset):
+            projection = UNSET
+        else:
+            projection = self.projection
+
+        filter_: None | str | Unset
+        if isinstance(self.filter_, Unset):
+            filter_ = UNSET
+        else:
+            filter_ = self.filter_
+
+        settings: dict[str, Any] | None | Unset
+        if isinstance(self.settings, Unset):
+            settings = UNSET
+        elif isinstance(self.settings, StackCommandStackSetLayerSettingsType1):
+            settings = self.settings.to_dict()
+        else:
+            settings = self.settings
+
+        mask: dict[str, Any] | None | Unset
+        if isinstance(self.mask, Unset):
+            mask = UNSET
+        elif isinstance(self.mask, StackMask):
+            mask = self.mask.to_dict()
+        else:
+            mask = self.mask
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -90,6 +186,24 @@ class StackCommandStackSetLayer:
             field_dict["opacity"] = opacity
         if blend is not UNSET:
             field_dict["blend"] = blend
+        if channels is not UNSET:
+            field_dict["channels"] = channels
+        if fill is not UNSET:
+            field_dict["fill"] = fill
+        if values is not UNSET:
+            field_dict["values"] = values
+        if textures is not UNSET:
+            field_dict["textures"] = textures
+        if graph is not UNSET:
+            field_dict["graph"] = graph
+        if projection is not UNSET:
+            field_dict["projection"] = projection
+        if filter_ is not UNSET:
+            field_dict["filter"] = filter_
+        if settings is not UNSET:
+            field_dict["settings"] = settings
+        if mask is not UNSET:
+            field_dict["mask"] = mask
 
         return field_dict
 
@@ -97,6 +211,10 @@ class StackCommandStackSetLayer:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.stack_command_stack_set_layer_settings_type_1 import StackCommandStackSetLayerSettingsType1 # noqa: PLC0415
+        from ..models.stack_command_stack_set_layer_textures_type_1 import StackCommandStackSetLayerTexturesType1 # noqa: PLC0415
+        from ..models.stack_command_stack_set_layer_values_type_1 import StackCommandStackSetLayerValuesType1 # noqa: PLC0415
+        from ..models.stack_mask import StackMask # noqa: PLC0415
         d = dict(src_dict)
         op = StackCommandStackSetLayerOp(d.pop("op"))
 
@@ -145,6 +263,144 @@ class StackCommandStackSetLayer:
         blend = _parse_blend(d.pop("blend", UNSET))
 
 
+        def _parse_channels(data: object) -> list[str] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                channels_type_1 = cast(list[str], data)
+
+                return channels_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[str] | None | Unset, data)
+
+        channels = _parse_channels(d.pop("channels", UNSET))
+
+
+        def _parse_fill(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        fill = _parse_fill(d.pop("fill", UNSET))
+
+
+        def _parse_values(data: object) -> None | StackCommandStackSetLayerValuesType1 | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                values_type_1 = StackCommandStackSetLayerValuesType1.from_dict(data)
+
+
+
+                return values_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackCommandStackSetLayerValuesType1 | Unset, data)
+
+        values = _parse_values(d.pop("values", UNSET))
+
+
+        def _parse_textures(data: object) -> None | StackCommandStackSetLayerTexturesType1 | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                textures_type_1 = StackCommandStackSetLayerTexturesType1.from_dict(data)
+
+
+
+                return textures_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackCommandStackSetLayerTexturesType1 | Unset, data)
+
+        textures = _parse_textures(d.pop("textures", UNSET))
+
+
+        def _parse_graph(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        graph = _parse_graph(d.pop("graph", UNSET))
+
+
+        def _parse_projection(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        projection = _parse_projection(d.pop("projection", UNSET))
+
+
+        def _parse_filter_(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        filter_ = _parse_filter_(d.pop("filter", UNSET))
+
+
+        def _parse_settings(data: object) -> None | StackCommandStackSetLayerSettingsType1 | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                settings_type_1 = StackCommandStackSetLayerSettingsType1.from_dict(data)
+
+
+
+                return settings_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackCommandStackSetLayerSettingsType1 | Unset, data)
+
+        settings = _parse_settings(d.pop("settings", UNSET))
+
+
+        def _parse_mask(data: object) -> None | StackMask | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                mask_type_1 = StackMask.from_dict(data)
+
+
+
+                return mask_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackMask | Unset, data)
+
+        mask = _parse_mask(d.pop("mask", UNSET))
+
+
         stack_command_stack_set_layer = cls(
             op=op,
             layer=layer,
@@ -152,6 +408,15 @@ class StackCommandStackSetLayer:
             enabled=enabled,
             opacity=opacity,
             blend=blend,
+            channels=channels,
+            fill=fill,
+            values=values,
+            textures=textures,
+            graph=graph,
+            projection=projection,
+            filter_=filter_,
+            settings=settings,
+            mask=mask,
         )
 
 

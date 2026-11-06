@@ -33,12 +33,16 @@ class StackCommandStackAddLayer:
             name (str): What it is called.
             values (None | StackCommandStackAddLayerValuesType1 | Unset): What a fill writes to each channel, as four
                 numbers. Ignored for other kinds.
+            parent (None | str | Unset): The group it goes at the top of, or null for the stack itself.
+            filter_ (None | str | Unset): What a filter layer does: Levels, Hsl, Blur, Invert or Grayscale.
      """
 
     op: StackCommandStackAddLayerOp
     kind: str
     name: str
     values: None | StackCommandStackAddLayerValuesType1 | Unset = UNSET
+    parent: None | str | Unset = UNSET
+    filter_: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -61,6 +65,18 @@ class StackCommandStackAddLayer:
         else:
             values = self.values
 
+        parent: None | str | Unset
+        if isinstance(self.parent, Unset):
+            parent = UNSET
+        else:
+            parent = self.parent
+
+        filter_: None | str | Unset
+        if isinstance(self.filter_, Unset):
+            filter_ = UNSET
+        else:
+            filter_ = self.filter_
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -71,6 +87,10 @@ class StackCommandStackAddLayer:
         })
         if values is not UNSET:
             field_dict["values"] = values
+        if parent is not UNSET:
+            field_dict["parent"] = parent
+        if filter_ is not UNSET:
+            field_dict["filter"] = filter_
 
         return field_dict
 
@@ -109,11 +129,33 @@ class StackCommandStackAddLayer:
         values = _parse_values(d.pop("values", UNSET))
 
 
+        def _parse_parent(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        parent = _parse_parent(d.pop("parent", UNSET))
+
+
+        def _parse_filter_(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        filter_ = _parse_filter_(d.pop("filter", UNSET))
+
+
         stack_command_stack_add_layer = cls(
             op=op,
             kind=kind,
             name=name,
             values=values,
+            parent=parent,
+            filter_=filter_,
         )
 
 

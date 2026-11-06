@@ -20,15 +20,17 @@ T = TypeVar("T", bound="StackStamp")
 
 @_attrs_define
 class StackStamp:
-    """ Where the brush goes, in texels from the image's top left.
+    """ Where the brush goes: in texels of the image, or on the picture of a stroke with a view.
 
         Attributes:
             x (float): Its column.
             y (float): Its row.
+            pressure (float): How hard, 0 to 1. Default: 1.0.
      """
 
     x: float
     y: float
+    pressure: float = 1.0
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -40,12 +42,15 @@ class StackStamp:
 
         y = self.y
 
+        pressure = self.pressure
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update({
             "x": x,
             "y": y,
+            "pressure": pressure,
         })
 
         return field_dict
@@ -59,9 +64,12 @@ class StackStamp:
 
         y = d.pop("y")
 
+        pressure = d.pop("pressure")
+
         stack_stamp = cls(
             x=x,
             y=y,
+            pressure=pressure,
         )
 
 

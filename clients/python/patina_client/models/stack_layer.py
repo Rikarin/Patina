@@ -10,6 +10,11 @@ from ..types import UNSET, Unset
 
 from typing import cast
 
+if TYPE_CHECKING:
+  from ..models.stack_layer_settings import StackLayerSettings
+  from ..models.stack_layer_textures import StackLayerTextures
+  from ..models.stack_layer_values import StackLayerValues
+  from ..models.stack_mask import StackMask
 
 
 
@@ -33,6 +38,14 @@ class StackLayer:
             channels (list[str]): Which channels it writes. Empty means all of them.
             painted (bool): Whether it names a paint file yet.
             children (list[StackLayer]): What a group holds.
+            fill (str): What a fill reads: Constant, Texture or Graph.
+            values (StackLayerValues): What a constant fill writes to each channel.
+            textures (StackLayerTextures): What a texture fill reads for each channel.
+            graph (str): The graph a graph fill reads.
+            projection (str): How a fill lands on the mesh: Uv, Triplanar or Planar.
+            filter_ (str): What a filter does: Levels, Hsl, Blur, Invert or Grayscale.
+            settings (StackLayerSettings): A filter's numbers.
+            mask (StackMask): What decides where a layer shows.
      """
 
     id: str
@@ -44,6 +57,14 @@ class StackLayer:
     channels: list[str]
     painted: bool
     children: list[StackLayer]
+    fill: str
+    values: StackLayerValues
+    textures: StackLayerTextures
+    graph: str
+    projection: str
+    filter_: str
+    settings: StackLayerSettings
+    mask: StackMask
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -51,6 +72,10 @@ class StackLayer:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.stack_layer_settings import StackLayerSettings # noqa: PLC0415
+        from ..models.stack_layer_textures import StackLayerTextures # noqa: PLC0415
+        from ..models.stack_layer_values import StackLayerValues # noqa: PLC0415
+        from ..models.stack_mask import StackMask # noqa: PLC0415
         id = self.id
 
         name = self.name
@@ -76,6 +101,22 @@ class StackLayer:
 
 
 
+        fill = self.fill
+
+        values = self.values.to_dict()
+
+        textures = self.textures.to_dict()
+
+        graph = self.graph
+
+        projection = self.projection
+
+        filter_ = self.filter_
+
+        settings = self.settings.to_dict()
+
+        mask = self.mask.to_dict()
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -89,6 +130,14 @@ class StackLayer:
             "channels": channels,
             "painted": painted,
             "children": children,
+            "fill": fill,
+            "values": values,
+            "textures": textures,
+            "graph": graph,
+            "projection": projection,
+            "filter": filter_,
+            "settings": settings,
+            "mask": mask,
         })
 
         return field_dict
@@ -97,6 +146,10 @@ class StackLayer:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.stack_layer_settings import StackLayerSettings # noqa: PLC0415
+        from ..models.stack_layer_textures import StackLayerTextures # noqa: PLC0415
+        from ..models.stack_layer_values import StackLayerValues # noqa: PLC0415
+        from ..models.stack_mask import StackMask # noqa: PLC0415
         d = dict(src_dict)
         id = d.pop("id")
 
@@ -125,6 +178,34 @@ class StackLayer:
             children.append(children_item)
 
 
+        fill = d.pop("fill")
+
+        values = StackLayerValues.from_dict(d.pop("values"))
+
+
+
+
+        textures = StackLayerTextures.from_dict(d.pop("textures"))
+
+
+
+
+        graph = d.pop("graph")
+
+        projection = d.pop("projection")
+
+        filter_ = d.pop("filter")
+
+        settings = StackLayerSettings.from_dict(d.pop("settings"))
+
+
+
+
+        mask = StackMask.from_dict(d.pop("mask"))
+
+
+
+
         stack_layer = cls(
             id=id,
             name=name,
@@ -135,6 +216,14 @@ class StackLayer:
             channels=channels,
             painted=painted,
             children=children,
+            fill=fill,
+            values=values,
+            textures=textures,
+            graph=graph,
+            projection=projection,
+            filter_=filter_,
+            settings=settings,
+            mask=mask,
         )
 
 

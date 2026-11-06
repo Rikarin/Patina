@@ -44,7 +44,9 @@ class StackState:
             layers (list[StackLayer]): Its layers, bottom first.
             previews (list[StackPreview]): The newest maps.
             settled (int): The newest revision an evaluation has reached.
+            model (str): The mesh it is painted on, as the document names it, or empty.
             evaluation (None | StackEvaluation | Unset):
+            mesh_maps (None | str | Unset): The bake its generators read, or null.
      """
 
     id: str
@@ -60,7 +62,9 @@ class StackState:
     layers: list[StackLayer]
     previews: list[StackPreview]
     settled: int
+    model: str
     evaluation: None | StackEvaluation | Unset = UNSET
+    mesh_maps: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -114,6 +118,8 @@ class StackState:
 
         settled = self.settled
 
+        model = self.model
+
         evaluation: dict[str, Any] | None | Unset
         if isinstance(self.evaluation, Unset):
             evaluation = UNSET
@@ -121,6 +127,12 @@ class StackState:
             evaluation = self.evaluation.to_dict()
         else:
             evaluation = self.evaluation
+
+        mesh_maps: None | str | Unset
+        if isinstance(self.mesh_maps, Unset):
+            mesh_maps = UNSET
+        else:
+            mesh_maps = self.mesh_maps
 
 
         field_dict: dict[str, Any] = {}
@@ -139,9 +151,12 @@ class StackState:
             "layers": layers,
             "previews": previews,
             "settled": settled,
+            "model": model,
         })
         if evaluation is not UNSET:
             field_dict["evaluation"] = evaluation
+        if mesh_maps is not UNSET:
+            field_dict["meshMaps"] = mesh_maps
 
         return field_dict
 
@@ -208,6 +223,8 @@ class StackState:
 
         settled = d.pop("settled")
 
+        model = d.pop("model")
+
         def _parse_evaluation(data: object) -> None | StackEvaluation | Unset:
             if data is None:
                 return data
@@ -228,6 +245,16 @@ class StackState:
         evaluation = _parse_evaluation(d.pop("evaluation", UNSET))
 
 
+        def _parse_mesh_maps(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        mesh_maps = _parse_mesh_maps(d.pop("meshMaps", UNSET))
+
+
         stack_state = cls(
             id=id,
             path=path,
@@ -242,7 +269,9 @@ class StackState:
             layers=layers,
             previews=previews,
             settled=settled,
+            model=model,
             evaluation=evaluation,
+            mesh_maps=mesh_maps,
         )
 
 

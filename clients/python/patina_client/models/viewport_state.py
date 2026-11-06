@@ -40,6 +40,7 @@ class ViewportState:
             frames (int): How many frames this Server has published.
             mesh (None | str | Unset): The mesh's path, or null when none is open.
             error (None | str | Unset): Why the last command failed, or null.
+            stack (None | str | Unset): The stack session it is wearing, or null.
      """
 
     maps: ViewportMapPaths
@@ -50,6 +51,7 @@ class ViewportState:
     frames: int
     mesh: None | str | Unset = UNSET
     error: None | str | Unset = UNSET
+    stack: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -83,6 +85,12 @@ class ViewportState:
         else:
             error = self.error
 
+        stack: None | str | Unset
+        if isinstance(self.stack, Unset):
+            stack = UNSET
+        else:
+            stack = self.stack
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -98,6 +106,8 @@ class ViewportState:
             field_dict["mesh"] = mesh
         if error is not UNSET:
             field_dict["error"] = error
+        if stack is not UNSET:
+            field_dict["stack"] = stack
 
         return field_dict
 
@@ -146,6 +156,16 @@ class ViewportState:
         error = _parse_error(d.pop("error", UNSET))
 
 
+        def _parse_stack(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        stack = _parse_stack(d.pop("stack", UNSET))
+
+
         viewport_state = cls(
             maps=maps,
             camera=camera,
@@ -155,6 +175,7 @@ class ViewportState:
             frames=frames,
             mesh=mesh,
             error=error,
+            stack=stack,
         )
 
 

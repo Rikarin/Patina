@@ -112,10 +112,17 @@ from .stack_command_stack_add_layer_op import StackCommandStackAddLayerOp
 from .stack_command_stack_add_layer_values_type_1 import StackCommandStackAddLayerValuesType1
 from .stack_command_stack_move_layer import StackCommandStackMoveLayer
 from .stack_command_stack_move_layer_op import StackCommandStackMoveLayerOp
+from .stack_command_stack_nest_layer import StackCommandStackNestLayer
+from .stack_command_stack_nest_layer_op import StackCommandStackNestLayerOp
 from .stack_command_stack_remove_layer import StackCommandStackRemoveLayer
 from .stack_command_stack_remove_layer_op import StackCommandStackRemoveLayerOp
 from .stack_command_stack_set_layer import StackCommandStackSetLayer
 from .stack_command_stack_set_layer_op import StackCommandStackSetLayerOp
+from .stack_command_stack_set_layer_settings_type_1 import StackCommandStackSetLayerSettingsType1
+from .stack_command_stack_set_layer_textures_type_1 import StackCommandStackSetLayerTexturesType1
+from .stack_command_stack_set_layer_values_type_1 import StackCommandStackSetLayerValuesType1
+from .stack_command_stack_set_model import StackCommandStackSetModel
+from .stack_command_stack_set_model_op import StackCommandStackSetModelOp
 from .stack_command_stack_stroke import StackCommandStackStroke
 from .stack_command_stack_stroke_op import StackCommandStackStrokeOp
 from .stack_create_request import StackCreateRequest
@@ -125,7 +132,13 @@ from .stack_evaluation import StackEvaluation
 from .stack_event import StackEvent
 from .stack_event_page import StackEventPage
 from .stack_export_request import StackExportRequest
+from .stack_filter_kind import StackFilterKind
 from .stack_layer import StackLayer
+from .stack_layer_settings import StackLayerSettings
+from .stack_layer_textures import StackLayerTextures
+from .stack_layer_values import StackLayerValues
+from .stack_mask import StackMask
+from .stack_mesh_maps_request import StackMeshMapsRequest
 from .stack_open_request import StackOpenRequest
 from .stack_painted import StackPainted
 from .stack_pixels import StackPixels
@@ -133,6 +146,8 @@ from .stack_preview import StackPreview
 from .stack_stamp import StackStamp
 from .stack_state import StackState
 from .stack_summary import StackSummary
+from .stack_view import StackView
+from .stack_vocabulary import StackVocabulary
 from .system_info import SystemInfo
 from .tag_count import TagCount
 from .tag_page import TagPage
@@ -142,6 +157,9 @@ from .viewport_graph_request import ViewportGraphRequest
 from .viewport_look_request import ViewportLookRequest
 from .viewport_map_paths import ViewportMapPaths
 from .viewport_mesh_request import ViewportMeshRequest
+from .viewport_pick import ViewportPick
+from .viewport_pick_request import ViewportPickRequest
+from .viewport_stack_request import ViewportStackRequest
 from .viewport_state import ViewportState
 from .worker_status import WorkerStatus
 
@@ -258,10 +276,17 @@ __all__ = (
     "StackCommandStackAddLayerValuesType1",
     "StackCommandStackMoveLayer",
     "StackCommandStackMoveLayerOp",
+    "StackCommandStackNestLayer",
+    "StackCommandStackNestLayerOp",
     "StackCommandStackRemoveLayer",
     "StackCommandStackRemoveLayerOp",
     "StackCommandStackSetLayer",
     "StackCommandStackSetLayerOp",
+    "StackCommandStackSetLayerSettingsType1",
+    "StackCommandStackSetLayerTexturesType1",
+    "StackCommandStackSetLayerValuesType1",
+    "StackCommandStackSetModel",
+    "StackCommandStackSetModelOp",
     "StackCommandStackStroke",
     "StackCommandStackStrokeOp",
     "StackCreateRequest",
@@ -271,7 +296,13 @@ __all__ = (
     "StackEvent",
     "StackEventPage",
     "StackExportRequest",
+    "StackFilterKind",
     "StackLayer",
+    "StackLayerSettings",
+    "StackLayerTextures",
+    "StackLayerValues",
+    "StackMask",
+    "StackMeshMapsRequest",
     "StackOpenRequest",
     "StackPainted",
     "StackPixels",
@@ -279,6 +310,8 @@ __all__ = (
     "StackStamp",
     "StackState",
     "StackSummary",
+    "StackView",
+    "StackVocabulary",
     "SystemInfo",
     "TagCount",
     "TagPage",
@@ -288,6 +321,9 @@ __all__ = (
     "ViewportLookRequest",
     "ViewportMapPaths",
     "ViewportMeshRequest",
+    "ViewportPick",
+    "ViewportPickRequest",
+    "ViewportStackRequest",
     "ViewportState",
     "WorkerStatus",
 )

@@ -19,6 +19,7 @@ def _get_kwargs(
     id: str,
     *,
     clean: bool | Unset = False,
+    sampled: bool | Unset = False,
 
 ) -> dict[str, Any]:
     
@@ -28,6 +29,8 @@ def _get_kwargs(
     params: dict[str, Any] = {}
 
     params["clean"] = clean
+
+    params["sampled"] = sampled
 
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
@@ -91,6 +94,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient | Client,
     clean: bool | Unset = False,
+    sampled: bool | Unset = False,
 
 ) -> Response[ProblemDetails | list[StackPixels]]:
     """ A digest of each map as it stands, the same one an export reports, with no pixels in the reply.
@@ -98,6 +102,7 @@ def sync_detailed(
     Args:
         id (str):
         clean (bool | Unset):  Default: False.
+        sampled (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -111,6 +116,7 @@ def sync_detailed(
     kwargs = _get_kwargs(
         id=id,
 clean=clean,
+sampled=sampled,
 
     )
 
@@ -125,6 +131,7 @@ def sync(
     *,
     client: AuthenticatedClient | Client,
     clean: bool | Unset = False,
+    sampled: bool | Unset = False,
 
 ) -> ProblemDetails | list[StackPixels] | None:
     """ A digest of each map as it stands, the same one an export reports, with no pixels in the reply.
@@ -132,6 +139,7 @@ def sync(
     Args:
         id (str):
         clean (bool | Unset):  Default: False.
+        sampled (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -146,6 +154,7 @@ def sync(
         id=id,
 client=client,
 clean=clean,
+sampled=sampled,
 
     ).parsed
 
@@ -154,6 +163,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient | Client,
     clean: bool | Unset = False,
+    sampled: bool | Unset = False,
 
 ) -> Response[ProblemDetails | list[StackPixels]]:
     """ A digest of each map as it stands, the same one an export reports, with no pixels in the reply.
@@ -161,6 +171,7 @@ async def asyncio_detailed(
     Args:
         id (str):
         clean (bool | Unset):  Default: False.
+        sampled (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -174,6 +185,7 @@ async def asyncio_detailed(
     kwargs = _get_kwargs(
         id=id,
 clean=clean,
+sampled=sampled,
 
     )
 
@@ -188,6 +200,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient | Client,
     clean: bool | Unset = False,
+    sampled: bool | Unset = False,
 
 ) -> ProblemDetails | list[StackPixels] | None:
     """ A digest of each map as it stands, the same one an export reports, with no pixels in the reply.
@@ -195,6 +208,7 @@ async def asyncio(
     Args:
         id (str):
         clean (bool | Unset):  Default: False.
+        sampled (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -209,5 +223,6 @@ async def asyncio(
         id=id,
 client=client,
 clean=clean,
+sampled=sampled,
 
     )).parsed
