@@ -1,5 +1,5 @@
 import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, viewChild, untracked } from '@angular/core';
 import type { AssetSummary, ProjectSummary } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiInputImports } from '@xui/input';
@@ -11,7 +11,12 @@ import { XuiSpinnerImports } from '@xui/spinner';
 import { LibrarySelection } from './library-selection';
 import { LibraryStore, type LibraryView } from './library-store';
 import { counted, nextIndex } from './list-keys';
+import { desktop } from '../core/desktop';
+import { LibraryTree } from './library-tree';
+import { LibraryTreeStore } from './library-tree-store';
+import { NewGraphDialog } from '../graph/new-graph-dialog';
 import { NewProjectDialog } from './new-project-dialog';
+import { ProjectStore } from './project-store';
 import { ViewportFit } from './viewport-fit';
 
 type ViewName = 'projects' | 'assets';
@@ -32,6 +37,8 @@ function isAsset(row: LibraryRow): row is AssetSummary {
 @Component({
   selector: 'ptn-library',
   imports: [
+    LibraryTree,
+    NewGraphDialog,
     NewProjectDialog,
     ScrollingModule,
     ViewportFit,
@@ -57,8 +64,30 @@ function isAsset(row: LibraryRow): row is AssetSummary {
         <xui-non-ideal-state
           class="flex-1"
           title="No library open"
-          description="Start the Server with --library and a folder. patina library new makes one."
-        />
+          [description]="noLibraryText"
+        >
+          <div action class="flex gap-2">
+            @if (canPick) {
+              <button type="button" xuiButton size="sm" color="primary" data-testid="library-new" (click)="newLibrary()">
+                New Library…
+              </button>
+              <button type="button" xuiButton size="sm" data-testid="library-open" (click)="openLibrary()">
+                Open Library…
+              </button>
+            }
+          </div>
+        </xui-non-ideal-state>
+        @for (path of recent(); track path) {
+          <button
+            type="button"
+            class="hover:bg-selection w-full truncate px-3 py-1 text-start text-sm"
+            data-testid="library-recent"
+            [title]="path"
+            (click)="openRecent(path)"
+          >
+            {{ nameOf(path) }}
+          </button>
+        }
       }
       @case ('error') {
         <xui-non-ideal-state class="flex-1" title="The library cannot be reached" [description]="state.reason">
@@ -98,6 +127,18 @@ function isAsset(row: LibraryRow): row is AssetSummary {
           />
         </div>
 
+        @if (showsTree()) {
+          <div class="well relative flex min-h-0 flex-1 flex-col overflow-hidden">
+            <ptn-library-tree #tree (creatingProject)="newProjectIn($event)" />
+            @if (treeOverlay(); as message) {
+              <xui-non-ideal-state
+                class="pointer-events-none absolute inset-0 m-auto h-fit"
+                [title]="message.title"
+                [description]="message.description"
+              />
+            }
+          </div>
+        } @else {
         <div class="well relative min-h-0 flex-1 overflow-hidden">
           <cdk-virtual-scroll-viewport
             ptnViewportFit
@@ -163,34 +204,61 @@ function isAsset(row: LibraryRow): row is AssetSummary {
             </p>
           }
         </div>
+        }
 
         <footer class="chrome-bar flex h-8 shrink-0 items-center gap-2 px-2">
-          <span class="readout truncate" data-testid="library-count">{{ countText() }}</span>
+          <span class="readout min-w-0 flex-1 truncate" data-testid="library-count">{{ countText() }}</span>
           @if (state.info.indexing) {
             <span class="text-foreground-muted flex items-center gap-1 text-xs" data-testid="library-indexing">
               <xui-spinner size="xs" aria-hidden="true" />
               Indexing
             </span>
           }
-          <span class="flex-1"></span>
+          @if (viewName() === 'assets') {
+            <button type="button" xuiButton size="sm" data-testid="library-new-graph" (click)="creatingGraph.set(true)">
+              New Graph…
+            </button>
+          }
           @if (viewName() === 'projects') {
-            <button type="button" xuiButton size="sm" (click)="creating.set(true)">New…</button>
+            <button type="button" xuiButton size="sm" variant="ghost" data-testid="library-new-folder" (click)="newFolder()">
+              Folder
+            </button>
+            <button type="button" xuiButton size="sm" data-testid="library-new-project" (click)="newProjectIn(treeStore.target())">
+              Project…
+            </button>
           }
         </footer>
-        <ptn-new-project [(open)]="creating" />
+        <ptn-new-project [(open)]="creating" [folder]="creatingIn()" [startKind]="creatingKind()" />
+        <ptn-new-graph [(open)]="creatingGraph" />
       }
     }
   `
 })
 export class LibraryPane {
   protected readonly store = inject(LibraryStore);
+  protected readonly treeStore = inject(LibraryTreeStore);
+  private readonly project = inject(ProjectStore);
   private readonly selection = inject(LibrarySelection);
+  private readonly tree = viewChild<LibraryTree>('tree');
   private readonly viewport = viewChild(CdkVirtualScrollViewport);
 
   protected readonly views = views;
   protected readonly rowHeight = RowHeight;
   protected readonly viewName = signal<ViewName>('projects');
   protected readonly creating = signal(false);
+  protected readonly creatingIn = signal('');
+  protected readonly creatingGraph = signal(false);
+  protected readonly creatingKind = signal('texturing');
+  protected readonly canPick = desktop() !== undefined;
+  protected readonly noLibraryText = this.canPick
+    ? 'A library holds one game\'s projects and the assets they share.'
+    : 'This Server was started without a library.';
+  protected readonly recent = signal<readonly string[]>([]);
+  /** The tree is the Library's home; a search or a tag looks across every folder instead. */
+  protected readonly showsTree = computed(() => {
+    const view = this.view();
+    return this.viewName() === 'projects' && view.search() === '' && view.tags().length === 0;
+  });
   /** The keyboard's row, which can be one whose page has not arrived yet. */
   protected readonly active = signal<number | null>(null);
   protected readonly selectedId = computed(() => this.selection.id());
@@ -208,12 +276,31 @@ export class LibraryPane {
   );
 
   protected readonly countText = computed(() => {
-    const total = this.view().list.total();
+    const state = this.store.state();
+    const total =
+      this.showsTree() && state.kind === 'ready' ? state.info.projectCount : this.view().list.total();
     if (total === null) {
       return '…';
     }
 
     return counted(total, this.viewName() === 'projects' ? 'project' : 'shared asset');
+  });
+
+  /** What the tree says instead of rows. */
+  protected readonly treeOverlay = computed(() => {
+    const failure = this.treeStore.failure();
+    if (!this.treeStore.loaded() && failure !== null) {
+      return { title: 'The list did not load', description: failure };
+    }
+
+    if (!this.treeStore.loaded() || this.treeStore.rows().length > 0) {
+      return null;
+    }
+
+    const state = this.store.state();
+    return state.kind === 'ready' && state.info.indexing
+      ? { title: 'Indexing the library', description: 'This list fills in when the scan ends.' }
+      : { title: 'No projects yet', description: 'Make a project from a mesh, or a folder to group them in.' };
   });
 
   /** What the list area says instead of rows. */
@@ -244,11 +331,54 @@ export class LibraryPane {
   });
 
   constructor() {
+    void desktop()
+      ?.recentLibraries()
+      .then(paths => this.recent.set(paths));
+    effect(() => {
+      const asked = this.project.newKind();
+      if (asked) {
+        this.creatingKind.set(asked.kind);
+        untracked(() => this.newProjectIn(this.treeStore.target()));
+      }
+    });
+    desktop()?.onCommand(command => {
+      if (command === 'newProject') {
+        this.newProjectIn(this.treeStore.target());
+      } else if (command === 'newFolder') {
+        void this.newFolder();
+      }
+    });
+
     // The list stops at its last row, so an index past it after a smaller result set has no row to land on.
     effect(() => {
       const total = this.view().list.total();
       this.active.update(index => (index !== null && total !== null && index >= total ? null : index));
     });
+  }
+
+  protected newProjectIn(folder: string): void {
+    this.creatingIn.set(folder);
+    this.creating.set(true);
+  }
+
+  protected async newFolder(): Promise<void> {
+    await this.tree()?.makeFolder(this.treeStore.target());
+  }
+
+  protected openLibrary(): void {
+    void desktop()?.openLibrary();
+  }
+
+  protected newLibrary(): void {
+    void desktop()?.newLibrary();
+  }
+
+  protected openRecent(path: string): void {
+    void desktop()?.openRecentLibrary(path);
+  }
+
+  protected nameOf(path: string): string {
+    return path.split(/[\\/]/).pop()?.replace(/\.ptlib$/, '') ?? path;
   }
 
   protected switchTo(name: ViewName | null): void {

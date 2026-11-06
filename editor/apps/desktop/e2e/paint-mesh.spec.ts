@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { leave, newLibrary, newProject } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net10.0/patina-bench.dll');
@@ -29,8 +30,9 @@ test.beforeEach(async () => {
 });
 
 test.afterEach(async () => {
-  await app.close();
-  rmSync(scratch, { recursive: true, force: true });
+  await leave(app);
+  // The Server is still on its way out, and writes its last files as it goes.
+  rmSync(scratch, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
 });
 
 const canvas = () => window.getByRole('img', { name: 'Viewport' });
@@ -77,12 +79,9 @@ async function changed(before: string, after: string): Promise<number> {
 }
 
 async function openOnMesh(): Promise<void> {
-  await window.getByRole('tab', { name: 'Paint' }).click();
-  await window.getByTestId('paint-path').fill(join(scratch, 'Housing.vxlayers'));
-  await window.getByTestId('paint-new').click();
+  await newLibrary(app, window, join(scratch, 'Game.ptlib'));
+  await newProject(app, window, 'Housing', join(scratch, 'meshes', 'housing_low.glb'));
   await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 60_000 });
-  await window.getByTestId('paint-mesh').fill(join(scratch, 'meshes', 'housing_low.glb'));
-  await window.getByTestId('paint-bind').click();
   await expect(window.getByTestId('viewport-mesh')).toHaveText('housing_low.glb', { timeout: 30_000 });
   await expect(window.getByTestId('viewport-paint')).toBeVisible();
   await window.getByTestId('viewport-paint').click();
@@ -158,13 +157,13 @@ test('layers of every kind compose on the mesh', async () => {
   const blend = window.getByRole('combobox', { name: 'Blend mode' });
   await blend.click();
   await window.getByRole('option', { name: 'Multiply', exact: true }).click();
-  await expect(window.getByRole('list', { name: 'Layers' })).toContainText('Multiply');
+  await expect(window.getByTestId('paint-layers')).toContainText('Multiply');
 
   await window.getByTestId('paint-add-filter').click();
-  await expect(window.getByRole('list', { name: 'Layers' })).toContainText('Filter');
+  await expect(window.getByTestId('paint-layers')).toContainText('Filter');
   await window.getByTestId('paint-add-group').click();
   await window.getByTestId('paint-add').click();
-  await expect(window.getByRole('list', { name: 'Layers' }).getByText('Paint')).not.toHaveCount(0);
+  await expect(window.getByTestId('paint-layers').getByText('Paint')).not.toHaveCount(0);
   await window.screenshot({ path: join(shots, 'paint-layers.png') });
   await expect(window.getByTestId('paint-failure')).toHaveCount(0);
 });

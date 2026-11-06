@@ -20,6 +20,7 @@ const PickedView = {
 
 function layer(id: string, kind: string, children: StackLayer[] = []): StackLayer {
   return {
+    filterNode: '',
     id,
     name: id,
     kind,
@@ -34,9 +35,10 @@ function layer(id: string, kind: string, children: StackLayer[] = []): StackLaye
     textures: {},
     graph: '',
     projection: 'Uv',
+    planarAxis: 'Y',
     filter: 'Levels',
     settings: {},
-    mask: { source: 'None', value: 1, asset: '', anchor: '', generator: '', map: '' }
+    mask: { source: 'None', value: 1, asset: '', anchor: '', generator: '', map: '', tolerance: 0.02, softness: 0 }
   };
 }
 
@@ -289,7 +291,7 @@ describe('PaintStore', () => {
         kind: 'evaluated',
         revision: 2,
         history: { canUndo: true, canRedo: false, dirty: true },
-        evaluation: { previews: [{ usage: 'baseColor', hash: 'aa', width: 512, height: 512 }] }
+        evaluation: { previews: [{ usage: 'baseColor', hash: 'aa', width: 512, height: 512 }], diagnostics: [] }
       })
     } as MessageEvent);
     await vi.waitFor(() => expect(store.picture()).toBe('blob:map'));

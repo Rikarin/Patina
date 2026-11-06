@@ -400,8 +400,8 @@ describe('GraphStore', () => {
     const test = await opened(state({ history: dirty }));
     test.routes['POST graphs/g1/save'] = () => Response.json({ detail: 'Changed.' }, { status: 409 });
 
-    await test.store.open('shared/graphs/b.vxtexgraph');
-    expect(test.store.leaving()).toEqual({ kind: 'open', path: 'shared/graphs/b.vxtexgraph' });
+    await test.store.close();
+    expect(test.store.leaving()).toEqual({ kind: 'close' });
     await test.store.resolveLeaving('save');
 
     expect(test.store.saveConflict()).toBe(true);
@@ -770,38 +770,6 @@ describe('going into a compound', () => {
     expect(test.requests.some(request => request.key === 'POST graphs/g1/save')).toBe(true);
     expect(test.requests.some(request => request.key === 'DELETE graphs/g1')).toBe(true);
     expect(test.store.session().kind).toBe('none');
-  });
-});
-
-describe('leaving the app', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it('says whether there is anything to lose, and quits only after the answer', async () => {
-    const said: boolean[] = [];
-    let requested: () => void = () => undefined;
-    const quit = vi.fn();
-    vi.stubGlobal('patina', {
-      setUnsaved: (unsaved: boolean) => said.push(unsaved),
-      onQuitRequested: (listener: () => void) => {
-        requested = listener;
-      },
-      quit
-    });
-    const test = harness(state({ history: dirty }));
-    await test.store.open('a.vxtexgraph');
-    TestBed.tick();
-    expect(said.at(-1)).toBe(true);
-
-    requested();
-    expect(test.store.leaving()).toEqual({ kind: 'quit' });
-    await test.store.resolveLeaving('cancel');
-    expect(quit).not.toHaveBeenCalled();
-
-    requested();
-    await test.store.resolveLeaving('discard');
-    expect(quit).toHaveBeenCalledOnce();
   });
 });
 

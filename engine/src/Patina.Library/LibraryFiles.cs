@@ -45,6 +45,20 @@ public static class LibraryFiles {
         Replace(file, DocumentCodec.Write(document));
     }
 
+    /// <summary>Lays out a new library with the settings every library starts with.</summary>
+    public static void CreateDefaultLibrary(string root, string name) =>
+        CreateLibrary(
+            root,
+            new LibraryDocument(
+                LibraryId.New(),
+                name,
+                1024,
+                ["baseColor", "normal", "roughness", "metallic"],
+                "pbr",
+                []
+            )
+        );
+
     /// <summary>
     ///     The full path of the document of the project at <paramref name="path" /> below <c>projects/</c>.
     /// </summary>

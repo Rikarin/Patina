@@ -2,3 +2,4 @@
 #   pip-compile --generate-hashes --allow-unsafe --output-file=requirements.txt requirements.in
 openapi-python-client
 pytest
+colorama==0.4.6 ; sys_platform == "win32"

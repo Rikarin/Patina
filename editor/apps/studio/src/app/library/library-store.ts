@@ -183,6 +183,11 @@ export class LibraryStore {
     void this.poll();
   }
 
+  /** Asks at once, for a write that sets the index moving. */
+  refreshSoon(): void {
+    void this.poll();
+  }
+
   /** The dependents of an asset. Each call is a list of its own, which the caller cancels. */
   impactOf(asset: AssetSummary): ImpactList {
     return new ImpactList(async (offset, limit, signal) => {
@@ -208,7 +213,7 @@ export class LibraryStore {
     return project;
   }
 
-  private async api(): Promise<PatinaClient> {
+  async api(): Promise<PatinaClient> {
     this.client ??= this.createClient(await this.connection());
     return this.client;
   }

@@ -20,11 +20,14 @@ public sealed class SchemaChain(int current, params IReadOnlyList<DocumentMigrat
     /// <summary>The version this build writes.</summary>
     public int Current { get; } = current;
 
-    /// <summary>The chain of <c>library.yaml</c>. Version 1 is where all three start, so none has steps yet.</summary>
+    /// <summary>The chain of <c>library.yaml</c>. Version 1 is where these start, so it has no steps yet.</summary>
     public static SchemaChain Library { get; } = new(1);
 
-    /// <summary>The chain of <c>project.yaml</c>.</summary>
-    public static SchemaChain Project { get; } = new(1);
+    /// <summary>The chain of <c>project.yaml</c>. Version 2 adds meshes and documents; 1 upgrades as it is.</summary>
+    public static SchemaChain Project { get; } = new(2, new DocumentMigration(1, static _ => { }));
+
+    /// <summary>The chain of <c>folder.yaml</c>.</summary>
+    public static SchemaChain Folder { get; } = new(1);
 
     /// <summary>The chain of a shared asset's sidecar.</summary>
     public static SchemaChain Asset { get; } = new(1);

@@ -180,7 +180,7 @@ public sealed class DocumentCodecTests {
 
         Assert.Equal(
             $"""
-             schema: 1
+             schema: 2
              id: 0190b000-0000-7000-8000-000000000001
              name: Crate 01
              tags:
@@ -215,7 +215,7 @@ public sealed class DocumentCodecTests {
     [Fact]
     public void A_newer_schema_is_refused_as_such() {
         var error = Assert.Throws<LibraryFormatException>(static () =>
-            DocumentCodec.ReadProject($"schema: 2\nid: {ProjectId.New()}\nname: x\n", File)
+            DocumentCodec.ReadProject($"schema: 3\nid: {ProjectId.New()}\nname: x\n", File)
         );
 
         Assert.True(error.NewerSchema);

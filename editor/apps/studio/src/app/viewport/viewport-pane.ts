@@ -13,6 +13,7 @@ import {
 import { XuiButtonImports } from '@xui/button';
 import { desktop } from '../core/desktop';
 import { GraphStore } from '../graph/graph-store';
+import { ProjectStore } from '../library/project-store';
 import { PaintStore, pressureOf } from '../paint/paint-store';
 import { StrokeGesture } from '../paint/stroke-gesture';
 import { FramePainter } from './frame-painter';
@@ -29,7 +30,9 @@ import { ViewportClient } from './viewport-client';
   host: { class: 'flex h-full min-h-0 flex-col' },
   template: `
     <div class="chrome-bar flex h-9 shrink-0 items-center gap-2 px-2">
-      <button type="button" xuiButton size="sm" [disabled]="!canOpen" (click)="open()">Open mesh…</button>
+      @if (!paint.worn()) {
+        <button type="button" xuiButton size="sm" [disabled]="!canOpen" (click)="open()">Open mesh…</button>
+      }
       <span class="readout truncate" data-testid="viewport-mesh">{{ meshName() }}</span>
       @if (graph.document(); as document) {
         <button
@@ -45,7 +48,7 @@ import { ViewportClient } from './viewport-client';
           Show {{ document.name }}
         </button>
       }
-      @if (paint.worn()) {
+      @if (paint.worn() && project.active()?.kind === 'texturing') {
         <button
           type="button"
           xuiButton
@@ -79,7 +82,7 @@ import { ViewportClient } from './viewport-client';
         [attr.data-frames]="viewport.frames()"
         [class.cursor-grabbing]="dragging()"
         [class.cursor-grab]="!dragging() && !painting()"
-        [class.cursor-crosshair]="painting()"
+        [class.cursor-crosshair]="painting() || paint.picking() !== null"
         (pointerdown)="press($event)"
         (pointermove)="drag($event)"
         (pointerup)="release($event)"
@@ -115,6 +118,7 @@ export class ViewportPane implements AfterViewInit {
   protected readonly viewport = inject(ViewportClient);
   protected readonly graph = inject(GraphStore);
   protected readonly paint = inject(PaintStore);
+  protected readonly project = inject(ProjectStore);
   private readonly destroyRef = inject(DestroyRef);
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
   private readonly host = viewChild.required<ElementRef<HTMLElement>>('host');
@@ -190,6 +194,11 @@ export class ViewportPane implements AfterViewInit {
   }
 
   protected press(event: PointerEvent): void {
+    if (this.paint.picking() !== null && event.button === 0) {
+      void this.paint.pickColourOnMesh(this.stamp(event), this.aim());
+      return;
+    }
+
     this.canvas().nativeElement.setPointerCapture(event.pointerId);
     if (this.painting() && event.button === 0 && !event.altKey) {
       this.stroking = true;

@@ -119,6 +119,25 @@ public sealed class StackEvaluator(
         }
     }
 
+    /// <summary>Each fill of a stack alone, which the Worker keeps until the layer changes.</summary>
+    public async Task<IReadOnlyList<StackLayerThumbnail>> ThumbnailsAsync(
+        StackSession session,
+        CancellationToken cancellationToken
+    ) {
+        using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        patience.CancelAfter(WorkerPatience);
+        try {
+            var connection = await worker.ConnectionAsync(patience.Token);
+            var reply = await connection.SendAsync(
+                new() { Type = IpcTypes.StackThumbnails, StackThumbnails = new(session.Id, store.Root) },
+                patience.Token
+            );
+            return reply.StackLayerThumbnails ?? [];
+        } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+            throw new TimeoutException("No Worker is connected.");
+        }
+    }
+
     async Task<bool> DrainAsync(CancellationToken cancellationToken) {
         await ForgetClosedAsync(cancellationToken);
         var worked = 0;
@@ -161,8 +180,9 @@ public sealed class StackEvaluator(
         if (!told.TryGetValue(session.Id, out var state)
             || !ReferenceEquals(state.Connection, connection)
             || state.MeshMaps != session.MeshMaps
+            || state.CompoundEdits != session.CompoundEdits
             || !Prefix(state.Base, work.Standing)) {
-            state = new(connection) { MeshMaps = session.MeshMaps };
+            state = new(connection) { MeshMaps = session.MeshMaps, CompoundEdits = session.CompoundEdits };
             var load = new StackLoad(
                 session.Id,
                 session.Path,
@@ -313,6 +333,8 @@ public sealed class StackEvaluator(
         public string? Document { get; set; }
 
         public string? MeshMaps { get; init; }
+
+        public int CompoundEdits { get; init; }
 
         public Dictionary<long, (int Stamps, bool Open)> Sent { get; } = [];
 

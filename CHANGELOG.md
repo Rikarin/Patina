@@ -7,6 +7,43 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- A graph can be used as a material, a mask, a brush or a filter, from its menu in the Library, and the Materials shelf puts it in the
+  right place. A brush graph renders to a picture in the project's `brushes` folder.
+- A mask runs a stack of effects: Levels, Invert, Auto Levels, Blur and Sharpen, each with its own numbers.
+- Fill layers show what they really look like, drawn alone by the Worker. A Layered Material can be seen tiled.
+- A graph fill shows the parameters its graph exposes in Properties, and each layer keeps its own values. Saving a graph updates every
+  open stack that uses it.
+- A fill can be Spherical or Cylindrical as well as UV, Tri-planar or Planar, and every projection has a scale, rotation and offset,
+  so a texture on a UV fill can repeat and turn too. They live in the layer's `placement`, not its settings.
+- Layer pictures, mask pictures and the Bake dialog's meshes are chosen in the system dialog, with no typed paths. A picture is
+  copied into the project's `pictures` folder. New Project takes a high poly mesh.
+- The Library's projects are a tree of folders. Folders and subfolders can be made, renamed, coloured, moved and deleted, and
+  projects can be dragged between them, one or several at a time. Deleting a folder moves what it holds up a level, so it never
+  deletes a project. Folders are folders on disk, with a `folder.yaml` that holds the colour and keeps an empty one in Git. A search
+  or a tag still lists across all of them.
+- A project holds typed documents (ADR 0012): `project.yaml` is schema 2, and lists its meshes and its Texturing, Layered Material,
+  Image Material and Material Graph documents. New Project takes a kind and opens ready to work. A project opens in the tree to
+  show them, and the Paint pane has no path box.
+- The app starts on a Start screen, with no empty panes. Each kind of document opens its own layout, kept per kind, and open
+  documents are tabs that keep their edits and undo while another is in front. Bake and Export are dialogs.
+- Materials reach layers from a shelf: a graph's maps fill a stack's channels by usage, live, and a Layered Material or one of the
+  six shipped materials unfolds into a stack as layers. An Image Material makes a material from one picture, with height from its
+  brightness and no neural step. A Layered Material is previewed on a sphere.
+- The layer stack is a pane of its own, with Properties under it: rows with visibility, thumbnails, mask thumbnails, blend and opacity,
+  folders that open and close, drag to reorder and to move in and out of folders, and a right-click menu. Clicking a mask chooses
+  it for the brush. Thumbnails are a layer's colour or kind for now, not its rendered picture.
+- Vertex colours reach masks: a glTF's `COLOR_0` bakes into an ID map as the colours you painted, each face keeping one colour, and a
+  Colour Selection mask picks one from swatches of the map's colours or with an eyedropper on the mesh or the 2D view. A mesh with no
+  vertex colours still gets its ID map from its materials.
+- A fill's projection is set in Properties: UV, tri-planar with blending, or planar along an axis, with a scale.
+- A stack whose masks read baked maps no longer stops with no bake: they read as grey, a notice offers to bake, and a project's bake
+  reaches its stacks by itself.
+- The app opens and creates libraries itself, from the File menu or the empty Library, remembers recent ones and reopens the last.
+  `PATINA_LIBRARY` stays for scripts. `patina-server --create-library true` lays out a library that does not exist yet.
+- The app has its own menus, and the window title says what is open. Reload and the developer tools are not in a packaged build.
+- Paint now counts as unsaved work: Save shows it, the app asks before leaving a project or quitting, and closing a project closes
+  its stack and clears the viewport.
+
 - Reading a mesh on Linux no longer needs a system Assimp. The engine carries its own, 5.4.1 where Ubuntu's was 5.3, so a
   distribution without `libassimp5`, such as Ubuntu 26.04, can open meshes. It needs glibc 2.33 and `libstdc++` from GCC 11.
 - ⚠ A baked tangent-space map is now in MikkTSpace, with green up the image, and its rows run from `v = 0`, so a map is the

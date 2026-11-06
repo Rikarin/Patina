@@ -6,6 +6,7 @@ import {
   type StackCommand,
   type StackCommandBatch,
   type StackEvent,
+  type StackIdColour,
   type StackLayer,
   type StackMask,
   type StackPreview,
@@ -20,6 +21,7 @@ import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
 
 const ReconnectMs = 1_000;
+const ThumbnailQuiet = 400;
 
 /** How many stamp-to-frame times are kept, which is what the readout and the bench read. */
 const StampTimes = 2048;
@@ -38,16 +40,21 @@ export interface Aim {
 }
 
 /** A layer with how deep in groups it is, top of the stack first. */
+/** How the Worker says a stack read mesh maps with no bake, before their names. */
+const NeedsBake = 'Needs a bake: ';
+
 export interface LayerRow {
   layer: StackLayer;
   depth: number;
+  /** The folder it is in, or null at the top of the stack. */
+  parent: string | null;
 }
 
 /** The stack as a list, each group above what it holds. */
-export function rowsOf(layers: readonly StackLayer[], depth = 0): LayerRow[] {
+export function rowsOf(layers: readonly StackLayer[], depth = 0, parent: string | null = null): LayerRow[] {
   return [...layers]
     .reverse()
-    .flatMap(layer => [{ layer, depth }, ...rowsOf(layer.children, depth + 1)]);
+    .flatMap(layer => [{ layer, depth, parent }, ...rowsOf(layer.children, depth + 1, layer.id)]);
 }
 
 /** Where a client follows a stack from. */
@@ -121,6 +128,12 @@ export class PaintStore {
     pressureFlow: 0
   });
   readonly vocabulary = signal<StackVocabulary | null>(null);
+  /** The colours of the id map this stack reads, once asked for, or null with no such map. */
+  readonly idColours = signal<readonly StackIdColour[] | null>(null);
+  /** The layer whose mask is taking its colour from the next click on the mesh or the map. */
+  readonly picking = signal<string | null>(null);
+  /** The mesh maps layers want and no bake has given, which read as grey until one does. */
+  readonly unbaked = signal<string | null>(null);
   /** Whether the viewport is wearing this stack, so a stroke can be made on the mesh. */
   readonly worn = signal(false);
   /** From a stamp leaving the pointer to the first frame painted with it, newest last, in milliseconds. */
@@ -166,6 +179,71 @@ export class PaintStore {
     }
   }
 
+  /** Reads what the id map holds. No id map is an answer, not a failure: the mask says what to do about it. */
+  async loadIdColours(): Promise<void> {
+    const id = this.state()?.id;
+    if (!id) {
+      return;
+    }
+
+    const client = await this.api();
+    const reply = await client.GET('/api/v1/stacks/{id}/id-colours', { params: { path: { id }, query: {} } });
+    this.idColours.set(reply.data?.colours ?? null);
+  }
+
+  /** Takes the colour at a place on the id map for the mask waiting for one. */
+  async pickColourAt(u: number, v: number): Promise<void> {
+    const id = this.state()?.id;
+    const layer = this.layers().find(row => row.layer.id === this.picking())?.layer;
+    this.picking.set(null);
+    if (!id || !layer) {
+      return;
+    }
+
+    try {
+      const client = await this.api();
+      const params = { path: { id }, query: { u, v } };
+      const colour = unwrap(await client.GET('/api/v1/stacks/{id}/id-colours', { params })).at;
+      if (colour) {
+        await this.setMask(layer, { ...layer.mask, colour: [...colour] });
+      }
+    } catch (failure) {
+      this.failure.set(failure instanceof Error ? failure.message : String(failure));
+    }
+  }
+
+  /** Takes the colour under a place on the mesh in the viewport. */
+  async pickColourOnMesh(stamp: StackStamp, aim: Aim): Promise<void> {
+    const client = await this.api();
+    const { width, height, camera } = aim;
+    const hit = unwrap(
+      await client.POST('/api/v1/viewport/pick', {
+        body: { x: stamp.x / width, y: stamp.y / height, camera, width, height }
+      })
+    );
+    if (hit.found) {
+      await this.pickColourAt(hit.u, hit.v);
+    } else {
+      this.picking.set(null);
+    }
+  }
+
+  /** Lets go of the stack, which stays open on the Server with its edits and history, to come back to. */
+  detach(): void {
+    this.state.set(null);
+    this.worn.set(false);
+    this.picture.set(null);
+    clearTimeout(this.thumbnailWait);
+    this.thumbnails.set(new Map());
+    this.layer.set(null);
+    this.idColours.set(null);
+    this.picking.set(null);
+    this.unbaked.set(null);
+    const socket = this.socket;
+    this.socket = null;
+    socket?.close();
+  }
+
   /** Adds a layer at the top of the stack, or of the chosen group, and chooses it. */
   async addLayer(kind = 'paint', name = 'Paint', filter?: string): Promise<void> {
     const chosen = this.chosen();
@@ -181,6 +259,15 @@ export class PaintStore {
 
   async setEnabled(layer: StackLayer, enabled: boolean): Promise<void> {
     await this.edit({ op: 'setLayer', layer: layer.id, enabled });
+  }
+
+  /** Adds a layer filled from a material graph, whose maps reach the channels of the same usage. */
+  async addGraphLayer(name: string, graph: string): Promise<void> {
+    await this.addLayer('fill', name);
+    const layer = this.layer();
+    if (layer) {
+      await this.edit({ op: 'setLayer', layer, fill: 'Graph', graph });
+    }
   }
 
   /** One edit of the document, whose result the stack's events and this read bring back. */
@@ -450,6 +537,7 @@ export class PaintStore {
     }
 
     this.show(state.previews);
+    this.thumbnailsSoon(state.id);
   }
 
   /** Shows a channel, whose picture may already be here. */
@@ -462,6 +550,45 @@ export class PaintStore {
     const preview = previews.find(p => p.usage === this.channel());
     if (preview) {
       void this.load(preview.hash);
+    }
+  }
+
+  /** The fills drawn alone, once the stack has been quiet for a moment. */
+  readonly thumbnails = signal<ReadonlyMap<string, string>>(new Map());
+  private thumbnailWait: ReturnType<typeof setTimeout> | undefined;
+  private readonly thumbnailUrls = new Map<string, string>();
+
+  private thumbnailsSoon(id: string): void {
+    clearTimeout(this.thumbnailWait);
+    // A thumbnail is a nicety: without one a layer keeps its letter, so a failure here tells nobody anything.
+    this.thumbnailWait = setTimeout(() => void this.loadThumbnails(id).catch(() => undefined), ThumbnailQuiet);
+  }
+
+  private async loadThumbnails(id: string): Promise<void> {
+    const client = await this.api();
+    const { data } = await client.GET('/api/v1/stacks/{id}/thumbnails', { params: { path: { id } } });
+    if (!data || this.state()?.id !== id) {
+      return;
+    }
+
+    const shown = new Map<string, string>();
+    for (const { layer, hash } of data.items) {
+      let url = this.thumbnailUrls.get(hash);
+      if (!url) {
+        const blob = await client.GET('/api/v1/previews/{hash}', { params: { path: { hash } }, parseAs: 'blob' });
+        if (!blob.data) {
+          continue;
+        }
+
+        url = URL.createObjectURL(blob.data);
+        this.thumbnailUrls.set(hash, url);
+      }
+
+      shown.set(layer, url);
+    }
+
+    if (this.state()?.id === id) {
+      this.thumbnails.set(shown);
     }
   }
 
@@ -510,6 +637,10 @@ export class PaintStore {
   private hear(event: StackEvent): void {
     this.sequence = event.sequence;
     this.state.update(state => (state ? { ...state, history: event.history, revision: event.revision } : state));
+    if (event.evaluation) {
+      this.heardNotes(event.evaluation.diagnostics);
+    }
+
     const previews = event.evaluation?.previews ?? [];
     if (previews.length > 0) {
       this.state.update(state =>
@@ -521,12 +652,18 @@ export class PaintStore {
           : state
       );
       this.show(previews);
+      this.thumbnailsSoon(this.state()?.id ?? '');
     }
 
     if (event.delta) {
       const layers = event.delta.layers;
       this.state.update(state => (state ? { ...state, layers: [...layers] } : state));
     }
+  }
+
+  private heardNotes(notes: readonly string[]): void {
+    const note = notes.find(held => held.startsWith(NeedsBake));
+    this.unbaked.set(note ? note.slice(NeedsBake.length) : null);
   }
 
   private async api(): Promise<PatinaClient> {

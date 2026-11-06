@@ -55,7 +55,76 @@ public sealed record ProjectDocument(
     IReadOnlyList<string> Tags,
     IReadOnlyList<AssetReference> References,
     IReadOnlyList<OutputDeclaration> Outputs
+) {
+    /// <summary>The meshes in the project's folder.</summary>
+    public IReadOnlyList<ProjectMesh> Meshes { get; init; } = [];
+
+    /// <summary>What can be opened and edited in the project (ADR 0012).</summary>
+    public IReadOnlyList<ProjectItem> Documents { get; init; } = [];
+}
+
+/// <summary>A mesh a project owns.</summary>
+/// <param name="Id">Its identity, which a document refers to it by.</param>
+/// <param name="File">Its file, relative to the project.</param>
+/// <param name="High">The detailed mesh it bakes from, relative to the project, or null.</param>
+public sealed record ProjectMesh(AssetId Id, string File, string? High = null);
+
+/// <summary>A document a project lists.</summary>
+/// <param name="Id">Its identity, which a reference to it survives a move by.</param>
+/// <param name="Kind">One of <see cref="DocumentKinds" />.</param>
+/// <param name="File">Its file, relative to the project.</param>
+/// <param name="Name">Its display name.</param>
+/// <param name="Mesh">The mesh it is on. A <c>texturing</c> document has one and no other kind does.</param>
+/// <param name="Role">What a graph is for, one of <see cref="GraphRoles" />. Null is a material.</param>
+public sealed record ProjectItem(
+    AssetId Id,
+    string Kind,
+    string File,
+    string Name,
+    AssetId? Mesh = null,
+    string? Role = null
 );
+
+/// <summary>What a graph is for, which decides where it is offered (ADR 0012).</summary>
+public static class GraphRoles {
+    /// <summary>Maps by usage, which fill a layer's channels.</summary>
+    public const string Material = "material";
+
+    /// <summary>One map, which decides where a layer shows.</summary>
+    public const string Mask = "mask";
+
+    /// <summary>One map, which a brush stamps.</summary>
+    public const string Brush = "brush";
+
+    /// <summary>An image in and an image out, which changes what is under it or a mask.</summary>
+    public const string Filter = "filter";
+
+    public static bool Known(string role) => role is Material or Mask or Brush or Filter;
+}
+
+/// <summary>What a document is for, which decides the workspace it opens in (ADR 0012).</summary>
+public static class DocumentKinds {
+    /// <summary>Layers and paint on a mesh, ending in textures for one asset.</summary>
+    public const string Texturing = "texturing";
+
+    /// <summary>Layers with no mesh, making a material others can use.</summary>
+    public const string LayeredMaterial = "layered-material";
+
+    /// <summary>A material made from one photograph.</summary>
+    public const string ImageMaterial = "image-material";
+
+    /// <summary>A node graph, making a material, a mask, a brush or a filter.</summary>
+    public const string Graph = "graph";
+
+    public static bool Known(string kind) => kind is Texturing or LayeredMaterial or ImageMaterial or Graph;
+}
+
+/// <summary>
+///     <c>folder.yaml</c>: what a folder of projects remembers. It exists even with nothing to say, because Git keeps
+///     no empty folder.
+/// </summary>
+/// <param name="Color">The folder's colour as <c>#rrggbb</c>, or null for none.</param>
+public sealed record FolderDocument(string? Color = null);
 
 /// <summary>A shared asset's sidecar: its identity, and the other shared assets it reads.</summary>
 public sealed record AssetDocument(

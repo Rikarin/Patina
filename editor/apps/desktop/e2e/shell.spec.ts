@@ -28,7 +28,7 @@ test('the app starts both sidecars and shows the shell', async () => {
 
   await expect(status).toContainText('No library open');
   await expect(status).toContainText('Worker connected');
-  for (const pane of ['Library', 'Viewport', 'Inspector']) {
+  for (const pane of ['Library', 'Start', 'Inspector']) {
     await expect(window.getByText(pane, { exact: true }).first()).toBeVisible();
   }
 

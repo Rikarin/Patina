@@ -50,7 +50,187 @@ public sealed record ProjectPage(IReadOnlyList<ProjectSummary> Items, int Total,
 ///     Folders below <c>projects/</c> to put it in, with forward slashes, such as <c>props</c>.
 /// </param>
 /// <param name="Tags">The project's tags.</param>
-public sealed record ProjectCreateRequest(string Name, string? Folder = null, IReadOnlyList<string>? Tags = null);
+/// <param name="Mesh">A mesh file on the Server's machine to copy in. Null leaves the project to get one later.</param>
+/// <param name="Resolution">The width and height of a stack it starts with. Null is 2048.</param>
+/// <param name="Kind">
+///     The document it starts with: <c>texturing</c>, <c>layered-material</c>, <c>image-material</c> or <c>graph</c>.
+///     Null is <c>texturing</c> with a mesh and nothing without one.
+/// </param>
+/// <param name="Image">The picture an <c>image-material</c> starts from, on the Server\'s machine.</param>
+/// <param name="High">The detailed mesh it bakes from, on the Server's machine.</param>
+public sealed record ProjectCreateRequest(
+    string Name,
+    string? Folder = null,
+    IReadOnlyList<string>? Tags = null,
+    string? Mesh = null,
+    int? Resolution = null,
+    string? Kind = null,
+    string? Image = null,
+    string? High = null
+);
+
+/// <summary>A result of a bake in a project's folder.</summary>
+/// <param name="Kind">What it is.</param>
+/// <param name="Name">Its name.</param>
+/// <param name="Path">Its path below the library.</param>
+public sealed record ProjectFile(string Kind, string Name, string Path);
+
+/// <summary>A mesh in a project.</summary>
+/// <param name="Id">Its id. Null until the project lists it.</param>
+/// <param name="Path">Its path below the library.</param>
+/// <param name="High">The detailed mesh it bakes from, below the library.</param>
+public sealed record ProjectMeshInfo(Guid? Id, string Path, string? High);
+
+/// <summary>Something in a project that can be opened and edited (ADR 0012).</summary>
+/// <param name="Id">Its GUID. Null until the project lists it.</param>
+/// <param name="Kind"><c>texturing</c>, <c>layered-material</c>, <c>image-material</c> or <c>graph</c>.</param>
+/// <param name="Name">Its display name.</param>
+/// <param name="Path">Its path below the library, which the graph and stack routes take.</param>
+/// <param name="Mesh">The id of the mesh it is on.</param>
+/// <param name="Role">What a graph is for: <c>material</c>, <c>mask</c>, <c>brush</c> or <c>filter</c>.</param>
+public sealed record ProjectDocumentInfo(
+    Guid? Id,
+    string Kind,
+    string Name,
+    string Path,
+    Guid? Mesh,
+    string? Role = null);
+
+/// <summary>A project as it opens.</summary>
+/// <param name="Id">The project's GUID.</param>
+/// <param name="Name">Its display name.</param>
+/// <param name="Path">Its path below <c>projects/</c>.</param>
+/// <param name="Meshes">Its meshes.</param>
+/// <param name="Documents">What can be opened in it.</param>
+/// <param name="BakeFolder">Where its bakes go, below the library.</param>
+/// <param name="Bakes">The bakes it has.</param>
+public sealed record ProjectContents(
+    Guid Id,
+    string Name,
+    string Path,
+    IReadOnlyList<ProjectMeshInfo> Meshes,
+    IReadOnlyList<ProjectDocumentInfo> Documents,
+    string BakeFolder,
+    IReadOnlyList<ProjectFile> Bakes
+);
+
+/// <summary>The body of <c>POST /api/v1/library/project/meshes</c>.</summary>
+/// <param name="Project">The project, below <c>projects/</c>.</param>
+/// <param name="Mesh">A mesh file on the Server's machine.</param>
+/// <param name="High">The detailed mesh it bakes from.</param>
+public sealed record ProjectMeshRequest(string Project, string Mesh, string? High = null);
+
+/// <summary>The body of <c>POST /api/v1/library/project/documents</c>.</summary>
+/// <param name="Project">The project, below <c>projects/</c>.</param>
+/// <param name="Kind"><c>texturing</c>, <c>layered-material</c> or <c>graph</c>.</param>
+/// <param name="Name">Its display name. Its file is made from it.</param>
+/// <param name="Mesh">The mesh a <c>texturing</c> document is on.</param>
+/// <param name="Resolution">The width and height of a stack. Null is 2048.</param>
+/// <param name="Image">The picture an <c>image-material</c> starts from, on the Server's machine.</param>
+public sealed record ProjectDocumentRequest(
+    string Project,
+    string Kind,
+    string Name,
+    Guid? Mesh = null,
+    int? Resolution = null,
+    string? Image = null
+);
+
+/// <summary>The body of <c>PATCH /api/v1/library/project/document/role</c>.</summary>
+/// <param name="Project">The project, below <c>projects/</c>.</param>
+/// <param name="Document">The graph.</param>
+/// <param name="Role"><c>material</c>, <c>mask</c>, <c>brush</c> or <c>filter</c>.</param>
+public sealed record ProjectDocumentRoleRequest(string Project, Guid Document, string Role);
+
+/// <summary>A graph rendered to a picture a brush stamps.</summary>
+/// <param name="Alpha">The picture, relative to the project's stacks, as a brush names it.</param>
+public sealed record MaterialBrush(string Alpha);
+
+/// <summary>The body of <c>POST /api/v1/library/project/pictures</c>.</summary>
+/// <param name="Project">The project, below <c>projects/</c>.</param>
+/// <param name="Picture">A picture file on the Server's machine.</param>
+public sealed record ProjectPictureRequest(string Project, string Picture);
+
+/// <summary>A picture a project now holds.</summary>
+/// <param name="Path">Its path below the library, which a layer or a mask reads.</param>
+public sealed record ProjectPicture(string Path);
+
+/// <summary>The body of <c>PATCH /api/v1/library/project/document</c>.</summary>
+/// <param name="Project">The project, below <c>projects/</c>.</param>
+/// <param name="Document">The texturing document.</param>
+/// <param name="Mesh">The mesh it goes on.</param>
+public sealed record ProjectDocumentMeshRequest(string Project, Guid Document, Guid Mesh);
+
+/// <summary>The body of <c>PATCH /api/v1/library/project</c>.</summary>
+/// <param name="Path">The project, below <c>projects/</c>.</param>
+/// <param name="Name">Its new display name. Its folder stays.</param>
+public sealed record ProjectRenameRequest(string Path, string Name);
+
+/// <summary>Something a layer can be filled with (ADR 0012).</summary>
+/// <param name="Name">What it is called.</param>
+/// <param name="Kind"><c>graph</c>, which a fill reads, or <c>layered-material</c>, which unfolds into layers.</param>
+/// <param name="Source">What names it to the routes that use it.</param>
+/// <param name="Role">
+///     <c>material</c>, <c>mask</c>, <c>brush</c>, <c>filter</c>, or <c>empty</c> for a graph with no
+///     output yet.
+/// </param>
+/// <param name="Origin"><c>shipped</c>, <c>project</c> or <c>shared</c>.</param>
+/// <param name="Channels">The maps a graph makes, by usage.</param>
+/// <param name="Parameters">The knobs a graph exposes, which a layer can set.</param>
+public sealed record MaterialInfo(
+    string Name,
+    string Kind,
+    string Source,
+    string Role,
+    string Origin,
+    IReadOnlyList<string> Channels,
+    IReadOnlyList<GraphSettingDefinition>? Parameters = null
+);
+
+/// <summary>The materials a project can use.</summary>
+/// <param name="Items">Them.</param>
+public sealed record MaterialList(IReadOnlyList<MaterialInfo> Items);
+
+/// <summary>The body of <c>POST /api/v1/library/materials/use</c>.</summary>
+/// <param name="Project">The project using it.</param>
+/// <param name="Source">The graph, below the library.</param>
+public sealed record MaterialUseRequest(string Project, string Source);
+
+/// <summary>A graph ready for a layer.</summary>
+/// <param name="Graph">What a fill layer's <c>graph</c> takes.</param>
+public sealed record MaterialUse(string Graph);
+
+/// <summary>A folder of projects.</summary>
+/// <param name="Path">Its path below <c>projects/</c>, with forward slashes.</param>
+/// <param name="Name">Its name.</param>
+/// <param name="Color">Its colour as <c>#rrggbb</c>, or null for none.</param>
+/// <param name="ProjectCount">How many projects it holds, at any depth.</param>
+public sealed record FolderSummary(string Path, string Name, string? Color, int ProjectCount);
+
+/// <summary>The folders directly in a folder.</summary>
+/// <param name="Items">The folders, by name.</param>
+public sealed record FolderList(IReadOnlyList<FolderSummary> Items);
+
+/// <summary>The body of <c>POST /api/v1/library/folders</c>.</summary>
+/// <param name="Name">The folder's name, which is its name on disk.</param>
+/// <param name="Parent">The folder to make it in. Null is the top.</param>
+/// <param name="Color">Its colour as <c>#rrggbb</c>.</param>
+public sealed record FolderCreateRequest(string Name, string? Parent = null, string? Color = null);
+
+/// <summary>The body of <c>PATCH /api/v1/library/folders</c>. What is left out stays.</summary>
+/// <param name="Path">The folder.</param>
+/// <param name="Name">Its new name.</param>
+/// <param name="Color">Its new colour as <c>#rrggbb</c>, or empty for none.</param>
+public sealed record FolderUpdateRequest(string Path, string? Name = null, string? Color = null);
+
+/// <summary>The body of <c>POST /api/v1/library/move</c>.</summary>
+/// <param name="Paths">Folders and projects to move, below <c>projects/</c>.</param>
+/// <param name="Into">The folder to put them in. Null is the top.</param>
+public sealed record LibraryMoveRequest(IReadOnlyList<string> Paths, string? Into = null);
+
+/// <summary>Where things went.</summary>
+/// <param name="Paths">The new paths, in the order asked.</param>
+public sealed record LibraryMoved(IReadOnlyList<string> Paths);
 
 /// <summary>A tag, and how many items carry it.</summary>
 /// <param name="Tag">The tag.</param>

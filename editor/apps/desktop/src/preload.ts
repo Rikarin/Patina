@@ -12,7 +12,19 @@ contextBridge.exposeInMainWorld('patina', {
     ipcRenderer.on('patina:sidecars', (_event, statuses: unknown) => listener(statuses));
   },
   logs: () => ipcRenderer.invoke('patina:sidecars:logs'),
+  recentLibraries: () => ipcRenderer.invoke('patina:libraries:recent'),
+  openLibrary: () => ipcRenderer.invoke('patina:libraries:open'),
+  newLibrary: () => ipcRenderer.invoke('patina:libraries:new'),
+  openRecentLibrary: (path: string) => ipcRenderer.invoke('patina:libraries:openRecent', path),
+  setTitle: (title: string) => {
+    ipcRenderer.send('patina:title', title);
+  },
+  reveal: (path: string) => ipcRenderer.invoke('patina:reveal', path),
+  onCommand: (listener: (command: string) => void) => {
+    ipcRenderer.on('patina:command', (_event, command: string) => listener(command));
+  },
   openMesh: () => ipcRenderer.invoke('patina:openMesh'),
+  openImage: () => ipcRenderer.invoke('patina:openImage'),
   openFolder: () => ipcRenderer.invoke('patina:openFolder'),
   setUnsaved: (unsaved: boolean) => {
     ipcRenderer.send('patina:unsaved', unsaved);

@@ -49,7 +49,8 @@ export interface paths {
     /** Shows a mesh file in the viewport. */
     put: operations['SetViewportMesh'];
     post?: never;
-    delete?: never;
+    /** Takes the mesh and whatever it wears off the viewport. */
+    delete: operations['ClearViewport'];
     options?: never;
     head?: never;
     patch?: never;
@@ -232,7 +233,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** One page of projects: by name, or by relevance when searching. */
+    /** One page of projects: by name, or by relevance when searching. `folder` keeps those directly in it. */
     get: operations['GetProjects'];
     put?: never;
     /** Writes a new project's files. It reaches the listings once the index has caught up. */
@@ -339,6 +340,214 @@ export interface paths {
     get: operations['GetAssetImpact'];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/folders': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The folders directly in a folder, where no parent is the top of the library. */
+    get: operations['GetFolders'];
+    put?: never;
+    /** Makes a folder. */
+    post: operations['CreateFolder'];
+    /** Deletes a folder, never a project: `lift` moves what it holds up a level first. */
+    delete: operations['DeleteFolder'];
+    options?: never;
+    head?: never;
+    /** Renames a folder or changes its colour. Nothing in it may be open to rename it. */
+    patch: operations['UpdateFolder'];
+    trace?: never;
+  };
+  '/api/v1/library/move': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Moves folders and projects into a folder, all of them or none. Nothing moved may be open. */
+    post: operations['MoveInLibrary'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/project': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** What a project holds. Read from its folder, so it works before the index has caught up. */
+    get: operations['GetProjectContents'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Gives a project a new display name. Its folder stays. */
+    patch: operations['RenameProject'];
+    trace?: never;
+  };
+  '/api/v1/library/project/meshes': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Brings a mesh into a project, and its detailed mesh if it has one. */
+    post: operations['AddProjectMesh'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/project/documents': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Makes a document of a kind in a project. */
+    post: operations['AddProjectDocument'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/project/pictures': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Brings a picture into a project, for a layer or a mask to read. */
+    post: operations['AddProjectPicture'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/project/document': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Puts a texturing document on another mesh of its project. */
+    patch: operations['SetDocumentMesh'];
+    trace?: never;
+  };
+  '/api/v1/library/project/document/role': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Says what a graph is for: a material, a mask, a brush or a filter. */
+    patch: operations['SetDocumentRole'];
+    trace?: never;
+  };
+  '/api/v1/library/materials': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** What a project's layers can be filled with. */
+    get: operations['GetMaterials'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/materials/use': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Makes a material graph ready for a project's layers, and names it for them. */
+    post: operations['UseMaterial'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/materials/brush': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Renders a graph to a picture in its project, which a brush can stamp. */
+    post: operations['MakeBrush'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/materials/refresh': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Brings a project's layers up to edits saved in the graphs they read. */
+    post: operations['RefreshMaterials'];
     delete?: never;
     options?: never;
     head?: never;
@@ -718,6 +927,40 @@ export interface paths {
     put?: never;
     /** Composites again, which also rewrites maps a deleted cache has lost. */
     post: operations['EvaluateStack'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/id-colours': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The colours of the id map the stack reads, the largest first, and the one at a place on it if asked. */
+    get: operations['GetStackIdColours'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/thumbnails': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Each fill drawn alone and small, under /previews. A layer that has not changed is not drawn again. */
+    get: operations['GetStackThumbnails'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -1271,6 +1514,43 @@ export interface components {
       warnings: string[];
       /** @description Why it failed. */
       error?: null | string;
+    };
+    /** @description The body of `POST /api/v1/library/folders`. */
+    FolderCreateRequest: {
+      /** @description The folder's name, which is its name on disk. */
+      name: string;
+      /** @description The folder to make it in. Null is the top. */
+      parent?: null | string;
+      /** @description Its colour as `#rrggbb`. */
+      color?: null | string;
+    };
+    /** @description The folders directly in a folder. */
+    FolderList: {
+      /** @description The folders, by name. */
+      items: components['schemas']['FolderSummary'][];
+    };
+    /** @description A folder of projects. */
+    FolderSummary: {
+      /** @description Its path below `projects/`, with forward slashes. */
+      path: string;
+      /** @description Its name. */
+      name: string;
+      /** @description Its colour as `#rrggbb`, or null for none. */
+      color?: null | string;
+      /**
+       * Format: int32
+       * @description How many projects it holds, at any depth.
+       */
+      projectCount: number;
+    };
+    /** @description The body of `PATCH /api/v1/library/folders`. What is left out stays. */
+    FolderUpdateRequest: {
+      /** @description The folder. */
+      path: string;
+      /** @description Its new name. */
+      name?: null | string;
+      /** @description Its new colour as `#rrggbb`, or empty for none. */
+      color?: null | string;
     };
     /** @description One edit. Commands in a batch run in order, and every command sees the ones before it. */
     GraphCommand:
@@ -2172,6 +2452,18 @@ export interface components {
       /** @description Whether a rescan is running; counts and pages may lag the files until it ends. */
       indexing: boolean;
     };
+    /** @description Where things went. */
+    LibraryMoved: {
+      /** @description The new paths, in the order asked. */
+      paths: string[];
+    };
+    /** @description The body of `POST /api/v1/library/move`. */
+    LibraryMoveRequest: {
+      /** @description Folders and projects to move, below `projects/`. */
+      paths: string[];
+      /** @description The folder to put them in. Null is the top. */
+      into?: null | string;
+    };
     /** @description What a whole build did. */
     LibraryReport: {
       /** @description The job, or a name a headless build gave itself. */
@@ -2229,6 +2521,48 @@ export interface components {
       /** @description The folder holding this report and one file per project. */
       folder: string;
     };
+    /** @description A graph rendered to a picture a brush stamps. */
+    MaterialBrush: {
+      /** @description The picture, relative to the project's stacks, as a brush names it. */
+      alpha: string;
+    };
+    /** @description Something a layer can be filled with (ADR 0012). */
+    MaterialInfo: {
+      /** @description What it is called. */
+      name: string;
+      /** @description `graph`, which a fill reads, or `layered-material`, which unfolds into layers. */
+      kind: string;
+      /** @description What names it to the routes that use it. */
+      source: string;
+      /**
+       * @description `material`, `mask`, `brush`, `filter`, or `empty` for a graph with no
+       *                 output yet.
+       */
+      role: string;
+      /** @description `shipped`, `project` or `shared`. */
+      origin: string;
+      /** @description The maps a graph makes, by usage. */
+      channels: string[];
+      /** @description The knobs a graph exposes, which a layer can set. */
+      parameters?: null | components['schemas']['GraphSettingDefinition'][];
+    };
+    /** @description The materials a project can use. */
+    MaterialList: {
+      /** @description Them. */
+      items: components['schemas']['MaterialInfo'][];
+    };
+    /** @description A graph ready for a layer. */
+    MaterialUse: {
+      /** @description What a fill layer's `graph` takes. */
+      graph: string;
+    };
+    /** @description The body of `POST /api/v1/library/materials/use`. */
+    MaterialUseRequest: {
+      /** @description The project using it. */
+      project: string;
+      /** @description The graph, below the library. */
+      source: string;
+    };
     /** @description One output in a project's report. */
     OutputReport: {
       /** @description The output. */
@@ -2255,6 +2589,26 @@ export interface components {
       detail?: null | string;
       instance?: null | string;
     };
+    /** @description A project as it opens. */
+    ProjectContents: {
+      /**
+       * Format: uuid
+       * @description The project's GUID.
+       */
+      id: string;
+      /** @description Its display name. */
+      name: string;
+      /** @description Its path below `projects/`. */
+      path: string;
+      /** @description Its meshes. */
+      meshes: components['schemas']['ProjectMeshInfo'][];
+      /** @description What can be opened in it. */
+      documents: components['schemas']['ProjectDocumentInfo'][];
+      /** @description Where its bakes go, below the library. */
+      bakeFolder: string;
+      /** @description The bakes it has. */
+      bakes: components['schemas']['ProjectFile'][];
+    };
     /** @description The body of `POST /api/v1/library/projects`. */
     ProjectCreateRequest: {
       /** @description The project's display name. The Server makes its folder from it. */
@@ -2263,6 +2617,121 @@ export interface components {
       folder?: null | string;
       /** @description The project's tags. */
       tags?: null | string[];
+      /** @description A mesh file on the Server's machine to copy in. Null leaves the project to get one later. */
+      mesh?: null | string;
+      /**
+       * Format: int32
+       * @description The width and height of a stack it starts with. Null is 2048.
+       */
+      resolution?: null | number;
+      /**
+       * @description The document it starts with: `texturing`, `layered-material`, `image-material` or `graph`.
+       *     Null is `texturing` with a mesh and nothing without one.
+       */
+      kind?: null | string;
+      /** @description The picture an `image-material` starts from, on the Server\'s machine. */
+      image?: null | string;
+      /** @description The detailed mesh it bakes from, on the Server's machine. */
+      high?: null | string;
+    };
+    /** @description Something in a project that can be opened and edited (ADR 0012). */
+    ProjectDocumentInfo: {
+      /**
+       * Format: uuid
+       * @description Its GUID. Null until the project lists it.
+       */
+      id?: null | string;
+      /** @description `texturing`, `layered-material`, `image-material` or `graph`. */
+      kind: string;
+      /** @description Its display name. */
+      name: string;
+      /** @description Its path below the library, which the graph and stack routes take. */
+      path: string;
+      /**
+       * Format: uuid
+       * @description The id of the mesh it is on.
+       */
+      mesh?: null | string;
+      /** @description What a graph is for: `material`, `mask`, `brush` or `filter`. */
+      role?: null | string;
+    };
+    /** @description The body of `PATCH /api/v1/library/project/document`. */
+    ProjectDocumentMeshRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /**
+       * Format: uuid
+       * @description The texturing document.
+       */
+      document: string;
+      /**
+       * Format: uuid
+       * @description The mesh it goes on.
+       */
+      mesh: string;
+    };
+    /** @description The body of `POST /api/v1/library/project/documents`. */
+    ProjectDocumentRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /** @description `texturing`, `layered-material` or `graph`. */
+      kind: string;
+      /** @description Its display name. Its file is made from it. */
+      name: string;
+      /**
+       * Format: uuid
+       * @description The mesh a `texturing` document is on.
+       */
+      mesh?: null | string;
+      /**
+       * Format: int32
+       * @description The width and height of a stack. Null is 2048.
+       */
+      resolution?: null | number;
+      /** @description The picture an `image-material` starts from, on the Server's machine. */
+      image?: null | string;
+    };
+    /** @description The body of `PATCH /api/v1/library/project/document/role`. */
+    ProjectDocumentRoleRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /**
+       * Format: uuid
+       * @description The graph.
+       */
+      document: string;
+      /** @description `material`, `mask`, `brush` or `filter`. */
+      role: string;
+    };
+    /** @description A result of a bake in a project's folder. */
+    ProjectFile: {
+      /** @description What it is. */
+      kind: string;
+      /** @description Its name. */
+      name: string;
+      /** @description Its path below the library. */
+      path: string;
+    };
+    /** @description A mesh in a project. */
+    ProjectMeshInfo: {
+      /**
+       * Format: uuid
+       * @description Its id. Null until the project lists it.
+       */
+      id?: null | string;
+      /** @description Its path below the library. */
+      path: string;
+      /** @description The detailed mesh it bakes from, below the library. */
+      high?: null | string;
+    };
+    /** @description The body of `POST /api/v1/library/project/meshes`. */
+    ProjectMeshRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /** @description A mesh file on the Server's machine. */
+      mesh: string;
+      /** @description The detailed mesh it bakes from. */
+      high?: null | string;
     };
     /** @description One page of projects. */
     ProjectPage: {
@@ -2283,6 +2752,25 @@ export interface components {
        * @description The most items a page holds.
        */
       limit: number;
+    };
+    /** @description A picture a project now holds. */
+    ProjectPicture: {
+      /** @description Its path below the library, which a layer or a mask reads. */
+      path: string;
+    };
+    /** @description The body of `POST /api/v1/library/project/pictures`. */
+    ProjectPictureRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /** @description A picture file on the Server's machine. */
+      picture: string;
+    };
+    /** @description The body of `PATCH /api/v1/library/project`. */
+    ProjectRenameRequest: {
+      /** @description The project, below `projects/`. */
+      path: string;
+      /** @description Its new display name. Its folder stays. */
+      name: string;
     };
     /** @description What a build did to one project. Only a project something happened to has one. */
     ProjectReport: {
@@ -2453,6 +2941,13 @@ export interface components {
       parent?: null | string;
       /** @description What a filter layer does: Levels, Hsl, Blur, Invert or Grayscale. */
       filter?: null | string;
+      /**
+       * @description A material to unfold into the stack as layers: a shipped one as `smart:Name`, or a stack below the library.
+       *     Then Kind and Name say nothing.
+       */
+      material?: null | string;
+      /** @description The compound a filter layer runs, instead of a named filter. */
+      filterNode?: null | string;
     };
     /** @description Moves a layer up or down its list. */
     StackCommandStackMoveLayer: {
@@ -2513,7 +3008,7 @@ export interface components {
       };
       /** @description The graph a graph fill reads. */
       graph?: null | string;
-      /** @description How a fill lands on the mesh: Uv, Triplanar or Planar. */
+      /** @description How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical. */
       projection?: null | string;
       /** @description What a filter does. */
       filter?: null | string;
@@ -2522,6 +3017,13 @@ export interface components {
         [key: string]: unknown;
       };
       mask?: null | components['schemas']['StackMask'];
+      /** @description The world axis a planar projection looks along or a cylinder wraps: X, Y or Z. */
+      planarAxis?: null | string;
+      placement?: null | components['schemas']['StackPlacement'];
+      /** @description What a graph fill sets the graph's knobs to, replacing what these names held. */
+      parameters?: null | {
+        [key: string]: string;
+      };
     };
     /** @description Names the mesh a stack is painted on, which is undone like any other edit. */
     StackCommandStackSetModel: {
@@ -2605,6 +3107,35 @@ export interface components {
       /** @description The undo history. */
       history: components['schemas']['GraphHistoryState'];
     };
+    /** @description A step a mask can run. */
+    StackEffectKind: {
+      /** @description The node type. */
+      node: string;
+      /** @description What a person calls it. */
+      name: string;
+      /** @description The numbers it takes. */
+      ports: components['schemas']['StackEffectPort'][];
+    };
+    /** @description A number a mask effect takes. */
+    StackEffectPort: {
+      /** @description Its port. */
+      name: string;
+      /**
+       * Format: float
+       * @description What it starts at.
+       */
+      default: number;
+      /**
+       * Format: float
+       * @description Its lower bound, or null for none.
+       */
+      minimum?: null | number;
+      /**
+       * Format: float
+       * @description Its upper bound, or null for none.
+       */
+      maximum?: null | number;
+    };
     /** @description How an evaluation went. */
     StackEvaluation: {
       /**
@@ -2684,6 +3215,23 @@ export interface components {
       /** @description Its numbers' names. */
       settings: string[];
     };
+    /** @description One colour of a stack's id map. */
+    StackIdColour: {
+      /** @description Red, green and blue, 0 to 1, as the map stores them. */
+      colour: number[];
+      /**
+       * Format: float
+       * @description How much of the map's covered area it is, 0 to 1.
+       */
+      share: number;
+    };
+    /** @description The colours of a stack's id map, and the one at a place on it if one was asked about. */
+    StackIdColours: {
+      /** @description Its colours, the largest first. */
+      colours: components['schemas']['StackIdColour'][];
+      /** @description The colour at the place asked about, or null. */
+      at?: null | number[];
+    };
     /** @description One layer, without its pixels. */
     StackLayer: {
       /** @description Its identifier, stable across renames. */
@@ -2719,7 +3267,7 @@ export interface components {
       };
       /** @description The graph a graph fill reads. */
       graph: string;
-      /** @description How a fill lands on the mesh: Uv, Triplanar or Planar. */
+      /** @description How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical. */
       projection: string;
       /** @description What a filter does: Levels, Hsl, Blur, Invert or Grayscale. */
       filter: string;
@@ -2729,6 +3277,21 @@ export interface components {
       };
       /** @description Its mask. */
       mask: components['schemas']['StackMask'];
+      /**
+       * @description The world axis a planar projection looks along or a cylinder wraps: X, Y or Z.
+       * @default Y
+       */
+      planarAxis: string;
+      placement?: null | components['schemas']['StackPlacement'];
+      /** @description What a graph fill sets the graph's knobs to, as text. */
+      parameters?: null | {
+        [key: string]: string;
+      };
+      /**
+       * @description The compound a graph filter runs, or empty for one of the named filters.
+       * @default
+       */
+      filterNode: string;
     };
     /** @description What decides where a layer shows. */
     StackMask: {
@@ -2760,6 +3323,40 @@ export interface components {
        * @default
        */
       map: string;
+      /** @description The colour a bake mask selects from its map, as three numbers, or null for all of it. */
+      colour?: null | number[];
+      /**
+       * Format: float
+       * @description How far from that colour still counts.
+       * @default 0.02
+       */
+      tolerance: number;
+      /**
+       * Format: float
+       * @description How much further the mask takes to reach nothing.
+       * @default 0
+       */
+      softness: number;
+      /** @description What runs on the mask, in order, or null to keep them. */
+      effects?: null | components['schemas']['StackMaskEffect'][];
+    };
+    /** @description One step run on a mask. */
+    StackMaskEffect: {
+      /** @description The node type or compound it is. */
+      node: string;
+      /**
+       * @description Whether it runs.
+       * @default true
+       */
+      enabled: boolean;
+      /** @description Its numbers, by port. */
+      values?: null | {
+        [key: string]: number[];
+      };
+      /** @description Its settings, by name. */
+      texts?: null | {
+        [key: string]: string;
+      };
     };
     /** @description Chooses the bake a stack's generators and bake masks read. */
     StackMeshMapsRequest: {
@@ -2796,6 +3393,39 @@ export interface components {
       digest: string;
       /** @description Where it was written, for an export. */
       file?: null | string;
+    };
+    /** @description Where a fill sits on the surface, in whichever projection it uses. */
+    StackPlacement: {
+      /**
+       * Format: float
+       * @description How many times the picture repeats. Above zero.
+       * @default 1
+       */
+      scale: number;
+      /**
+       * Format: float
+       * @description How far it turns, in radians.
+       * @default 0
+       */
+      rotation: number;
+      /**
+       * Format: float
+       * @description How far it moves along its first axis, in repeats.
+       * @default 0
+       */
+      offsetX: number;
+      /**
+       * Format: float
+       * @description How far it moves along its second axis, in repeats.
+       * @default 0
+       */
+      offsetY: number;
+      /**
+       * Format: float
+       * @description How hard the seam between a tri-planar's planes is.
+       * @default 4
+       */
+      sharpness: number;
     };
     /** @description A map as a small picture, by the hash an event carries. */
     StackPreview: {
@@ -2898,6 +3528,18 @@ export interface components {
       /** @description Whether it has edits no file holds. */
       dirty: boolean;
     };
+    /** @description What a layer looks like alone. */
+    StackThumbnail: {
+      /** @description The layer. */
+      layer: string;
+      /** @description Its name under `/previews/{hash}`. */
+      hash: string;
+    };
+    /** @description The fills of a stack, each drawn alone. */
+    StackThumbnails: {
+      /** @description Them. */
+      items: components['schemas']['StackThumbnail'][];
+    };
     /**
      * @description A camera in the mesh's own space, which a stroke keeps because a position on a picture means nothing without
      *     it. Any client with a camera can fill this in; `POST /viewport/pick` gives the viewport's.
@@ -2941,6 +3583,8 @@ export interface components {
       meshMaps: string[];
       /** @description The named brush alphas. */
       alphas: string[];
+      /** @description The steps a mask can run. */
+      maskEffects: components['schemas']['StackEffectKind'][];
     };
     /** @description The reply to `GET /api/v1/system`. */
     SystemInfo: {
@@ -3218,6 +3862,26 @@ export interface operations {
         'application/json': components['schemas']['ViewportMeshRequest'];
       };
     };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportState'];
+        };
+      };
+    };
+  };
+  ClearViewport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
     responses: {
       /** @description OK */
       200: {
@@ -3600,6 +4264,7 @@ export interface operations {
       query?: {
         search?: string;
         tag?: string[];
+        folder?: string;
         offset?: number;
         limit?: number;
       };
@@ -3959,6 +4624,811 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetFolders: {
+    parameters: {
+      query?: {
+        parent?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FolderList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  CreateFolder: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['FolderCreateRequest'];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FolderSummary'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  DeleteFolder: {
+    parameters: {
+      query: {
+        path: string;
+        lift?: boolean;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  UpdateFolder: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['FolderUpdateRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryMoved'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  MoveInLibrary: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LibraryMoveRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryMoved'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetProjectContents: {
+    parameters: {
+      query: {
+        path: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  RenameProject: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectRenameRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AddProjectMesh: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectMeshRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AddProjectDocument: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectDocumentRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  AddProjectPicture: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectPictureRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectPicture'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetDocumentMesh: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectDocumentMeshRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetDocumentRole: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectDocumentRoleRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetMaterials: {
+    parameters: {
+      query?: {
+        project?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MaterialList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  UseMaterial: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['MaterialUseRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MaterialUse'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  MakeBrush: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['MaterialUseRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MaterialBrush'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  RefreshMaterials: {
+    parameters: {
+      query: {
+        project: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MaterialList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
         headers: {
           [name: string]: unknown;
         };
@@ -4950,6 +6420,71 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetStackIdColours: {
+    parameters: {
+      query?: {
+        u?: number;
+        v?: number;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackIdColours'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetStackThumbnails: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackThumbnails'];
+        };
       };
       /** @description Not Found */
       404: {

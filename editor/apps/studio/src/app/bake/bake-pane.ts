@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import type { BakeRequest, JobState } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
@@ -7,6 +7,8 @@ import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSwitchImports } from '@xui/switch';
 import { desktop } from '../core/desktop';
+import { SystemStatus } from '../core/system-status';
+import { ProjectStore } from '../library/project-store';
 import { GraphStore } from '../graph/graph-store';
 import { BakeStore } from './bake-store';
 
@@ -24,6 +26,9 @@ const ExtraMaps: readonly { name: string; label: string }[] = [
   { name: 'world', label: 'World normal' },
   { name: 'id', label: 'ID' }
 ];
+
+/** What a project's masks and materials read. */
+const ProjectMaps = ['ao', 'curvature', 'thickness', 'position', 'world', 'id'];
 
 type PathField = 'high' | 'low' | 'cage' | 'skewMap' | 'output';
 
@@ -57,19 +62,22 @@ type PathField = 'high' | 'low' | 'cage' | 'skewMap' | 'output';
               [attr.aria-label]="field.label"
               [attr.data-testid]="'bake-' + field.key"
               [placeholder]="field.placeholder"
-              [value]="paths()[field.key]"
+              [readOnly]="canPick"
+              [title]="paths()[field.key]"
+              [value]="canPick ? nameOf(paths()[field.key]) : paths()[field.key]"
               (input)="setPath(field.key, text($event))"
             />
-            @if (canPick && field.key !== 'skewMap') {
+            @if (canPick) {
               <button
                 type="button"
                 xuiButton
                 size="sm"
                 variant="ghost"
                 [attr.aria-label]="'Choose ' + field.label"
+                [attr.data-testid]="'bake-choose-' + field.key"
                 (click)="pick(field.key)"
               >
-                …
+                Choose…
               </button>
             }
           </div>
@@ -277,17 +285,21 @@ type PathField = 'high' | 'low' | 'cage' | 'skewMap' | 'output';
 })
 export class BakePane {
   protected readonly store = inject(BakeStore);
+  private readonly project = inject(ProjectStore);
+  private readonly status = inject(SystemStatus);
+  /** The project the fields were filled from, which a user's edits outrank from then on. */
+  private filledFor: string | null = null;
   protected readonly graph = inject(GraphStore);
   protected readonly sides = Sides;
   protected readonly formats = Formats;
   protected readonly extraMaps = ExtraMaps;
   protected readonly canPick = desktop() !== undefined;
   protected readonly pathFields: readonly { key: PathField; label: string; placeholder: string }[] = [
-    { key: 'high', label: 'High mesh', placeholder: 'Path on the Server' },
-    { key: 'low', label: 'Low mesh', placeholder: 'Path on the Server' },
+    { key: 'high', label: 'High mesh', placeholder: 'The detailed mesh' },
+    { key: 'low', label: 'Low mesh', placeholder: 'The mesh being textured' },
     { key: 'cage', label: 'Cage', placeholder: 'Optional' },
     { key: 'skewMap', label: 'Skew map', placeholder: 'Optional: a square grey image' },
-    { key: 'output', label: 'Output folder', placeholder: 'Path on the Server' }
+    { key: 'output', label: 'Output folder', placeholder: 'Where the maps go' }
   ];
 
   protected readonly paths = signal<Record<PathField, string>>({
@@ -312,6 +324,33 @@ export class BakePane {
     return state === 'queued' || state === 'running';
   });
   protected readonly percent = computed(() => Math.round((this.store.current()?.progress ?? 0) * 100));
+  constructor() {
+    // An opened project already knows what to bake and where the maps belong.
+    effect(() => {
+      const project = this.project.current();
+      const mesh = this.project.mesh();
+      if (project?.path === this.filledFor) {
+        return;
+      }
+
+      const status = this.status.state();
+      const library = status.kind === 'online' ? status.system.library : null;
+      if (project && library) {
+        this.filledFor = project.path;
+        untracked(() => {
+          this.paths.update(paths => ({
+            ...paths,
+            low: mesh ? `${library}/${mesh.path}` : paths.low,
+            // A mesh with nothing finer bakes from itself, which still gives its curvature and occlusion.
+            high: mesh ? `${library}/${mesh.high ?? mesh.path}` : paths.high,
+            output: `${library}/${project.bakeFolder}/maps`
+          }));
+          this.maps.set(new Set(ProjectMaps));
+        });
+      }
+    });
+  }
+
   protected readonly canStart = computed(() => {
     const { high, low, output } = this.paths();
     return high.trim() !== '' && low.trim() !== '' && output.trim() !== '' && !this.running();
@@ -319,6 +358,10 @@ export class BakePane {
 
   protected text(event: Event): string {
     return (event.target as HTMLInputElement).value;
+  }
+
+  protected nameOf(path: string): string {
+    return path.split(/[\\/]/u).pop() ?? path;
   }
 
   protected setPath(field: PathField, value: string): void {
@@ -340,7 +383,11 @@ export class BakePane {
 
   protected async pick(field: PathField): Promise<void> {
     const bridge = desktop();
-    const path = await (field === 'output' ? bridge?.openFolder() : bridge?.openMesh());
+    const path = await (field === 'output'
+      ? bridge?.openFolder()
+      : field === 'skewMap'
+        ? bridge?.openImage()
+        : bridge?.openMesh());
     if (path) {
       this.setPath(field, path);
     }

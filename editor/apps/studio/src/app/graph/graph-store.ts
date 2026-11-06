@@ -192,17 +192,14 @@ export class GraphStore {
         });
       }
     });
+  }
 
-    // The desktop app asks before it quits, so it has to know whether there is anything to ask about.
-    const bridge = desktop();
-    if (bridge) {
-      effect(() => {
-        bridge.setUnsaved(this.unsaved());
-      });
-      bridge.onQuitRequested(() => {
-        this.mutableLeaving.set({ kind: 'quit' });
-      });
-    }
+  /** Lets go of the graph, which stays open on the Server with its edits and history, to come back to. */
+  detach(): void {
+    this.endSession();
+    this.mutableTrail.set([]);
+    this.mutableDocument.set(null);
+    this.mutableSession.set({ kind: 'none' });
   }
 
   /** A node's thumbnail. */
@@ -217,13 +214,8 @@ export class GraphStore {
       return;
     }
 
-    if (this.unsaved()) {
-      this.mutableLeaving.set({ kind: 'open', path });
-      return;
-    }
-
     if (document) {
-      await this.closeAll(false);
+      this.detach();
     }
 
     await this.start(path);

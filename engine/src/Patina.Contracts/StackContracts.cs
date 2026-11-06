@@ -34,10 +34,14 @@ public sealed record StackChannel(string Usage, IReadOnlyList<float> Default);
 /// <param name="Values">What a constant fill writes to each channel.</param>
 /// <param name="Textures">What a texture fill reads for each channel.</param>
 /// <param name="Graph">The graph a graph fill reads.</param>
-/// <param name="Projection">How a fill lands on the mesh: Uv, Triplanar or Planar.</param>
+/// <param name="Projection">How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical.</param>
 /// <param name="Filter">What a filter does: Levels, Hsl, Blur, Invert or Grayscale.</param>
 /// <param name="Settings">A filter's numbers.</param>
 /// <param name="Mask">Its mask.</param>
+/// <param name="PlanarAxis">The world axis a planar projection looks along or a cylinder wraps: X, Y or Z.</param>
+/// <param name="Placement">Where a fill sits on the surface.</param>
+/// <param name="Parameters">What a graph fill sets the graph's knobs to, as text.</param>
+/// <param name="FilterNode">The compound a graph filter runs, or empty for one of the named filters.</param>
 public sealed record StackLayer(
     string Id,
     string Name,
@@ -55,7 +59,11 @@ public sealed record StackLayer(
     string Projection,
     string Filter,
     IReadOnlyDictionary<string, IReadOnlyList<float>> Settings,
-    StackMask Mask
+    StackMask Mask,
+    string PlanarAxis = "Y",
+    StackPlacement? Placement = null,
+    IReadOnlyDictionary<string, string>? Parameters = null,
+    string FilterNode = ""
 );
 
 /// <summary>What decides where a layer shows.</summary>
@@ -65,14 +73,57 @@ public sealed record StackLayer(
 /// <param name="Anchor">The layer an anchor mask reads.</param>
 /// <param name="Generator">The compound a generator runs, such as Generators/Dirt.</param>
 /// <param name="Map">The mesh map a bake mask reads.</param>
+/// <param name="Colour">The colour a bake mask selects from its map, as three numbers, or null for all of it.</param>
+/// <param name="Tolerance">How far from that colour still counts.</param>
+/// <param name="Softness">How much further the mask takes to reach nothing.</param>
+/// <param name="Effects">What runs on the mask, in order, or null to keep them.</param>
 public sealed record StackMask(
     string Source,
     float Value = 1f,
     string Asset = "",
     string Anchor = "",
     string Generator = "",
-    string Map = ""
+    string Map = "",
+    IReadOnlyList<float>? Colour = null,
+    float Tolerance = 0.02f,
+    float Softness = 0f,
+    IReadOnlyList<StackMaskEffect>? Effects = null
 );
+
+/// <summary>One step run on a mask.</summary>
+/// <param name="Node">The node type or compound it is.</param>
+/// <param name="Enabled">Whether it runs.</param>
+/// <param name="Values">Its numbers, by port.</param>
+/// <param name="Texts">Its settings, by name.</param>
+public sealed record StackMaskEffect(
+    string Node,
+    bool Enabled = true,
+    IReadOnlyDictionary<string, IReadOnlyList<float>>? Values = null,
+    IReadOnlyDictionary<string, string>? Texts = null
+);
+
+/// <summary>A number a mask effect takes.</summary>
+/// <param name="Name">Its port.</param>
+/// <param name="Default">What it starts at.</param>
+/// <param name="Minimum">Its lower bound, or null for none.</param>
+/// <param name="Maximum">Its upper bound, or null for none.</param>
+public sealed record StackEffectPort(string Name, float Default, float? Minimum, float? Maximum);
+
+/// <summary>A step a mask can run.</summary>
+/// <param name="Node">The node type.</param>
+/// <param name="Name">What a person calls it.</param>
+/// <param name="Ports">The numbers it takes.</param>
+public sealed record StackEffectKind(string Node, string Name, IReadOnlyList<StackEffectPort> Ports);
+
+/// <summary>One colour of a stack's id map.</summary>
+/// <param name="Colour">Red, green and blue, 0 to 1, as the map stores them.</param>
+/// <param name="Share">How much of the map's covered area it is, 0 to 1.</param>
+public sealed record StackIdColour(IReadOnlyList<float> Colour, float Share);
+
+/// <summary>The colours of a stack's id map, and the one at a place on it if one was asked about.</summary>
+/// <param name="Colours">Its colours, the largest first.</param>
+/// <param name="At">The colour at the place asked about, or null.</param>
+public sealed record StackIdColours(IReadOnlyList<StackIdColour> Colours, IReadOnlyList<float>? At = null);
 
 /// <summary>A filter a layer can be, and the numbers it takes.</summary>
 /// <param name="Kind">Levels, Hsl, Blur, Invert or Grayscale.</param>
@@ -86,14 +137,25 @@ public sealed record StackFilterKind(string Kind, IReadOnlyList<string> Settings
 /// <param name="Generators">The compounds that read a mesh's bakes.</param>
 /// <param name="MeshMaps">The maps a bake mask or a generator can read.</param>
 /// <param name="Alphas">The named brush alphas.</param>
+/// <param name="MaskEffects">The steps a mask can run.</param>
 public sealed record StackVocabulary(
     IReadOnlyList<string> Blends,
     IReadOnlyList<StackFilterKind> Filters,
     IReadOnlyList<string> Masks,
     IReadOnlyList<string> Generators,
     IReadOnlyList<string> MeshMaps,
-    IReadOnlyList<string> Alphas
+    IReadOnlyList<string> Alphas,
+    IReadOnlyList<StackEffectKind> MaskEffects
 );
+
+/// <summary>What a layer looks like alone.</summary>
+/// <param name="Layer">The layer.</param>
+/// <param name="Hash">Its name under <c>/previews/{hash}</c>.</param>
+public sealed record StackThumbnail(string Layer, string Hash);
+
+/// <summary>The fills of a stack, each drawn alone.</summary>
+/// <param name="Items">Them.</param>
+public sealed record StackThumbnails(IReadOnlyList<StackThumbnail> Items);
 
 /// <summary>Chooses the bake a stack's generators and bake masks read.</summary>
 /// <param name="Folder">The bake's folder, or null for none.</param>
@@ -190,12 +252,19 @@ public abstract record StackCommand;
 /// <param name="Values">What a fill writes to each channel, as four numbers. Ignored for other kinds.</param>
 /// <param name="Parent">The group it goes at the top of, or null for the stack itself.</param>
 /// <param name="Filter">What a filter layer does: Levels, Hsl, Blur, Invert or Grayscale.</param>
+/// <param name="Material">
+///     A material to unfold into the stack as layers: a shipped one as <c>smart:Name</c>, or a stack below the library.
+///     Then <paramref name="Kind" /> and <paramref name="Name" /> say nothing.
+/// </param>
+/// <param name="FilterNode">The compound a filter layer runs, instead of a named filter.</param>
 public sealed record StackAddLayer(
     string Kind,
     string Name,
     IReadOnlyDictionary<string, IReadOnlyList<float>>? Values = null,
     string? Parent = null,
-    string? Filter = null
+    string? Filter = null,
+    string? Material = null,
+    string? FilterNode = null
 ) : StackCommand;
 
 /// <summary>Moves a layer to the top of a group, or of the stack.</summary>
@@ -226,10 +295,13 @@ public sealed record StackMoveLayer(string Layer, int Delta) : StackCommand;
 /// <param name="Values">What a constant fill writes, replacing what these channels held.</param>
 /// <param name="Textures">What a texture fill reads, replacing what these channels held.</param>
 /// <param name="Graph">The graph a graph fill reads.</param>
-/// <param name="Projection">How a fill lands on the mesh: Uv, Triplanar or Planar.</param>
+/// <param name="Projection">How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical.</param>
 /// <param name="Filter">What a filter does.</param>
 /// <param name="Settings">A filter's numbers, replacing what these names held.</param>
 /// <param name="Mask">Its mask, which replaces the old one and keeps any painted canvas.</param>
+/// <param name="PlanarAxis">The world axis a planar projection looks along or a cylinder wraps: X, Y or Z.</param>
+/// <param name="Placement">Where a fill sits on the surface, which replaces where it sat.</param>
+/// <param name="Parameters">What a graph fill sets the graph's knobs to, replacing what these names held.</param>
 public sealed record StackSetLayer(
     string Layer,
     string? Name = null,
@@ -244,9 +316,26 @@ public sealed record StackSetLayer(
     string? Projection = null,
     string? Filter = null,
     IReadOnlyDictionary<string, IReadOnlyList<float>>? Settings = null,
-    StackMask? Mask = null
+    StackMask? Mask = null,
+    string? PlanarAxis = null,
+    StackPlacement? Placement = null,
+    IReadOnlyDictionary<string, string>? Parameters = null
 ) : StackCommand;
 #pragma warning restore SK7005
+
+/// <summary>Where a fill sits on the surface, in whichever projection it uses.</summary>
+/// <param name="Scale">How many times the picture repeats. Above zero.</param>
+/// <param name="Rotation">How far it turns, in radians.</param>
+/// <param name="OffsetX">How far it moves along its first axis, in repeats.</param>
+/// <param name="OffsetY">How far it moves along its second axis, in repeats.</param>
+/// <param name="Sharpness">How hard the seam between a tri-planar's planes is.</param>
+public sealed record StackPlacement(
+    float Scale = 1f,
+    float Rotation = 0f,
+    float OffsetX = 0f,
+    float OffsetY = 0f,
+    float Sharpness = 4f
+);
 
 /// <summary>Names the mesh a stack is painted on, which is undone like any other edit.</summary>
 /// <param name="Model">A model file, absolute or relative to the stack. Empty takes the mesh away.</param>

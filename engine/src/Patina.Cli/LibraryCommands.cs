@@ -23,10 +23,7 @@ static class LibraryCommands {
             return ExitFindings;
         }
 
-        LibraryFiles.CreateLibrary(
-            root,
-            new(LibraryId.New(), name, 1024, ["baseColor", "normal", "roughness", "metallic"], "pbr", [])
-        );
+        LibraryFiles.CreateDefaultLibrary(root, name);
         Console.WriteLine($"Created library '{name}' in {root}");
         return ExitClean;
     }

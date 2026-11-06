@@ -8,6 +8,8 @@ namespace Patina.Server.Api;
 
 /// <summary>REST API v1. Nothing here may depend on Electron: every client gets the same contract (plan §8).</summary>
 static class PatinaApi {
+    const string ViewportTag = "Viewport";
+
     const int ApiVersion = 1;
 
     public static void MapPatinaApi(this IEndpointRouteBuilder app) {
@@ -26,12 +28,22 @@ static class PatinaApi {
 
         api.MapGet("/viewport", static (ViewportSession session) => TypedResults.Ok(session.State))
             .WithName("GetViewport")
-            .WithTags("Viewport")
+            .WithTags(ViewportTag)
             .WithSummary("The viewport: its mesh, camera and size. Frames come over the /ws/viewport WebSocket.");
         api.MapPut("/viewport/mesh", SetMesh)
             .WithName("SetViewportMesh")
-            .WithTags("Viewport")
+            .WithTags(ViewportTag)
             .WithSummary("Shows a mesh file in the viewport.");
+        api.MapDelete(
+                "/viewport/mesh",
+                static (ViewportSession session) => {
+                    session.Clear();
+                    return TypedResults.Ok(session.State);
+                }
+            )
+            .WithName("ClearViewport")
+            .WithTags(ViewportTag)
+            .WithSummary("Takes the mesh and whatever it wears off the viewport.");
         api.MapPut(
                 "/viewport/camera",
                 static (ViewportCameraState camera, ViewportSession session) => {
@@ -40,18 +52,18 @@ static class PatinaApi {
                 }
             )
             .WithName("SetViewportCamera")
-            .WithTags("Viewport")
+            .WithTags(ViewportTag)
             .WithSummary("Moves the viewport's camera.");
 
         api.MapPost("/viewport/pick", PickAsync)
             .WithName("PickInViewport")
-            .WithTags("Viewport")
+            .WithTags(ViewportTag)
             .WithSummary("What is under a position in the viewport, and the camera a stroke there carries.")
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
         api.MapPut("/viewport/stack", WearStack)
             .WithName("ShowStackInViewport")
-            .WithTags("Viewport")
+            .WithTags(ViewportTag)
             .WithSummary("Puts a stack on its mesh in the viewport, which shows every stroke from then on.")
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
@@ -102,7 +114,8 @@ static class PatinaApi {
     static Results<Ok<ViewportState>, ProblemHttpResult> WearStack(
         ViewportStackRequest request,
         StackSessions stacks,
-        ViewportSession session
+        ViewportSession session,
+        ServerIdentity identity
     ) {
         if (stacks.Find(request.Stack) is not { } stack) {
             return TypedResults.Problem(
@@ -111,9 +124,11 @@ static class PatinaApi {
             );
         }
 
-        if (stack.ModelFile is not { } file || !File.Exists(file)) {
+        // A material has no mesh of its own, and is seen on a shape instead.
+        var file = stack.ModelFile ?? PreviewShape.File(identity.Library);
+        if (!File.Exists(file)) {
             return TypedResults.Problem(
-                stack.ModelFile is null ? "This stack has no mesh." : $"There is no file at '{stack.ModelFile}'.",
+                $"There is no file at '{stack.ModelFile}'.",
                 statusCode: StatusCodes.Status422UnprocessableEntity
             );
         }

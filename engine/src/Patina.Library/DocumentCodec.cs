@@ -12,6 +12,13 @@ public static class DocumentCodec {
     const string IdKey = "id";
     const string NameKey = "name";
     const string TagsKey = "tags";
+    const string MeshKey = "mesh";
+    const string RoleKey = "role";
+    const string MeshesKey = "meshes";
+    const string DocumentsKey = "documents";
+    const string FileKey = "file";
+    const string HighKey = "high";
+    const string ColorKey = "color";
     const string ToolKey = "tool";
     const string FilesKey = "files";
     const string UsesKey = "uses";
@@ -42,17 +49,60 @@ public static class DocumentCodec {
     public static string Write(ProjectDocument document) =>
         YamlText.Write(
             new(
-                Pair(SchemaChain.VersionKey, YamlText.Plain(SchemaChain.Project.Current)),
-                Pair(IdKey, YamlText.Plain(document.Id.ToString())),
-                Pair(NameKey, YamlText.Text(document.Name)),
-                Pair(TagsKey, SortedTexts(document.Tags)),
-                Pair(ReferencesKey, References(document.References)),
-                Pair(
-                    OutputsKey,
-                    new YamlSequenceNode(
-                        document.Outputs.OrderBy(static o => o.Name, StringComparer.Ordinal).Select(Output)
+                [
+                    Pair(SchemaChain.VersionKey, YamlText.Plain(SchemaChain.Project.Current)),
+                    Pair(IdKey, YamlText.Plain(document.Id.ToString())),
+                    Pair(NameKey, YamlText.Text(document.Name)),
+                    Pair(TagsKey, SortedTexts(document.Tags)),
+                    ..Listed(MeshesKey, document.Meshes.Select(static m => Mesh(m))),
+                    ..Listed(DocumentsKey, document.Documents.Select(static d => Item(d))),
+                    Pair(ReferencesKey, References(document.References)),
+                    Pair(
+                        OutputsKey,
+                        new YamlSequenceNode(
+                            document.Outputs.OrderBy(static o => o.Name, StringComparer.Ordinal).Select(Output)
+                        )
                     )
-                )
+                ]
+            )
+        );
+
+    static KeyValuePair<YamlNode, YamlNode>[] Present(string key, string? text) =>
+        text is null ? [] : [Pair(key, YamlText.Text(text))];
+
+    static KeyValuePair<YamlNode, YamlNode>[] Listed(string key, IEnumerable<YamlMappingNode> nodes) {
+        var list = new YamlSequenceNode(nodes);
+        return list.Children.Count == 0 ? [] : [Pair(key, list)];
+    }
+
+    static YamlMappingNode Mesh(ProjectMesh mesh) =>
+        new(
+            [
+                Pair(IdKey, YamlText.Plain(mesh.Id.ToString())),
+                Pair(FileKey, YamlText.Text(mesh.File)),
+                ..Present(HighKey, mesh.High)
+            ]
+        );
+
+    static YamlMappingNode Item(ProjectItem item) =>
+        new(
+            [
+                Pair(IdKey, YamlText.Plain(item.Id.ToString())),
+                Pair(KindKey, YamlText.Plain(item.Kind)),
+                Pair(NameKey, YamlText.Text(item.Name)),
+                Pair(FileKey, YamlText.Text(item.File)),
+                ..Present(MeshKey, item.Mesh?.ToString()),
+                ..Present(RoleKey, item.Role)
+            ]
+        );
+
+    public static string Write(FolderDocument document) =>
+        YamlText.Write(
+            new(
+                [
+                    Pair(SchemaChain.VersionKey, YamlText.Plain(SchemaChain.Folder.Current)),
+                    ..Present(ColorKey, document.Color)
+                ]
             )
         );
 
@@ -96,9 +146,75 @@ public static class DocumentCodec {
                     fields.Texts(TagsKey),
                     references,
                     ReadOutputs(fields, [..references.Select(static r => r.Asset)])
-                );
+                ) { Meshes = ReadMeshes(fields), Documents = ReadItems(fields) };
             }
         );
+
+    public static ReadDocument<FolderDocument> ReadFolder(string text, string path) =>
+        Read(
+            text,
+            path,
+            SchemaChain.Folder,
+            static fields => new FolderDocument(Named(fields.Optional(ColorKey)))
+        );
+
+    static string? Named(string? text) => string.IsNullOrWhiteSpace(text) ? null : text;
+
+    static List<ProjectMesh> ReadMeshes(YamlFields fields) {
+        List<ProjectMesh> meshes = [
+            ..fields.Maps(MeshesKey)
+                .Select(static mesh => new ProjectMesh(
+                        mesh.Id<AssetId>(IdKey),
+                        Inside(mesh, mesh.Require(FileKey)),
+                        mesh.Optional(HighKey) is { } high ? Inside(mesh, high) : null
+                    )
+                )
+        ];
+        return meshes.DistinctBy(static m => m.Id).Count() == meshes.Count
+            ? meshes
+            : throw fields.Problem("two meshes share an id.");
+    }
+
+    static List<ProjectItem> ReadItems(YamlFields fields) {
+        var meshes = fields.Maps(MeshesKey).Select(static mesh => mesh.Id<AssetId>(IdKey)).ToHashSet();
+        List<ProjectItem> items = [..fields.Maps(DocumentsKey).Select(item => ReadItem(item, meshes))];
+        return items.DistinctBy(static d => d.Id).Count() == items.Count
+            ? items
+            : throw fields.Problem("two documents share an id.");
+    }
+
+    static ProjectItem ReadItem(YamlFields fields, HashSet<AssetId> meshes) {
+        var kind = fields.Require(KindKey);
+        if (!DocumentKinds.Known(kind)) {
+            throw fields.Problem($"'{kind}' is no kind of document.");
+        }
+
+        AssetId? mesh = fields.Optional(MeshKey) is null ? null : fields.Id<AssetId>(MeshKey);
+        if (mesh is { } named && !meshes.Contains(named)) {
+            throw fields.Problem($"it is on the mesh {named}, which the project does not list.");
+        }
+
+        if (kind == DocumentKinds.Texturing != mesh.HasValue) {
+            throw fields.Problem("a texturing document is on a mesh, and no other kind is.");
+        }
+
+        var role = fields.Optional(RoleKey);
+        if (role is not null && (kind != DocumentKinds.Graph || !GraphRoles.Known(role))) {
+            throw fields.Problem($"'{role}' is no role of a {kind} document.");
+        }
+
+        return new(
+            fields.Id<AssetId>(IdKey),
+            kind,
+            Inside(fields, fields.Require(FileKey)),
+            fields.Require(NameKey),
+            mesh,
+            role
+        );
+    }
+
+    static string Inside(YamlFields fields, string file) =>
+        IsInsideProject(file) ? file : throw fields.Problem($"'{file}' is outside the project.");
 
     public static ReadDocument<AssetDocument> ReadAsset(string text, string path, SchemaChain? chain = null) =>
         Read(

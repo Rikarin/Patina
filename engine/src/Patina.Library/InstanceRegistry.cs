@@ -11,7 +11,7 @@ namespace Patina.Library;
 /// </summary>
 /// <param name="path">The discovery file; <see cref="DefaultPath" /> outside tests.</param>
 public sealed class InstanceRegistry(string path) {
-    static readonly TimeSpan LockTimeout = TimeSpan.FromSeconds(5);
+    static readonly TimeSpan LockTimeout = TimeSpan.FromSeconds(30);
 
     /// <summary>
     ///     Where the file lives: the per-user local data folder, which on Windows is already private to the user.

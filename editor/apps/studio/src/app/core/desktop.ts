@@ -16,8 +16,24 @@ export interface DesktopBridge {
   sidecars(): Promise<SidecarStatus[]>;
   onSidecars(listener: (statuses: SidecarStatus[]) => void): void;
   logs(): Promise<Record<SidecarStatus['name'], string[]>>;
+  /** The libraries opened lately, newest first. */
+  recentLibraries(): Promise<string[]>;
+  /** Asks for a library and moves the app to it, reloading this page. Null if they cancelled. */
+  openLibrary(): Promise<string | null>;
+  /** Asks where a new library goes, lays it out and moves the app to it. Null if they cancelled. */
+  newLibrary(): Promise<string | null>;
+  /** Moves the app to a library opened before. Null if it has gone. */
+  openRecentLibrary(path: string): Promise<string | null>;
+  /** Says what is open, for the window's title. */
+  setTitle(title: string): void;
+  /** Shows a file in the system's file browser. */
+  reveal(path: string): Promise<void>;
+  /** A menu command for the studio, such as `newProject`. */
+  onCommand(listener: (command: string) => void): void;
   /** Asks the user for a mesh file: its path, or null if they cancelled. */
   openMesh(): Promise<string | null>;
+  /** Asks the user for a picture: its path, or null if they cancelled. */
+  openImage(): Promise<string | null>;
   /** Asks the user for a folder: its path, or null if they cancelled. */
   openFolder(): Promise<string | null>;
   /** Tells the app whether quitting would lose anything, which is what decides whether it asks. */

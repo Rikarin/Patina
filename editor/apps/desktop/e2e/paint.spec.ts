@@ -2,6 +2,7 @@ import { _electron as electron, expect, test, type ElectronApplication, type Pag
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { leave, newLibrary, newProject } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const shots = resolve(__dirname, '../../../dist/e2e-results');
@@ -24,16 +25,16 @@ test.beforeEach(async () => {
 });
 
 test.afterEach(async () => {
-  await app.close();
-  rmSync(scratch, { recursive: true, force: true });
+  await leave(app);
+  // The Server is still on its way out, and writes its last files as it goes.
+  rmSync(scratch, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
 });
 
 test('a brush on the map paints through the Server, and undo takes it back', async () => {
   test.skip(process.platform === 'win32', 'Windows CI has no Vulkan.');
 
-  await window.getByRole('tab', { name: 'Paint' }).click();
-  await window.getByTestId('paint-path').fill(join(scratch, 'Crate.vxlayers'));
-  await window.getByTestId('paint-new').click();
+  await newLibrary(app, window, join(scratch, 'Game.ptlib'));
+  await newProject(app, window, 'Crate');
   const picture = window.getByTestId('paint-picture');
   await expect(picture).toBeVisible({ timeout: 60_000 });
   await expect(window.getByTestId('paint-layer-paint')).toBeVisible();

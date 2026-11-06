@@ -81,6 +81,25 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "Takes the mesh and whatever it wears off the viewport.",
+        "operationId": "ClearViewport",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportState"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/viewport/camera": {
@@ -529,7 +548,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "One page of projects: by name, or by relevance when searching.",
+        "summary": "One page of projects: by name, or by relevance when searching. \u0060folder\u0060 keeps those directly in it.",
         "operationId": "GetProjects",
         "parameters": [
           {
@@ -547,6 +566,13 @@
               "items": {
                 "type": "string"
               }
+            }
+          },
+          {
+            "name": "folder",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -1052,6 +1078,973 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/folders": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "The folders directly in a folder, where no parent is the top of the library.",
+        "operationId": "GetFolders",
+        "parameters": [
+          {
+            "name": "parent",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FolderList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Makes a folder.",
+        "operationId": "CreateFolder",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FolderCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FolderSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Renames a folder or changes its colour. Nothing in it may be open to rename it.",
+        "operationId": "UpdateFolder",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FolderUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryMoved"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Deletes a folder, never a project: \u0060lift\u0060 moves what it holds up a level first.",
+        "operationId": "DeleteFolder",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lift",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/move": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Moves folders and projects into a folder, all of them or none. Nothing moved may be open.",
+        "operationId": "MoveInLibrary",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LibraryMoveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryMoved"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "What a project holds. Read from its folder, so it works before the index has caught up.",
+        "operationId": "GetProjectContents",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Gives a project a new display name. Its folder stays.",
+        "operationId": "RenameProject",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectRenameRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project/meshes": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Brings a mesh into a project, and its detailed mesh if it has one.",
+        "operationId": "AddProjectMesh",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectMeshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project/documents": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Makes a document of a kind in a project.",
+        "operationId": "AddProjectDocument",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectDocumentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project/pictures": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Brings a picture into a project, for a layer or a mask to read.",
+        "operationId": "AddProjectPicture",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectPictureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectPicture"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project/document": {
+      "patch": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Puts a texturing document on another mesh of its project.",
+        "operationId": "SetDocumentMesh",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectDocumentMeshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project/document/role": {
+      "patch": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Says what a graph is for: a material, a mask, a brush or a filter.",
+        "operationId": "SetDocumentRole",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectDocumentRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/materials": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "What a project\u0027s layers can be filled with.",
+        "operationId": "GetMaterials",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/materials/use": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Makes a material graph ready for a project\u0027s layers, and names it for them.",
+        "operationId": "UseMaterial",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialUseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialUse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/materials/brush": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Renders a graph to a picture in its project, which a brush can stamp.",
+        "operationId": "MakeBrush",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialUseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialBrush"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/materials/refresh": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Brings a project\u0027s layers up to edits saved in the graphs they read.",
+        "operationId": "RefreshMaterials",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -2337,6 +3330,104 @@
         "responses": {
           "204": {
             "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/id-colours": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "The colours of the id map the stack reads, the largest first, and the one at a place on it if asked.",
+        "operationId": "GetStackIdColours",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "u",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "format": "float"
+            }
+          },
+          {
+            "name": "v",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "format": "float"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackIdColours"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/thumbnails": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Each fill drawn alone and small, under /previews. A layer that has not changed is not drawn again.",
+        "operationId": "GetStackThumbnails",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackThumbnails"
+                }
+              }
+            }
           },
           "404": {
             "description": "Not Found",
@@ -3650,6 +4741,107 @@
           }
         },
         "description": "One preset in a project\u0027s report."
+      },
+      "FolderCreateRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The folder\u0027s name, which is its name on disk."
+          },
+          "parent": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The folder to make it in. Null is the top."
+          },
+          "color": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its colour as \u0060#rrggbb\u0060."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/folders\u0060."
+      },
+      "FolderList": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FolderSummary"
+            },
+            "description": "The folders, by name."
+          }
+        },
+        "description": "The folders directly in a folder."
+      },
+      "FolderSummary": {
+        "required": [
+          "path",
+          "name",
+          "projectCount"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Its path below \u0060projects/\u0060, with forward slashes."
+          },
+          "name": {
+            "type": "string",
+            "description": "Its name."
+          },
+          "color": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its colour as \u0060#rrggbb\u0060, or null for none."
+          },
+          "projectCount": {
+            "type": "integer",
+            "description": "How many projects it holds, at any depth.",
+            "format": "int32"
+          }
+        },
+        "description": "A folder of projects."
+      },
+      "FolderUpdateRequest": {
+        "required": [
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The folder."
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its new name."
+          },
+          "color": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its new colour as \u0060#rrggbb\u0060, or empty for none."
+          }
+        },
+        "description": "The body of \u0060PATCH /api/v1/library/folders\u0060. What is left out stays."
       },
       "GraphCommand": {
         "required": [
@@ -5803,6 +6995,45 @@
         },
         "description": "The reply to \u0060GET /api/v1/library\u0060: what opening a library reads, and nothing more."
       },
+      "LibraryMoved": {
+        "required": [
+          "paths"
+        ],
+        "type": "object",
+        "properties": {
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The new paths, in the order asked."
+          }
+        },
+        "description": "Where things went."
+      },
+      "LibraryMoveRequest": {
+        "required": [
+          "paths"
+        ],
+        "type": "object",
+        "properties": {
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Folders and projects to move, below \u0060projects/\u0060."
+          },
+          "into": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The folder to put them in. Null is the top."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/move\u0060."
+      },
       "LibraryReport": {
         "required": [
           "build",
@@ -5883,6 +7114,117 @@
         },
         "description": "What a whole build did."
       },
+      "MaterialBrush": {
+        "required": [
+          "alpha"
+        ],
+        "type": "object",
+        "properties": {
+          "alpha": {
+            "type": "string",
+            "description": "The picture, relative to the project\u0027s stacks, as a brush names it."
+          }
+        },
+        "description": "A graph rendered to a picture a brush stamps."
+      },
+      "MaterialInfo": {
+        "required": [
+          "name",
+          "kind",
+          "source",
+          "role",
+          "origin",
+          "channels"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "What it is called."
+          },
+          "kind": {
+            "type": "string",
+            "description": "\u0060graph\u0060, which a fill reads, or \u0060layered-material\u0060, which unfolds into layers."
+          },
+          "source": {
+            "type": "string",
+            "description": "What names it to the routes that use it."
+          },
+          "role": {
+            "type": "string",
+            "description": "\u0060material\u0060, \u0060mask\u0060, \u0060brush\u0060, \u0060filter\u0060, or \u0060empty\u0060 for a graph with no\n            output yet."
+          },
+          "origin": {
+            "type": "string",
+            "description": "\u0060shipped\u0060, \u0060project\u0060 or \u0060shared\u0060."
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The maps a graph makes, by usage."
+          },
+          "parameters": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/GraphSettingDefinition"
+            },
+            "description": "The knobs a graph exposes, which a layer can set."
+          }
+        },
+        "description": "Something a layer can be filled with (ADR 0012)."
+      },
+      "MaterialList": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MaterialInfo"
+            },
+            "description": "Them."
+          }
+        },
+        "description": "The materials a project can use."
+      },
+      "MaterialUse": {
+        "required": [
+          "graph"
+        ],
+        "type": "object",
+        "properties": {
+          "graph": {
+            "type": "string",
+            "description": "What a fill layer\u0027s \u0060graph\u0060 takes."
+          }
+        },
+        "description": "A graph ready for a layer."
+      },
+      "MaterialUseRequest": {
+        "required": [
+          "project",
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project using it."
+          },
+          "source": {
+            "type": "string",
+            "description": "The graph, below the library."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/materials/use\u0060."
+      },
       "OutputReport": {
         "required": [
           "name",
@@ -5962,6 +7304,59 @@
           }
         }
       },
+      "ProjectContents": {
+        "required": [
+          "id",
+          "name",
+          "path",
+          "meshes",
+          "documents",
+          "bakeFolder",
+          "bakes"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The project\u0027s GUID.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Its display name."
+          },
+          "path": {
+            "type": "string",
+            "description": "Its path below \u0060projects/\u0060."
+          },
+          "meshes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectMeshInfo"
+            },
+            "description": "Its meshes."
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectDocumentInfo"
+            },
+            "description": "What can be opened in it."
+          },
+          "bakeFolder": {
+            "type": "string",
+            "description": "Where its bakes go, below the library."
+          },
+          "bakes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectFile"
+            },
+            "description": "The bakes it has."
+          }
+        },
+        "description": "A project as it opens."
+      },
       "ProjectCreateRequest": {
         "required": [
           "name"
@@ -5988,9 +7383,262 @@
               "type": "string"
             },
             "description": "The project\u0027s tags."
+          },
+          "mesh": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A mesh file on the Server\u0027s machine to copy in. Null leaves the project to get one later."
+          },
+          "resolution": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The width and height of a stack it starts with. Null is 2048.",
+            "format": "int32"
+          },
+          "kind": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The document it starts with: \u0060texturing\u0060, \u0060layered-material\u0060, \u0060image-material\u0060 or \u0060graph\u0060.\nNull is \u0060texturing\u0060 with a mesh and nothing without one."
+          },
+          "image": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The picture an \u0060image-material\u0060 starts from, on the Server\\\u0027s machine."
+          },
+          "high": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The detailed mesh it bakes from, on the Server\u0027s machine."
           }
         },
         "description": "The body of \u0060POST /api/v1/library/projects\u0060."
+      },
+      "ProjectDocumentInfo": {
+        "required": [
+          "kind",
+          "name",
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its GUID. Null until the project lists it.",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "description": "\u0060texturing\u0060, \u0060layered-material\u0060, \u0060image-material\u0060 or \u0060graph\u0060."
+          },
+          "name": {
+            "type": "string",
+            "description": "Its display name."
+          },
+          "path": {
+            "type": "string",
+            "description": "Its path below the library, which the graph and stack routes take."
+          },
+          "mesh": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The id of the mesh it is on.",
+            "format": "uuid"
+          },
+          "role": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What a graph is for: \u0060material\u0060, \u0060mask\u0060, \u0060brush\u0060 or \u0060filter\u0060."
+          }
+        },
+        "description": "Something in a project that can be opened and edited (ADR 0012)."
+      },
+      "ProjectDocumentMeshRequest": {
+        "required": [
+          "project",
+          "document",
+          "mesh"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "document": {
+            "type": "string",
+            "description": "The texturing document.",
+            "format": "uuid"
+          },
+          "mesh": {
+            "type": "string",
+            "description": "The mesh it goes on.",
+            "format": "uuid"
+          }
+        },
+        "description": "The body of \u0060PATCH /api/v1/library/project/document\u0060."
+      },
+      "ProjectDocumentRequest": {
+        "required": [
+          "project",
+          "kind",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "kind": {
+            "type": "string",
+            "description": "\u0060texturing\u0060, \u0060layered-material\u0060 or \u0060graph\u0060."
+          },
+          "name": {
+            "type": "string",
+            "description": "Its display name. Its file is made from it."
+          },
+          "mesh": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The mesh a \u0060texturing\u0060 document is on.",
+            "format": "uuid"
+          },
+          "resolution": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The width and height of a stack. Null is 2048.",
+            "format": "int32"
+          },
+          "image": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The picture an \u0060image-material\u0060 starts from, on the Server\u0027s machine."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/project/documents\u0060."
+      },
+      "ProjectDocumentRoleRequest": {
+        "required": [
+          "project",
+          "document",
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "document": {
+            "type": "string",
+            "description": "The graph.",
+            "format": "uuid"
+          },
+          "role": {
+            "type": "string",
+            "description": "\u0060material\u0060, \u0060mask\u0060, \u0060brush\u0060 or \u0060filter\u0060."
+          }
+        },
+        "description": "The body of \u0060PATCH /api/v1/library/project/document/role\u0060."
+      },
+      "ProjectFile": {
+        "required": [
+          "kind",
+          "name",
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "What it is."
+          },
+          "name": {
+            "type": "string",
+            "description": "Its name."
+          },
+          "path": {
+            "type": "string",
+            "description": "Its path below the library."
+          }
+        },
+        "description": "A result of a bake in a project\u0027s folder."
+      },
+      "ProjectMeshInfo": {
+        "required": [
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its id. Null until the project lists it.",
+            "format": "uuid"
+          },
+          "path": {
+            "type": "string",
+            "description": "Its path below the library."
+          },
+          "high": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The detailed mesh it bakes from, below the library."
+          }
+        },
+        "description": "A mesh in a project."
+      },
+      "ProjectMeshRequest": {
+        "required": [
+          "project",
+          "mesh"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "mesh": {
+            "type": "string",
+            "description": "A mesh file on the Server\u0027s machine."
+          },
+          "high": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The detailed mesh it bakes from."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/project/meshes\u0060."
       },
       "ProjectPage": {
         "required": [
@@ -6025,6 +7673,55 @@
           }
         },
         "description": "One page of projects."
+      },
+      "ProjectPicture": {
+        "required": [
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Its path below the library, which a layer or a mask reads."
+          }
+        },
+        "description": "A picture a project now holds."
+      },
+      "ProjectPictureRequest": {
+        "required": [
+          "project",
+          "picture"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "picture": {
+            "type": "string",
+            "description": "A picture file on the Server\u0027s machine."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/project/pictures\u0060."
+      },
+      "ProjectRenameRequest": {
+        "required": [
+          "path",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "name": {
+            "type": "string",
+            "description": "Its new display name. Its folder stays."
+          }
+        },
+        "description": "The body of \u0060PATCH /api/v1/library/project\u0060."
       },
       "ProjectReport": {
         "required": [
@@ -6370,6 +8067,20 @@
               "string"
             ],
             "description": "What a filter layer does: Levels, Hsl, Blur, Invert or Grayscale."
+          },
+          "material": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A material to unfold into the stack as layers: a shipped one as \u0060smart:Name\u0060, or a stack below the library.\nThen Kind and Name say nothing."
+          },
+          "filterNode": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The compound a filter layer runs, instead of a named filter."
           }
         },
         "description": "Adds a layer at the top of the stack."
@@ -6536,7 +8247,7 @@
               "null",
               "string"
             ],
-            "description": "How a fill lands on the mesh: Uv, Triplanar or Planar."
+            "description": "How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical."
           },
           "filter": {
             "type": [
@@ -6563,6 +8274,34 @@
                 "$ref": "#/components/schemas/StackMask"
               }
             ]
+          },
+          "planarAxis": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The world axis a planar projection looks along or a cylinder wraps: X, Y or Z."
+          },
+          "placement": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Where a fill sits on the surface, which replaces where it sat.",
+                "$ref": "#/components/schemas/StackPlacement"
+              }
+            ]
+          },
+          "parameters": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "What a graph fill sets the graph\u0027s knobs to, replacing what these names held."
           }
         },
         "description": "Changes what a layer\u0027s row shows. What is null stays."
@@ -6747,6 +8486,67 @@
         },
         "description": "Where an edit left the session."
       },
+      "StackEffectKind": {
+        "required": [
+          "node",
+          "name",
+          "ports"
+        ],
+        "type": "object",
+        "properties": {
+          "node": {
+            "type": "string",
+            "description": "The node type."
+          },
+          "name": {
+            "type": "string",
+            "description": "What a person calls it."
+          },
+          "ports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackEffectPort"
+            },
+            "description": "The numbers it takes."
+          }
+        },
+        "description": "A step a mask can run."
+      },
+      "StackEffectPort": {
+        "required": [
+          "name",
+          "default"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Its port."
+          },
+          "default": {
+            "type": "number",
+            "description": "What it starts at.",
+            "format": "float"
+          },
+          "minimum": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Its lower bound, or null for none.",
+            "format": "float"
+          },
+          "maximum": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Its upper bound, or null for none.",
+            "format": "float"
+          }
+        },
+        "description": "A number a mask effect takes."
+      },
       "StackEvaluation": {
         "required": [
           "revision",
@@ -6928,6 +8728,56 @@
         },
         "description": "A filter a layer can be, and the numbers it takes."
       },
+      "StackIdColour": {
+        "required": [
+          "colour",
+          "share"
+        ],
+        "type": "object",
+        "properties": {
+          "colour": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Red, green and blue, 0 to 1, as the map stores them."
+          },
+          "share": {
+            "type": "number",
+            "description": "How much of the map\u0027s covered area it is, 0 to 1.",
+            "format": "float"
+          }
+        },
+        "description": "One colour of a stack\u0027s id map."
+      },
+      "StackIdColours": {
+        "required": [
+          "colours"
+        ],
+        "type": "object",
+        "properties": {
+          "colours": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackIdColour"
+            },
+            "description": "Its colours, the largest first."
+          },
+          "at": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The colour at the place asked about, or null."
+          }
+        },
+        "description": "The colours of a stack\u0027s id map, and the one at a place on it if one was asked about."
+      },
       "StackLayer": {
         "required": [
           "id",
@@ -6946,7 +8796,9 @@
           "projection",
           "filter",
           "settings",
-          "mask"
+          "mask",
+          "planarAxis",
+          "filterNode"
         ],
         "type": "object",
         "properties": {
@@ -7021,7 +8873,7 @@
           },
           "projection": {
             "type": "string",
-            "description": "How a fill lands on the mesh: Uv, Triplanar or Planar."
+            "description": "How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical."
           },
           "filter": {
             "type": "string",
@@ -7041,6 +8893,37 @@
           "mask": {
             "description": "Its mask.",
             "$ref": "#/components/schemas/StackMask"
+          },
+          "planarAxis": {
+            "type": "string",
+            "description": "The world axis a planar projection looks along or a cylinder wraps: X, Y or Z.",
+            "default": "Y"
+          },
+          "placement": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Where a fill sits on the surface.",
+                "$ref": "#/components/schemas/StackPlacement"
+              }
+            ]
+          },
+          "parameters": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "What a graph fill sets the graph\u0027s knobs to, as text."
+          },
+          "filterNode": {
+            "type": "string",
+            "description": "The compound a graph filter runs, or empty for one of the named filters.",
+            "default": ""
           }
         },
         "description": "One layer, without its pixels."
@@ -7052,7 +8935,9 @@
           "asset",
           "anchor",
           "generator",
-          "map"
+          "map",
+          "tolerance",
+          "softness"
         ],
         "type": "object",
         "properties": {
@@ -7085,9 +8970,85 @@
             "type": "string",
             "description": "The mesh map a bake mask reads.",
             "default": ""
+          },
+          "colour": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The colour a bake mask selects from its map, as three numbers, or null for all of it."
+          },
+          "tolerance": {
+            "type": "number",
+            "description": "How far from that colour still counts.",
+            "format": "float",
+            "default": 0.02
+          },
+          "softness": {
+            "type": "number",
+            "description": "How much further the mask takes to reach nothing.",
+            "format": "float",
+            "default": 0
+          },
+          "effects": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/StackMaskEffect"
+            },
+            "description": "What runs on the mask, in order, or null to keep them."
           }
         },
         "description": "What decides where a layer shows."
+      },
+      "StackMaskEffect": {
+        "required": [
+          "node",
+          "enabled"
+        ],
+        "type": "object",
+        "properties": {
+          "node": {
+            "type": "string",
+            "description": "The node type or compound it is."
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether it runs.",
+            "default": true
+          },
+          "values": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "float"
+              }
+            },
+            "description": "Its numbers, by port."
+          },
+          "texts": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Its settings, by name."
+          }
+        },
+        "description": "One step run on a mask."
       },
       "StackMeshMapsRequest": {
         "type": "object",
@@ -7169,6 +9130,49 @@
           }
         },
         "description": "A digest of a map\u0027s pixels, so that two pictures can be compared with neither crossing the API."
+      },
+      "StackPlacement": {
+        "required": [
+          "scale",
+          "rotation",
+          "offsetX",
+          "offsetY",
+          "sharpness"
+        ],
+        "type": "object",
+        "properties": {
+          "scale": {
+            "type": "number",
+            "description": "How many times the picture repeats. Above zero.",
+            "format": "float",
+            "default": 1
+          },
+          "rotation": {
+            "type": "number",
+            "description": "How far it turns, in radians.",
+            "format": "float",
+            "default": 0
+          },
+          "offsetX": {
+            "type": "number",
+            "description": "How far it moves along its first axis, in repeats.",
+            "format": "float",
+            "default": 0
+          },
+          "offsetY": {
+            "type": "number",
+            "description": "How far it moves along its second axis, in repeats.",
+            "format": "float",
+            "default": 0
+          },
+          "sharpness": {
+            "type": "number",
+            "description": "How hard the seam between a tri-planar\u0027s planes is.",
+            "format": "float",
+            "default": 4
+          }
+        },
+        "description": "Where a fill sits on the surface, in whichever projection it uses."
       },
       "StackPreview": {
         "required": [
@@ -7371,6 +9375,40 @@
         },
         "description": "An open stack, for a list."
       },
+      "StackThumbnail": {
+        "required": [
+          "layer",
+          "hash"
+        ],
+        "type": "object",
+        "properties": {
+          "layer": {
+            "type": "string",
+            "description": "The layer."
+          },
+          "hash": {
+            "type": "string",
+            "description": "Its name under \u0060/previews/{hash}\u0060."
+          }
+        },
+        "description": "What a layer looks like alone."
+      },
+      "StackThumbnails": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackThumbnail"
+            },
+            "description": "Them."
+          }
+        },
+        "description": "The fills of a stack, each drawn alone."
+      },
       "StackView": {
         "required": [
           "eye",
@@ -7440,7 +9478,8 @@
           "masks",
           "generators",
           "meshMaps",
-          "alphas"
+          "alphas",
+          "maskEffects"
         ],
         "type": "object",
         "properties": {
@@ -7485,6 +9524,13 @@
               "type": "string"
             },
             "description": "The named brush alphas."
+          },
+          "maskEffects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackEffectKind"
+            },
+            "description": "The steps a mask can run."
           }
         },
         "description": "The words a stack\u0027s fields take, so that a client holds no list of its own."

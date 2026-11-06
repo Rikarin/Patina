@@ -27,6 +27,12 @@ public sealed class GraphPictures {
     const string MeshMapScheme = "meshmap:";
     const long Budget = 512L * 1024 * 1024;
 
+    /// <summary>
+    ///     What a mesh map reads as with no bake: mid grey, so that one worn-edge mask leaves the rest of a stack to be
+    ///     seen. The caller is told, and says so.
+    /// </summary>
+    static readonly byte[] NoBake = [128, 128, 128, 255];
+
     readonly Dictionary<PictureStamp, Decoded> decoded = [];
     readonly StbImageDecoder decoder = new();
     long held;
@@ -35,12 +41,22 @@ public sealed class GraphPictures {
     public static bool Moved(PictureStamp stamp) => StampOf(stamp.Path) != stamp;
 
     /// <summary>Uploads every image in <paramref name="owed" />, and says which could not be.</summary>
+    /// <param name="uploads">Where they go.</param>
+    /// <param name="plan">The plan that reads them.</param>
+    /// <param name="owed">What it reads.</param>
+    /// <param name="roots">The folders a relative picture is read from.</param>
+    /// <param name="meshMaps">The bake chosen, or null.</param>
+    /// <param name="unbaked">
+    ///     Collects the mesh maps read with no bake, which then stand in as grey. Null refuses them, as a graph does: a
+    ///     graph's maps mean nothing without its bake, and a stack's other layers still do.
+    /// </param>
     public FilledPictures Fill(
         TextureUploads uploads,
         TexturePlan plan,
         ImmutableArray<TextureGraphExternal> owed,
         IReadOnlyList<string> roots,
-        string? meshMaps
+        string? meshMaps,
+        ICollection<string>? unbaked = null
     ) {
         List<NodeDiagnostic> refusals = [];
         List<PictureStamp> stamps = [];
@@ -49,6 +65,14 @@ public sealed class GraphPictures {
             try {
                 PictureStamp stamp;
                 Decoded picture;
+                if (meshMaps is null
+                    && unbaked is not null
+                    && reference.StartsWith(MeshMapScheme, StringComparison.Ordinal)) {
+                    unbaked.Add(reference[MeshMapScheme.Length..]);
+                    uploads.Add(plan, external.Image, 1, 1, NoBake);
+                    continue;
+                }
+
                 if (reference.StartsWith(MeshMapScheme, StringComparison.Ordinal)) {
                     (stamp, picture) = ReadMeshMap(reference[MeshMapScheme.Length..], meshMaps);
                 } else {

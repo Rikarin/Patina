@@ -39,6 +39,7 @@ jobs:
       - working-directory: engine
         run: dotnet build Patina.slnx -c Release
       - working-directory: clients/python
+        shell: bash # PowerShell carries on past a command that failed
         run: |
           python -m pip install --require-hashes -r requirements.txt
           python generate.py --check

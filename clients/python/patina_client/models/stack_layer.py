@@ -8,13 +8,16 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
+from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
+  from ..models.stack_layer_parameters_type_1 import StackLayerParametersType1
   from ..models.stack_layer_settings import StackLayerSettings
   from ..models.stack_layer_textures import StackLayerTextures
   from ..models.stack_layer_values import StackLayerValues
   from ..models.stack_mask import StackMask
+  from ..models.stack_placement import StackPlacement
 
 
 
@@ -42,10 +45,14 @@ class StackLayer:
             values (StackLayerValues): What a constant fill writes to each channel.
             textures (StackLayerTextures): What a texture fill reads for each channel.
             graph (str): The graph a graph fill reads.
-            projection (str): How a fill lands on the mesh: Uv, Triplanar or Planar.
+            projection (str): How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical.
             filter_ (str): What a filter does: Levels, Hsl, Blur, Invert or Grayscale.
             settings (StackLayerSettings): A filter's numbers.
             mask (StackMask): What decides where a layer shows.
+            planar_axis (str): The world axis a planar projection looks along or a cylinder wraps: X, Y or Z. Default: 'Y'.
+            filter_node (str): The compound a graph filter runs, or empty for one of the named filters. Default: ''.
+            placement (None | StackPlacement | Unset):
+            parameters (None | StackLayerParametersType1 | Unset): What a graph fill sets the graph's knobs to, as text.
      """
 
     id: str
@@ -65,6 +72,10 @@ class StackLayer:
     filter_: str
     settings: StackLayerSettings
     mask: StackMask
+    planar_axis: str = 'Y'
+    filter_node: str = ''
+    placement: None | StackPlacement | Unset = UNSET
+    parameters: None | StackLayerParametersType1 | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -72,10 +83,12 @@ class StackLayer:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.stack_layer_parameters_type_1 import StackLayerParametersType1 # noqa: PLC0415
         from ..models.stack_layer_settings import StackLayerSettings # noqa: PLC0415
         from ..models.stack_layer_textures import StackLayerTextures # noqa: PLC0415
         from ..models.stack_layer_values import StackLayerValues # noqa: PLC0415
         from ..models.stack_mask import StackMask # noqa: PLC0415
+        from ..models.stack_placement import StackPlacement # noqa: PLC0415
         id = self.id
 
         name = self.name
@@ -117,6 +130,26 @@ class StackLayer:
 
         mask = self.mask.to_dict()
 
+        planar_axis = self.planar_axis
+
+        filter_node = self.filter_node
+
+        placement: dict[str, Any] | None | Unset
+        if isinstance(self.placement, Unset):
+            placement = UNSET
+        elif isinstance(self.placement, StackPlacement):
+            placement = self.placement.to_dict()
+        else:
+            placement = self.placement
+
+        parameters: dict[str, Any] | None | Unset
+        if isinstance(self.parameters, Unset):
+            parameters = UNSET
+        elif isinstance(self.parameters, StackLayerParametersType1):
+            parameters = self.parameters.to_dict()
+        else:
+            parameters = self.parameters
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -138,7 +171,13 @@ class StackLayer:
             "filter": filter_,
             "settings": settings,
             "mask": mask,
+            "planarAxis": planar_axis,
+            "filterNode": filter_node,
         })
+        if placement is not UNSET:
+            field_dict["placement"] = placement
+        if parameters is not UNSET:
+            field_dict["parameters"] = parameters
 
         return field_dict
 
@@ -146,10 +185,12 @@ class StackLayer:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.stack_layer_parameters_type_1 import StackLayerParametersType1 # noqa: PLC0415
         from ..models.stack_layer_settings import StackLayerSettings # noqa: PLC0415
         from ..models.stack_layer_textures import StackLayerTextures # noqa: PLC0415
         from ..models.stack_layer_values import StackLayerValues # noqa: PLC0415
         from ..models.stack_mask import StackMask # noqa: PLC0415
+        from ..models.stack_placement import StackPlacement # noqa: PLC0415
         d = dict(src_dict)
         id = d.pop("id")
 
@@ -206,6 +247,50 @@ class StackLayer:
 
 
 
+        planar_axis = d.pop("planarAxis")
+
+        filter_node = d.pop("filterNode")
+
+        def _parse_placement(data: object) -> None | StackPlacement | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                placement_type_1 = StackPlacement.from_dict(data)
+
+
+
+                return placement_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackPlacement | Unset, data)
+
+        placement = _parse_placement(d.pop("placement", UNSET))
+
+
+        def _parse_parameters(data: object) -> None | StackLayerParametersType1 | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                parameters_type_1 = StackLayerParametersType1.from_dict(data)
+
+
+
+                return parameters_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackLayerParametersType1 | Unset, data)
+
+        parameters = _parse_parameters(d.pop("parameters", UNSET))
+
+
         stack_layer = cls(
             id=id,
             name=name,
@@ -224,6 +309,10 @@ class StackLayer:
             filter_=filter_,
             settings=settings,
             mask=mask,
+            planar_axis=planar_axis,
+            filter_node=filter_node,
+            placement=placement,
+            parameters=parameters,
         )
 
 

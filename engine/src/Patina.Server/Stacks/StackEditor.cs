@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Server.Graphs;
 using System.Globalization;
 using Vixen.Authoring;
 using Vixen.Texturing.Layers;
@@ -73,6 +74,9 @@ public sealed class StackEditor : ILayerStackDocument {
         AssetPath = path;
         Document = document;
     }
+
+    /// <summary>The library layered materials are read from, or null with none.</summary>
+    public string? Library { get; set; }
 
     /// <inheritdoc />
     public string AssetPath { get; }
@@ -250,6 +254,9 @@ public sealed class StackEditor : ILayerStackDocument {
 
         var set = Set.Name;
         switch (command) {
+            case StackAddLayer { Material: { } material }:
+                Apply(material, set, Do);
+                break;
             case StackAddLayer add:
                 Do(Add(add, set));
                 break;
@@ -282,6 +289,16 @@ public sealed class StackEditor : ILayerStackDocument {
         }
     }
 
+    void Apply(string source, string set, Action<IAuthoringCommand> run) {
+        var material = MaterialShelf.Read(Library, source);
+        var applied = SmartMaterial.Prepare(Set, material);
+        if (applied.Layers.IsDefaultOrEmpty) {
+            throw new StackEditRefusedException(applied.Status);
+        }
+
+        run(new ApplySmartMaterialCommand(this, set, applied.Layers, $"Apply {material.Name}"));
+    }
+
     AddLayerCommand Add(StackAddLayer add, string set) {
         if (!Enum.TryParse<LayerKind>(add.Kind, true, out var kind)) {
             throw new StackEditRefusedException($"'{add.Kind}' is not a kind of layer.");
@@ -304,6 +321,7 @@ public sealed class StackEditor : ILayerStackDocument {
                 Name = add.Name,
                 Kind = kind,
                 Filter = filter,
+                FilterNode = add.FilterNode ?? string.Empty,
                 Values = Copied(add.Values) ?? []
             },
             $"Add {add.Name}"
@@ -368,7 +386,8 @@ public sealed class StackEditor : ILayerStackDocument {
                 Asset = mask.Asset,
                 Anchor = mask.Anchor,
                 Generator = mask.Generator,
-                Map = mask.Map
+                Map = mask.Map,
+                Effects = StackDocuments.WithSelection(held.Effects, mask)
             };
 
     SetLayerCommand Change(StackSetLayer change, string set) {
@@ -392,12 +411,29 @@ public sealed class StackEditor : ILayerStackDocument {
                 Textures = Merged(layer.Textures, change.Textures),
                 Graph = change.Graph ?? layer.Graph,
                 Projection = Parsed(change.Projection, layer.Projection, "projection"),
+                PlanarAxis = Parsed(change.PlanarAxis, layer.PlanarAxis, "axis"),
+                Placement = change.Placement is { } placement ? Placed(placement) : layer.Placement,
                 Filter = Parsed(change.Filter, layer.Filter, "filter"),
                 Settings = Merged(layer.Settings, Copied(change.Settings)),
+                Texts = Merged(layer.Texts, change.Parameters),
                 Mask = Masked(layer.Mask, change.Mask)
             },
             "Change layer"
         );
+    }
+
+    static LayerPlacement Placed(StackPlacement placement) {
+        if (placement.Scale <= 0f) {
+            throw new StackEditRefusedException("A scale is above zero.");
+        }
+
+        return new() {
+            Scale = placement.Scale,
+            Rotation = placement.Rotation,
+            OffsetX = placement.OffsetX,
+            OffsetY = placement.OffsetY,
+            Sharpness = placement.Sharpness
+        };
     }
 
     void Stroke(StackStroke stroke, Step step, string set, Action<IAuthoringCommand> run) {

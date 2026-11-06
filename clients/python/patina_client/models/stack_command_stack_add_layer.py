@@ -35,6 +35,10 @@ class StackCommandStackAddLayer:
                 numbers. Ignored for other kinds.
             parent (None | str | Unset): The group it goes at the top of, or null for the stack itself.
             filter_ (None | str | Unset): What a filter layer does: Levels, Hsl, Blur, Invert or Grayscale.
+            material (None | str | Unset): A material to unfold into the stack as layers: a shipped one as `smart:Name`, or
+                a stack below the library.
+                Then Kind and Name say nothing.
+            filter_node (None | str | Unset): The compound a filter layer runs, instead of a named filter.
      """
 
     op: StackCommandStackAddLayerOp
@@ -43,6 +47,8 @@ class StackCommandStackAddLayer:
     values: None | StackCommandStackAddLayerValuesType1 | Unset = UNSET
     parent: None | str | Unset = UNSET
     filter_: None | str | Unset = UNSET
+    material: None | str | Unset = UNSET
+    filter_node: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -77,6 +83,18 @@ class StackCommandStackAddLayer:
         else:
             filter_ = self.filter_
 
+        material: None | str | Unset
+        if isinstance(self.material, Unset):
+            material = UNSET
+        else:
+            material = self.material
+
+        filter_node: None | str | Unset
+        if isinstance(self.filter_node, Unset):
+            filter_node = UNSET
+        else:
+            filter_node = self.filter_node
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -91,6 +109,10 @@ class StackCommandStackAddLayer:
             field_dict["parent"] = parent
         if filter_ is not UNSET:
             field_dict["filter"] = filter_
+        if material is not UNSET:
+            field_dict["material"] = material
+        if filter_node is not UNSET:
+            field_dict["filterNode"] = filter_node
 
         return field_dict
 
@@ -149,6 +171,26 @@ class StackCommandStackAddLayer:
         filter_ = _parse_filter_(d.pop("filter", UNSET))
 
 
+        def _parse_material(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        material = _parse_material(d.pop("material", UNSET))
+
+
+        def _parse_filter_node(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        filter_node = _parse_filter_node(d.pop("filterNode", UNSET))
+
+
         stack_command_stack_add_layer = cls(
             op=op,
             kind=kind,
@@ -156,6 +198,8 @@ class StackCommandStackAddLayer:
             values=values,
             parent=parent,
             filter_=filter_,
+            material=material,
+            filter_node=filter_node,
         )
 
 

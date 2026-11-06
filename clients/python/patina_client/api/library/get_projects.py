@@ -19,6 +19,7 @@ def _get_kwargs(
     *,
     search: str | Unset = UNSET,
     tag: list[str] | Unset = UNSET,
+    folder: str | Unset = UNSET,
     offset: int | Unset = 0,
     limit: int | Unset = 50,
 
@@ -37,6 +38,8 @@ def _get_kwargs(
 
 
     params["tag"] = json_tag
+
+    params["folder"] = folder
 
     params["offset"] = offset
 
@@ -99,15 +102,17 @@ def sync_detailed(
     client: AuthenticatedClient | Client,
     search: str | Unset = UNSET,
     tag: list[str] | Unset = UNSET,
+    folder: str | Unset = UNSET,
     offset: int | Unset = 0,
     limit: int | Unset = 50,
 
 ) -> Response[ProblemDetails | ProjectPage]:
-    """ One page of projects: by name, or by relevance when searching.
+    """ One page of projects: by name, or by relevance when searching. `folder` keeps those directly in it.
 
     Args:
         search (str | Unset):
         tag (list[str] | Unset):
+        folder (str | Unset):
         offset (int | Unset):  Default: 0.
         limit (int | Unset):  Default: 50.
 
@@ -123,6 +128,7 @@ def sync_detailed(
     kwargs = _get_kwargs(
         search=search,
 tag=tag,
+folder=folder,
 offset=offset,
 limit=limit,
 
@@ -139,15 +145,17 @@ def sync(
     client: AuthenticatedClient | Client,
     search: str | Unset = UNSET,
     tag: list[str] | Unset = UNSET,
+    folder: str | Unset = UNSET,
     offset: int | Unset = 0,
     limit: int | Unset = 50,
 
 ) -> ProblemDetails | ProjectPage | None:
-    """ One page of projects: by name, or by relevance when searching.
+    """ One page of projects: by name, or by relevance when searching. `folder` keeps those directly in it.
 
     Args:
         search (str | Unset):
         tag (list[str] | Unset):
+        folder (str | Unset):
         offset (int | Unset):  Default: 0.
         limit (int | Unset):  Default: 50.
 
@@ -164,6 +172,7 @@ def sync(
         client=client,
 search=search,
 tag=tag,
+folder=folder,
 offset=offset,
 limit=limit,
 
@@ -174,15 +183,17 @@ async def asyncio_detailed(
     client: AuthenticatedClient | Client,
     search: str | Unset = UNSET,
     tag: list[str] | Unset = UNSET,
+    folder: str | Unset = UNSET,
     offset: int | Unset = 0,
     limit: int | Unset = 50,
 
 ) -> Response[ProblemDetails | ProjectPage]:
-    """ One page of projects: by name, or by relevance when searching.
+    """ One page of projects: by name, or by relevance when searching. `folder` keeps those directly in it.
 
     Args:
         search (str | Unset):
         tag (list[str] | Unset):
+        folder (str | Unset):
         offset (int | Unset):  Default: 0.
         limit (int | Unset):  Default: 50.
 
@@ -198,6 +209,7 @@ async def asyncio_detailed(
     kwargs = _get_kwargs(
         search=search,
 tag=tag,
+folder=folder,
 offset=offset,
 limit=limit,
 
@@ -214,15 +226,17 @@ async def asyncio(
     client: AuthenticatedClient | Client,
     search: str | Unset = UNSET,
     tag: list[str] | Unset = UNSET,
+    folder: str | Unset = UNSET,
     offset: int | Unset = 0,
     limit: int | Unset = 50,
 
 ) -> ProblemDetails | ProjectPage | None:
-    """ One page of projects: by name, or by relevance when searching.
+    """ One page of projects: by name, or by relevance when searching. `folder` keeps those directly in it.
 
     Args:
         search (str | Unset):
         tag (list[str] | Unset):
+        folder (str | Unset):
         offset (int | Unset):  Default: 0.
         limit (int | Unset):  Default: 50.
 
@@ -239,6 +253,7 @@ async def asyncio(
         client=client,
 search=search,
 tag=tag,
+folder=folder,
 offset=offset,
 limit=limit,
 
