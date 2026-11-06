@@ -187,7 +187,7 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
     internal static IEnumerable<string> VisibleFolders(string folder) =>
         Directory.EnumerateDirectories(folder, "*", Visible).Where(static d => !IsDotted(Path.GetFileName(d)));
 
-    /// <summary>What a project can list, whose bytes a build keys on. A mesh or paint beside it is not read here.</summary>
+    /// <summary>What a project can list, whose bytes a build keys on. A mesh beside it is not read here.</summary>
     static bool IsDocument(string name) =>
         name.EndsWith(LibraryLayout.GraphExtension, StringComparison.Ordinal)
         || name.EndsWith(StackInputs.Extension, StringComparison.Ordinal);

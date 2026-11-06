@@ -133,7 +133,7 @@ public static class DocumentKinds {
 public sealed record FolderDocument(string? Color = null);
 
 /// <summary>
-///     The sidecar of an asset in a library's old <c>shared/</c> folder, which only the move into a project still reads.
+///     The sidecar of an asset in a library's old <c>shared/</c> folder, which only the move to a project reads.
 /// </summary>
 public sealed record AssetDocument(
     AssetId Id,

@@ -98,7 +98,7 @@ public static class LibraryFiles {
         }
     }
 
-    /// <summary>Writes a new graph at <paramref name="path" /> below the library, which belongs to its project.</summary>
+    /// <summary>Writes a new graph at <paramref name="path" /> below the library, in its project.</summary>
     /// <exception cref="ProjectExistsException">The file is taken.</exception>
     /// <exception cref="ProjectRefusedException">It names a project that is not there.</exception>
     public static void CreateGraph(string root, string path, string text) {
@@ -147,7 +147,7 @@ public static class LibraryFiles {
         );
     }
 
-    /// <summary>Writes a document at <paramref name="path" />, whose folder is its project, for tools that fill a library.</summary>
+    /// <summary>Writes a document at <paramref name="path" />, whose folder is its project.</summary>
     public static void WriteAsset(string root, string path, ReadOnlySpan<byte> content, AssetDocument document) {
         var kind = DocumentKinds.Known(document.Kind) ? document.Kind : DocumentKinds.Graph;
         var item = new ProjectItem(document.Id, kind, Path.GetFileName(path), document.Name) {

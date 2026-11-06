@@ -1,7 +1,7 @@
-using System.Collections.Concurrent;
 using Patina.Contracts;
 using Patina.Library;
 using Patina.Server.Stacks;
+using System.Collections.Concurrent;
 using Vixen.NodeGraph;
 using Vixen.Texturing.Layers;
 
@@ -179,7 +179,7 @@ public static class MaterialShelf {
         return path;
     }
 
-    /// <summary>Using another project's document is a reference, so that its impact preview can name this project.</summary>
+    /// <summary>Using another project's document is a reference, so its impact preview names this one.</summary>
     static void Reference(OpenLibrary library, string project, string source) {
         var below = $"{LibraryLayout.ProjectsFolder}/";
         if (!source.StartsWith(below, StringComparison.Ordinal)) {
