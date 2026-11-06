@@ -11,7 +11,12 @@ import { LiveValue } from './live-value';
 import { PaintStore } from './paint-store';
 
 const Fills: readonly string[] = ['Constant', 'Texture', 'Graph'];
-const Projections: readonly string[] = ['Uv', 'Triplanar', 'Planar'];
+const Projections: readonly { value: string; label: string }[] = [
+  { value: 'Uv', label: 'UV' },
+  { value: 'Triplanar', label: 'Tri-planar' },
+  { value: 'Planar', label: 'Planar' }
+];
+const Axes: readonly string[] = ['X', 'Y', 'Z'];
 
 /** Four numbers as a swatch's value. */
 export function hexOf(colour: readonly number[] | undefined): string {
@@ -110,15 +115,65 @@ export function hexOf(colour: readonly number[] | undefined): string {
                 [value]="layer.fill"
                 (valueChange)="store.edit({ op: 'setLayer', layer: layer.id, fill: $event })"
               />
-              <xui-select
-                class="w-24"
-                aria-label="Projection"
-                data-testid="paint-fill-projection"
-                [items]="projections"
-                [value]="layer.projection"
-                (valueChange)="store.edit({ op: 'setLayer', layer: layer.id, projection: $event })"
-              />
             </div>
+            @if (layer.fill !== 'Constant') {
+              <div class="flex items-center gap-2">
+                <span class="text-foreground-muted w-16 shrink-0 text-xs">Projection</span>
+                <select
+                  class="well h-7 min-w-0 flex-1 px-1 text-sm"
+                  aria-label="Projection"
+                  data-testid="paint-fill-projection"
+                  (change)="store.edit({ op: 'setLayer', layer: layer.id, projection: text($event) })"
+                >
+                  @for (option of projections; track option.value) {
+                    <option [value]="option.value" [selected]="option.value === layer.projection">{{ option.label }}</option>
+                  }
+                </select>
+              </div>
+              @if (layer.projection === 'Planar') {
+                <div class="flex items-center gap-2">
+                  <span class="text-foreground-muted w-16 shrink-0 text-xs">Axis</span>
+                  <select
+                    class="well h-7 min-w-0 flex-1 px-1 text-sm"
+                    aria-label="Projection axis"
+                    data-testid="paint-fill-axis"
+                    (change)="store.edit({ op: 'setLayer', layer: layer.id, planarAxis: text($event) })"
+                  >
+                    @for (axis of axes; track axis) {
+                      <option [value]="axis" [selected]="axis === layer.planarAxis">{{ axis }}</option>
+                    }
+                  </select>
+                </div>
+              }
+              @if (layer.projection !== 'Uv') {
+                <div class="flex items-center gap-2">
+                  <span class="text-foreground-muted w-16 shrink-0 text-xs">Scale</span>
+                  <xui-numeric-input
+                    class="min-w-0 flex-1"
+                    size="sm"
+                    ariaLabel="Projection scale"
+                    data-testid="paint-fill-scale"
+                    [stepSize]="0.1"
+                    [value]="layer.settings['Scale']?.[0] ?? 1"
+                    (valueChange)="setSetting(layer, 'Scale', $event ?? 1)"
+                  />
+                </div>
+              }
+              @if (layer.projection === 'Triplanar') {
+                <div class="flex items-center gap-2">
+                  <span class="text-foreground-muted w-16 shrink-0 text-xs">Blending</span>
+                  <xui-numeric-input
+                    class="min-w-0 flex-1"
+                    size="sm"
+                    ariaLabel="Projection blending"
+                    data-testid="paint-fill-sharpness"
+                    [stepSize]="0.5"
+                    [value]="layer.settings['Sharpness']?.[0] ?? 4"
+                    (valueChange)="setSetting(layer, 'Sharpness', $event ?? 4)"
+                  />
+                </div>
+              }
+            }
             @for (channel of store.state()?.channels ?? []; track channel.usage) {
               <div class="flex items-center gap-2">
                 <span class="text-foreground-muted w-20 shrink-0 truncate text-xs">{{ channel.usage }}</span>
@@ -271,6 +326,7 @@ export class LayerPanel {
   protected readonly store = inject(PaintStore);
   protected readonly fills = Fills;
   protected readonly projections = Projections;
+  protected readonly axes = Axes;
   protected readonly blends = computed(() => this.store.vocabulary()?.blends ?? []);
   protected readonly filters = computed(() => this.store.vocabulary()?.filters.map(filter => filter.kind) ?? []);
   protected readonly masks = computed(() => this.store.vocabulary()?.masks ?? []);

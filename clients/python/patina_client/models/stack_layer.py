@@ -46,6 +46,7 @@ class StackLayer:
             filter_ (str): What a filter does: Levels, Hsl, Blur, Invert or Grayscale.
             settings (StackLayerSettings): A filter's numbers.
             mask (StackMask): What decides where a layer shows.
+            planar_axis (str): The world axis a planar projection looks along: X, Y or Z. Default: 'Y'.
      """
 
     id: str
@@ -65,6 +66,7 @@ class StackLayer:
     filter_: str
     settings: StackLayerSettings
     mask: StackMask
+    planar_axis: str = 'Y'
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -117,6 +119,8 @@ class StackLayer:
 
         mask = self.mask.to_dict()
 
+        planar_axis = self.planar_axis
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -138,6 +142,7 @@ class StackLayer:
             "filter": filter_,
             "settings": settings,
             "mask": mask,
+            "planarAxis": planar_axis,
         })
 
         return field_dict
@@ -206,6 +211,8 @@ class StackLayer:
 
 
 
+        planar_axis = d.pop("planarAxis")
+
         stack_layer = cls(
             id=id,
             name=name,
@@ -224,6 +231,7 @@ class StackLayer:
             filter_=filter_,
             settings=settings,
             mask=mask,
+            planar_axis=planar_axis,
         )
 
 

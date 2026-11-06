@@ -49,6 +49,7 @@ class StackCommandStackSetLayer:
             settings (None | StackCommandStackSetLayerSettingsType1 | Unset): A filter's numbers, replacing what these names
                 held.
             mask (None | StackMask | Unset):
+            planar_axis (None | str | Unset): The world axis a planar projection looks along: X, Y or Z.
      """
 
     op: StackCommandStackSetLayerOp
@@ -66,6 +67,7 @@ class StackCommandStackSetLayer:
     filter_: None | str | Unset = UNSET
     settings: None | StackCommandStackSetLayerSettingsType1 | Unset = UNSET
     mask: None | StackMask | Unset = UNSET
+    planar_axis: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -171,6 +173,12 @@ class StackCommandStackSetLayer:
         else:
             mask = self.mask
 
+        planar_axis: None | str | Unset
+        if isinstance(self.planar_axis, Unset):
+            planar_axis = UNSET
+        else:
+            planar_axis = self.planar_axis
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -204,6 +212,8 @@ class StackCommandStackSetLayer:
             field_dict["settings"] = settings
         if mask is not UNSET:
             field_dict["mask"] = mask
+        if planar_axis is not UNSET:
+            field_dict["planarAxis"] = planar_axis
 
         return field_dict
 
@@ -401,6 +411,16 @@ class StackCommandStackSetLayer:
         mask = _parse_mask(d.pop("mask", UNSET))
 
 
+        def _parse_planar_axis(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        planar_axis = _parse_planar_axis(d.pop("planarAxis", UNSET))
+
+
         stack_command_stack_set_layer = cls(
             op=op,
             layer=layer,
@@ -417,6 +437,7 @@ class StackCommandStackSetLayer:
             filter_=filter_,
             settings=settings,
             mask=mask,
+            planar_axis=planar_axis,
         )
 
 

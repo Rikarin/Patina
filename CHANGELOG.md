@@ -22,6 +22,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The layer stack is a pane of its own, with Properties under it: rows with visibility, thumbnails, mask thumbnails, blend and opacity,
   folders that open and close, drag to reorder and to move in and out of folders, and a right-click menu. Clicking a mask chooses
   it for the brush. Thumbnails are a layer's colour or kind for now, not its rendered picture.
+- A fill's projection is set in Properties: UV, tri-planar with blending, or planar along an axis, with a scale.
 - A stack whose masks read baked maps no longer stops with no bake: they read as grey, a notice offers to bake, and a project's bake
   reaches its stacks by itself.
 - The app opens and creates libraries itself, from the File menu or the empty Library, remembers recent ones and reopens the last.

@@ -114,7 +114,8 @@ public static class StackDocuments {
                 layer.Mask.Anchor,
                 layer.Mask.Generator,
                 layer.Mask.Map
-            )
+            ),
+            layer.PlanarAxis.ToString()
         );
 
     static Dictionary<string, IReadOnlyList<float>> Numbers(Dictionary<string, float[]> numbers) =>

@@ -38,6 +38,7 @@ public sealed record StackChannel(string Usage, IReadOnlyList<float> Default);
 /// <param name="Filter">What a filter does: Levels, Hsl, Blur, Invert or Grayscale.</param>
 /// <param name="Settings">A filter's numbers.</param>
 /// <param name="Mask">Its mask.</param>
+/// <param name="PlanarAxis">The world axis a planar projection looks along: X, Y or Z.</param>
 public sealed record StackLayer(
     string Id,
     string Name,
@@ -55,7 +56,8 @@ public sealed record StackLayer(
     string Projection,
     string Filter,
     IReadOnlyDictionary<string, IReadOnlyList<float>> Settings,
-    StackMask Mask
+    StackMask Mask,
+    string PlanarAxis = "Y"
 );
 
 /// <summary>What decides where a layer shows.</summary>
@@ -235,6 +237,7 @@ public sealed record StackMoveLayer(string Layer, int Delta) : StackCommand;
 /// <param name="Filter">What a filter does.</param>
 /// <param name="Settings">A filter's numbers, replacing what these names held.</param>
 /// <param name="Mask">Its mask, which replaces the old one and keeps any painted canvas.</param>
+/// <param name="PlanarAxis">The world axis a planar projection looks along: X, Y or Z.</param>
 public sealed record StackSetLayer(
     string Layer,
     string? Name = null,
@@ -249,7 +252,8 @@ public sealed record StackSetLayer(
     string? Projection = null,
     string? Filter = null,
     IReadOnlyDictionary<string, IReadOnlyList<float>>? Settings = null,
-    StackMask? Mask = null
+    StackMask? Mask = null,
+    string? PlanarAxis = null
 ) : StackCommand;
 #pragma warning restore SK7005
 

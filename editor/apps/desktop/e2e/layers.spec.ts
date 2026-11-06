@@ -96,3 +96,23 @@ test('the eye hides a layer, and Properties follows what is chosen', async () =>
   await base.getByTestId('layer-eye').click();
   await expect(base.getByTestId('layer-eye')).toHaveAttribute('aria-pressed', 'false');
 });
+
+test('a fill shows only the projection controls that apply', async () => {
+  await window.getByTestId('paint-add-fill').click();
+  await expect(window.getByTestId('paint-fill-projection')).toHaveCount(0); // a constant is the same from every side
+
+  await window.getByTestId('paint-fill-source').click();
+  await window.getByRole('option', { name: 'Texture' }).click();
+  const projection = window.getByTestId('paint-fill-projection');
+  await expect(projection).toHaveValue('Uv');
+  await expect(window.getByTestId('paint-fill-scale')).toHaveCount(0);
+
+  await projection.selectOption('Triplanar');
+  await expect(window.getByTestId('paint-fill-sharpness')).toBeVisible();
+  await expect(window.getByTestId('paint-fill-axis')).toHaveCount(0);
+
+  await projection.selectOption('Planar');
+  await window.getByTestId('paint-fill-axis').selectOption('Z');
+  await expect(window.getByTestId('paint-fill-axis')).toHaveValue('Z');
+  await expect(window.getByTestId('paint-fill-scale')).toBeVisible();
+});

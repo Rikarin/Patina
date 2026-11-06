@@ -2892,6 +2892,8 @@ export interface components {
         [key: string]: unknown;
       };
       mask?: null | components['schemas']['StackMask'];
+      /** @description The world axis a planar projection looks along: X, Y or Z. */
+      planarAxis?: null | string;
     };
     /** @description Names the mesh a stack is painted on, which is undone like any other edit. */
     StackCommandStackSetModel: {
@@ -3099,6 +3101,11 @@ export interface components {
       };
       /** @description Its mask. */
       mask: components['schemas']['StackMask'];
+      /**
+       * @description The world axis a planar projection looks along: X, Y or Z.
+       * @default Y
+       */
+      planarAxis: string;
     };
     /** @description What decides where a layer shows. */
     StackMask: {

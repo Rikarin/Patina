@@ -34,6 +34,7 @@ function layer(id: string, kind: string, children: StackLayer[] = []): StackLaye
     textures: {},
     graph: '',
     projection: 'Uv',
+    planarAxis: 'Y',
     filter: 'Levels',
     settings: {},
     mask: { source: 'None', value: 1, asset: '', anchor: '', generator: '', map: '' }

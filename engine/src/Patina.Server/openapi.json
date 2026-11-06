@@ -7894,6 +7894,13 @@
                 "$ref": "#/components/schemas/StackMask"
               }
             ]
+          },
+          "planarAxis": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The world axis a planar projection looks along: X, Y or Z."
           }
         },
         "description": "Changes what a layer\u0027s row shows. What is null stays."
@@ -8277,7 +8284,8 @@
           "projection",
           "filter",
           "settings",
-          "mask"
+          "mask",
+          "planarAxis"
         ],
         "type": "object",
         "properties": {
@@ -8372,6 +8380,11 @@
           "mask": {
             "description": "Its mask.",
             "$ref": "#/components/schemas/StackMask"
+          },
+          "planarAxis": {
+            "type": "string",
+            "description": "The world axis a planar projection looks along: X, Y or Z.",
+            "default": "Y"
           }
         },
         "description": "One layer, without its pixels."

@@ -409,6 +409,7 @@ public sealed class StackEditor : ILayerStackDocument {
                 Textures = Merged(layer.Textures, change.Textures),
                 Graph = change.Graph ?? layer.Graph,
                 Projection = Parsed(change.Projection, layer.Projection, "projection"),
+                PlanarAxis = Parsed(change.PlanarAxis, layer.PlanarAxis, "axis"),
                 Filter = Parsed(change.Filter, layer.Filter, "filter"),
                 Settings = Merged(layer.Settings, Copied(change.Settings)),
                 Mask = Masked(layer.Mask, change.Mask)
