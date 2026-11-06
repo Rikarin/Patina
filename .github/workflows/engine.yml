@@ -45,6 +45,9 @@ jobs:
         uses: ./.github/actions/no-system-assimp
       - run: dotnet build Patina.slnx -c Release
       - run: dotnet test --solution Patina.slnx -c Release --no-build
+        env:
+          # Lavapipe is on Linux, so a skip there means something is broken.
+          PATINA_REQUIRE_VULKAN: ${{ runner.os == 'Linux' && '1' || '' }}
 
   # CoreCLR with ReadyToRun, as the app ships (plan §3.1): the published binaries must start on each target.
   publish:

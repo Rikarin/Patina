@@ -308,6 +308,10 @@ Prerequisite tasks:
 1. **Publish xUI 3.1** with the bezel skin. Until it's out, the app can build against a local xUI.
 2. Choose the name (§10), create the repo under GPL-3.0-or-later (§11), add the Vixen submodule.
 
+> **Status (2026-11-06): no go/no-go has been recorded, and two spikes failed.** S8 (macOS Vulkan bundling) is open as
+> [#48](https://github.com/Rikarin/Patina/issues/48), S9 (GPU traversal) is an open decision, and S3 fails its CPU line. Work went
+> ahead regardless, so the decision on Raven plus MoltenVK is still owed.
+
 Each spike is throwaway, with its result written up in `docs/adr/`.
 
 | # | Spike | Pass | If it fails |
@@ -356,9 +360,8 @@ beyond namespaces, that's a sign the split is wrong.
 
 ### P1: foundation (4–5 weeks, parallel with PV)
 
-> **Status (2026-11-05): done on macOS, unproven on Linux and Windows.** The exit needs all three platforms in CI, and the
-> fixes for the first failures there are not yet confirmed by a CI run. Windows runners have no Vulkan, so its viewport
-> tests skip. Left open: the 2 cores spent while orbiting (ADR 0003). The viewport now reads textures, so a glTF's PBR
+> **Status (2026-11-06): done, with menus and saved layouts arriving only in the library work.** All three platforms pass in CI.
+> Windows runners have no Vulkan, so its viewport tests skip. Left open: the 2 cores spent while orbiting (ADR 0003). The viewport now reads textures, so a glTF's PBR
 > material is drawn whole.
 
 **Exit:** the desktop app opens, starts both sidecars, and shows a glTF with a PBR material in a docked viewport, under
@@ -401,7 +404,7 @@ bezel, on all three platforms, in CI.
 
 > **Status (2026-11-05): the exit is met for opening, searching and browsing a generated 10,000-project library.** It holds
 > at 60 fps under scripted scrolling, and a project can be created through the Server. Left open: thumbnails, a grid, drag
-> to apply, the file watcher, opening a project, opening a library from the UI, bulk import and generated `.gitattributes`.
+> to apply, the file watcher and bulk import. Opening a library or a project from the app arrived later, in ADR 0012's work.
 
 **Exit:** a generated 10,000-project library opens, searches and browses within the S6 targets.
 
@@ -457,7 +460,8 @@ bezel, on all three platforms, in CI.
 
 ### P6: batch and export (5–6 weeks)
 
-> **Status (2026-11-05): the exit is met through the real Worker, and no engine has opened a file yet.** Presets are files, BC7 and
+> **Status (2026-11-06): the engine half of the exit is met, and the exit as a whole is not.** No engine has opened a file, and
+> the 10,000-project measurement used stand-in maps. Presets are files, BC7 and
 > BC6H are complete in Vixen, a build is a plan from keys that survives its Worker and the Server, `patina build` and the Export pane
 > run it, and LODs and `.cube` viewing are in. Measured at 10,000 projects with stand-in maps and 500 with real ones
 > ([ADR 0011](adr/0011-export.md)). Not done: layer references, which need a decision about Vixen's stack format, and any
@@ -470,6 +474,14 @@ bezel, on all three platforms, in CI.
 - Batch rebuild from impact preview, `patina build`, per-project and per-library reports.
 - Layer references (InstaMAT's idea): one layer's content reused in many projects.
 - LOD generation via `MeshSimplifier`. Colour: sRGB and linear plus `.cube` viewing; OCIO only if demand is real.
+
+### P6.5: usable (before P7)
+
+P0 to P6 proved technology, and every gate tested that, so each phase could pass while the app stayed unusable. This phase has one
+exit, and new engine scope waits for it.
+
+**Exit:** a person goes from a mesh to exported textures in the app, unaided, and `journey.spec.ts` does the same with no fixtures.
+**From here on, a phase's exit is judged in the app, by a person.**
 
 ### P7: content depth (from P4, ongoing)
 

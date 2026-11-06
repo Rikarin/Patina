@@ -49,7 +49,7 @@ async function drag(from: string, to: string): Promise<void> {
 }
 
 test.beforeEach(() => {
-  test.skip(process.platform === 'win32', 'Windows CI has no Vulkan.');
+  test.skip(process.platform === 'win32' && !!process.env['CI'], 'Windows CI has no Vulkan.');
   scratch = mkdtempSync(join(tmpdir(), 'patina-journey-'));
   execFileSync('dotnet', [bench, 'bake-pair', join(scratch, 'meshes'), '0.05']);
   mesh = join(scratch, 'meshes', 'housing_low.glb');

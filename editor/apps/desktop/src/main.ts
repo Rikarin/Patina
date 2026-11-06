@@ -1,4 +1,16 @@
-import { BrowserWindow, type OpenDialogOptions, app, dialog, ipcMain, net, protocol, session, shell } from 'electron';
+import {
+  BrowserWindow,
+  type IpcMainEvent,
+  type IpcMainInvokeEvent,
+  type OpenDialogOptions,
+  app,
+  dialog,
+  ipcMain,
+  net,
+  protocol,
+  session,
+  shell
+} from 'electron';
 import { LibraryPlace, type LibraryChoice } from './libraries';
 import { installMenu } from './menu';
 import { existsSync, statSync } from 'node:fs';
@@ -26,9 +38,46 @@ const Scheme = 'app';
 /** The app icon (apps/desktop/assets/icon.png), copied next to main.js by the build. */
 const Icon = join(__dirname, 'icon.png');
 const studioRoot = resolve(
-  process.env['PATINA_STUDIO_DIR'] ?? join(__dirname, app.isPackaged ? 'studio' : '../studio/browser')
+  (app.isPackaged ? undefined : process.env['PATINA_STUDIO_DIR']) ??
+    join(__dirname, app.isPackaged ? 'studio' : '../studio/browser')
 );
-const devServer = process.env['PATINA_STUDIO_URL']; // `nx serve studio` during development
+const devServer = app.isPackaged ? undefined : process.env['PATINA_STUDIO_URL']; // `nx serve studio` during development
+
+/** Whether a page is the studio itself, compared by origin: a prefix would also pass `http://localhost:42000.evil`. */
+function isStudio(url: string): boolean {
+  if (url.startsWith(`${Scheme}://`)) {
+    return true;
+  }
+
+  try {
+    return !!devServer && new URL(url).origin === new URL(devServer).origin;
+  } catch {
+    return false;
+  }
+}
+
+/** Only the studio's own top frame may use the bridge. */
+function fromStudio(event: IpcMainEvent | IpcMainInvokeEvent): boolean {
+  return event.senderFrame?.parent === null && isStudio(event.senderFrame.url);
+}
+
+function handle(channel: string, answer: (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown): void {
+  ipcMain.handle(channel, (event, ...args: unknown[]) => {
+    if (!fromStudio(event)) {
+      throw new Error(`${channel} is only for the studio.`);
+    }
+
+    return answer(event, ...args);
+  });
+}
+
+function listen(channel: string, heard: (event: IpcMainEvent, ...args: unknown[]) => void): void {
+  ipcMain.on(channel, (event, ...args: unknown[]) => {
+    if (fromStudio(event)) {
+      heard(event, ...args);
+    }
+  });
+}
 
 protocol.registerSchemesAsPrivileged([
   { scheme: Scheme, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }
@@ -213,7 +262,7 @@ function createWindow(): void {
   window.on('leave-full-screen', () => window?.webContents.send('patina:fullScreen', false));
   // The window never navigates away from the studio; links to the web open in the browser.
   window.webContents.on('will-navigate', (event, url) => {
-    if (!url.startsWith(`${Scheme}://`) && !(devServer && url.startsWith(devServer))) {
+    if (!isStudio(url)) {
       event.preventDefault();
     }
   });
@@ -239,31 +288,31 @@ function createWindow(): void {
 }
 
 function handleIpc(): void {
-  ipcMain.on('patina:unsaved', (_event, value: unknown) => {
+  listen('patina:unsaved', (_event, value: unknown) => {
     unsaved = value === true;
   });
-  ipcMain.on('patina:quit', () => {
+  listen('patina:quit', () => {
     quitConfirmed = true;
     app.quit();
   });
-  ipcMain.handle('patina:connection', () => backend().start());
-  ipcMain.handle('patina:sidecars', () => sidecars?.statuses() ?? []);
-  ipcMain.handle('patina:sidecars:logs', () => sidecars?.logs() ?? { worker: [], server: [] });
-  ipcMain.handle('patina:libraries:recent', () => places().recent());
-  ipcMain.handle('patina:libraries:open', async () => openLibrary(await askForLibrary()));
-  ipcMain.handle('patina:libraries:new', async () => openLibrary(await askForNewLibrary()));
-  ipcMain.handle('patina:libraries:openRecent', (_event, path: unknown) =>
+  handle('patina:connection', () => backend().start());
+  handle('patina:sidecars', () => sidecars?.statuses() ?? []);
+  handle('patina:sidecars:logs', () => sidecars?.logs() ?? { worker: [], server: [] });
+  handle('patina:libraries:recent', () => places().recent());
+  handle('patina:libraries:open', async () => openLibrary(await askForLibrary()));
+  handle('patina:libraries:new', async () => openLibrary(await askForNewLibrary()));
+  handle('patina:libraries:openRecent', (_event, path: unknown) =>
     typeof path === 'string' ? openRecent(path) : null
   );
-  ipcMain.on('patina:title', (_event, title: unknown) => {
+  listen('patina:title', (_event, title: unknown) => {
     window?.setTitle(typeof title === 'string' && title.length > 0 ? `${title} — Patina` : 'Patina');
   });
-  ipcMain.handle('patina:reveal', (_event, path: unknown) => {
+  handle('patina:reveal', (_event, path: unknown) => {
     if (typeof path === 'string') {
       shell.showItemInFolder(path);
     }
   });
-  ipcMain.handle('patina:openMesh', async () => {
+  handle('patina:openMesh', async () => {
     const options: OpenDialogOptions = {
       properties: ['openFile'],
       filters: [{ name: 'Meshes', extensions: ['glb', 'gltf', 'fbx', 'obj'] }]
@@ -271,7 +320,7 @@ function handleIpc(): void {
     const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
     return picked.canceled ? null : (picked.filePaths[0] ?? null);
   });
-  ipcMain.handle('patina:openImage', async () => {
+  handle('patina:openImage', async () => {
     const options: OpenDialogOptions = {
       properties: ['openFile'],
       filters: [{ name: 'Pictures', extensions: ['png', 'jpg', 'jpeg', 'exr', 'tga'] }]
@@ -279,7 +328,7 @@ function handleIpc(): void {
     const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
     return picked.canceled ? null : (picked.filePaths[0] ?? null);
   });
-  ipcMain.handle('patina:openFolder', async () => {
+  handle('patina:openFolder', async () => {
     const options: OpenDialogOptions = { properties: ['openDirectory', 'createDirectory'] };
     const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
     return picked.canceled ? null : (picked.filePaths[0] ?? null);

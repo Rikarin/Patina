@@ -7,6 +7,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Process tests skip only for a missing Vulkan device, and fail if Vulkan is required. The packaged app ignores development
+  environment variables, its IPC answers only the studio, its fuses are set, and the frames file is private and swept after a kill.
 - A stack cannot name a paint file outside its own folder, and a Server with no token only answers to a loopback `Host` (ADR 0013).
 - A second Server on a library is refused by an operating system lock before it touches anything, including on a shared drive.
 - Files left by a crash are swept at start-up, `patina cache prune <library>` clears old objects and reports, and trimming previews
@@ -82,7 +84,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A generated Python client in `clients/python`, with a Blender-shaped conformance test that needs no Blender.
 - Painting's foundations: layer stacks through the API (`/api/v1/stacks`, `/ws/stacks/{id}`), undoable batches on the same
   numbered events as graphs, strokes sent as lists of stamps, and a Paint pane with a layer list and a brush on the composited map.
-  The composite is the plan's, repaired tile by tile: about 6 ms a stamp at 4K with 20 layers, 38 ms to a client. A Worker that dies
+  The composite is the plan's, repaired tile by tile: about 6 ms a stamp at 4K with 20 layers, 38 ms to a client when idle (under load ADR 0009 measures 67 ms at p50, and 10.9 s for a
+  24 px brush). A Worker that dies
   in a stroke loses nothing. `POST /stacks/{id}/export` writes each map, and `GET /stacks/{id}/pixels` gives a digest of what the
   strokes left, which equals the export's.
 - Painting on a mesh. A stack binds a model (`setModel`) and its maps wear it in the viewport as you paint (`PUT /viewport/stack`), through

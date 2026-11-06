@@ -808,8 +808,7 @@ public sealed partial class StackProcessTests : IDisposable {
         if (response.StatusCode == HttpStatusCode.UnprocessableEntity) {
             // Only a machine with no device is a reason to skip: every other refusal is a failure to see.
             var refusal = await response.Content.ReadAsStringAsync(token);
-            Assert.SkipUnless(!refusal.Contains("No Vulkan", StringComparison.Ordinal), refusal);
-            Assert.Fail(refusal);
+            Gpu.Skip(refusal);
         }
 
         response.EnsureSuccessStatusCode();
@@ -859,7 +858,7 @@ public sealed partial class StackProcessTests : IDisposable {
 
             if (evaluation.Error is { } error) {
                 if (error.StartsWith("No Vulkan", StringComparison.Ordinal)) {
-                    Assert.Skip(error);
+                    Gpu.Skip(error);
                 }
 
                 Assert.Fail(error);

@@ -167,7 +167,7 @@ public sealed class GraphCatalogueProcessTests : IDisposable {
             try {
                 var evaluation = await EvaluationAsync(socket, result.Revision, patience.Token);
                 if (evaluation.Error?.StartsWith("No Vulkan", StringComparison.Ordinal) == true) {
-                    Assert.Skip(evaluation.Error);
+                    Gpu.Skip(evaluation.Error);
                 }
 
                 var problems = evaluation.Diagnostics.Where(static d => d.Severity == "Error").ToArray();
@@ -231,7 +231,7 @@ public sealed class GraphCatalogueProcessTests : IDisposable {
         );
         var first = await EvaluationAsync(socket, state.Revision, token);
         if (first.Error?.StartsWith("No Vulkan", StringComparison.Ordinal) == true) {
-            Assert.Skip(first.Error);
+            Gpu.Skip(first.Error);
         }
 
         var types = (await http.GetFromJsonAsync(

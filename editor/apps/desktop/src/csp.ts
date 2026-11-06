@@ -9,6 +9,7 @@ export function contentSecurityPolicy(): string {
     "font-src 'self' data:",
     "connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:*",
     "object-src 'none'",
+    "form-action 'none'",
     "base-uri 'self'",
     "frame-ancestors 'none'"
   ].join('; ');

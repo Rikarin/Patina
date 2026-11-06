@@ -87,6 +87,12 @@ await build({
       { from: join(workspace, '../THIRD-PARTY-NOTICES.md'), to: 'THIRD-PARTY-NOTICES.md' }
     ],
     npmRebuild: false,
+    // The packaged binary stays an app: it does not turn into a Node runtime that environment variables can steer.
+    electronFuses: {
+      runAsNode: false,
+      enableNodeOptionsEnvironmentVariable: false,
+      enableNodeCliInspectArguments: false
+    },
     icon: join(workspace, 'apps/desktop/assets/icon.png'),
     artifactName: '${productName}-${version}-${os}-${arch}.${ext}',
     mac: {

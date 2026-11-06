@@ -429,7 +429,7 @@ public sealed class BakeProcessTests : IDisposable {
 
         using var pixels = await http.GetAsync($"/api/v1/stacks/{stack.Id}/pixels", deadline.Token);
         if (pixels.StatusCode == HttpStatusCode.UnprocessableEntity) {
-            Assert.Skip(await pixels.Content.ReadAsStringAsync(deadline.Token));
+            Gpu.Skip(await pixels.Content.ReadAsStringAsync(deadline.Token));
         }
 
         pixels.EnsureSuccessStatusCode();
@@ -485,7 +485,7 @@ public sealed class BakeProcessTests : IDisposable {
         var (bound, reason) = await CommandAsync(deadline.Token, "bake", graph, pictures, "--mesh-maps", Output);
 
         if (reason.Contains("no Vulkan device", StringComparison.Ordinal)) {
-            Assert.Skip(reason);
+            Gpu.Skip(reason);
         }
 
         Assert.NotEqual(0, unbound);
@@ -547,7 +547,7 @@ public sealed class BakeProcessTests : IDisposable {
                 if ((await ViewportStateAsync(cancellationToken)).Error is { } error
                     && error.StartsWith("No Vulkan", StringComparison.Ordinal)) {
                     await patience.CancelAsync();
-                    Assert.Skip(error);
+                    Gpu.Skip(error);
                 }
 
                 continue;
@@ -791,7 +791,7 @@ public sealed class BakeProcessTests : IDisposable {
             var item = JsonSerializer.Deserialize(buffer.AsSpan(0, length), ContractsJsonContext.Default.GraphEvent)!;
             if (item.Evaluation is { } evaluation && evaluation.Revision >= revision) {
                 if (evaluation.Error is { } error && error.StartsWith("No Vulkan", StringComparison.Ordinal)) {
-                    Assert.Skip(error);
+                    Gpu.Skip(error);
                 }
 
                 return evaluation;
