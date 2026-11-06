@@ -301,6 +301,57 @@ export function hexOf(colour: readonly number[] | undefined): string {
               [value]="layer.mask.map"
               (valueChange)="setMask(layer, { map: $event ?? '' })"
             />
+            @if (layer.mask.map === 'id') {
+              <div class="flex flex-col gap-1.5" data-testid="paint-colour-selection">
+                <div class="flex flex-wrap items-center gap-1" role="group" aria-label="Colours in the id map">
+                  @for (entry of store.idColours() ?? []; track $index) {
+                    <button
+                      type="button"
+                      class="border-hairline size-6 rounded-sm border"
+                      data-testid="paint-id-colour"
+                      [attr.aria-label]="'Select ' + hexOf(entry.colour)"
+                      [class.outline]="same(layer.mask.colour, entry.colour)"
+                      [style.background]="hexOf(entry.colour)"
+                      [title]="hexOf(entry.colour) + ', ' + percent(entry.share) + '%'"
+                      (click)="setMask(layer, { colour: [...entry.colour] })"
+                    ></button>
+                  } @empty {
+                    <span class="text-foreground-muted text-xs" data-testid="paint-id-none">
+                      Bake with the ID map on to pick from its colours.
+                    </span>
+                  }
+                </div>
+                <div class="flex items-center gap-1">
+                  <button
+                    type="button"
+                    xuiButton
+                    size="sm"
+                    data-testid="paint-eyedropper"
+                    [variant]="store.picking() === layer.id ? 'default' : 'ghost'"
+                    (click)="store.picking.set(store.picking() === layer.id ? null : layer.id)"
+                  >
+                    {{ store.picking() === layer.id ? 'Click the mesh or map…' : 'Pick from Mesh' }}
+                  </button>
+                  @if (layer.mask.colour; as colour) {
+                    <span class="border-hairline size-5 rounded-sm border" data-testid="paint-picked" [style.background]="hexOf(colour)"></span>
+                  }
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-foreground-muted w-16 shrink-0 text-xs">Tolerance</span>
+                  <xui-slider
+                    class="min-w-0 flex-1"
+                    labelStepSize="0"
+                    aria-label="Colour tolerance"
+                    data-testid="paint-mask-tolerance"
+                    [max]="0.5"
+                    [min]="0"
+                    [stepSize]="0.005"
+                    [value]="layer.mask.tolerance"
+                    (valueChange)="setMask(layer, { tolerance: $event })"
+                  />
+                </div>
+              </div>
+            }
           }
         }
       </div>
@@ -338,6 +389,15 @@ export class LayerPanel {
   private latest: { layer: string; opacity: number } | null = null;
 
   constructor() {
+    // An id map is what a colour selection chooses from, so it is read when one is on screen.
+    effect(() => {
+      const mask = this.store.chosen()?.mask;
+      const meshMaps = this.store.state()?.meshMaps;
+      if (mask?.source === 'Bake' && mask.map === 'id' && meshMaps) {
+        untracked(() => void this.store.loadIdColours());
+      }
+    });
+
     // Another layer has no draft of this one's.
     effect(() => {
       this.store.layer();
@@ -418,6 +478,16 @@ export class LayerPanel {
       .layers()
       .map(row => row.layer.id)
       .filter(id => id !== layer.id);
+  }
+
+  protected readonly hexOf = hexOf;
+
+  protected same(left: readonly number[] | null | undefined, right: readonly number[]): boolean {
+    return !!left && right.every((lane, index) => Math.abs(lane - (left[index] ?? 0)) < 0.002);
+  }
+
+  protected percent(share: number): number {
+    return Math.round(share * 100);
   }
 
   protected setMask(layer: StackLayer, change: Partial<StackMask>): void {

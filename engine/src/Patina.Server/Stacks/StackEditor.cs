@@ -385,7 +385,8 @@ public sealed class StackEditor : ILayerStackDocument {
                 Asset = mask.Asset,
                 Anchor = mask.Anchor,
                 Generator = mask.Generator,
-                Map = mask.Map
+                Map = mask.Map,
+                Effects = StackDocuments.WithSelection(held.Effects, mask)
             };
 
     SetLayerCommand Change(StackSetLayer change, string set) {

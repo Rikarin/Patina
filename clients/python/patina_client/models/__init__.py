@@ -151,6 +151,8 @@ from .stack_event import StackEvent
 from .stack_event_page import StackEventPage
 from .stack_export_request import StackExportRequest
 from .stack_filter_kind import StackFilterKind
+from .stack_id_colour import StackIdColour
+from .stack_id_colours import StackIdColours
 from .stack_layer import StackLayer
 from .stack_layer_settings import StackLayerSettings
 from .stack_layer_textures import StackLayerTextures
@@ -333,6 +335,8 @@ __all__ = (
     "StackEventPage",
     "StackExportRequest",
     "StackFilterKind",
+    "StackIdColour",
+    "StackIdColours",
     "StackLayer",
     "StackLayerSettings",
     "StackLayerTextures",

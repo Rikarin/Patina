@@ -87,6 +87,13 @@ static class StackEndpoints {
             Missing
         );
         Get(
+            "/{id}/id-colours",
+            GetIdColours,
+            "GetStackIdColours",
+            "The colours of the id map the stack reads, the largest first, and the one at a place on it if asked.",
+            Missing
+        );
+        Get(
             "/{id}/pixels",
             GetPixels,
             "GetStackPixels",
@@ -219,6 +226,21 @@ static class StackEndpoints {
         } catch (TimeoutException e) {
             return TypedResults.Problem(e.Message, statusCode: Unavailable);
         }
+    }
+
+    static Results<Ok<StackIdColours>, ProblemHttpResult> GetIdColours(
+        string id,
+        StackSessions sessions,
+        float? u = null,
+        float? v = null
+    ) {
+        if (sessions.Find(id) is not { } session) {
+            return NoSession(id);
+        }
+
+        return session.MeshMaps is { } folder && IdColours.Read(folder, u, v) is { } colours
+            ? TypedResults.Ok(colours)
+            : TypedResults.Problem("This stack has no bake with an id map.", statusCode: StatusCodes.Status404NotFound);
     }
 
     static Results<NoContent, ProblemHttpResult> UseMeshMaps(

@@ -10,6 +10,11 @@ namespace Patina.Server.Stacks;
 /// <summary>What a stack looks like on the wire and in a file.</summary>
 public static class StackDocuments {
     public const string Extension = ".vxlayers";
+    const string ColourSelect = "Analysis/Colour Select";
+    const string SelectColour = "Colour";
+    const string SelectTolerance = "Tolerance";
+    const string SelectSoftness = "Softness";
+    const float DefaultTolerance = 0.02f;
 
     /// <exception cref="StackEditRefusedException">It is not a stack.</exception>
     public static LayerStackAsset Parse(string text) {
@@ -84,6 +89,29 @@ public static class StackDocuments {
         LibraryFiles.Replace(path, Text(stack));
     }
 
+    /// <summary>A mask's effects with its colour selection as the mask asks, and the others as they were.</summary>
+    public static List<MaskEffectAsset> WithSelection(List<MaskEffectAsset> effects, StackMask mask) {
+        List<MaskEffectAsset> kept = [..effects.Where(static effect => effect.Node != ColourSelect)];
+        if (mask.Colour is { Count: >= 3 } colour) {
+            kept.Insert(
+                0,
+                new() {
+                    Node = ColourSelect,
+                    Values = {
+                        [SelectColour] = [colour[0], colour[1], colour[2], 1f],
+                        [SelectTolerance] = [mask.Tolerance],
+                        [SelectSoftness] = [mask.Softness]
+                    }
+                }
+            );
+        }
+
+        return kept;
+    }
+
+    static MaskEffectAsset? Selection(MaskAsset mask) =>
+        mask.Effects.Find(static effect => effect.Node == ColourSelect);
+
     /// <summary>Points a stack that is not open at a mesh, relative to its file.</summary>
     public static void SetModel(string path, string model) {
         LibraryFiles.Replace(path, Text(Parse(File.ReadAllText(path)) with { Model = model }));
@@ -113,7 +141,10 @@ public static class StackDocuments {
                 layer.Mask.Asset,
                 layer.Mask.Anchor,
                 layer.Mask.Generator,
-                layer.Mask.Map
+                layer.Mask.Map,
+                Selection(layer.Mask)?.Values.GetValueOrDefault(SelectColour),
+                Selection(layer.Mask)?.Values.GetValueOrDefault(SelectTolerance)?[0] ?? DefaultTolerance,
+                Selection(layer.Mask)?.Values.GetValueOrDefault(SelectSoftness)?[0] ?? 0f
             ),
             layer.PlanarAxis.ToString()
         );

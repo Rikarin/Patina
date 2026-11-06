@@ -22,4 +22,5 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(MaterialList), TypeInfoPropertyName = nameof(MaterialList))]
 [JsonSerializable(typeof(MaterialUseRequest))]
 [JsonSerializable(typeof(MaterialUse))]
+[JsonSerializable(typeof(StackIdColours), TypeInfoPropertyName = nameof(StackIdColours))]
 public sealed partial class LibraryTreeJsonContext : JsonSerializerContext;

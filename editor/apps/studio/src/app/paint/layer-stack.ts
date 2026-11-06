@@ -179,6 +179,7 @@ interface MenuAt {
               data-testid="layer-mask"
               [attr.aria-label]="'Mask of ' + row.layer.name"
               [class.outline]="row.layer.id === store.layer() && store.masking()"
+              [style.background]="maskColour(row.layer)"
               [title]="row.layer.mask.source + ' mask'"
               (click)="$event.stopPropagation(); choose(row.layer, true)"
             >
@@ -234,6 +235,9 @@ interface MenuAt {
             </button>
             <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="layer-menu-mask-generator" (click)="addMask(at.layer, 'Generator')">
               Add Generator Mask
+            </button>
+            <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="layer-menu-mask-colour" (click)="addColourMask(at.layer)">
+              Add Colour Selection Mask
             </button>
           } @else {
             <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="layer-menu-mask-remove" (click)="addMask(at.layer, 'None')">
@@ -305,6 +309,10 @@ export class LayerStack {
     return MaskMarks[layer.mask.source] ?? '';
   }
 
+  protected maskColour(layer: StackLayer): string | null {
+    return layer.mask.colour ? hexOf(layer.mask.colour) : null;
+  }
+
   protected blendName(layer: StackLayer): string {
     return BlendNames[layer.blend] ?? layer.blend;
   }
@@ -347,6 +355,13 @@ export class LayerStack {
     this.menu.set(null);
     await this.store.setMask(layer, { ...layer.mask, source });
     this.store.masking.set(source === 'Paint');
+  }
+
+  /** A mask from one colour of the id map, which the Properties pane then offers to choose. */
+  protected async addColourMask(layer: StackLayer): Promise<void> {
+    this.menu.set(null);
+    await this.store.setMask(layer, { ...layer.mask, source: 'Bake', map: 'id' });
+    this.store.masking.set(false);
   }
 
   protected async remove(layer: StackLayer): Promise<void> {

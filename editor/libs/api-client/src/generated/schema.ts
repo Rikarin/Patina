@@ -882,6 +882,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/stacks/{id}/id-colours': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The colours of the id map the stack reads, the largest first, and the one at a place on it if asked. */
+    get: operations['GetStackIdColours'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/stacks/{id}/pixels': {
     parameters: {
       query?: never;
@@ -3056,6 +3073,23 @@ export interface components {
       /** @description Its numbers' names. */
       settings: string[];
     };
+    /** @description One colour of a stack's id map. */
+    StackIdColour: {
+      /** @description Red, green and blue, 0 to 1, as the map stores them. */
+      colour: number[];
+      /**
+       * Format: float
+       * @description How much of the map's covered area it is, 0 to 1.
+       */
+      share: number;
+    };
+    /** @description The colours of a stack's id map, and the one at a place on it if one was asked about. */
+    StackIdColours: {
+      /** @description Its colours, the largest first. */
+      colours: components['schemas']['StackIdColour'][];
+      /** @description The colour at the place asked about, or null. */
+      at?: null | number[];
+    };
     /** @description One layer, without its pixels. */
     StackLayer: {
       /** @description Its identifier, stable across renames. */
@@ -3137,6 +3171,20 @@ export interface components {
        * @default
        */
       map: string;
+      /** @description The colour a bake mask selects from its map, as red, green and blue, or null for all of it. */
+      colour?: null | number[];
+      /**
+       * Format: float
+       * @description How far from that colour still counts.
+       * @default 0.02
+       */
+      tolerance: number;
+      /**
+       * Format: float
+       * @description How much further the mask takes to reach nothing.
+       * @default 0
+       */
+      softness: number;
     };
     /** @description Chooses the bake a stack's generators and bake masks read. */
     StackMeshMapsRequest: {
@@ -6000,6 +6048,40 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetStackIdColours: {
+    parameters: {
+      query?: {
+        u?: number;
+        v?: number;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackIdColours'];
+        };
       };
       /** @description Not Found */
       404: {

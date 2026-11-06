@@ -82,7 +82,7 @@ import { ViewportClient } from './viewport-client';
         [attr.data-frames]="viewport.frames()"
         [class.cursor-grabbing]="dragging()"
         [class.cursor-grab]="!dragging() && !painting()"
-        [class.cursor-crosshair]="painting()"
+        [class.cursor-crosshair]="painting() || paint.picking() !== null"
         (pointerdown)="press($event)"
         (pointermove)="drag($event)"
         (pointerup)="release($event)"
@@ -194,6 +194,11 @@ export class ViewportPane implements AfterViewInit {
   }
 
   protected press(event: PointerEvent): void {
+    if (this.paint.picking() !== null && event.button === 0) {
+      void this.paint.pickColourOnMesh(this.stamp(event), this.aim());
+      return;
+    }
+
     this.canvas().nativeElement.setPointerCapture(event.pointerId);
     if (this.painting() && event.button === 0 && !event.altKey) {
       this.stroking = true;

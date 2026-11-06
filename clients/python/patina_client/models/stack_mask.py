@@ -8,6 +8,8 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
+from ..types import UNSET, Unset
+from typing import cast
 
 
 
@@ -29,6 +31,10 @@ class StackMask:
             anchor (str): The layer an anchor mask reads. Default: ''.
             generator (str): The compound a generator runs, such as Generators/Dirt. Default: ''.
             map_ (str): The mesh map a bake mask reads. Default: ''.
+            tolerance (float): How far from that colour still counts. Default: 0.02.
+            softness (float): How much further the mask takes to reach nothing. Default: 0.0.
+            colour (list[float] | None | Unset): The colour a bake mask selects from its map, as three numbers, or null for
+                all of it.
      """
 
     source: str
@@ -37,6 +43,9 @@ class StackMask:
     anchor: str = ''
     generator: str = ''
     map_: str = ''
+    tolerance: float = 0.02
+    softness: float = 0.0
+    colour: list[float] | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -56,6 +65,20 @@ class StackMask:
 
         map_ = self.map_
 
+        tolerance = self.tolerance
+
+        softness = self.softness
+
+        colour: list[float] | None | Unset
+        if isinstance(self.colour, Unset):
+            colour = UNSET
+        elif isinstance(self.colour, list):
+            colour = self.colour
+
+
+        else:
+            colour = self.colour
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -66,7 +89,11 @@ class StackMask:
             "anchor": anchor,
             "generator": generator,
             "map": map_,
+            "tolerance": tolerance,
+            "softness": softness,
         })
+        if colour is not UNSET:
+            field_dict["colour"] = colour
 
         return field_dict
 
@@ -87,6 +114,28 @@ class StackMask:
 
         map_ = d.pop("map")
 
+        tolerance = d.pop("tolerance")
+
+        softness = d.pop("softness")
+
+        def _parse_colour(data: object) -> list[float] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                colour_type_1 = cast(list[float], data)
+
+                return colour_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[float] | None | Unset, data)
+
+        colour = _parse_colour(d.pop("colour", UNSET))
+
+
         stack_mask = cls(
             source=source,
             value=value,
@@ -94,6 +143,9 @@ class StackMask:
             anchor=anchor,
             generator=generator,
             map_=map_,
+            tolerance=tolerance,
+            softness=softness,
+            colour=colour,
         )
 
 

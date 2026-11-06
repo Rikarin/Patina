@@ -67,14 +67,30 @@ public sealed record StackLayer(
 /// <param name="Anchor">The layer an anchor mask reads.</param>
 /// <param name="Generator">The compound a generator runs, such as Generators/Dirt.</param>
 /// <param name="Map">The mesh map a bake mask reads.</param>
+/// <param name="Colour">The colour a bake mask selects from its map, as three numbers, or null for all of it.</param>
+/// <param name="Tolerance">How far from that colour still counts.</param>
+/// <param name="Softness">How much further the mask takes to reach nothing.</param>
 public sealed record StackMask(
     string Source,
     float Value = 1f,
     string Asset = "",
     string Anchor = "",
     string Generator = "",
-    string Map = ""
+    string Map = "",
+    IReadOnlyList<float>? Colour = null,
+    float Tolerance = 0.02f,
+    float Softness = 0f
 );
+
+/// <summary>One colour of a stack's id map.</summary>
+/// <param name="Colour">Red, green and blue, 0 to 1, as the map stores them.</param>
+/// <param name="Share">How much of the map's covered area it is, 0 to 1.</param>
+public sealed record StackIdColour(IReadOnlyList<float> Colour, float Share);
+
+/// <summary>The colours of a stack's id map, and the one at a place on it if one was asked about.</summary>
+/// <param name="Colours">Its colours, the largest first.</param>
+/// <param name="At">The colour at the place asked about, or null.</param>
+public sealed record StackIdColours(IReadOnlyList<StackIdColour> Colours, IReadOnlyList<float>? At = null);
 
 /// <summary>A filter a layer can be, and the numbers it takes.</summary>
 /// <param name="Kind">Levels, Hsl, Blur, Invert or Grayscale.</param>

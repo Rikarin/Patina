@@ -22,6 +22,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The layer stack is a pane of its own, with Properties under it: rows with visibility, thumbnails, mask thumbnails, blend and opacity,
   folders that open and close, drag to reorder and to move in and out of folders, and a right-click menu. Clicking a mask chooses
   it for the brush. Thumbnails are a layer's colour or kind for now, not its rendered picture.
+- Vertex colours reach masks: a glTF's `COLOR_0` bakes into an ID map as the colours you painted, each face keeping one colour, and a
+  Colour Selection mask picks one from swatches of the map's colours or with an eyedropper on the mesh or the 2D view. A mesh with no
+  vertex colours still gets its ID map from its materials.
 - A fill's projection is set in Properties: UV, tri-planar with blending, or planar along an axis, with a scale.
 - A stack whose masks read baked maps no longer stops with no bake: they read as grey, a notice offers to bake, and a project's bake
   reaches its stacks by itself.

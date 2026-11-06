@@ -76,7 +76,7 @@ public static class MeshMapBakeRun {
     /// <exception cref="ModelFormatException">It is not a readable model.</exception>
     public static FlatModel Read(string path) {
         var options = new ModelReadOptions {
-            GenerateTangents = false, ImportAnimations = false, ImportBlendShapes = false
+            GenerateTangents = false, ImportAnimations = false, ImportBlendShapes = false, ImportVertexColours = true
         };
         var read = ModelReader.Read(
             File.ReadAllBytes(path),
@@ -101,6 +101,7 @@ public static class MeshMapBakeRun {
             Skew = (float)request.Skew,
             SkewMap = request.SkewMap is { } map ? SkewMask(map) : null,
             Parts = request.MatchByName ? BakeParts.ByName(high.Parts, low.Parts) : null,
+            GroupsAreColours = high.ColouredGroups,
             Threads = threads
         };
 

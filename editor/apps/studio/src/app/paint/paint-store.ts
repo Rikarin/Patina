@@ -6,6 +6,7 @@ import {
   type StackCommand,
   type StackCommandBatch,
   type StackEvent,
+  type StackIdColour,
   type StackLayer,
   type StackMask,
   type StackPreview,
@@ -126,6 +127,10 @@ export class PaintStore {
     pressureFlow: 0
   });
   readonly vocabulary = signal<StackVocabulary | null>(null);
+  /** The colours of the id map this stack reads, once asked for, or null with no such map. */
+  readonly idColours = signal<readonly StackIdColour[] | null>(null);
+  /** The layer whose mask is taking its colour from the next click on the mesh or the map. */
+  readonly picking = signal<string | null>(null);
   /** The mesh maps layers want and no bake has given, which read as grey until one does. */
   readonly unbaked = signal<string | null>(null);
   /** Whether the viewport is wearing this stack, so a stroke can be made on the mesh. */
@@ -173,12 +178,64 @@ export class PaintStore {
     }
   }
 
+  /** Reads what the id map holds. No id map is an answer, not a failure: the mask says what to do about it. */
+  async loadIdColours(): Promise<void> {
+    const id = this.state()?.id;
+    if (!id) {
+      return;
+    }
+
+    const client = await this.api();
+    const reply = await client.GET('/api/v1/stacks/{id}/id-colours', { params: { path: { id }, query: {} } });
+    this.idColours.set(reply.data?.colours ?? null);
+  }
+
+  /** Takes the colour at a place on the id map for the mask waiting for one. */
+  async pickColourAt(u: number, v: number): Promise<void> {
+    const id = this.state()?.id;
+    const layer = this.layers().find(row => row.layer.id === this.picking())?.layer;
+    this.picking.set(null);
+    if (!id || !layer) {
+      return;
+    }
+
+    try {
+      const client = await this.api();
+      const params = { path: { id }, query: { u, v } };
+      const colour = unwrap(await client.GET('/api/v1/stacks/{id}/id-colours', { params })).at;
+      if (colour) {
+        await this.setMask(layer, { ...layer.mask, colour: [...colour] });
+      }
+    } catch (failure) {
+      this.failure.set(failure instanceof Error ? failure.message : String(failure));
+    }
+  }
+
+  /** Takes the colour under a place on the mesh in the viewport. */
+  async pickColourOnMesh(stamp: StackStamp, aim: Aim): Promise<void> {
+    const client = await this.api();
+    const { width, height, camera } = aim;
+    const hit = unwrap(
+      await client.POST('/api/v1/viewport/pick', {
+        body: { x: stamp.x / width, y: stamp.y / height, camera, width, height }
+      })
+    );
+    if (hit.found) {
+      await this.pickColourAt(hit.u, hit.v);
+    } else {
+      this.picking.set(null);
+    }
+  }
+
   /** Lets go of the stack, which stays open on the Server with its edits and history, to come back to. */
   detach(): void {
     this.state.set(null);
     this.worn.set(false);
     this.picture.set(null);
     this.layer.set(null);
+    this.idColours.set(null);
+    this.picking.set(null);
+    this.unbaked.set(null);
     const socket = this.socket;
     this.socket = null;
     socket?.close();

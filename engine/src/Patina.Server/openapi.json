@@ -3161,6 +3161,63 @@
         }
       }
     },
+    "/api/v1/stacks/{id}/id-colours": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "The colours of the id map the stack reads, the largest first, and the one at a place on it if asked.",
+        "operationId": "GetStackIdColours",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "u",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "format": "float"
+            }
+          },
+          {
+            "name": "v",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "format": "float"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackIdColours"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stacks/{id}/pixels": {
       "get": {
         "tags": [
@@ -8266,6 +8323,56 @@
         },
         "description": "A filter a layer can be, and the numbers it takes."
       },
+      "StackIdColour": {
+        "required": [
+          "colour",
+          "share"
+        ],
+        "type": "object",
+        "properties": {
+          "colour": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Red, green and blue, 0 to 1, as the map stores them."
+          },
+          "share": {
+            "type": "number",
+            "description": "How much of the map\u0027s covered area it is, 0 to 1.",
+            "format": "float"
+          }
+        },
+        "description": "One colour of a stack\u0027s id map."
+      },
+      "StackIdColours": {
+        "required": [
+          "colours"
+        ],
+        "type": "object",
+        "properties": {
+          "colours": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackIdColour"
+            },
+            "description": "Its colours, the largest first."
+          },
+          "at": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The colour at the place asked about, or null."
+          }
+        },
+        "description": "The colours of a stack\u0027s id map, and the one at a place on it if one was asked about."
+      },
       "StackLayer": {
         "required": [
           "id",
@@ -8396,7 +8503,9 @@
           "asset",
           "anchor",
           "generator",
-          "map"
+          "map",
+          "tolerance",
+          "softness"
         ],
         "type": "object",
         "properties": {
@@ -8429,6 +8538,29 @@
             "type": "string",
             "description": "The mesh map a bake mask reads.",
             "default": ""
+          },
+          "colour": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The colour a bake mask selects from its map, as three numbers, or null for all of it."
+          },
+          "tolerance": {
+            "type": "number",
+            "description": "How far from that colour still counts.",
+            "format": "float",
+            "default": 0.02
+          },
+          "softness": {
+            "type": "number",
+            "description": "How much further the mask takes to reach nothing.",
+            "format": "float",
+            "default": 0
           }
         },
         "description": "What decides where a layer shows."

@@ -1,8 +1,8 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { leave, newLibrary, newProject } from './projects';
+import { colouredGlb, leave, newLibrary, newProject } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const softwareWebGl = process.platform === 'linux' ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : [];
@@ -116,3 +116,55 @@ test('a fill shows only the projection controls that apply', async () => {
   await expect(window.getByTestId('paint-fill-axis')).toHaveValue('Z');
   await expect(window.getByTestId('paint-fill-scale')).toBeVisible();
 });
+
+test('colours painted in Blender bake to an id map, and a mask selects one', async () => {
+  const mesh = join(scratch, 'coloured.glb');
+  writeFileSync(mesh, colouredGlb());
+  await newProject(app, window, 'Coloured', mesh);
+  await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 30_000 });
+
+  await window.getByTestId('paint-add-fill').click();
+  await window.getByTestId('paint-fill-baseColor').fill('#00ff00');
+  await window.getByTestId('paint-fill-baseColor').dispatchEvent('change');
+  const fill = window.locator('[data-testid^=paint-layer-fill]');
+  await fill.click({ button: 'right' });
+  await window.getByTestId('layer-menu-mask-colour').click();
+  await expect(window.getByTestId('paint-id-none')).toBeVisible();
+
+  await window.getByTestId('open-bake').click();
+  await window.getByTestId('bake-start').click();
+  await expect(window.getByTestId('bake-state')).toHaveText('done', { timeout: 120_000 });
+  await window.keyboard.press('Escape');
+
+  // Both colours came through the file, as they were painted.
+  const swatches = window.getByTestId('paint-id-colour');
+  await expect(swatches).toHaveCount(2, { timeout: 30_000 });
+  await expect(window.getByRole('button', { name: 'Select #ff0000' })).toBeVisible();
+  await expect(window.getByRole('button', { name: 'Select #0000ff' })).toBeVisible();
+
+  // Red is the left half of the map, so the fill lands there and nowhere else.
+  await window.getByRole('button', { name: 'Select #ff0000' }).click();
+  await expect.poll(() => greenAt(0.25), { timeout: 30_000 }).toBeGreaterThan(200);
+  expect(await greenAt(0.75)).toBeLessThan(200);
+
+  // The eyedropper finds the other colour from a click on the map.
+  await window.getByTestId('paint-eyedropper').click();
+  const box = await window.getByTestId('paint-picture').boundingBox();
+  if (!box) {
+    throw new Error('The map is not on screen.');
+  }
+
+  await window.mouse.click(box.x + box.width * 0.75, box.y + box.height / 2);
+  await expect.poll(() => greenAt(0.75), { timeout: 30_000 }).toBeGreaterThan(200);
+  expect(await greenAt(0.25)).toBeLessThan(200);
+});
+
+/** How green the map is at a place across it. */
+const greenAt = (across: number) =>
+  window.getByTestId('paint-picture').evaluate((image, x) => {
+    const canvas = globalThis.document.createElement('canvas');
+    [canvas.width, canvas.height] = [64, 64];
+    const context = canvas.getContext('2d');
+    context?.drawImage(image as HTMLImageElement, 0, 0, 64, 64);
+    return context?.getImageData(Math.floor(x * 64), 32, 1, 1).data[1] ?? 0;
+  }, across);

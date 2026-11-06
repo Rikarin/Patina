@@ -37,7 +37,7 @@ function layer(id: string, kind: string, children: StackLayer[] = []): StackLaye
     planarAxis: 'Y',
     filter: 'Levels',
     settings: {},
-    mask: { source: 'None', value: 1, asset: '', anchor: '', generator: '', map: '' }
+    mask: { source: 'None', value: 1, asset: '', anchor: '', generator: '', map: '', tolerance: 0.02, softness: 0 }
   };
 }
 

@@ -14,6 +14,7 @@ import { StrokeGesture } from './stroke-gesture';
       <div class="well aspect-square max-h-full max-w-full touch-none overflow-hidden" data-testid="paint-canvas">
         <img
           class="size-full select-none"
+          [class.cursor-crosshair]="store.picking() !== null"
           alt="The composited map"
           draggable="false"
           data-testid="paint-picture"
@@ -42,6 +43,12 @@ export class PaintAtlas {
   private painting = false;
 
   protected down(event: PointerEvent): void {
+    if (this.store.picking() !== null) {
+      const box = (event.target as HTMLElement).getBoundingClientRect();
+      void this.store.pickColourAt((event.clientX - box.left) / box.width, (event.clientY - box.top) / box.height);
+      return;
+    }
+
     (event.target as HTMLElement).setPointerCapture(event.pointerId);
     this.painting = true;
     this.gesture.press(this.stamp(event));

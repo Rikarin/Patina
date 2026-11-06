@@ -28,7 +28,7 @@ const ExtraMaps: readonly { name: string; label: string }[] = [
 ];
 
 /** What a project's masks and materials read. */
-const ProjectMaps = ['ao', 'curvature', 'thickness', 'position', 'world'];
+const ProjectMaps = ['ao', 'curvature', 'thickness', 'position', 'world', 'id'];
 
 type PathField = 'high' | 'low' | 'cage' | 'skewMap' | 'output';
 
