@@ -152,7 +152,9 @@ static class LibraryEndpoints {
 
         try {
             var text = GraphDocuments.Text(GraphDocuments.New(request.Name));
-            var path = library.CreateGraph(new(request.Name, request.Project), text);
+            // A graph belongs to a project, so one made with none gets one of its own.
+            var project = request.Project ?? library.CreateProject(new(request.Name)).Path;
+            var path = library.CreateGraph(new(request.Name, project), text);
             host.RequestRescan();
             return TypedResults.Created((string?)null, new GraphCreated(path));
         } catch (ProjectExistsException e) {
@@ -178,7 +180,10 @@ static class LibraryEndpoints {
 
             folder = session.Folder;
         } else {
-            folder = host.Library is { } library ? CompoundFolders.Shared(library.RootPath) : null;
+            return TypedResults.Problem(
+                "A copy of a compound goes beside the graph that uses it, so it needs a graph.",
+                statusCode: StatusCodes.Status422UnprocessableEntity
+            );
         }
 
         if (folder is null) {

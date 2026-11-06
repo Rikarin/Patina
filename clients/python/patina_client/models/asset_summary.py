@@ -23,13 +23,13 @@ T = TypeVar("T", bound="AssetSummary")
 
 @_attrs_define
 class AssetSummary:
-    """ One shared asset as the browser shows it.
+    """ One document other projects can use, as the browser shows it.
 
         Attributes:
             id (UUID): The asset's identity.
             kind (str): The asset's kind, such as `smart-material`.
             name (str): The asset's display name.
-            path (str): The asset's file, relative to `shared/`, with forward slashes.
+            path (str): The asset's file, below the library, with forward slashes.
             tags (list[str]): The asset's tags, sorted.
             usage_count (int): How many projects reference the asset directly.
             revision (None | str | Unset): The content hash of the asset's file, or null when the file is missing.

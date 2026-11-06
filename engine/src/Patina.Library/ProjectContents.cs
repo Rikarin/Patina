@@ -134,6 +134,21 @@ static class ProjectFiles {
         return changed;
     }
 
+    /// <summary>
+    ///     Records that a project reads a document of another one, which is how an edit to that document knows who it
+    ///     reaches. Recording it twice is harmless.
+    /// </summary>
+    public static void AddReference(string root, string path, AssetId asset) {
+        var (_, document) = Project(root, path);
+        if (document.References.All(held => held.Asset != asset)) {
+            LibraryFiles.WriteProject(
+                root,
+                path,
+                document with { References = [..document.References, AssetReference.Floating(asset)] }
+            );
+        }
+    }
+
     /// <summary>Says what a graph is for.</summary>
     public static ProjectItem SetRole(string root, string path, AssetId id, string role) {
         var (_, document) = Project(root, path);

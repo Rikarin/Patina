@@ -29,9 +29,8 @@ class GraphCompoundCopy:
             name (None | str | Unset): The copy's node type. It cannot be a shipped one's, since a shipped compound is never
                 shadowed. Null for the
                 shipped name and " Copy".
-            graph (None | str | Unset): An open graph whose compounds folder takes it, so that the graph can hold it, or
-                null for
-                `shared/graphs`'s.
+            graph (None | str | Unset): An open graph whose compounds folder takes it, so that the graph can hold it. Null
+                is refused.
      """
 
     type_: str

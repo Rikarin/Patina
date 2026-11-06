@@ -69,7 +69,7 @@ async function render(status: ServerState = online(true)) {
   const element = fixture.nativeElement as HTMLElement;
   const found = (id: string) => element.querySelector(`[data-testid=${id}]`);
   const open = async () => {
-    await store.open('shared/graphs/a.vxtexgraph');
+    await store.open('projects/a/a.vxtexgraph');
     sockets.at(-1)?.opened();
     await fixture.whenStable();
   };

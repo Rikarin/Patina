@@ -140,9 +140,39 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
             Token
         );
         Assert.True(elsewhere.IsSuccessStatusCode, await elsewhere.Content.ReadAsStringAsync(Token));
-        Assert.Contains(
+        var rust = Assert.Single(
             await ElsewhereAsync("barrel"),
             static material => material is { Name: "Rust", Project: "Crate" }
+        );
+        await File.WriteAllTextAsync(
+            Path.Combine(server.Library, rust.Source),
+            """
+            name: Rust
+            nodes:
+              - { id: 1, type: Source/Uniform }
+              - { id: 2, type: Output/Output, texts: { Usage: baseColor } }
+            edges:
+              - { fromNode: 1, fromPort: Out, toNode: 2, toPort: Input }
+            groups: []
+            comments: []
+            interface: []
+            settings: { baseWidth: '64', baseHeight: '64', seed: '1' }
+            parameters: []
+            """,
+            Token
+        );
+        var used = await client.PostAsJsonAsync(
+            "/api/v1/library/materials/use",
+            new MaterialUseRequest("barrel", rust.Source),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.OK, used.StatusCode);
+
+        // Using it is what lets an edit to it say this project is affected.
+        Assert.Contains(
+            made.Id!.Value.ToString(),
+            await File.ReadAllTextAsync(Path.Combine(server.Library, "projects", "barrel", "project.yaml"), Token),
+            StringComparison.Ordinal
         );
         var moved = await client.PatchAsJsonAsync(
             "/api/v1/library/project/document",

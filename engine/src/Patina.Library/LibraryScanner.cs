@@ -13,9 +13,8 @@ namespace Patina.Library;
 public sealed record ScanResult(int Files, int Hashed, int Changed, int Removed, TimeSpan Elapsed);
 
 enum TrackedKind {
-    Project,
-    Sidecar,
-    Content
+    Project = 0,
+    Content = 2
 }
 
 /// <summary>Why a document is not, or not quite, in the index.</summary>
@@ -157,16 +156,6 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
             );
         }
 
-        var shared = new DirectoryInfo(Path.Combine(root, LibraryLayout.SharedFolder));
-        if (shared.Exists) {
-            foreach (var file in shared.EnumerateFiles("*", VisibleTree).Where(f => IsSharedFile(shared, f))) {
-                var kind = file.Name.EndsWith(LibraryLayout.SidecarSuffix, StringComparison.Ordinal)
-                    ? TrackedKind.Sidecar
-                    : TrackedKind.Content;
-                found.Add(Describe(file, kind));
-            }
-        }
-
         return [..found];
     }
 
@@ -178,6 +167,11 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
         var document = new FileInfo(Path.Combine(folder, LibraryLayout.ProjectFile));
         if (document.Exists) {
             found.Add(Describe(document, TrackedKind.Project));
+            foreach (var file in new DirectoryInfo(folder).EnumerateFiles()
+                         .Where(static file => IsDocument(file.Name))) {
+                found.Add(Describe(file, TrackedKind.Content));
+            }
+
             return;
         }
 
@@ -193,11 +187,10 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
     internal static IEnumerable<string> VisibleFolders(string folder) =>
         Directory.EnumerateDirectories(folder, "*", Visible).Where(static d => !IsDotted(Path.GetFileName(d)));
 
-    static bool IsSharedFile(DirectoryInfo shared, FileInfo file) =>
-        !file.Name.EndsWith(".tmp", StringComparison.Ordinal)
-        && !Path.GetRelativePath(shared.FullName, file.FullName)
-            .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            .Any(IsDotted);
+    /// <summary>What a project can list, whose bytes a build keys on. A mesh or paint beside it is not read here.</summary>
+    static bool IsDocument(string name) =>
+        name.EndsWith(LibraryLayout.GraphExtension, StringComparison.Ordinal)
+        || name.EndsWith(StackInputs.Extension, StringComparison.Ordinal);
 
     static bool IsDotted(string name) => name.StartsWith('.');
 
@@ -228,9 +221,7 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
     static Outcome Parse(ScannedFile file, byte[] bytes, string hash) {
         try {
             var text = StrictUtf8.GetString(bytes);
-            return file.Kind == TrackedKind.Project
-                ? ProjectOutcome(file, hash, DocumentCodec.ReadProject(text, file.Path))
-                : AssetOutcome(file, hash, DocumentCodec.ReadAsset(text, file.Path));
+            return ProjectOutcome(file, hash, DocumentCodec.ReadProject(text, file.Path));
         } catch (LibraryFormatException e) {
             var code = e.NewerSchema ? ProblemCode.NewerSchema : ProblemCode.Unreadable;
             return new(file, Effect.Changed, hash) { Problem = (code, e.Message) };
@@ -242,11 +233,6 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
     static Outcome ProjectOutcome(ScannedFile file, string hash, ReadDocument<ProjectDocument> read) =>
         new(file, Effect.Changed, hash) {
             Project = read.Document, Problem = Drift(read.FileSchema, SchemaChain.Project, read.UnknownKeys)
-        };
-
-    static Outcome AssetOutcome(ScannedFile file, string hash, ReadDocument<AssetDocument> read) =>
-        new(file, Effect.Changed, hash) {
-            Asset = read.Document, Problem = Drift(read.FileSchema, SchemaChain.Asset, read.UnknownKeys)
         };
 
     /// <summary>The drift in a document that reads fine: an old schema, or keys the next save would drop.</summary>
@@ -280,14 +266,13 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
     sealed record Outcome(ScannedFile File, Effect Effect, string? Hash) {
         public ProjectDocument? Project { get; init; }
 
-        public AssetDocument? Asset { get; init; }
-
         public (ProblemCode Code, string Detail)? Problem { get; init; }
     }
 
     /// <summary>The prepared statements of one scan.</summary>
     sealed class IndexWriter : IDisposable {
         const string PathParameter = "@path";
+        const string PrefixParameter = "@prefix";
         const string NameParameter = "@name";
 
         readonly List<SqliteCommand> commands = [];
@@ -302,7 +287,7 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
         readonly SqliteCommand insertProjectSearch;
         readonly SqliteCommand insertProjectTag;
         readonly SqliteCommand insertReference;
-        readonly SqliteCommand findAsset;
+        readonly SqliteCommand findDocuments;
         readonly SqliteCommand deleteAsset;
         readonly SqliteCommand deleteAssetSearch;
         readonly SqliteCommand insertAsset;
@@ -375,7 +360,10 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
                 "@mode",
                 "@revision"
             );
-            findAsset = Prepare("SELECT rid FROM asset WHERE path = @path", PathParameter);
+            findDocuments = Prepare(
+                "SELECT rid FROM asset WHERE substr(path, 1, length(@prefix)) = @prefix",
+                PrefixParameter
+            );
             deleteAsset = Prepare("DELETE FROM asset WHERE rid = @rid", "@rid");
             deleteAssetSearch = Prepare("DELETE FROM asset_search WHERE rowid = @rid", "@rid");
             insertAsset = Prepare(
@@ -444,8 +432,9 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
 
             if (outcome.Project is { } project) {
                 Insert(ProjectPath(path), project);
-            } else if (outcome.Asset is { } asset) {
-                Insert(AssetPath(path), asset);
+                foreach (var item in project.Documents) {
+                    Insert(ProjectPath(path), item);
+                }
             }
         }
 
@@ -456,11 +445,8 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
 
             Set(deleteProblem, PathParameter, path);
             deleteProblem.ExecuteNonQuery();
-            if (kind == TrackedKind.Project) {
-                Drop(findProject, deleteProject, deleteProjectSearch, ProjectPath(path));
-            } else {
-                Drop(findAsset, deleteAsset, deleteAssetSearch, AssetPath(path));
-            }
+            DropDocuments(ProjectPath(path));
+            Drop(findProject, deleteProject, deleteProjectSearch, ProjectPath(path));
         }
 
         static void Drop(SqliteCommand find, SqliteCommand delete, SqliteCommand deleteSearch, string path) {
@@ -484,16 +470,40 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
             References(insertReference, "@asset", rid, project.References);
         }
 
-        void Insert(string path, AssetDocument asset) {
-            Set(insertAsset, "@id", asset.Id.ToString());
+        /// <summary>A project's documents go with its file, since that is where they are listed.</summary>
+        void DropDocuments(string project) {
+            Set(findDocuments, PrefixParameter, $"{LibraryLayout.ProjectsFolder}/{project}/");
+            List<long> rids = [];
+            using (var reader = findDocuments.ExecuteReader()) {
+                while (reader.Read()) {
+                    rids.Add(reader.GetInt64(0));
+                }
+            }
+
+            foreach (var rid in rids) {
+                Set(deleteAssetSearch, "@rid", rid);
+                deleteAssetSearch.ExecuteNonQuery();
+                Set(deleteAsset, "@rid", rid);
+                deleteAsset.ExecuteNonQuery();
+            }
+        }
+
+        /// <summary>A texturing document is an end point, which nothing else can use, so it is no asset.</summary>
+        void Insert(string project, ProjectItem item) {
+            if (item.Kind == DocumentKinds.Texturing) {
+                return;
+            }
+
+            var path = $"{LibraryLayout.ProjectsFolder}/{project}/{item.File}";
+            Set(insertAsset, "@id", item.Id.ToString());
             Set(insertAsset, PathParameter, path);
-            Set(insertAsset, "@kind", asset.Kind);
-            Set(insertAsset, NameParameter, asset.Name);
+            Set(insertAsset, "@kind", item.Role ?? item.Kind);
+            Set(insertAsset, NameParameter, item.Name);
             var rid = (long)insertAsset.ExecuteScalar()!;
 
-            Search(insertAssetSearch, rid, asset.Name, asset.Tags, path);
-            Tags(insertAssetTag, rid, asset.Tags);
-            References(insertDependency, "@target", rid, asset.Dependencies);
+            Search(insertAssetSearch, rid, item.Name, item.Tags, path);
+            Tags(insertAssetTag, rid, item.Tags);
+            References(insertDependency, "@target", rid, item.Dependencies);
         }
 
         static void Search(SqliteCommand insert, long rid, string name, IReadOnlyList<string> tags, string path) {
@@ -532,8 +542,5 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
 
         static string ProjectPath(string file) =>
             file[(LibraryLayout.ProjectsFolder.Length + 1)..^(LibraryLayout.ProjectFile.Length + 1)];
-
-        static string AssetPath(string sidecar) =>
-            sidecar[(LibraryLayout.SharedFolder.Length + 1)..^LibraryLayout.SidecarSuffix.Length];
     }
 }

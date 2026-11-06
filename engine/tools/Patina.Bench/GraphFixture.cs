@@ -6,7 +6,7 @@ using Vixen.NodeGraph;
 namespace Patina.Bench;
 
 /// <summary>
-///     Adds a real texture graph to a library as a shared asset, which the placeholders of
+///     Adds a real texture graph to a library as a document of a project, which the placeholders of
 ///     <see cref="LibraryGenerator" /> are not: rows of a noise and a chain of colour and blur nodes, the last node an
 ///     Output, so that the graph editor's tests and spike S7 can open something the Worker evaluates.
 /// </summary>

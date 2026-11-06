@@ -148,7 +148,7 @@ export class ExportPane implements OnInit {
   protected readonly running = computed(() => ['queued', 'running'].includes(this.store.build()?.state ?? ''));
   protected readonly percent = computed(() => Math.round((this.store.build()?.progress ?? 0) * 100));
 
-  /** A shared asset selected in the Library narrows the build to what reads it, which is the impact of editing it. */
+  /** A material selected in the Library narrows the build to what reads it, which is the impact of editing it. */
   protected readonly asset = computed(() => {
     const item = this.selection.item();
     return item?.kind === 'asset' ? item.asset : null;

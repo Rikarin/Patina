@@ -185,8 +185,6 @@ public sealed class IndexTests : IDisposable {
 
     [Fact]
     public void Hidden_folders_are_not_scanned() {
-        var graph = library.SaveFile("shared/graphs/rust.vxtexgraph", "bytes");
-        library.Age(graph);
         library.Write("graphs/rust.vxtexgraph", TestLibrary.Asset("Rust"));
         LibraryFiles.KeepRevision(library.Root, "graphs/rust.vxtexgraph");
         using var open = library.Open();
@@ -335,13 +333,13 @@ public sealed class IndexTests : IDisposable {
                     MoveAsset();
                     break;
                 case 9 when assets.Count > 0:
-                    library.Age(library.SaveFile($"shared/{Any(assets)}", $"new content {serial++}"));
+                    library.Age(library.SaveFile($"projects/{Any(assets)}", $"new content {serial++}"));
                     break;
                 case 10 when assets.Count > 0:
                     var removed = Any(assets);
                     assets.Remove(removed);
+                    library.RemoveAsset(removed);
                     File.Delete(LibraryFiles.AssetFile(library.Root, removed));
-                    File.Delete(LibraryFiles.AssetFile(library.Root, removed) + LibraryLayout.SidecarSuffix);
                     break;
                 case 11 when projects.Count > 0:
                     library.SaveFile($"projects/{Any(projects)}/project.yaml", $"<<<<<<< {serial++}\n");
@@ -384,7 +382,7 @@ public sealed class IndexTests : IDisposable {
 
         void MoveAsset() {
             var from = Any(assets);
-            var to = $"brushes/a{serial++}.vxbrush";
+            var to = $"brushes/a{serial++}.vxtexgraph";
             library.MoveAsset(from, to);
             assets[to] = assets[from];
             assets.Remove(from);

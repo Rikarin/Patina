@@ -67,6 +67,9 @@ public static class DocumentCodec {
             )
         );
 
+    static KeyValuePair<YamlNode, YamlNode>[] Named(string key, bool present, YamlNode value) =>
+        present ? [Pair(key, value)] : [];
+
     static KeyValuePair<YamlNode, YamlNode>[] Present(string key, string? text) =>
         text is null ? [] : [Pair(key, YamlText.Text(text))];
 
@@ -92,7 +95,9 @@ public static class DocumentCodec {
                 Pair(NameKey, YamlText.Text(item.Name)),
                 Pair(FileKey, YamlText.Text(item.File)),
                 ..Present(MeshKey, item.Mesh?.ToString()),
-                ..Present(RoleKey, item.Role)
+                ..Present(RoleKey, item.Role),
+                ..Named(TagsKey, item.Tags.Count > 0, SortedTexts(item.Tags)),
+                ..Named(DependenciesKey, item.Dependencies.Count > 0, References(item.Dependencies))
             ]
         );
 
@@ -210,7 +215,7 @@ public static class DocumentCodec {
             fields.Require(NameKey),
             mesh,
             role
-        );
+        ) { Tags = fields.Texts(TagsKey), Dependencies = ReadReferences(fields, DependenciesKey) };
     }
 
     static string Inside(YamlFields fields, string file) =>

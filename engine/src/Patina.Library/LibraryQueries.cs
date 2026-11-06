@@ -38,7 +38,7 @@ sealed class LibraryQueries(IndexDatabase database) {
     const string AssetColumns = """
                                 a.id, a.kind, a.name, a.path,
                                 (SELECT group_concat(tag, char(31)) FROM asset_tag t WHERE t.asset = a.rid),
-                                (SELECT hash FROM file f WHERE f.path = 'shared/' || a.path),
+                                (SELECT hash FROM file f WHERE f.path = a.path),
                                 (SELECT count(*) FROM project_reference r WHERE r.asset = a.id)
                                 """;
 

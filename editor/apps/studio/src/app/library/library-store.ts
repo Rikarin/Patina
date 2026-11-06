@@ -104,7 +104,7 @@ export class LibraryView<T> {
   }
 }
 
-/** A shared asset's dependent projects, a page at a time, and the counts that come with every page. */
+/** A material's dependent projects, a page at a time, and the counts that come with every page. */
 export class ImpactList {
   private readonly latest = signal<AssetImpact | null>(null);
 

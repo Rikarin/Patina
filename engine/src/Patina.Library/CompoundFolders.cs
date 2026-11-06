@@ -15,13 +15,8 @@ public static class CompoundFolders {
     /// <summary>Whether the graph at <paramref name="graph" /> is itself a compound.</summary>
     public static bool Holds(string graph) => Enclosing(Path.GetDirectoryName(Path.GetFullPath(graph))!) is not null;
 
-    /// <summary>The folder a library's shared graphs read their compounds from.</summary>
-    public static string Shared(string root) =>
-        Path.Combine(root, LibraryLayout.SharedFolder, "graphs", LibraryLayout.CompoundsFolder);
-
     /// <summary>
-    ///     Writes a new compound. Its file is its node type below <paramref name="folder" />, and one under
-    ///     <c>shared/</c> gets a sidecar, as any shared asset has.
+    ///     Writes a new compound. Its file is its node type below <paramref name="folder" />.
     /// </summary>
     /// <param name="folder">The compounds folder.</param>
     /// <param name="type">Its node type's path. The folders in it become folders.</param>
@@ -34,11 +29,7 @@ public static class CompoundFolders {
         }
 
         var file = Path.Combine(folder, type.Replace('/', Path.DirectorySeparatorChar) + LibraryLayout.GraphExtension);
-        var root = LibraryAround(folder);
-        var shared = root is not null
-            && LibraryLayout.Relative(root, file)
-                .StartsWith($"{LibraryLayout.SharedFolder}/", StringComparison.Ordinal);
-        LibraryFiles.CreateCompound(file, text, shared ? type.Split('/')[^1] : null);
+        LibraryFiles.CreateCompound(file, text);
         return file;
     }
 

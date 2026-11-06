@@ -1,5 +1,14 @@
 import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, viewChild, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild
+} from '@angular/core';
 import type { AssetSummary, ProjectSummary } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiInputImports } from '@xui/input';
@@ -8,13 +17,13 @@ import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { XuiSkeletonImports } from '@xui/skeleton';
 import { XuiSpinnerImports } from '@xui/spinner';
+import { desktop } from '../core/desktop';
+import { NewGraphDialog } from '../graph/new-graph-dialog';
 import { LibrarySelection } from './library-selection';
 import { LibraryStore, type LibraryView } from './library-store';
-import { counted, nextIndex } from './list-keys';
-import { desktop } from '../core/desktop';
 import { LibraryTree } from './library-tree';
 import { LibraryTreeStore } from './library-tree-store';
-import { NewGraphDialog } from '../graph/new-graph-dialog';
+import { counted, nextIndex } from './list-keys';
 import { NewProjectDialog } from './new-project-dialog';
 import { ProjectStore } from './project-store';
 import { ViewportFit } from './viewport-fit';
@@ -26,14 +35,14 @@ const RowHeight = 40;
 
 const views: readonly XuiSegmentedOption<ViewName>[] = [
   { value: 'projects', label: 'Projects' },
-  { value: 'assets', label: 'Shared Assets' }
+  { value: 'assets', label: 'Materials' }
 ];
 
 function isAsset(row: LibraryRow): row is AssetSummary {
   return 'kind' in row;
 }
 
-/** The Library browser: projects or shared assets, searched and filtered by the Server, a page at a time. */
+/** The Library browser: projects or the materials in them, searched and filtered by the Server, a page at a time. */
 @Component({
   selector: 'ptn-library',
   imports: [
@@ -61,14 +70,17 @@ function isAsset(row: LibraryRow): row is AssetSummary {
         </div>
       }
       @case ('none') {
-        <xui-non-ideal-state
-          class="flex-1"
-          title="No library open"
-          [description]="noLibraryText"
-        >
+        <xui-non-ideal-state class="flex-1" title="No library open" [description]="noLibraryText">
           <div action class="flex gap-2">
             @if (canPick) {
-              <button type="button" xuiButton size="sm" color="primary" data-testid="library-new" (click)="newLibrary()">
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                color="primary"
+                data-testid="library-new"
+                (click)="newLibrary()"
+              >
                 New Library…
               </button>
               <button type="button" xuiButton size="sm" data-testid="library-open" (click)="openLibrary()">
@@ -139,71 +151,73 @@ function isAsset(row: LibraryRow): row is AssetSummary {
             }
           </div>
         } @else {
-        <div class="well relative min-h-0 flex-1 overflow-hidden">
-          <cdk-virtual-scroll-viewport
-            ptnViewportFit
-            class="size-full outline-none"
-            role="listbox"
-            tabindex="0"
-            data-testid="library-list"
-            minBufferPx="400"
-            maxBufferPx="800"
-            [attr.aria-label]="viewName() === 'projects' ? 'Projects' : 'Shared assets'"
-            [attr.aria-activedescendant]="active() === null ? null : 'library-row-' + active()"
-            [itemSize]="rowHeight"
-            (click)="click($event)"
-            (keydown)="press($event)"
-          >
-            <div
-              *cdkVirtualFor="let row of view().list; let index = index; trackBy: byIndex"
-              class="border-hairline flex items-center gap-2 border-b px-2"
-              role="option"
-              data-testid="library-row"
-              [id]="'library-row-' + index"
-              [style.height.px]="rowHeight"
-              [class.bg-selection]="row && row.id === selectedId()"
-              [class.outline]="index === active()"
-              [class.-outline-offset-1]="index === active()"
-              [class.outline-focus]="index === active()"
-              [attr.aria-selected]="!!row && row.id === selectedId()"
-              [attr.aria-posinset]="index + 1"
-              [attr.aria-setsize]="view().list.total()"
-              [attr.data-index]="index"
+          <div class="well relative min-h-0 flex-1 overflow-hidden">
+            <cdk-virtual-scroll-viewport
+              ptnViewportFit
+              class="size-full outline-none"
+              role="listbox"
+              tabindex="0"
+              data-testid="library-list"
+              minBufferPx="400"
+              maxBufferPx="800"
+              [attr.aria-label]="viewName() === 'projects' ? 'Projects' : 'Materials'"
+              [attr.aria-activedescendant]="active() === null ? null : 'library-row-' + active()"
+              [itemSize]="rowHeight"
+              (click)="click($event)"
+              (keydown)="press($event)"
             >
-              @if (row) {
-                <span class="min-w-0 flex-1 leading-tight">
-                  <span class="block truncate">{{ row.name }}</span>
-                  <span class="text-foreground-muted block truncate text-xs">{{ detail(row) }}</span>
-                </span>
-                <span class="readout text-foreground-muted shrink-0 text-xs" [title]="countLabel(row)">
-                  {{ count(row) }}
-                </span>
-              } @else {
-                <span class="flex min-w-0 flex-1 flex-col gap-1.5">
-                  <xui-skeleton class="h-2.5 w-2/3" />
-                  <xui-skeleton class="h-2 w-1/2" />
-                </span>
-              }
-            </div>
-          </cdk-virtual-scroll-viewport>
+              <div
+                *cdkVirtualFor="let row of view().list; let index = index; trackBy: byIndex"
+                class="border-hairline flex items-center gap-2 border-b px-2"
+                role="option"
+                data-testid="library-row"
+                [id]="'library-row-' + index"
+                [style.height.px]="rowHeight"
+                [class.bg-selection]="row && row.id === selectedId()"
+                [class.outline]="index === active()"
+                [class.-outline-offset-1]="index === active()"
+                [class.outline-focus]="index === active()"
+                [attr.aria-selected]="!!row && row.id === selectedId()"
+                [attr.aria-posinset]="index + 1"
+                [attr.aria-setsize]="view().list.total()"
+                [attr.data-index]="index"
+              >
+                @if (row) {
+                  <span class="min-w-0 flex-1 leading-tight">
+                    <span class="block truncate">{{ row.name }}</span>
+                    <span class="text-foreground-muted block truncate text-xs">{{ detail(row) }}</span>
+                  </span>
+                  <span class="readout text-foreground-muted shrink-0 text-xs" [title]="countLabel(row)">
+                    {{ count(row) }}
+                  </span>
+                } @else {
+                  <span class="flex min-w-0 flex-1 flex-col gap-1.5">
+                    <xui-skeleton class="h-2.5 w-2/3" />
+                    <xui-skeleton class="h-2 w-1/2" />
+                  </span>
+                }
+              </div>
+            </cdk-virtual-scroll-viewport>
 
-          @if (overlay(); as message) {
-            <xui-non-ideal-state
-              class="absolute inset-0 m-auto h-fit"
-              [title]="message.title"
-              [description]="message.description"
-            >
-              @if (message.retry) {
-                <button action type="button" xuiButton size="sm" (click)="view().list.retry()">Try again</button>
-              }
-            </xui-non-ideal-state>
-          } @else if (view().list.error(); as reason) {
-            <p class="bg-error-subtle text-error absolute inset-x-0 bottom-0 flex items-center gap-2 px-2 py-1 text-xs">
-              <span class="min-w-0 flex-1 truncate" [title]="reason">{{ reason }}</span>
-              <button type="button" xuiButton size="sm" (click)="view().list.retry()">Try again</button>
-            </p>
-          }
-        </div>
+            @if (overlay(); as message) {
+              <xui-non-ideal-state
+                class="absolute inset-0 m-auto h-fit"
+                [title]="message.title"
+                [description]="message.description"
+              >
+                @if (message.retry) {
+                  <button action type="button" xuiButton size="sm" (click)="view().list.retry()">Try again</button>
+                }
+              </xui-non-ideal-state>
+            } @else if (view().list.error(); as reason) {
+              <p
+                class="bg-error-subtle text-error absolute inset-x-0 bottom-0 flex items-center gap-2 px-2 py-1 text-xs"
+              >
+                <span class="min-w-0 flex-1 truncate" [title]="reason">{{ reason }}</span>
+                <button type="button" xuiButton size="sm" (click)="view().list.retry()">Try again</button>
+              </p>
+            }
+          </div>
         }
 
         <footer class="chrome-bar flex h-8 shrink-0 items-center gap-2 px-2">
@@ -220,10 +234,23 @@ function isAsset(row: LibraryRow): row is AssetSummary {
             </button>
           }
           @if (viewName() === 'projects') {
-            <button type="button" xuiButton size="sm" variant="ghost" data-testid="library-new-folder" (click)="newFolder()">
+            <button
+              type="button"
+              xuiButton
+              size="sm"
+              variant="ghost"
+              data-testid="library-new-folder"
+              (click)="newFolder()"
+            >
               Folder
             </button>
-            <button type="button" xuiButton size="sm" data-testid="library-new-project" (click)="newProjectIn(treeStore.target())">
+            <button
+              type="button"
+              xuiButton
+              size="sm"
+              data-testid="library-new-project"
+              (click)="newProjectIn(treeStore.target())"
+            >
               Project…
             </button>
           }
@@ -251,7 +278,7 @@ export class LibraryPane {
   protected readonly creatingKind = signal('texturing');
   protected readonly canPick = desktop() !== undefined;
   protected readonly noLibraryText = this.canPick
-    ? 'A library holds one game\'s projects and the assets they share.'
+    ? "A library holds one game's projects, and anything in one can be used in another."
     : 'This Server was started without a library.';
   protected readonly recent = signal<readonly string[]>([]);
   /** The tree is the Library's home; a search or a tag looks across every folder instead. */
@@ -277,13 +304,12 @@ export class LibraryPane {
 
   protected readonly countText = computed(() => {
     const state = this.store.state();
-    const total =
-      this.showsTree() && state.kind === 'ready' ? state.info.projectCount : this.view().list.total();
+    const total = this.showsTree() && state.kind === 'ready' ? state.info.projectCount : this.view().list.total();
     if (total === null) {
       return '…';
     }
 
-    return counted(total, this.viewName() === 'projects' ? 'project' : 'shared asset');
+    return counted(total, this.viewName() === 'projects' ? 'project' : 'material');
   });
 
   /** What the tree says instead of rows. */
@@ -327,7 +353,11 @@ export class LibraryPane {
 
     return projects
       ? { title: 'No projects yet', description: 'Make one with New.', retry: false }
-      : { title: 'No shared assets yet', description: 'Assets live under shared/ in the library.', retry: false };
+      : {
+          title: 'No materials yet',
+          description: 'Material graphs and Layered Materials in any project appear here.',
+          retry: false
+        };
   });
 
   constructor() {
@@ -378,7 +408,12 @@ export class LibraryPane {
   }
 
   protected nameOf(path: string): string {
-    return path.split(/[\\/]/).pop()?.replace(/\.ptlib$/, '') ?? path;
+    return (
+      path
+        .split(/[\\/]/)
+        .pop()
+        ?.replace(/\.ptlib$/, '') ?? path
+    );
   }
 
   protected switchTo(name: ViewName | null): void {
@@ -451,7 +486,7 @@ export class LibraryPane {
   protected countLabel(row: LibraryRow): string {
     return isAsset(row)
       ? `Used by ${counted(row.usageCount, 'project')}`
-      : `References ${counted(row.referenceCount, 'shared asset')}`;
+      : `References ${counted(row.referenceCount, 'material')}`;
   }
 
   protected byIndex(index: number): number {

@@ -31,7 +31,7 @@ public sealed class CheckTests : IDisposable {
         var report = Check();
 
         Assert.Empty(report.Findings);
-        Assert.Equal((1, 1), (report.Projects, report.Assets));
+        Assert.Equal((2, 1), (report.Projects, report.Assets)); // the document's own project counts
         Assert.False(report.HasErrors);
     }
 
@@ -51,21 +51,20 @@ public sealed class CheckTests : IDisposable {
     public void A_dependency_on_nothing_is_missing() {
         library.Write(Rust, TestLibrary.Asset("Rust", AssetReference.Floating(AssetId.New())));
 
-        Assert.Equal($"shared/{Rust}", Assert.Single(Of(Check(), FindingKind.MissingReference)).Path);
+        Assert.Equal($"projects/{Rust}", Assert.Single(Of(Check(), FindingKind.MissingReference)).Path);
     }
 
     [Fact]
-    public void An_asset_nothing_reaches_is_an_orphan_and_what_reaches_it_keeps_it() {
+    public void An_asset_nothing_reaches_is_no_fault() {
         var graph = WriteRust();
         var material = TestLibrary.Asset("Material", AssetReference.Floating(graph.Id));
-        library.Write("smart-materials/m.vxsmart", material);
+        library.Write("smart-materials/m.vxtexgraph", material);
         var lonely = TestLibrary.Asset("Lonely");
         library.Write("graphs/lonely.vxtexgraph", lonely);
         library.Write("props/crate", TestLibrary.Project("Crate", AssetReference.Floating(material.Id)));
 
         var report = Check();
 
-        Assert.Equal("shared/graphs/lonely.vxtexgraph", Assert.Single(Of(report, FindingKind.Orphan)).Path);
         Assert.False(report.HasErrors);
     }
 
@@ -115,19 +114,23 @@ public sealed class CheckTests : IDisposable {
     }
 
     [Fact]
-    public void A_file_with_no_sidecar_cannot_be_referenced() {
-        library.SaveFile("shared/alphas/scratch.png", "png");
+    public void A_document_its_project_does_not_list_cannot_be_referenced() {
+        library.Write("props/crate", TestLibrary.Project("Crate"));
+        library.SaveFile("projects/props/crate/scratch.vxtexgraph", "name: Scratch");
 
-        Assert.Equal("shared/alphas/scratch.png", Assert.Single(Of(Check(), FindingKind.UnidentifiedFile)).Path);
+        Assert.Equal(
+            "projects/props/crate/scratch.vxtexgraph",
+            Assert.Single(Of(Check(), FindingKind.UnidentifiedFile)).Path
+        );
     }
 
     [Fact]
-    public void A_sidecar_with_no_file_is_an_error() {
+    public void A_listed_document_with_no_file_is_an_error() {
         var asset = WriteRust();
         library.Write("props/crate", TestLibrary.Project("Crate", AssetReference.Floating(asset.Id)));
         File.Delete(LibraryFiles.AssetFile(library.Root, Rust));
 
-        Assert.Equal($"shared/{Rust}", Assert.Single(Of(Check(), FindingKind.MissingAssetFile)).Path);
+        Assert.Equal($"projects/{Rust}", Assert.Single(Of(Check(), FindingKind.MissingAssetFile)).Path);
     }
 
     [Fact]
@@ -265,6 +268,8 @@ public sealed class CheckTests : IDisposable {
                 var generated = LibraryGenerator.Generate(Path.Combine(scratch.Folder, "G"), new(40, seed));
                 var root = Path.Combine(scratch.Folder, "G");
 
+                // Moved documents go to a project of their own, which has to exist in both pictures.
+                LibraryFiles.WriteProject(root, "renamed", new(ProjectId.New(), "Renamed", [], [], []));
                 using var open = OpenLibrary.Open(root);
                 var before = Summarise(open, generated);
 
@@ -278,10 +283,14 @@ public sealed class CheckTests : IDisposable {
                 foreach (var path in generated.Assets.Where(_ => random.Next(2) == 0)) {
                     var from = LibraryFiles.AssetFile(root, path);
                     var name = Guid.NewGuid().ToString("N") + Path.GetExtension(path);
-                    var to = LibraryFiles.AssetFile(root, $"renamed/{name}");
-                    Directory.CreateDirectory(Path.GetDirectoryName(to)!);
-                    File.Move(from, to);
-                    File.Move(from + LibraryLayout.SidecarSuffix, to + LibraryLayout.SidecarSuffix);
+                    var item = TestLibrary.Unlist(root, path);
+                    LibraryFiles.WriteDocument(
+                        root,
+                        "renamed",
+                        File.ReadAllBytes(from),
+                        item with { File = name }
+                    );
+                    File.Delete(from);
                 }
 
                 Assert.Equal(before, Summarise(open, generated));

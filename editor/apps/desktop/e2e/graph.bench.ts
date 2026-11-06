@@ -205,7 +205,7 @@ test('spike S7: a graph of 500 nodes with live thumbnails', async () => {
       BrowserWindow.getAllWindows()[0]?.setSize(1440, 900);
     });
     console.log(`device pixel ratio ${String(await window.evaluate(() => devicePixelRatio))}`);
-    await window.getByRole('radio', { name: 'Shared Assets' }).click();
+    await window.getByRole('radio', { name: 'Materials' }).click();
     await window.getByTestId('library-search').fill('Scale Graph');
     await expect(window.getByTestId('library-row')).toHaveCount(1, { timeout: 60_000 });
     await window.getByTestId('library-row').click();

@@ -32,7 +32,7 @@ class MaterialInfo:
             source (str): What names it to the routes that use it.
             role (str): `material`, `mask`, `brush`, `filter`, or `empty` for a graph with no
                             output yet.
-            origin (str): `shipped`, `project`, `shared` or `library` for another project.
+            origin (str): `shipped`, `project`, or `library` for another project.
             channels (list[str]): The maps a graph makes, by usage.
             parameters (list[GraphSettingDefinition] | None | Unset): The knobs a graph exposes, which a layer can set.
             project (None | str | Unset): The project it lives in, when that is another one.

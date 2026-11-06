@@ -26,7 +26,8 @@ class GraphCreateRequest:
 
         Attributes:
             name (str): The graph's name. The Server makes its file name from it.
-            project (None | str | Unset): A project's path below `projects/` to put it in, or null for `shared/graphs`.
+            project (None | str | Unset): A project's path below `projects/` to put it in, or null for a new project of its
+                own.
      """
 
     name: str

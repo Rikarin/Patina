@@ -37,7 +37,7 @@ sealed class TestLibrary : IDisposable {
     public void Write(string path, AssetDocument asset, string content = "content") {
         LibraryFiles.WriteAsset(Root, path, Encoding.UTF8.GetBytes(content), asset);
         Age(LibraryFiles.AssetFile(Root, path));
-        Age(LibraryFiles.AssetFile(Root, path) + LibraryLayout.SidecarSuffix);
+        Age(LibraryFiles.ProjectFile(Root, Path.GetDirectoryName(path)!));
     }
 
     public string SaveFile(string relative, string content) {
@@ -60,11 +60,31 @@ sealed class TestLibrary : IDisposable {
     }
 
     public void MoveAsset(string from, string to) {
-        var source = LibraryFiles.AssetFile(Root, from);
-        var target = LibraryFiles.AssetFile(Root, to);
-        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-        File.Move(source, target);
-        File.Move(source + LibraryLayout.SidecarSuffix, target + LibraryLayout.SidecarSuffix);
+        var item = RemoveAsset(from);
+        LibraryFiles.WriteDocument(
+            Root,
+            Path.GetDirectoryName(to)!,
+            File.ReadAllBytes(LibraryFiles.AssetFile(Root, from)),
+            item with { File = Path.GetFileName(to) }
+        );
+        File.Delete(LibraryFiles.AssetFile(Root, from));
+        Age(LibraryFiles.ProjectFile(Root, Path.GetDirectoryName(to)!));
+    }
+
+    /// <summary>Takes a document out of its project's list, which is what stops it being an asset.</summary>
+    public ProjectItem RemoveAsset(string path) => Unlist(Root, path);
+
+    public static ProjectItem Unlist(string root, string path) {
+        var project = Path.GetDirectoryName(path)!;
+        var listing = LibraryFiles.ProjectFile(root, project);
+        var document = DocumentCodec.ReadProject(File.ReadAllText(listing), listing).Document;
+        var item = document.Documents.Single(held => held.File == Path.GetFileName(path));
+        LibraryFiles.WriteProject(
+            root,
+            project,
+            document with { Documents = [..document.Documents.Where(held => held != item)] }
+        );
+        return item;
     }
 
     public void DeleteCache() => Directory.Delete(Path.Combine(Root, LibraryLayout.CacheFolder), true);

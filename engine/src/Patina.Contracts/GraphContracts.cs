@@ -482,7 +482,7 @@ public sealed record GraphImage(string Hash, int Width, int Height);
 /// <summary>The body of <c>POST /api/v1/library/graphs</c>.</summary>
 /// <param name="Name">The graph's name. The Server makes its file name from it.</param>
 /// <param name="Project">
-///     A project's path below <c>projects/</c> to put it in, or null for <c>shared/graphs</c>.
+///     A project's path below <c>projects/</c> to put it in, or null for a new project of its own.
 /// </param>
 public sealed record GraphCreateRequest(string Name, string? Project = null);
 
@@ -512,8 +512,7 @@ public sealed record GraphExtraction(GraphCompound Compound, int Node, GraphEdit
 ///     shipped name and " Copy".
 /// </param>
 /// <param name="Graph">
-///     An open graph whose compounds folder takes it, so that the graph can hold it, or null for
-///     <c>shared/graphs</c>'s.
+///     An open graph whose compounds folder takes it, so that the graph can hold it. Null is refused.
 /// </param>
 public sealed record GraphCompoundCopy(string Type, string? Name = null, string? Graph = null);
 

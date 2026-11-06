@@ -7,7 +7,7 @@ has been opened in Unreal, Unity or Godot; that is the largest gap, and it is li
 ## A preset is a file
 
 Factory presets are in `content/export-presets` and are embedded. A library adds one, or replaces one of the same `id`, by putting
-a file in `shared/export-presets`; it needs no sidecar, because its `id` says what it is. A preset lists files, and each file lists
+a file in `export-presets`; it needs no sidecar, because its `id` says what it is. A preset lists files, and each file lists
 one to four lanes from a map (`roughness.r`), one minus a map (`1-roughness.r`) or a number. A map is one of a graph's Output
 usages; a bake's `ao` arrives as `occlusion`. A texture none of whose maps a project has is left out, and a lane whose map is
 missing takes what a surface without it would be, with a warning in the report. Unknown fields and lane counts a block cannot hold

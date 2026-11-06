@@ -8,8 +8,8 @@ Vixen leaves a host to resolve what a graph names. Patina resolves three things,
 truth** and a Worker can be replaced at any moment. `Patina.Graphs` holds the first two's code, and the Worker and
 `patina bake` both read a graph through it, so a graph that previews also bakes.
 
-- **Compounds come from a folder called `Compounds` beside the graph.** A graph in `shared/graphs` reads
-  `shared/graphs/Compounds`; a compound reads the folder it is in. This is Vixen's own convention and replaces reading the
+- **Compounds come from a folder called `Compounds` beside the graph.** A graph in a project reads
+  its project's `Compounds`; a compound reads the folder it is in. This is Vixen's own convention and replaces reading the
   graph's folder, which made every sibling a node in every palette and read them all at open.
 - **A bitmap's reference is a path:** relative to the graph, then to the library. It is decoded with Vixen's
   `StbImageDecoder`, the PNG, JPEG, BMP, TGA, PSD and GIF the engine reads. A file that will not read is a `PT0001` on its

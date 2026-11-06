@@ -25,6 +25,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- There is no `shared/` folder any more: anything in any project can be used in any other. Pins, the impact preview and batch rebuilds
+  work on project documents, the Library's second view lists Materials, and export presets live in `export-presets/`. A library that
+  has `shared/` turns it into a Shared Assets project when it opens, and every reference still resolves.
 - Layers can be selected together with Cmd and Shift, then moved or deleted as one, and Delete, Backspace and Cmd+Backspace delete
   what is selected. Cmd+Z, redo, Delete and Select All go through the Edit menu, so they work on a Mac, in stacks and graphs alike.
 - Materials drag from the shelf into the stack and land where they are dropped. The shelf lists every material in the Library, with

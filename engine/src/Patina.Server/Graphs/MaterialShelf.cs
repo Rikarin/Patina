@@ -22,7 +22,6 @@ public static class MaterialShelf {
     const string DefaultUsage = "baseColor";
     const string MaterialsFolder = "Materials";
     const string SourceSuffix = ".source";
-    const int SharedLimit = 200;
     const int ElsewhereLimit = 300;
     const int ProjectPage = 200;
     const string ElsewhereOrigin = "library";
@@ -33,7 +32,7 @@ public static class MaterialShelf {
         new(StringComparer.Ordinal);
 
     /// <summary>
-    ///     What a project can use: the shipped materials, its own, the shared graphs, and any other project's. Nothing
+    ///     What a project can use: the shipped materials, its own and any other project's. Nothing
     ///     has to be promoted first (ADR 0012). A library holds thousands of projects, so the last are capped and a
     ///     search is what reaches the rest.
     /// </summary>
@@ -55,12 +54,6 @@ public static class MaterialShelf {
                     .Documents.Select(document => Described(library, document))
                     .OfType<MaterialInfo>()
             );
-        }
-
-        foreach (var asset in library.Assets(new(Limit: SharedLimit))
-                     .Items.Where(static a => a.Kind == DocumentKinds.Graph)) {
-            var path = $"{LibraryLayout.SharedFolder}/{asset.Path}";
-            found.Add(FromGraph(library, asset.Name, path, "shared"));
         }
 
         found.AddRange(Elsewhere(library, project, search).Take(ElsewhereLimit));
@@ -174,6 +167,7 @@ public static class MaterialShelf {
         }
 
         Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        Reference(library, project, source);
         var text = GraphDocuments.Text(AsCompound(Rooted(graph, full, library.RootPath)));
         var path = $"{MaterialsFolder}/{name}";
         if (File.Exists(file) && string.Equals(File.ReadAllText(file), text, StringComparison.Ordinal)) {
@@ -183,6 +177,20 @@ public static class MaterialShelf {
         LibraryFiles.Replace(file, text);
         LibraryFiles.Replace(file + SourceSuffix, source);
         return path;
+    }
+
+    /// <summary>Using another project's document is a reference, so that its impact preview can name this project.</summary>
+    static void Reference(OpenLibrary library, string project, string source) {
+        var below = $"{LibraryLayout.ProjectsFolder}/";
+        if (!source.StartsWith(below, StringComparison.Ordinal)) {
+            return;
+        }
+
+        var owner = Path.GetDirectoryName(source[below.Length..])!.Replace('\\', '/');
+        if (owner != project
+            && library.Contents(owner).Documents.FirstOrDefault(d => d.Path == source) is { Id: { } id }) {
+            library.AddReference(project, new(id));
+        }
     }
 
     static string CompoundFile(OpenLibrary library, string project, string name) =>

@@ -8,8 +8,7 @@ import { MaterialUse } from './material-use';
 
 const OriginNames: Readonly<Record<string, string>> = {
   shipped: 'Starter',
-  project: 'This project',
-  shared: 'Shared'
+  project: 'This project'
 };
 const SearchQuiet = 200;
 

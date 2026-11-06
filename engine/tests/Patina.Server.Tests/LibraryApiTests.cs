@@ -18,9 +18,8 @@ public sealed class LibraryApiTests : IDisposable {
             server.Library,
             new(LibraryId.New(), "Ember", 1024, ["baseColor"], "pbr", ["default"])
         );
-        var asset = new AssetDocument(AssetId.New(), "smart-material", "Rust", ["metal"], []);
+        var asset = new AssetDocument(AssetId.New(), "graph", "Rust", ["metal"], []);
         var content = "rust"u8.ToArray();
-        LibraryFiles.WriteAsset(server.Library, "smart-materials/rust.vxsmart", content, asset);
         var revision = Revision.Of(content);
         LibraryFiles.WriteProject(
             server.Library,
@@ -32,6 +31,7 @@ public sealed class LibraryApiTests : IDisposable {
             "props/door",
             new(ProjectId.New(), "Door", [], [AssetReference.Pinned(asset.Id, revision)], [])
         );
+        LibraryFiles.WriteAsset(server.Library, "props/crate/rust.vxtexgraph", content, asset);
         return asset.Id;
     }
 
@@ -132,7 +132,7 @@ public sealed class LibraryApiTests : IDisposable {
         var asset = page?.Items.Single();
         Assert.Equal(id.Value, asset?.Id);
         Assert.Equal(2, asset?.UsageCount);
-        Assert.Equal("smart-material", asset?.Kind);
+        Assert.Equal("graph", asset?.Kind);
     }
 
     [Fact]
@@ -143,13 +143,13 @@ public sealed class LibraryApiTests : IDisposable {
 
         using var response = await client.PostAsJsonAsync(
             "/api/v1/library/graphs",
-            new("Heavy Rust"),
+            new("Heavy Rust", "props/crate"),
             ContractsJsonContext.Default.GraphCreateRequest,
             Token
         );
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var created = await response.Content.ReadFromJsonAsync(ContractsJsonContext.Default.GraphCreated, Token);
-        Assert.Equal("shared/graphs/heavy-rust.vxtexgraph", created!.Path);
+        Assert.Equal("projects/props/crate/heavy-rust.vxtexgraph", created!.Path);
 
         var state = await client.OpenAsync(created.Path, Token);
         Assert.Equal("Heavy Rust", state.Name);
@@ -178,7 +178,7 @@ public sealed class LibraryApiTests : IDisposable {
         CreateLibrary();
         using var client = server.AuthorisedClient();
         await WaitForIndexAsync(client);
-        GraphCreateRequest request = new("Rust");
+        GraphCreateRequest request = new("Heavy", "props/crate");
         using var first = await client.PostAsJsonAsync(
             "/api/v1/library/graphs",
             request,

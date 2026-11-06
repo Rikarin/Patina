@@ -49,7 +49,7 @@ const node = (id: number) => window.locator(`[data-testid=graph-node][data-node=
 const thumbnail = (id: number) => node(id).locator('ptn-graph-thumbnail');
 
 async function openGraph(): Promise<void> {
-  await window.getByRole('radio', { name: 'Shared Assets' }).click();
+  await window.getByRole('radio', { name: 'Materials' }).click();
   await window.getByTestId('library-search').fill(Name);
   await expect(window.getByTestId('library-row')).toHaveCount(1);
   await window.getByTestId('library-row').click();
@@ -149,7 +149,7 @@ test('opens a graph from the Library, edits it, and sees live thumbnails', async
   // Saving reaches the file.
   await window.getByTestId('graph-save').click();
   await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
-  const saved = readFileSync(join(library, 'shared/graphs', File), 'utf8');
+  const saved = readFileSync(join(library, 'projects/graphs', File), 'utf8');
   expect(saved).toContain('Colour/Grayscale');
   expect(saved).toContain('Scale');
 
@@ -240,7 +240,7 @@ async function addNodeAt(search: string, x: number, y: number): Promise<void> {
 }
 
 async function newGraph(name: string): Promise<void> {
-  await window.getByRole('radio', { name: 'Shared Assets' }).click();
+  await window.getByRole('radio', { name: 'Materials' }).click();
   await window.getByTestId('library-new-graph').click();
   await window.getByTestId('new-graph-name').fill(name);
   await window.getByTestId('new-graph-create').click();
@@ -254,7 +254,7 @@ test('builds a tiling material from a new graph, down to its channels and full s
   await expect(nodes()).toHaveCount(0);
 
   // The file is written and the scan finds it, without opening anything by hand.
-  await window.getByRole('radio', { name: 'Shared Assets' }).click();
+  await window.getByRole('radio', { name: 'Materials' }).click();
   await window.getByTestId('library-search').fill('Tiling Rust');
   await expect(window.getByText('Tiling Rust').first()).toBeVisible();
 
@@ -335,7 +335,7 @@ test('builds a tiling material from a new graph, down to its channels and full s
   await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
 
   // The file is the truth: everything above is in it.
-  const file = readFileSync(join(library, 'shared', 'graphs', 'tiling-rust.vxtexgraph'), 'utf8');
+  const file = readFileSync(join(library, 'projects', 'tiling-rust', 'tiling-rust.vxtexgraph'), 'utf8');
   expect(file).toContain('ramp:0 000000ff,0.45 a0522dff,1 ffffffff');
   expect(file).toMatch(/curve:r=0 0,0\.5 \d\.\d+,1 1;/);
   expect(file).toContain("baseWidth: '512'");
@@ -417,7 +417,7 @@ test('instances a compound, opens it, and comes back along the breadcrumb', asyn
 
 test('reads a bitmap from beside the graph, and says so when it cannot', async () => {
   await openGraph();
-  writeFileSync(join(library, 'shared', 'graphs', 'dot.png'), Buffer.from(OnePixelPng, 'base64'));
+  writeFileSync(join(library, 'projects', 'graphs', 'dot.png'), Buffer.from(OnePixelPng, 'base64'));
   await addNodeAt('Source/Bitmap', 60, 60);
   const added = Nodes + 1;
   await window.getByTestId('field-Source').getByRole('textbox').fill('dot.png');
@@ -486,7 +486,7 @@ test('saves a selection as a compound, opens it, authors its ports, and undoes t
   const held = window.locator('[data-testid=graph-node][data-compound="Wear/Tinted"]');
   await expect(held).toHaveCount(1);
   await expect(thumbnail(Nodes)).toHaveAttribute('data-hash', output);
-  const file = join(library, 'shared', 'graphs', 'Compounds', 'Wear', 'Tinted.vxtexgraph');
+  const file = join(library, 'projects', 'graphs', 'Compounds', 'Wear', 'Tinted.vxtexgraph');
   expect(readFileSync(file, 'utf8')).toContain('Sub-graph/Input');
 
   await window.getByTestId('graph-open-compound').click();
@@ -524,7 +524,7 @@ test('copies a shipped compound beside the graph so that it can be edited', asyn
   await expect(window.getByTestId('graph-read-only')).toHaveCount(0);
   await expect(window.getByTestId('graph-name')).toHaveText('Cells Copy');
   await expect(window.getByTestId('graph-add')).toBeEnabled();
-  expect(existsSync(join(library, 'shared', 'graphs', 'Compounds', 'Patterns', 'Cells Copy.vxtexgraph'))).toBe(true);
+  expect(existsSync(join(library, 'projects', 'graphs', 'Compounds', 'Patterns', 'Cells Copy.vxtexgraph'))).toBe(true);
 });
 
 test('a graph computes at 32 bits from its settings, and the file says so', async () => {
@@ -538,7 +538,7 @@ test('a graph computes at 32 bits from its settings, and the file says so', asyn
   await hashOf(thumbnail(1));
   await window.getByTestId('graph-save').click();
   await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
-  expect(readFileSync(join(library, 'shared', 'graphs', File), 'utf8')).toContain("bitDepth: '32'");
+  expect(readFileSync(join(library, 'projects', 'graphs', File), 'utf8')).toContain("bitDepth: '32'");
 });
 
 test('Undo, Redo and Save work from the Inspector, and several nodes say so', async () => {

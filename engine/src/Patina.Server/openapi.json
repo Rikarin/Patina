@@ -4202,7 +4202,7 @@
             "format": "int32"
           }
         },
-        "description": "One page of shared assets."
+        "description": "One page of documents."
       },
       "AssetSummary": {
         "required": [
@@ -4230,7 +4230,7 @@
           },
           "path": {
             "type": "string",
-            "description": "The asset\u0027s file, relative to \u0060shared/\u0060, with forward slashes."
+            "description": "The asset\u0027s file, below the library, with forward slashes."
           },
           "tags": {
             "type": "array",
@@ -4252,7 +4252,7 @@
             "format": "int32"
           }
         },
-        "description": "One shared asset as the browser shows it."
+        "description": "One document other projects can use, as the browser shows it."
       },
       "BakedMapFile": {
         "required": [
@@ -5636,7 +5636,7 @@
               "null",
               "string"
             ],
-            "description": "An open graph whose compounds folder takes it, so that the graph can hold it, or null for\n\u0060shared/graphs\u0060\u0027s."
+            "description": "An open graph whose compounds folder takes it, so that the graph can hold it. Null is refused."
           }
         },
         "description": "The body of \u0060POST /api/v1/library/compounds\u0060."
@@ -5689,7 +5689,7 @@
               "null",
               "string"
             ],
-            "description": "A project\u0027s path below \u0060projects/\u0060 to put it in, or null for \u0060shared/graphs\u0060."
+            "description": "A project\u0027s path below \u0060projects/\u0060 to put it in, or null for a new project of its own."
           }
         },
         "description": "The body of \u0060POST /api/v1/library/graphs\u0060."
@@ -7163,7 +7163,7 @@
           },
           "origin": {
             "type": "string",
-            "description": "\u0060shipped\u0060, \u0060project\u0060, \u0060shared\u0060 or \u0060library\u0060 for another project."
+            "description": "\u0060shipped\u0060, \u0060project\u0060, or \u0060library\u0060 for another project."
           },
           "channels": {
             "type": "array",

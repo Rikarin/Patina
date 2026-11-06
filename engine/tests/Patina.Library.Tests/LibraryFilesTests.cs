@@ -22,6 +22,35 @@ public sealed class LibraryFilesTests : IDisposable {
     }
 
     [Fact]
+    public void An_old_shared_folder_becomes_a_project_and_every_reference_still_resolves() {
+        var root = Root("Old.ptlib");
+        LibraryFiles.CreateLibrary(root, new(LibraryId.New(), "Old", 1024, [], "pbr", []));
+        var asset = new AssetDocument(AssetId.New(), "graph", "Rust", ["metal"], []);
+        var shared = Path.Combine(root, "shared");
+        Directory.CreateDirectory(Path.Combine(shared, "graphs", "Compounds"));
+        Directory.CreateDirectory(Path.Combine(shared, "export-presets"));
+        Directory.CreateDirectory(Path.Combine(shared, "brushes"));
+        File.WriteAllText(Path.Combine(shared, "graphs", "rust.vxtexgraph"), "name: Rust");
+        File.WriteAllText(Path.Combine(shared, "graphs", "rust.vxtexgraph.asset.yaml"), DocumentCodec.Write(asset));
+        File.WriteAllText(Path.Combine(shared, "graphs", "Compounds", "c.vxtexgraph"), "name: C");
+        File.WriteAllText(Path.Combine(shared, "export-presets", "mine.yaml"), "id: mine");
+        File.WriteAllText(Path.Combine(shared, "brushes", "round.png"), "png");
+
+        using var library = OpenLibrary.Open(root);
+        library.Rescan(TestContext.Current.CancellationToken);
+
+        Assert.False(Directory.Exists(shared));
+        var found = Assert.Single(library.Assets(new(null, null, 0, 50)).Items);
+        Assert.Equal(
+            (asset.Id.Value, "projects/shared-assets/rust.vxtexgraph"),
+            (found.Id, found.Path)
+        );
+        Assert.True(File.Exists(Path.Combine(root, "export-presets", "mine.yaml")));
+        Assert.True(File.Exists(Path.Combine(root, "projects", "shared-assets", "brushes", "round.png")));
+        Assert.True(File.Exists(Path.Combine(root, "projects", "shared-assets", "Compounds", "c.vxtexgraph")));
+    }
+
+    [Fact]
     public void A_new_library_has_the_layout_of_the_plan() {
         var root = Root("New.ptlib");
         var id = LibraryId.New();
@@ -31,7 +60,7 @@ public sealed class LibraryFilesTests : IDisposable {
         using var library = OpenLibrary.Open(root);
         Assert.Equal(id, library.Id);
         Assert.Equal(2048, library.Document.TexelDensity);
-        Assert.True(Directory.Exists(Path.Combine(root, "shared", "smart-materials")));
+        Assert.False(Directory.Exists(Path.Combine(root, "shared")));
         Assert.True(Directory.Exists(Path.Combine(root, "projects")));
         Assert.Contains(".ptcache/", File.ReadAllText(Path.Combine(root, ".gitignore")), StringComparison.Ordinal);
     }
@@ -82,7 +111,7 @@ public sealed class LibraryFilesTests : IDisposable {
         var report = library.Check();
 
         Assert.False(report.HasErrors, string.Join('\n', report.Findings.Where(static f => f.IsError).Take(5)));
-        Assert.Equal(100, report.Projects);
+        Assert.Equal(102, report.Projects); // and the two the generator keeps its materials in
         Assert.True(library.Impact(generated.Popular)!.Projects > 10);
     }
 }

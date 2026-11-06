@@ -401,19 +401,21 @@ public sealed class GraphApiTests : IDisposable {
             server.Library,
             new(LibraryId.New(), "Ember", 1024, ["baseColor"], "pbr", ["default"])
         );
-        var shared = Directory.CreateDirectory(Path.Combine(server.Library, "shared", "graphs")).FullName;
+        LibraryFiles.WriteProject(server.Library, "crate", new(ProjectId.New(), "Crate", [], [], []));
+        var shared = Path.GetDirectoryName(LibraryFiles.ProjectFile(server.Library, "crate"))!;
         var client = server.AuthorisedClient();
         using (client) {
             var host = await client.OpenAsync(
                 GraphTesting.Write(shared, GraphTesting.Sample(), "host.vxtexgraph"),
                 Token
             );
-            using var response = await CopyAsync(client, new("Patterns/Cells"));
+            using var refused = await CopyAsync(client, new("Patterns/Cells"));
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, refused.StatusCode);
+            using var response = await CopyAsync(client, new("Patterns/Cells", Graph: host.Id));
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
             var copy = (await response.Content.ReadFromJsonAsync(ContractsJsonContext.Default.GraphCompound, Token))!;
             Assert.Equal("Patterns/Cells Copy", copy.Type);
             Assert.False(copy.ReadOnly);
-            Assert.True(File.Exists(copy.Path + LibraryLayout.SidecarSuffix));
 
             Assert.Contains(
                 (await client.EventsAsync(host.Id, host.Sequence, Token)).Events,
@@ -428,13 +430,13 @@ public sealed class GraphApiTests : IDisposable {
             await client.EditAsync(opened.Id, Token, new GraphAddComment("Mine now", 0, 0));
             await client.ActAsync(opened.Id, "save", Token);
 
-            using var again = await CopyAsync(client, new("Patterns/Cells"));
+            using var again = await CopyAsync(client, new("Patterns/Cells", Graph: host.Id));
             Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
-            using var shadow = await CopyAsync(client, new("Patterns/Cells", "Patterns/Cells"));
+            using var shadow = await CopyAsync(client, new("Patterns/Cells", "Patterns/Cells", host.Id));
             Assert.Equal(HttpStatusCode.UnprocessableEntity, shadow.StatusCode);
-            using var missing = await CopyAsync(client, new("Patterns/Nothing"));
+            using var missing = await CopyAsync(client, new("Patterns/Nothing", Graph: host.Id));
             Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
-            using var illegal = await CopyAsync(client, new("Patterns/Cells", "bad:name"));
+            using var illegal = await CopyAsync(client, new("Patterns/Cells", "bad:name", host.Id));
             Assert.Equal(HttpStatusCode.BadRequest, illegal.StatusCode);
             using var closed = await CopyAsync(client, new("Patterns/Cells", "Mine", "nowhere"));
             Assert.Equal(HttpStatusCode.NotFound, closed.StatusCode);
