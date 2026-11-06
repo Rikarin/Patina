@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Sockets;
 using System.Text.Json;
+using System.Threading.Channels;
 
 namespace Patina.Ipc;
 
@@ -22,7 +23,9 @@ public sealed class IpcConnection : IAsyncDisposable {
     readonly SemaphoreSlim writeLock = new(1, 1);
     readonly CancellationTokenSource stop = new();
     readonly TaskCompletionSource closed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    readonly Channel<IpcMessage> queued = Channel.CreateUnbounded<IpcMessage>(new() { SingleReader = true });
     Task? readLoop;
+    Task? queueLoop;
     long nextId;
 
     /// <param name="stream">The connected stream, which this connection then owns.</param>
@@ -32,11 +35,20 @@ public sealed class IpcConnection : IAsyncDisposable {
         this.handler = handler;
     }
 
+    /// <summary>
+    ///     Which requests are answered as they are read. Set, the rest wait their turn on a queue of their own, so a
+    ///     long one cannot keep a health check from being answered. Unset, every request is answered as it is read.
+    /// </summary>
+    public Func<string, bool>? Immediate { get; init; }
+
     /// <summary>Completes when the peer has gone or this connection was disposed.</summary>
     public Task Closed => closed.Task;
 
     /// <summary>Starts reading. Call it once.</summary>
-    public void Start() => readLoop = Task.Run(() => ReadLoopAsync(stop.Token), CancellationToken.None);
+    public void Start() {
+        queueLoop = Immediate is null ? null : Task.Run(() => QueueLoopAsync(stop.Token), CancellationToken.None);
+        readLoop = Task.Run(() => ReadLoopAsync(stop.Token), CancellationToken.None);
+    }
 
     /// <summary>Sends a request and returns its reply; throws <see cref="IpcException" /> on an error reply.</summary>
     public async Task<IpcMessage> SendAsync(IpcMessage request, CancellationToken cancellationToken = default) {
@@ -49,7 +61,7 @@ public sealed class IpcConnection : IAsyncDisposable {
             }
 
             await WriteAsync(request, cancellationToken).ConfigureAwait(false);
-            var message = await reply.Task.WaitAsync(ReplyTimeout, cancellationToken).ConfigureAwait(false);
+            var message = await reply.Task.WaitAsync(PatienceFor(request.Type), cancellationToken).ConfigureAwait(false);
             return message.Type == IpcTypes.Error
                 ? throw new IpcException(message.Error ?? "The IPC peer reported an error.")
                 : message;
@@ -63,6 +75,10 @@ public sealed class IpcConnection : IAsyncDisposable {
         await stream.DisposeAsync().ConfigureAwait(false);
         if (readLoop is not null) {
             await readLoop.ConfigureAwait(false);
+        }
+
+        if (queueLoop is not null) {
+            await queueLoop.ConfigureAwait(false);
         }
 
         stop.Dispose();
@@ -93,6 +109,8 @@ public sealed class IpcConnection : IAsyncDisposable {
                     if (pending.TryGetValue(message.Id, out var reply)) {
                         reply.TrySetResult(message);
                     }
+                } else if (Immediate is { } immediate && !immediate(message.Type)) {
+                    queued.Writer.TryWrite(message);
                 } else {
                     await WriteAsync(
                             await AnswerAsync(message, cancellationToken).ConfigureAwait(false),
@@ -109,12 +127,37 @@ public sealed class IpcConnection : IAsyncDisposable {
                                         or OperationCanceledException) {
             // A peer that went away, or one that broke the framing: the link is over either way.
         } finally {
+            queued.Writer.TryComplete();
             closed.TrySetResult();
             foreach (var reply in pending.Values) {
                 reply.TrySetException(new IOException("The IPC peer has disconnected."));
             }
         }
     }
+
+    async Task QueueLoopAsync(CancellationToken cancellationToken) {
+        try {
+            await foreach (var message in queued.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
+                await WriteAsync(
+                        await AnswerAsync(message, cancellationToken).ConfigureAwait(false),
+                        cancellationToken
+                    )
+                    .ConfigureAwait(false);
+            }
+        } catch (Exception e) when (e is IOException
+                                        or SocketException
+                                        or ObjectDisposedException
+                                        or OperationCanceledException) {
+            // The peer has gone, and the read loop says so.
+        }
+    }
+
+    /// <summary>
+    ///     A greeting or a health check is answered at once by a live peer. Anything else can rightly take minutes on a
+    ///     big stack, so it waits as long as the link lasts, and the health check is what notices the link has died.
+    /// </summary>
+    static TimeSpan PatienceFor(string type) =>
+        type is IpcTypes.Hello or IpcTypes.Health ? ReplyTimeout : Timeout.InfiniteTimeSpan;
 
     async ValueTask<IpcMessage> AnswerAsync(IpcMessage request, CancellationToken cancellationToken) {
         try {

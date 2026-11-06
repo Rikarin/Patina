@@ -32,20 +32,25 @@ public sealed class StackEvaluator(
     /// <summary>Writes the pixels beside the stack, then the stack.</summary>
     /// <exception cref="GraphFileChangedException">The file changed behind the session.</exception>
     /// <exception cref="TimeoutException">No Worker came.</exception>
+    /// <exception cref="IpcException">The stack would not evaluate, or the Worker would not write it.</exception>
     public async Task<StackEditResult> SaveAsync(
         StackSession session,
         bool force,
         CancellationToken cancellationToken
     ) {
-        var text = session.PrepareSave(force);
+        var (text, revision) = session.PrepareSave(force);
         KeepBase(session);
         await ReachedAsync(session, cancellationToken);
+        if (session.EvaluationError is { } failed) {
+            throw new IpcException($"The stack did not evaluate, so saving would lose work: {failed}");
+        }
+
         var connection = await ConnectionAsync(cancellationToken);
         await connection.SendAsync(
             new() { Type = IpcTypes.StackSave, StackSave = new(session.Id, null) },
             cancellationToken
         );
-        return session.FinishSave(text);
+        return session.FinishSave(text, revision);
     }
 
     /// <summary>
@@ -73,7 +78,16 @@ public sealed class StackEvaluator(
     protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
         ServiceLoop.RunAsync(logger, nameof(StackEvaluator), LoopAsync, stoppingToken);
 
+    /// <summary>A new Worker holds no stack, and a client looking at one has no edit coming to bring it back.</summary>
+    void WorkerArrived() {
+        foreach (var session in sessions.All) {
+            session.Evaluate();
+        }
+    }
+
     async Task LoopAsync(CancellationToken stoppingToken) {
+        worker.Connected -= WorkerArrived;
+        worker.Connected += WorkerArrived;
         while (true) {
             await sessions.WaitAsync(stoppingToken);
             while (await DrainAsync(stoppingToken)) {

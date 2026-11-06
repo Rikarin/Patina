@@ -5,6 +5,17 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- A fault in one job, stack or graph no longer stops the Server, and a bad setting in `project.yaml` fails its job instead of hanging
+  the queue.
+- A long stroke on a big stack no longer gets a healthy Worker dropped: health checks are answered while it works, and a Worker whose
+  device stops moving ends itself so that a new one takes over. A new Worker brings open stacks back with no edit needed.
+- Saving reports what it did: an edit made during a save, or more of a drag after one, leaves the stack unsaved, a stack that will not
+  evaluate refuses to save, and one refused stroke no longer stops painting.
+- A layer-stack build depends on the paint, mesh and bake its stack names, so painting and saving rebuilds it, and it reads the stack's
+  bake.
+
 ### Changed
 
 - A graph can be used as a material, a mask, a brush or a filter, from its menu in the Library, and the Materials shelf puts it in the

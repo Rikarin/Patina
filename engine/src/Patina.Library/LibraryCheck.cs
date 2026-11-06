@@ -324,7 +324,7 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
                 return revision;
             }
 
-            if (OutputKeys.Compute(output, project, Input, graph, tools) is not { } key) {
+            if (OutputKeys.Compute(output, project, Input, graph, tools, hashes.StacksIn(location)) is not { } key) {
                 found.Add(new(FindingKind.UnresolvedOutput, location, output.Name));
             } else if (!objects.Contains(key)) {
                 found.Add(new(FindingKind.StaleOutput, location, $"{output.Name} wants {key.Hex}"));
@@ -359,6 +359,15 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
                 );
             }
         }
+
+        /// <summary>A text file of the library, or null when it is not there.</summary>
+        public string? Text(string path) {
+            var file = LibraryLayout.Full(root, path);
+            return File.Exists(file) ? File.ReadAllText(file) : null;
+        }
+
+        /// <summary>How a build looks inside the stacks of a project.</summary>
+        public StackFiles StacksIn(string location) => new(file => Text($"{location}/{file}"), file => Get($"{location}/{file}"));
 
         public Revision? Get(string path) {
             var file = new FileInfo(LibraryLayout.Full(root, path));

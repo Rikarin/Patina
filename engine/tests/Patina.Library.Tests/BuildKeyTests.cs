@@ -143,6 +143,51 @@ public sealed class BuildKeyTests {
     }
 
     [Fact]
+    public void A_stack_keys_on_the_paint_and_bake_it_names_and_not_only_on_itself() {
+        var output = new OutputDeclaration("maps", "layer-stack", ["crate.vxlayers"], [], new Dictionary<string, string>());
+        var project = TestLibrary.Project("P", []) with { Outputs = [output] };
+        const string Stack = """
+            model: crate.glb
+            sets:
+              - name: Body
+                layers:
+                  - id: a
+                    paint: crate.Body.a.vxpaint
+                    mask: { paint: crate.Body.a.mask.vxpaint }
+            """;
+        Dictionary<string, string> files = new() {
+            ["crate.vxlayers"] = "1", ["crate.Body.a.vxpaint"] = "2", ["crate.Body.a.mask.vxpaint"] = "3"
+        };
+        BuildKey? Current() =>
+            OutputKeys.Compute(
+                output,
+                project,
+                file => Revision.Of(System.Text.Encoding.UTF8.GetBytes(files[file])),
+                new([]),
+                Tools,
+                new(_ => Stack, file => files.TryGetValue(file, out var text)
+                        ? Revision.Of(System.Text.Encoding.UTF8.GetBytes(text))
+                        : null
+                )
+            );
+
+        var before = Current();
+        files["crate.Body.a.vxpaint"] = "painted";
+        var painted = Current();
+        files["crate.Body.a.mask.vxpaint"] = "masked";
+
+        Assert.NotEqual(before, painted);
+        Assert.NotEqual(painted, Current());
+    }
+
+    [Fact]
+    public void A_stack_names_its_inputs_beside_it() =>
+        Assert.Equal(
+            ["p/a.vxpaint", "p/crate.glb", "p/crate.vxlayers.bake"],
+            StackInputs.Of("p/crate.vxlayers", "model: crate.glb\nsets:\n  - layers:\n    - paint: a.vxpaint\n")
+        );
+
+    [Fact]
     public void A_missing_input_has_no_key() {
         var asset = AssetId.New();
         var project = Project(AssetReference.Floating(asset));

@@ -9963,6 +9963,14 @@
             ],
             "description": "The Worker\u0027s memory, from its last health reply.",
             "format": "int64"
+          },
+          "busySeconds": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "How long its current device work has gone without progress, from its last health.",
+            "format": "double"
           }
         },
         "description": "The Worker as the Server sees it. All but \u0060Connected\u0060 are null while there is none."

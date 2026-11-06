@@ -83,7 +83,7 @@ public sealed class SystemApiTests : IDisposable {
         var worker = await ConnectWorkerAsync();
         var connected = await WaitForWorkerAsync(client, true);
 
-        Assert.Equal(new(true, "9.9.9", 1234, 12.5, 4096), connected.Worker);
+        Assert.Equal(new(true, "9.9.9", 1234, 12.5, 4096, 0), connected.Worker);
 
         await worker.DisposeAsync();
 

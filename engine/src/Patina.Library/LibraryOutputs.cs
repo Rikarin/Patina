@@ -150,7 +150,7 @@ sealed class LibraryOutputs(string root, IndexDatabase database, LibraryQueries 
             );
         }
 
-        var key = OutputKeys.Compute(output, project, Input, graph, tools);
+        var key = OutputKeys.Compute(output, project, Input, graph, tools, hashes.StacksIn(location));
         var read = output.Uses.Select(used => references[used].First()).ToList();
         var reach = asset is { } target
             ? read.Select(reference => graph.Reach(reference, target)).DefaultIfEmpty(AssetReach.None).Max()

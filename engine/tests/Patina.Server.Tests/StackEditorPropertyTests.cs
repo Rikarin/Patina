@@ -87,6 +87,18 @@ public sealed class StackEditorPropertyTests {
 
     /// <summary>A first stroke names the file, and undoing it takes the name back.</summary>
     [Fact]
+    public void More_of_a_saved_drag_leaves_the_stack_unsaved() {
+        var editor = new StackEditor("/tmp/Crate.vxlayers", Sample());
+        editor.Apply(new([Stroke("a", true, 2)]));
+        editor.MarkSaved();
+        Assert.False(editor.History.Dirty);
+
+        editor.Apply(new([Stroke("a", true, 3)]));
+
+        Assert.True(editor.History.Dirty);
+    }
+
+    [Fact]
     public void A_first_stroke_names_its_paint_file() {
         var editor = new StackEditor("/tmp/Crate.vxlayers", Sample());
         Assert.Equal(string.Empty, LayerOf(editor).Paint);

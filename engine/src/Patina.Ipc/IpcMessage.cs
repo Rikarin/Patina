@@ -255,7 +255,7 @@ public sealed record BuildEnding(BakeTicket Ticket, BuildManifest? Output, Expor
 public sealed record WorkerHello(int Protocol, string Version, int ProcessId);
 
 /// <summary>The Worker's health: enough for a client to tell that it is alive and what it costs.</summary>
-public sealed record WorkerHealth(double UptimeSeconds, long WorkingSetBytes);
+public sealed record WorkerHealth(double UptimeSeconds, long WorkingSetBytes, double BusySeconds = 0);
 
 /// <summary>A picture on a disk the Worker can read, and the hash of what is in it.</summary>
 public sealed record ViewportMapFile(string Path, string Hash);

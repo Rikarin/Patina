@@ -230,7 +230,9 @@ static class StackEndpoints {
             return TypedResults.Ok(await evaluator.SaveAsync(session, force, cancellationToken));
         } catch (GraphFileChangedException e) {
             return TypedResults.Problem(e.Message, statusCode: Conflict);
-        } catch (TimeoutException e) {
+        } catch (IpcException e) {
+            return TypedResults.Problem(e.Message, statusCode: Refused);
+        } catch (Exception e) when (e is TimeoutException or IOException) {
             return TypedResults.Problem(e.Message, statusCode: Unavailable);
         }
     }

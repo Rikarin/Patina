@@ -29,6 +29,9 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
     /// </summary>
     public event Action<IpcMessage>? Reported;
 
+    /// <summary>A Worker has connected, and it knows nothing yet.</summary>
+    public event Action? Connected;
+
     /// <summary>
     ///     The Worker's connection now, or waits for one: after a crash, that is the next Worker's hello. A closed
     ///     connection is not one, though <see cref="current" /> can keep it until the health loop next wakes: a job
@@ -145,6 +148,7 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
             nextWorker = NewWaiter();
         }
 
+        Connected?.Invoke();
         while (!connection.Closed.IsCompleted) {
             var reply = await connection.SendAsync(new() { Type = IpcTypes.Health }, cancellationToken);
             status = new(
@@ -152,7 +156,8 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
                 worker.Version,
                 worker.ProcessId,
                 reply.Health?.UptimeSeconds,
-                reply.Health?.WorkingSetBytes
+                reply.Health?.WorkingSetBytes,
+                reply.Health?.BusySeconds
             );
             await Task.WhenAny(connection.Closed, Task.Delay(HealthInterval, cancellationToken));
             cancellationToken.ThrowIfCancellationRequested();

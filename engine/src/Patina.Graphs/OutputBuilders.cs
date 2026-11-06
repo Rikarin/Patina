@@ -116,9 +116,9 @@ public sealed class OutputBuilders(
     }
 
     BuildManifest Stack(OutputStep step, string folder) {
-        var file = step.Files.Count > 0
-            ? step.Files[0]
-            : throw new InvalidDataException("A layer-stack output names no stack.");
+        var file = step.Files.FirstOrDefault(static file => file.EndsWith(StackInputs.Extension, StringComparison.Ordinal))
+            ?? throw new InvalidDataException("A layer-stack output names no stack.");
+        var meshMaps = GraphMeshMaps.Read(file);
         var document = LayerStackYaml.Read(File.ReadAllText(file));
         var set = LayerStackEdit.SetFor(document, step.Settings.GetValueOrDefault("set", string.Empty))
             ?? throw new InvalidDataException($"'{Path.GetFileName(file)}' has no texture set.");
@@ -131,7 +131,7 @@ public sealed class OutputBuilders(
                     evaluator(),
                     store,
                     file,
-                    (uploads, plan, owed) => pictures.Fill(uploads, plan, [..owed], roots, null)
+                    (uploads, plan, owed) => pictures.Fill(uploads, plan, [..owed], roots, meshMaps)
                         .Refusals.Select(static refusal => refusal.Message)
                         .ToArray()
                 );
