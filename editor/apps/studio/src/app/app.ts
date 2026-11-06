@@ -1,4 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { XuiButtonImports } from '@xui/button';
+import { XuiDialogImports } from '@xui/dialog';
 import { type XuiDockManagerLayout, XuiDockManagerImports } from '@xui/dock-manager';
 import { BakePane } from './bake/bake-pane';
 import { ExportPane } from './export/export-pane';
@@ -8,11 +10,17 @@ import { Inspector } from './graph/graph-inspector';
 import { GraphPane } from './graph/graph-pane';
 import { TextureView } from './graph/texture-view';
 import { LibraryPane } from './library/library-pane';
+import { ProjectStore } from './library/project-store';
+import { GraphStore } from './graph/graph-store';
+import { PaintStore } from './paint/paint-store';
 import { PaintPane } from './paint/paint-pane';
 import { ViewportPane } from './viewport/viewport-pane';
 
 /** The panes cannot be closed yet: nothing could bring one back until there is a Window menu. */
 const fixedPane = { allowClose: false } as const;
+
+/** Where Paint sits in its tab group, which opening a project brings to the front. */
+const PaintTab = 1;
 
 const initialLayout: XuiDockManagerLayout = {
   rootPane: {
@@ -42,9 +50,9 @@ const initialLayout: XuiDockManagerLayout = {
         size: 1,
         panes: [
           { ...fixedPane, type: 'contentPane', contentId: 'inspector', header: 'Inspector' },
+          { ...fixedPane, type: 'contentPane', contentId: 'paint', header: 'Paint' },
           { ...fixedPane, type: 'contentPane', contentId: 'bake', header: 'Bake' },
-          { ...fixedPane, type: 'contentPane', contentId: 'export', header: 'Export' },
-          { ...fixedPane, type: 'contentPane', contentId: 'paint', header: 'Paint' }
+          { ...fixedPane, type: 'contentPane', contentId: 'export', header: 'Export' }
         ]
       }
     ]
@@ -54,12 +62,24 @@ const initialLayout: XuiDockManagerLayout = {
 /** The app shell: a title bar, the docked panes and the status bar. `chrome-bar` and `readout` are bezel's. */
 @Component({
   selector: 'ptn-root',
-  imports: [BakePane, ExportPane, GraphPane, Inspector, LibraryPane, PaintPane, TextureView, ViewportPane, XuiDockManagerImports],
+  imports: [
+    BakePane,
+    ExportPane,
+    GraphPane,
+    Inspector,
+    LibraryPane,
+    PaintPane,
+    TextureView,
+    ViewportPane,
+    XuiButtonImports,
+    XuiDialogImports,
+    XuiDockManagerImports
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full flex-col' },
   template: `
     <header class="chrome-bar window-drag flex h-10 shrink-0 items-center gap-2 px-3" [class.pl-20]="traffic()">
-      <span class="font-semibold">Patina</span>
+      <span class="font-semibold" data-testid="app-title">{{ title() || 'Patina' }}</span>
     </header>
 
     <xui-dock-manager class="min-h-0 flex-1" [(layout)]="layout">
@@ -107,17 +127,85 @@ const initialLayout: XuiDockManagerLayout = {
         }
       }
     </footer>
+
+    <xui-dialog
+      size="sm"
+      title="Unsaved changes"
+      [open]="project.leaving() !== null"
+      (openChange)="$event || project.resolveLeaving('cancel')"
+    >
+      <xui-dialog-body data-testid="project-leaving">
+        {{ project.current()?.name }} has paint that is not saved.
+      </xui-dialog-body>
+      <xui-dialog-footer>
+        <button type="button" xuiButton variant="ghost" (click)="project.resolveLeaving('cancel')">Cancel</button>
+        <button type="button" xuiButton variant="ghost" data-testid="project-discard" (click)="project.resolveLeaving('discard')">
+          Don't Save
+        </button>
+        <button type="button" xuiButton color="primary" data-testid="project-save" (click)="project.resolveLeaving('save')">
+          Save
+        </button>
+      </xui-dialog-footer>
+    </xui-dialog>
   `
 })
 export class App {
   protected readonly status = inject(SystemStatus);
+  protected readonly project = inject(ProjectStore);
+  private readonly paint = inject(PaintStore);
+  private readonly graph = inject(GraphStore);
   protected readonly layout = signal(initialLayout);
+  /** What is open, which is also what the window says. */
+  protected readonly title = computed(() => {
+    const state = this.status.state();
+    const library = state.kind === 'online' ? state.system.library?.split(/[\\/]/).pop()?.replace(/\.ptlib$/, '') : null;
+    const name = this.project.current()?.name;
+    const dirty = this.paint.state()?.history.dirty ? ' •' : '';
+    return [name ? `${name}${dirty}` : null, library].filter(Boolean).join(' — ');
+  });
   private readonly fullScreen = signal(false);
 
   /** Room for macOS's traffic lights, which the desktop app keeps over the title bar and full screen hides. */
   protected readonly traffic = computed(() => desktop()?.platform === 'darwin' && !this.fullScreen());
 
   constructor() {
-    desktop()?.onFullScreen(fullScreen => this.fullScreen.set(fullScreen));
+    const bridge = desktop();
+    bridge?.onFullScreen(fullScreen => this.fullScreen.set(fullScreen));
+    bridge?.onCommand(command => {
+      if (command === 'save') {
+        void (this.paint.state()?.history.dirty ? this.paint.act('save') : this.graph.save());
+      }
+    });
+    if (bridge) {
+      effect(() => {
+        bridge.setTitle(this.title());
+      });
+    }
+
+    // Opening a project is asking to paint it.
+    let seen = 0;
+    effect(() => {
+      const opened = this.project.opened();
+      if (opened !== seen) {
+        seen = opened;
+        untracked(() => this.showPaint());
+      }
+    });
+  }
+
+  private showPaint(): void {
+    const layout = this.layout();
+    const root = layout.rootPane;
+    if (root.type !== 'splitPane') {
+      return;
+    }
+
+    this.layout.set({
+      ...layout,
+      rootPane: {
+        ...root,
+        panes: root.panes.map(pane => (pane.type === 'tabGroupPane' ? { ...pane, selectedIndex: PaintTab } : pane))
+      }
+    });
   }
 }

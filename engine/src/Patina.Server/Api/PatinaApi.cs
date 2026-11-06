@@ -32,6 +32,16 @@ static class PatinaApi {
             .WithName("SetViewportMesh")
             .WithTags("Viewport")
             .WithSummary("Shows a mesh file in the viewport.");
+        api.MapDelete(
+                "/viewport/mesh",
+                static (ViewportSession session) => {
+                    session.Clear();
+                    return TypedResults.Ok(session.State);
+                }
+            )
+            .WithName("ClearViewport")
+            .WithTags("Viewport")
+            .WithSummary("Takes the mesh and whatever it wears off the viewport.");
         api.MapPut(
                 "/viewport/camera",
                 static (ViewportCameraState camera, ViewportSession session) => {

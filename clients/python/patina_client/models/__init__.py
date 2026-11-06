@@ -13,6 +13,10 @@ from .export_preset_file import ExportPresetFile
 from .export_preset_info import ExportPresetInfo
 from .export_preset_list import ExportPresetList
 from .export_report import ExportReport
+from .folder_create_request import FolderCreateRequest
+from .folder_list import FolderList
+from .folder_summary import FolderSummary
+from .folder_update_request import FolderUpdateRequest
 from .graph_command_batch import GraphCommandBatch
 from .graph_command_graph_add_comment import GraphCommandGraphAddComment
 from .graph_command_graph_add_comment_op import GraphCommandGraphAddCommentOp
@@ -96,11 +100,17 @@ from .job_event import JobEvent
 from .job_page import JobPage
 from .job_state import JobState
 from .library_info import LibraryInfo
+from .library_move_request import LibraryMoveRequest
+from .library_moved import LibraryMoved
 from .library_report import LibraryReport
 from .output_report import OutputReport
 from .problem_details import ProblemDetails
+from .project_contents import ProjectContents
+from .project_contents_request import ProjectContentsRequest
 from .project_create_request import ProjectCreateRequest
+from .project_file import ProjectFile
 from .project_page import ProjectPage
+from .project_rename_request import ProjectRenameRequest
 from .project_report import ProjectReport
 from .project_report_page import ProjectReportPage
 from .project_summary import ProjectSummary
@@ -177,6 +187,10 @@ __all__ = (
     "ExportPresetInfo",
     "ExportPresetList",
     "ExportReport",
+    "FolderCreateRequest",
+    "FolderList",
+    "FolderSummary",
+    "FolderUpdateRequest",
     "GraphCommandBatch",
     "GraphCommandGraphAddComment",
     "GraphCommandGraphAddCommentOp",
@@ -260,11 +274,17 @@ __all__ = (
     "JobPage",
     "JobState",
     "LibraryInfo",
+    "LibraryMoved",
+    "LibraryMoveRequest",
     "LibraryReport",
     "OutputReport",
     "ProblemDetails",
+    "ProjectContents",
+    "ProjectContentsRequest",
     "ProjectCreateRequest",
+    "ProjectFile",
     "ProjectPage",
+    "ProjectRenameRequest",
     "ProjectReport",
     "ProjectReportPage",
     "ProjectSummary",

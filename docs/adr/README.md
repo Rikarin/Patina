@@ -14,3 +14,4 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0009](0009-painting.md): stroke latency (S4), dirty regions in the plan, the journal that lets a Worker die mid-stroke (S5).
 - [0010](0010-packaging.md): native libraries in a package (S8, failed for Vulkan on macOS), and Assimp with nothing installed.
 - [0011](0011-export.md): presets as files, the green each source and engine uses, and a batch rebuild that is a plan from keys.
+- [0012](0012-documents.md): proposed: a project holds typed documents, each with its own workspace, joined by a material contract.

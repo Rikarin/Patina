@@ -44,7 +44,11 @@ public static class StackDocuments {
     );
 
     /// <summary>The stack a new file starts as: a base, and somewhere to paint.</summary>
-    public static void Create(string path, int width, int height) {
+    /// <param name="path">The file to write.</param>
+    /// <param name="width">The width of the stack's maps.</param>
+    /// <param name="height">Their height.</param>
+    /// <param name="model">The mesh, relative to the file, or null for none yet.</param>
+    public static void Create(string path, int width, int height, string? model = null) {
         var name = Path.GetFileNameWithoutExtension(path);
         List<ChannelAsset> channels = [
             new() { Usage = "baseColor", Default = [0.5f, 0.5f, 0.5f, 1f] },
@@ -53,6 +57,7 @@ public static class StackDocuments {
         ];
         LayerStackAsset stack = new() {
             Name = name,
+            Model = model ?? string.Empty,
             BaseWidth = width,
             BaseHeight = height,
             Sets = [
@@ -77,6 +82,11 @@ public static class StackDocuments {
         };
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         LibraryFiles.Replace(path, Text(stack));
+    }
+
+    /// <summary>Points a stack that is not open at a mesh, relative to its file.</summary>
+    public static void SetModel(string path, string model) {
+        LibraryFiles.Replace(path, Text(Parse(File.ReadAllText(path)) with { Model = model }));
     }
 
     static StackLayer State(LayerAsset layer) =>

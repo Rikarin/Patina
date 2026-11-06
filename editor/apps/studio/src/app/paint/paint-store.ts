@@ -1,4 +1,5 @@
-import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
+import { UnsavedWork } from '../core/unsaved-work';
 import {
   type Connection,
   type PatinaClient,
@@ -77,6 +78,7 @@ export class PaintStore {
   private readonly connection = inject(SERVER_CONNECTION);
   private readonly createClient = inject(API_CLIENT_FACTORY);
   private readonly sockets = inject(GRAPH_SOCKET);
+  private readonly unsaved = inject(UnsavedWork);
   private client: PatinaClient | null = null;
   private socket: GraphSocket | null = null;
   private reconnect: ReturnType<typeof setTimeout> | null = null;
@@ -131,6 +133,9 @@ export class PaintStore {
   readonly chosen = computed(() => this.layers().find(row => row.layer.id === this.layer())?.layer ?? null);
 
   constructor() {
+    effect(() => {
+      this.unsaved.report('paint', this.state()?.history.dirty === true);
+    });
     inject(DestroyRef).onDestroy(() => {
       this.stopped = true;
       this.socket?.close();
@@ -164,6 +169,21 @@ export class PaintStore {
     } catch (failure) {
       this.failure.set(failure instanceof Error ? failure.message : String(failure));
     }
+  }
+
+  /** Lets go of the open stack, whose saved file stays as it is. */
+  async close(): Promise<void> {
+    const id = this.state()?.id;
+    if (!id) {
+      return;
+    }
+
+    this.state.set(null);
+    this.worn.set(false);
+    this.picture.set(null);
+    this.layer.set(null);
+    const client = await this.api();
+    await client.DELETE('/api/v1/stacks/{id}', { params: { path: { id } } });
   }
 
   /** Adds a layer at the top of the stack, or of the chosen group, and chooses it. */

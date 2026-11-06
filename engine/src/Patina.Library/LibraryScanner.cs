@@ -190,7 +190,7 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
     ///     The folders below <paramref name="folder" /> a scan enters. A leading dot hides a folder only on Unix, so
     ///     the name is checked as well as the attribute: on Windows <c>.revisions</c> would otherwise be scanned.
     /// </summary>
-    static IEnumerable<string> VisibleFolders(string folder) =>
+    internal static IEnumerable<string> VisibleFolders(string folder) =>
         Directory.EnumerateDirectories(folder, "*", Visible).Where(static d => !IsDotted(Path.GetFileName(d)));
 
     static bool IsSharedFile(DirectoryInfo shared, FileInfo file) =>

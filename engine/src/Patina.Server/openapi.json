@@ -81,6 +81,25 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "Takes the mesh and whatever it wears off the viewport.",
+        "operationId": "ClearViewport",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportState"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/viewport/camera": {
@@ -529,7 +548,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "One page of projects: by name, or by relevance when searching.",
+        "summary": "One page of projects: by name, or by relevance when searching. \u0060folder\u0060 keeps those directly in it.",
         "operationId": "GetProjects",
         "parameters": [
           {
@@ -547,6 +566,13 @@
               "items": {
                 "type": "string"
               }
+            }
+          },
+          {
+            "name": "folder",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -1036,6 +1062,444 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AssetImpact"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/folders": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "The folders directly in a folder, where no parent is the top of the library.",
+        "operationId": "GetFolders",
+        "parameters": [
+          {
+            "name": "parent",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FolderList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Makes a folder.",
+        "operationId": "CreateFolder",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FolderCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FolderSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Renames a folder or changes its colour. Nothing in it may be open to rename it.",
+        "operationId": "UpdateFolder",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FolderUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryMoved"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Deletes a folder, never a project: \u0060lift\u0060 moves what it holds up a level first.",
+        "operationId": "DeleteFolder",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lift",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/move": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Moves folders and projects into a folder, all of them or none. Nothing moved may be open.",
+        "operationId": "MoveInLibrary",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LibraryMoveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryMoved"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "What a project holds. Read from its folder, so it works before the index has caught up.",
+        "operationId": "GetProjectContents",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Gives a project a mesh, and a layer stack if it has none.",
+        "operationId": "SetProjectContents",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectContentsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Gives a project a new display name. Its folder stays.",
+        "operationId": "RenameProject",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectRenameRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
                 }
               }
             }
@@ -3651,6 +4115,107 @@
         },
         "description": "One preset in a project\u0027s report."
       },
+      "FolderCreateRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The folder\u0027s name, which is its name on disk."
+          },
+          "parent": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The folder to make it in. Null is the top."
+          },
+          "color": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its colour as \u0060#rrggbb\u0060."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/folders\u0060."
+      },
+      "FolderList": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FolderSummary"
+            },
+            "description": "The folders, by name."
+          }
+        },
+        "description": "The folders directly in a folder."
+      },
+      "FolderSummary": {
+        "required": [
+          "path",
+          "name",
+          "projectCount"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Its path below \u0060projects/\u0060, with forward slashes."
+          },
+          "name": {
+            "type": "string",
+            "description": "Its name."
+          },
+          "color": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its colour as \u0060#rrggbb\u0060, or null for none."
+          },
+          "projectCount": {
+            "type": "integer",
+            "description": "How many projects it holds, at any depth.",
+            "format": "int32"
+          }
+        },
+        "description": "A folder of projects."
+      },
+      "FolderUpdateRequest": {
+        "required": [
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The folder."
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its new name."
+          },
+          "color": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its new colour as \u0060#rrggbb\u0060, or empty for none."
+          }
+        },
+        "description": "The body of \u0060PATCH /api/v1/library/folders\u0060. What is left out stays."
+      },
       "GraphCommand": {
         "required": [
           "op"
@@ -5803,6 +6368,45 @@
         },
         "description": "The reply to \u0060GET /api/v1/library\u0060: what opening a library reads, and nothing more."
       },
+      "LibraryMoved": {
+        "required": [
+          "paths"
+        ],
+        "type": "object",
+        "properties": {
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The new paths, in the order asked."
+          }
+        },
+        "description": "Where things went."
+      },
+      "LibraryMoveRequest": {
+        "required": [
+          "paths"
+        ],
+        "type": "object",
+        "properties": {
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Folders and projects to move, below \u0060projects/\u0060."
+          },
+          "into": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The folder to put them in. Null is the top."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/move\u0060."
+      },
       "LibraryReport": {
         "required": [
           "build",
@@ -5962,6 +6566,85 @@
           }
         }
       },
+      "ProjectContents": {
+        "required": [
+          "id",
+          "name",
+          "path",
+          "bakes",
+          "files"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The project\u0027s GUID.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Its display name."
+          },
+          "path": {
+            "type": "string",
+            "description": "Its path below \u0060projects/\u0060."
+          },
+          "mesh": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its mesh, below the library, or null before it has one."
+          },
+          "stack": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its layer stack, below the library, or null before it has one."
+          },
+          "bakes": {
+            "type": "string",
+            "description": "Where its bakes go, below the library."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectFile"
+            },
+            "description": "The documents in its folder."
+          }
+        },
+        "description": "A project as it opens: what it paints, on what, and everything else in its folder."
+      },
+      "ProjectContentsRequest": {
+        "required": [
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "mesh": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A mesh file on the Server\u0027s machine to use. Null leaves the mesh as it is."
+          },
+          "resolution": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The width and height of a stack it does not have yet. Null is 2048.",
+            "format": "int32"
+          }
+        },
+        "description": "The body of \u0060PUT /api/v1/library/project\u0060: gives a project what it lacks."
+      },
       "ProjectCreateRequest": {
         "required": [
           "name"
@@ -5988,9 +6671,47 @@
               "type": "string"
             },
             "description": "The project\u0027s tags."
+          },
+          "mesh": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A mesh file on the Server\u0027s machine to copy in. Null leaves the project to get one later."
+          },
+          "resolution": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The width and height of the project\u0027s stack. Null is 2048.",
+            "format": "int32"
           }
         },
         "description": "The body of \u0060POST /api/v1/library/projects\u0060."
+      },
+      "ProjectFile": {
+        "required": [
+          "kind",
+          "name",
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "\u0060mesh\u0060, \u0060stack\u0060, \u0060graph\u0060 or \u0060bake\u0060."
+          },
+          "name": {
+            "type": "string",
+            "description": "Its file name."
+          },
+          "path": {
+            "type": "string",
+            "description": "Its path below the library, which the graph and stack routes take."
+          }
+        },
+        "description": "A document in a project\u0027s folder."
       },
       "ProjectPage": {
         "required": [
@@ -6025,6 +6746,24 @@
           }
         },
         "description": "One page of projects."
+      },
+      "ProjectRenameRequest": {
+        "required": [
+          "path",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "name": {
+            "type": "string",
+            "description": "Its new display name. Its folder stays."
+          }
+        },
+        "description": "The body of \u0060PATCH /api/v1/library/project\u0060."
       },
       "ProjectReport": {
         "required": [

@@ -1,4 +1,5 @@
 import { DestroyRef, Injectable, InjectionToken, computed, effect, inject, signal, untracked } from '@angular/core';
+import { UnsavedWork } from '../core/unsaved-work';
 import {
   ApiError,
   type Connection,
@@ -94,6 +95,7 @@ export function socketUrl(connection: Connection, id: string, since: number): st
 @Injectable({ providedIn: 'root' })
 export class GraphStore {
   private readonly connection = inject(SERVER_CONNECTION);
+  private readonly work = inject(UnsavedWork);
   private readonly createClient = inject(API_CLIENT_FACTORY);
   private readonly openSocket = inject(GRAPH_SOCKET);
   private readonly mutableSession = signal<GraphSessionState>({ kind: 'none' });
@@ -197,11 +199,23 @@ export class GraphStore {
     const bridge = desktop();
     if (bridge) {
       effect(() => {
-        bridge.setUnsaved(this.unsaved());
+        this.work.report('graph', this.unsaved());
       });
       bridge.onQuitRequested(() => {
-        this.mutableLeaving.set({ kind: 'quit' });
+        // Unsaved paint asks first, and comes back through askToQuit.
+        if (!this.work.has('paint')) {
+          this.askToQuit();
+        }
       });
+    }
+  }
+
+  /** The app is quitting: asks about this graph if it needs it, and otherwise lets the app go. */
+  askToQuit(): void {
+    if (this.unsaved()) {
+      this.mutableLeaving.set({ kind: 'quit' });
+    } else {
+      desktop()?.quit();
     }
   }
 

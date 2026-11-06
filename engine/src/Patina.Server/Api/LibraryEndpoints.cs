@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
 using Patina.Library;
 using Patina.Server.Graphs;
+using Patina.Server.Stacks;
 
 namespace Patina.Server.Api;
 
@@ -23,11 +24,15 @@ static class LibraryEndpoints {
             .ProducesProblem(StatusCodes.Status404NotFound)
             .WithSummary("The Server's library: its settings, its size and whether a rescan is running.");
 
+        api.MapLibraryTreeApi();
+
         library.MapGet("/projects", GetProjects)
             .WithName("GetProjects")
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound)
-            .WithSummary("One page of projects: by name, or by relevance when searching.");
+            .WithSummary(
+                "One page of projects: by name, or by relevance when searching. `folder` keeps those directly in it."
+            );
 
         library.MapPost("/projects", CreateProject)
             .WithName("CreateProject")
@@ -83,23 +88,36 @@ static class LibraryEndpoints {
         LibraryHost host,
         string? search,
         string[]? tag,
+        string? folder,
         int offset = 0,
         int limit = DefaultLimit
     ) =>
-        Listing(host, offset, limit, library => library.Projects(new(search, tag, offset, limit)));
+        Listing(host, offset, limit, library => library.Projects(new(search, tag, offset, limit, folder?.Trim('/'))));
 
     static Results<Created<ProjectSummary>, ProblemHttpResult> CreateProject(
         LibraryHost host,
+        StackSessions stacks,
         ProjectCreateRequest request
     ) {
         if (host.Library is not { } library) {
             return NoLibrary();
         }
 
+        if (LibraryTreeEndpoints.BadResolution(request.Resolution) is { } bad) {
+            return bad;
+        }
+
         try {
+            if (request.Mesh is { } mesh) {
+                OpenLibrary.RequireMesh(mesh);
+            }
+
             var project = library.CreateProject(new(request.Name, request.Folder, request.Tags));
+            LibraryTreeEndpoints.Furnish(library, project.Path, request.Mesh, request.Resolution, stacks);
             host.RequestRescan();
             return TypedResults.Created((string?)null, project);
+        } catch (FileNotFoundException e) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status404NotFound);
         } catch (ProjectExistsException e) {
             return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status409Conflict);
         } catch (ProjectRefusedException e) {

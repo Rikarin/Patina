@@ -55,7 +55,20 @@ public sealed record ProjectDocument(
     IReadOnlyList<string> Tags,
     IReadOnlyList<AssetReference> References,
     IReadOnlyList<OutputDeclaration> Outputs
-);
+) {
+    /// <summary>The mesh the project textures: a file in its folder, or null before it has one.</summary>
+    public string? Mesh { get; init; }
+
+    /// <summary>The layer stack the project paints: a file in its folder, or null before it has one.</summary>
+    public string? Stack { get; init; }
+}
+
+/// <summary>
+///     <c>folder.yaml</c>: what a folder of projects remembers. It exists even with nothing to say, because Git keeps no
+///     empty folder.
+/// </summary>
+/// <param name="Color">The folder's colour as <c>#rrggbb</c>, or null for none.</param>
+public sealed record FolderDocument(string? Color = null);
 
 /// <summary>A shared asset's sidecar: its identity, and the other shared assets it reads.</summary>
 public sealed record AssetDocument(

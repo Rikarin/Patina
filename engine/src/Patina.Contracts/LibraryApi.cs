@@ -50,7 +50,82 @@ public sealed record ProjectPage(IReadOnlyList<ProjectSummary> Items, int Total,
 ///     Folders below <c>projects/</c> to put it in, with forward slashes, such as <c>props</c>.
 /// </param>
 /// <param name="Tags">The project's tags.</param>
-public sealed record ProjectCreateRequest(string Name, string? Folder = null, IReadOnlyList<string>? Tags = null);
+/// <param name="Mesh">A mesh file on the Server's machine to copy in. Null leaves the project to get one later.</param>
+/// <param name="Resolution">The width and height of the project's stack. Null is 2048.</param>
+public sealed record ProjectCreateRequest(
+    string Name,
+    string? Folder = null,
+    IReadOnlyList<string>? Tags = null,
+    string? Mesh = null,
+    int? Resolution = null
+);
+
+/// <summary>A document in a project's folder.</summary>
+/// <param name="Kind"><c>mesh</c>, <c>stack</c>, <c>graph</c> or <c>bake</c>.</param>
+/// <param name="Name">Its file name.</param>
+/// <param name="Path">Its path below the library, which the graph and stack routes take.</param>
+public sealed record ProjectFile(string Kind, string Name, string Path);
+
+/// <summary>A project as it opens: what it paints, on what, and everything else in its folder.</summary>
+/// <param name="Id">The project's GUID.</param>
+/// <param name="Name">Its display name.</param>
+/// <param name="Path">Its path below <c>projects/</c>.</param>
+/// <param name="Mesh">Its mesh, below the library, or null before it has one.</param>
+/// <param name="Stack">Its layer stack, below the library, or null before it has one.</param>
+/// <param name="Bakes">Where its bakes go, below the library.</param>
+/// <param name="Files">The documents in its folder.</param>
+public sealed record ProjectContents(
+    Guid Id,
+    string Name,
+    string Path,
+    string? Mesh,
+    string? Stack,
+    string Bakes,
+    IReadOnlyList<ProjectFile> Files
+);
+
+/// <summary>The body of <c>PUT /api/v1/library/project</c>: gives a project what it lacks.</summary>
+/// <param name="Path">The project, below <c>projects/</c>.</param>
+/// <param name="Mesh">A mesh file on the Server's machine to use. Null leaves the mesh as it is.</param>
+/// <param name="Resolution">The width and height of a stack it does not have yet. Null is 2048.</param>
+public sealed record ProjectContentsRequest(string Path, string? Mesh = null, int? Resolution = null);
+
+/// <summary>The body of <c>PATCH /api/v1/library/project</c>.</summary>
+/// <param name="Path">The project, below <c>projects/</c>.</param>
+/// <param name="Name">Its new display name. Its folder stays.</param>
+public sealed record ProjectRenameRequest(string Path, string Name);
+
+/// <summary>A folder of projects.</summary>
+/// <param name="Path">Its path below <c>projects/</c>, with forward slashes.</param>
+/// <param name="Name">Its name.</param>
+/// <param name="Color">Its colour as <c>#rrggbb</c>, or null for none.</param>
+/// <param name="ProjectCount">How many projects it holds, at any depth.</param>
+public sealed record FolderSummary(string Path, string Name, string? Color, int ProjectCount);
+
+/// <summary>The folders directly in a folder.</summary>
+/// <param name="Items">The folders, by name.</param>
+public sealed record FolderList(IReadOnlyList<FolderSummary> Items);
+
+/// <summary>The body of <c>POST /api/v1/library/folders</c>.</summary>
+/// <param name="Name">The folder's name, which is its name on disk.</param>
+/// <param name="Parent">The folder to make it in. Null is the top.</param>
+/// <param name="Color">Its colour as <c>#rrggbb</c>.</param>
+public sealed record FolderCreateRequest(string Name, string? Parent = null, string? Color = null);
+
+/// <summary>The body of <c>PATCH /api/v1/library/folders</c>. What is left out stays.</summary>
+/// <param name="Path">The folder.</param>
+/// <param name="Name">Its new name.</param>
+/// <param name="Color">Its new colour as <c>#rrggbb</c>, or empty for none.</param>
+public sealed record FolderUpdateRequest(string Path, string? Name = null, string? Color = null);
+
+/// <summary>The body of <c>POST /api/v1/library/move</c>.</summary>
+/// <param name="Paths">Folders and projects to move, below <c>projects/</c>.</param>
+/// <param name="Into">The folder to put them in. Null is the top.</param>
+public sealed record LibraryMoveRequest(IReadOnlyList<string> Paths, string? Into = null);
+
+/// <summary>Where things went.</summary>
+/// <param name="Paths">The new paths, in the order asked.</param>
+public sealed record LibraryMoved(IReadOnlyList<string> Paths);
 
 /// <summary>A tag, and how many items carry it.</summary>
 /// <param name="Tag">The tag.</param>

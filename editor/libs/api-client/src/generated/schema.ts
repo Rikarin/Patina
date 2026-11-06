@@ -49,7 +49,8 @@ export interface paths {
     /** Shows a mesh file in the viewport. */
     put: operations['SetViewportMesh'];
     post?: never;
-    delete?: never;
+    /** Takes the mesh and whatever it wears off the viewport. */
+    delete: operations['ClearViewport'];
     options?: never;
     head?: never;
     patch?: never;
@@ -232,7 +233,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** One page of projects: by name, or by relevance when searching. */
+    /** One page of projects: by name, or by relevance when searching. `folder` keeps those directly in it. */
     get: operations['GetProjects'];
     put?: never;
     /** Writes a new project's files. It reaches the listings once the index has caught up. */
@@ -343,6 +344,62 @@ export interface paths {
     options?: never;
     head?: never;
     patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/folders': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The folders directly in a folder, where no parent is the top of the library. */
+    get: operations['GetFolders'];
+    put?: never;
+    /** Makes a folder. */
+    post: operations['CreateFolder'];
+    /** Deletes a folder, never a project: `lift` moves what it holds up a level first. */
+    delete: operations['DeleteFolder'];
+    options?: never;
+    head?: never;
+    /** Renames a folder or changes its colour. Nothing in it may be open to rename it. */
+    patch: operations['UpdateFolder'];
+    trace?: never;
+  };
+  '/api/v1/library/move': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Moves folders and projects into a folder, all of them or none. Nothing moved may be open. */
+    post: operations['MoveInLibrary'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/project': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** What a project holds. Read from its folder, so it works before the index has caught up. */
+    get: operations['GetProjectContents'];
+    /** Gives a project a mesh, and a layer stack if it has none. */
+    put: operations['SetProjectContents'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Gives a project a new display name. Its folder stays. */
+    patch: operations['RenameProject'];
     trace?: never;
   };
   '/api/v1/graphs': {
@@ -1272,6 +1329,43 @@ export interface components {
       /** @description Why it failed. */
       error?: null | string;
     };
+    /** @description The body of `POST /api/v1/library/folders`. */
+    FolderCreateRequest: {
+      /** @description The folder's name, which is its name on disk. */
+      name: string;
+      /** @description The folder to make it in. Null is the top. */
+      parent?: null | string;
+      /** @description Its colour as `#rrggbb`. */
+      color?: null | string;
+    };
+    /** @description The folders directly in a folder. */
+    FolderList: {
+      /** @description The folders, by name. */
+      items: components['schemas']['FolderSummary'][];
+    };
+    /** @description A folder of projects. */
+    FolderSummary: {
+      /** @description Its path below `projects/`, with forward slashes. */
+      path: string;
+      /** @description Its name. */
+      name: string;
+      /** @description Its colour as `#rrggbb`, or null for none. */
+      color?: null | string;
+      /**
+       * Format: int32
+       * @description How many projects it holds, at any depth.
+       */
+      projectCount: number;
+    };
+    /** @description The body of `PATCH /api/v1/library/folders`. What is left out stays. */
+    FolderUpdateRequest: {
+      /** @description The folder. */
+      path: string;
+      /** @description Its new name. */
+      name?: null | string;
+      /** @description Its new colour as `#rrggbb`, or empty for none. */
+      color?: null | string;
+    };
     /** @description One edit. Commands in a batch run in order, and every command sees the ones before it. */
     GraphCommand:
       | components['schemas']['GraphCommandGraphAddNode']
@@ -2172,6 +2266,18 @@ export interface components {
       /** @description Whether a rescan is running; counts and pages may lag the files until it ends. */
       indexing: boolean;
     };
+    /** @description Where things went. */
+    LibraryMoved: {
+      /** @description The new paths, in the order asked. */
+      paths: string[];
+    };
+    /** @description The body of `POST /api/v1/library/move`. */
+    LibraryMoveRequest: {
+      /** @description Folders and projects to move, below `projects/`. */
+      paths: string[];
+      /** @description The folder to put them in. Null is the top. */
+      into?: null | string;
+    };
     /** @description What a whole build did. */
     LibraryReport: {
       /** @description The job, or a name a headless build gave itself. */
@@ -2255,6 +2361,38 @@ export interface components {
       detail?: null | string;
       instance?: null | string;
     };
+    /** @description A project as it opens: what it paints, on what, and everything else in its folder. */
+    ProjectContents: {
+      /**
+       * Format: uuid
+       * @description The project's GUID.
+       */
+      id: string;
+      /** @description Its display name. */
+      name: string;
+      /** @description Its path below `projects/`. */
+      path: string;
+      /** @description Its mesh, below the library, or null before it has one. */
+      mesh?: null | string;
+      /** @description Its layer stack, below the library, or null before it has one. */
+      stack?: null | string;
+      /** @description Where its bakes go, below the library. */
+      bakes: string;
+      /** @description The documents in its folder. */
+      files: components['schemas']['ProjectFile'][];
+    };
+    /** @description The body of `PUT /api/v1/library/project`: gives a project what it lacks. */
+    ProjectContentsRequest: {
+      /** @description The project, below `projects/`. */
+      path: string;
+      /** @description A mesh file on the Server's machine to use. Null leaves the mesh as it is. */
+      mesh?: null | string;
+      /**
+       * Format: int32
+       * @description The width and height of a stack it does not have yet. Null is 2048.
+       */
+      resolution?: null | number;
+    };
     /** @description The body of `POST /api/v1/library/projects`. */
     ProjectCreateRequest: {
       /** @description The project's display name. The Server makes its folder from it. */
@@ -2263,6 +2401,22 @@ export interface components {
       folder?: null | string;
       /** @description The project's tags. */
       tags?: null | string[];
+      /** @description A mesh file on the Server's machine to copy in. Null leaves the project to get one later. */
+      mesh?: null | string;
+      /**
+       * Format: int32
+       * @description The width and height of the project's stack. Null is 2048.
+       */
+      resolution?: null | number;
+    };
+    /** @description A document in a project's folder. */
+    ProjectFile: {
+      /** @description `mesh`, `stack`, `graph` or `bake`. */
+      kind: string;
+      /** @description Its file name. */
+      name: string;
+      /** @description Its path below the library, which the graph and stack routes take. */
+      path: string;
     };
     /** @description One page of projects. */
     ProjectPage: {
@@ -2283,6 +2437,13 @@ export interface components {
        * @description The most items a page holds.
        */
       limit: number;
+    };
+    /** @description The body of `PATCH /api/v1/library/project`. */
+    ProjectRenameRequest: {
+      /** @description The project, below `projects/`. */
+      path: string;
+      /** @description Its new display name. Its folder stays. */
+      name: string;
     };
     /** @description What a build did to one project. Only a project something happened to has one. */
     ProjectReport: {
@@ -3230,6 +3391,26 @@ export interface operations {
       };
     };
   };
+  ClearViewport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportState'];
+        };
+      };
+    };
+  };
   SetViewportCamera: {
     parameters: {
       query?: never;
@@ -3600,6 +3781,7 @@ export interface operations {
       query?: {
         search?: string;
         tag?: string[];
+        folder?: string;
         offset?: number;
         limit?: number;
       };
@@ -3946,6 +4128,371 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['AssetImpact'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetFolders: {
+    parameters: {
+      query?: {
+        parent?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FolderList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  CreateFolder: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['FolderCreateRequest'];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FolderSummary'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  DeleteFolder: {
+    parameters: {
+      query: {
+        path: string;
+        lift?: boolean;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  UpdateFolder: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['FolderUpdateRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryMoved'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  MoveInLibrary: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LibraryMoveRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryMoved'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetProjectContents: {
+    parameters: {
+      query: {
+        path: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetProjectContents: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectContentsRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  RenameProject: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectRenameRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
         };
       };
       /** @description Bad Request */

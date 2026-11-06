@@ -1,4 +1,6 @@
 import { BrowserWindow, type OpenDialogOptions, app, dialog, ipcMain, net, protocol, session, shell } from 'electron';
+import { LibraryPlace, type LibraryChoice } from './libraries';
+import { installMenu } from './menu';
 import { existsSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -41,10 +43,110 @@ let unsaved = false;
 let quitConfirmed = false;
 
 function backend(): Sidecars {
-  sidecars ??= new Sidecars(process.env['PATINA_LIBRARY'] ?? null, statuses =>
+  // PATINA_LIBRARY is for scripts and tests. People get the library they last had open.
+  sidecars ??= new Sidecars(process.env['PATINA_LIBRARY'] || places().last(), statuses =>
     window?.webContents.send('patina:sidecars', statuses)
   );
   return sidecars;
+}
+
+let libraryPlaces: LibraryPlace | null = null;
+
+function places(): LibraryPlace {
+  libraryPlaces ??= new LibraryPlace(join(app.getPath('userData'), 'libraries.json'));
+  return libraryPlaces;
+}
+
+/** Whether going elsewhere may go ahead: the user decides what becomes of edits that are not saved. */
+async function mayLeave(): Promise<boolean> {
+  if (!unsaved) {
+    return true;
+  }
+
+  const options = {
+    type: 'warning' as const,
+    message: 'Leave without saving?',
+    detail: 'Something open has changes that are not saved, and they will be lost.',
+    buttons: ['Cancel', 'Leave'],
+    defaultId: 0,
+    cancelId: 0
+  };
+  const { response } = await (window ? dialog.showMessageBox(window, options) : dialog.showMessageBox(options));
+  return response === 1;
+}
+
+/** Moves the app to a library, and reloads the studio, which reads everything from the new Server. */
+async function openLibrary(choice: LibraryChoice | null): Promise<string | null> {
+  if (choice === null || !(await mayLeave())) {
+    return null;
+  }
+
+  await backend().useLibrary(choice.path, choice.create);
+  places().remember(choice.path);
+  unsaved = false;
+  rebuildMenu();
+  window?.webContents.reload();
+  return choice.path;
+}
+
+async function askForLibrary(): Promise<LibraryChoice | null> {
+  const options: OpenDialogOptions = { title: 'Open Library', properties: ['openDirectory'] };
+  const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
+  const path = picked.canceled ? null : (picked.filePaths[0] ?? null);
+  if (path === null) {
+    return null;
+  }
+
+  if (!LibraryPlace.isLibrary(path)) {
+    dialog.showErrorBox('This is not a library', `${path} has no library.yaml.`);
+    return null;
+  }
+
+  return { path, create: false };
+}
+
+async function askForNewLibrary(): Promise<LibraryChoice | null> {
+  const options = {
+    title: 'New Library',
+    buttonLabel: 'Create',
+    defaultPath: 'Game.ptlib',
+    properties: ['createDirectory' as const]
+  };
+  const picked = await (window ? dialog.showSaveDialog(window, options) : dialog.showSaveDialog(options));
+  if (picked.canceled || !picked.filePath) {
+    return null;
+  }
+
+  const path = LibraryPlace.named(picked.filePath);
+  return { path, create: !LibraryPlace.isLibrary(path) };
+}
+
+function openRecent(path: string): Promise<string | null> {
+  if (!LibraryPlace.isLibrary(path)) {
+    places().forget(path);
+    rebuildMenu();
+    dialog.showErrorBox('This library is gone', `${path} is no longer there.`);
+    return Promise.resolve(null);
+  }
+
+  return openLibrary({ path, create: false });
+}
+
+function rebuildMenu(): void {
+  installMenu({
+    recent: places().recent(),
+    development: !app.isPackaged,
+    newLibrary: async () => {
+      await openLibrary(await askForNewLibrary());
+    },
+    openLibrary: async () => {
+      await openLibrary(await askForLibrary());
+    },
+    openRecent: async path => {
+      await openRecent(path);
+    },
+    command: command => window?.webContents.send('patina:command', command)
+  });
 }
 
 function serveStudio(): void {
@@ -136,6 +238,20 @@ function handleIpc(): void {
   ipcMain.handle('patina:connection', () => backend().start());
   ipcMain.handle('patina:sidecars', () => sidecars?.statuses() ?? []);
   ipcMain.handle('patina:sidecars:logs', () => sidecars?.logs() ?? { worker: [], server: [] });
+  ipcMain.handle('patina:libraries:recent', () => places().recent());
+  ipcMain.handle('patina:libraries:open', async () => openLibrary(await askForLibrary()));
+  ipcMain.handle('patina:libraries:new', async () => openLibrary(await askForNewLibrary()));
+  ipcMain.handle('patina:libraries:openRecent', (_event, path: unknown) =>
+    typeof path === 'string' ? openRecent(path) : null
+  );
+  ipcMain.on('patina:title', (_event, title: unknown) => {
+    window?.setTitle(typeof title === 'string' && title.length > 0 ? `${title} — Patina` : 'Patina');
+  });
+  ipcMain.handle('patina:reveal', (_event, path: unknown) => {
+    if (typeof path === 'string') {
+      shell.showItemInFolder(path);
+    }
+  });
   ipcMain.handle('patina:openMesh', async () => {
     const options: OpenDialogOptions = {
       properties: ['openFile'],
@@ -169,6 +285,7 @@ app
       return;
     }
 
+    rebuildMenu();
     // Unpackaged, macOS would show Electron's own icon in the Dock.
     if (existsSync(Icon)) {
       app.dock?.setIcon(Icon);

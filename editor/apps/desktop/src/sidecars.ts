@@ -162,13 +162,14 @@ export class Sidecars {
   /** A token for this run only. */
   private readonly token = randomBytes(32).toString('base64url');
   private port = 0;
+  private createLibrary = false;
   private ready: Promise<Connection> | null = null;
   private readonly worker: Sidecar;
   private readonly server: Sidecar;
 
   constructor(
     /** The library to open, or null to start the Server with none. */
-    private readonly library: string | null,
+    private library: string | null,
     onStatus: (statuses: SidecarStatus[]) => void
   ) {
     const notify = () => onStatus(this.statuses());
@@ -210,6 +211,17 @@ export class Sidecars {
     this.ready = null;
   }
 
+  /**
+   * Moves to another library. A Server belongs to one library for its whole life, so this stops it and the next
+   * {@link start} starts another; what was open goes with the old one, which is why the app asks about unsaved work
+   * first.
+   */
+  async useLibrary(library: string, create: boolean): Promise<void> {
+    await this.stop();
+    this.library = library;
+    this.createLibrary = create;
+  }
+
   private workerCommand(): Command {
     const worker = engine.worker();
     return { command: worker.command, args: [...worker.args, '--socket', this.socket, '--watch-stdin'] };
@@ -228,7 +240,8 @@ export class Sidecars {
         `--urls=http://127.0.0.1:${this.port}`,
         `--Patina:Worker:SocketPath=${this.socket}`,
         '--Patina:WatchStdin=true',
-        ...(this.library ? ['--library', this.library] : [])
+        ...(this.library ? ['--library', this.library] : []),
+        ...(this.createLibrary ? ['--create-library', 'true'] : [])
       ],
       env: { Patina__Token: this.token }
     };

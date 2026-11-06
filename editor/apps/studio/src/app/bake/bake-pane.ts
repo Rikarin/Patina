@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import type { BakeRequest, JobState } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
@@ -7,6 +7,8 @@ import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSwitchImports } from '@xui/switch';
 import { desktop } from '../core/desktop';
+import { SystemStatus } from '../core/system-status';
+import { ProjectStore } from '../library/project-store';
 import { GraphStore } from '../graph/graph-store';
 import { BakeStore } from './bake-store';
 
@@ -277,17 +279,19 @@ type PathField = 'high' | 'low' | 'cage' | 'skewMap' | 'output';
 })
 export class BakePane {
   protected readonly store = inject(BakeStore);
+  private readonly project = inject(ProjectStore);
+  private readonly status = inject(SystemStatus);
   protected readonly graph = inject(GraphStore);
   protected readonly sides = Sides;
   protected readonly formats = Formats;
   protected readonly extraMaps = ExtraMaps;
   protected readonly canPick = desktop() !== undefined;
   protected readonly pathFields: readonly { key: PathField; label: string; placeholder: string }[] = [
-    { key: 'high', label: 'High mesh', placeholder: 'Path on the Server' },
-    { key: 'low', label: 'Low mesh', placeholder: 'Path on the Server' },
+    { key: 'high', label: 'High mesh', placeholder: 'The detailed mesh' },
+    { key: 'low', label: 'Low mesh', placeholder: 'The mesh being textured' },
     { key: 'cage', label: 'Cage', placeholder: 'Optional' },
     { key: 'skewMap', label: 'Skew map', placeholder: 'Optional: a square grey image' },
-    { key: 'output', label: 'Output folder', placeholder: 'Path on the Server' }
+    { key: 'output', label: 'Output folder', placeholder: 'Where the maps go' }
   ];
 
   protected readonly paths = signal<Record<PathField, string>>({
@@ -312,6 +316,24 @@ export class BakePane {
     return state === 'queued' || state === 'running';
   });
   protected readonly percent = computed(() => Math.round((this.store.current()?.progress ?? 0) * 100));
+  constructor() {
+    // An opened project already knows what to bake and where the maps belong.
+    effect(() => {
+      const project = this.project.current();
+      const status = this.status.state();
+      const library = status.kind === 'online' ? status.system.library : null;
+      if (project && library) {
+        untracked(() => {
+          this.paths.update(paths => ({
+            ...paths,
+            low: project.mesh ? `${library}/${project.mesh}` : paths.low,
+            output: `${library}/${project.bakes}/maps`
+          }));
+        });
+      }
+    });
+  }
+
   protected readonly canStart = computed(() => {
     const { high, low, output } = this.paths();
     return high.trim() !== '' && low.trim() !== '' && output.trim() !== '' && !this.running();

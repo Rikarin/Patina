@@ -10,11 +10,15 @@ namespace Patina.Library;
 /// <param name="Tags">Tags an item must all carry.</param>
 /// <param name="Offset">The first item of the page.</param>
 /// <param name="Limit">The most items on the page.</param>
+/// <param name="Folder">
+///     Only what is directly in this folder below <c>projects/</c>, where empty is the top. Null is everywhere.
+/// </param>
 public sealed record LibraryQuery(
     string? Search = null,
     IReadOnlyList<string>? Tags = null,
     int Offset = 0,
-    int Limit = 50
+    int Limit = 50,
+    string? Folder = null
 );
 
 /// <summary>
@@ -77,6 +81,16 @@ sealed class LibraryQueries(IndexDatabase database) {
     public int CountProjects() => Scalar("SELECT count(*) FROM project");
 
     public int CountAssets() => Scalar("SELECT count(*) FROM asset");
+
+    /// <summary>How many projects are below a folder at any depth. The range walks the index on paths.</summary>
+    public int CountBelow(string folder) {
+        using var connection = database.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT count(*) FROM project WHERE path >= @from AND path < @to";
+        command.Parameters.AddWithValue("@from", folder + "/");
+        command.Parameters.AddWithValue("@to", folder + "0");
+        return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+    }
 
     public ProjectPage Projects(LibraryQuery query) {
         var selection = Selection(query, "project", "p", "project_tag", "project");
@@ -277,6 +291,14 @@ sealed class LibraryQueries(IndexDatabase database) {
             conditions.Add($"EXISTS(SELECT 1 FROM {tagTable} g WHERE g.{tagColumn} = {alias}.rid AND g.tag = @tag{i})");
         }
 
+        if (query.Folder is { } folder) {
+            conditions.Add(
+                folder.Length == 0
+                    ? $"instr({alias}.path, '/') = 0"
+                    : $"{alias}.path >= @from AND {alias}.path < @to AND instr(substr({alias}.path, length(@from) + 1), '/') = 0"
+            );
+        }
+
         if (MatchExpression(query.Search) is null) {
             var filter = conditions.Count == 0 ? string.Empty : $" WHERE {string.Join(" AND ", conditions)}";
             return ($"FROM {table} {alias}{filter}", $"ORDER BY {alias}.name COLLATE NOCASE, {alias}.path");
@@ -304,6 +326,11 @@ sealed class LibraryQueries(IndexDatabase database) {
 
         for (var i = 0; i < (query.Tags?.Count ?? 0); i++) {
             command.Parameters.AddWithValue($"@tag{i}", query.Tags![i]);
+        }
+
+        if (query.Folder is { Length: > 0 } folder) {
+            command.Parameters.AddWithValue("@from", folder + "/");
+            command.Parameters.AddWithValue("@to", folder + "0");
         }
 
         return command;

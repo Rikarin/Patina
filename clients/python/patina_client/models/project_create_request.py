@@ -28,11 +28,16 @@ class ProjectCreateRequest:
             name (str): The project's display name. The Server makes its folder from it.
             folder (None | str | Unset): Folders below `projects/` to put it in, with forward slashes, such as `props`.
             tags (list[str] | None | Unset): The project's tags.
+            mesh (None | str | Unset): A mesh file on the Server's machine to copy in. Null leaves the project to get one
+                later.
+            resolution (int | None | Unset): The width and height of the project's stack. Null is 2048.
      """
 
     name: str
     folder: None | str | Unset = UNSET
     tags: list[str] | None | Unset = UNSET
+    mesh: None | str | Unset = UNSET
+    resolution: int | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -58,6 +63,18 @@ class ProjectCreateRequest:
         else:
             tags = self.tags
 
+        mesh: None | str | Unset
+        if isinstance(self.mesh, Unset):
+            mesh = UNSET
+        else:
+            mesh = self.mesh
+
+        resolution: int | None | Unset
+        if isinstance(self.resolution, Unset):
+            resolution = UNSET
+        else:
+            resolution = self.resolution
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -68,6 +85,10 @@ class ProjectCreateRequest:
             field_dict["folder"] = folder
         if tags is not UNSET:
             field_dict["tags"] = tags
+        if mesh is not UNSET:
+            field_dict["mesh"] = mesh
+        if resolution is not UNSET:
+            field_dict["resolution"] = resolution
 
         return field_dict
 
@@ -106,10 +127,32 @@ class ProjectCreateRequest:
         tags = _parse_tags(d.pop("tags", UNSET))
 
 
+        def _parse_mesh(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        mesh = _parse_mesh(d.pop("mesh", UNSET))
+
+
+        def _parse_resolution(data: object) -> int | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(int | None | Unset, data)
+
+        resolution = _parse_resolution(d.pop("resolution", UNSET))
+
+
         project_create_request = cls(
             name=name,
             folder=folder,
             tags=tags,
+            mesh=mesh,
+            resolution=resolution,
         )
 
 

@@ -4,12 +4,14 @@
    BENCH_SIZE, BENCH_LAYERS and BENCH_STROKES change what it measures. */
 import { _electron as electron, expect, test } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { loadavg, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net10.0/patina-bench.dll');
+const patina = resolve(__dirname, '../../../../engine/src/Patina.Cli/bin/Release/net10.0/patina.dll');
 const shots = resolve(__dirname, '../../../dist/e2e-results');
 const Size = process.env['BENCH_SIZE'] ?? '4096';
 const Layers = process.env['BENCH_LAYERS'] ?? '20';
@@ -23,19 +25,25 @@ function percentile(sorted: readonly number[], share: number): number {
 test('a stamp reaches the screen through the real window', async () => {
   const scratch = mkdtempSync(join(tmpdir(), 'patina-paint-bench-'));
   execFileSync('dotnet', [bench, 'bake-pair', join(scratch, 'meshes'), '0.05']);
-  const stack = join(scratch, 'S4.vxlayers');
-  execFileSync('dotnet', [bench, 's4-stack', stack, join(scratch, 'meshes', 'housing_low.glb'), Size, Layers]);
+  const library = join(scratch, 'Bench.ptlib');
+  const project = join(library, 'projects', 's4');
+  execFileSync('dotnet', [patina, 'library', 'new', library]);
+  mkdirSync(project);
+  copyFileSync(join(scratch, 'meshes', 'housing_low.glb'), join(project, 'housing_low.glb'));
+  execFileSync('dotnet', [bench, 's4-stack', join(project, 'S4.vxlayers'), 'housing_low.glb', Size, Layers]);
+  writeFileSync(
+    join(project, 'project.yaml'),
+    `schema: 2\nid: ${randomUUID()}\nname: S4\ntags: []\nmesh: housing_low.glb\nstack: S4.vxlayers\nreferences: []\noutputs: []\n`
+  );
   const app = await electron.launch({
     args: [main],
-    env: { ...process.env, PATINA_USER_DATA: join(scratch, 'user-data') }
+    env: { ...process.env, PATINA_USER_DATA: join(scratch, 'user-data'), PATINA_LIBRARY: library }
   });
   const window = await app.firstWindow();
   await expect(window.getByRole('status', { name: 'Server status' })).toContainText('Worker connected');
 
-  await window.getByRole('tab', { name: 'Paint' }).click();
-  await window.getByTestId('paint-path').fill(stack);
   const opened = Date.now();
-  await window.getByTestId('paint-open').click();
+  await window.locator('[data-testid=tree-row][data-path="s4"]').dblclick();
   await expect(window.getByTestId('viewport-paint')).toBeVisible({ timeout: 120_000 });
   await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 120_000 });
   console.log(`opened and evaluated in ${Date.now() - opened} ms`);

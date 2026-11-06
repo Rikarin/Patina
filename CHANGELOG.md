@@ -7,6 +7,18 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The Library's projects are a tree of folders. Folders and subfolders can be made, renamed, coloured, moved and deleted, and
+  projects can be dragged between them, one or several at a time. Deleting a folder moves what it holds up a level, so it never
+  deletes a project. Folders are folders on disk, with a `folder.yaml` that holds the colour and keeps an empty one in Git. A search
+  or a tag still lists across all of them.
+- A project owns its mesh and its layer stack: `project.yaml` is schema 2. New Project takes a mesh and a resolution, and opens ready
+  to paint. Double-clicking a project opens it. The Paint pane has no path box.
+- The app opens and creates libraries itself, from the File menu or the empty Library, remembers recent ones and reopens the last.
+  `PATINA_LIBRARY` stays for scripts. `patina-server --create-library true` lays out a library that does not exist yet.
+- The app has its own menus, and the window title says what is open. Reload and the developer tools are not in a packaged build.
+- Paint now counts as unsaved work: Save shows it, the app asks before leaving a project or quitting, and closing a project closes
+  its stack and clears the viewport.
+
 - Reading a mesh on Linux no longer needs a system Assimp. The engine carries its own, 5.4.1 where Ubuntu's was 5.3, so a
   distribution without `libassimp5`, such as Ubuntu 26.04, can open meshes. It needs glibc 2.33 and `libstdc++` from GCC 11.
 - ⚠ A baked tangent-space map is now in MikkTSpace, with green up the image, and its rows run from `v = 0`, so a map is the

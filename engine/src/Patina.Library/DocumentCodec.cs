@@ -12,6 +12,9 @@ public static class DocumentCodec {
     const string IdKey = "id";
     const string NameKey = "name";
     const string TagsKey = "tags";
+    const string MeshKey = "mesh";
+    const string StackKey = "stack";
+    const string ColorKey = "color";
     const string ToolKey = "tool";
     const string FilesKey = "files";
     const string UsesKey = "uses";
@@ -42,17 +45,34 @@ public static class DocumentCodec {
     public static string Write(ProjectDocument document) =>
         YamlText.Write(
             new(
-                Pair(SchemaChain.VersionKey, YamlText.Plain(SchemaChain.Project.Current)),
-                Pair(IdKey, YamlText.Plain(document.Id.ToString())),
-                Pair(NameKey, YamlText.Text(document.Name)),
-                Pair(TagsKey, SortedTexts(document.Tags)),
-                Pair(ReferencesKey, References(document.References)),
-                Pair(
-                    OutputsKey,
-                    new YamlSequenceNode(
-                        document.Outputs.OrderBy(static o => o.Name, StringComparer.Ordinal).Select(Output)
+                [
+                    Pair(SchemaChain.VersionKey, YamlText.Plain(SchemaChain.Project.Current)),
+                    Pair(IdKey, YamlText.Plain(document.Id.ToString())),
+                    Pair(NameKey, YamlText.Text(document.Name)),
+                    Pair(TagsKey, SortedTexts(document.Tags)),
+                    ..Present(MeshKey, document.Mesh),
+                    ..Present(StackKey, document.Stack),
+                    Pair(ReferencesKey, References(document.References)),
+                    Pair(
+                        OutputsKey,
+                        new YamlSequenceNode(
+                            document.Outputs.OrderBy(static o => o.Name, StringComparer.Ordinal).Select(Output)
+                        )
                     )
-                )
+                ]
+            )
+        );
+
+    static KeyValuePair<YamlNode, YamlNode>[] Present(string key, string? text) =>
+        text is null ? [] : [Pair(key, YamlText.Text(text))];
+
+    public static string Write(FolderDocument document) =>
+        YamlText.Write(
+            new(
+                [
+                    Pair(SchemaChain.VersionKey, YamlText.Plain(SchemaChain.Folder.Current)),
+                    ..Present(ColorKey, document.Color)
+                ]
             )
         );
 
@@ -96,9 +116,19 @@ public static class DocumentCodec {
                     fields.Texts(TagsKey),
                     references,
                     ReadOutputs(fields, [..references.Select(static r => r.Asset)])
-                );
+                ) { Mesh = Named(fields.Optional(MeshKey)), Stack = Named(fields.Optional(StackKey)) };
             }
         );
+
+    public static ReadDocument<FolderDocument> ReadFolder(string text, string path) =>
+        Read(
+            text,
+            path,
+            SchemaChain.Folder,
+            static fields => new FolderDocument(Named(fields.Optional(ColorKey)))
+        );
+
+    static string? Named(string? text) => string.IsNullOrWhiteSpace(text) ? null : text;
 
     public static ReadDocument<AssetDocument> ReadAsset(string text, string path, SchemaChain? chain = null) =>
         Read(

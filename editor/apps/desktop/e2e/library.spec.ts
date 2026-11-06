@@ -44,7 +44,7 @@ const count = () => window.getByTestId('library-count');
 const rows = () => window.getByTestId('library-row');
 
 test('browses, searches and shows the impact of a shared asset', async () => {
-  await expect(rows().first()).toContainText(/\S/);
+  await expect(window.getByTestId('tree-row').first()).toBeVisible();
 
   await window.getByTestId('library-search').fill('crate');
   await expect(count()).not.toHaveText(`${Projects} projects`);
@@ -59,10 +59,12 @@ test('browses, searches and shows the impact of a shared asset', async () => {
   await window.getByTestId('library-tags').getByRole('button').first().click();
   await expect(count()).toHaveText(`${Projects} projects`);
 
+  await window.getByTestId('library-search').fill('a');
   await rows().first().click();
   await expect(window.getByTestId('inspector-title')).not.toBeEmpty();
   await window.getByTestId('library-list').press('ArrowDown');
   await expect(rows().nth(1)).toHaveAttribute('aria-selected', 'true');
+  await window.getByTestId('library-search').fill('');
 
   await window.getByRole('radio', { name: 'Shared Assets' }).click();
   await expect(count()).toHaveText(/shared assets?$/);
@@ -72,10 +74,9 @@ test('browses, searches and shows the impact of a shared asset', async () => {
 });
 
 test('a new project reaches the list through the index', async () => {
-  await window.getByRole('button', { name: 'New…' }).click();
+  await window.getByTestId('library-new-project').click();
   await expect(window.getByTestId('new-project-name')).toBeFocused();
   await window.getByTestId('new-project-name').fill('Zebra Crate');
-  await window.getByTestId('new-project-folder').fill('props/new');
   await window.locator('xui-tag-input input').fill('striped');
   await window.locator('xui-tag-input input').press('Enter');
   await expect(window.getByTestId('new-project-name')).toBeVisible(); // Enter in the tag field does not submit
@@ -84,17 +85,18 @@ test('a new project reaches the list through the index', async () => {
   await expect(window.getByTestId('inspector-title')).toHaveText('Zebra Crate');
   await expect(count()).toHaveText(`${Projects + 1} projects`);
   await window.getByTestId('library-search').fill('zebra');
-  await expect(rows().first()).toContainText('props/new/zebra-crate');
-  expect(existsSync(join(library, 'projects/props/new/zebra-crate/project.yaml'))).toBe(true);
-  rmSync(join(library, 'projects/props/new'), { recursive: true, force: true });
+  await expect(rows().first()).toContainText('zebra-crate');
+  await window.getByTestId('library-search').fill('');
+  await expect(window.getByTestId('paint-project')).toHaveText('Zebra Crate');
+  expect(existsSync(join(library, 'projects/zebra-crate/project.yaml'))).toBe(true);
+  rmSync(join(library, 'projects/zebra-crate'), { recursive: true, force: true });
 });
 
 test('the Server says why a new project is refused', async () => {
-  await window.getByRole('button', { name: 'New…' }).click();
-  await window.getByTestId('new-project-name').fill('Crate');
-  await window.getByTestId('new-project-folder').fill('../outside');
+  await window.getByTestId('library-new-project').click();
+  await window.getByTestId('new-project-name').fill('---');
   await window.getByRole('button', { name: 'Create' }).click();
 
-  await expect(window.getByTestId('new-project-refused')).toContainText('cannot be a folder');
+  await expect(window.getByTestId('new-project-refused')).toContainText('a letter or a digit');
   await window.screenshot({ path: join(shots, 'library-new-project.png') });
 });

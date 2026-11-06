@@ -130,6 +130,20 @@ public sealed class ViewportSession(
         Wake();
     }
 
+    /// <summary>Takes everything off the viewport, as when a project closes. The viewing table stays.</summary>
+    public void Clear() {
+        lock (changing) {
+            mesh = null;
+            stack = null;
+            maps = new() { Look = maps.Look };
+            error = null;
+            mapsError = null;
+            revision++;
+        }
+
+        Wake();
+    }
+
     /// <summary>Lays pictures over the open mesh. A mesh leaving takes its pictures with it.</summary>
     public void SetMaps(ViewportMapSet pictures) {
         lock (changing) {

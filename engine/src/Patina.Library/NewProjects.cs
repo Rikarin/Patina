@@ -49,11 +49,7 @@ static class NewProjects {
     /// <summary>The document and the path below <c>projects/</c> for <paramref name="project" />.</summary>
     /// <exception cref="ProjectRefusedException">The request breaks one of the rules.</exception>
     public static (string Path, ProjectDocument Document) Resolve(NewProject project) {
-        var name = project.Name.Trim();
-        if (name.Length is 0 or > MaxNameLength || name.Any(char.IsControl)) {
-            throw new ProjectRefusedException($"A project's name is 1 to {MaxNameLength} characters of text.");
-        }
-
+        var name = DisplayName(project.Name);
         var slug = Slug(name);
         if (slug.Length == 0) {
             throw new ProjectRefusedException("A project's name needs a letter or a digit, to name its folder.");
@@ -67,6 +63,15 @@ static class NewProjects {
         Require(slug);
         var path = folder.Length == 0 ? slug : $"{folder}/{slug}";
         return (path, new(ProjectId.New(), name, Tags(project.Tags), [], []));
+    }
+
+    /// <summary>A project's display name, trimmed.</summary>
+    /// <exception cref="ProjectRefusedException">It is empty, too long or not text.</exception>
+    internal static string DisplayName(string name) {
+        var trimmed = name.Trim();
+        return trimmed.Length is 0 or > MaxNameLength || trimmed.Any(char.IsControl)
+            ? throw new ProjectRefusedException($"A project's name is 1 to {MaxNameLength} characters of text.")
+            : trimmed;
     }
 
     /// <summary>The path below the library, with forward slashes, for <paramref name="graph" />.</summary>

@@ -20,21 +20,33 @@ import { XuiTagImports } from '@xui/tag';
 import { GraphStore } from '../graph/graph-store';
 import { LibrarySelection } from './library-selection';
 import { LibraryStore } from './library-store';
+import { ProjectStore } from './project-store';
 import { counted } from './list-keys';
 import { ViewportFit } from './viewport-fit';
 
 const DependentHeight = 28;
 
-/** A project, as far as the index knows it. The project itself loads on open, which does not exist yet. */
+/** A project, as far as the index knows it. Its contents load when it opens. */
 @Component({
   selector: 'ptn-project-details',
-  imports: [XuiDescriptionsImports, XuiTagImports],
+  imports: [XuiButtonImports, XuiDescriptionsImports, XuiTagImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block overflow-auto p-3' },
   template: `
     @let item = project();
     <h2 class="truncate text-sm font-semibold" data-testid="inspector-title" [title]="item.name">{{ item.name }}</h2>
     <p class="section-label mb-3">Project</p>
+    <button
+      class="mb-3 w-full"
+      type="button"
+      xuiButton
+      size="sm"
+      color="primary"
+      data-testid="open-project"
+      (click)="opening.open(item.path)"
+    >
+      Open
+    </button>
     <xui-descriptions column="1">
       <xui-descriptions-item label="Folder">
         <span class="break-all select-text">{{ item.path }}</span>
@@ -49,13 +61,11 @@ const DependentHeight = 28;
           <span class="text-foreground-muted">None</span>
         }
       </xui-descriptions-item>
-      <xui-descriptions-item label="Id">
-        <span class="readout break-all select-text">{{ item.id }}</span>
-      </xui-descriptions-item>
     </xui-descriptions>
   `
 })
 export class ProjectDetails {
+  protected readonly opening = inject(ProjectStore);
   readonly project = input.required<ProjectSummary>();
 }
 

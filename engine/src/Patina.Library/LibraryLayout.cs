@@ -18,6 +18,10 @@ public static class LibraryLayout {
     public const string ProjectFile = "project.yaml";
     public const string SharedFolder = "shared";
     public const string ProjectsFolder = "projects";
+
+    /// <summary>A folder of projects' own file, beside the projects and folders in it.</summary>
+    public const string FolderFile = "folder.yaml";
+
     public const string CacheFolder = ".ptcache";
 
     /// <summary>
