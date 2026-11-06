@@ -315,6 +315,8 @@ static class StackEndpoints {
             return await ReadAsync(id, sessions, evaluator, true, sessions.Resolve(request.Folder), cancellationToken);
         } catch (StackEditRefusedException e) {
             return TypedResults.Problem(e.Message, statusCode: Refused);
+        } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
+            return TypedResults.Problem(e.Message, statusCode: Unavailable);
         }
     }
 

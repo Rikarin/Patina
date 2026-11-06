@@ -3,6 +3,7 @@ using Patina.Ipc;
 using Patina.Library;
 using Patina.Server.Graphs;
 using Patina.Server.Viewport;
+using System.Collections.Concurrent;
 
 namespace Patina.Server.Stacks;
 
@@ -18,16 +19,19 @@ public sealed class StackEvaluator(
     PreviewStore store,
     ServerIdentity identity,
     ViewportSession viewport,
+    GraphSessions graphs,
     ILogger<StackEvaluator> logger
 ) : BackgroundService {
     const int PreviewSide = 512;
     const int StampsPerCheckpoint = 2048;
     const int CheckpointsKept = 3;
+    const int TrimInterval = 64;
     static readonly TimeSpan LostWorkerPause = TimeSpan.FromMilliseconds(20);
     static readonly TimeSpan WorkerPatience = TimeSpan.FromSeconds(30);
 
     readonly Dictionary<string, Told> told = new(StringComparer.Ordinal);
-    readonly Dictionary<string, Marks> marks = new(StringComparer.Ordinal);
+    readonly ConcurrentDictionary<string, Marks> marks = new(StringComparer.Ordinal);
+    int untilTrim = TrimInterval;
 
     /// <summary>Writes the pixels beside the stack, then the stack.</summary>
     /// <exception cref="GraphFileChangedException">The file changed behind the session.</exception>
@@ -191,7 +195,7 @@ public sealed class StackEvaluator(
         StackWork work,
         CancellationToken cancellationToken
     ) {
-        var held = marks.TryGetValue(session.Id, out var known) ? known : marks[session.Id] = new();
+        var held = marks.GetOrAdd(session.Id, static _ => new());
         if (!told.TryGetValue(session.Id, out var state)
             || !ReferenceEquals(state.Connection, connection)
             || state.MeshMaps != session.MeshMaps
@@ -252,7 +256,8 @@ public sealed class StackEvaluator(
         session.Publish(work, reply.StackResult!);
         viewport.Repainted(session.Id, work.Revision);
         held.Stamps += parts.Sum(static part => part.Stamps.Count);
-        await CheckpointAsync(session, connection, work, held, cancellationToken);
+        await CheckpointAsync(session, connection, work, held, state, cancellationToken);
+        TrimNow();
     }
 
     /// <summary>
@@ -264,9 +269,12 @@ public sealed class StackEvaluator(
         IpcConnection connection,
         StackWork work,
         Marks held,
+        Told told,
         CancellationToken cancellationToken
     ) {
-        if (held.Stamps < StampsPerCheckpoint || work.Standing.Any(static entry => entry.Open)) {
+        // ⚠ From what this Worker was told, not the live journal: a stroke can grow after its parts were read, and a
+        // checkpoint that claimed those stamps would keep them from a later replay, leaving pixels silently different.
+        if (held.Stamps < StampsPerCheckpoint || work.Standing.Any(entry => told.Sent[entry.Id].Open)) {
             return;
         }
 
@@ -281,7 +289,7 @@ public sealed class StackEvaluator(
             new(
                 folder,
                 [..work.Standing.Select(static entry => entry.Id)],
-                work.Standing.ToDictionary(static entry => entry.Id, static entry => entry.Stamps.Count)
+                work.Standing.ToDictionary(static entry => entry.Id, entry => told.Sent[entry.Id].Stamps)
             )
         );
         if (held.Checkpoints.Count > CheckpointsKept) {
@@ -294,8 +302,22 @@ public sealed class StackEvaluator(
     ///     A save overwrites what the journal starts from, so what the session opened is copied first. It is in the
     ///     cache: deleting that costs the undo past a save after a lost Worker, and nothing a file holds.
     /// </summary>
+    void TrimNow() {
+        if (--untilTrim > 0) {
+            return;
+        }
+
+        untilTrim = TrimInterval;
+        store.Trim(
+            [
+                ..sessions.All.SelectMany(static session => session.PreviewHashes),
+                ..graphs.All.SelectMany(static session => session.PreviewHashes)
+            ]
+        );
+    }
+
     void KeepBase(StackSession session) {
-        var held = marks.TryGetValue(session.Id, out var known) ? known : marks[session.Id] = new();
+        var held = marks.GetOrAdd(session.Id, static _ => new());
         if (held.Base is not null) {
             return;
         }
@@ -324,7 +346,7 @@ public sealed class StackEvaluator(
 
     async Task ForgetClosedAsync(CancellationToken cancellationToken) {
         foreach (var id in sessions.TakeClosed()) {
-            if (marks.Remove(id) && Directory.Exists(CheckpointRoot(id))) {
+            if (marks.TryRemove(id, out _) && Directory.Exists(CheckpointRoot(id))) {
                 Directory.Delete(CheckpointRoot(id), true);
             }
 

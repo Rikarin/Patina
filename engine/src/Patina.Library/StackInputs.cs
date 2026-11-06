@@ -14,6 +14,7 @@ public sealed record StackFiles(Func<string, string?> Text, Func<string, Revisio
 /// <summary>Reads a stack file for the files it names.</summary>
 public static class StackInputs {
     public const string Extension = ".vxlayers";
+    const string PaintExtension = ".vxpaint";
     const string PaintKey = "paint";
     const string ModelKey = "model";
 
@@ -36,6 +37,15 @@ public static class StackInputs {
         }
 
         return [..found];
+    }
+
+    /// <summary>Refuses a stack whose paint would be read from outside its folder.</summary>
+    /// <exception cref="InvalidDataException">One is.</exception>
+    public static void CheckPaint(string stack, string text) {
+        foreach (var input in Of(stack, text)
+                     .Where(static name => name.EndsWith(PaintExtension, StringComparison.Ordinal))) {
+            LibraryLayout.Beside(Path.GetDirectoryName(stack) ?? string.Empty, input);
+        }
     }
 
     static void Walk(YamlNode node, Action<string> found) {

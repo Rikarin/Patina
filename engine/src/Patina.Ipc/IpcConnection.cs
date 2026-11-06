@@ -61,7 +61,8 @@ public sealed class IpcConnection : IAsyncDisposable {
             }
 
             await WriteAsync(request, cancellationToken).ConfigureAwait(false);
-            var message = await reply.Task.WaitAsync(PatienceFor(request.Type), cancellationToken).ConfigureAwait(false);
+            var message = await reply.Task.WaitAsync(PatienceFor(request.Type), cancellationToken)
+                .ConfigureAwait(false);
             return message.Type == IpcTypes.Error
                 ? throw new IpcException(message.Error ?? "The IPC peer reported an error.")
                 : message;

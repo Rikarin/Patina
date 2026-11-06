@@ -19,7 +19,9 @@ public sealed class IpcConnectionTests : IDisposable {
         var accept = listener.AcceptAsync(Token).AsTask();
         var client = await IpcSocket.ConnectAsync(socketPath, TimeSpan.FromSeconds(5), Token);
         var leftEnd = new IpcConnection(client, left);
-        var rightEnd = new IpcConnection(new System.Net.Sockets.NetworkStream(await accept, true), right) { Immediate = immediate };
+        var rightEnd = new IpcConnection(new System.Net.Sockets.NetworkStream(await accept, true), right) {
+            Immediate = immediate
+        };
         leftEnd.Start();
         rightEnd.Start();
         return (leftEnd, rightEnd);
@@ -90,7 +92,7 @@ public sealed class IpcConnectionTests : IDisposable {
         }
     }
 
-    /// <summary>A long request used to hold the read loop, so a healthy Worker failed its health check and was dropped.</summary>
+    /// <summary>A long request used to hold the read loop, so a healthy Worker failed its health check.</summary>
     [Fact]
     public async Task A_health_check_is_answered_while_a_long_request_runs() {
         var release = new TaskCompletionSource();

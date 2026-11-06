@@ -367,7 +367,8 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
         }
 
         /// <summary>How a build looks inside the stacks of a project.</summary>
-        public StackFiles StacksIn(string location) => new(file => Text($"{location}/{file}"), file => Get($"{location}/{file}"));
+        public StackFiles StacksIn(string location) =>
+            new(file => Text($"{location}/{file}"), file => Get($"{location}/{file}"));
 
         public Revision? Get(string path) {
             var file = new FileInfo(LibraryLayout.Full(root, path));

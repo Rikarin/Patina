@@ -184,6 +184,7 @@ public static class LibraryFiles {
         try {
             using (var stream = new FileStream(temporary, FileMode.Create, FileAccess.Write, FileShare.None)) {
                 stream.Write(content);
+                stream.Flush(true); // on the disk before the name is: a crash must not leave an empty file in its place
             }
 
             File.Move(temporary, path, overwrite);

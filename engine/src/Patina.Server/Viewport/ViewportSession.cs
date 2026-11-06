@@ -43,6 +43,8 @@ public sealed class ViewportSession(
     const int DefaultWidth = 1280;
     const int DefaultHeight = 720;
     static readonly TimeSpan LostWorkerPause = TimeSpan.FromMilliseconds(20);
+    static readonly TimeSpan PickPatience = TimeSpan.FromSeconds(10);
+    static readonly TimeSpan SlotPatience = TimeSpan.FromSeconds(5);
 
     readonly Lock changing = new();
     readonly SemaphoreSlim dirty = new(0, 1);
@@ -271,7 +273,15 @@ public sealed class ViewportSession(
             down = request.Height ?? height;
         }
 
-        var connection = await worker.ConnectionAsync(cancellationToken);
+        using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        patience.CancelAfter(PickPatience);
+        IpcConnection connection;
+        try {
+            connection = await worker.ConnectionAsync(patience.Token);
+        } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+            throw new TimeoutException("No Worker is connected.");
+        }
+
         var reply = await connection.SendAsync(
             new() {
                 Type = IpcTypes.ViewportPick,
@@ -309,9 +319,20 @@ public sealed class ViewportSession(
         }
     }
 
+    async Task<FrameSlot> RentAsync(CancellationToken patience, CancellationToken cancellationToken) {
+        try {
+            return await memory.RentAsync(patience);
+        } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+            throw new TimeoutException("Every frame slot is held by a viewer that has stopped reading.");
+        }
+    }
+
     async Task RenderAsync(IpcConnection connection, Work work, CancellationToken cancellationToken) {
         var (renderWidth, renderHeight) = Fit(work);
-        var slot = await memory.RentAsync(cancellationToken);
+        // A reader that stalled holds its slot, and one such reader must not stop every viewer.
+        using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        patience.CancelAfter(SlotPatience);
+        var slot = await RentAsync(patience.Token, cancellationToken);
         var start = Stopwatch.GetTimestamp();
         try {
             var reply = await connection.SendAsync(

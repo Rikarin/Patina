@@ -52,6 +52,60 @@ public sealed class LibraryFolderTests : IDisposable {
         Assert.Throws<FileNotFoundException>(() => library.AddPicture(made.Path, Path.Combine(root, "none.png")));
     }
 
+    [Theory]
+    [InlineData("../other.vxpaint")]
+    [InlineData("a/../../other.vxpaint")]
+    [InlineData("/etc/passwd")]
+    public void A_name_in_a_library_file_cannot_leave_its_folder(string name) =>
+        Assert.Throws<InvalidDataException>(() => LibraryLayout.Beside(root, name));
+
+    [Fact]
+    public void A_name_beside_its_file_is_allowed() =>
+        Assert.Equal(Path.Combine(Path.GetFullPath(root), "a", "b.vxpaint"), LibraryLayout.Beside(root, "a/b.vxpaint"));
+
+    [Fact]
+    public void One_process_at_a_time_holds_a_library() {
+        using var first = LibraryLock.Take(root);
+        Assert.NotNull(first);
+
+        Assert.Null(LibraryLock.Take(root));
+        first.Dispose();
+        using var second = LibraryLock.Take(root);
+        Assert.NotNull(second);
+    }
+
+    [Fact]
+    public void A_crash_leaves_nothing_behind_after_the_next_start() {
+        var cache = Path.Combine(root, LibraryLayout.CacheFolder);
+        Directory.CreateDirectory(Path.Combine(cache, "objects", "a.part"));
+        File.WriteAllBytes(Path.Combine(cache, "objects", "keep.bin"), [1]);
+        Directory.CreateDirectory(Path.Combine(LibraryLayout.PaintPath(root), "session"));
+        Directory.CreateDirectory(Path.Combine(root, "exports", "unity"));
+        File.WriteAllBytes(Path.Combine(root, "exports", "unity", "a.png.123.part"), [1]);
+
+        Assert.Equal(3, CacheSweep.Leftovers(root));
+
+        Assert.True(File.Exists(Path.Combine(cache, "objects", "keep.bin")));
+        Assert.Empty(Directory.EnumerateDirectories(LibraryLayout.PaintPath(root)));
+        Assert.Empty(Directory.EnumerateFiles(Path.Combine(root, "exports", "unity")));
+    }
+
+    [Fact]
+    public void Pruning_removes_only_what_has_not_been_touched() {
+        var objects = LibraryLayout.ObjectsPath(root);
+        Directory.CreateDirectory(objects);
+        var old = Path.Combine(objects, "old.bin");
+        var fresh = Path.Combine(objects, "fresh.bin");
+        File.WriteAllBytes(old, [1]);
+        File.WriteAllBytes(fresh, [1]);
+        File.SetLastWriteTimeUtc(old, DateTime.UtcNow.AddDays(-40));
+
+        Assert.Equal(1, CacheSweep.Prune(root, TimeSpan.FromDays(30)));
+
+        Assert.False(File.Exists(old));
+        Assert.True(File.Exists(fresh));
+    }
+
     [Fact]
     public void A_colour_has_to_be_one() =>
         Assert.Throws<ProjectRefusedException>(() => library.CreateFolder(string.Empty, "Red", "red"));

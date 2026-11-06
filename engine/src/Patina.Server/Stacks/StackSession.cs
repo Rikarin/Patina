@@ -99,7 +99,11 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
             if (folder is null) {
                 File.Delete(file);
             } else {
-                File.WriteAllText(file, folder);
+                // Relative, so that a library can move and take its bakes with it.
+                LibraryFiles.Replace(
+                    file,
+                    System.IO.Path.GetRelativePath(System.IO.Path.GetDirectoryName(Path)!, folder)
+                );
             }
 
             forced = true;

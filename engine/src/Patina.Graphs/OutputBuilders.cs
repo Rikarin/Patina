@@ -116,10 +116,16 @@ public sealed class OutputBuilders(
     }
 
     BuildManifest Stack(OutputStep step, string folder) {
-        var file = step.Files.FirstOrDefault(static file => file.EndsWith(StackInputs.Extension, StringComparison.Ordinal))
+        var file = step.Files.FirstOrDefault(static file => file.EndsWith(
+                    StackInputs.Extension,
+                    StringComparison.Ordinal
+                )
+            )
             ?? throw new InvalidDataException("A layer-stack output names no stack.");
         var meshMaps = GraphMeshMaps.Read(file);
-        var document = LayerStackYaml.Read(File.ReadAllText(file));
+        var text = File.ReadAllText(file);
+        StackInputs.CheckPaint(file, text);
+        var document = LayerStackYaml.Read(text);
         var set = LayerStackEdit.SetFor(document, step.Settings.GetValueOrDefault("set", string.Empty))
             ?? throw new InvalidDataException($"'{Path.GetFileName(file)}' has no texture set.");
         var shelf = compounds.Of(CompoundFolders.Of(file));

@@ -74,7 +74,12 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
 
         using var held = listener;
         try {
-            await ServiceLoop.RunAsync(logger, nameof(WorkerLink), token => AcceptingAsync(listener, token), stoppingToken);
+            await ServiceLoop.RunAsync(
+                logger,
+                nameof(WorkerLink),
+                token => AcceptingAsync(listener, token),
+                stoppingToken
+            );
         } finally {
             File.Delete(socketPath);
         }

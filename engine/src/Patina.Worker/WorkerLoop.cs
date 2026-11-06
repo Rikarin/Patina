@@ -118,18 +118,18 @@ sealed class WorkerLoop(
 
     IpcMessage Device(IpcMessage request) =>
         request.Type switch {
-                IpcTypes.ViewportStack => stacks.Follow(request),
-                IpcTypes.GraphLoad => graphs.Load(request),
-                IpcTypes.GraphEvaluate => graphs.Evaluate(request),
-                IpcTypes.GraphImage => graphs.Image(request),
-                IpcTypes.GraphClose => graphs.Close(request),
-                IpcTypes.StackLoad => stacks.Load(request),
-                IpcTypes.StackSync => stacks.Sync(request),
-                IpcTypes.StackThumbnails => stacks.Thumbnails(request),
-                IpcTypes.StackEvaluate => stacks.Evaluate(request),
-                IpcTypes.StackSave or IpcTypes.StackCheckpoint => stacks.Save(request),
-                IpcTypes.StackPixels => stacks.Pixels(request),
-                _ => stacks.Close(request)
+            IpcTypes.ViewportStack => stacks.Follow(request),
+            IpcTypes.GraphLoad => graphs.Load(request),
+            IpcTypes.GraphEvaluate => graphs.Evaluate(request),
+            IpcTypes.GraphImage => graphs.Image(request),
+            IpcTypes.GraphClose => graphs.Close(request),
+            IpcTypes.StackLoad => stacks.Load(request),
+            IpcTypes.StackSync => stacks.Sync(request),
+            IpcTypes.StackThumbnails => stacks.Thumbnails(request),
+            IpcTypes.StackEvaluate => stacks.Evaluate(request),
+            IpcTypes.StackSave or IpcTypes.StackCheckpoint => stacks.Save(request),
+            IpcTypes.StackPixels => stacks.Pixels(request),
+            _ => stacks.Close(request)
         };
 
     WorkerHealth Health() =>

@@ -144,20 +144,27 @@ public sealed class BuildKeyTests {
 
     [Fact]
     public void A_stack_keys_on_the_paint_and_bake_it_names_and_not_only_on_itself() {
-        var output = new OutputDeclaration("maps", "layer-stack", ["crate.vxlayers"], [], new Dictionary<string, string>());
+        var output = new OutputDeclaration(
+            "maps",
+            "layer-stack",
+            ["crate.vxlayers"],
+            [],
+            new Dictionary<string, string>()
+        );
         var project = TestLibrary.Project("P", []) with { Outputs = [output] };
         const string Stack = """
-            model: crate.glb
-            sets:
-              - name: Body
-                layers:
-                  - id: a
-                    paint: crate.Body.a.vxpaint
-                    mask: { paint: crate.Body.a.mask.vxpaint }
-            """;
+                             model: crate.glb
+                             sets:
+                               - name: Body
+                                 layers:
+                                   - id: a
+                                     paint: crate.Body.a.vxpaint
+                                     mask: { paint: crate.Body.a.mask.vxpaint }
+                             """;
         Dictionary<string, string> files = new() {
             ["crate.vxlayers"] = "1", ["crate.Body.a.vxpaint"] = "2", ["crate.Body.a.mask.vxpaint"] = "3"
         };
+
         BuildKey? Current() =>
             OutputKeys.Compute(
                 output,
@@ -165,7 +172,9 @@ public sealed class BuildKeyTests {
                 file => Revision.Of(System.Text.Encoding.UTF8.GetBytes(files[file])),
                 new([]),
                 Tools,
-                new(_ => Stack, file => files.TryGetValue(file, out var text)
+                new(
+                    _ => Stack,
+                    file => files.TryGetValue(file, out var text)
                         ? Revision.Of(System.Text.Encoding.UTF8.GetBytes(text))
                         : null
                 )

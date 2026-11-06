@@ -4,8 +4,8 @@ namespace Patina.Ipc;
 
 /// <summary>
 ///     Notices device work that has stopped moving. A stuck GPU fence holds the device forever while the link stays up
-///     and the health check keeps answering, so only this process can tell, and it ends itself: the Worker holds nothing
-///     that cannot be rebuilt, and what supervises it starts another.
+///     and the health check keeps answering, so only this process can tell, and it ends itself: the Worker holds
+///     nothing that cannot be rebuilt, and what supervises it starts another.
 /// </summary>
 public sealed class DeviceWatch {
     const string HangVariable = "PATINA_WORKER_HANG_SECONDS";
@@ -42,7 +42,9 @@ public sealed class DeviceWatch {
         using PeriodicTimer timer = new(Look);
         while (await timer.WaitForNextTickAsync(cancellationToken)) {
             if (Hung) {
-                await log.WriteLineAsync($"patina-worker: the device has not moved for {Busy.TotalSeconds:0} s, stopping");
+                await log.WriteLineAsync(
+                    $"patina-worker: the device has not moved for {Busy.TotalSeconds:0} s, stopping"
+                );
                 await log.FlushAsync(cancellationToken);
                 Environment.ExitCode = Exited;
                 Process.GetCurrentProcess().Kill();
@@ -50,7 +52,8 @@ public sealed class DeviceWatch {
         }
     }
 
-    static TimeSpan Elapsed() => TimeSpan.FromTicks(Stopwatch.GetTimestamp() * TimeSpan.TicksPerSecond / Stopwatch.Frequency);
+    static TimeSpan Elapsed() =>
+        TimeSpan.FromTicks(Stopwatch.GetTimestamp() * TimeSpan.TicksPerSecond / Stopwatch.Frequency);
 
     static TimeSpan ConfiguredLimit() =>
         TimeSpan.FromSeconds(

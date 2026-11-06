@@ -278,7 +278,8 @@ public static class OutputKeys {
     }
 
     static void AddStackInputs(KeyHash hash, List<string> files, StackFiles stacks) {
-        foreach (var stack in files.Where(static file => file.EndsWith(StackInputs.Extension, StringComparison.Ordinal))) {
+        foreach (var stack in files.Where(static file => file.EndsWith(StackInputs.Extension, StringComparison.Ordinal)
+                 )) {
             if (stacks.Text(stack) is not { } text) {
                 continue;
             }

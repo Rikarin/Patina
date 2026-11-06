@@ -103,7 +103,7 @@ public sealed class BuildJournal {
             projects,
             project => {
                 var (id, entry) = project;
-                File.WriteAllBytes(
+                LibraryFiles.Replace(
                     Path.Combine(folder, $"{entry.Path.Replace('/', '~')}.{id:N}.json"),
                     JsonSerializer.SerializeToUtf8Bytes(
                         new(id, entry.Name, entry.Path, entry.Outputs, entry.Exports),
@@ -188,9 +188,22 @@ public sealed class BuildJournal {
     }
 
     void Append(BuildLogLine line) {
+        // A crash mid-line leaves a tail with no newline, which would swallow the line after it. A blank line is
+        // skipped by a reader; a line glued to a torn one is lost with it.
+        var torn = File.Exists(log) && !EndsLine();
         using var stream = new FileStream(log, FileMode.Append, FileAccess.Write, FileShare.Read);
         var compact = JsonSerializer.Serialize(line, BuildLogJson.Options);
-        stream.Write(Encoding.UTF8.GetBytes(compact + "\n"));
+        stream.Write(Encoding.UTF8.GetBytes((torn ? "\n" : string.Empty) + compact + "\n"));
+    }
+
+    bool EndsLine() {
+        using var stream = new FileStream(log, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        if (stream.Length == 0) {
+            return true;
+        }
+
+        stream.Seek(-1, SeekOrigin.End);
+        return stream.ReadByte() == '\n';
     }
 
     sealed record Entry(string Name, string Path, List<OutputReport> Outputs, List<ExportReport> Exports);

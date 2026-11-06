@@ -1,4 +1,5 @@
 using Patina.Ipc;
+using Patina.Server.Stacks;
 using Vixen.NodeGraph;
 
 namespace Patina.Server.Graphs;
@@ -14,6 +15,7 @@ public sealed class GraphEvaluator(
     GraphSessions sessions,
     WorkerLink worker,
     PreviewStore store,
+    StackSessions stacks,
     ILogger<GraphEvaluator> logger
 ) : BackgroundService {
     const int PreviewSide = 256;
@@ -130,7 +132,13 @@ public sealed class GraphEvaluator(
         }
 
         untilTrim = TrimInterval;
-        store.Trim(sessions.All.SelectMany(static session => session.PreviewHashes));
+        // Across both kinds of session, or trimming for a graph takes the pictures a stack is showing.
+        store.Trim(
+            [
+                ..sessions.All.SelectMany(static session => session.PreviewHashes),
+                ..stacks.All.SelectMany(static session => session.PreviewHashes)
+            ]
+        );
     }
 
     async Task ForgetClosedAsync(CancellationToken cancellationToken) {

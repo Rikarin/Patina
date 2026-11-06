@@ -30,6 +30,8 @@ class WorkerStatus:
             process_id (int | None | Unset): The Worker's process id, from its hello.
             uptime_seconds (float | None | Unset): How long the Worker has run, from its last health reply.
             working_set_bytes (int | None | Unset): The Worker's memory, from its last health reply.
+            busy_seconds (float | None | Unset): How long its current device work has gone without progress, from its last
+                health.
      """
 
     connected: bool
@@ -37,6 +39,7 @@ class WorkerStatus:
     process_id: int | None | Unset = UNSET
     uptime_seconds: float | None | Unset = UNSET
     working_set_bytes: int | None | Unset = UNSET
+    busy_seconds: float | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -70,6 +73,12 @@ class WorkerStatus:
         else:
             working_set_bytes = self.working_set_bytes
 
+        busy_seconds: float | None | Unset
+        if isinstance(self.busy_seconds, Unset):
+            busy_seconds = UNSET
+        else:
+            busy_seconds = self.busy_seconds
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -84,6 +93,8 @@ class WorkerStatus:
             field_dict["uptimeSeconds"] = uptime_seconds
         if working_set_bytes is not UNSET:
             field_dict["workingSetBytes"] = working_set_bytes
+        if busy_seconds is not UNSET:
+            field_dict["busySeconds"] = busy_seconds
 
         return field_dict
 
@@ -134,12 +145,23 @@ class WorkerStatus:
         working_set_bytes = _parse_working_set_bytes(d.pop("workingSetBytes", UNSET))
 
 
+        def _parse_busy_seconds(data: object) -> float | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(float | None | Unset, data)
+
+        busy_seconds = _parse_busy_seconds(d.pop("busySeconds", UNSET))
+
+
         worker_status = cls(
             connected=connected,
             version=version,
             process_id=process_id,
             uptime_seconds=uptime_seconds,
             working_set_bytes=working_set_bytes,
+            busy_seconds=busy_seconds,
         )
 
 

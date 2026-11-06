@@ -7,6 +7,11 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A stack cannot name a paint file outside its own folder, and a Server with no token only answers to a loopback `Host` (ADR 0013).
+- A second Server on a library is refused by an operating system lock before it touches anything, including on a shared drive.
+- Files left by a crash are swept at start-up, `patina cache prune <library>` clears old objects and reports, and trimming previews
+  no longer removes what a stack is showing.
+- Library files reach the disk before their name does, an edited viewing table reloads, and a torn build log loses only its torn line.
 - A fault in one job, stack or graph no longer stops the Server, and a bad setting in `project.yaml` fails its job instead of hanging
   the queue.
 - A long stroke on a big stack no longer gets a healthy Worker dropped: health checks are answered while it works, and a Worker whose

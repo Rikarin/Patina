@@ -3800,6 +3800,11 @@ export interface components {
        * @description The Worker's memory, from its last health reply.
        */
       workingSetBytes?: null | number;
+      /**
+       * Format: double
+       * @description How long its current device work has gone without progress, from its last health.
+       */
+      busySeconds?: null | number;
     };
   };
   responses: never;

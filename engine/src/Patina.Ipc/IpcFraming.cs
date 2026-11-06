@@ -14,6 +14,11 @@ public static class IpcFraming {
         CancellationToken cancellationToken = default
     ) {
         var payload = JsonSerializer.SerializeToUtf8Bytes(message, IpcJsonContext.Default.IpcMessage);
+        if (payload.Length > MaxFrameBytes) {
+            // The peer would close the link on it, which would look like a lost Worker and be sent again for ever.
+            throw new IpcException($"A message of {payload.Length} bytes is more than the link carries.");
+        }
+
         var frame = new byte[4 + payload.Length];
         BinaryPrimitives.WriteInt32LittleEndian(frame, payload.Length);
         payload.CopyTo(frame, 4);

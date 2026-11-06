@@ -5,6 +5,22 @@ namespace Patina.Library;
 ///     so an index or a document means the same on every platform.
 /// </summary>
 public static class LibraryLayout {
+    /// <summary>
+    ///     A name a library file gives for something beside it. Library files come from anywhere a Git clone does, so a
+    ///     name that is rooted or climbs out of its folder is refused, or a crafted stack could overwrite any file.
+    /// </summary>
+    /// <returns>The full path.</returns>
+    /// <exception cref="InvalidDataException">The name leaves the folder.</exception>
+    public static string Beside(string folder, string name) {
+        var root = Path.GetFullPath(folder);
+        var full = Path.GetFullPath(name, root);
+        if (Path.IsPathRooted(name) || !full.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal)) {
+            throw new InvalidDataException($"'{name}' is not a file in its own folder.");
+        }
+
+        return full;
+    }
+
     /// <summary>Where the graphs a graph may hold as nodes live, beside it. Vixen's convention and name.</summary>
     public const string CompoundsFolder = "Compounds";
 

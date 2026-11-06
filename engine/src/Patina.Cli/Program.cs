@@ -15,12 +15,15 @@ switch (args) {
         return LibraryCommands.New(path, options);
     case ["library", "check", var path, .. var options]:
         return LibraryCommands.Check(path, options);
+    case ["cache", "prune", var path, .. var options]:
+        return LibraryCommands.Prune(path, options);
     default:
         await Console.Error.WriteLineAsync(
             """
             Usage:
               patina version
               patina bake <graph.vxtexgraph> <folder> [--library <path>] [--mesh-maps <bake folder>]
+              patina cache prune <library> [--days <n>]
             """
             + "\n"
             + MeshMapCommand.Usage

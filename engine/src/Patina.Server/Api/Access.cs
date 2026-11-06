@@ -22,8 +22,14 @@ public static class Access {
         );
 
         if (token is null) {
-            // Browsers apply no CORS to WebSockets, so check the origin here: no foreign page may listen in.
+            // Browsers apply no CORS to WebSockets, so check the origin here: no foreign page may listen in. With no
+            // token the Host header is checked too, or a page on a name that resolves here could call as this machine.
             app.Use(static async (context, next) => {
+                    if (!IsLoopbackHost(context.Request.Host.Host)) {
+                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                        return;
+                    }
+
                     if (context.Request.Path.StartsWithSegments("/ws")
                         && context.Request.Headers.Origin.ToString() is { Length: > 0 } origin
                         && !IsLoopbackOrigin(origin)) {
@@ -54,6 +60,10 @@ public static class Access {
             }
         );
     }
+
+    public static bool IsLoopbackHost(string host) =>
+        host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+        || (IPAddress.TryParse(host, out var address) && IPAddress.IsLoopback(address));
 
     /// <summary>Refuses to expose an unauthenticated Server beyond this machine.</summary>
     public static void RequireTokenBeyondLoopback(string urls, string? token) {
