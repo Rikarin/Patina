@@ -53,17 +53,18 @@ public sealed record ProjectPage(IReadOnlyList<ProjectSummary> Items, int Total,
 /// <param name="Mesh">A mesh file on the Server's machine to copy in. Null leaves the project to get one later.</param>
 /// <param name="Resolution">The width and height of a stack it starts with. Null is 2048.</param>
 /// <param name="Kind">
-///     The document it starts with: <c>texturing</c>, <c>layered-material</c> or <c>graph</c>. Null is <c>texturing</c>
-///     with
-///     a mesh and nothing without one.
+///     The document it starts with: <c>texturing</c>, <c>layered-material</c>, <c>image-material</c> or <c>graph</c>.
+///     Null is <c>texturing</c> with a mesh and nothing without one.
 /// </param>
+/// <param name="Image">The picture an <c>image-material</c> starts from, on the Server\'s machine.</param>
 public sealed record ProjectCreateRequest(
     string Name,
     string? Folder = null,
     IReadOnlyList<string>? Tags = null,
     string? Mesh = null,
     int? Resolution = null,
-    string? Kind = null
+    string? Kind = null,
+    string? Image = null
 );
 
 /// <summary>A result of a bake in a project's folder.</summary>
@@ -116,12 +117,14 @@ public sealed record ProjectMeshRequest(string Project, string Mesh, string? Hig
 /// <param name="Name">Its display name. Its file is made from it.</param>
 /// <param name="Mesh">The mesh a <c>texturing</c> document is on.</param>
 /// <param name="Resolution">The width and height of a stack. Null is 2048.</param>
+/// <param name="Image">The picture an <c>image-material</c> starts from, on the Server's machine.</param>
 public sealed record ProjectDocumentRequest(
     string Project,
     string Kind,
     string Name,
     Guid? Mesh = null,
-    int? Resolution = null
+    int? Resolution = null,
+    string? Image = null
 );
 
 /// <summary>The body of <c>PATCH /api/v1/library/project/document</c>.</summary>

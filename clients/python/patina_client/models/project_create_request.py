@@ -31,10 +31,10 @@ class ProjectCreateRequest:
             mesh (None | str | Unset): A mesh file on the Server's machine to copy in. Null leaves the project to get one
                 later.
             resolution (int | None | Unset): The width and height of a stack it starts with. Null is 2048.
-            kind (None | str | Unset): The document it starts with: `texturing`, `layered-material` or `graph`. Null is
-                `texturing`
-                with
-                a mesh and nothing without one.
+            kind (None | str | Unset): The document it starts with: `texturing`, `layered-material`, `image-material` or
+                `graph`.
+                Null is `texturing` with a mesh and nothing without one.
+            image (None | str | Unset): The picture an `image-material` starts from, on the Server\\'s machine.
      """
 
     name: str
@@ -43,6 +43,7 @@ class ProjectCreateRequest:
     mesh: None | str | Unset = UNSET
     resolution: int | None | Unset = UNSET
     kind: None | str | Unset = UNSET
+    image: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -86,6 +87,12 @@ class ProjectCreateRequest:
         else:
             kind = self.kind
 
+        image: None | str | Unset
+        if isinstance(self.image, Unset):
+            image = UNSET
+        else:
+            image = self.image
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -102,6 +109,8 @@ class ProjectCreateRequest:
             field_dict["resolution"] = resolution
         if kind is not UNSET:
             field_dict["kind"] = kind
+        if image is not UNSET:
+            field_dict["image"] = image
 
         return field_dict
 
@@ -170,6 +179,16 @@ class ProjectCreateRequest:
         kind = _parse_kind(d.pop("kind", UNSET))
 
 
+        def _parse_image(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        image = _parse_image(d.pop("image", UNSET))
+
+
         project_create_request = cls(
             name=name,
             folder=folder,
@@ -177,6 +196,7 @@ class ProjectCreateRequest:
             mesh=mesh,
             resolution=resolution,
             kind=kind,
+            image=image,
         )
 
 

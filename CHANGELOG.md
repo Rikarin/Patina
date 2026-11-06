@@ -11,8 +11,14 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   projects can be dragged between them, one or several at a time. Deleting a folder moves what it holds up a level, so it never
   deletes a project. Folders are folders on disk, with a `folder.yaml` that holds the colour and keeps an empty one in Git. A search
   or a tag still lists across all of them.
-- A project owns its mesh and its layer stack: `project.yaml` is schema 2. New Project takes a mesh and a resolution, and opens ready
-  to paint. Double-clicking a project opens it. The Paint pane has no path box.
+- A project holds typed documents (ADR 0012): `project.yaml` is schema 2, and lists its meshes and its Texturing, Layered Material,
+  Image Material and Material Graph documents. New Project takes a kind and opens ready to work. A project opens in the tree to
+  show them, and the Paint pane has no path box.
+- The app starts on a Start screen, with no empty panes. Each kind of document opens its own layout, kept per kind, and open
+  documents are tabs that keep their edits and undo while another is in front. Bake and Export are dialogs.
+- Materials reach layers from a shelf: a graph's maps fill a stack's channels by usage, live, and a Layered Material or one of the
+  six shipped materials unfolds into a stack as layers. An Image Material makes a material from one picture, with height from its
+  brightness and no neural step. A Layered Material is previewed on a sphere.
 - The app opens and creates libraries itself, from the File menu or the empty Library, remembers recent ones and reopens the last.
   `PATINA_LIBRARY` stays for scripts. `patina-server --create-library true` lays out a library that does not exist yet.
 - The app has its own menus, and the window title says what is open. Reload and the developer tools are not in a packaged build.

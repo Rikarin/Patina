@@ -113,7 +113,7 @@ static class LibraryEndpoints {
             }
 
             var kind = request.Kind ?? (request.Mesh is null ? null : DocumentKinds.Texturing);
-            if (kind is not (null or DocumentKinds.Graph or DocumentKinds.LayeredMaterial or DocumentKinds.Texturing)) {
+            if (kind is not null && !DocumentKinds.Known(kind)) {
                 throw new ProjectRefusedException($"'{kind}' cannot be made yet.");
             }
 
@@ -121,12 +121,16 @@ static class LibraryEndpoints {
                 throw new ProjectRefusedException("A texturing project needs a mesh.");
             }
 
+            if (kind == DocumentKinds.ImageMaterial && !File.Exists(request.Image)) {
+                throw new ProjectRefusedException("An image material needs a picture.");
+            }
+
             var project = library.CreateProject(new(request.Name, request.Folder, request.Tags));
             var added = request.Mesh is { } source ? library.AddMesh(project.Path, source, null) : null;
             if (kind is not null) {
                 LibraryTreeEndpoints.MakeDocument(
                     library,
-                    new(project.Path, kind, request.Name, added?.Id.Value, request.Resolution)
+                    new(project.Path, kind, request.Name, added?.Id.Value, request.Resolution, request.Image)
                 );
             }
 

@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('patina', {
     ipcRenderer.on('patina:command', (_event, command: string) => listener(command));
   },
   openMesh: () => ipcRenderer.invoke('patina:openMesh'),
+  openImage: () => ipcRenderer.invoke('patina:openImage'),
   openFolder: () => ipcRenderer.invoke('patina:openFolder'),
   setUnsaved: (unsaved: boolean) => {
     ipcRenderer.send('patina:unsaved', unsaved);

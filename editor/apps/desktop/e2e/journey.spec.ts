@@ -1,6 +1,6 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { answerOpen as answerFile, answerSave as answerAgain, leave, newLibrary, newProject } from './projects';
@@ -14,6 +14,9 @@ const softwareWebGl = process.platform === 'linux' ? ['--use-angle=swiftshader',
  * What a person does, with nothing behind their back: the app starts with no library and no environment variable, and
  * everything after that is clicks. The system's file dialogs are the only thing answered for them.
  */
+/** One grey pixel. */
+const Pixel = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGP4DwABAQEAG7buVgAAAABJRU5ErkJggg==';
+
 let scratch: string;
 let app: ElectronApplication;
 let window: Page;
@@ -158,6 +161,31 @@ test('a shipped material reaches a stack from the shelf', async () => {
   await expect(window.getByTestId('paint-layer-moulding')).toBeVisible({ timeout: 15_000 });
   await expect.poll(() => window.getByTestId('paint-picture').getAttribute('src'), { timeout: 30_000 }).not.toBe(before);
   await window.screenshot({ path: join(shots, 'shelf.png') });
+});
+
+test('a layered material is seen on a shape, and a photo becomes a material', async () => {
+  await launch();
+  await newLibrary(app, window, join(scratch, 'Ember.ptlib'));
+
+  await newProject(app, window, 'Moss');
+  await expect(window.getByTestId('viewport-mesh')).toHaveText('Sphere.glb', { timeout: 30_000 });
+  await expect(window.getByTestId('viewport-paint')).toHaveCount(0);
+
+  const photo = join(scratch, 'wall.png');
+  writeFileSync(photo, Buffer.from(Pixel, 'base64'));
+  await answerOpen(photo);
+  await window.getByTestId('library-new-project').click();
+  await window.getByTestId('new-project-name').fill('Wall');
+  await window.getByTestId('new-project-kind').selectOption('image-material');
+  await window.getByTestId('new-project-image').click();
+  await expect(window.getByTestId('new-project-image-name')).toHaveText('wall.png');
+  await window.getByRole('button', { name: 'Create' }).click();
+
+  await expect(window.getByTestId('image-material-map')).toHaveCount(4, { timeout: 30_000 });
+  await expect(window.getByTestId('graph-canvas')).toHaveCount(0);
+  await window.getByTestId('image-material-map').filter({ hasText: 'Normal' }).click();
+  await window.getByTestId('image-material-graph').click();
+  await expect(window.getByTestId('graph-canvas')).toBeVisible();
 });
 
 test('painted work asks before the project is left', async () => {

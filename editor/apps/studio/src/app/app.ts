@@ -9,6 +9,7 @@ import { desktop } from './core/desktop';
 import { SystemStatus } from './core/system-status';
 import { Inspector } from './graph/graph-inspector';
 import { GraphPane } from './graph/graph-pane';
+import { ImageMaterialPane } from './graph/image-material-pane';
 import { TextureView } from './graph/texture-view';
 import { LibraryPane } from './library/library-pane';
 import { ProjectStore } from './library/project-store';
@@ -26,6 +27,7 @@ import { ViewportPane } from './viewport/viewport-pane';
     BakePane,
     ExportPane,
     GraphPane,
+    ImageMaterialPane,
     Inspector,
     LibraryPane,
     MaterialShelf,
@@ -80,6 +82,9 @@ import { ViewportPane } from './viewport/viewport-pane';
       </ng-template>
       <ng-template xuiDockContent="atlas">
         <ptn-paint-atlas />
+      </ng-template>
+      <ng-template xuiDockContent="image">
+        <ptn-image-material />
       </ng-template>
       <ng-template xuiDockContent="shelf">
         <ptn-material-shelf />

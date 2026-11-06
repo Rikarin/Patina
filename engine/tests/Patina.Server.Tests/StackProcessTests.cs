@@ -157,6 +157,44 @@ public sealed class StackProcessTests : IDisposable {
         Assert.Equal(Digest(before, "metalness"), Digest(after, "metalness"));
     }
 
+    /// <summary>One grey pixel, which is all a template needs to show it makes a map per channel.</summary>
+    const string Pixel = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGP4DwABAQEAG7buVgAAAABJRU5ErkJggg==";
+
+    [Fact]
+    public async Task An_image_material_makes_a_map_for_each_channel_it_has() {
+        using var deadline = Deadline(180);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        await StartAsync("Unused.vxlayers", deadline.Token);
+        var photo = Path.Combine(folder.FullName, "wall.png");
+        await File.WriteAllBytesAsync(photo, Convert.FromBase64String(Pixel), deadline.Token);
+        foreach (var body in new object[] {
+                     new { name = "Wall", kind = "image-material", image = photo },
+                     new { name = "Crate", kind = "layered-material" }
+                 }) {
+            var made = await http.PostAsJsonAsync("/api/v1/library/projects", body, deadline.Token);
+            Assert.True(made.IsSuccessStatusCode, await made.Content.ReadAsStringAsync(deadline.Token));
+        }
+
+        var used = await http.PostAsJsonAsync(
+            "/api/v1/library/materials/use",
+            new { project = "crate", source = "projects/wall/wall.vxtexgraph" },
+            deadline.Token
+        );
+        var reply = await used.Content.ReadAsStringAsync(deadline.Token);
+        Assert.True(used.IsSuccessStatusCode, reply);
+
+        var state = await OpenAsync("projects/crate/crate.vxlayers", deadline.Token);
+        var before = await PixelsAsync(state.Id, true, deadline.Token);
+        await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Wall"));
+        var layer = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
+        var graph = JsonDocument.Parse(reply).RootElement.GetProperty("graph").GetString();
+        await EditAsync(state.Id, deadline.Token, new StackSetLayer(layer, Fill: "Graph", Graph: graph));
+
+        var after = await PixelsAsync(state.Id, true, deadline.Token);
+
+        Assert.NotEqual(Digest(before, "roughness"), Digest(after, "roughness"));
+    }
+
     [Fact]
     public async Task A_shipped_material_unfolds_into_layers_and_undoes_as_one_step() {
         using var deadline = Deadline(180);

@@ -158,16 +158,22 @@ panes: they are dialogs started from a Texturing document, which already knows i
   serves the shelf. Blender uses all of these, so nothing depends on the shell (plan §8).
 - **Worker.** Nothing changes for layering. Mesh processing in graphs is a separate decision, below.
 
-## Order of work
+## Order of work, and where it stands
 
-Each step leaves the app working:
-
-1. **Document model:** `project.yaml`, contents API, migration. Tree rows expand to show documents.
-2. **Shell:** Start screen, workspaces, tabs. Stores become per-document. Bake and Export become dialogs.
-3. **Material contract:** roles, references, parameters on layers, then the shelf.
-4. **Layered Material:** a stack as a material, with tiling preview.
-5. **Image Material:** the template, its screen, and the node.
-6. **Element Brushes and masks:** graph outputs as brushes.
+1. **Document model:** built. `project.yaml` lists meshes and documents, and tree rows expand to show them. Documents and meshes use
+   `AssetId`, so asset references can reach them.
+2. **Shell:** built. Start screen, a layout per kind, tabs, Bake and Export as dialogs.
+3. **Material contract:** built, smaller than drafted.
+   - `GET /library/materials` lists shipped, project and shared materials, and a shelf applies them.
+   - A graph is published as a compound in `Compounds/Materials`, with one output per usage, and Vixen's graph fill now takes the
+     output named for its channel. Publishing again on opening a stack is what carries a saved edit across.
+   - ⚠ A graph's role is inferred from having Outputs, so `mask`, `brush` and `filter` roles do not exist yet.
+   - ⚠ A fill names a compound by path, not by GUID, and a layer's numbers reach a graph's parameters in Vixen but no UI sets them.
+4. **Layered Material:** built. It unfolds into a stack through Vixen's smart material path, so it is a copy of its layers at that
+   moment: editing it later does not change a stack that used it, and paint layers do not travel. Previewed on a generated sphere.
+   ⚠ No tiling preview yet.
+5. **Image Material:** built. A template graph and a screen of maps. Height from brightness; no neural step.
+6. **Graph brushes and masks:** not built. It needs a way to render a graph to a picture for a brush alpha.
 
 ## Open questions
 

@@ -2530,11 +2530,12 @@ export interface components {
        */
       resolution?: null | number;
       /**
-       * @description The document it starts with: `texturing`, `layered-material` or `graph`. Null is `texturing`
-       *     with
-       *     a mesh and nothing without one.
+       * @description The document it starts with: `texturing`, `layered-material`, `image-material` or `graph`.
+       *     Null is `texturing` with a mesh and nothing without one.
        */
       kind?: null | string;
+      /** @description The picture an `image-material` starts from, on the Server\'s machine. */
+      image?: null | string;
     };
     /** @description Something in a project that can be opened and edited (ADR 0012). */
     ProjectDocumentInfo: {
@@ -2588,6 +2589,8 @@ export interface components {
        * @description The width and height of a stack. Null is 2048.
        */
       resolution?: null | number;
+      /** @description The picture an `image-material` starts from, on the Server's machine. */
+      image?: null | string;
     };
     /** @description A result of a bake in a project's folder. */
     ProjectFile: {

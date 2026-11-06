@@ -32,6 +32,8 @@ export interface DesktopBridge {
   onCommand(listener: (command: string) => void): void;
   /** Asks the user for a mesh file: its path, or null if they cancelled. */
   openMesh(): Promise<string | null>;
+  /** Asks the user for a picture: its path, or null if they cancelled. */
+  openImage(): Promise<string | null>;
   /** Asks the user for a folder: its path, or null if they cancelled. */
   openFolder(): Promise<string | null>;
   /** Tells the app whether quitting would lose anything, which is what decides whether it asks. */

@@ -7100,7 +7100,14 @@
               "null",
               "string"
             ],
-            "description": "The document it starts with: \u0060texturing\u0060, \u0060layered-material\u0060 or \u0060graph\u0060. Null is \u0060texturing\u0060\nwith\na mesh and nothing without one."
+            "description": "The document it starts with: \u0060texturing\u0060, \u0060layered-material\u0060, \u0060image-material\u0060 or \u0060graph\u0060.\nNull is \u0060texturing\u0060 with a mesh and nothing without one."
+          },
+          "image": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The picture an \u0060image-material\u0060 starts from, on the Server\\\u0027s machine."
           }
         },
         "description": "The body of \u0060POST /api/v1/library/projects\u0060."
@@ -7204,6 +7211,13 @@
             ],
             "description": "The width and height of a stack. Null is 2048.",
             "format": "int32"
+          },
+          "image": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The picture an \u0060image-material\u0060 starts from, on the Server\u0027s machine."
           }
         },
         "description": "The body of \u0060POST /api/v1/library/project/documents\u0060."

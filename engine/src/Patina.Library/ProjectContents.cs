@@ -58,8 +58,11 @@ static class ProjectFiles {
             Require(high);
         }
 
-        var added = new ProjectMesh(AssetId.New(), Bring(full, mesh), high is null ? null : Bring(full, high));
-        var others = document.Meshes.Where(m => m.File != added.File);
+        var file = Bring(full, mesh);
+        var held = document.Meshes.FirstOrDefault(m => m.File == file);
+        // The same file again keeps its id, or the documents on it would point at nothing.
+        var added = new ProjectMesh(held?.Id ?? AssetId.New(), file, high is null ? held?.High : Bring(full, high));
+        var others = document.Meshes.Where(m => m.File != file);
         LibraryFiles.WriteProject(root, path, document with { Meshes = [..others, added] });
         return added;
     }

@@ -114,7 +114,8 @@ static class PatinaApi {
     static Results<Ok<ViewportState>, ProblemHttpResult> WearStack(
         ViewportStackRequest request,
         StackSessions stacks,
-        ViewportSession session
+        ViewportSession session,
+        ServerIdentity identity
     ) {
         if (stacks.Find(request.Stack) is not { } stack) {
             return TypedResults.Problem(
@@ -123,9 +124,11 @@ static class PatinaApi {
             );
         }
 
-        if (stack.ModelFile is not { } file || !File.Exists(file)) {
+        // A material has no mesh of its own, and is seen on a shape instead.
+        var file = stack.ModelFile ?? PreviewShape.File(identity.Library);
+        if (!File.Exists(file)) {
             return TypedResults.Problem(
-                stack.ModelFile is null ? "This stack has no mesh." : $"There is no file at '{stack.ModelFile}'.",
+                $"There is no file at '{stack.ModelFile}'.",
                 statusCode: StatusCodes.Status422UnprocessableEntity
             );
         }

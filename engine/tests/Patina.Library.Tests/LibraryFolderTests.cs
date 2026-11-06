@@ -166,6 +166,22 @@ public sealed class LibraryFolderTests : IDisposable {
     }
 
     [Fact]
+    public void Adding_a_mesh_again_keeps_what_is_on_it() {
+        var made = library.CreateProject(new("Crate"));
+        var low = Path.Combine(folder.FullName, "low.glb");
+        var high = Path.Combine(folder.FullName, "high.glb");
+        File.WriteAllText(low, "mesh");
+        File.WriteAllText(high, "mesh");
+        var mesh = library.AddMesh(made.Path, low, null);
+        library.AddDocument(made.Path, DocumentKinds.Texturing, "crate.vxlayers", "Crate", mesh.Id);
+
+        var again = library.AddMesh(made.Path, low, high);
+
+        Assert.Equal(mesh.Id, again.Id);
+        Assert.Equal(again.Id.Value, Assert.Single(library.Contents(made.Path).Documents).Mesh);
+    }
+
+    [Fact]
     public void A_texturing_document_needs_a_mesh_and_no_other_kind_has_one() {
         var made = library.CreateProject(new("Crate"));
 

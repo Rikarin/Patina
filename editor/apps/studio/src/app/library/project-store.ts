@@ -20,6 +20,11 @@ export interface DocumentTab {
   session: string | null;
 }
 
+/** Whether a tab is a graph underneath, which an image material is. */
+function isGraph(tab: DocumentTab | null | undefined): boolean {
+  return tab?.kind === 'graph' || tab?.kind === 'image-material';
+}
+
 /** What opening a project means: its texturing, or else whatever it has. */
 function firstOf(documents: readonly ProjectDocumentInfo[]): ProjectDocumentInfo | undefined {
   return documents.find(document => document.kind === 'texturing') ?? documents[0];
@@ -85,7 +90,7 @@ export class ProjectStore {
     // What is in front reports its own edits, and a tab behind keeps what it last reported.
     effect(() => {
       const tab = this.active();
-      const dirty = tab?.kind === 'graph' ? this.graph.unsaved() : this.paint.state()?.history.dirty === true;
+      const dirty = isGraph(tab) ? this.graph.unsaved() : this.paint.state()?.history.dirty === true;
       if (tab && !this.switching && tab.dirty !== dirty) {
         untracked(() => this.update(tab.path, { dirty }));
       }
@@ -151,13 +156,17 @@ export class ProjectStore {
       this.detach();
       await this.clearViewport();
       this.mutableActive.set(path);
-      if (tab.kind === 'graph') {
+      if (isGraph(tab)) {
         await this.graph.open(path);
         this.update(path, { session: this.graph.document()?.id ?? null });
       } else {
         await this.refreshMaterials(tab.project);
         await this.paint.open(path, false);
         this.update(path, { session: this.paint.state()?.id ?? null });
+        if (tab.kind === 'layered-material') {
+          await this.paint.wear();
+          this.bakes.viewportChanged.update(count => count + 1);
+        }
       }
     } catch (failure) {
       this.mutableFailure.set(messageOf(failure));
@@ -210,9 +219,17 @@ export class ProjectStore {
     desktop()?.quit();
   }
 
+  /** Shows an image material as the graph it is, for going further than its maps. */
+  openAsGraph(): void {
+    const tab = this.active();
+    if (tab) {
+      this.update(tab.path, { kind: 'graph' });
+    }
+  }
+
   /** Saves what is in front. */
   async saveActive(): Promise<void> {
-    await (this.active()?.kind === 'graph' ? this.graph.save() : this.paint.act('save'));
+    await (isGraph(this.active()) ? this.graph.save() : this.paint.act('save'));
   }
 
   /** Asks to start a project with this kind of document. */
@@ -281,7 +298,7 @@ export class ProjectStore {
   }
 
   private isShowing(tab: DocumentTab): boolean {
-    return tab.kind === 'graph' ? this.graph.document() !== null : this.paint.state() !== null;
+    return isGraph(tab) ? this.graph.document() !== null : this.paint.state() !== null;
   }
 
   /** Lets go of what is in front, whose session stays open on the Server. */
@@ -308,8 +325,8 @@ export class ProjectStore {
   /** The graph's own Close ended its session, so only its tab is left to go. */
   private graphClosed(): void {
     const tab = this.active();
-    if (tab?.kind === 'graph') {
-      this.mutableTabs.update(tabs => tabs.filter(held => held.path !== tab.path));
+    if (isGraph(tab)) {
+      this.mutableTabs.update(tabs => tabs.filter(held => held.path !== tab?.path));
       this.mutableActive.set(null);
       const next = this.mutableTabs().at(-1);
       if (next) {
@@ -353,7 +370,7 @@ export class ProjectStore {
 
     const client = await this.library.api();
     const id = tab.session;
-    await (tab.kind === 'graph'
+    await (isGraph(tab)
       ? client.DELETE('/api/v1/graphs/{id}', { params: { path: { id }, query: { discard } } })
       : client.DELETE('/api/v1/stacks/{id}', { params: { path: { id } } }));
   }

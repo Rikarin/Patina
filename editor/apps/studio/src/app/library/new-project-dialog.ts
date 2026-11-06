@@ -45,7 +45,16 @@ import { ProjectStore } from './project-store';
               }
             </select>
           </label>
-          <div class="flex flex-col gap-1">
+          @if (kind() === 'image-material') {
+            <div class="flex flex-col gap-1">
+              <span class="section-label">Picture</span>
+              <div class="flex items-center gap-2">
+                <span class="min-w-0 flex-1 truncate" data-testid="new-project-image-name">{{ imageName() || 'None yet' }}</span>
+                <button type="button" xuiButton size="sm" data-testid="new-project-image" (click)="pickImage()">Choose…</button>
+              </div>
+            </div>
+          }
+          <div class="flex flex-col gap-1" [hidden]="kind() !== 'texturing'">
             <span class="section-label">Mesh</span>
             <div class="flex items-center gap-2">
               @if (canPick) {
@@ -103,6 +112,13 @@ export class NewProjectDialog {
     }
   }
 
+  protected async pickImage(): Promise<void> {
+    const image = await desktop()?.openImage();
+    if (image) {
+      this.image.set(image);
+    }
+  }
+
   protected number(event: Event): number {
     return Number((event.target as HTMLSelectElement).value);
   }
@@ -123,10 +139,13 @@ export class NewProjectDialog {
   protected readonly kinds = [
     { value: 'texturing', label: 'Texturing: paint a mesh' },
     { value: 'layered-material', label: 'Layered Material: layers with no mesh' },
+    { value: 'image-material', label: 'Image Material: from one photo' },
     { value: 'graph', label: 'Material Graph: nodes' }
   ];
   protected readonly kind = linkedSignal(() => this.startKind());
   protected readonly mesh = signal('');
+  protected readonly image = signal('');
+  protected readonly imageName = computed(() => this.image().split(/[\\/]/u).pop() ?? '');
   protected readonly resolution = signal(2048);
   protected readonly meshName = computed(() => this.mesh().split(/[\\/]/).pop() ?? '');
   protected readonly tags = signal<string[]>([]);
@@ -134,7 +153,11 @@ export class NewProjectDialog {
   private readonly saving = signal(false);
   /** Texturing is painting on something, so it waits for a mesh. */
   protected readonly canCreate = computed(
-    () => this.name().trim() !== '' && !this.saving() && (this.kind() !== 'texturing' || this.mesh().trim() !== '')
+    () =>
+      this.name().trim() !== '' &&
+      !this.saving() &&
+      (this.kind() !== 'texturing' || this.mesh().trim() !== '') &&
+      (this.kind() !== 'image-material' || this.image() !== '')
   );
 
   constructor() {
@@ -164,10 +187,12 @@ export class NewProjectDialog {
         tags: this.tags(),
         mesh: this.mesh().trim() || null,
         resolution: this.resolution(),
-        kind: this.kind()
+        kind: this.kind(),
+        image: this.image() || null
       });
       this.name.set('');
       this.mesh.set('');
+      this.image.set('');
       this.tags.set([]);
       this.open.set(false);
       await this.tree.reload();

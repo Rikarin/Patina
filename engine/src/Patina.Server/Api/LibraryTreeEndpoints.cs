@@ -84,6 +84,9 @@ static class LibraryTreeEndpoints {
             case DocumentKinds.LayeredMaterial:
                 MakeStack(library, request, side, null);
                 break;
+            case DocumentKinds.ImageMaterial:
+                ImageMaterial.Create(library, request);
+                break;
             case DocumentKinds.Texturing:
                 var contents = library.Contents(request.Project);
                 var mesh = contents.Meshes.FirstOrDefault(m => m.Id == request.Mesh && m.Id is not null)
@@ -91,7 +94,7 @@ static class LibraryTreeEndpoints {
                 MakeStack(library, request, side, mesh);
                 break;
             default:
-                throw new ProjectRefusedException($"'{request.Kind}' cannot be made yet.");
+                throw new ProjectRefusedException($"'{request.Kind}' is no kind of document.");
         }
     }
 

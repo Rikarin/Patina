@@ -7,7 +7,8 @@ import { desktop } from './desktop';
 const Kinds = [
   { kind: 'texturing', title: 'Texturing', text: 'Paint and layer materials on a mesh.' },
   { kind: 'layered-material', title: 'Layered Material', text: 'Stack materials into a new one, with no mesh.' },
-  { kind: 'graph', title: 'Material Graph', text: 'Build a material, mask or brush from nodes.' }
+  { kind: 'image-material', title: 'Image Material', text: 'Make a material from one photo.' },
+  { kind: 'graph', title: 'Material Graph', text: 'Build a material from nodes.' }
 ];
 
 /** Where the app starts with nothing open: what can be begun, and what was being worked on. */
@@ -19,7 +20,7 @@ const Kinds = [
   template: `
     @if (library.state().kind === 'ready') {
       <h1 class="text-lg font-semibold">What are you making?</h1>
-      <div class="grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="grid w-full max-w-3xl grid-cols-2 gap-3 lg:grid-cols-4">
         @for (item of kinds; track item.kind) {
           <button
             type="button"

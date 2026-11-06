@@ -31,6 +31,7 @@ class ProjectDocumentRequest:
             name (str): Its display name. Its file is made from it.
             mesh (None | Unset | UUID): The mesh a `texturing` document is on.
             resolution (int | None | Unset): The width and height of a stack. Null is 2048.
+            image (None | str | Unset): The picture an `image-material` starts from, on the Server's machine.
      """
 
     project: str
@@ -38,6 +39,7 @@ class ProjectDocumentRequest:
     name: str
     mesh: None | Unset | UUID = UNSET
     resolution: int | None | Unset = UNSET
+    image: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -65,6 +67,12 @@ class ProjectDocumentRequest:
         else:
             resolution = self.resolution
 
+        image: None | str | Unset
+        if isinstance(self.image, Unset):
+            image = UNSET
+        else:
+            image = self.image
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -77,6 +85,8 @@ class ProjectDocumentRequest:
             field_dict["mesh"] = mesh
         if resolution is not UNSET:
             field_dict["resolution"] = resolution
+        if image is not UNSET:
+            field_dict["image"] = image
 
         return field_dict
 
@@ -121,12 +131,23 @@ class ProjectDocumentRequest:
         resolution = _parse_resolution(d.pop("resolution", UNSET))
 
 
+        def _parse_image(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        image = _parse_image(d.pop("image", UNSET))
+
+
         project_document_request = cls(
             project=project,
             kind=kind,
             name=name,
             mesh=mesh,
             resolution=resolution,
+            image=image,
         )
 
 
