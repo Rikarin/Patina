@@ -47,6 +47,7 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     /// <exception cref="LibraryFormatException"><c>library.yaml</c> cannot be used.</exception>
     public static OpenLibrary Open(string root) {
         var file = Path.Combine(root, LibraryLayout.LibraryFile);
+        SharedFolderMove.Run(root);
         return new(root, DocumentCodec.ReadLibrary(File.ReadAllText(file), LibraryLayout.LibraryFile));
     }
 
@@ -90,7 +91,7 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     public string CreateGraph(NewGraph graph, string text) {
         var path = NewProjects.GraphPath(graph);
         lock (createGate) {
-            LibraryFiles.CreateGraph(RootPath, path, text, graph.Name.Trim());
+            LibraryFiles.CreateGraph(RootPath, path, text);
         }
 
         Interlocked.Increment(ref unscannedWrites);
@@ -213,6 +214,14 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
             var changed = ProjectFiles.SetMesh(RootPath, path, document, mesh);
             Interlocked.Increment(ref unscannedWrites);
             return changed;
+        }
+    }
+
+    /// <summary>Records that a project reads a document of another one.</summary>
+    public void AddReference(string path, AssetId asset) {
+        lock (createGate) {
+            ProjectFiles.AddReference(RootPath, path, asset);
+            Interlocked.Increment(ref unscannedWrites);
         }
     }
 

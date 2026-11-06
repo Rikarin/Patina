@@ -75,6 +75,17 @@ public sealed class SystemApiTests : IDisposable {
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    /// <summary>With no token, a page on a name that resolves here must not reach the API as this machine.</summary>
+    [Theory]
+    [InlineData("localhost", true)]
+    [InlineData("LOCALHOST", true)]
+    [InlineData("127.0.0.1", true)]
+    [InlineData("::1", true)]
+    [InlineData("evil.example", false)]
+    [InlineData("192.168.1.2", false)]
+    public void Only_a_loopback_name_passes_with_no_token(string host, bool passes) =>
+        Assert.Equal(passes, Api.Access.IsLoopbackHost(host));
+
     [Fact]
     public async Task A_worker_shows_up_and_goes_away() {
         using var client = server.AuthorisedClient();
@@ -83,7 +94,7 @@ public sealed class SystemApiTests : IDisposable {
         var worker = await ConnectWorkerAsync();
         var connected = await WaitForWorkerAsync(client, true);
 
-        Assert.Equal(new(true, "9.9.9", 1234, 12.5, 4096), connected.Worker);
+        Assert.Equal(new(true, "9.9.9", 1234, 12.5, 4096, 0), connected.Worker);
 
         await worker.DisposeAsync();
 

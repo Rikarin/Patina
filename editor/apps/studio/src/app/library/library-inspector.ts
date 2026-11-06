@@ -69,7 +69,7 @@ export class ProjectDetails {
   readonly project = input.required<ProjectSummary>();
 }
 
-/** A shared asset and what saving it would touch: "affects 412 projects, 3 pinned" (plan §5). */
+/** A material and what saving it would touch: "affects 412 projects, 3 pinned" (plan §5). */
 @Component({
   selector: 'ptn-asset-impact',
   imports: [
@@ -206,9 +206,9 @@ export class AssetImpactView {
     });
   }
 
-  /** An asset's path is below shared/, and the Server opens paths relative to the library. */
+  /** An asset's path is below the library, and the Server opens paths relative to the library. */
   protected open(asset: AssetSummary): void {
-    void this.graph.open(`shared/${asset.path}`);
+    void this.graph.open(asset.path);
   }
 
   protected projects(count: number): string {

@@ -5,8 +5,33 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Process tests skip only for a missing Vulkan device, and fail if Vulkan is required. The packaged app ignores development
+  environment variables, its IPC answers only the studio, its fuses are set, and the frames file is private and swept after a kill.
+- A stack cannot name a paint file outside its own folder, and a Server with no token only answers to a loopback `Host` (ADR 0013).
+- A second Server on a library is refused by an operating system lock before it touches anything, including on a shared drive.
+- Files left by a crash are swept at start-up, `patina cache prune <library>` clears old objects and reports, and trimming previews
+  no longer removes what a stack is showing.
+- Library files reach the disk before their name does, an edited viewing table reloads, and a torn build log loses only its torn line.
+- A fault in one job, stack or graph no longer stops the Server, and a bad setting in `project.yaml` fails its job instead of hanging
+  the queue.
+- A long stroke on a big stack no longer gets a healthy Worker dropped: health checks are answered while it works, and a Worker whose
+  device stops moving ends itself so that a new one takes over. A new Worker brings open stacks back with no edit needed.
+- Saving reports what it did: an edit made during a save, or more of a drag after one, leaves the stack unsaved, a stack that will not
+  evaluate refuses to save, and one refused stroke no longer stops painting.
+- A layer-stack build depends on the paint, mesh and bake its stack names, so painting and saving rebuilds it, and it reads the stack's
+  bake.
+
 ### Changed
 
+- There is no `shared/` folder any more: anything in any project can be used in any other. Pins, the impact preview and batch rebuilds
+  work on project documents, the Library's second view lists Materials, and export presets live in `export-presets/`. A library that
+  has `shared/` turns it into a Shared Assets project when it opens, and every reference still resolves.
+- Layers can be selected together with Cmd and Shift, then moved or deleted as one, and Delete, Backspace and Cmd+Backspace delete
+  what is selected. Cmd+Z, redo, Delete and Select All go through the Edit menu, so they work on a Mac, in stacks and graphs alike.
+- Materials drag from the shelf into the stack and land where they are dropped. The shelf lists every material in the Library, with
+  nothing to promote first, and a material from another project brings what it needs.
 - A graph can be used as a material, a mask, a brush or a filter, from its menu in the Library, and the Materials shelf puts it in the
   right place. A brush graph renders to a picture in the project's `brushes` folder.
 - A mask runs a stack of effects: Levels, Invert, Auto Levels, Blur and Sharpen, each with its own numbers.
@@ -66,7 +91,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A generated Python client in `clients/python`, with a Blender-shaped conformance test that needs no Blender.
 - Painting's foundations: layer stacks through the API (`/api/v1/stacks`, `/ws/stacks/{id}`), undoable batches on the same
   numbered events as graphs, strokes sent as lists of stamps, and a Paint pane with a layer list and a brush on the composited map.
-  The composite is the plan's, repaired tile by tile: about 6 ms a stamp at 4K with 20 layers, 38 ms to a client. A Worker that dies
+  The composite is the plan's, repaired tile by tile: about 6 ms a stamp at 4K with 20 layers, 38 ms to a client when idle (under load ADR 0009 measures 67 ms at p50, and 10.9 s for a
+  24 px brush). A Worker that dies
   in a stroke loses nothing. `POST /stacks/{id}/export` writes each map, and `GET /stacks/{id}/pixels` gives a digest of what the
   strokes left, which equals the export's.
 - Painting on a mesh. A stack binds a model (`setModel`) and its maps wear it in the viewport as you paint (`PUT /viewport/stack`), through

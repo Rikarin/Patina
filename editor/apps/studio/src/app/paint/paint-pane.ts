@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
+import { XuiInputImports } from '@xui/input';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { desktop } from '../core/desktop';
 import { ProjectStore } from '../library/project-store';
-import { XuiInputImports } from '@xui/input';
 import { BrushPanel } from './brush-panel';
 import { LayerPanel } from './layer-panel';
 import { PaintStore } from './paint-store';
@@ -35,7 +35,14 @@ import { PaintStore } from './paint-store';
               </span>
             </span>
             @if (canPick && project.document()?.kind === 'texturing') {
-              <button type="button" xuiButton size="sm" variant="ghost" data-testid="paint-mesh" (click)="project.pickMesh()">
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                variant="ghost"
+                data-testid="paint-mesh"
+                (click)="project.pickMesh()"
+              >
                 {{ project.meshName() ? 'Change Mesh…' : 'Choose Mesh…' }}
               </button>
             }

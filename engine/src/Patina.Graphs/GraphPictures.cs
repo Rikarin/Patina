@@ -120,6 +120,9 @@ public sealed class GraphPictures {
         return file.Exists ? new(path, file.Length, file.LastWriteTimeUtc) : new(path, -1, default);
     }
 
+    static bool Inside(string root, string candidate) =>
+        candidate.StartsWith(Path.GetFullPath(root) + Path.DirectorySeparatorChar, StringComparison.Ordinal);
+
     static string Locate(string reference, IReadOnlyList<string> roots) {
         if (Path.IsPathRooted(reference)) {
             return File.Exists(reference) ? reference : throw new FileNotFoundException("there is no such file");
@@ -127,7 +130,7 @@ public sealed class GraphPictures {
 
         foreach (var root in roots) {
             var candidate = Path.GetFullPath(Path.Combine(root, reference));
-            if (File.Exists(candidate)) {
+            if (File.Exists(candidate) && Inside(root, candidate)) {
                 return candidate;
             }
         }

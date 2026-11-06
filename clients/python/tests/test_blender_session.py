@@ -97,7 +97,7 @@ def test_a_blender_shaped_session(session) -> None:
     assert get_viewport.sync(client=client).mesh == str(low)
 
     # Apply a material: a graph from the library, laid over the mesh.
-    graph = open_graph.sync(client=client, body=GraphOpenRequest(path="shared/graphs/Rust.vxtexgraph"))
+    graph = open_graph.sync(client=client, body=GraphOpenRequest(path="projects/graphs/Rust.vxtexgraph"))
     evaluated(client, graph.id, graph.revision)
     applied = show_graph_in_viewport.sync_detailed(client=client, body=ViewportGraphRequest(graph=graph.id))
     if applied.status_code.value >= 400:

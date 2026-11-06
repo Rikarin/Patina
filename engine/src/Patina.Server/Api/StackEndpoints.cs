@@ -230,7 +230,9 @@ static class StackEndpoints {
             return TypedResults.Ok(await evaluator.SaveAsync(session, force, cancellationToken));
         } catch (GraphFileChangedException e) {
             return TypedResults.Problem(e.Message, statusCode: Conflict);
-        } catch (TimeoutException e) {
+        } catch (IpcException e) {
+            return TypedResults.Problem(e.Message, statusCode: Refused);
+        } catch (Exception e) when (e is TimeoutException or IOException) {
             return TypedResults.Problem(e.Message, statusCode: Unavailable);
         }
     }
@@ -313,6 +315,8 @@ static class StackEndpoints {
             return await ReadAsync(id, sessions, evaluator, true, sessions.Resolve(request.Folder), cancellationToken);
         } catch (StackEditRefusedException e) {
             return TypedResults.Problem(e.Message, statusCode: Refused);
+        } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
+            return TypedResults.Problem(e.Message, statusCode: Unavailable);
         }
     }
 

@@ -35,8 +35,6 @@ public enum FindingKind {
     /// <summary>A file an output declares as input that does not exist.</summary>
     MissingInput,
 
-    /// <summary>A shared asset no project reaches.</summary>
-    Orphan,
 
     /// <summary>An output with no result under its current key.</summary>
     StaleOutput,
@@ -53,7 +51,6 @@ public sealed record Finding(FindingKind Kind, string Path, string Detail) {
     /// <summary>Whether the library is wrong, as opposed to merely having work to do or room to tidy.</summary>
     public bool IsError =>
         Kind is not (FindingKind.SchemaDrift
-            or FindingKind.Orphan
             or FindingKind.StaleOutput
             or FindingKind.UnidentifiedFile);
 }
@@ -80,7 +77,7 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
                                      FROM project_reference r JOIN project p ON p.rid = r.project
                                      WHERE NOT EXISTS(SELECT 1 FROM asset a WHERE a.id = r.asset)
                                      UNION ALL
-                                     SELECT 'shared/' || a.path, d.target
+                                     SELECT a.path, d.target
                                      FROM asset_dependency d JOIN asset a ON a.rid = d.asset
                                      WHERE NOT EXISTS(SELECT 1 FROM asset t WHERE t.id = d.target)
                                      """;
@@ -89,45 +86,34 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
                         SELECT 'projects/' || p.path, r.asset, r.revision, f.hash
                         FROM project_reference r JOIN project p ON p.rid = r.project
                         LEFT JOIN asset a ON a.id = r.asset
-                        LEFT JOIN file f ON f.path = 'shared/' || a.path
+                        LEFT JOIN file f ON f.path = a.path
                         WHERE r.mode = 1
                         UNION ALL
-                        SELECT 'shared/' || o.path, d.target, d.revision, f.hash
+                        SELECT o.path, d.target, d.revision, f.hash
                         FROM asset_dependency d JOIN asset o ON o.rid = d.asset
                         LEFT JOIN asset a ON a.id = d.target
-                        LEFT JOIN file f ON f.path = 'shared/' || a.path
+                        LEFT JOIN file f ON f.path = a.path
                         WHERE d.mode = 1
                         """;
-
-    const string Orphans = """
-                           WITH RECURSIVE reachable(id) AS (
-                               SELECT DISTINCT asset FROM project_reference
-                               UNION
-                               SELECT d.target FROM reachable c
-                               JOIN asset a ON a.id = c.id
-                               JOIN asset_dependency d ON d.asset = a.rid
-                           )
-                           SELECT 'shared/' || a.path, a.name FROM asset a WHERE a.id NOT IN reachable
-                           """;
 
     const string DuplicateIds = """
                                 SELECT 'projects/' || path, id FROM project
                                 WHERE id IN (SELECT id FROM project GROUP BY id HAVING count(*) > 1)
                                 UNION ALL
-                                SELECT 'shared/' || path, id FROM asset
+                                SELECT path, id FROM asset
                                 WHERE id IN (SELECT id FROM asset GROUP BY id HAVING count(*) > 1)
                                 """;
 
     const string UnidentifiedFiles = """
                                      SELECT f.path, '' FROM file f
                                      WHERE f.kind = 2
-                                     AND f.path NOT LIKE 'shared/export-presets/%'
-                                     AND NOT EXISTS(SELECT 1 FROM asset a WHERE 'shared/' || a.path = f.path)
+                                     AND f.path NOT LIKE '%.vxlayers'
+                                     AND NOT EXISTS(SELECT 1 FROM asset a WHERE a.path = f.path)
                                      """;
 
     const string MissingAssetFiles = """
-                                     SELECT 'shared/' || a.path, a.name FROM asset a
-                                     WHERE NOT EXISTS(SELECT 1 FROM file f WHERE f.path = 'shared/' || a.path)
+                                     SELECT a.path, a.name FROM asset a
+                                     WHERE NOT EXISTS(SELECT 1 FROM file f WHERE f.path = a.path)
                                      """;
 
     public CheckReport Run(CancellationToken cancellationToken) {
@@ -136,7 +122,6 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
         AddProblems(connection, findings);
         Add(connection, findings, FindingKind.DuplicateId, DuplicateIds);
         Add(connection, findings, FindingKind.MissingReference, MissingReferences);
-        Add(connection, findings, FindingKind.Orphan, Orphans);
         Add(connection, findings, FindingKind.UnidentifiedFile, UnidentifiedFiles);
         Add(connection, findings, FindingKind.MissingAssetFile, MissingAssetFiles);
         AddMissingRevisions(connection, findings);
@@ -225,7 +210,7 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
         using var command = connection.CreateCommand();
         command.CommandText = """
                               SELECT a.rid, a.id, f.hash
-                              FROM asset a LEFT JOIN file f ON f.path = 'shared/' || a.path ORDER BY a.path
+                              FROM asset a LEFT JOIN file f ON f.path = a.path ORDER BY a.path
                               """;
         using var reader = command.ExecuteReader();
         List<AssetNode> nodes = [];
@@ -251,7 +236,7 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
 
     internal static Dictionary<AssetId, string> LoadAssetPaths(SqliteConnection connection) {
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT id, 'shared/' || path FROM asset ORDER BY path DESC";
+        command.CommandText = "SELECT id, path FROM asset ORDER BY path DESC";
         using var reader = command.ExecuteReader();
         var paths = new Dictionary<AssetId, string>();
         while (reader.Read()) {
@@ -324,7 +309,7 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
                 return revision;
             }
 
-            if (OutputKeys.Compute(output, project, Input, graph, tools) is not { } key) {
+            if (OutputKeys.Compute(output, project, Input, graph, tools, hashes.StacksIn(location)) is not { } key) {
                 found.Add(new(FindingKind.UnresolvedOutput, location, output.Name));
             } else if (!objects.Contains(key)) {
                 found.Add(new(FindingKind.StaleOutput, location, $"{output.Name} wants {key.Hex}"));
@@ -359,6 +344,16 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
                 );
             }
         }
+
+        /// <summary>A text file of the library, or null when it is not there.</summary>
+        public string? Text(string path) {
+            var file = LibraryLayout.Full(root, path);
+            return File.Exists(file) ? File.ReadAllText(file) : null;
+        }
+
+        /// <summary>How a build looks inside the stacks of a project.</summary>
+        public StackFiles StacksIn(string location) =>
+            new(file => Text($"{location}/{file}"), file => Get($"{location}/{file}"));
 
         public Revision? Get(string path) {
             var file = new FileInfo(LibraryLayout.Full(root, path));

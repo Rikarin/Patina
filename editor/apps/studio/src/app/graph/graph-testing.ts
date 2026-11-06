@@ -24,7 +24,7 @@ export const noiseType: GraphNodeType = {
 export function state(overrides: Partial<GraphState> = {}): GraphState {
   return {
     id: 'g1',
-    path: '/lib/shared/graphs/a.vxtexgraph',
+    path: '/lib/projects/a/a.vxtexgraph',
     name: 'A',
     revision: 1,
     sequence: 0,

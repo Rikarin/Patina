@@ -21,7 +21,8 @@ namespace Patina.Worker;
 ///     stamp
 ///     again (ADR 0009). All the painting is Vixen's; what is here is holding sessions and answering the socket.
 /// </summary>
-sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) : SessionHost<StackHost.Session> {
+sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, DeviceWatch watch)
+    : SessionHost<StackHost.Session> {
     /// <summary>How a note about missing bakes starts, which a client reads the map names after.</summary>
     const string NeedsBake = "Needs a bake: ";
 
@@ -71,7 +72,7 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
 
     public IpcMessage Sync(IpcMessage request) {
         var sync = request.StackSync ?? throw new IpcException("stack.sync says nothing.");
-        Find(sync.Session).Sync(sync);
+        Find(sync.Session).Sync(sync, watch);
         return IpcMessage.Ok(request.Id);
     }
 
@@ -321,7 +322,7 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
             }
 
             foreach (var created in load.Created.Where(paint => !touched.Contains(paint))) {
-                canvases.Adopt(Path.Combine(folder, created), new(document.BaseWidth, document.BaseHeight));
+                canvases.Adopt(LibraryLayout.Beside(folder, created), new(document.BaseWidth, document.BaseHeight));
             }
         }
 
@@ -393,7 +394,7 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
         public void Dispose() => Run.Dispose();
 
         /// <summary>Goes from the strokes that stand here to the strokes that should.</summary>
-        public void Sync(StackSync sync) {
+        public void Sync(StackSync sync, DeviceWatch watch) {
             if (sync.Document is { } text) {
                 document = LayerStackYaml.Read(text);
                 stale = true;
@@ -431,6 +432,8 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
             }
 
             foreach (var part in sync.Parts) {
+                // A long replay is one request, and each stroke of it is progress.
+                watch.Beat();
                 Extend(known[part.Id], part);
             }
         }
@@ -496,6 +499,7 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
                 var temporary = $"{target}.tmp";
                 using (var stream = File.Create(temporary)) {
                     canvas.Write(stream);
+                    stream.Flush(true);
                 }
 
                 File.Move(temporary, target, true);
@@ -515,7 +519,7 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
         }
 
         Applied Begin(StackPaintPart part) {
-            var file = Path.Combine(folder, part.Paint);
+            var file = LibraryLayout.Beside(folder, part.Paint);
             var canvas = canvases.Open(file);
             if (canvas is null) {
                 canvas = new(document.BaseWidth, document.BaseHeight);

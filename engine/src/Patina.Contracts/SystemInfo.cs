@@ -20,10 +20,12 @@ public sealed record HostInfo(string Os, string Architecture, string Runtime);
 /// <param name="ProcessId">The Worker's process id, from its hello.</param>
 /// <param name="UptimeSeconds">How long the Worker has run, from its last health reply.</param>
 /// <param name="WorkingSetBytes">The Worker's memory, from its last health reply.</param>
+/// <param name="BusySeconds">How long its current device work has gone without progress, from its last health.</param>
 public sealed record WorkerStatus(
     bool Connected,
     string? Version = null,
     int? ProcessId = null,
     double? UptimeSeconds = null,
-    long? WorkingSetBytes = null
+    long? WorkingSetBytes = null,
+    double? BusySeconds = null
 );

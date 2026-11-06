@@ -17,7 +17,7 @@ let app: ElectronApplication;
 let window: Page;
 
 test.beforeEach(async () => {
-  test.skip(process.platform === 'win32', 'Windows CI has no Vulkan.');
+  test.skip(process.platform === 'win32' && !!process.env['CI'], 'Windows CI has no Vulkan.');
 
   scratch = mkdtempSync(join(tmpdir(), 'patina-e2e-'));
   execFileSync('dotnet', [bench, 'bake-pair', join(scratch, 'meshes'), '0.05']);

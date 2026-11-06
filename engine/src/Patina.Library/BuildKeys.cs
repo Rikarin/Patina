@@ -231,13 +231,15 @@ public static class OutputKeys {
     /// <param name="fileRevision">The revision of a project file, or null when the file is missing.</param>
     /// <param name="graph">The shared assets.</param>
     /// <param name="tools">The installed tool versions.</param>
+    /// <param name="stacks">How to look inside a stack this output declares, for the files it reads.</param>
     /// <returns>The key, or null when an input cannot be resolved.</returns>
     public static BuildKey? Compute(
         OutputDeclaration output,
         ProjectDocument project,
         Func<string, Revision?> fileRevision,
         AssetGraph graph,
-        ToolCatalog tools
+        ToolCatalog tools,
+        StackFiles? stacks = null
     ) {
         using var hash = new KeyHash("patina.output.v1").Add(output.Tool).Add(tools.VersionOf(output.Tool));
 
@@ -256,6 +258,10 @@ public static class OutputKeys {
             hash.Add(file).Add(revision.Text);
         }
 
+        if (stacks is not null) {
+            AddStackInputs(hash, files, stacks);
+        }
+
         var uses = output.Uses.Distinct().OrderBy(static u => u.ToString(), StringComparer.Ordinal).ToList();
         hash.Add(uses.Count);
         var references = project.References.ToLookup(static r => r.Asset);
@@ -269,6 +275,19 @@ public static class OutputKeys {
         }
 
         return hash.Finish();
+    }
+
+    static void AddStackInputs(KeyHash hash, List<string> files, StackFiles stacks) {
+        foreach (var stack in files.Where(static file => file.EndsWith(StackInputs.Extension, StringComparison.Ordinal)
+                 )) {
+            if (stacks.Text(stack) is not { } text) {
+                continue;
+            }
+
+            foreach (var input in StackInputs.Of(stack, text)) {
+                hash.Add(input).Add(stacks.Revision(input)?.Text ?? string.Empty);
+            }
+        }
     }
 }
 

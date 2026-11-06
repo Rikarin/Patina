@@ -17,7 +17,7 @@ public sealed class ExportPresetTests : IDisposable {
 
     readonly DirectoryInfo library = Directory.CreateTempSubdirectory("patina-presets-");
 
-    string Shared => Directory.CreateDirectory(Path.Combine(library.FullName, "shared", "export-presets")).FullName;
+    string Shared => Directory.CreateDirectory(Path.Combine(library.FullName, "export-presets")).FullName;
 
     public void Dispose() => library.Delete(true);
 

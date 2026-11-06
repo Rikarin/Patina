@@ -92,7 +92,7 @@ describe('GraphStore', () => {
 
   async function opened(start?: GraphState): Promise<Harness> {
     const test = harness(start);
-    await test.store.open('shared/graphs/a.vxtexgraph');
+    await test.store.open('projects/a/a.vxtexgraph');
     test.socket().opened();
     return test;
   }
@@ -113,7 +113,7 @@ describe('GraphStore', () => {
     expect(store.document()?.nodes.size).toBe(2);
     expect(store.types().get('Source/Noise')?.title).toBe('Noise');
     expect(socket().url).toContain('since=12');
-    expect(requests[0]).toEqual({ key: 'POST graphs', body: { path: 'shared/graphs/a.vxtexgraph' } });
+    expect(requests[0]).toEqual({ key: 'POST graphs', body: { path: 'projects/a/a.vxtexgraph' } });
   });
 
   it('says why a file did not open, and can try again', async () => {
@@ -365,7 +365,7 @@ describe('GraphStore', () => {
     await vi.advanceTimersByTimeAsync(1_000);
 
     expect(test.requests.at(-3)?.key).toBe('POST graphs');
-    expect(test.requests.at(-3)?.body).toEqual({ path: '/lib/shared/graphs/a.vxtexgraph' });
+    expect(test.requests.at(-3)?.body).toEqual({ path: '/lib/projects/a/a.vxtexgraph' });
     expect(test.store.notice()).toContain('Edits since the last save are gone');
     expect(test.store.document()?.nodes.has(3)).toBe(false);
     expect(test.sockets).toHaveLength(2);
@@ -378,7 +378,7 @@ describe('GraphStore', () => {
 
     expect(store.session()).toEqual({
       kind: 'ended',
-      path: '/lib/shared/graphs/a.vxtexgraph',
+      path: '/lib/projects/a/a.vxtexgraph',
       name: 'A'
     });
     expect(store.document()).toBeNull();
@@ -425,7 +425,7 @@ describe('GraphStore', () => {
     const test = await opened();
     const reads = test.requests.length;
 
-    await test.store.open('shared/graphs/a.vxtexgraph');
+    await test.store.open('projects/a/a.vxtexgraph');
 
     expect(test.requests).toHaveLength(reads);
   });

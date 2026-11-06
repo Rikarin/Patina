@@ -1225,7 +1225,7 @@ export interface components {
        */
       limit: number;
     };
-    /** @description One page of shared assets. */
+    /** @description One page of documents. */
     AssetPage: {
       /** @description The assets on this page. */
       items: components['schemas']['AssetSummary'][];
@@ -1245,7 +1245,7 @@ export interface components {
        */
       limit: number;
     };
-    /** @description One shared asset as the browser shows it. */
+    /** @description One document other projects can use, as the browser shows it. */
     AssetSummary: {
       /**
        * Format: uuid
@@ -1256,7 +1256,7 @@ export interface components {
       kind: string;
       /** @description The asset's display name. */
       name: string;
-      /** @description The asset's file, relative to `shared/`, with forward slashes. */
+      /** @description The asset's file, below the library, with forward slashes. */
       path: string;
       /** @description The asset's tags, sorted. */
       tags: string[];
@@ -1870,10 +1870,7 @@ export interface components {
        *     shipped name and " Copy".
        */
       name?: null | string;
-      /**
-       * @description An open graph whose compounds folder takes it, so that the graph can hold it, or null for
-       *     `shared/graphs`'s.
-       */
+      /** @description An open graph whose compounds folder takes it, so that the graph can hold it. Null is refused. */
       graph?: null | string;
     };
     /** @description A new graph's file. */
@@ -1898,7 +1895,7 @@ export interface components {
     GraphCreateRequest: {
       /** @description The graph's name. The Server makes its file name from it. */
       name: string;
-      /** @description A project's path below `projects/` to put it in, or null for `shared/graphs`. */
+      /** @description A project's path below `projects/` to put it in, or null for a new project of its own. */
       project?: null | string;
     };
     /** @description What changed in the document, the same for an edit, an undo and a redo. */
@@ -2539,12 +2536,14 @@ export interface components {
        *                 output yet.
        */
       role: string;
-      /** @description `shipped`, `project` or `shared`. */
+      /** @description `shipped`, `project`, or `library` for another project. */
       origin: string;
       /** @description The maps a graph makes, by usage. */
       channels: string[];
       /** @description The knobs a graph exposes, which a layer can set. */
       parameters?: null | components['schemas']['GraphSettingDefinition'][];
+      /** @description The project it lives in, when that is another one. */
+      project?: null | string;
     };
     /** @description The materials a project can use. */
     MaterialList: {
@@ -3800,6 +3799,11 @@ export interface components {
        * @description The Worker's memory, from its last health reply.
        */
       workingSetBytes?: null | number;
+      /**
+       * Format: double
+       * @description How long its current device work has gone without progress, from its last health.
+       */
+      busySeconds?: null | number;
     };
   };
   responses: never;
@@ -5242,6 +5246,7 @@ export interface operations {
     parameters: {
       query?: {
         project?: string;
+        search?: string;
       };
       header?: never;
       path?: never;

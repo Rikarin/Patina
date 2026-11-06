@@ -15,7 +15,7 @@ using Vixen.TextureGraph;
 namespace Patina.Bench;
 
 /// <summary>
-///     A shared material read by every project, edited once, rebuilt. Two measurements, because no one machine runs the
+///     A material read by every project, edited once, rebuilt. Two measurements, because no one machine runs the
 ///     real thing at the full size: the whole pipeline over <c>projects</c> projects with small stand-in maps, which is
 ///     everything a build does but the pixels, and a real one, GPU and encoder, on <c>real</c> projects at <c>side</c>.
 /// </summary>
@@ -159,9 +159,9 @@ static class FanOut {
         );
 
     static (AssetId Id, string Path) Popular(string root) {
-        var sidecar = Directory.EnumerateFiles(Path.Combine(root, "shared", "graphs"), "*.asset.yaml").Single();
-        var read = DocumentCodec.ReadAsset(File.ReadAllText(sidecar), sidecar).Document;
-        return (read.Id, sidecar[..^LibraryLayout.SidecarSuffix.Length]);
+        var listing = LibraryFiles.ProjectFile(root, "graphs");
+        var item = DocumentCodec.ReadProject(File.ReadAllText(listing), listing).Document.Documents.Single();
+        return (item.Id, LibraryFiles.AssetFile(root, $"graphs/{item.File}"));
     }
 
     /// <summary>A change of the graph's file, as an artist's save is: its seed, so every output moves.</summary>

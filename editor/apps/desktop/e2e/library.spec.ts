@@ -7,7 +7,9 @@ import { join, resolve } from 'node:path';
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net10.0/patina-bench.dll');
 const shots = resolve(__dirname, '../../../dist/e2e-results');
-const Projects = 300;
+const Generated = 300;
+/** What the generator asks for, and the two projects it keeps its materials in. */
+const Projects = Generated + 2;
 
 let scratch: string;
 let library: string;
@@ -17,7 +19,7 @@ let window: Page;
 test.beforeAll(() => {
   scratch = mkdtempSync(join(tmpdir(), 'patina-e2e-library-'));
   library = join(scratch, 'Generated.ptlib');
-  execFileSync('dotnet', [bench, 'generate', library, String(Projects)], { stdio: 'inherit' });
+  execFileSync('dotnet', [bench, 'generate', library, String(Generated)], { stdio: 'inherit' });
   if (!existsSync(join(library, 'library.yaml'))) {
     throw new Error('patina-bench wrote no library.');
   }
@@ -43,7 +45,7 @@ test.afterEach(async () => {
 const count = () => window.getByTestId('library-count');
 const rows = () => window.getByTestId('library-row');
 
-test('browses, searches and shows the impact of a shared asset', async () => {
+test('browses, searches and shows the impact of a material', async () => {
   await expect(window.getByTestId('tree-row').first()).toBeVisible();
 
   await window.getByTestId('library-search').fill('crate');
@@ -66,8 +68,8 @@ test('browses, searches and shows the impact of a shared asset', async () => {
   await expect(rows().nth(1)).toHaveAttribute('aria-selected', 'true');
   await window.getByTestId('library-search').fill('');
 
-  await window.getByRole('radio', { name: 'Shared Assets' }).click();
-  await expect(count()).toHaveText(/shared assets?$/);
+  await window.getByRole('radio', { name: 'Materials' }).click();
+  await expect(count()).toHaveText(/materials?$/);
   await rows().first().click();
   await expect(window.getByTestId('impact-summary')).toContainText(/Affects [\d,]+ projects?/);
   await window.screenshot({ path: join(shots, 'library-assets.png') });

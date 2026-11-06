@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal } from '@angular/core';
 import type { StackLayer } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { ProjectStore } from '../library/project-store';
+import { type DropZone, dropManyCommands } from './layer-drag';
 import { hexOf } from './layer-panel';
-import { type DropZone, dropCommands } from './layer-drag';
+import { MaterialUse } from './material-use';
 import { type LayerRow, PaintStore } from './paint-store';
 
 const RowHeight = 44;
@@ -35,19 +36,55 @@ interface MenuAt {
   selector: 'ptn-layer-stack',
   imports: [XuiButtonImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'flex h-full min-h-0 flex-col', '(document:click)': 'menu.set(null)' },
+  host: {
+    class: 'flex h-full min-h-0 flex-col',
+    '(document:click)': 'menu.set(null)',
+    '(document:keydown)': 'press($event)'
+  },
   template: `
     <div class="chrome-bar flex shrink-0 flex-wrap items-center gap-0.5 px-1 py-0.5" role="toolbar" aria-label="Layers">
-      <button type="button" xuiButton size="sm" variant="ghost" data-testid="paint-add" title="Add a paint layer" (click)="add('paint', 'Paint')">
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        data-testid="paint-add"
+        title="Add a paint layer"
+        (click)="add('paint', 'Paint')"
+      >
         Paint
       </button>
-      <button type="button" xuiButton size="sm" variant="ghost" data-testid="paint-add-fill" title="Add a fill layer" (click)="add('fill', 'Fill')">
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        data-testid="paint-add-fill"
+        title="Add a fill layer"
+        (click)="add('fill', 'Fill')"
+      >
         Fill
       </button>
-      <button type="button" xuiButton size="sm" variant="ghost" data-testid="paint-add-filter" title="Add a filter" (click)="add('filter', 'Filter', 'Levels')">
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        data-testid="paint-add-filter"
+        title="Add a filter"
+        (click)="add('filter', 'Filter', 'Levels')"
+      >
         Filter
       </button>
-      <button type="button" xuiButton size="sm" variant="ghost" data-testid="paint-add-group" title="Add a folder" (click)="add('group', 'Folder')">
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        data-testid="paint-add-group"
+        title="Add a folder"
+        (click)="add('group', 'Folder')"
+      >
         Folder
       </button>
       <span class="flex-1"></span>
@@ -96,25 +133,34 @@ interface MenuAt {
       </div>
     }
 
-    <div class="min-h-0 flex-1 overflow-auto" role="tree" aria-label="Layers" data-testid="paint-layers">
+    <div
+      class="min-h-0 flex-1 overflow-auto"
+      role="tree"
+      aria-label="Layers"
+      aria-multiselectable="true"
+      data-testid="paint-layers"
+      (dragover)="overList($event)"
+      (drop)="dropOnList($event)"
+    >
       @for (row of rows(); track row.layer.id) {
         <div
           class="border-hairline relative flex items-center gap-1.5 border-b pe-2"
           role="treeitem"
           draggable="true"
           [attr.aria-level]="row.depth + 1"
-          [attr.aria-selected]="row.layer.id === store.layer()"
+          [attr.aria-selected]="store.selection().has(row.layer.id)"
           [attr.aria-expanded]="row.layer.kind === 'group' ? !closed().has(row.layer.id) : null"
           [attr.data-testid]="'paint-layer-' + row.layer.id"
-          [class.bg-selection]="row.layer.id === store.layer()"
+          [class.bg-selection]="store.selection().has(row.layer.id)"
           [class.opacity-50]="!row.layer.enabled"
           [style.height.px]="rowHeight"
           [style.padding-inline-start.px]="row.depth * 14 + 4"
-          (click)="choose(row.layer, false)"
+          (click)="click($event, row.layer)"
           (contextmenu)="openMenu($event, row.layer)"
           (dragstart)="start($event, row.layer.id)"
           (dragover)="over($event, row)"
           (dragleave)="target.set(null)"
+          (dragend)="dragged = []"
           (drop)="drop($event, row)"
           (keydown.enter)="choose(row.layer, false)"
           tabindex="0"
@@ -154,7 +200,12 @@ interface MenuAt {
               [attr.aria-label]="(closed().has(row.layer.id) ? 'Open ' : 'Close ') + row.layer.name"
               (click)="$event.stopPropagation(); toggle(row.layer.id)"
             >
-              <svg viewBox="0 0 16 16" class="size-3" [class.rotate-90]="!closed().has(row.layer.id)" aria-hidden="true">
+              <svg
+                viewBox="0 0 16 16"
+                class="size-3"
+                [class.rotate-90]="!closed().has(row.layer.id)"
+                aria-hidden="true"
+              >
                 <path d="M6 3l5 5-5 5z" fill="currentColor" />
               </svg>
             </button>
@@ -229,28 +280,64 @@ interface MenuAt {
         (click)="$event.stopPropagation()"
         (keydown.escape)="menu.set(null)"
       >
-        <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="layer-menu-rename" (click)="startRename(at.layer)">
+        <button
+          type="button"
+          class="hover:bg-selection px-3 py-1 text-start"
+          role="menuitem"
+          data-testid="layer-menu-rename"
+          (click)="startRename(at.layer)"
+        >
           Rename
         </button>
         @if (at.layer.kind !== 'group') {
           @if (at.layer.mask.source === 'None') {
-            <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="layer-menu-mask-paint" (click)="addMask(at.layer, 'Paint')">
+            <button
+              type="button"
+              class="hover:bg-selection px-3 py-1 text-start"
+              role="menuitem"
+              data-testid="layer-menu-mask-paint"
+              (click)="addMask(at.layer, 'Paint')"
+            >
               Add Paint Mask
             </button>
-            <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="layer-menu-mask-generator" (click)="addMask(at.layer, 'Generator')">
+            <button
+              type="button"
+              class="hover:bg-selection px-3 py-1 text-start"
+              role="menuitem"
+              data-testid="layer-menu-mask-generator"
+              (click)="addMask(at.layer, 'Generator')"
+            >
               Add Generator Mask
             </button>
-            <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="layer-menu-mask-colour" (click)="addColourMask(at.layer)">
+            <button
+              type="button"
+              class="hover:bg-selection px-3 py-1 text-start"
+              role="menuitem"
+              data-testid="layer-menu-mask-colour"
+              (click)="addColourMask(at.layer)"
+            >
               Add Colour Selection Mask
             </button>
           } @else {
-            <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="layer-menu-mask-remove" (click)="addMask(at.layer, 'None')">
+            <button
+              type="button"
+              class="hover:bg-selection px-3 py-1 text-start"
+              role="menuitem"
+              data-testid="layer-menu-mask-remove"
+              (click)="addMask(at.layer, 'None')"
+            >
               Remove Mask
             </button>
           }
         }
         <div class="border-hairline my-1 border-t"></div>
-        <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="paint-remove" (click)="remove(at.layer)">
+        <button
+          type="button"
+          class="hover:bg-selection px-3 py-1 text-start"
+          role="menuitem"
+          data-testid="paint-remove"
+          (click)="remove(at.layer)"
+        >
           Delete
         </button>
       </div>
@@ -265,7 +352,9 @@ export class LayerStack {
   protected readonly menu = signal<MenuAt | null>(null);
   protected readonly renaming = signal<string | null>(null);
   protected readonly target = signal<{ id: string; zone: DropZone } | null>(null);
-  private dragged: string | null = null;
+  protected dragged: readonly string[] = [];
+  private readonly using = inject(MaterialUse);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   /** The rows on screen: what is inside a closed folder is not. */
   protected readonly rows = computed(() => {
@@ -287,8 +376,100 @@ export class LayerStack {
   }
 
   protected choose(layer: StackLayer, mask: boolean): void {
+    this.store.marked.set(new Set());
     this.store.layer.set(layer.id);
     this.store.masking.set(mask);
+  }
+
+  /** A click chooses one layer, Cmd adds or takes away, and Shift takes everything from the current layer to here. */
+  protected click(event: MouseEvent, layer: StackLayer): void {
+    if (event.shiftKey && this.store.layer() !== null) {
+      this.selectTo(layer.id);
+    } else if (event.metaKey || event.ctrlKey) {
+      this.toggleSelected(layer.id);
+    } else {
+      this.choose(layer, false);
+    }
+  }
+
+  private selectTo(id: string): void {
+    const ids = this.rows().map(row => row.layer.id);
+    const from = ids.indexOf(this.store.layer() ?? id);
+    const to = ids.indexOf(id);
+    this.store.marked.set(new Set(ids.slice(Math.min(from, to), Math.max(from, to) + 1)));
+  }
+
+  private toggleSelected(id: string): void {
+    const selected = new Set(this.store.selection());
+    if (selected.delete(id)) {
+      if (this.store.layer() === id) {
+        this.store.layer.set([...selected].at(-1) ?? null);
+      }
+    } else {
+      selected.add(id);
+      this.store.layer.set(id);
+    }
+
+    this.store.marked.set(selected);
+    this.store.masking.set(false);
+  }
+
+  /** Delete takes what is selected, as does Backspace, which is what a Mac's delete key sends, and Cmd+A selects all. */
+  protected press(event: KeyboardEvent): void {
+    if (!this.keysAreOurs(event)) {
+      return;
+    }
+
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      event.preventDefault();
+      void this.removeSelected();
+    } else if (event.key === 'a' && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      this.store.marked.set(new Set(this.rows().map(row => row.layer.id)));
+    }
+  }
+
+  /** Keys belong to the stack when focus is in it or nowhere, and never while something is being typed. */
+  private keysAreOurs(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement;
+    if (target.closest('input, textarea, select, [contenteditable=true], [role=dialog]')) {
+      return false;
+    }
+
+    return target === globalThis.document.body || this.host.nativeElement.contains(target);
+  }
+
+  private async removeSelected(): Promise<void> {
+    const layer = this.store.chosen();
+    if (this.store.masking() && layer) {
+      this.store.masking.set(false);
+      await this.store.setMask(layer, { ...layer.mask, source: 'None' });
+      return;
+    }
+
+    const selected = this.store.selection();
+    const rows = this.store.layers();
+    const going = rows.filter(row => selected.has(row.layer.id));
+    const first = this.rows().findIndex(row => selected.has(row.layer.id));
+    const top = going.filter(row => row.parent === null || !selected.has(row.parent));
+    if (top.length === 0) {
+      return;
+    }
+
+    await this.store.edit(...top.map(row => ({ op: 'removeLayer' as const, layer: row.layer.id })));
+    this.store.marked.set(new Set());
+    const left = this.rows();
+    const next = left[Math.min(first, left.length - 1)];
+    this.store.layer.set(next?.layer.id ?? null);
+    this.focusChosen();
+  }
+
+  /** The row that held focus has gone, and the next Delete should still reach the stack. */
+  private focusChosen(): void {
+    setTimeout(() => {
+      const row = globalThis.document.querySelector<HTMLElement>(`[data-testid="paint-layer-${this.store.layer()}"]`);
+      row?.focus();
+    });
   }
 
   protected toggle(id: string): void {
@@ -328,7 +509,10 @@ export class LayerStack {
   protected openMenu(event: MouseEvent, layer: StackLayer): void {
     event.preventDefault();
     event.stopPropagation();
-    this.choose(layer, false);
+    if (!this.store.selection().has(layer.id)) {
+      this.choose(layer, false);
+    }
+
     this.menu.set({ x: event.clientX, y: event.clientY, layer });
   }
 
@@ -370,11 +554,16 @@ export class LayerStack {
 
   protected async remove(layer: StackLayer): Promise<void> {
     this.menu.set(null);
-    await this.store.edit({ op: 'removeLayer', layer: layer.id });
+    if (this.store.selection().has(layer.id)) {
+      await this.removeSelected();
+    } else {
+      await this.store.edit({ op: 'removeLayer', layer: layer.id });
+    }
   }
 
   protected start(event: DragEvent, id: string): void {
-    this.dragged = id;
+    const selected = this.store.selection();
+    this.dragged = selected.has(id) ? [...selected] : [id];
     event.dataTransfer?.setData('text/plain', id);
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'move';
@@ -383,21 +572,44 @@ export class LayerStack {
 
   protected over(event: DragEvent, row: LayerRow): void {
     const zone = this.zoneOf(event, row);
-    if (this.commands(row, zone).length === 0) {
+    if (this.using.carried() === null && this.commands(row, zone).length === 0) {
       this.target.set(null);
       return;
     }
 
     event.preventDefault();
+    event.stopPropagation();
     this.target.set({ id: row.layer.id, zone });
+  }
+
+  /** A material can land anywhere in the list, and past the last row it lands on top, like a click. */
+  protected overList(event: DragEvent): void {
+    if (this.using.carried()) {
+      event.preventDefault();
+    }
+  }
+
+  protected async dropOnList(event: DragEvent): Promise<void> {
+    const material = this.using.carried();
+    if (material) {
+      event.preventDefault();
+      this.using.carried.set(null);
+      await this.using.use(material);
+    }
   }
 
   protected async drop(event: DragEvent, row: LayerRow): Promise<void> {
     event.preventDefault();
-    const commands = this.commands(row, this.zoneOf(event, row));
-    this.dragged = null;
+    event.stopPropagation();
+    const zone = this.zoneOf(event, row);
+    const material = this.using.carried();
+    const commands = this.commands(row, zone);
+    this.dragged = [];
     this.target.set(null);
-    if (commands.length > 0) {
+    if (material) {
+      this.using.carried.set(null);
+      await this.using.use(material, { layer: row.layer.id, zone });
+    } else if (commands.length > 0) {
       await this.store.edit(...commands);
     }
   }
@@ -408,7 +620,7 @@ export class LayerStack {
       parent: held.parent,
       folder: held.layer.kind === 'group'
     }));
-    return this.dragged === null ? [] : dropCommands(rows, this.dragged, row.layer.id, zone);
+    return dropManyCommands(rows, this.dragged, row.layer.id, zone);
   }
 
   /** The middle of a folder is into it, and everywhere else is above or below. */

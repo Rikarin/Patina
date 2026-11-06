@@ -32,19 +32,18 @@ public sealed class LibraryHost(ServerIdentity identity, ILogger<LibraryHost> lo
         base.Dispose();
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
+    protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
+        ServiceLoop.RunAsync(logger, nameof(LibraryHost), ScanningAsync, stoppingToken);
+
+    async Task ScanningAsync(CancellationToken stoppingToken) {
         await Task.Yield(); // Start-up does not wait for a scan.
         if (Library is not { } open) {
             return;
         }
 
-        try {
+        await ScanAsync(open, stoppingToken);
+        await foreach (var _ in rescans.Reader.ReadAllAsync(stoppingToken)) {
             await ScanAsync(open, stoppingToken);
-            await foreach (var _ in rescans.Reader.ReadAllAsync(stoppingToken)) {
-                await ScanAsync(open, stoppingToken);
-            }
-        } catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) {
-            // Shutting down: the transaction rolls back and the last good index stays.
         }
     }
 

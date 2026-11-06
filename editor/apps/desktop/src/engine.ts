@@ -13,7 +13,8 @@ export interface Command {
  */
 function locate(name: 'patina-worker' | 'patina-server'): Command {
   const native = process.platform === 'win32' ? `${name}.exe` : name;
-  const override = process.env['PATINA_ENGINE_DIR'];
+  // Never in a package: an environment variable must not choose what a signed app runs.
+  const override = app.isPackaged ? undefined : process.env['PATINA_ENGINE_DIR'];
   const packaged = app.isPackaged ? join(process.resourcesPath, 'engine') : null;
   for (const dir of [override, packaged].filter((d): d is string => !!d)) {
     if (existsSync(join(dir, native))) {

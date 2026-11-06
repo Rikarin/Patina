@@ -9,16 +9,25 @@ the same Server. The design is in [docs/01-implementation-plan.md](docs/01-imple
 
 ## Status
 
-**Bootstrap only. There is nothing to use yet.** What exists:
+**Usable for trying out, not yet released.** There is no packaged download, and the macOS package still needs a Vulkan loader
+([#48](https://github.com/Rikarin/Patina/issues/48)). The engine is strong: incremental GPU graphs, a Worker that can die at any
+moment, baking, BC7 and BC6H encoding and keyed batch rebuilds. The app can now do the work from end to end, which the new-user
+journey test proves: open a library, make a project from a mesh, bake, layer and paint, and save. Content, viewport and graph editing
+are still thin, and the open list is the [audit tracker](https://github.com/Rikarin/Patina/issues/68).
 
-- `engine/`: `patina-server` (`/api/v1/system`, `--library <path>`, a per-user discovery file), `patina-worker` (connects
-  over a Unix domain socket and answers health) and `patina version`. `Patina.Library` has only identities, an interface
-  and the discovery file. `Patina.Jobs`, `Patina.Export` and `Patina.Viewport` are empty assemblies with a marker type.
-- `editor/`: the desktop app, which supervises both processes, and a studio shell with placeholder panes.
-- CI workflows, which have not run yet.
+## Running it
 
-There is no graph, painting, baking, GPU code or Vixen dependency yet. The Vixen submodule (`external/Vixen`) has not been
-added, and xUI's bezel skin waits for xUI 3.1 (see `editor/apps/studio/src/styles.css`).
+You need .NET SDK 10.0.401, Node 24, pnpm and a Vulkan device.
+
+```bash
+cd engine && dotnet build Patina.slnx -c Release
+```
+
+```bash
+cd editor && pnpm install && pnpm exec nx build desktop && pnpm exec electron dist/apps/desktop/main.js
+```
+
+File > New Library starts from nothing. `patina-server --library <path> --create-library true` runs the Server alone for other clients.
 
 ## Layout
 
@@ -26,7 +35,7 @@ added, and xUI's bezel skin waits for xUI 3.1 (see `editor/apps/studio/src/style
 |---|---|
 | `engine/` | .NET 10: Server, Worker, CLI and libraries |
 | `editor/` | Nx workspace: `apps/desktop` (Electron), `apps/studio` (Angular), `libs/` |
-| `clients/python/` | The future generated client and conformance test |
+| `clients/python/` | The generated Python client and its conformance test |
 | `content/` | Factory content, CC0 |
 | `docs/` | The plan and the ADRs |
 

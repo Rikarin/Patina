@@ -4,15 +4,15 @@ import { XuiCalloutImports } from '@xui/callout';
 import { XuiInputImports } from '@xui/input';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
-import { PaintStore } from './paint-store';
+import { MaterialUse } from './material-use';
 
 const OriginNames: Readonly<Record<string, string>> = {
   shipped: 'Starter',
-  project: 'This project',
-  shared: 'Shared'
+  project: 'This project'
 };
+const SearchQuiet = 200;
 
-/** What a layer can be filled with. Clicking one puts it on top of the stack (ADR 0012). */
+/** What a layer can be filled with, from anywhere in the Library. Click to add it, or drag it into the stack (ADR 0012). */
 @Component({
   selector: 'ptn-material-shelf',
   imports: [XuiCalloutImports, XuiInputImports],
@@ -33,7 +33,7 @@ const OriginNames: Readonly<Record<string, string>> = {
         (input)="search.set(text($event))"
       />
     </div>
-    @if (failure(); as reason) {
+    @if (failure() ?? using.failure(); as reason) {
       <xui-callout color="error" compact data-testid="shelf-failure">{{ reason }}</xui-callout>
     }
     <ul class="min-h-0 flex-1 overflow-auto" aria-label="Materials">
@@ -43,9 +43,14 @@ const OriginNames: Readonly<Record<string, string>> = {
             type="button"
             class="hover:bg-selection flex w-full items-center gap-2 px-2 py-1 text-start text-sm"
             data-testid="shelf-material"
+            [attr.draggable]="material.role !== 'empty'"
             [disabled]="material.role === 'empty'"
-            [title]="material.role === 'empty' ? 'This graph has no Output yet.' : 'Add to the stack'"
+            [title]="
+              material.role === 'empty' ? 'This graph has no Output yet.' : 'Click to add, or drag into the stack'
+            "
             (click)="use(material)"
+            (dragstart)="carry($event, material)"
+            (dragend)="using.carried.set(null)"
           >
             <span class="min-w-0 flex-1 truncate">{{ material.name }}</span>
             <span class="text-foreground-muted shrink-0 text-xs">{{ originOf(material) }}</span>
@@ -59,12 +64,13 @@ const OriginNames: Readonly<Record<string, string>> = {
 })
 export class MaterialShelf {
   private readonly library = inject(LibraryStore);
-  private readonly paint = inject(PaintStore);
   private readonly project = inject(ProjectStore);
+  protected readonly using = inject(MaterialUse);
   private readonly materials = signal<readonly MaterialInfo[]>([]);
 
   protected readonly search = signal('');
   protected readonly failure = signal<string | null>(null);
+  private searching: ReturnType<typeof setTimeout> | undefined;
   protected readonly shown = computed(() => {
     const words = this.search().trim().toLowerCase();
     return this.materials().filter(material => material.name.toLowerCase().includes(words));
@@ -73,9 +79,12 @@ export class MaterialShelf {
   constructor() {
     effect(() => {
       const project = this.project.current()?.path;
+      const search = this.search().trim();
       this.library.changes();
+      clearTimeout(this.searching);
       if (project) {
-        untracked(() => void this.load(project));
+        // A search reaches materials past what the list holds, so it asks the Server, though not at every key.
+        this.searching = setTimeout(() => untracked(() => void this.load(project, search)), search ? SearchQuiet : 0);
       }
     });
   }
@@ -85,56 +94,25 @@ export class MaterialShelf {
   }
 
   protected originOf(material: MaterialInfo): string {
-    return OriginNames[material.origin] ?? material.origin;
+    return material.project ?? OriginNames[material.origin] ?? material.origin;
   }
 
-  protected async use(material: MaterialInfo): Promise<void> {
-    const project = this.project.current();
-    if (!project) {
-      return;
-    }
+  protected use(material: MaterialInfo): void {
+    void this.using.use(material);
+  }
 
-    this.failure.set(null);
-    try {
-      if (material.role === 'brush') {
-        const client = await this.library.api();
-        const body = { project: project.path, source: material.source };
-        const { alpha } = unwrap(await client.POST('/api/v1/library/materials/brush', { body }));
-        this.paint.brush.update(brush => ({ ...brush, alpha }));
-      } else if (material.kind === 'graph') {
-        const client = await this.library.api();
-        const body = { project: project.path, source: material.source };
-        const { graph } = unwrap(await client.POST('/api/v1/library/materials/use', { body }));
-        await this.useGraph(material, graph);
-      } else {
-        await this.paint.edit({ op: 'addLayer', kind: 'material', name: material.name, material: material.source });
-      }
-    } catch (failure) {
-      this.failure.set(failure instanceof Error ? failure.message : String(failure));
+  protected carry(event: DragEvent, material: MaterialInfo): void {
+    this.using.carried.set(material);
+    event.dataTransfer?.setData('text/plain', material.name);
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'copy';
     }
   }
 
-  /** A graph lands where its role says: a fill, a filter over the stack, or the chosen layer's mask. */
-  private async useGraph(material: MaterialInfo, graph: string): Promise<void> {
-    if (material.role === 'filter') {
-      await this.paint.edit({ op: 'addLayer', kind: 'filter', name: material.name, filterNode: graph });
-    } else if (material.role === 'mask') {
-      const layer = this.paint.chosen();
-      if (!layer) {
-        this.failure.set('Choose a layer for this mask first.');
-        return;
-      }
-
-      await this.paint.setMask(layer, { ...layer.mask, source: 'Generator', generator: graph });
-    } else {
-      await this.paint.addGraphLayer(material.name, graph);
-    }
-  }
-
-  private async load(project: string): Promise<void> {
+  private async load(project: string, search: string): Promise<void> {
     try {
       const client = await this.library.api();
-      const list = unwrap(await client.GET('/api/v1/library/materials', { params: { query: { project } } }));
+      const list = unwrap(await client.GET('/api/v1/library/materials', { params: { query: { project, search } } }));
       // A stack cannot be a layer of itself.
       const open = this.project.active()?.path;
       this.materials.set(list.items.filter(material => material.source !== open));

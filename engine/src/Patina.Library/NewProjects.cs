@@ -90,7 +90,7 @@ static class NewProjects {
         Require(slug);
         var file = slug + LibraryLayout.GraphExtension;
         if (graph.Project?.Trim().Trim('/') is not { Length: > 0 } project) {
-            return $"{LibraryLayout.SharedFolder}/graphs/{file}";
+            throw new ProjectRefusedException("A graph belongs to a project.");
         }
 
         foreach (var segment in project.Split('/')) {

@@ -162,7 +162,7 @@ test('browsing a generated library', async () => {
     await expect(window.getByTestId('inspector-title')).not.toHaveCount(0);
     await window.screenshot({ path: join(shots, 'library-10k.png') });
 
-    await window.getByRole('radio', { name: 'Shared Assets' }).click();
+    await window.getByRole('radio', { name: 'Materials' }).click();
     await expect(window.getByTestId('library-row').first()).toContainText(/\S/);
     await window.getByTestId('library-row').first().click();
     const at = Date.now();

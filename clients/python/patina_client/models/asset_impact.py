@@ -27,7 +27,7 @@ class AssetImpact:
     """ What saving a shared asset would touch: "affects 412 projects, 3 pinned" (plan §5).
 
         Attributes:
-            asset (AssetSummary): One shared asset as the browser shows it.
+            asset (AssetSummary): One document other projects can use, as the browser shows it.
             projects (int): The projects that depend on the asset, directly or through other assets.
             pinned (int): How many of Projects a pin holds back; the rest rebuild.
             unreadable_documents (int): Project and asset documents the index could not read. They may depend on the asset

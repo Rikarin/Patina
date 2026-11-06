@@ -99,7 +99,11 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
             if (folder is null) {
                 File.Delete(file);
             } else {
-                File.WriteAllText(file, folder);
+                // Relative, so that a library can move and take its bakes with it.
+                LibraryFiles.Replace(
+                    file,
+                    System.IO.Path.GetRelativePath(System.IO.Path.GetDirectoryName(Path)!, folder)
+                );
             }
 
             forced = true;
@@ -193,6 +197,11 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         StackEditResult result;
         lock (Changing) {
             var painted = editor.Apply(batch);
+            if (editor.CompoundsArrived) {
+                editor.CompoundsArrived = false;
+                CompoundEdits++;
+            }
+
             result = Announce(GraphEventKind.Edited, editor.History.UndoLabel, painted);
         }
 
@@ -211,22 +220,38 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     ///     disk.
     /// </summary>
     /// <exception cref="GraphFileChangedException">The file changed behind this session.</exception>
-    public string PrepareSave(bool force) {
+    /// <returns>The text to write, and the revision it is of.</returns>
+    public (string Text, long Revision) PrepareSave(bool force) {
         lock (Changing) {
             if (!force && File.Exists(Path) && Hash(File.ReadAllText(Path)) != fileHash) {
                 throw new GraphFileChangedException($"'{Path}' changed on disk after it was opened.");
             }
 
-            return StackDocuments.Text(editor.Document);
+            return (StackDocuments.Text(editor.Document), revision);
         }
     }
 
-    /// <summary>Writes the document, once the Worker has written its pixels.</summary>
-    public StackEditResult FinishSave(string text) {
+    /// <summary>The evaluation that last failed and has not been followed by a good one, if there is one.</summary>
+    public string? EvaluationError {
+        get {
+            lock (Changing) {
+                return evaluation?.Error;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Writes the document, once the Worker has written its pixels. An edit made since the text was taken is not in
+    ///     the file, so the stack stays unsaved however this ends.
+    /// </summary>
+    public StackEditResult FinishSave(string text, long taken) {
         lock (Changing) {
             LibraryFiles.Replace(Path, text);
             fileHash = Hash(text);
-            editor.MarkSaved();
+            if (taken == revision) {
+                editor.MarkSaved();
+            }
+
             return Announce(GraphEventKind.Saved, null, null);
         }
     }

@@ -29,6 +29,9 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
     /// </summary>
     public event Action<IpcMessage>? Reported;
 
+    /// <summary>A Worker has connected, and it knows nothing yet.</summary>
+    public event Action? Connected;
+
     /// <summary>
     ///     The Worker's connection now, or waits for one: after a crash, that is the next Worker's hello. A closed
     ///     connection is not one, though <see cref="current" /> can keep it until the health loop next wakes: a job
@@ -60,16 +63,32 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
         var socketPath = options.Value.Worker.SocketPath;
-        using var listener = IpcSocket.Listen(socketPath);
+        Socket listener;
         try {
-            while (!stoppingToken.IsCancellationRequested) {
-                var socket = await listener.AcceptAsync(stoppingToken);
-                await ServeAsync(new NetworkStream(socket, true), stoppingToken);
-            }
-        } catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) {
-            // Stopping: nothing to report.
+            listener = IpcSocket.Listen(socketPath);
+        } catch (Exception e) when (e is SocketException or IOException or UnauthorizedAccessException) {
+            // No Worker can ever connect, so this is the one fault that ends the Server, and it must not look clean.
+            Environment.ExitCode = 1;
+            throw;
+        }
+
+        using var held = listener;
+        try {
+            await ServiceLoop.RunAsync(
+                logger,
+                nameof(WorkerLink),
+                token => AcceptingAsync(listener, token),
+                stoppingToken
+            );
         } finally {
             File.Delete(socketPath);
+        }
+    }
+
+    async Task AcceptingAsync(Socket listener, CancellationToken stoppingToken) {
+        while (!stoppingToken.IsCancellationRequested) {
+            var socket = await listener.AcceptAsync(stoppingToken);
+            await ServeAsync(new NetworkStream(socket, true), stoppingToken);
         }
     }
 
@@ -134,6 +153,7 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
             nextWorker = NewWaiter();
         }
 
+        Connected?.Invoke();
         while (!connection.Closed.IsCompleted) {
             var reply = await connection.SendAsync(new() { Type = IpcTypes.Health }, cancellationToken);
             status = new(
@@ -141,7 +161,8 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
                 worker.Version,
                 worker.ProcessId,
                 reply.Health?.UptimeSeconds,
-                reply.Health?.WorkingSetBytes
+                reply.Health?.WorkingSetBytes,
+                reply.Health?.BusySeconds
             );
             await Task.WhenAny(connection.Closed, Task.Delay(HealthInterval, cancellationToken));
             cancellationToken.ThrowIfCancellationRequested();

@@ -31,7 +31,7 @@ test.afterEach(async () => {
 });
 
 test('a brush on the map paints through the Server, and undo takes it back', async () => {
-  test.skip(process.platform === 'win32', 'Windows CI has no Vulkan.');
+  test.skip(process.platform === 'win32' && !!process.env['CI'], 'Windows CI has no Vulkan.');
 
   await newLibrary(app, window, join(scratch, 'Game.ptlib'));
   await newProject(app, window, 'Crate');

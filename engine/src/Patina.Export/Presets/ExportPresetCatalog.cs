@@ -29,13 +29,9 @@ public static class ExportPresetCatalog {
         }
 
         List<string> problems = [];
-        var folder = libraryRoot is null ? null : Path.Combine(libraryRoot, LibraryLayout.SharedFolder, Folder);
+        var folder = libraryRoot is null ? null : Path.Combine(libraryRoot, LibraryLayout.PresetsFolder);
         if (folder is not null && Directory.Exists(folder)) {
             foreach (var file in Directory.EnumerateFiles(folder, "*.yaml").Order(StringComparer.Ordinal)) {
-                if (file.EndsWith(LibraryLayout.SidecarSuffix, StringComparison.Ordinal)) {
-                    continue;
-                }
-
                 try {
                     var preset = ExportPresetReader.Read(File.ReadAllText(file), Path.GetFileName(file), file);
                     presets[preset.Id] = preset;

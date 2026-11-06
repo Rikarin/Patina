@@ -8,7 +8,7 @@ import { LibrarySelection } from '../library/library-selection';
 import { GraphStore } from './graph-store';
 
 /**
- * Asks for a new graph's name. It lands in the selected project, or in the shared graphs when none is selected. The
+ * Asks for a new graph's name. It lands in the selected project, or in a project of its own when none is selected. The
  * Server decides whether it can exist, so its refusal is what this shows.
  */
 @Component({
@@ -61,7 +61,7 @@ export class NewGraphDialog {
 
   protected readonly place = computed(() => {
     const project = this.project();
-    return project === null ? 'shared/graphs' : `projects/${project}`;
+    return project === null ? 'a new project' : `projects/${project}`;
   });
 
   constructor() {

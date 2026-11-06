@@ -122,7 +122,8 @@ public static class ExportRun {
 
         var relative = delivered.Select(path => Path.GetRelativePath(target, path)).ToList();
         foreach (var old in before?.Files.Except(relative, StringComparer.Ordinal) ?? []) {
-            File.Delete(Path.Combine(target, old));
+            // What was delivered is read from a file in the export folder, so it is not trusted to stay inside it.
+            File.Delete(LibraryLayout.Beside(target, old));
         }
 
         LibraryFiles.Replace(

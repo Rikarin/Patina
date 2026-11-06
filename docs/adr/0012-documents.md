@@ -67,7 +67,7 @@ Material Layering ─────┘        │                                 
 | Material Layering | `.vxlayers` with no mesh | The format allows it. Nothing outputs it as a material |
 | Materialize Image | Nothing | All of it. Normal to Height and Auto Levels exist as nodes |
 | Package | A project folder | Close, but it is a folder and has no contents list |
-| User Library | `shared/` | Fine, and it scales further |
+| User Library | Any project | Every document is usable from anywhere |
 | Element Layer | `LayerFillSource` graph | Typed path only, with no parameters or channel mapping |
 | Element Brush | Nothing | Alphas are four built-ins |
 | Mesh Bake (in the Package) | Bake pane with typed paths | Results are not owned |
@@ -128,8 +128,11 @@ A role is checked against its outputs: a mask has one grey output. Fill layers, 
 GUID plus parameter overrides and a channel mapping. This reuses `AssetReference`, so pins, the impact preview and batch rebuild keep
 working, and a reference cycle is refused at save.
 
-A material lives in the project until it is **promoted** to `shared/`, which is one action. That keeps the Library's strength:
-editing one shared material rebuilds what uses it.
+Nothing has to be promoted, and there is no `shared/` folder: any document in any project is an asset of the Library, under the GUID
+it already has. The shelf lists them all. Using one records a reference, so pins, the impact preview and batch rebuild work as they
+did, and a saved edit reaches it through its `.source`. A Layered Material brings the compounds its fills read. A graph made with no
+project gets a project of its own, export presets are in `export-presets/` at the top of the library, and a library that still has
+`shared/` turns it into a project called Shared Assets when it opens, keeping every GUID.
 
 ### 4. The shell
 

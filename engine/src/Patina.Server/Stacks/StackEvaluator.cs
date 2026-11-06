@@ -3,6 +3,7 @@ using Patina.Ipc;
 using Patina.Library;
 using Patina.Server.Graphs;
 using Patina.Server.Viewport;
+using System.Collections.Concurrent;
 
 namespace Patina.Server.Stacks;
 
@@ -18,34 +19,42 @@ public sealed class StackEvaluator(
     PreviewStore store,
     ServerIdentity identity,
     ViewportSession viewport,
+    GraphSessions graphs,
     ILogger<StackEvaluator> logger
 ) : BackgroundService {
     const int PreviewSide = 512;
     const int StampsPerCheckpoint = 2048;
     const int CheckpointsKept = 3;
+    const int TrimInterval = 64;
     static readonly TimeSpan LostWorkerPause = TimeSpan.FromMilliseconds(20);
     static readonly TimeSpan WorkerPatience = TimeSpan.FromSeconds(30);
 
     readonly Dictionary<string, Told> told = new(StringComparer.Ordinal);
-    readonly Dictionary<string, Marks> marks = new(StringComparer.Ordinal);
+    readonly ConcurrentDictionary<string, Marks> marks = new(StringComparer.Ordinal);
+    int untilTrim = TrimInterval;
 
     /// <summary>Writes the pixels beside the stack, then the stack.</summary>
     /// <exception cref="GraphFileChangedException">The file changed behind the session.</exception>
     /// <exception cref="TimeoutException">No Worker came.</exception>
+    /// <exception cref="IpcException">The stack would not evaluate, or the Worker would not write it.</exception>
     public async Task<StackEditResult> SaveAsync(
         StackSession session,
         bool force,
         CancellationToken cancellationToken
     ) {
-        var text = session.PrepareSave(force);
+        var (text, revision) = session.PrepareSave(force);
         KeepBase(session);
         await ReachedAsync(session, cancellationToken);
+        if (session.EvaluationError is { } failed) {
+            throw new IpcException($"The stack did not evaluate, so saving would lose work: {failed}");
+        }
+
         var connection = await ConnectionAsync(cancellationToken);
         await connection.SendAsync(
             new() { Type = IpcTypes.StackSave, StackSave = new(session.Id, null) },
             cancellationToken
         );
-        return session.FinishSave(text);
+        return session.FinishSave(text, revision);
     }
 
     /// <summary>
@@ -70,16 +79,24 @@ public sealed class StackEvaluator(
         return reply.StackPicture ?? [];
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
-        try {
-            while (true) {
-                await sessions.WaitAsync(stoppingToken);
-                while (await DrainAsync(stoppingToken)) {
-                    // Another pass: something may have changed while the last stack was evaluating.
-                }
+    protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
+        ServiceLoop.RunAsync(logger, nameof(StackEvaluator), LoopAsync, stoppingToken);
+
+    /// <summary>A new Worker holds no stack, and a client looking at one has no edit coming to bring it back.</summary>
+    void WorkerArrived() {
+        foreach (var session in sessions.All) {
+            session.Evaluate();
+        }
+    }
+
+    async Task LoopAsync(CancellationToken stoppingToken) {
+        worker.Connected -= WorkerArrived;
+        worker.Connected += WorkerArrived;
+        while (true) {
+            await sessions.WaitAsync(stoppingToken);
+            while (await DrainAsync(stoppingToken)) {
+                // Another pass: something may have changed while the last stack was evaluating.
             }
-        } catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) {
-            // Stopping: nothing to report.
         }
     }
 
@@ -162,7 +179,9 @@ public sealed class StackEvaluator(
             ServerLog.GraphWorkerLost(logger, session.Path);
             session.Evaluate();
             await Task.Delay(LostWorkerPause, cancellationToken);
-        } catch (IpcException e) {
+        } catch (Exception e) when (e is not OperationCanceledException) {
+            // One stack's fault stays that stack's, and the Worker may be holding less than it was told.
+            told.Remove(session.Id);
             ServerLog.GraphFailed(logger, session.Path, e.Message);
             session.Fail(ready.Value.Work, e.Message);
         }
@@ -176,7 +195,7 @@ public sealed class StackEvaluator(
         StackWork work,
         CancellationToken cancellationToken
     ) {
-        var held = marks.TryGetValue(session.Id, out var known) ? known : marks[session.Id] = new();
+        var held = marks.GetOrAdd(session.Id, static _ => new());
         if (!told.TryGetValue(session.Id, out var state)
             || !ReferenceEquals(state.Connection, connection)
             || state.MeshMaps != session.MeshMaps
@@ -237,7 +256,8 @@ public sealed class StackEvaluator(
         session.Publish(work, reply.StackResult!);
         viewport.Repainted(session.Id, work.Revision);
         held.Stamps += parts.Sum(static part => part.Stamps.Count);
-        await CheckpointAsync(session, connection, work, held, cancellationToken);
+        await CheckpointAsync(session, connection, work, held, state, cancellationToken);
+        TrimNow();
     }
 
     /// <summary>
@@ -249,9 +269,12 @@ public sealed class StackEvaluator(
         IpcConnection connection,
         StackWork work,
         Marks held,
+        Told told,
         CancellationToken cancellationToken
     ) {
-        if (held.Stamps < StampsPerCheckpoint || work.Standing.Any(static entry => entry.Open)) {
+        // ⚠ From what this Worker was told, not the live journal: a stroke can grow after its parts were read, and a
+        // checkpoint that claimed those stamps would keep them from a later replay, leaving pixels silently different.
+        if (held.Stamps < StampsPerCheckpoint || work.Standing.Any(entry => told.Sent[entry.Id].Open)) {
             return;
         }
 
@@ -266,7 +289,7 @@ public sealed class StackEvaluator(
             new(
                 folder,
                 [..work.Standing.Select(static entry => entry.Id)],
-                work.Standing.ToDictionary(static entry => entry.Id, static entry => entry.Stamps.Count)
+                work.Standing.ToDictionary(static entry => entry.Id, entry => told.Sent[entry.Id].Stamps)
             )
         );
         if (held.Checkpoints.Count > CheckpointsKept) {
@@ -279,8 +302,22 @@ public sealed class StackEvaluator(
     ///     A save overwrites what the journal starts from, so what the session opened is copied first. It is in the
     ///     cache: deleting that costs the undo past a save after a lost Worker, and nothing a file holds.
     /// </summary>
+    void TrimNow() {
+        if (--untilTrim > 0) {
+            return;
+        }
+
+        untilTrim = TrimInterval;
+        store.Trim(
+            [
+                ..sessions.All.SelectMany(static session => session.PreviewHashes),
+                ..graphs.All.SelectMany(static session => session.PreviewHashes)
+            ]
+        );
+    }
+
     void KeepBase(StackSession session) {
-        var held = marks.TryGetValue(session.Id, out var known) ? known : marks[session.Id] = new();
+        var held = marks.GetOrAdd(session.Id, static _ => new());
         if (held.Base is not null) {
             return;
         }
@@ -309,7 +346,7 @@ public sealed class StackEvaluator(
 
     async Task ForgetClosedAsync(CancellationToken cancellationToken) {
         foreach (var id in sessions.TakeClosed()) {
-            if (marks.Remove(id) && Directory.Exists(CheckpointRoot(id))) {
+            if (marks.TryRemove(id, out _) && Directory.Exists(CheckpointRoot(id))) {
                 Directory.Delete(CheckpointRoot(id), true);
             }
 

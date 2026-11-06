@@ -19,7 +19,7 @@ public sealed record GeneratorOptions(
 /// <summary>What the generator made that a measurement needs to find again.</summary>
 /// <param name="Popular">The most referenced asset, which S6 uses for its fan-out.</param>
 /// <param name="Projects">Every project's path below <c>projects/</c>.</param>
-/// <param name="Assets">Every asset's path below <c>shared/</c>.</param>
+/// <param name="Assets">Every asset's path below <c>projects/</c>.</param>
 public sealed record GeneratedLibrary(AssetId Popular, IReadOnlyList<string> Projects, IReadOnlyList<string> Assets);
 
 /// <summary>
@@ -59,6 +59,10 @@ public static class LibraryGenerator {
             new(NewId<LibraryId>(random), "Generated", 1024, ["baseColor", "normal", "roughness"], "pbr", ["default"])
         );
 
+        foreach (var folder in new[] { "graphs", "smart-materials" }) {
+            LibraryFiles.WriteProject(root, folder, new(NewId<ProjectId>(random), folder, [], [], []));
+        }
+
         var assets = WriteAssets(root, options, random);
         var weights = Zipf(assets.Count);
         List<string> projects = [];
@@ -82,7 +86,7 @@ public static class LibraryGenerator {
             var name = $"{Pick(Finishes, random)} {Pick(Subjects, random)} {i}";
             var graph = i % GraphShare == 1;
             var folder = graph ? "graphs" : "smart-materials";
-            var extension = graph ? "vxtexgraph" : "vxsmart";
+            const string extension = "vxtexgraph";
             var path = $"{folder}/{name.Replace(' ', '_')}.{extension}";
 
             var content = Encoding.UTF8.GetBytes($"version: 1\nname: {name}\nseed: {random.Next()}\n");

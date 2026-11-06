@@ -1,6 +1,5 @@
 using Patina.Export;
 using Patina.Ipc;
-using Vixen.Interchange;
 
 namespace Patina.Worker;
 
@@ -40,12 +39,8 @@ sealed class BakeHost() : OneAtATime("baking") {
             ending = new(ask.Ticket, manifest, null);
         } catch (OperationCanceledException) {
             ending = new(ask.Ticket, null, null);
-        } catch (Exception e) when (e is IOException
-                                        or InvalidDataException
-                                        or ArgumentException
-                                        or UnauthorizedAccessException
-                                        or ModelFormatException
-                                        or OutOfMemoryException) {
+        } catch (Exception e) {
+            // Whatever went wrong, the Server is waiting on this step and hears how it ended.
             ending = new(ask.Ticket, null, e.Message);
         }
 

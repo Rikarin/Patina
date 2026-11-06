@@ -18,6 +18,7 @@ from typing import cast
 def _get_kwargs(
     *,
     project: str | Unset = UNSET,
+    search: str | Unset = UNSET,
 
 ) -> dict[str, Any]:
     
@@ -27,6 +28,8 @@ def _get_kwargs(
     params: dict[str, Any] = {}
 
     params["project"] = project
+
+    params["search"] = search
 
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
@@ -91,12 +94,14 @@ def sync_detailed(
     *,
     client: AuthenticatedClient | Client,
     project: str | Unset = UNSET,
+    search: str | Unset = UNSET,
 
 ) -> Response[MaterialList | ProblemDetails]:
     """ What a project's layers can be filled with.
 
     Args:
         project (str | Unset):
+        search (str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -109,6 +114,7 @@ def sync_detailed(
 
     kwargs = _get_kwargs(
         project=project,
+search=search,
 
     )
 
@@ -122,12 +128,14 @@ def sync(
     *,
     client: AuthenticatedClient | Client,
     project: str | Unset = UNSET,
+    search: str | Unset = UNSET,
 
 ) -> MaterialList | ProblemDetails | None:
     """ What a project's layers can be filled with.
 
     Args:
         project (str | Unset):
+        search (str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -141,6 +149,7 @@ def sync(
     return sync_detailed(
         client=client,
 project=project,
+search=search,
 
     ).parsed
 
@@ -148,12 +157,14 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient | Client,
     project: str | Unset = UNSET,
+    search: str | Unset = UNSET,
 
 ) -> Response[MaterialList | ProblemDetails]:
     """ What a project's layers can be filled with.
 
     Args:
         project (str | Unset):
+        search (str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -166,6 +177,7 @@ async def asyncio_detailed(
 
     kwargs = _get_kwargs(
         project=project,
+search=search,
 
     )
 
@@ -179,12 +191,14 @@ async def asyncio(
     *,
     client: AuthenticatedClient | Client,
     project: str | Unset = UNSET,
+    search: str | Unset = UNSET,
 
 ) -> MaterialList | ProblemDetails | None:
     """ What a project's layers can be filled with.
 
     Args:
         project (str | Unset):
+        search (str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -198,5 +212,6 @@ async def asyncio(
     return (await asyncio_detailed(
         client=client,
 project=project,
+search=search,
 
     )).parsed

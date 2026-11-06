@@ -13,8 +13,8 @@ compatibility as each one arrives (plan §11). NuGet and npm packages are listed
 Assimp links zlib in statically (zlib licence), with the other libraries its own source tree credits. BSD-3-Clause is compatible
 with GPLv3 and requires the text below in a binary distribution, so this file ships in the app's resources.
 
-These are expected and must be listed here, with their licences confirmed, when they ship: Vixen (Apache-2.0, through
-`external/Vixen`), MoltenVK and an EXR library.
+Vixen (Apache-2.0, through `external/Vixen`) ships in the Worker. These are expected and must be listed here, with their licences
+confirmed, when they ship: MoltenVK and an EXR library.
 
 Vixen's and xUI's licence and `NOTICE` texts ship with the app.
 

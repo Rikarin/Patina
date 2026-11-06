@@ -66,6 +66,7 @@ public sealed class StackEditor : ILayerStackDocument {
     long nextEntry;
     long nextStep;
     long? savedStep;
+    bool extendedSinceSave;
 
     /// <summary>Takes a document as a file holds it.</summary>
     /// <param name="path">Its file.</param>
@@ -77,6 +78,9 @@ public sealed class StackEditor : ILayerStackDocument {
 
     /// <summary>The library layered materials are read from, or null with none.</summary>
     public string? Library { get; set; }
+
+    /// <summary>Whether a material brought compounds with it since this was last cleared.</summary>
+    public bool CompoundsArrived { get; set; }
 
     /// <inheritdoc />
     public string AssetPath { get; }
@@ -98,7 +102,7 @@ public sealed class StackEditor : ILayerStackDocument {
             redoable.Count > 0,
             undoable.Count > 0 ? undoable[^1].Label : null,
             redoable.Count > 0 ? redoable[^1].Label : null,
-            (undoable.Count > 0 ? undoable[^1].Id : null) != savedStep
+            extendedSinceSave || (undoable.Count > 0 ? undoable[^1].Id : null) != savedStep
         );
 
     /// <summary>The strokes that stand, oldest first.</summary>
@@ -119,6 +123,8 @@ public sealed class StackEditor : ILayerStackDocument {
         }
 
         if (Extend(batch) is { } extended) {
+            // More of a stroke is the same undo step, so the step alone cannot say the file is behind.
+            extendedSinceSave = true;
             return extended;
         }
 
@@ -182,7 +188,10 @@ public sealed class StackEditor : ILayerStackDocument {
         return step.Label;
     }
 
-    public void MarkSaved() => savedStep = undoable.Count > 0 ? undoable[^1].Id : null;
+    public void MarkSaved() {
+        savedStep = undoable.Count > 0 ? undoable[^1].Id : null;
+        extendedSinceSave = false;
+    }
 
     /// <summary>What a colour in the API is in a paint file.</summary>
     /// <exception cref="StackEditRefusedException">It is not four numbers.</exception>
@@ -291,6 +300,7 @@ public sealed class StackEditor : ILayerStackDocument {
 
     void Apply(string source, string set, Action<IAuthoringCommand> run) {
         var material = MaterialShelf.Read(Library, source);
+        CompoundsArrived |= MaterialShelf.BringCompounds(Library, source, AssetPath);
         var applied = SmartMaterial.Prepare(Set, material);
         if (applied.Layers.IsDefaultOrEmpty) {
             throw new StackEditRefusedException(applied.Status);

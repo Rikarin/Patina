@@ -284,13 +284,25 @@ static class LibraryTreeEndpoints {
             }
         );
 
-    static Results<Ok<MaterialList>, ProblemHttpResult> GetMaterials(LibraryHost host, string? project) =>
-        Guarded(host, library => TypedResults.Ok(new MaterialList(MaterialShelf.List(library, project))));
+    static Results<Ok<MaterialList>, ProblemHttpResult> GetMaterials(
+        LibraryHost host,
+        string? project,
+        string? search
+    ) =>
+        Guarded(host, library => TypedResults.Ok(new MaterialList(MaterialShelf.List(library, project, search))));
 
-    static Results<Ok<MaterialUse>, ProblemHttpResult> UseMaterial(LibraryHost host, MaterialUseRequest request) =>
+    static Results<Ok<MaterialUse>, ProblemHttpResult> UseMaterial(
+        LibraryHost host,
+        StackSessions stacks,
+        MaterialUseRequest request
+    ) =>
         Guarded(
             host,
-            library => TypedResults.Ok(new MaterialUse(MaterialShelf.Publish(library, request.Project, request.Source)))
+            library => {
+                var graph = MaterialShelf.Publish(library, request.Project, request.Source);
+                MaterialShelf.Follow(library, request.Project, stacks);
+                return TypedResults.Ok(new MaterialUse(graph));
+            }
         );
 
     static Results<Ok<MaterialList>, ProblemHttpResult> RefreshMaterials(

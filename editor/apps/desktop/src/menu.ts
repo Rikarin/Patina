@@ -43,7 +43,33 @@ function template(actions: MenuActions): MenuItemConstructorOptions[] {
         mac ? { role: 'close' } : { role: 'quit' }
       ]
     },
-    { role: 'editMenu' },
+    {
+      // Not the stock Edit menu: its Undo only reaches text fields, and a menu takes these keys before any page sees
+      // them, so the studio decides what each one means for whatever is in front.
+      label: 'Edit',
+      submenu: [
+        { id: 'edit-undo', label: 'Undo', accelerator: 'CmdOrCtrl+Z', click: () => actions.command('undo') },
+        { id: 'edit-redo', label: 'Redo', accelerator: 'Shift+CmdOrCtrl+Z', click: () => actions.command('redo') },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        {
+          id: 'edit-delete',
+          label: 'Delete',
+          accelerator: 'CmdOrCtrl+Backspace',
+          // Shown, not taken: in a text field the key has to go on meaning what it means there.
+          registerAccelerator: false,
+          click: () => actions.command('delete')
+        },
+        {
+          id: 'edit-select-all',
+          label: 'Select All',
+          accelerator: 'CmdOrCtrl+A',
+          click: () => actions.command('selectAll')
+        }
+      ]
+    },
     {
       label: 'View',
       submenu: [

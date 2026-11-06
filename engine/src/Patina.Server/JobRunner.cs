@@ -49,24 +49,33 @@ public sealed class JobRunner : BackgroundService {
         return (Path.Combine(scratch, "jobs"), Path.Combine(scratch, "bakes"));
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
-        try {
-            while (true) {
-                var changed = queue.Changed(stoppingToken);
-                if (queue.Page().Jobs.All(static job => job.State != JobStates.Queued)) {
-                    await changed;
-                    continue;
-                }
+    protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
+        ServiceLoop.RunAsync(logger, nameof(JobRunner), LoopAsync, stoppingToken);
 
-                var connection = await worker.ConnectionAsync(stoppingToken);
-                if (queue.TakeNext() is { } job) {
-                    await (job.Build is null
-                        ? RunAsync(connection, job, stoppingToken)
-                        : RunBuildAsync(connection, job, stoppingToken));
-                }
+    async Task LoopAsync(CancellationToken stoppingToken) {
+        while (true) {
+            var changed = queue.Changed(stoppingToken);
+            if (queue.Page().Jobs.All(static job => job.State != JobStates.Queued)) {
+                await changed;
+                continue;
             }
-        } catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) {
-            // Stopping: a running job goes back in the queue when the queue is next opened.
+
+            var connection = await worker.ConnectionAsync(stoppingToken);
+            if (queue.TakeNext() is { } job) {
+                await RunOneAsync(connection, job, stoppingToken);
+            }
+        }
+    }
+
+    /// <summary>One job, whose failure of any kind is that job's and no other's.</summary>
+    async Task RunOneAsync(IpcConnection connection, JobState job, CancellationToken cancellationToken) {
+        try {
+            await (job.Build is null
+                ? RunAsync(connection, job, cancellationToken)
+                : RunBuildAsync(connection, job, cancellationToken));
+        } catch (Exception e) when (e is not OperationCanceledException) {
+            ServerLog.JobFailed(logger, job.Id, e.Message);
+            queue.Fail(job.Id, job.Attempts, e.Message);
         }
     }
 

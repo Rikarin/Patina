@@ -116,10 +116,16 @@ public sealed class OutputBuilders(
     }
 
     BuildManifest Stack(OutputStep step, string folder) {
-        var file = step.Files.Count > 0
-            ? step.Files[0]
-            : throw new InvalidDataException("A layer-stack output names no stack.");
-        var document = LayerStackYaml.Read(File.ReadAllText(file));
+        var file = step.Files.FirstOrDefault(static file => file.EndsWith(
+                    StackInputs.Extension,
+                    StringComparison.Ordinal
+                )
+            )
+            ?? throw new InvalidDataException("A layer-stack output names no stack.");
+        var meshMaps = GraphMeshMaps.Read(file);
+        var text = File.ReadAllText(file);
+        StackInputs.CheckPaint(file, text);
+        var document = LayerStackYaml.Read(text);
         var set = LayerStackEdit.SetFor(document, step.Settings.GetValueOrDefault("set", string.Empty))
             ?? throw new InvalidDataException($"'{Path.GetFileName(file)}' has no texture set.");
         var shelf = compounds.Of(CompoundFolders.Of(file));
@@ -131,7 +137,7 @@ public sealed class OutputBuilders(
                     evaluator(),
                     store,
                     file,
-                    (uploads, plan, owed) => pictures.Fill(uploads, plan, [..owed], roots, null)
+                    (uploads, plan, owed) => pictures.Fill(uploads, plan, [..owed], roots, meshMaps)
                         .Refusals.Select(static refusal => refusal.Message)
                         .ToArray()
                 );
@@ -256,7 +262,11 @@ static class MeshMapSettings {
     }
 
     static int Int(IReadOnlyDictionary<string, string> settings, string name, int fallback) =>
-        settings.TryGetValue(name, out var text) ? int.Parse(text, CultureInfo.InvariantCulture) : fallback;
+        !settings.TryGetValue(name, out var text)
+            ? fallback
+            : int.TryParse(text, CultureInfo.InvariantCulture, out var number)
+                ? number
+                : throw new InvalidDataException($"The setting '{name}' has to be a whole number, and it is '{text}'.");
 }
 
 /// <summary>A plan image's bytes as numbers, keeping how many bits they had.</summary>

@@ -13,11 +13,10 @@ import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
-import { colourOf } from './paint-store';
-import { LiveValue } from './live-value';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
-import { PaintStore } from './paint-store';
+import { LiveValue } from './live-value';
+import { colourOf, PaintStore } from './paint-store';
 
 const Fills: readonly string[] = ['Constant', 'Texture', 'Graph'];
 const Projections: readonly { value: string; label: string }[] = [
@@ -137,7 +136,9 @@ export function hexOf(colour: readonly number[] | undefined): string {
                   (change)="store.edit({ op: 'setLayer', layer: layer.id, projection: text($event) })"
                 >
                   @for (option of projections; track option.value) {
-                    <option [value]="option.value" [selected]="option.value === layer.projection">{{ option.label }}</option>
+                    <option [value]="option.value" [selected]="option.value === layer.projection">
+                      {{ option.label }}
+                    </option>
                   }
                 </select>
               </div>
@@ -357,8 +358,17 @@ export function hexOf(colour: readonly number[] | undefined): string {
           }
           @case ('Texture') {
             <div class="flex items-center gap-2">
-              <span class="min-w-0 flex-1 truncate text-xs" [title]="layer.mask.asset">{{ fileOf(layer.mask.asset) || 'None' }}</span>
-              <button type="button" xuiButton size="sm" variant="ghost" data-testid="paint-mask-picture" (click)="chooseMaskPicture(layer)">
+              <span class="min-w-0 flex-1 truncate text-xs" [title]="layer.mask.asset">{{
+                fileOf(layer.mask.asset) || 'None'
+              }}</span>
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                variant="ghost"
+                data-testid="paint-mask-picture"
+                (click)="chooseMaskPicture(layer)"
+              >
                 Choose…
               </button>
             </div>
@@ -421,7 +431,11 @@ export function hexOf(colour: readonly number[] | undefined): string {
                     {{ store.picking() === layer.id ? 'Click the mesh or map…' : 'Pick from Mesh' }}
                   </button>
                   @if (layer.mask.colour; as colour) {
-                    <span class="border-hairline size-5 rounded-sm border" data-testid="paint-picked" [style.background]="hexOf(colour)"></span>
+                    <span
+                      class="border-hairline size-5 rounded-sm border"
+                      data-testid="paint-picked"
+                      [style.background]="hexOf(colour)"
+                    ></span>
                   }
                 </div>
                 <div class="flex items-center gap-2">
@@ -656,8 +670,14 @@ export class LayerPanel {
       return [];
     }
 
-    const stem = (source: string): string | undefined => source.split('/').pop()?.replace(/\.[^.]*$/u, '');
-    return this.shelf().find(material => material.kind === 'graph' && stem(material.source) === graph)?.parameters ?? [];
+    const stem = (source: string): string | undefined =>
+      source
+        .split('/')
+        .pop()
+        ?.replace(/\.[^.]*$/u, '');
+    return (
+      this.shelf().find(material => material.kind === 'graph' && stem(material.source) === graph)?.parameters ?? []
+    );
   });
 
   private async loadShelf(project: string): Promise<void> {

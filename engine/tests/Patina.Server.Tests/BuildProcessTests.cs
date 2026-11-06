@@ -100,7 +100,7 @@ public sealed class BuildProcessTests : IDisposable {
     }
 
     /// <summary>Projects that each bake a mesh pair of their own, slowly enough to be killed in.</summary>
-    void WriteLibrary() {
+    void WriteLibrary(string? resolution = null) {
         LibraryFiles.CreateLibrary(
             Library,
             new(LibraryId.From(Guid.NewGuid()), "Game", 1024, [], "pbr", ["unity-urp"])
@@ -124,7 +124,7 @@ public sealed class BuildProcessTests : IDisposable {
                             new Dictionary<string, string> {
                                 ["low"] = BakeFixture.LowFile,
                                 ["high"] = BakeFixture.HighFile,
-                                ["resolution"] = $"{256 + project}",
+                                ["resolution"] = resolution ?? $"{256 + project}",
                                 ["rays"] = "128",
                                 ["maps"] = "ao"
                             }
@@ -250,6 +250,23 @@ public sealed class BuildProcessTests : IDisposable {
 
         // The old Worker reconnects by itself and is handed what is left.
         AssertFinished(await UntilAsync(restarted, job.Id, Over, deadline.Token));
+    }
+
+    [Fact]
+    public async Task A_bad_setting_fails_its_job_and_the_server_carries_on() {
+        using var deadline = Deadline(120);
+        WriteLibrary("2k");
+        var server = StartServer();
+        await DiscoverAsync(http, null, deadline.Token);
+        StartWorker();
+
+        var job = await BuildAsync(http, deadline.Token);
+        var finished = await UntilAsync(http, job.Id, Over, deadline.Token);
+
+        Assert.Equal(JobStates.Done, finished.State);
+        Assert.True(finished.Report!.Failed >= Projects);
+        Assert.False(server.HasExited);
+        Assert.Equal(HttpStatusCode.OK, (await http.GetAsync("/api/v1/system", deadline.Token)).StatusCode);
     }
 
     [Fact]

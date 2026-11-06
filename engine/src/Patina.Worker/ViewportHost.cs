@@ -17,6 +17,7 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
     ViewportRenderer? renderer;
     ViewportLook? look;
     string? lookPath;
+    string? lookHash;
     OrbitCamera camera = OrbitCamera.Default;
     MemoryMappedFile? frames;
     MemoryMappedViewAccessor? view;
@@ -98,7 +99,7 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
                 )
             );
         try {
-            SetLook(maps.Look?.Path);
+            SetLook(maps.Look?.Path, maps.Look?.Hash);
         } catch (FormatException e) {
             throw new IpcException($"'{maps.Look?.Path}' is not a viewing table: {e.Message}");
         }
@@ -111,10 +112,11 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
 
     /// <summary>Views frames through the <c>.cube</c> at a path, or without one.</summary>
     /// <exception cref="FormatException">It is not a 3D table.</exception>
-    void SetLook(string? path) {
-        if (path != lookPath) {
+    void SetLook(string? path, string? hash) {
+        if (path != lookPath || hash != lookHash) {
             look = path is null ? null : ViewportLook.Parse(File.ReadAllText(path));
             lookPath = path;
+            lookHash = hash;
         }
     }
 

@@ -7,4 +7,4 @@ built from bundled materials can contain that content, and game studios must be 
 (plan §11). Add nothing here that cannot be released under CC0.
 
 `export-presets/` holds the factory export presets. Each is a text file; a library adds or overrides one by putting a file
-with the same shape in `shared/export-presets/`.
+with the same shape in `export-presets/`.

@@ -174,9 +174,10 @@ public sealed record ProjectRenameRequest(string Path, string Name);
 ///     <c>material</c>, <c>mask</c>, <c>brush</c>, <c>filter</c>, or <c>empty</c> for a graph with no
 ///     output yet.
 /// </param>
-/// <param name="Origin"><c>shipped</c>, <c>project</c> or <c>shared</c>.</param>
+/// <param name="Origin"><c>shipped</c>, <c>project</c>, or <c>library</c> for another project.</param>
 /// <param name="Channels">The maps a graph makes, by usage.</param>
 /// <param name="Parameters">The knobs a graph exposes, which a layer can set.</param>
+/// <param name="Project">The project it lives in, when that is another one.</param>
 public sealed record MaterialInfo(
     string Name,
     string Kind,
@@ -184,7 +185,8 @@ public sealed record MaterialInfo(
     string Role,
     string Origin,
     IReadOnlyList<string> Channels,
-    IReadOnlyList<GraphSettingDefinition>? Parameters = null
+    IReadOnlyList<GraphSettingDefinition>? Parameters = null,
+    string? Project = null
 );
 
 /// <summary>The materials a project can use.</summary>
@@ -244,11 +246,11 @@ public sealed record TagCount(string Tag, int Count);
 /// <param name="Limit">The most items a page holds.</param>
 public sealed record TagPage(IReadOnlyList<TagCount> Items, int Total, int Offset, int Limit);
 
-/// <summary>One shared asset as the browser shows it.</summary>
+/// <summary>One document other projects can use, as the browser shows it.</summary>
 /// <param name="Id">The asset's identity.</param>
 /// <param name="Kind">The asset's kind, such as <c>smart-material</c>.</param>
 /// <param name="Name">The asset's display name.</param>
-/// <param name="Path">The asset's file, relative to <c>shared/</c>, with forward slashes.</param>
+/// <param name="Path">The asset's file, below the library, with forward slashes.</param>
 /// <param name="Tags">The asset's tags, sorted.</param>
 /// <param name="Revision">The content hash of the asset's file, or null when the file is missing.</param>
 /// <param name="UsageCount">How many projects reference the asset directly.</param>
@@ -262,7 +264,7 @@ public sealed record AssetSummary(
     int UsageCount
 );
 
-/// <summary>One page of shared assets.</summary>
+/// <summary>One page of documents.</summary>
 /// <param name="Items">The assets on this page.</param>
 /// <param name="Total">How many assets match, on all pages.</param>
 /// <param name="Offset">The offset the page starts at.</param>

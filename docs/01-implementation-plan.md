@@ -235,20 +235,19 @@ Each new project gets a sibling `.Tests` project, as Vixen requires, and the exi
 
 ## 5. The Library
 
-The vocabulary: a **Library** is one game. A **Project** is one object or asset set inside it. **Shared assets** are
-materials, graphs, brushes and so on used by many projects.
+The vocabulary: a **Library** is one game. A **Project** is one object or asset set inside it, holding typed documents
+(ADR 0012). Anything in any project can be used in any other, so there is no separate place for shared assets.
 
 ### On disk
 
 ```
 Ember.ptlib/                         # a folder, and normally a Git repository
 ├─ library.yaml                      # id, schema version, texel density, channels, default shader, export targets
-├─ shared/
-│  ├─ graphs/rust_heavy.vxtexgraph   # YAML, Vixen's format
-│  ├─ smart-materials/  brushes/  alphas/  environments/  export-presets/
+├─ export-presets/                   # belong to the library, not to any project
+├─ .revisions/                       # the bytes pinned references keep
 ├─ projects/
 │  └─ props/crate_01/
-│     ├─ project.yaml                # id, tags, references to shared assets
+│     ├─ project.yaml                # id, tags, documents, references to documents elsewhere
 │     ├─ meshes/low.glb  high.glb    # or external paths, resolved through library.yaml
 │     ├─ crate.vxlayers              # YAML, Vixen's layer stack format
 │     ├─ paint/<layer-id>.vxpaint    # new version: one sparse tiled pack per layer (Git LFS)
@@ -273,8 +272,8 @@ Ember.ptlib/                         # a folder, and normally a Git repository
 - **Nothing loads a whole library.** Opening one reads `library.yaml` and the index. A project loads on open.
 - **The index** (SQLite with FTS5) serves search, tags, filters, thumbnails, usage counts and reverse dependencies. The
   browser is a virtualised grid backed by paged queries.
-- **Reference modes.** Floating follows the shared asset, and pinned stays at a specific revision. Floating is the default.
-- **Impact preview.** Saving a shared material shows "affects 412 projects, 3 pinned" before anything rebuilds.
+- **Reference modes.** Floating follows the document, and pinned stays at a specific revision. Floating is the default.
+- **Impact preview.** Saving a material used across projects shows "affects 412 projects, 3 pinned" before anything rebuilds.
 - **Build keys.** Each output has a key: a hash tree of its inputs and kernel versions. An output is stale only when its
   key changes, so a change to one material rebuilds exactly what depends on it. Build keys are also why this works
   across machines: **output is a file**, and a key match means the file is reused, not regenerated (doc 48 D4).
@@ -307,6 +306,10 @@ P0 Spikes ─► PV Vixen split ─► P2 Graph editor ──────► P4 
 Prerequisite tasks:
 1. **Publish xUI 3.1** with the bezel skin. Until it's out, the app can build against a local xUI.
 2. Choose the name (§10), create the repo under GPL-3.0-or-later (§11), add the Vixen submodule.
+
+> **Status (2026-11-06): no go/no-go has been recorded, and two spikes failed.** S8 (macOS Vulkan bundling) is open as
+> [#48](https://github.com/Rikarin/Patina/issues/48), S9 (GPU traversal) is an open decision, and S3 fails its CPU line. Work went
+> ahead regardless, so the decision on Raven plus MoltenVK is still owed.
 
 Each spike is throwaway, with its result written up in `docs/adr/`.
 
@@ -356,9 +359,8 @@ beyond namespaces, that's a sign the split is wrong.
 
 ### P1: foundation (4–5 weeks, parallel with PV)
 
-> **Status (2026-11-05): done on macOS, unproven on Linux and Windows.** The exit needs all three platforms in CI, and the
-> fixes for the first failures there are not yet confirmed by a CI run. Windows runners have no Vulkan, so its viewport
-> tests skip. Left open: the 2 cores spent while orbiting (ADR 0003). The viewport now reads textures, so a glTF's PBR
+> **Status (2026-11-06): done, with menus and saved layouts arriving only in the library work.** All three platforms pass in CI.
+> Windows runners have no Vulkan, so its viewport tests skip. Left open: the 2 cores spent while orbiting (ADR 0003). The viewport now reads textures, so a glTF's PBR
 > material is drawn whole.
 
 **Exit:** the desktop app opens, starts both sidecars, and shows a glTF with a PBR material in a docked viewport, under
@@ -401,7 +403,7 @@ bezel, on all three platforms, in CI.
 
 > **Status (2026-11-05): the exit is met for opening, searching and browsing a generated 10,000-project library.** It holds
 > at 60 fps under scripted scrolling, and a project can be created through the Server. Left open: thumbnails, a grid, drag
-> to apply, the file watcher, opening a project, opening a library from the UI, bulk import and generated `.gitattributes`.
+> to apply, the file watcher and bulk import. Opening a library or a project from the app arrived later, in ADR 0012's work.
 
 **Exit:** a generated 10,000-project library opens, searches and browses within the S6 targets.
 
@@ -457,19 +459,28 @@ bezel, on all three platforms, in CI.
 
 ### P6: batch and export (5–6 weeks)
 
-> **Status (2026-11-05): the exit is met through the real Worker, and no engine has opened a file yet.** Presets are files, BC7 and
+> **Status (2026-11-06): the engine half of the exit is met, and the exit as a whole is not.** No engine has opened a file, and
+> the 10,000-project measurement used stand-in maps. Presets are files, BC7 and
 > BC6H are complete in Vixen, a build is a plan from keys that survives its Worker and the Server, `patina build` and the Export pane
 > run it, and LODs and `.cube` viewing are in. Measured at 10,000 projects with stand-in maps and 500 with real ones
 > ([ADR 0011](adr/0011-export.md)). Not done: layer references, which need a decision about Vixen's stack format, and any
 > check inside Unreal, Unity or Godot.
 
-**Exit:** edit one shared material, and the library rebuilds only what changed and writes engine-ready files.
+**Exit:** edit one material that many projects use, and the library rebuilds only what changed and writes engine-ready files.
 
 - Export presets with channel packing and naming templates: Unreal, Unity, Godot, and Vixen.
 - Full BC7 and BC6H modes in `Core.Imaging` (it has mode 6 and mode 11 only), KTX2, mip chains.
 - Batch rebuild from impact preview, `patina build`, per-project and per-library reports.
 - Layer references (InstaMAT's idea): one layer's content reused in many projects.
 - LOD generation via `MeshSimplifier`. Colour: sRGB and linear plus `.cube` viewing; OCIO only if demand is real.
+
+### P6.5: usable (before P7)
+
+P0 to P6 proved technology, and every gate tested that, so each phase could pass while the app stayed unusable. This phase has one
+exit, and new engine scope waits for it.
+
+**Exit:** a person goes from a mesh to exported textures in the app, unaided, and `journey.spec.ts` does the same with no fixtures.
+**From here on, a phase's exit is judged in the app, by a person.**
 
 ### P7: content depth (from P4, ongoing)
 

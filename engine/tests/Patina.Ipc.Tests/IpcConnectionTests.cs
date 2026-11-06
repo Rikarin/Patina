@@ -10,12 +10,18 @@ public sealed class IpcConnectionTests : IDisposable {
     static ValueTask<IpcMessage> Reply(IpcMessage request, CancellationToken _) =>
         ValueTask.FromResult(new IpcMessage { Type = IpcTypes.Ok, Health = new(request.Id, 1) });
 
-    async Task<(IpcConnection Left, IpcConnection Right)> ConnectAsync(IpcHandler left, IpcHandler right) {
+    async Task<(IpcConnection Left, IpcConnection Right)> ConnectAsync(
+        IpcHandler left,
+        IpcHandler right,
+        Func<string, bool>? immediate = null
+    ) {
         using var listener = IpcSocket.Listen(socketPath);
         var accept = listener.AcceptAsync(Token).AsTask();
         var client = await IpcSocket.ConnectAsync(socketPath, TimeSpan.FromSeconds(5), Token);
         var leftEnd = new IpcConnection(client, left);
-        var rightEnd = new IpcConnection(new System.Net.Sockets.NetworkStream(await accept, true), right);
+        var rightEnd = new IpcConnection(new System.Net.Sockets.NetworkStream(await accept, true), right) {
+            Immediate = immediate
+        };
         leftEnd.Start();
         rightEnd.Start();
         return (leftEnd, rightEnd);
@@ -84,6 +90,58 @@ public sealed class IpcConnectionTests : IDisposable {
                 Assert.Equal(IpcTypes.Ok, (await left.SendAsync(new() { Type = IpcTypes.Health }, Token)).Type);
             }
         }
+    }
+
+    /// <summary>A long request used to hold the read loop, so a healthy Worker failed its health check.</summary>
+    [Fact]
+    public async Task A_health_check_is_answered_while_a_long_request_runs() {
+        var release = new TaskCompletionSource();
+        var started = new TaskCompletionSource();
+        var (left, right) = await ConnectAsync(
+            Reply,
+            async (request, _) => {
+                if (request.Type == IpcTypes.StackEvaluate) {
+                    started.TrySetResult();
+                    await release.Task;
+                }
+
+                return IpcMessage.Ok(request.Id);
+            },
+            static type => type == IpcTypes.Health
+        );
+        await using (left) {
+            await using (right) {
+                var slow = left.SendAsync(new() { Type = IpcTypes.StackEvaluate }, Token);
+                await started.Task.WaitAsync(TimeSpan.FromSeconds(5), Token);
+
+                var health = await left.SendAsync(new() { Type = IpcTypes.Health }, Token)
+                    .WaitAsync(TimeSpan.FromSeconds(5), Token);
+
+                Assert.Equal(IpcTypes.Ok, health.Type);
+                Assert.False(slow.IsCompleted);
+                release.SetResult();
+                Assert.Equal(IpcTypes.Ok, (await slow.WaitAsync(TimeSpan.FromSeconds(5), Token)).Type);
+            }
+        }
+    }
+
+    [Fact]
+    public void Device_work_that_stops_moving_is_hung_and_a_beat_or_idle_clears_it() {
+        var now = TimeSpan.FromHours(1);
+        var watch = new DeviceWatch(TimeSpan.FromSeconds(10), () => now);
+
+        Assert.False(watch.Hung);
+        watch.Beat();
+        now += TimeSpan.FromSeconds(9);
+        Assert.False(watch.Hung);
+        now += TimeSpan.FromSeconds(2);
+        Assert.True(watch.Hung);
+
+        watch.Beat();
+        Assert.False(watch.Hung);
+        now += TimeSpan.FromMinutes(1);
+        watch.Idle();
+        Assert.False(watch.Hung);
     }
 
     [Fact]

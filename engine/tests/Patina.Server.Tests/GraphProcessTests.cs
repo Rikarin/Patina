@@ -136,7 +136,7 @@ public sealed class GraphProcessTests : IDisposable {
 
             if (evaluation.Error is { } error) {
                 if (error.StartsWith("No Vulkan", StringComparison.Ordinal)) {
-                    Assert.Skip(error);
+                    Gpu.Skip(error);
                 }
 
                 Assert.Fail(error);

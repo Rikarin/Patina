@@ -168,7 +168,7 @@ public sealed class ViewportProcessTests : IDisposable {
                 if ((await StateAsync(instance, cancellationToken)).Error is { } error
                     && error.StartsWith("No Vulkan", StringComparison.Ordinal)) {
                     await patience.CancelAsync();
-                    Assert.Skip(error);
+                    Gpu.Skip(error);
                 }
 
                 continue;
@@ -241,9 +241,7 @@ public sealed class ViewportProcessTests : IDisposable {
         try {
             await stream.ReadExactlyAsync(frame, patience.Token);
         } catch (OperationCanceledException) {
-            Assert.Skip(
-                (await StateAsync(instance, deadline.Token)).Error ?? "No frame arrived and no reason was given."
-            );
+            Gpu.Skip((await StateAsync(instance, deadline.Token)).Error ?? "No frame arrived and no reason was given.");
         }
 
         Assert.Equal(0x464E5450u, BinaryPrimitives.ReadUInt32LittleEndian(frame));

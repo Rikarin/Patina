@@ -83,7 +83,13 @@ public sealed record ProjectItem(
     string Name,
     AssetId? Mesh = null,
     string? Role = null
-);
+) {
+    /// <summary>What it can be searched by.</summary>
+    public IReadOnlyList<string> Tags { get; init; } = [];
+
+    /// <summary>The other documents it reads, which an edit to one of them reaches.</summary>
+    public IReadOnlyList<AssetReference> Dependencies { get; init; } = [];
+}
 
 /// <summary>What a graph is for, which decides where it is offered (ADR 0012).</summary>
 public static class GraphRoles {
@@ -126,7 +132,9 @@ public static class DocumentKinds {
 /// <param name="Color">The folder's colour as <c>#rrggbb</c>, or null for none.</param>
 public sealed record FolderDocument(string? Color = null);
 
-/// <summary>A shared asset's sidecar: its identity, and the other shared assets it reads.</summary>
+/// <summary>
+///     The sidecar of an asset in a library's old <c>shared/</c> folder, which only the move to a project reads.
+/// </summary>
 public sealed record AssetDocument(
     AssetId Id,
     string Kind,

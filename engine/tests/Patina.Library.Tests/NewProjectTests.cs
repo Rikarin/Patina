@@ -28,17 +28,18 @@ public sealed class NewProjectTests : IDisposable {
     }
 
     [Fact]
-    public void A_new_shared_graph_is_a_file_with_a_sidecar_that_a_scan_indexes() {
+    public void A_graph_needs_a_project_and_a_scan_indexes_it_as_an_asset() {
         using var open = library.Open();
+        var project = open.CreateProject(new("Crate"));
 
-        var path = open.CreateGraph(new("Rust: Heavy"), "name: Rust");
+        Assert.Throws<ProjectRefusedException>(() => open.CreateGraph(new("Rust"), "name: Rust"));
+        var path = open.CreateGraph(new("Rust: Heavy", project.Path), "name: Rust");
         open.Rescan(TestContext.Current.CancellationToken);
 
-        Assert.Equal("shared/graphs/rust-heavy.vxtexgraph", path);
-        Assert.Equal("name: Rust", File.ReadAllText(Path.Combine(library.Root, path)));
-        var asset = Assert.Single(open.Assets(new(null, null, 0, 50)).Items);
-        Assert.Equal(("Rust: Heavy", LibraryLayout.GraphKind), (asset.Name, asset.Kind));
-        Assert.Throws<ProjectExistsException>(() => open.CreateGraph(new("rust heavy"), "other"));
+        Assert.Equal($"projects/{project.Path}/rust-heavy.vxtexgraph", path);
+        var asset = Assert.Single(open.Assets(new(null, null, 0, 50)).Items, static a => a.Name == "Rust: Heavy");
+        Assert.Equal((path, LibraryLayout.GraphKind), (asset.Path, asset.Kind));
+        Assert.Throws<ProjectExistsException>(() => open.CreateGraph(new("rust heavy", project.Path), "other"));
         Assert.Equal("name: Rust", File.ReadAllText(Path.Combine(library.Root, path)));
     }
 

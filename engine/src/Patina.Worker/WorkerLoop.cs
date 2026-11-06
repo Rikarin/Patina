@@ -11,7 +11,8 @@ sealed class WorkerLoop(
     StackHost stacks,
     BakeHost bakes,
     BuildHost builds,
-    DeviceHost gpu
+    DeviceHost gpu,
+    DeviceWatch watch
 ) {
     static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
     static readonly long Started = Stopwatch.GetTimestamp();
@@ -21,6 +22,7 @@ sealed class WorkerLoop(
     ///     which the desktop app's supervision reads.
     /// </summary>
     public async Task RunAsync(string socketPath, TextWriter log, CancellationToken cancellationToken) {
+        _ = WatchAsync(log, cancellationToken);
         while (!cancellationToken.IsCancellationRequested) {
             try {
                 await RunLinkAsync(socketPath, log, cancellationToken);
@@ -38,10 +40,20 @@ sealed class WorkerLoop(
         }
     }
 
+    async Task WatchAsync(TextWriter log, CancellationToken cancellationToken) {
+        try {
+            await watch.WatchAsync(log, cancellationToken);
+        } catch (OperationCanceledException) {
+            // Stopping.
+        }
+    }
+
     async Task RunLinkAsync(string socketPath, TextWriter log, CancellationToken cancellationToken) {
         var stream = await IpcSocket.ConnectAsync(socketPath, ConnectTimeout, cancellationToken);
         IpcConnection? connection = null;
-        connection = new(stream, (request, token) => AnswerAsync(connection!, request, token));
+        connection = new(stream, (request, token) => AnswerAsync(connection!, request, token)) {
+            Immediate = static type => type is IpcTypes.Health or IpcTypes.BakeCancel or IpcTypes.BuildCancel
+        };
         await using (connection) {
             connection.Start();
             await connection.SendAsync(
@@ -95,22 +107,31 @@ sealed class WorkerLoop(
     /// <summary>What uses the device, in turn with a build's step. Health and bakes never wait for this.</summary>
     IpcMessage OnDevice(IpcMessage request) {
         lock (gpu.Gate) {
-            return request.Type switch {
-                IpcTypes.ViewportStack => stacks.Follow(request),
-                IpcTypes.GraphLoad => graphs.Load(request),
-                IpcTypes.GraphEvaluate => graphs.Evaluate(request),
-                IpcTypes.GraphImage => graphs.Image(request),
-                IpcTypes.GraphClose => graphs.Close(request),
-                IpcTypes.StackLoad => stacks.Load(request),
-                IpcTypes.StackSync => stacks.Sync(request),
-                IpcTypes.StackThumbnails => stacks.Thumbnails(request),
-                IpcTypes.StackEvaluate => stacks.Evaluate(request),
-                IpcTypes.StackSave or IpcTypes.StackCheckpoint => stacks.Save(request),
-                IpcTypes.StackPixels => stacks.Pixels(request),
-                _ => stacks.Close(request)
-            };
+            watch.Beat();
+            try {
+                return Device(request);
+            } finally {
+                watch.Idle();
+            }
         }
     }
 
-    static WorkerHealth Health() => new(Stopwatch.GetElapsedTime(Started).TotalSeconds, Environment.WorkingSet);
+    IpcMessage Device(IpcMessage request) =>
+        request.Type switch {
+            IpcTypes.ViewportStack => stacks.Follow(request),
+            IpcTypes.GraphLoad => graphs.Load(request),
+            IpcTypes.GraphEvaluate => graphs.Evaluate(request),
+            IpcTypes.GraphImage => graphs.Image(request),
+            IpcTypes.GraphClose => graphs.Close(request),
+            IpcTypes.StackLoad => stacks.Load(request),
+            IpcTypes.StackSync => stacks.Sync(request),
+            IpcTypes.StackThumbnails => stacks.Thumbnails(request),
+            IpcTypes.StackEvaluate => stacks.Evaluate(request),
+            IpcTypes.StackSave or IpcTypes.StackCheckpoint => stacks.Save(request),
+            IpcTypes.StackPixels => stacks.Pixels(request),
+            _ => stacks.Close(request)
+        };
+
+    WorkerHealth Health() =>
+        new(Stopwatch.GetElapsedTime(Started).TotalSeconds, Environment.WorkingSet, watch.Busy.TotalSeconds);
 }

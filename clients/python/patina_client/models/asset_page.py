@@ -23,7 +23,7 @@ T = TypeVar("T", bound="AssetPage")
 
 @_attrs_define
 class AssetPage:
-    """ One page of shared assets.
+    """ One page of documents.
 
         Attributes:
             items (list[AssetSummary]): The assets on this page.

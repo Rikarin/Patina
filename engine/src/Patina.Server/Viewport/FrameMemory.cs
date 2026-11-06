@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using System.Buffers;
+using System.Diagnostics;
 using System.IO.MemoryMappedFiles;
 
 namespace Patina.Server.Viewport;
@@ -61,12 +62,45 @@ public sealed class FrameMemory : IDisposable {
     readonly Stack<FrameSlot> free = new();
     readonly SemaphoreSlim available = new(0);
 
+    /// <summary>Only this user may read a frame, since temp folders are shared.</summary>
+    static FileStreamOptions Private() {
+        FileStreamOptions created = new() {
+            Mode = FileMode.CreateNew, Access = FileAccess.ReadWrite, Share = FileShare.ReadWrite | FileShare.Delete
+        };
+        if (!OperatingSystem.IsWindows()) {
+            created.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        }
+
+        return created;
+    }
+
+    /// <summary>A killed Server leaves its gigabytes of frames, under a name that says whose they were.</summary>
+    void SweepDead() {
+        var folder = System.IO.Path.GetDirectoryName(Path)!;
+        foreach (var stale in Directory.EnumerateFiles(folder, WorkerOptions.FramesPattern)) {
+            var parts = System.IO.Path.GetFileName(stale).Split('-');
+            if (parts.Length == 3 && int.TryParse(parts[1], out var owner) && !Alive(owner)) {
+                File.Delete(stale);
+            }
+        }
+    }
+
+    static bool Alive(int process) {
+        try {
+            using var found = Process.GetProcessById(process);
+            return !found.HasExited;
+        } catch (ArgumentException) {
+            return false;
+        }
+    }
+
     public unsafe FrameMemory(IOptions<ServerOptions> options) {
         ArgumentNullException.ThrowIfNull(options);
         Path = options.Value.Worker.FramesPath;
         File.Delete(Path);
+        SweepDead();
         file = MemoryMappedFile.CreateFromFile(
-            new FileStream(Path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.ReadWrite | FileShare.Delete),
+            new FileStream(Path, Private()),
             null,
             (long)SlotBytes * Slots,
             MemoryMappedFileAccess.ReadWrite,

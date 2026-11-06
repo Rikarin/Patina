@@ -27,6 +27,10 @@ public sealed class ViewportRendererTests : IDisposable {
 
     ViewportRenderer Open() {
         if (!ViewportRenderer.TryCreate(new(cache.FullName), out var renderer, out var refusal)) {
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PATINA_REQUIRE_VULKAN"))) {
+                Assert.Fail($"Vulkan is required here: {refusal}");
+            }
+
             Assert.Skip($"No Vulkan device: {refusal}");
         }
 

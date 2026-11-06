@@ -14,7 +14,7 @@ export interface DocumentTab {
   path: string;
   name: string;
   kind: string;
-  /** The project it belongs to, or null for a shared graph. */
+  /** The project it belongs to. */
   project: string | null;
   dirty: boolean;
   /** Its session on the Server, once it has been in front. */

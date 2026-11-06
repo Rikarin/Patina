@@ -5,6 +5,12 @@ static partial class ServerLog {
     [LoggerMessage(Level = LogLevel.Information, Message = "Worker {Version} (pid {ProcessId}) connected")]
     public static partial void WorkerConnected(ILogger logger, string version, int processId);
 
+    [LoggerMessage(Level = LogLevel.Error, Message = "{Service} failed and starts again: {Reason}")]
+    public static partial void ServiceFailed(ILogger logger, string service, string reason, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Job {Job} failed: {Reason}")]
+    public static partial void JobFailed(ILogger logger, string job, string reason);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Worker link lost: {Reason}")]
     public static partial void WorkerLost(ILogger logger, string reason);
 

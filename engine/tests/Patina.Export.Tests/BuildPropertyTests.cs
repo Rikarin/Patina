@@ -85,7 +85,7 @@ public sealed class BuildPropertyTests {
 
         public void Apply(Edit edit) {
             if (edit.Asset >= 0) {
-                File.WriteAllText(Path.Combine(Root, "shared", Assets[edit.Asset].Path), $"edit {edit.Text}");
+                File.WriteAllText(LibraryFiles.AssetFile(Root, Assets[edit.Asset].Path), $"edit {edit.Text}");
             }
 
             if (edit.Project >= 0) {
@@ -199,7 +199,7 @@ public sealed class BuildPropertyTests {
         using var library = OpenLibrary.Open(fixture.Root);
         await Build(library, new FakeExecutor());
 
-        File.WriteAllText(Path.Combine(fixture.Root, "shared", fixture.Assets[0].Path), "changed");
+        File.WriteAllText(LibraryFiles.AssetFile(fixture.Root, fixture.Assets[0].Path), "changed");
         var request = new BuildRequest { Asset = fixture.Assets[0].Id.Value };
         var preview = BuildPipeline.Plan(library, request, ToolCatalog.Default, Token).Preview(0, 50);
 

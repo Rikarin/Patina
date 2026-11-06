@@ -39,6 +39,17 @@ if (builder.Configuration["library"] is { Length: > 0 } path) {
     }
 }
 
+// Before anything opens the library: a second Server must not reach its job queue, and nothing can be running in it.
+using var taken = library is null ? null : LibraryLock.Take(library);
+if (library is not null) {
+    if (taken is null) {
+        await Console.Error.WriteLineAsync($"Another Server has the library '{library}' open.");
+        return 1;
+    }
+
+    CacheSweep.Leftovers(library);
+}
+
 // A library's Server is found through the discovery file, so it needs a token to publish and a port of its own: each
 // library on the machine has one Server.
 var urls = builder.Configuration["urls"] ?? (library is null ? "http://127.0.0.1:5190" : "http://127.0.0.1:0");
@@ -112,6 +123,7 @@ app.MapOpenApi();
 app.MapPatinaApi();
 
 app.Run();
+return Environment.ExitCode;
 
 /// <summary>Entry point, public for integration tests.</summary>
 public partial class Program;
