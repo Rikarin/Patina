@@ -1827,6 +1827,13 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -7156,7 +7163,7 @@
           },
           "origin": {
             "type": "string",
-            "description": "\u0060shipped\u0060, \u0060project\u0060 or \u0060shared\u0060."
+            "description": "\u0060shipped\u0060, \u0060project\u0060, \u0060shared\u0060 or \u0060library\u0060 for another project."
           },
           "channels": {
             "type": "array",
@@ -7174,6 +7181,13 @@
               "$ref": "#/components/schemas/GraphSettingDefinition"
             },
             "description": "The knobs a graph exposes, which a layer can set."
+          },
+          "project": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The project it lives in, when that is another one."
           }
         },
         "description": "Something a layer can be filled with (ADR 0012)."

@@ -32,9 +32,10 @@ class MaterialInfo:
             source (str): What names it to the routes that use it.
             role (str): `material`, `mask`, `brush`, `filter`, or `empty` for a graph with no
                             output yet.
-            origin (str): `shipped`, `project` or `shared`.
+            origin (str): `shipped`, `project`, `shared` or `library` for another project.
             channels (list[str]): The maps a graph makes, by usage.
             parameters (list[GraphSettingDefinition] | None | Unset): The knobs a graph exposes, which a layer can set.
+            project (None | str | Unset): The project it lives in, when that is another one.
      """
 
     name: str
@@ -44,6 +45,7 @@ class MaterialInfo:
     origin: str
     channels: list[str]
     parameters: list[GraphSettingDefinition] | None | Unset = UNSET
+    project: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -79,6 +81,12 @@ class MaterialInfo:
         else:
             parameters = self.parameters
 
+        project: None | str | Unset
+        if isinstance(self.project, Unset):
+            project = UNSET
+        else:
+            project = self.project
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -92,6 +100,8 @@ class MaterialInfo:
         })
         if parameters is not UNSET:
             field_dict["parameters"] = parameters
+        if project is not UNSET:
+            field_dict["project"] = project
 
         return field_dict
 
@@ -139,6 +149,16 @@ class MaterialInfo:
         parameters = _parse_parameters(d.pop("parameters", UNSET))
 
 
+        def _parse_project(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        project = _parse_project(d.pop("project", UNSET))
+
+
         material_info = cls(
             name=name,
             kind=kind,
@@ -147,6 +167,7 @@ class MaterialInfo:
             origin=origin,
             channels=channels,
             parameters=parameters,
+            project=project,
         )
 
 

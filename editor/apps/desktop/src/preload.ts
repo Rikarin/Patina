@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('patina', {
     ipcRenderer.send('patina:title', title);
   },
   reveal: (path: string) => ipcRenderer.invoke('patina:reveal', path),
+  editText: (edit: string) => ipcRenderer.send('patina:editText', edit),
   onCommand: (listener: (command: string) => void) => {
     ipcRenderer.on('patina:command', (_event, command: string) => listener(command));
   },

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Patina.Contracts;
 using Patina.Library;
 using Patina.Server.Stacks;
@@ -22,9 +23,21 @@ public static class MaterialShelf {
     const string MaterialsFolder = "Materials";
     const string SourceSuffix = ".source";
     const int SharedLimit = 200;
+    const int ElsewhereLimit = 300;
+    const int ProjectPage = 200;
+    const string ElsewhereOrigin = "library";
 
-    /// <summary>The materials a project can use: the shipped ones, its own, and the library's shared graphs.</summary>
-    public static IReadOnlyList<MaterialInfo> List(OpenLibrary library, string? project) {
+    /// <summary>What each project lists, kept while its file stands, so a search does not read a library.</summary>
+    static readonly ConcurrentDictionary<string, (DateTime Stamp, IReadOnlyList<ProjectDocumentInfo> Documents)>
+        Listed =
+        new(StringComparer.Ordinal);
+
+    /// <summary>
+    ///     What a project can use: the shipped materials, its own, the shared graphs, and any other project's. Nothing
+    ///     has to be promoted first (ADR 0012). A library holds thousands of projects, so the last are capped and a
+    ///     search is what reaches the rest.
+    /// </summary>
+    public static IReadOnlyList<MaterialInfo> List(OpenLibrary library, string? project, string? search = null) {
         List<MaterialInfo> found = [
             ..SmartMaterial.Shipped.Select(static name => new MaterialInfo(
                     name,
@@ -50,7 +63,91 @@ public static class MaterialShelf {
             found.Add(FromGraph(library, asset.Name, path, "shared"));
         }
 
+        found.AddRange(Elsewhere(library, project, search).Take(ElsewhereLimit));
         return found;
+    }
+
+    static IEnumerable<MaterialInfo> Elsewhere(OpenLibrary library, string? project, string? search) {
+        for (var offset = 0;; offset += ProjectPage) {
+            var page = library.Projects(new(Offset: offset, Limit: ProjectPage)).Items;
+            foreach (var summary in page.Where(summary => summary.Path != project)) {
+                var wanted = DocumentsOf(library, summary.Path)
+                    .Where(document => search is not { Length: > 0 }
+                        || document.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
+                    );
+                foreach (var document in wanted) {
+                    if (Readable(library, document) is { } material) {
+                        yield return material with { Origin = ElsewhereOrigin, Project = summary.Name };
+                    }
+                }
+            }
+
+            if (page.Count < ProjectPage) {
+                yield break;
+            }
+        }
+    }
+
+    static IReadOnlyList<ProjectDocumentInfo> DocumentsOf(OpenLibrary library, string project) {
+        var file = library.ProjectFile(project, LibraryLayout.ProjectFile);
+        var stamp = File.GetLastWriteTimeUtc(file);
+        if (Listed.TryGetValue(file, out var held) && held.Stamp == stamp) {
+            return held.Documents;
+        }
+
+        var documents = library.Contents(project).Documents;
+        Listed[file] = (stamp, documents);
+        return documents;
+    }
+
+    /// <summary>One broken file in another project must not empty this project's shelf.</summary>
+    static MaterialInfo? Readable(OpenLibrary library, ProjectDocumentInfo document) {
+        try {
+            return Described(library, document);
+        } catch (Exception e) when (e is not OperationCanceledException) {
+            return null;
+        }
+    }
+
+    /// <summary>
+    ///     A layered material's graph fills name compounds of the project it was made in, so they come with it, and a
+    ///     saved edit keeps reaching them through their <c>.source</c>.
+    /// </summary>
+    /// <returns>Whether any came.</returns>
+    public static bool BringCompounds(string? library, string source, string stack) {
+        if (library is null || source.StartsWith(ShippedPrefix, StringComparison.Ordinal)) {
+            return false;
+        }
+
+        var from = Path.Combine(
+            Path.GetDirectoryName(Path.GetFullPath(source, library))!,
+            LibraryLayout.CompoundsFolder,
+            MaterialsFolder
+        );
+        var to = Path.Combine(Path.GetDirectoryName(stack)!, LibraryLayout.CompoundsFolder, MaterialsFolder);
+        if (!Directory.Exists(from) || string.Equals(from, to, StringComparison.Ordinal)) {
+            return false;
+        }
+
+        Directory.CreateDirectory(to);
+        var brought = false;
+        foreach (var file in Directory.EnumerateFiles(from)) {
+            var target = Path.Combine(to, Path.GetFileName(file));
+            if (!File.Exists(target)) {
+                File.Copy(file, target);
+                brought = true;
+            }
+        }
+
+        return brought;
+    }
+
+    /// <summary>Stacks open in a project read their compounds again, since one has just been published there.</summary>
+    public static void Follow(OpenLibrary library, string project, StackSessions stacks) {
+        var folder = Path.GetDirectoryName(library.ProjectFile(project, LibraryLayout.ProjectFile));
+        foreach (var stack in stacks.All.Where(stack => stack.Folder == folder)) {
+            stack.CompoundsChanged();
+        }
     }
 
     /// <summary>
@@ -68,10 +165,14 @@ public static class MaterialShelf {
 
         var graph = GraphDocuments.Parse(File.ReadAllText(full));
         var name = Path.GetFileNameWithoutExtension(full);
-        var file = library.ProjectFile(
-            project,
-            $"{LibraryLayout.CompoundsFolder}/{MaterialsFolder}/{name}{LibraryLayout.GraphExtension}"
-        );
+        var file = CompoundFile(library, project, name);
+
+        // Two projects can each have a Rust, and a material from elsewhere must not replace this project's.
+        for (var other = 2; Taken(file, source); other++) {
+            name = $"{Path.GetFileNameWithoutExtension(full)}-{other}";
+            file = CompoundFile(library, project, name);
+        }
+
         Directory.CreateDirectory(Path.GetDirectoryName(file)!);
         var text = GraphDocuments.Text(AsCompound(Rooted(graph, full, library.RootPath)));
         var path = $"{MaterialsFolder}/{name}";
@@ -83,6 +184,16 @@ public static class MaterialShelf {
         LibraryFiles.Replace(file + SourceSuffix, source);
         return path;
     }
+
+    static string CompoundFile(OpenLibrary library, string project, string name) =>
+        library.ProjectFile(
+            project,
+            $"{LibraryLayout.CompoundsFolder}/{MaterialsFolder}/{name}{LibraryLayout.GraphExtension}"
+        );
+
+    static bool Taken(string file, string source) =>
+        File.Exists(file + SourceSuffix)
+        && !string.Equals(File.ReadAllText(file + SourceSuffix).Trim(), source, StringComparison.Ordinal);
 
     /// <summary>Publishes again every graph a project has published, for edits saved since.</summary>
     /// <returns>Whether any of them changed.</returns>

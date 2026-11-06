@@ -25,6 +25,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Layers can be selected together with Cmd and Shift, then moved or deleted as one, and Delete, Backspace and Cmd+Backspace delete
+  what is selected. Cmd+Z, redo, Delete and Select All go through the Edit menu, so they work on a Mac, in stacks and graphs alike.
+- Materials drag from the shelf into the stack and land where they are dropped. The shelf lists every material in the Library, with
+  nothing to promote first, and a material from another project brings what it needs.
 - A graph can be used as a material, a mask, a brush or a filter, from its menu in the Library, and the Materials shelf puts it in the
   right place. A brush graph renders to a picture in the project's `brushes` folder.
 - A mask runs a stack of effects: Levels, Invert, Auto Levels, Blur and Sharpen, each with its own numbers.

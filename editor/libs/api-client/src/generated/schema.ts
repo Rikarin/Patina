@@ -2539,12 +2539,14 @@ export interface components {
        *                 output yet.
        */
       role: string;
-      /** @description `shipped`, `project` or `shared`. */
+      /** @description `shipped`, `project`, `shared` or `library` for another project. */
       origin: string;
       /** @description The maps a graph makes, by usage. */
       channels: string[];
       /** @description The knobs a graph exposes, which a layer can set. */
       parameters?: null | components['schemas']['GraphSettingDefinition'][];
+      /** @description The project it lives in, when that is another one. */
+      project?: null | string;
     };
     /** @description The materials a project can use. */
     MaterialList: {
@@ -5247,6 +5249,7 @@ export interface operations {
     parameters: {
       query?: {
         project?: string;
+        search?: string;
       };
       header?: never;
       path?: never;

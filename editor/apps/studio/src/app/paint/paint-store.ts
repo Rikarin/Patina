@@ -105,6 +105,9 @@ export class PaintStore {
   readonly state = signal<StackState | null>(null);
   readonly failure = signal<string | null>(null);
   readonly layer = signal<string | null>(null);
+
+  /** What is selected with the layer: more than one, with Cmd or Shift held. Properties follows {@link layer}. */
+  readonly marked = signal<ReadonlySet<string>>(new Set());
   readonly channel = signal('baseColor');
   readonly radius = signal(24);
   readonly colour = signal('#d9401a');
@@ -141,6 +144,14 @@ export class PaintStore {
 
   /** The layers top first, as a stack reads, with the ones a brush can reach marked by their kind. */
   readonly layers = computed<readonly LayerRow[]>(() => rowsOf(this.state()?.layers ?? []));
+  /** Every selected layer that still exists, the current one among them. */
+  readonly selection = computed<ReadonlySet<string>>(() => {
+    const here = new Set(this.layers().map(row => row.layer.id));
+    const chosen = new Set([...this.marked()].filter(id => here.has(id)));
+    const layer = this.layer();
+    return layer !== null && here.has(layer) ? chosen.add(layer) : chosen;
+  });
+
   readonly chosen = computed(() => this.layers().find(row => row.layer.id === this.layer())?.layer ?? null);
 
   constructor() {

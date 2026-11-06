@@ -6,6 +6,7 @@ import { BakePane } from './bake/bake-pane';
 import { BakeStore } from './bake/bake-store';
 import { ExportPane } from './export/export-pane';
 import { desktop } from './core/desktop';
+import { EditCommands } from './core/edit-commands';
 import { SystemStatus } from './core/system-status';
 import { Inspector } from './graph/graph-inspector';
 import { GraphPane } from './graph/graph-pane';
@@ -181,6 +182,7 @@ export class App {
   protected readonly status = inject(SystemStatus);
   protected readonly project = inject(ProjectStore);
   private readonly bakes = inject(BakeStore);
+  private readonly edit = inject(EditCommands);
   protected readonly baking = signal(false);
   protected readonly exporting = signal(false);
   /** The layout of what is in front. Each kind of document keeps its own (ADR 0012). */
@@ -216,6 +218,10 @@ export class App {
     const bridge = desktop();
     bridge?.onFullScreen(fullScreen => this.fullScreen.set(fullScreen));
     bridge?.onCommand(command => {
+      if (this.edit.run(command)) {
+        return;
+      }
+
       if (command === 'save') {
         void this.project.saveActive();
       }

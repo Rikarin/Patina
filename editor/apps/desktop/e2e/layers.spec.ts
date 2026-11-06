@@ -1,4 +1,11 @@
-import { _electron as electron, expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test';
+import {
+  _electron as electron,
+  expect,
+  test,
+  type ElectronApplication,
+  type Locator,
+  type Page
+} from '@playwright/test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -173,6 +180,45 @@ test('colours painted in Blender bake to an id map, and a mask selects one', asy
   }
 
   await expect.poll(() => greenAt(0.25), { timeout: 30_000 }).toBeGreaterThan(200);
+});
+
+test('layers are selected together, deleted by key, and a material drags in where it lands', async () => {
+  await window.getByTestId('paint-add-fill').click();
+  await window.getByTestId('paint-add-fill').click();
+  await window.getByTestId('paint-add-fill').click();
+  const fills = window.locator('[data-testid^=paint-layer-fill]');
+  await expect(fills).toHaveCount(3);
+
+  // A material dropped below the first fill sits there and not on top.
+  await window.getByLabel('Search materials').fill('Plastic');
+  await window
+    .getByTestId('shelf-material')
+    .first()
+    .dragTo(fills.first(), { targetPosition: { x: 40, y: 38 } });
+  const stack = window.getByTestId('paint-layers');
+  const rows = stack.getByRole('treeitem');
+  await expect(rows.nth(1)).not.toHaveAttribute('data-testid', /paint-layer-fill/u);
+  await expect(rows.first()).toHaveAttribute('data-testid', /paint-layer-fill/u);
+
+  const count = await rows.count();
+  await fills.first().click();
+  await fills.nth(2).click({ modifiers: ['Shift'] });
+  // From the top fill to the bottom one, with the material's layers between them.
+  const selected = count - 2;
+  await expect(stack.locator('[role=treeitem][aria-selected=true]')).toHaveCount(selected);
+
+  await window.keyboard.press('Delete');
+  await expect(rows).toHaveCount(count - selected);
+
+  await rows.first().click();
+  await window.keyboard.press('Meta+Backspace');
+  await expect(rows).toHaveCount(count - selected - 1);
+
+  // Cmd+Z on a Mac reaches the menu and never the page, so it is the menu item that has to undo.
+  await app.evaluate(({ Menu }) => {
+    Menu.getApplicationMenu()?.getMenuItemById('edit-undo')?.click();
+  });
+  await expect(rows).toHaveCount(count - selected);
 });
 
 test('a mask runs effects, and they stay in order', async () => {

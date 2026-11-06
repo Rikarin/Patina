@@ -174,9 +174,10 @@ public sealed record ProjectRenameRequest(string Path, string Name);
 ///     <c>material</c>, <c>mask</c>, <c>brush</c>, <c>filter</c>, or <c>empty</c> for a graph with no
 ///     output yet.
 /// </param>
-/// <param name="Origin"><c>shipped</c>, <c>project</c> or <c>shared</c>.</param>
+/// <param name="Origin"><c>shipped</c>, <c>project</c>, <c>shared</c> or <c>library</c> for another project.</param>
 /// <param name="Channels">The maps a graph makes, by usage.</param>
 /// <param name="Parameters">The knobs a graph exposes, which a layer can set.</param>
+/// <param name="Project">The project it lives in, when that is another one.</param>
 public sealed record MaterialInfo(
     string Name,
     string Kind,
@@ -184,7 +185,8 @@ public sealed record MaterialInfo(
     string Role,
     string Origin,
     IReadOnlyList<string> Channels,
-    IReadOnlyList<GraphSettingDefinition>? Parameters = null
+    IReadOnlyList<GraphSettingDefinition>? Parameters = null,
+    string? Project = null
 );
 
 /// <summary>The materials a project can use.</summary>

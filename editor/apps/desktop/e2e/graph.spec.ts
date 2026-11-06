@@ -1,3 +1,4 @@
+import { leave } from './projects';
 import {
   _electron as electron,
   expect,
@@ -38,14 +39,9 @@ test.beforeEach(async () => {
 });
 
 test.afterEach(async () => {
-  // A test may leave edits unsaved, and quitting would then wait for an answer nobody is there to give.
-  await app
-    .evaluate(({ ipcMain }) => {
-      ipcMain.emit('patina:quit');
-    })
-    .catch(() => undefined); // the test may have quit already
-  await app.close();
-  rmSync(scratch, { recursive: true, force: true });
+  // A test may leave edits unsaved, and quitting would then wait for an answer nobody gives.
+  await leave(app);
+  rmSync(scratch, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
 });
 
 const nodes = () => window.getByTestId('graph-node');

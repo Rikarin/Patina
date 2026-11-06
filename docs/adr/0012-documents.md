@@ -128,8 +128,9 @@ A role is checked against its outputs: a mask has one grey output. Fill layers, 
 GUID plus parameter overrides and a channel mapping. This reuses `AssetReference`, so pins, the impact preview and batch rebuild keep
 working, and a reference cycle is refused at save.
 
-A material lives in the project until it is **promoted** to `shared/`, which is one action. That keeps the Library's strength:
-editing one shared material rebuilds what uses it.
+Nothing has to be promoted. Any material in the Library can be used in any project, and the shelf lists them all. `shared/` stays for
+assets that belong to no project. A graph used from another project keeps its `.source`, so a saved edit still reaches it, and a
+Layered Material brings the compounds its fills read.
 
 ### 4. The shell
 

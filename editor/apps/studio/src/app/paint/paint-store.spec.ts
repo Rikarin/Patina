@@ -3,8 +3,8 @@ import { TestBed } from '@angular/core/testing';
 import { type StackLayer, type StackState, createPatinaClient } from '@patina/api-client';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
-import { LiveValue } from './live-value';
 import { hexOf } from './layer-panel';
+import { LiveValue } from './live-value';
 import { PaintStore, colourOf, pressureOf, rowsOf, stackSocketUrl, toTexels } from './paint-store';
 import { StrokeGesture } from './stroke-gesture';
 
@@ -54,10 +54,7 @@ function stack(overrides: Partial<StackState> = {}): StackState {
     sequence: 3,
     history: { canUndo: false, canRedo: false, dirty: false },
     channels: [{ usage: 'baseColor', default: [0, 0, 0, 1] }],
-    layers: [
-      layer('base', 'fill'),
-      layer('paint', 'paint')
-    ],
+    layers: [layer('base', 'fill'), layer('paint', 'paint')],
     previews: [],
     settled: 0,
     model: '',
@@ -172,7 +169,9 @@ describe('PaintStore', () => {
     store.move({ x: 60, y: 25, pressure: 1 });
     store.end();
     await vi.waitFor(() => {
-      const parts = bodies.flatMap(body => (body as { commands: { open: boolean; view: unknown; mirror: string }[] }).commands);
+      const parts = bodies.flatMap(
+        body => (body as { commands: { open: boolean; view: unknown; mirror: string }[] }).commands
+      );
       expect(parts.at(-1)?.open).toBe(false);
       expect(parts.every(part => part.mirror === 'x')).toBe(true);
       expect(parts.every(part => part.view !== null)).toBe(true);

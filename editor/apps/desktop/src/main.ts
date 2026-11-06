@@ -291,6 +291,18 @@ function handleIpc(): void {
   listen('patina:unsaved', (_event, value: unknown) => {
     unsaved = value === true;
   });
+  listen('patina:editText', (event, edit: unknown) => {
+    const contents = event.sender;
+    if (edit === 'undo') {
+      contents.undo();
+    } else if (edit === 'redo') {
+      contents.redo();
+    } else if (edit === 'delete') {
+      contents.delete();
+    } else if (edit === 'selectAll') {
+      contents.selectAll();
+    }
+  });
   listen('patina:quit', () => {
     quitConfirmed = true;
     app.quit();

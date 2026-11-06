@@ -1,3 +1,6 @@
+/** What a text field can be told to do. */
+export type TextEdit = 'undo' | 'redo' | 'delete' | 'selectAll';
+
 import type { Connection } from '@patina/api-client';
 
 /** One supervised process of the desktop app (apps/desktop/src/sidecars.ts). */
@@ -28,6 +31,9 @@ export interface DesktopBridge {
   setTitle(title: string): void;
   /** Shows a file in the system's file browser. */
   reveal(path: string): Promise<void>;
+  /** Has the focused text field carry out an edit, which only the browser's own editor can do. */
+  editText(edit: TextEdit): void;
+
   /** A menu command for the studio, such as `newProject`. */
   onCommand(listener: (command: string) => void): void;
   /** Asks the user for a mesh file: its path, or null if they cancelled. */

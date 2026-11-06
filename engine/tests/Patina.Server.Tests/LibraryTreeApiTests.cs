@@ -89,6 +89,22 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
         Assert.False(Directory.Exists(Path.Combine(server.Library, "projects", "crate")));
     }
 
+    /// <summary>The index catches up after a project is made, and a material elsewhere appears when it has.</summary>
+    async Task<IReadOnlyList<MaterialInfo>> ElsewhereAsync(string project) {
+        for (var attempt = 0;; attempt++) {
+            var list = await client.GetFromJsonAsync<MaterialList>(
+                $"/api/v1/library/materials?project={project}",
+                Token
+            );
+            var found = list!.Items.Where(static material => material.Origin == "library").ToList();
+            if (found.Count > 0 || attempt > 100) {
+                return found;
+            }
+
+            await Task.Delay(50, Token);
+        }
+    }
+
     [Fact]
     public async Task A_document_is_added_to_a_project_and_moves_to_another_mesh() {
         var (first, second) = (Path.Combine(files.FullName, "a.glb"), Path.Combine(files.FullName, "b.glb"));
@@ -118,6 +134,16 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
             Token
         );
         Assert.Equal(HttpStatusCode.BadRequest, filter.StatusCode);
+        var elsewhere = await client.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new ProjectCreateRequest("Barrel", Kind: "layered-material"),
+            Token
+        );
+        Assert.True(elsewhere.IsSuccessStatusCode, await elsewhere.Content.ReadAsStringAsync(Token));
+        Assert.Contains(
+            await ElsewhereAsync("barrel"),
+            static material => material is { Name: "Rust", Project: "Crate" }
+        );
         var moved = await client.PatchAsJsonAsync(
             "/api/v1/library/project/document",
             new ProjectDocumentMeshRequest("crate", contents.Documents[0].Id!.Value, other.Id!.Value),

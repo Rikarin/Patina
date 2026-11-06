@@ -197,6 +197,11 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         StackEditResult result;
         lock (Changing) {
             var painted = editor.Apply(batch);
+            if (editor.CompoundsArrived) {
+                editor.CompoundsArrived = false;
+                CompoundEdits++;
+            }
+
             result = Announce(GraphEventKind.Edited, editor.History.UndoLabel, painted);
         }
 

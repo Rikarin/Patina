@@ -79,6 +79,9 @@ public sealed class StackEditor : ILayerStackDocument {
     /// <summary>The library layered materials are read from, or null with none.</summary>
     public string? Library { get; set; }
 
+    /// <summary>Whether a material brought compounds with it since this was last cleared.</summary>
+    public bool CompoundsArrived { get; set; }
+
     /// <inheritdoc />
     public string AssetPath { get; }
 
@@ -297,6 +300,7 @@ public sealed class StackEditor : ILayerStackDocument {
 
     void Apply(string source, string set, Action<IAuthoringCommand> run) {
         var material = MaterialShelf.Read(Library, source);
+        CompoundsArrived |= MaterialShelf.BringCompounds(Library, source, AssetPath);
         var applied = SmartMaterial.Prepare(Set, material);
         if (applied.Layers.IsDefaultOrEmpty) {
             throw new StackEditRefusedException(applied.Status);
