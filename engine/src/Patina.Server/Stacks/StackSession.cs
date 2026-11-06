@@ -82,6 +82,15 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     /// <summary>The bake generators and bake masks read, kept in a file beside the stack.</summary>
     public string? MeshMaps { get; private set; }
 
+    /// <summary>Counts how often the compounds this stack reads have changed, so the Worker reads them again.</summary>
+    public int CompoundEdits { get; private set; }
+
+    /// <summary>A graph this stack reads was saved, and the picture has to follow.</summary>
+    public void CompoundsChanged() {
+        CompoundEdits++;
+        Evaluate();
+    }
+
     /// <summary>Chooses a bake: a new Worker copy loads it, since the images are external to the plan.</summary>
     public void UseMeshMaps(string? folder) {
         lock (Changing) {

@@ -73,24 +73,64 @@ public static class MaterialShelf {
             $"{LibraryLayout.CompoundsFolder}/{MaterialsFolder}/{name}{LibraryLayout.GraphExtension}"
         );
         Directory.CreateDirectory(Path.GetDirectoryName(file)!);
-        LibraryFiles.Replace(file, GraphDocuments.Text(AsCompound(Rooted(graph, full, library.RootPath))));
+        var text = GraphDocuments.Text(AsCompound(Rooted(graph, full, library.RootPath)));
+        var path = $"{MaterialsFolder}/{name}";
+        if (File.Exists(file) && string.Equals(File.ReadAllText(file), text, StringComparison.Ordinal)) {
+            return path;
+        }
+
+        LibraryFiles.Replace(file, text);
         LibraryFiles.Replace(file + SourceSuffix, source);
-        return $"{MaterialsFolder}/{name}";
+        return path;
     }
 
     /// <summary>Publishes again every graph a project has published, for edits saved since.</summary>
-    public static void Refresh(OpenLibrary library, string project) {
+    /// <returns>Whether any of them changed.</returns>
+    public static bool Refresh(OpenLibrary library, string project) {
         var folder = library.ProjectFile(project, $"{LibraryLayout.CompoundsFolder}/{MaterialsFolder}");
         if (!Directory.Exists(folder)) {
-            return;
+            return false;
         }
 
+        var changed = false;
         foreach (var file in Directory.EnumerateFiles(folder, "*" + SourceSuffix)) {
             var source = File.ReadAllText(file).Trim();
             if (File.Exists(Path.GetFullPath(source, library.RootPath))) {
-                Publish(library, project, source);
+                changed |= Republished(library, project, source, file[..^SourceSuffix.Length]);
             }
         }
+
+        return changed;
+    }
+
+    /// <summary>Publishes again for every open stack, which then follows, as a saved graph has to reach its layers.</summary>
+    public static void RefreshOpen(OpenLibrary library, StackSessions stacks) {
+        var projects = Path.Combine(library.RootPath, LibraryLayout.ProjectsFolder);
+        foreach (var open in stacks.All.GroupBy(static stack => stack.Folder, StringComparer.Ordinal)) {
+            var project = Path.GetRelativePath(projects, open.Key ?? projects).Replace('\\', '/');
+            if (project.StartsWith("..", StringComparison.Ordinal) || !Refresh(library, project)) {
+                continue;
+            }
+
+            foreach (var stack in open) {
+                stack.CompoundsChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    ///     A graph that lost its Outputs leaves what it last published in place, because layers read that, and it is
+    ///     only a graph being worked on.
+    /// </summary>
+    static bool Republished(OpenLibrary library, string project, string source, string compound) {
+        var before = File.Exists(compound) ? File.ReadAllText(compound) : string.Empty;
+        try {
+            Publish(library, project, source);
+        } catch (StackEditRefusedException) {
+            return false;
+        }
+
+        return !string.Equals(before, File.ReadAllText(compound), StringComparison.Ordinal);
     }
 
     /// <summary>The stack a source names, as a material: one set of layers and no mesh.</summary>
@@ -140,8 +180,17 @@ public static class MaterialShelf {
         };
 
     static MaterialInfo FromGraph(OpenLibrary library, string name, string path, string origin) {
-        var usages = Usages(GraphDocuments.Parse(File.ReadAllText(Path.GetFullPath(path, library.RootPath))));
-        return new(name, DocumentKinds.Graph, path, usages.Count == 0 ? "empty" : "material", origin, usages);
+        var graph = GraphDocuments.Parse(File.ReadAllText(Path.GetFullPath(path, library.RootPath)));
+        var usages = Usages(graph);
+        return new(
+            name,
+            DocumentKinds.Graph,
+            path,
+            usages.Count == 0 ? "empty" : "material",
+            origin,
+            usages,
+            [..graph.Parameters.Select(GraphDocuments.Definition)]
+        );
     }
 
     static List<string> Usages(NodeGraphAsset graph) => [

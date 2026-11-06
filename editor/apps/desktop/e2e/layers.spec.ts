@@ -105,7 +105,9 @@ test('a fill shows only the projection controls that apply', async () => {
   await window.getByRole('option', { name: 'Texture' }).click();
   const projection = window.getByTestId('paint-fill-projection');
   await expect(projection).toHaveValue('Uv');
-  await expect(window.getByTestId('paint-fill-scale')).toHaveCount(0);
+  await expect(window.getByTestId('paint-fill-scale')).toBeVisible(); // a UV fill can repeat, turn and move
+  await expect(window.getByTestId('paint-fill-rotation')).toBeVisible();
+  await expect(window.getByTestId('paint-fill-sharpness')).toHaveCount(0);
 
   await projection.selectOption('Triplanar');
   await expect(window.getByTestId('paint-fill-sharpness')).toBeVisible();

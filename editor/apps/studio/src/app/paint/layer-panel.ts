@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
-import type { StackLayer, StackMask } from '@patina/api-client';
+import type { GraphSettingDefinition, MaterialInfo, StackLayer, StackMask } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiInputImports } from '@xui/input';
 import { XuiNumericInputImports } from '@xui/numeric-input';
@@ -8,6 +8,7 @@ import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { colourOf } from './paint-store';
 import { LiveValue } from './live-value';
+import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore } from './paint-store';
 
@@ -15,7 +16,9 @@ const Fills: readonly string[] = ['Constant', 'Texture', 'Graph'];
 const Projections: readonly { value: string; label: string }[] = [
   { value: 'Uv', label: 'UV' },
   { value: 'Triplanar', label: 'Tri-planar' },
-  { value: 'Planar', label: 'Planar' }
+  { value: 'Planar', label: 'Planar' },
+  { value: 'Spherical', label: 'Spherical' },
+  { value: 'Cylindrical', label: 'Cylindrical' }
 ];
 const Axes: readonly string[] = ['X', 'Y', 'Z'];
 
@@ -131,7 +134,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
                   }
                 </select>
               </div>
-              @if (layer.projection === 'Planar') {
+              @if (layer.projection === 'Planar' || layer.projection === 'Cylindrical') {
                 <div class="flex items-center gap-2">
                   <span class="text-foreground-muted w-16 shrink-0 text-xs">Axis</span>
                   <select
@@ -146,20 +149,51 @@ export function hexOf(colour: readonly number[] | undefined): string {
                   </select>
                 </div>
               }
-              @if (layer.projection !== 'Uv') {
-                <div class="flex items-center gap-2">
-                  <span class="text-foreground-muted w-16 shrink-0 text-xs">Scale</span>
-                  <xui-numeric-input
-                    class="min-w-0 flex-1"
-                    size="sm"
-                    ariaLabel="Projection scale"
-                    data-testid="paint-fill-scale"
-                    [stepSize]="0.1"
-                    [value]="layer.settings['Scale']?.[0] ?? 1"
-                    (valueChange)="setSetting(layer, 'Scale', $event ?? 1)"
-                  />
-                </div>
-              }
+              <div class="flex items-center gap-2">
+                <span class="text-foreground-muted w-16 shrink-0 text-xs">Scale</span>
+                <xui-numeric-input
+                  class="min-w-0 flex-1"
+                  size="sm"
+                  ariaLabel="Projection scale"
+                  data-testid="paint-fill-scale"
+                  [stepSize]="0.1"
+                  [value]="layer.placement?.scale ?? 1"
+                  (valueChange)="place(layer, { scale: $event ?? 1 })"
+                />
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-foreground-muted w-16 shrink-0 text-xs">Rotation</span>
+                <xui-numeric-input
+                  class="min-w-0 flex-1"
+                  size="sm"
+                  ariaLabel="Projection rotation in degrees"
+                  data-testid="paint-fill-rotation"
+                  [stepSize]="5"
+                  [value]="degrees(layer.placement?.rotation)"
+                  (valueChange)="place(layer, { rotation: radians($event) })"
+                />
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-foreground-muted w-16 shrink-0 text-xs">Offset</span>
+                <xui-numeric-input
+                  class="min-w-0 flex-1"
+                  size="sm"
+                  ariaLabel="Projection offset across"
+                  data-testid="paint-fill-offset-x"
+                  [stepSize]="0.05"
+                  [value]="layer.placement?.offsetX ?? 0"
+                  (valueChange)="place(layer, { offsetX: $event ?? 0 })"
+                />
+                <xui-numeric-input
+                  class="min-w-0 flex-1"
+                  size="sm"
+                  ariaLabel="Projection offset along"
+                  data-testid="paint-fill-offset-y"
+                  [stepSize]="0.05"
+                  [value]="layer.placement?.offsetY ?? 0"
+                  (valueChange)="place(layer, { offsetY: $event ?? 0 })"
+                />
+              </div>
               @if (layer.projection === 'Triplanar') {
                 <div class="flex items-center gap-2">
                   <span class="text-foreground-muted w-16 shrink-0 text-xs">Blending</span>
@@ -169,8 +203,8 @@ export function hexOf(colour: readonly number[] | undefined): string {
                     ariaLabel="Projection blending"
                     data-testid="paint-fill-sharpness"
                     [stepSize]="0.5"
-                    [value]="layer.settings['Sharpness']?.[0] ?? 4"
-                    (valueChange)="setSetting(layer, 'Sharpness', $event ?? 4)"
+                    [value]="layer.placement?.sharpness ?? 4"
+                    (valueChange)="place(layer, { sharpness: $event ?? 4 })"
                   />
                 </div>
               }
@@ -211,6 +245,54 @@ export function hexOf(colour: readonly number[] | undefined): string {
               <p class="text-foreground-muted text-xs" data-testid="paint-fill-graph">
                 {{ layer.graph ? 'From ' + layer.graph.split('/').pop() : 'Choose a graph from the Materials shelf.' }}
               </p>
+              @for (parameter of knobs(); track parameter.name) {
+                <div class="flex items-center gap-2">
+                  <span class="text-foreground-muted w-16 shrink-0 truncate text-xs" [title]="parameter.summary">{{
+                    parameter.name
+                  }}</span>
+                  @if (parameter.accepted.length > 0) {
+                    <select
+                      class="well h-7 min-w-0 flex-1 px-1 text-sm"
+                      [attr.aria-label]="parameter.name"
+                      [attr.data-testid]="'paint-knob-' + parameter.name"
+                      (change)="setKnob(layer, parameter.name, text($event))"
+                    >
+                      @for (value of parameter.accepted; track value) {
+                        <option [value]="value" [selected]="value === knob(layer, parameter)">{{ value }}</option>
+                      }
+                    </select>
+                  } @else if (parameter.kind === 'Float' || parameter.kind === 'Int') {
+                    <xui-numeric-input
+                      class="min-w-0 flex-1"
+                      size="sm"
+                      [ariaLabel]="parameter.name"
+                      [attr.data-testid]="'paint-knob-' + parameter.name"
+                      [stepSize]="parameter.kind === 'Int' ? 1 : 0.1"
+                      [value]="+knob(layer, parameter)"
+                      (valueChange)="setKnob(layer, parameter.name, ($event ?? 0).toString())"
+                    />
+                  } @else if (parameter.kind === 'Bool') {
+                    <input
+                      type="checkbox"
+                      [attr.aria-label]="parameter.name"
+                      [attr.data-testid]="'paint-knob-' + parameter.name"
+                      [checked]="knob(layer, parameter) === 'true'"
+                      (change)="setKnob(layer, parameter.name, checked($event).toString())"
+                    />
+                  } @else {
+                    <input
+                      class="min-w-0 flex-1"
+                      xuiInput
+                      size="sm"
+                      autocomplete="off"
+                      [attr.aria-label]="parameter.name"
+                      [attr.data-testid]="'paint-knob-' + parameter.name"
+                      [value]="knob(layer, parameter)"
+                      (change)="setKnob(layer, parameter.name, text($event))"
+                    />
+                  }
+                </div>
+              }
             }
           }
           @case ('filter') {
@@ -363,6 +445,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
 export class LayerPanel {
   protected readonly store = inject(PaintStore);
   private readonly project = inject(ProjectStore);
+  private readonly library = inject(LibraryStore);
   protected readonly fills = Fills;
   protected readonly projections = Projections;
   protected readonly axes = Axes;
@@ -377,6 +460,14 @@ export class LayerPanel {
   private latest: { layer: string; opacity: number } | null = null;
 
   constructor() {
+    effect(() => {
+      const graph = this.store.chosen()?.graph;
+      const project = this.project.current()?.path;
+      if (graph && project) {
+        void untracked(() => this.loadShelf(project));
+      }
+    });
+
     // An id map is what a colour selection chooses from, so it is read when one is on screen.
     effect(() => {
       const mask = this.store.chosen()?.mask;
@@ -394,6 +485,10 @@ export class LayerPanel {
         this.opacity.release();
       });
     });
+  }
+
+  protected checked(event: Event): boolean {
+    return (event.target as HTMLInputElement).checked;
   }
 
   protected text(event: Event): string {
@@ -457,6 +552,19 @@ export class LayerPanel {
     return this.store.vocabulary()?.filters.find(filter => filter.kind === layer.filter)?.settings ?? [];
   }
 
+  protected place(layer: StackLayer, change: Partial<NonNullable<StackLayer['placement']>>): void {
+    const placement = { scale: 1, rotation: 0, offsetX: 0, offsetY: 0, sharpness: 4, ...layer.placement, ...change };
+    void this.store.edit({ op: 'setLayer', layer: layer.id, placement });
+  }
+
+  protected degrees(radians: number | undefined): number {
+    return Math.round(((radians ?? 0) * 180) / Math.PI);
+  }
+
+  protected radians(degrees: number | null): number {
+    return ((degrees ?? 0) * Math.PI) / 180;
+  }
+
   protected setSetting(layer: StackLayer, setting: string, value: number): void {
     void this.store.edit({ op: 'setLayer', layer: layer.id, settings: { [setting]: [value] } });
   }
@@ -469,6 +577,28 @@ export class LayerPanel {
   }
 
   protected readonly hexOf = hexOf;
+
+  /** The chosen layer's graph, which knows its own knobs. */
+  private readonly shelf = signal<readonly MaterialInfo[]>([]);
+  protected readonly knobs = computed(() => {
+    const graph = this.store.chosen()?.graph.split('/').pop();
+    const stem = (source: string): string | undefined => source.split('/').pop()?.replace(/\.[^.]*$/u, '');
+    return this.shelf().find(material => material.kind === 'graph' && stem(material.source) === graph)?.parameters ?? [];
+  });
+
+  private async loadShelf(project: string): Promise<void> {
+    const client = await this.library.api();
+    const list = await client.GET('/api/v1/library/materials', { params: { query: { project } } });
+    this.shelf.set(list.data?.items ?? []);
+  }
+
+  protected knob(layer: StackLayer, parameter: GraphSettingDefinition): string {
+    return layer.parameters?.[parameter.name] ?? parameter.default;
+  }
+
+  protected setKnob(layer: StackLayer, name: string, value: string): void {
+    void this.store.edit({ op: 'setLayer', layer: layer.id, parameters: { [name]: value } });
+  }
 
   protected fileOf(path: string | undefined): string {
     return path?.split('/').pop() ?? '';

@@ -411,12 +411,28 @@ public sealed class StackEditor : ILayerStackDocument {
                 Graph = change.Graph ?? layer.Graph,
                 Projection = Parsed(change.Projection, layer.Projection, "projection"),
                 PlanarAxis = Parsed(change.PlanarAxis, layer.PlanarAxis, "axis"),
+                Placement = change.Placement is { } placement ? Placed(placement) : layer.Placement,
                 Filter = Parsed(change.Filter, layer.Filter, "filter"),
                 Settings = Merged(layer.Settings, Copied(change.Settings)),
+                Texts = Merged(layer.Texts, change.Parameters),
                 Mask = Masked(layer.Mask, change.Mask)
             },
             "Change layer"
         );
+    }
+
+    static LayerPlacement Placed(StackPlacement placement) {
+        if (placement.Scale <= 0f) {
+            throw new StackEditRefusedException("A scale is above zero.");
+        }
+
+        return new() {
+            Scale = placement.Scale,
+            Rotation = placement.Rotation,
+            OffsetX = placement.OffsetX,
+            OffsetY = placement.OffsetY,
+            Sharpness = placement.Sharpness
+        };
     }
 
     void Stroke(StackStroke stroke, Step step, string set, Action<IAuthoringCommand> run) {

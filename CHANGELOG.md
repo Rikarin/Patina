@@ -7,6 +7,12 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- A graph fill shows the parameters its graph exposes in Properties, and each layer keeps its own values. Saving a graph updates every
+  open stack that uses it.
+- A fill can be Spherical or Cylindrical as well as UV, Tri-planar or Planar, and every projection has a scale, rotation and offset,
+  so a texture on a UV fill can repeat and turn too. They live in the layer's `placement`, not its settings.
+- Layer pictures, mask pictures and the Bake dialog's meshes are chosen in the system dialog, with no typed paths. A picture is
+  copied into the project's `pictures` folder. New Project takes a high poly mesh.
 - The Library's projects are a tree of folders. Folders and subfolders can be made, renamed, coloured, moved and deleted, and
   projects can be dragged between them, one or several at a time. Deleting a folder moves what it holds up a level, so it never
   deletes a project. Folders are folders on disk, with a `folder.yaml` that holds the colour and keeps an empty one in Git. A search

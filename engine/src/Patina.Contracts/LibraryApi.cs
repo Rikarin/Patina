@@ -156,13 +156,15 @@ public sealed record ProjectRenameRequest(string Path, string Name);
 /// <param name="Role"><c>material</c>, or <c>empty</c> for a graph with no output yet.</param>
 /// <param name="Origin"><c>shipped</c>, <c>project</c> or <c>shared</c>.</param>
 /// <param name="Channels">The maps a graph makes, by usage.</param>
+/// <param name="Parameters">The knobs a graph exposes, which a layer can set.</param>
 public sealed record MaterialInfo(
     string Name,
     string Kind,
     string Source,
     string Role,
     string Origin,
-    IReadOnlyList<string> Channels
+    IReadOnlyList<string> Channels,
+    IReadOnlyList<GraphSettingDefinition>? Parameters = null
 );
 
 /// <summary>The materials a project can use.</summary>

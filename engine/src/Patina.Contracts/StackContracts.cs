@@ -34,11 +34,13 @@ public sealed record StackChannel(string Usage, IReadOnlyList<float> Default);
 /// <param name="Values">What a constant fill writes to each channel.</param>
 /// <param name="Textures">What a texture fill reads for each channel.</param>
 /// <param name="Graph">The graph a graph fill reads.</param>
-/// <param name="Projection">How a fill lands on the mesh: Uv, Triplanar or Planar.</param>
+/// <param name="Projection">How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical.</param>
 /// <param name="Filter">What a filter does: Levels, Hsl, Blur, Invert or Grayscale.</param>
 /// <param name="Settings">A filter's numbers.</param>
 /// <param name="Mask">Its mask.</param>
-/// <param name="PlanarAxis">The world axis a planar projection looks along: X, Y or Z.</param>
+/// <param name="PlanarAxis">The world axis a planar projection looks along or a cylinder wraps: X, Y or Z.</param>
+/// <param name="Placement">Where a fill sits on the surface.</param>
+/// <param name="Parameters">What a graph fill sets the graph's knobs to, as text.</param>
 public sealed record StackLayer(
     string Id,
     string Name,
@@ -57,7 +59,9 @@ public sealed record StackLayer(
     string Filter,
     IReadOnlyDictionary<string, IReadOnlyList<float>> Settings,
     StackMask Mask,
-    string PlanarAxis = "Y"
+    string PlanarAxis = "Y",
+    StackPlacement? Placement = null,
+    IReadOnlyDictionary<string, string>? Parameters = null
 );
 
 /// <summary>What decides where a layer shows.</summary>
@@ -249,11 +253,13 @@ public sealed record StackMoveLayer(string Layer, int Delta) : StackCommand;
 /// <param name="Values">What a constant fill writes, replacing what these channels held.</param>
 /// <param name="Textures">What a texture fill reads, replacing what these channels held.</param>
 /// <param name="Graph">The graph a graph fill reads.</param>
-/// <param name="Projection">How a fill lands on the mesh: Uv, Triplanar or Planar.</param>
+/// <param name="Projection">How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical.</param>
 /// <param name="Filter">What a filter does.</param>
 /// <param name="Settings">A filter's numbers, replacing what these names held.</param>
 /// <param name="Mask">Its mask, which replaces the old one and keeps any painted canvas.</param>
-/// <param name="PlanarAxis">The world axis a planar projection looks along: X, Y or Z.</param>
+/// <param name="PlanarAxis">The world axis a planar projection looks along or a cylinder wraps: X, Y or Z.</param>
+/// <param name="Placement">Where a fill sits on the surface, which replaces where it sat.</param>
+/// <param name="Parameters">What a graph fill sets the graph's knobs to, replacing what these names held.</param>
 public sealed record StackSetLayer(
     string Layer,
     string? Name = null,
@@ -269,9 +275,25 @@ public sealed record StackSetLayer(
     string? Filter = null,
     IReadOnlyDictionary<string, IReadOnlyList<float>>? Settings = null,
     StackMask? Mask = null,
-    string? PlanarAxis = null
+    string? PlanarAxis = null,
+    StackPlacement? Placement = null,
+    IReadOnlyDictionary<string, string>? Parameters = null
 ) : StackCommand;
 #pragma warning restore SK7005
+
+/// <summary>Where a fill sits on the surface, in whichever projection it uses.</summary>
+/// <param name="Scale">How many times the picture repeats. Above zero.</param>
+/// <param name="Rotation">How far it turns, in radians.</param>
+/// <param name="OffsetX">How far it moves along its first axis, in repeats.</param>
+/// <param name="OffsetY">How far it moves along its second axis, in repeats.</param>
+/// <param name="Sharpness">How hard the seam between a tri-planar's planes is.</param>
+public sealed record StackPlacement(
+    float Scale = 1f,
+    float Rotation = 0f,
+    float OffsetX = 0f,
+    float OffsetY = 0f,
+    float Sharpness = 4f
+);
 
 /// <summary>Names the mesh a stack is painted on, which is undone like any other edit.</summary>
 /// <param name="Model">A model file, absolute or relative to the stack. Empty takes the mesh away.</param>

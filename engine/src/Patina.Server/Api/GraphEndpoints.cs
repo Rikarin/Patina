@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
 using Patina.Ipc;
 using Patina.Server.Graphs;
+using Patina.Server.Stacks;
 
 namespace Patina.Server.Api;
 
@@ -237,7 +238,13 @@ static class GraphEndpoints {
             : TypedResults.Problem($"There is nothing to {name}.", statusCode: StatusCodes.Status409Conflict);
     }
 
-    static Results<Ok<GraphEditResult>, ProblemHttpResult> Save(string id, GraphSessions sessions, bool force = false) {
+    static Results<Ok<GraphEditResult>, ProblemHttpResult> Save(
+        string id,
+        GraphSessions sessions,
+        LibraryHost host,
+        StackSessions stacks,
+        bool force = false
+    ) {
         if (sessions.Find(id) is not { } session) {
             return NoSession(id);
         }
@@ -245,6 +252,10 @@ static class GraphEndpoints {
         try {
             var result = session.Save(force);
             sessions.Republish(session);
+            if (host.Library is { } library) {
+                MaterialShelf.RefreshOpen(library, stacks);
+            }
+
             return TypedResults.Ok(result);
         } catch (GraphFileChangedException e) {
             return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status409Conflict);

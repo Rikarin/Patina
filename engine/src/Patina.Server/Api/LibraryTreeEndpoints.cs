@@ -273,10 +273,15 @@ static class LibraryTreeEndpoints {
             library => TypedResults.Ok(new MaterialUse(MaterialShelf.Publish(library, request.Project, request.Source)))
         );
 
-    static Results<Ok<MaterialList>, ProblemHttpResult> RefreshMaterials(LibraryHost host, string project) =>
+    static Results<Ok<MaterialList>, ProblemHttpResult> RefreshMaterials(
+        LibraryHost host,
+        StackSessions stacks,
+        string project
+    ) =>
         Guarded(
             host,
             library => {
+                MaterialShelf.RefreshOpen(library, stacks);
                 MaterialShelf.Refresh(library, project);
                 return TypedResults.Ok(new MaterialList(MaterialShelf.List(library, project)));
             }

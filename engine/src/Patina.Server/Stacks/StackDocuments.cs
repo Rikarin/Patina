@@ -146,7 +146,15 @@ public static class StackDocuments {
                 Selection(layer.Mask)?.Values.GetValueOrDefault(SelectTolerance)?[0] ?? DefaultTolerance,
                 Selection(layer.Mask)?.Values.GetValueOrDefault(SelectSoftness)?[0] ?? 0f
             ),
-            layer.PlanarAxis.ToString()
+            layer.PlanarAxis.ToString(),
+            new(
+                layer.Placement.Scale,
+                layer.Placement.Rotation,
+                layer.Placement.OffsetX,
+                layer.Placement.OffsetY,
+                layer.Placement.Sharpness
+            ),
+            layer.Texts
         );
 
     static Dictionary<string, IReadOnlyList<float>> Numbers(Dictionary<string, float[]> numbers) =>

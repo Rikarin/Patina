@@ -6988,6 +6988,16 @@
               "type": "string"
             },
             "description": "The maps a graph makes, by usage."
+          },
+          "parameters": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/GraphSettingDefinition"
+            },
+            "description": "The knobs a graph exposes, which a layer can set."
           }
         },
         "description": "Something a layer can be filled with (ADR 0012)."
@@ -8023,7 +8033,7 @@
               "null",
               "string"
             ],
-            "description": "How a fill lands on the mesh: Uv, Triplanar or Planar."
+            "description": "How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical."
           },
           "filter": {
             "type": [
@@ -8056,7 +8066,28 @@
               "null",
               "string"
             ],
-            "description": "The world axis a planar projection looks along: X, Y or Z."
+            "description": "The world axis a planar projection looks along or a cylinder wraps: X, Y or Z."
+          },
+          "placement": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Where a fill sits on the surface, which replaces where it sat.",
+                "$ref": "#/components/schemas/StackPlacement"
+              }
+            ]
+          },
+          "parameters": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "What a graph fill sets the graph\u0027s knobs to, replacing what these names held."
           }
         },
         "description": "Changes what a layer\u0027s row shows. What is null stays."
@@ -8566,7 +8597,7 @@
           },
           "projection": {
             "type": "string",
-            "description": "How a fill lands on the mesh: Uv, Triplanar or Planar."
+            "description": "How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical."
           },
           "filter": {
             "type": "string",
@@ -8589,8 +8620,29 @@
           },
           "planarAxis": {
             "type": "string",
-            "description": "The world axis a planar projection looks along: X, Y or Z.",
+            "description": "The world axis a planar projection looks along or a cylinder wraps: X, Y or Z.",
             "default": "Y"
+          },
+          "placement": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Where a fill sits on the surface.",
+                "$ref": "#/components/schemas/StackPlacement"
+              }
+            ]
+          },
+          "parameters": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "What a graph fill sets the graph\u0027s knobs to, as text."
           }
         },
         "description": "One layer, without its pixels."
@@ -8744,6 +8796,49 @@
           }
         },
         "description": "A digest of a map\u0027s pixels, so that two pictures can be compared with neither crossing the API."
+      },
+      "StackPlacement": {
+        "required": [
+          "scale",
+          "rotation",
+          "offsetX",
+          "offsetY",
+          "sharpness"
+        ],
+        "type": "object",
+        "properties": {
+          "scale": {
+            "type": "number",
+            "description": "How many times the picture repeats. Above zero.",
+            "format": "float",
+            "default": 1
+          },
+          "rotation": {
+            "type": "number",
+            "description": "How far it turns, in radians.",
+            "format": "float",
+            "default": 0
+          },
+          "offsetX": {
+            "type": "number",
+            "description": "How far it moves along its first axis, in repeats.",
+            "format": "float",
+            "default": 0
+          },
+          "offsetY": {
+            "type": "number",
+            "description": "How far it moves along its second axis, in repeats.",
+            "format": "float",
+            "default": 0
+          },
+          "sharpness": {
+            "type": "number",
+            "description": "How hard the seam between a tri-planar\u0027s planes is.",
+            "format": "float",
+            "default": 4
+          }
+        },
+        "description": "Where a fill sits on the surface, in whichever projection it uses."
       },
       "StackPreview": {
         "required": [

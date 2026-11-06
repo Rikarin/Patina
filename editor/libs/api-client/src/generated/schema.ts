@@ -2484,6 +2484,8 @@ export interface components {
       origin: string;
       /** @description The maps a graph makes, by usage. */
       channels: string[];
+      /** @description The knobs a graph exposes, which a layer can set. */
+      parameters?: null | components['schemas']['GraphSettingDefinition'][];
     };
     /** @description The materials a project can use. */
     MaterialList: {
@@ -2931,7 +2933,7 @@ export interface components {
       };
       /** @description The graph a graph fill reads. */
       graph?: null | string;
-      /** @description How a fill lands on the mesh: Uv, Triplanar or Planar. */
+      /** @description How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical. */
       projection?: null | string;
       /** @description What a filter does. */
       filter?: null | string;
@@ -2940,8 +2942,13 @@ export interface components {
         [key: string]: unknown;
       };
       mask?: null | components['schemas']['StackMask'];
-      /** @description The world axis a planar projection looks along: X, Y or Z. */
+      /** @description The world axis a planar projection looks along or a cylinder wraps: X, Y or Z. */
       planarAxis?: null | string;
+      placement?: null | components['schemas']['StackPlacement'];
+      /** @description What a graph fill sets the graph's knobs to, replacing what these names held. */
+      parameters?: null | {
+        [key: string]: string;
+      };
     };
     /** @description Names the mesh a stack is painted on, which is undone like any other edit. */
     StackCommandStackSetModel: {
@@ -3156,7 +3163,7 @@ export interface components {
       };
       /** @description The graph a graph fill reads. */
       graph: string;
-      /** @description How a fill lands on the mesh: Uv, Triplanar or Planar. */
+      /** @description How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical. */
       projection: string;
       /** @description What a filter does: Levels, Hsl, Blur, Invert or Grayscale. */
       filter: string;
@@ -3167,10 +3174,15 @@ export interface components {
       /** @description Its mask. */
       mask: components['schemas']['StackMask'];
       /**
-       * @description The world axis a planar projection looks along: X, Y or Z.
+       * @description The world axis a planar projection looks along or a cylinder wraps: X, Y or Z.
        * @default Y
        */
       planarAxis: string;
+      placement?: null | components['schemas']['StackPlacement'];
+      /** @description What a graph fill sets the graph's knobs to, as text. */
+      parameters?: null | {
+        [key: string]: string;
+      };
     };
     /** @description What decides where a layer shows. */
     StackMask: {
@@ -3252,6 +3264,39 @@ export interface components {
       digest: string;
       /** @description Where it was written, for an export. */
       file?: null | string;
+    };
+    /** @description Where a fill sits on the surface, in whichever projection it uses. */
+    StackPlacement: {
+      /**
+       * Format: float
+       * @description How many times the picture repeats. Above zero.
+       * @default 1
+       */
+      scale: number;
+      /**
+       * Format: float
+       * @description How far it turns, in radians.
+       * @default 0
+       */
+      rotation: number;
+      /**
+       * Format: float
+       * @description How far it moves along its first axis, in repeats.
+       * @default 0
+       */
+      offsetX: number;
+      /**
+       * Format: float
+       * @description How far it moves along its second axis, in repeats.
+       * @default 0
+       */
+      offsetY: number;
+      /**
+       * Format: float
+       * @description How hard the seam between a tri-planar's planes is.
+       * @default 4
+       */
+      sharpness: number;
     };
     /** @description A map as a small picture, by the hash an event carries. */
     StackPreview: {

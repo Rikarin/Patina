@@ -161,8 +161,9 @@ public sealed class StackEvaluator(
         if (!told.TryGetValue(session.Id, out var state)
             || !ReferenceEquals(state.Connection, connection)
             || state.MeshMaps != session.MeshMaps
+            || state.CompoundEdits != session.CompoundEdits
             || !Prefix(state.Base, work.Standing)) {
-            state = new(connection) { MeshMaps = session.MeshMaps };
+            state = new(connection) { MeshMaps = session.MeshMaps, CompoundEdits = session.CompoundEdits };
             var load = new StackLoad(
                 session.Id,
                 session.Path,
@@ -313,6 +314,8 @@ public sealed class StackEvaluator(
         public string? Document { get; set; }
 
         public string? MeshMaps { get; init; }
+
+        public int CompoundEdits { get; init; }
 
         public Dictionary<long, (int Stamps, bool Open)> Sent { get; } = [];
 

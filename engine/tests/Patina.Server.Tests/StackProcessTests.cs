@@ -157,6 +157,76 @@ public sealed class StackProcessTests : IDisposable {
         Assert.Equal(Digest(before, "metalness"), Digest(after, "metalness"));
     }
 
+    /// <summary>A saved graph reaches a stack that is open on it, and a layer sets the graph's knobs.</summary>
+    [Fact]
+    public async Task A_saved_graph_and_a_layers_knob_both_change_the_picture() {
+        using var deadline = Deadline(180);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        await StartAsync("Unused.vxlayers", deadline.Token);
+        var made = await http.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new { name = "Crate", kind = "layered-material" },
+            deadline.Token
+        );
+        Assert.True(made.IsSuccessStatusCode, await made.Content.ReadAsStringAsync(deadline.Token));
+        var file = Path.Combine(Library, "projects", "crate", "cells.vxtexgraph");
+        await File.WriteAllTextAsync(file, CellGraph("{ id: 1, type: Source/Noise, texts: { '=Scale': Cells } }"), deadline.Token);
+        var used = await http.PostAsJsonAsync(
+            "/api/v1/library/materials/use",
+            new { project = "crate", source = "projects/crate/cells.vxtexgraph" },
+            deadline.Token
+        );
+        var reply = await used.Content.ReadAsStringAsync(deadline.Token);
+        Assert.True(used.IsSuccessStatusCode, reply);
+        var graph = JsonDocument.Parse(reply).RootElement.GetProperty("graph").GetString();
+
+        var state = await OpenAsync("projects/crate/crate.vxlayers", deadline.Token);
+        await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Cells"));
+        var layer = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
+        await EditAsync(state.Id, deadline.Token, new StackSetLayer(layer, Fill: "Graph", Graph: graph));
+        var first = Digest(await PixelsAsync(state.Id, true, deadline.Token), "baseColor");
+
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(layer, Parameters: new Dictionary<string, string> { ["Cells"] = "32" })
+        );
+        var knob = Digest(await PixelsAsync(state.Id, true, deadline.Token), "baseColor");
+        Assert.NotEqual(first, knob);
+
+        await File.WriteAllTextAsync(file, CellGraph("{ id: 1, type: Source/Uniform }"), deadline.Token);
+        var refreshed = await http.PostAsync("/api/v1/library/materials/refresh?project=crate", null, deadline.Token);
+        Assert.True(refreshed.IsSuccessStatusCode);
+
+        // A file saved behind the stack is picked up without opening it again.
+        for (var attempt = 0; attempt < 100; attempt++) {
+            if (Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor") != knob) {
+                return;
+            }
+
+            await Task.Delay(100, deadline.Token);
+        }
+
+        Assert.Fail("The stack still shows the graph as it was before the save.");
+    }
+
+    static string CellGraph(string source) => $$"""
+        name: Cells
+        nodes:
+          - {{source}}
+          - { id: 2, type: Output/Output, texts: { Usage: baseColor } }
+        edges:
+          - { fromNode: 1, fromPort: Out, toNode: 2, toPort: Input }
+        groups: []
+        comments: []
+        interface: []
+        settings: { baseWidth: '256', baseHeight: '256', seed: '1' }
+        parameters:
+          - name: Cells
+            default: '4'
+            kind: Float
+        """;
+
     /// <summary>One grey pixel, which is all a template needs to show it makes a map per channel.</summary>
     const string Pixel = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGP4DwABAQEAG7buVgAAAABJRU5ErkJggg==";
 
