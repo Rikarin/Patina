@@ -1,6 +1,7 @@
 using Patina.Contracts;
 using Patina.Graphs;
 using Patina.Ipc;
+using Patina.Library;
 using Patina.Viewport;
 using System.Diagnostics;
 using System.Security.Cryptography;
@@ -35,7 +36,8 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
 
     public IpcMessage Load(IpcMessage request) {
         var load = request.StackLoad ?? throw new IpcException("stack.load holds no stack.");
-        Hold(load.Session, new(load, gpu.Evaluator, compounds.Of(load.Folder), pictures, meshes));
+        var folder = load.Folder is null ? null : Path.Combine(load.Folder, LibraryLayout.CompoundsFolder);
+        Hold(load.Session, new(load, gpu.Evaluator, compounds.Of(folder), pictures, meshes));
         return IpcMessage.Ok(request.Id);
     }
 

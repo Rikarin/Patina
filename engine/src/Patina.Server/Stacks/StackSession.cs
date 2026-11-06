@@ -62,7 +62,13 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     public string? Folder => System.IO.Path.GetDirectoryName(Path);
 
     /// <summary>The folders a relative image reference is read from, in order.</summary>
-    public IReadOnlyList<string> ImageRoots { get; init; } = [];
+    public IReadOnlyList<string> ImageRoots {
+        get;
+        init {
+            field = value;
+            editor.Library = value.Count > 0 ? value[0] : null;
+        }
+    } = [];
 
     /// <summary>The texture set this session paints.</summary>
     public string Set {

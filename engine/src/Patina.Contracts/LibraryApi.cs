@@ -135,6 +135,35 @@ public sealed record ProjectDocumentMeshRequest(string Project, Guid Document, G
 /// <param name="Name">Its new display name. Its folder stays.</param>
 public sealed record ProjectRenameRequest(string Path, string Name);
 
+/// <summary>Something a layer can be filled with (ADR 0012).</summary>
+/// <param name="Name">What it is called.</param>
+/// <param name="Kind"><c>graph</c>, which a fill reads, or <c>layered-material</c>, which unfolds into layers.</param>
+/// <param name="Source">What names it to the routes that use it.</param>
+/// <param name="Role"><c>material</c>, or <c>empty</c> for a graph with no output yet.</param>
+/// <param name="Origin"><c>shipped</c>, <c>project</c> or <c>shared</c>.</param>
+/// <param name="Channels">The maps a graph makes, by usage.</param>
+public sealed record MaterialInfo(
+    string Name,
+    string Kind,
+    string Source,
+    string Role,
+    string Origin,
+    IReadOnlyList<string> Channels
+);
+
+/// <summary>The materials a project can use.</summary>
+/// <param name="Items">Them.</param>
+public sealed record MaterialList(IReadOnlyList<MaterialInfo> Items);
+
+/// <summary>The body of <c>POST /api/v1/library/materials/use</c>.</summary>
+/// <param name="Project">The project using it.</param>
+/// <param name="Source">The graph, below the library.</param>
+public sealed record MaterialUseRequest(string Project, string Source);
+
+/// <summary>A graph ready for a layer.</summary>
+/// <param name="Graph">What a fill layer's <c>graph</c> takes.</param>
+public sealed record MaterialUse(string Graph);
+
 /// <summary>A folder of projects.</summary>
 /// <param name="Path">Its path below <c>projects/</c>, with forward slashes.</param>
 /// <param name="Name">Its name.</param>

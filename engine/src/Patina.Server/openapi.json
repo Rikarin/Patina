@@ -1691,6 +1691,188 @@
         }
       }
     },
+    "/api/v1/library/materials": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "What a project\u0027s layers can be filled with.",
+        "operationId": "GetMaterials",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/materials/use": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Makes a material graph ready for a project\u0027s layers, and names it for them.",
+        "operationId": "UseMaterial",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialUseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialUse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/materials/refresh": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Brings a project\u0027s layers up to edits saved in the graphs they read.",
+        "operationId": "RefreshMaterials",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/graphs": {
       "get": {
         "tags": [
@@ -6651,6 +6833,94 @@
         },
         "description": "What a whole build did."
       },
+      "MaterialInfo": {
+        "required": [
+          "name",
+          "kind",
+          "source",
+          "role",
+          "origin",
+          "channels"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "What it is called."
+          },
+          "kind": {
+            "type": "string",
+            "description": "\u0060graph\u0060, which a fill reads, or \u0060layered-material\u0060, which unfolds into layers."
+          },
+          "source": {
+            "type": "string",
+            "description": "What names it to the routes that use it."
+          },
+          "role": {
+            "type": "string",
+            "description": "\u0060material\u0060, or \u0060empty\u0060 for a graph with no output yet."
+          },
+          "origin": {
+            "type": "string",
+            "description": "\u0060shipped\u0060, \u0060project\u0060 or \u0060shared\u0060."
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The maps a graph makes, by usage."
+          }
+        },
+        "description": "Something a layer can be filled with (ADR 0012)."
+      },
+      "MaterialList": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MaterialInfo"
+            },
+            "description": "Them."
+          }
+        },
+        "description": "The materials a project can use."
+      },
+      "MaterialUse": {
+        "required": [
+          "graph"
+        ],
+        "type": "object",
+        "properties": {
+          "graph": {
+            "type": "string",
+            "description": "What a fill layer\u0027s \u0060graph\u0060 takes."
+          }
+        },
+        "description": "A graph ready for a layer."
+      },
+      "MaterialUseRequest": {
+        "required": [
+          "project",
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project using it."
+          },
+          "source": {
+            "type": "string",
+            "description": "The graph, below the library."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/materials/use\u0060."
+      },
       "OutputReport": {
         "required": [
           "name",
@@ -7410,6 +7680,13 @@
               "string"
             ],
             "description": "What a filter layer does: Levels, Hsl, Blur, Invert or Grayscale."
+          },
+          "material": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A material to unfold into the stack as layers: a shipped one as \u0060smart:Name\u0060, or a stack below the library.\nThen Kind and Name say nothing."
           }
         },
         "description": "Adds a layer at the top of the stack."

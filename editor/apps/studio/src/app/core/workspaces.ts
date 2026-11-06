@@ -3,7 +3,7 @@ import type { XuiDockContentPane, XuiDockManagerLayout, XuiDockPane } from '@xui
 /** What the app is doing, which decides what is on screen (ADR 0012). */
 export type WorkspaceName = 'start' | 'texturing' | 'layered-material' | 'image-material' | 'graph';
 
-const Version = 1;
+const Version = 2;
 
 type Part = XuiDockPane;
 
@@ -30,19 +30,22 @@ const root = (...panes: Part[]): XuiDockManagerLayout => ({
 const library = pane('library', 'Library');
 const inspector = pane('inspector', 'Inspector');
 const layers = pane('paint', 'Layers');
+const shelf = pane('shelf', 'Materials');
+/** Where a document's materials come from: the Library, and what it can be filled with. */
+const sources = down(1, library, shelf);
 
 const Layouts: Readonly<Record<WorkspaceName, XuiDockManagerLayout>> = {
   // Nothing is open, so nothing is shown that would have nothing in it.
   start: root(library, pane('start', 'Start', 3), inspector),
   // The mesh is the work, and the map beside it is the same work flat.
   texturing: root(
-    library,
+    sources,
     across(4, pane('viewport', 'Viewport', 3), tabs(2, pane('atlas', '2D View'), pane('texture', 'Maps'))),
     tabs(1.4, layers, inspector)
   ),
   // There is no mesh, so the map leads and a shape only previews it.
   'layered-material': root(
-    library,
+    sources,
     across(4, pane('atlas', '2D View', 3), pane('viewport', 'Preview', 2)),
     tabs(1.4, layers, inspector)
   ),

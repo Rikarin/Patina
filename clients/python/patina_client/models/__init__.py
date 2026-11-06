@@ -103,6 +103,10 @@ from .library_info import LibraryInfo
 from .library_move_request import LibraryMoveRequest
 from .library_moved import LibraryMoved
 from .library_report import LibraryReport
+from .material_info import MaterialInfo
+from .material_list import MaterialList
+from .material_use import MaterialUse
+from .material_use_request import MaterialUseRequest
 from .output_report import OutputReport
 from .problem_details import ProblemDetails
 from .project_contents import ProjectContents
@@ -281,6 +285,10 @@ __all__ = (
     "LibraryMoved",
     "LibraryMoveRequest",
     "LibraryReport",
+    "MaterialInfo",
+    "MaterialList",
+    "MaterialUse",
+    "MaterialUseRequest",
     "OutputReport",
     "ProblemDetails",
     "ProjectContents",

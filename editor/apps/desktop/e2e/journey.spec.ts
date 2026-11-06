@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { answerOpen as answerFile, answerSave as answerAgain } from './projects';
+import { answerOpen as answerFile, answerSave as answerAgain, leave, newLibrary, newProject } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net10.0/patina-bench.dll');
@@ -42,8 +42,8 @@ test.beforeEach(() => {
 });
 
 test.afterEach(async () => {
-  await app.close();
-  rmSync(scratch, { recursive: true, force: true });
+  await leave(app);
+  rmSync(scratch, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
 });
 
 test('a new user makes a library, groups projects in folders, and comes back to them', async () => {
@@ -143,6 +143,21 @@ test('a new user makes a library, groups projects in folders, and comes back to 
   await expect(row('door')).toBeVisible();
   expect(existsSync(join(library, 'projects', 'Hero Props'))).toBe(false);
   expect(existsSync(join(library, 'projects', 'door', 'project.yaml'))).toBe(true);
+});
+
+test('a shipped material reaches a stack from the shelf', async () => {
+  await launch();
+  await newLibrary(app, window, join(scratch, 'Ember.ptlib'));
+
+  await newProject(app, window, 'Crate');
+  await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 30_000 });
+  const before = await window.getByTestId('paint-picture').getAttribute('src');
+
+  await window.getByTestId('shelf-search').fill('Plastic');
+  await window.getByTestId('shelf-material').filter({ hasText: 'Plastic' }).click();
+  await expect(window.getByTestId('paint-layer-moulding')).toBeVisible({ timeout: 15_000 });
+  await expect.poll(() => window.getByTestId('paint-picture').getAttribute('src'), { timeout: 30_000 }).not.toBe(before);
+  await window.screenshot({ path: join(shots, 'shelf.png') });
 });
 
 test('painted work asks before the project is left', async () => {

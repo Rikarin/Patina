@@ -54,6 +54,7 @@ function harness() {
   const removed: string[] = [];
   const client = {
     GET: vi.fn(() => Promise.resolve({ data: contents, response: new Response() })),
+    POST: vi.fn(() => Promise.resolve({ data: { items: [] }, response: new Response() })),
     DELETE: vi.fn((route: string, options?: { params?: { path?: { id?: string } } }) => {
       removed.push(options?.params?.path?.id ?? route);
       return Promise.resolve({ data: {}, response: new Response() });

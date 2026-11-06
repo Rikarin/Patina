@@ -190,12 +190,17 @@ public abstract record StackCommand;
 /// <param name="Values">What a fill writes to each channel, as four numbers. Ignored for other kinds.</param>
 /// <param name="Parent">The group it goes at the top of, or null for the stack itself.</param>
 /// <param name="Filter">What a filter layer does: Levels, Hsl, Blur, Invert or Grayscale.</param>
+/// <param name="Material">
+///     A material to unfold into the stack as layers: a shipped one as <c>smart:Name</c>, or a stack below the library.
+///     Then <paramref name="Kind" /> and <paramref name="Name" /> say nothing.
+/// </param>
 public sealed record StackAddLayer(
     string Kind,
     string Name,
     IReadOnlyDictionary<string, IReadOnlyList<float>>? Values = null,
     string? Parent = null,
-    string? Filter = null
+    string? Filter = null,
+    string? Material = null
 ) : StackCommand;
 
 /// <summary>Moves a layer to the top of a group, or of the stack.</summary>

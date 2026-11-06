@@ -194,6 +194,15 @@ export class PaintStore {
     await this.edit({ op: 'setLayer', layer: layer.id, enabled });
   }
 
+  /** Adds a layer filled from a material graph, whose maps reach the channels of the same usage. */
+  async addGraphLayer(name: string, graph: string): Promise<void> {
+    await this.addLayer('fill', name);
+    const layer = this.layer();
+    if (layer) {
+      await this.edit({ op: 'setLayer', layer, fill: 'Graph', graph });
+    }
+  }
+
   /** One edit of the document, whose result the stack's events and this read bring back. */
   async edit(...commands: StackCommand[]): Promise<void> {
     await this.command({ commands });

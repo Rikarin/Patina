@@ -158,7 +158,9 @@ static class ProjectFiles {
     static List<string> Files(string full) => [
         ..Directory.EnumerateFiles(full, "*", new EnumerationOptions { RecurseSubdirectories = true })
             .Select(file => Path.GetRelativePath(full, file).Replace('\\', '/'))
-            .Where(static file => !file.StartsWith(BakeFolder + "/", StringComparison.Ordinal))
+            .Where(static file => !file.StartsWith(BakeFolder + "/", StringComparison.Ordinal)
+                && !file.StartsWith(LibraryLayout.CompoundsFolder + "/", StringComparison.Ordinal)
+            )
             .Take(MaxFiles)
     ];
 

@@ -155,6 +155,7 @@ export class ProjectStore {
         await this.graph.open(path);
         this.update(path, { session: this.graph.document()?.id ?? null });
       } else {
+        await this.refreshMaterials(tab.project);
         await this.paint.open(path, false);
         this.update(path, { session: this.paint.state()?.id ?? null });
       }
@@ -366,6 +367,14 @@ export class ProjectStore {
     const contents = unwrap(await client.GET('/api/v1/library/project', { params: { query: { path } } }));
     this.mutableContents.update(all => new Map(all).set(path, contents));
     return contents;
+  }
+
+  /** A graph saved since a stack last opened reaches its layers now. */
+  private async refreshMaterials(project: string | null): Promise<void> {
+    if (project !== null) {
+      const client = await this.library.api();
+      await client.POST('/api/v1/library/materials/refresh', { params: { query: { project } } });
+    }
   }
 
   /** A document's mesh leaves with it, or it would stay on screen and look open. */

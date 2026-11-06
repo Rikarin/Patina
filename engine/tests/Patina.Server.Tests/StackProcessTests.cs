@@ -1,5 +1,6 @@
 using Patina.Bench;
 using Patina.Contracts;
+using Patina.Library;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
@@ -93,6 +94,86 @@ public sealed class StackProcessTests : IDisposable {
     ///     The exit criterion of P5: what the strokes left, what a clean evaluation makes and what the exported file
     ///     holds are one picture. The digest is the shared hash a viewport compares against.
     /// </summary>
+    const string MaterialGraph = """
+                                 name: Rust
+                                 nodes:
+                                   - id: 1
+                                     type: Source/Uniform
+                                     values: { Colour: [0.8, 0.2, 0.1, 1] }
+                                   - id: 2
+                                     type: Source/Uniform
+                                     values: { Colour: [0.9, 0.9, 0.9, 1] }
+                                   - { id: 3, type: Output/Output, texts: { Usage: baseColor } }
+                                   - { id: 4, type: Output/Output, texts: { Usage: roughness } }
+                                 edges:
+                                   - { fromNode: 1, fromPort: Out, toNode: 3, toPort: Input }
+                                   - { fromNode: 2, fromPort: Out, toNode: 4, toPort: Input }
+                                 groups: []
+                                 comments: []
+                                 interface: []
+                                 settings: { baseWidth: '256', baseHeight: '256', seed: '1' }
+                                 parameters: []
+                                 """;
+
+    /// <summary>
+    ///     The join between the two halves of the app: a graph's maps fill a stack's channels by usage, through a real
+    ///     Worker, and a channel the graph has no map for stays what it was.
+    /// </summary>
+    [Fact]
+    public async Task A_material_graph_fills_each_channel_it_has_a_map_for() {
+        using var deadline = Deadline(180);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        await StartAsync("Unused.vxlayers", deadline.Token);
+        var made = await http.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new { name = "Crate", kind = "layered-material" },
+            deadline.Token
+        );
+        Assert.True(made.IsSuccessStatusCode, await made.Content.ReadAsStringAsync(deadline.Token));
+        await File.WriteAllTextAsync(
+            Path.Combine(Library, "projects", "crate", "rust.vxtexgraph"),
+            MaterialGraph,
+            deadline.Token
+        );
+        var used = await http.PostAsJsonAsync(
+            "/api/v1/library/materials/use",
+            new { project = "crate", source = "projects/crate/rust.vxtexgraph" },
+            deadline.Token
+        );
+        var reply = await used.Content.ReadAsStringAsync(deadline.Token);
+        Assert.True(used.IsSuccessStatusCode, reply);
+        var graph = JsonDocument.Parse(reply).RootElement.GetProperty("graph").GetString();
+
+        var state = await OpenAsync("projects/crate/crate.vxlayers", deadline.Token);
+        var before = await PixelsAsync(state.Id, true, deadline.Token);
+        await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Rust"));
+        var layer = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
+        await EditAsync(state.Id, deadline.Token, new StackSetLayer(layer, Fill: "Graph", Graph: graph));
+
+        var after = await PixelsAsync(state.Id, true, deadline.Token);
+
+        Assert.NotEqual(Digest(before, "baseColor"), Digest(after, "baseColor"));
+        Assert.NotEqual(Digest(before, "roughness"), Digest(after, "roughness"));
+        Assert.Equal(Digest(before, "metalness"), Digest(after, "metalness"));
+    }
+
+    [Fact]
+    public async Task A_shipped_material_unfolds_into_layers_and_undoes_as_one_step() {
+        using var deadline = Deadline(180);
+        var (_, state) = await StartAsync("Smart.vxlayers", deadline.Token);
+        var layers = state.Layers.Count;
+
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackAddLayer("material", string.Empty, Material: "smart:Plastic")
+        );
+
+        Assert.True((await StateAsync(state.Id, deadline.Token)).Layers.Count > layers);
+        await ActAsync(state.Id, "undo", deadline.Token);
+        Assert.Equal(layers, (await StateAsync(state.Id, deadline.Token)).Layers.Count);
+    }
+
     [Fact]
     public async Task What_you_paint_is_what_exports() {
         using var deadline = Deadline(180);
@@ -617,7 +698,7 @@ public sealed class StackProcessTests : IDisposable {
             $"--Patina:Worker:SocketPath={socketPath}",
             "--Patina:WatchStdin=true"
         );
-        var registry = new Library.InstanceRegistry(DiscoveryFile);
+        var registry = new InstanceRegistry(DiscoveryFile);
         while (true) {
             if (await registry.FindAsync(Library, token) is { } instance) {
                 http.BaseAddress = new($"http://127.0.0.1:{instance.Port}");
@@ -687,7 +768,10 @@ public sealed class StackProcessTests : IDisposable {
     async Task<IReadOnlyList<StackPixels>> PixelsAsync(string id, bool clean, CancellationToken token) {
         using var response = await http.GetAsync($"/api/v1/stacks/{id}/pixels?clean={clean}", token);
         if (response.StatusCode == HttpStatusCode.UnprocessableEntity) {
-            Assert.Skip(await response.Content.ReadAsStringAsync(token));
+            // Only a machine with no device is a reason to skip: every other refusal is a failure to see.
+            var refusal = await response.Content.ReadAsStringAsync(token);
+            Assert.SkipUnless(!refusal.Contains("No Vulkan", StringComparison.Ordinal), refusal);
+            Assert.Fail(refusal);
         }
 
         response.EnsureSuccessStatusCode();

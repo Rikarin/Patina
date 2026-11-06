@@ -14,6 +14,7 @@ import { LibraryPane } from './library/library-pane';
 import { ProjectStore } from './library/project-store';
 import { keepLayout, layoutOf, showing } from './core/workspaces';
 import { StartPane } from './core/start-pane';
+import { MaterialShelf } from './paint/material-shelf';
 import { PaintAtlas } from './paint/paint-atlas';
 import { PaintPane } from './paint/paint-pane';
 import { ViewportPane } from './viewport/viewport-pane';
@@ -27,6 +28,7 @@ import { ViewportPane } from './viewport/viewport-pane';
     GraphPane,
     Inspector,
     LibraryPane,
+    MaterialShelf,
     PaintAtlas,
     PaintPane,
     StartPane,
@@ -78,6 +80,9 @@ import { ViewportPane } from './viewport/viewport-pane';
       </ng-template>
       <ng-template xuiDockContent="atlas">
         <ptn-paint-atlas />
+      </ng-template>
+      <ng-template xuiDockContent="shelf">
+        <ptn-material-shelf />
       </ng-template>
       <ng-template xuiDockContent="library">
         <ptn-library />

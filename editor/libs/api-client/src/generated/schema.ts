@@ -452,6 +452,57 @@ export interface paths {
     patch: operations['SetDocumentMesh'];
     trace?: never;
   };
+  '/api/v1/library/materials': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** What a project's layers can be filled with. */
+    get: operations['GetMaterials'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/materials/use': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Makes a material graph ready for a project's layers, and names it for them. */
+    post: operations['UseMaterial'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/materials/refresh': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Brings a project's layers up to edits saved in the graphs they read. */
+    post: operations['RefreshMaterials'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/graphs': {
     parameters: {
       query?: never;
@@ -2385,6 +2436,38 @@ export interface components {
       /** @description The folder holding this report and one file per project. */
       folder: string;
     };
+    /** @description Something a layer can be filled with (ADR 0012). */
+    MaterialInfo: {
+      /** @description What it is called. */
+      name: string;
+      /** @description `graph`, which a fill reads, or `layered-material`, which unfolds into layers. */
+      kind: string;
+      /** @description What names it to the routes that use it. */
+      source: string;
+      /** @description `material`, or `empty` for a graph with no output yet. */
+      role: string;
+      /** @description `shipped`, `project` or `shared`. */
+      origin: string;
+      /** @description The maps a graph makes, by usage. */
+      channels: string[];
+    };
+    /** @description The materials a project can use. */
+    MaterialList: {
+      /** @description Them. */
+      items: components['schemas']['MaterialInfo'][];
+    };
+    /** @description A graph ready for a layer. */
+    MaterialUse: {
+      /** @description What a fill layer's `graph` takes. */
+      graph: string;
+    };
+    /** @description The body of `POST /api/v1/library/materials/use`. */
+    MaterialUseRequest: {
+      /** @description The project using it. */
+      project: string;
+      /** @description The graph, below the library. */
+      source: string;
+    };
     /** @description One output in a project's report. */
     OutputReport: {
       /** @description The output. */
@@ -2732,6 +2815,11 @@ export interface components {
       parent?: null | string;
       /** @description What a filter layer does: Levels, Hsl, Blur, Invert or Grayscale. */
       filter?: null | string;
+      /**
+       * @description A material to unfold into the stack as layers: a shipped one as `smart:Name`, or a stack below the library.
+       *     Then Kind and Name say nothing.
+       */
+      material?: null | string;
     };
     /** @description Moves a layer up or down its list. */
     StackCommandStackMoveLayer: {
@@ -4740,6 +4828,155 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetMaterials: {
+    parameters: {
+      query?: {
+        project?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MaterialList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  UseMaterial: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['MaterialUseRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MaterialUse'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  RefreshMaterials: {
+    parameters: {
+      query: {
+        project: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MaterialList'];
         };
       };
       /** @description Bad Request */

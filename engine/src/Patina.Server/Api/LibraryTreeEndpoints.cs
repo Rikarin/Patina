@@ -59,6 +59,15 @@ static class LibraryTreeEndpoints {
         library.MapPatch("/project/document", SetDocumentMesh)
             .Described("SetDocumentMesh", "Puts a texturing document on another mesh of its project.");
 
+        library.MapGet("/materials", GetMaterials)
+            .Described("GetMaterials", "What a project's layers can be filled with.");
+
+        library.MapPost("/materials/use", UseMaterial)
+            .Described("UseMaterial", "Makes a material graph ready for a project's layers, and names it for them.");
+
+        library.MapPost("/materials/refresh", RefreshMaterials)
+            .Described("RefreshMaterials", "Brings a project's layers up to edits saved in the graphs they read.");
+
         library.MapPatch("/project", RenameProject)
             .Described("RenameProject", "Gives a project a new display name. Its folder stays.");
     }
@@ -243,6 +252,24 @@ static class LibraryTreeEndpoints {
 
                 host.RequestRescan();
                 return TypedResults.Ok(contents);
+            }
+        );
+
+    static Results<Ok<MaterialList>, ProblemHttpResult> GetMaterials(LibraryHost host, string? project) =>
+        Guarded(host, library => TypedResults.Ok(new MaterialList(MaterialShelf.List(library, project))));
+
+    static Results<Ok<MaterialUse>, ProblemHttpResult> UseMaterial(LibraryHost host, MaterialUseRequest request) =>
+        Guarded(
+            host,
+            library => TypedResults.Ok(new MaterialUse(MaterialShelf.Publish(library, request.Project, request.Source)))
+        );
+
+    static Results<Ok<MaterialList>, ProblemHttpResult> RefreshMaterials(LibraryHost host, string project) =>
+        Guarded(
+            host,
+            library => {
+                MaterialShelf.Refresh(library, project);
+                return TypedResults.Ok(new MaterialList(MaterialShelf.List(library, project)));
             }
         );
 

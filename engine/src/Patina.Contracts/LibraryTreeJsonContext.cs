@@ -19,4 +19,7 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(FolderUpdateRequest))]
 [JsonSerializable(typeof(LibraryMoveRequest))]
 [JsonSerializable(typeof(LibraryMoved))]
+[JsonSerializable(typeof(MaterialList), TypeInfoPropertyName = nameof(MaterialList))]
+[JsonSerializable(typeof(MaterialUseRequest))]
+[JsonSerializable(typeof(MaterialUse))]
 public sealed partial class LibraryTreeJsonContext : JsonSerializerContext;

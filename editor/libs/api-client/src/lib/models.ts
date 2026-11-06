@@ -6,6 +6,7 @@ export type LibraryInfo = components['schemas']['LibraryInfo'];
 export type ProjectSummary = components['schemas']['ProjectSummary'];
 export type ProjectContents = components['schemas']['ProjectContents'];
 export type ProjectFile = components['schemas']['ProjectFile'];
+export type MaterialInfo = components['schemas']['MaterialInfo'];
 export type ProjectDocumentInfo = components['schemas']['ProjectDocumentInfo'];
 export type ProjectMeshInfo = components['schemas']['ProjectMeshInfo'];
 export type FolderSummary = components['schemas']['FolderSummary'];

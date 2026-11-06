@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Server.Graphs;
 using System.Globalization;
 using Vixen.Authoring;
 using Vixen.Texturing.Layers;
@@ -73,6 +74,9 @@ public sealed class StackEditor : ILayerStackDocument {
         AssetPath = path;
         Document = document;
     }
+
+    /// <summary>The library layered materials are read from, or null with none.</summary>
+    public string? Library { get; set; }
 
     /// <inheritdoc />
     public string AssetPath { get; }
@@ -250,6 +254,9 @@ public sealed class StackEditor : ILayerStackDocument {
 
         var set = Set.Name;
         switch (command) {
+            case StackAddLayer { Material: { } material }:
+                Apply(material, set, Do);
+                break;
             case StackAddLayer add:
                 Do(Add(add, set));
                 break;
@@ -280,6 +287,16 @@ public sealed class StackEditor : ILayerStackDocument {
             default:
                 throw new StackEditRefusedException($"Unknown command '{command.GetType().Name}'.");
         }
+    }
+
+    void Apply(string source, string set, Action<IAuthoringCommand> run) {
+        var material = MaterialShelf.Read(Library, source);
+        var applied = SmartMaterial.Prepare(Set, material);
+        if (applied.Layers.IsDefaultOrEmpty) {
+            throw new StackEditRefusedException(applied.Status);
+        }
+
+        run(new ApplySmartMaterialCommand(this, set, applied.Layers, $"Apply {material.Name}"));
     }
 
     AddLayerCommand Add(StackAddLayer add, string set) {
