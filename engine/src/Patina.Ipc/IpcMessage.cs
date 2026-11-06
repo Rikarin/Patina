@@ -82,6 +82,9 @@ public static class IpcTypes {
 
     public const string StackClose = "stack.close";
 
+    /// <summary>Renders each fill of a stack alone, small.</summary>
+    public const string StackThumbnails = "stack.thumbnails";
+
     public const string BakeStart = "bake.start";
 
     /// <summary>
@@ -185,6 +188,11 @@ public sealed class IpcMessage {
     public GraphResult? GraphResult { get; set; }
 
     public string? StackClose { get; set; }
+
+    public StackThumbnailAsk? StackThumbnails { get; set; }
+
+    /// <summary>The reply to stack.thumbnails.</summary>
+    public IReadOnlyList<StackLayerThumbnail>? StackLayerThumbnails { get; set; }
 
     public BakeStart? BakeStart { get; set; }
 
@@ -323,6 +331,16 @@ public sealed record GraphEvaluate(
     int PreviewSide,
     string PreviewFolder
 );
+
+/// <summary>Asks for a small picture of each fill of a stack.</summary>
+/// <param name="Session">The stack.</param>
+/// <param name="Folder">Where they go.</param>
+public sealed record StackThumbnailAsk(string Session, string Folder);
+
+/// <summary>A layer's own picture.</summary>
+/// <param name="Layer">The layer.</param>
+/// <param name="Hash">Its name in the preview folder.</param>
+public sealed record StackLayerThumbnail(string Layer, string Hash);
 
 /// <summary>Asks for one picture of a loaded graph at the size the graph computes it.</summary>
 /// <param name="Session">The graph.</param>

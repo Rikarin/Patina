@@ -87,7 +87,14 @@ public sealed record ProjectMeshInfo(Guid? Id, string Path, string? High);
 /// <param name="Name">Its display name.</param>
 /// <param name="Path">Its path below the library, which the graph and stack routes take.</param>
 /// <param name="Mesh">The id of the mesh it is on.</param>
-public sealed record ProjectDocumentInfo(Guid? Id, string Kind, string Name, string Path, Guid? Mesh);
+/// <param name="Role">What a graph is for: <c>material</c>, <c>mask</c>, <c>brush</c> or <c>filter</c>.</param>
+public sealed record ProjectDocumentInfo(
+    Guid? Id,
+    string Kind,
+    string Name,
+    string Path,
+    Guid? Mesh,
+    string? Role = null);
 
 /// <summary>A project as it opens.</summary>
 /// <param name="Id">The project's GUID.</param>
@@ -129,6 +136,16 @@ public sealed record ProjectDocumentRequest(
     string? Image = null
 );
 
+/// <summary>The body of <c>PATCH /api/v1/library/project/document/role</c>.</summary>
+/// <param name="Project">The project, below <c>projects/</c>.</param>
+/// <param name="Document">The graph.</param>
+/// <param name="Role"><c>material</c>, <c>mask</c>, <c>brush</c> or <c>filter</c>.</param>
+public sealed record ProjectDocumentRoleRequest(string Project, Guid Document, string Role);
+
+/// <summary>A graph rendered to a picture a brush stamps.</summary>
+/// <param name="Alpha">The picture, relative to the project's stacks, as a brush names it.</param>
+public sealed record MaterialBrush(string Alpha);
+
 /// <summary>The body of <c>POST /api/v1/library/project/pictures</c>.</summary>
 /// <param name="Project">The project, below <c>projects/</c>.</param>
 /// <param name="Picture">A picture file on the Server's machine.</param>
@@ -153,7 +170,10 @@ public sealed record ProjectRenameRequest(string Path, string Name);
 /// <param name="Name">What it is called.</param>
 /// <param name="Kind"><c>graph</c>, which a fill reads, or <c>layered-material</c>, which unfolds into layers.</param>
 /// <param name="Source">What names it to the routes that use it.</param>
-/// <param name="Role"><c>material</c>, or <c>empty</c> for a graph with no output yet.</param>
+/// <param name="Role">
+///     <c>material</c>, <c>mask</c>, <c>brush</c>, <c>filter</c>, or <c>empty</c> for a graph with no
+///     output yet.
+/// </param>
 /// <param name="Origin"><c>shipped</c>, <c>project</c> or <c>shared</c>.</param>
 /// <param name="Channels">The maps a graph makes, by usage.</param>
 /// <param name="Parameters">The knobs a graph exposes, which a layer can set.</param>

@@ -35,6 +35,7 @@ class ProjectCreateRequest:
                 `graph`.
                 Null is `texturing` with a mesh and nothing without one.
             image (None | str | Unset): The picture an `image-material` starts from, on the Server\\'s machine.
+            high (None | str | Unset): The detailed mesh it bakes from, on the Server's machine.
      """
 
     name: str
@@ -44,6 +45,7 @@ class ProjectCreateRequest:
     resolution: int | None | Unset = UNSET
     kind: None | str | Unset = UNSET
     image: None | str | Unset = UNSET
+    high: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -93,6 +95,12 @@ class ProjectCreateRequest:
         else:
             image = self.image
 
+        high: None | str | Unset
+        if isinstance(self.high, Unset):
+            high = UNSET
+        else:
+            high = self.high
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -111,6 +119,8 @@ class ProjectCreateRequest:
             field_dict["kind"] = kind
         if image is not UNSET:
             field_dict["image"] = image
+        if high is not UNSET:
+            field_dict["high"] = high
 
         return field_dict
 
@@ -189,6 +199,16 @@ class ProjectCreateRequest:
         image = _parse_image(d.pop("image", UNSET))
 
 
+        def _parse_high(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        high = _parse_high(d.pop("high", UNSET))
+
+
         project_create_request = cls(
             name=name,
             folder=folder,
@@ -197,6 +217,7 @@ class ProjectCreateRequest:
             resolution=resolution,
             kind=kind,
             image=image,
+            high=high,
         )
 
 

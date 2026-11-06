@@ -7,6 +7,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- A graph can be used as a material, a mask, a brush or a filter, from its menu in the Library, and the Materials shelf puts it in the
+  right place. A brush graph renders to a picture in the project's `brushes` folder.
+- A mask runs a stack of effects: Levels, Invert, Auto Levels, Blur and Sharpen, each with its own numbers.
+- Fill layers show what they really look like, drawn alone by the Worker. A Layered Material can be seen tiled.
 - A graph fill shows the parameters its graph exposes in Properties, and each layer keeps its own values. Saving a graph updates every
   open stack that uses it.
 - A fill can be Spherical or Cylindrical as well as UV, Tri-planar or Planar, and every projection has a scale, rotation and offset,

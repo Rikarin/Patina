@@ -159,6 +159,36 @@ test('colours painted in Blender bake to an id map, and a mask selects one', asy
   await window.mouse.click(box.x + box.width * 0.75, box.y + box.height / 2);
   await expect.poll(() => greenAt(0.75), { timeout: 30_000 }).toBeGreaterThan(200);
   expect(await greenAt(0.25)).toBeLessThan(200);
+
+  // It finds one on the mesh too. Which side faces the camera is the camera's business, so it tries both.
+  const canvas = await window.getByRole('img', { name: 'Viewport' }).boundingBox();
+  if (!canvas) {
+    throw new Error('The viewport is not on screen.');
+  }
+
+  for (const across of [0.42, 0.58]) {
+    await window.getByTestId('paint-eyedropper').click();
+    await window.mouse.click(canvas.x + canvas.width * across, canvas.y + canvas.height / 2);
+    await window.waitForTimeout(500);
+  }
+
+  await expect.poll(() => greenAt(0.25), { timeout: 30_000 }).toBeGreaterThan(200);
+});
+
+test('a mask runs effects, and they stay in order', async () => {
+  await window.getByTestId('paint-add-fill').click();
+  const fill = window.locator('[data-testid^=paint-layer-fill]').first();
+  await fill.click({ button: 'right' });
+  await window.getByTestId('layer-menu-mask-colour').click();
+
+  await window.getByTestId('paint-mask-effect-add').selectOption({ label: 'Invert' });
+  await expect(window.getByTestId('paint-mask-effect-0')).toContainText('Invert');
+  await window.getByTestId('paint-mask-effect-add').selectOption({ label: 'Blur' });
+  await expect(window.getByTestId('paint-mask-effect-1')).toContainText('Blur');
+
+  await window.getByRole('button', { name: 'Remove Invert' }).click();
+  await expect(window.getByTestId('paint-mask-effect-0')).toContainText('Blur');
+  await expect(window.getByTestId('paint-mask-effect-1')).toHaveCount(0);
 });
 
 /** How green the map is at a place across it. */

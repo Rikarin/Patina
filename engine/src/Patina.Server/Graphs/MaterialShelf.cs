@@ -103,7 +103,7 @@ public static class MaterialShelf {
         return changed;
     }
 
-    /// <summary>Publishes again for every open stack, which then follows, as a saved graph has to reach its layers.</summary>
+    /// <summary>Publishes again for every open stack, which then follows, as a save must.</summary>
     public static void RefreshOpen(OpenLibrary library, StackSessions stacks) {
         var projects = Path.Combine(library.RootPath, LibraryLayout.ProjectsFolder);
         foreach (var open in stacks.All.GroupBy(static stack => stack.Folder, StringComparer.Ordinal)) {
@@ -131,6 +131,31 @@ public static class MaterialShelf {
         }
 
         return !string.Equals(before, File.ReadAllText(compound), StringComparison.Ordinal);
+    }
+
+    /// <summary>Whether a graph has the shape a role needs: one map, and a filter reads one too.</summary>
+    /// <exception cref="ProjectRefusedException">It does not, and this says what is missing.</exception>
+    public static void CheckRole(OpenLibrary library, string path, string role) {
+        var graph = GraphDocuments.Parse(File.ReadAllText(Path.GetFullPath(path, library.RootPath)));
+        var outputs = graph.Nodes.Count(static node => node.Type == OutputNode);
+        var inputs = graph.Interface.Count(static port => port is {
+                Direction: PortDirection.Input, Kind: PortKind.Image
+            }
+        );
+        var wanted = role == GraphRoles.Filter ? 1 : 0;
+        if (role != GraphRoles.Material && (outputs != 1 || inputs != wanted)) {
+            throw new ProjectRefusedException(
+                $"A {role} has one Output and {wanted} image inputs, and this graph has {outputs} and {inputs}."
+            );
+        }
+    }
+
+    /// <summary>The Output a brush renders, as a graph session names its picture.</summary>
+    /// <exception cref="ProjectRefusedException">The graph has none.</exception>
+    public static (int Node, string Usage) BrushOutput(string text) {
+        var node = GraphDocuments.Parse(text).Nodes.FirstOrDefault(static node => node.Type == OutputNode)
+            ?? throw new ProjectRefusedException("A brush needs an Output to render.");
+        return (node.Id, node.Texts.GetValueOrDefault(UsageSetting, DefaultUsage));
     }
 
     /// <summary>The stack a source names, as a material: one set of layers and no mesh.</summary>
@@ -166,7 +191,8 @@ public static class MaterialShelf {
                 library,
                 document.Name,
                 document.Path,
-                "project"
+                "project",
+                document.Role
             ),
             DocumentKinds.LayeredMaterial => new(
                 document.Name,
@@ -179,14 +205,14 @@ public static class MaterialShelf {
             _ => null
         };
 
-    static MaterialInfo FromGraph(OpenLibrary library, string name, string path, string origin) {
+    static MaterialInfo FromGraph(OpenLibrary library, string name, string path, string origin, string? role = null) {
         var graph = GraphDocuments.Parse(File.ReadAllText(Path.GetFullPath(path, library.RootPath)));
         var usages = Usages(graph);
         return new(
             name,
             DocumentKinds.Graph,
             path,
-            usages.Count == 0 ? "empty" : "material",
+            usages.Count == 0 ? "empty" : role ?? GraphRoles.Material,
             origin,
             usages,
             [..graph.Parameters.Select(GraphDocuments.Definition)]

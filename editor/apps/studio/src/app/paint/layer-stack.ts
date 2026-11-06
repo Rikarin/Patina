@@ -168,7 +168,11 @@ interface MenuAt {
               [class.outline]="row.layer.id === store.layer() && !store.masking()"
               [style.background]="swatch(row.layer)"
             >
-              {{ mark(row.layer) }}
+              @if (store.thumbnails().get(row.layer.id); as picture) {
+                <img class="size-full object-cover" alt="" [src]="picture" />
+              } @else {
+                {{ mark(row.layer) }}
+              }
             </span>
           }
 

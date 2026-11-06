@@ -119,6 +119,25 @@ public sealed class StackEvaluator(
         }
     }
 
+    /// <summary>Each fill of a stack alone, which the Worker keeps until the layer changes.</summary>
+    public async Task<IReadOnlyList<StackLayerThumbnail>> ThumbnailsAsync(
+        StackSession session,
+        CancellationToken cancellationToken
+    ) {
+        using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        patience.CancelAfter(WorkerPatience);
+        try {
+            var connection = await worker.ConnectionAsync(patience.Token);
+            var reply = await connection.SendAsync(
+                new() { Type = IpcTypes.StackThumbnails, StackThumbnails = new(session.Id, store.Root) },
+                patience.Token
+            );
+            return reply.StackLayerThumbnails ?? [];
+        } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+            throw new TimeoutException("No Worker is connected.");
+        }
+    }
+
     async Task<bool> DrainAsync(CancellationToken cancellationToken) {
         await ForgetClosedAsync(cancellationToken);
         var worked = 0;

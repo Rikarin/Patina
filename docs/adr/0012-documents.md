@@ -167,13 +167,17 @@ panes: they are dialogs started from a Texturing document, which already knows i
    - `GET /library/materials` lists shipped, project and shared materials, and a shelf applies them.
    - A graph is published as a compound in `Compounds/Materials`, with one output per usage, and Vixen's graph fill now takes the
      output named for its channel. Publishing again on opening a stack is what carries a saved edit across.
-   - ⚠ A graph's role is inferred from having Outputs, so `mask`, `brush` and `filter` roles do not exist yet.
-   - ⚠ A fill names a compound by path, not by GUID, and a layer's numbers reach a graph's parameters in Vixen but no UI sets them.
+   - A graph's role is stored on its document in `project.yaml`, set from the Library, and checked against its shape: a mask or a
+     brush has one Output, and a filter also has one image input. The shelf puts a graph where its role says.
+   - Saving a graph republishes what open stacks read, and they follow without reopening. A layer's values for a graph's parameters
+     are that layer's own.
+   - ⚠ A fill names a compound by path, not by GUID.
 4. **Layered Material:** built. It unfolds into a stack through Vixen's smart material path, so it is a copy of its layers at that
-   moment: editing it later does not change a stack that used it, and paint layers do not travel. Previewed on a generated sphere.
-   ⚠ No tiling preview yet.
+   moment: editing it later does not change a stack that used it, and paint layers do not travel.
+   Previewed on a generated sphere, and in 2D tiled three times across.
 5. **Image Material:** built. A template graph and a screen of maps. Height from brightness; no neural step.
-6. **Graph brushes and masks:** not built. It needs a way to render a graph to a picture for a brush alpha.
+6. **Graph brushes and masks:** built. A brush graph renders once to `brushes/<name>.png` through a graph session, so editing the
+   graph needs the brush chosen again. A mask graph runs as a generator, and a filter graph as a filter layer.
 
 ## Open questions
 

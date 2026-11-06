@@ -8,8 +8,11 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
+from ..types import UNSET, Unset
 from typing import cast
 
+if TYPE_CHECKING:
+  from ..models.graph_setting_definition import GraphSettingDefinition
 
 
 
@@ -27,9 +30,11 @@ class MaterialInfo:
             name (str): What it is called.
             kind (str): `graph`, which a fill reads, or `layered-material`, which unfolds into layers.
             source (str): What names it to the routes that use it.
-            role (str): `material`, or `empty` for a graph with no output yet.
+            role (str): `material`, `mask`, `brush`, `filter`, or `empty` for a graph with no
+                            output yet.
             origin (str): `shipped`, `project` or `shared`.
             channels (list[str]): The maps a graph makes, by usage.
+            parameters (list[GraphSettingDefinition] | None | Unset): The knobs a graph exposes, which a layer can set.
      """
 
     name: str
@@ -38,6 +43,7 @@ class MaterialInfo:
     role: str
     origin: str
     channels: list[str]
+    parameters: list[GraphSettingDefinition] | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -45,6 +51,7 @@ class MaterialInfo:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.graph_setting_definition import GraphSettingDefinition # noqa: PLC0415
         name = self.name
 
         kind = self.kind
@@ -59,6 +66,19 @@ class MaterialInfo:
 
 
 
+        parameters: list[dict[str, Any]] | None | Unset
+        if isinstance(self.parameters, Unset):
+            parameters = UNSET
+        elif isinstance(self.parameters, list):
+            parameters = []
+            for parameters_type_1_item_data in self.parameters:
+                parameters_type_1_item = parameters_type_1_item_data.to_dict()
+                parameters.append(parameters_type_1_item)
+
+
+        else:
+            parameters = self.parameters
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -70,6 +90,8 @@ class MaterialInfo:
             "origin": origin,
             "channels": channels,
         })
+        if parameters is not UNSET:
+            field_dict["parameters"] = parameters
 
         return field_dict
 
@@ -77,6 +99,7 @@ class MaterialInfo:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.graph_setting_definition import GraphSettingDefinition # noqa: PLC0415
         d = dict(src_dict)
         name = d.pop("name")
 
@@ -91,6 +114,31 @@ class MaterialInfo:
         channels = cast(list[str], d.pop("channels"))
 
 
+        def _parse_parameters(data: object) -> list[GraphSettingDefinition] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                parameters_type_1 = []
+                _parameters_type_1 = data
+                for parameters_type_1_item_data in (_parameters_type_1):
+                    parameters_type_1_item = GraphSettingDefinition.from_dict(parameters_type_1_item_data)
+
+
+
+                    parameters_type_1.append(parameters_type_1_item)
+
+                return parameters_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[GraphSettingDefinition] | None | Unset, data)
+
+        parameters = _parse_parameters(d.pop("parameters", UNSET))
+
+
         material_info = cls(
             name=name,
             kind=kind,
@@ -98,6 +146,7 @@ class MaterialInfo:
             role=role,
             origin=origin,
             channels=channels,
+            parameters=parameters,
         )
 
 

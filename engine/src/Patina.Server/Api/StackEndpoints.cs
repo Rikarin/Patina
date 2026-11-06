@@ -94,6 +94,13 @@ static class StackEndpoints {
             Missing
         );
         Get(
+            "/{id}/thumbnails",
+            GetThumbnails,
+            "GetStackThumbnails",
+            "Each fill drawn alone and small, under /previews. A layer that has not changed is not drawn again.",
+            Missing
+        );
+        Get(
             "/{id}/pixels",
             GetPixels,
             "GetStackPixels",
@@ -225,6 +232,26 @@ static class StackEndpoints {
             return TypedResults.Problem(e.Message, statusCode: Conflict);
         } catch (TimeoutException e) {
             return TypedResults.Problem(e.Message, statusCode: Unavailable);
+        }
+    }
+
+    static async Task<Results<Ok<StackThumbnails>, ProblemHttpResult>> GetThumbnails(
+        string id,
+        StackSessions sessions,
+        StackEvaluator evaluator,
+        CancellationToken cancellationToken
+    ) {
+        if (sessions.Find(id) is not { } session) {
+            return NoSession(id);
+        }
+
+        try {
+            var drawn = await evaluator.ThumbnailsAsync(session, cancellationToken);
+            return TypedResults.Ok(
+                new StackThumbnails([..drawn.Select(static item => new StackThumbnail(item.Layer, item.Hash))])
+            );
+        } catch (Exception e) when (e is IpcException or IOException or TimeoutException) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
         }
     }
 

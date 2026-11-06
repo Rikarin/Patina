@@ -216,6 +216,17 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
+    /// <summary>Says what a graph is for.</summary>
+    /// <exception cref="FileNotFoundException">The project or document is not there.</exception>
+    /// <exception cref="ProjectRefusedException">It is not a graph, or that is no role.</exception>
+    public ProjectItem SetDocumentRole(string path, AssetId document, string role) {
+        lock (createGate) {
+            var changed = ProjectFiles.SetRole(RootPath, path, document, role);
+            Interlocked.Increment(ref unscannedWrites);
+            return changed;
+        }
+    }
+
     /// <summary>Gives a project a new display name. <see cref="Rescan" /> is the caller's to run.</summary>
     public void RenameProject(string path, string name) {
         lock (createGate) {

@@ -469,6 +469,23 @@ export interface paths {
     patch: operations['SetDocumentMesh'];
     trace?: never;
   };
+  '/api/v1/library/project/document/role': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Says what a graph is for: a material, a mask, a brush or a filter. */
+    patch: operations['SetDocumentRole'];
+    trace?: never;
+  };
   '/api/v1/library/materials': {
     parameters: {
       query?: never;
@@ -497,6 +514,23 @@ export interface paths {
     put?: never;
     /** Makes a material graph ready for a project's layers, and names it for them. */
     post: operations['UseMaterial'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/materials/brush': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Renders a graph to a picture in its project, which a brush can stamp. */
+    post: operations['MakeBrush'];
     delete?: never;
     options?: never;
     head?: never;
@@ -908,6 +942,23 @@ export interface paths {
     };
     /** The colours of the id map the stack reads, the largest first, and the one at a place on it if asked. */
     get: operations['GetStackIdColours'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/thumbnails': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Each fill drawn alone and small, under /previews. A layer that has not changed is not drawn again. */
+    get: operations['GetStackThumbnails'];
     put?: never;
     post?: never;
     delete?: never;
@@ -2470,6 +2521,11 @@ export interface components {
       /** @description The folder holding this report and one file per project. */
       folder: string;
     };
+    /** @description A graph rendered to a picture a brush stamps. */
+    MaterialBrush: {
+      /** @description The picture, relative to the project's stacks, as a brush names it. */
+      alpha: string;
+    };
     /** @description Something a layer can be filled with (ADR 0012). */
     MaterialInfo: {
       /** @description What it is called. */
@@ -2478,7 +2534,10 @@ export interface components {
       kind: string;
       /** @description What names it to the routes that use it. */
       source: string;
-      /** @description `material`, or `empty` for a graph with no output yet. */
+      /**
+       * @description `material`, `mask`, `brush`, `filter`, or `empty` for a graph with no
+       *                 output yet.
+       */
       role: string;
       /** @description `shipped`, `project` or `shared`. */
       origin: string;
@@ -2593,6 +2652,8 @@ export interface components {
        * @description The id of the mesh it is on.
        */
       mesh?: null | string;
+      /** @description What a graph is for: `material`, `mask`, `brush` or `filter`. */
+      role?: null | string;
     };
     /** @description The body of `PATCH /api/v1/library/project/document`. */
     ProjectDocumentMeshRequest: {
@@ -2629,6 +2690,18 @@ export interface components {
       resolution?: null | number;
       /** @description The picture an `image-material` starts from, on the Server's machine. */
       image?: null | string;
+    };
+    /** @description The body of `PATCH /api/v1/library/project/document/role`. */
+    ProjectDocumentRoleRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /**
+       * Format: uuid
+       * @description The graph.
+       */
+      document: string;
+      /** @description `material`, `mask`, `brush` or `filter`. */
+      role: string;
     };
     /** @description A result of a bake in a project's folder. */
     ProjectFile: {
@@ -2873,6 +2946,8 @@ export interface components {
        *     Then Kind and Name say nothing.
        */
       material?: null | string;
+      /** @description The compound a filter layer runs, instead of a named filter. */
+      filterNode?: null | string;
     };
     /** @description Moves a layer up or down its list. */
     StackCommandStackMoveLayer: {
@@ -3032,6 +3107,35 @@ export interface components {
       /** @description The undo history. */
       history: components['schemas']['GraphHistoryState'];
     };
+    /** @description A step a mask can run. */
+    StackEffectKind: {
+      /** @description The node type. */
+      node: string;
+      /** @description What a person calls it. */
+      name: string;
+      /** @description The numbers it takes. */
+      ports: components['schemas']['StackEffectPort'][];
+    };
+    /** @description A number a mask effect takes. */
+    StackEffectPort: {
+      /** @description Its port. */
+      name: string;
+      /**
+       * Format: float
+       * @description What it starts at.
+       */
+      default: number;
+      /**
+       * Format: float
+       * @description Its lower bound, or null for none.
+       */
+      minimum?: null | number;
+      /**
+       * Format: float
+       * @description Its upper bound, or null for none.
+       */
+      maximum?: null | number;
+    };
     /** @description How an evaluation went. */
     StackEvaluation: {
       /**
@@ -3183,6 +3287,11 @@ export interface components {
       parameters?: null | {
         [key: string]: string;
       };
+      /**
+       * @description The compound a graph filter runs, or empty for one of the named filters.
+       * @default
+       */
+      filterNode: string;
     };
     /** @description What decides where a layer shows. */
     StackMask: {
@@ -3228,6 +3337,26 @@ export interface components {
        * @default 0
        */
       softness: number;
+      /** @description What runs on the mask, in order, or null to keep them. */
+      effects?: null | components['schemas']['StackMaskEffect'][];
+    };
+    /** @description One step run on a mask. */
+    StackMaskEffect: {
+      /** @description The node type or compound it is. */
+      node: string;
+      /**
+       * @description Whether it runs.
+       * @default true
+       */
+      enabled: boolean;
+      /** @description Its numbers, by port. */
+      values?: null | {
+        [key: string]: number[];
+      };
+      /** @description Its settings, by name. */
+      texts?: null | {
+        [key: string]: string;
+      };
     };
     /** @description Chooses the bake a stack's generators and bake masks read. */
     StackMeshMapsRequest: {
@@ -3399,6 +3528,18 @@ export interface components {
       /** @description Whether it has edits no file holds. */
       dirty: boolean;
     };
+    /** @description What a layer looks like alone. */
+    StackThumbnail: {
+      /** @description The layer. */
+      layer: string;
+      /** @description Its name under `/previews/{hash}`. */
+      hash: string;
+    };
+    /** @description The fills of a stack, each drawn alone. */
+    StackThumbnails: {
+      /** @description Them. */
+      items: components['schemas']['StackThumbnail'][];
+    };
     /**
      * @description A camera in the mesh's own space, which a stroke keeps because a position on a picture means nothing without
      *     it. Any client with a camera can fill this in; `POST /viewport/pick` gives the viewport's.
@@ -3442,6 +3583,8 @@ export interface components {
       meshMaps: string[];
       /** @description The named brush alphas. */
       alphas: string[];
+      /** @description The steps a mask can run. */
+      maskEffects: components['schemas']['StackEffectKind'][];
     };
     /** @description The reply to `GET /api/v1/system`. */
     SystemInfo: {
@@ -5044,6 +5187,57 @@ export interface operations {
       };
     };
   };
+  SetDocumentRole: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectDocumentRoleRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   GetMaterials: {
     parameters: {
       query?: {
@@ -5113,6 +5307,57 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['MaterialUse'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  MakeBrush: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['MaterialUseRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MaterialBrush'];
         };
       };
       /** @description Bad Request */
@@ -6208,6 +6453,37 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['StackIdColours'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetStackThumbnails: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackThumbnails'];
         };
       };
       /** @description Not Found */

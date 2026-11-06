@@ -75,7 +75,32 @@ public sealed record ProjectMesh(AssetId Id, string File, string? High = null);
 /// <param name="File">Its file, relative to the project.</param>
 /// <param name="Name">Its display name.</param>
 /// <param name="Mesh">The mesh it is on. A <c>texturing</c> document has one and no other kind does.</param>
-public sealed record ProjectItem(AssetId Id, string Kind, string File, string Name, AssetId? Mesh = null);
+/// <param name="Role">What a graph is for, one of <see cref="GraphRoles" />. Null is a material.</param>
+public sealed record ProjectItem(
+    AssetId Id,
+    string Kind,
+    string File,
+    string Name,
+    AssetId? Mesh = null,
+    string? Role = null
+);
+
+/// <summary>What a graph is for, which decides where it is offered (ADR 0012).</summary>
+public static class GraphRoles {
+    /// <summary>Maps by usage, which fill a layer's channels.</summary>
+    public const string Material = "material";
+
+    /// <summary>One map, which decides where a layer shows.</summary>
+    public const string Mask = "mask";
+
+    /// <summary>One map, which a brush stamps.</summary>
+    public const string Brush = "brush";
+
+    /// <summary>An image in and an image out, which changes what is under it or a mask.</summary>
+    public const string Filter = "filter";
+
+    public static bool Known(string role) => role is Material or Mask or Brush or Filter;
+}
 
 /// <summary>What a document is for, which decides the workspace it opens in (ADR 0012).</summary>
 public static class DocumentKinds {

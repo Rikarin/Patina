@@ -128,7 +128,11 @@ export class BrushPanel {
   protected readonly mirrors = Mirrors;
   protected readonly rotations = Rotations;
   protected readonly sliders = Sliders;
-  protected readonly alphas = computed(() => this.store.vocabulary()?.alphas ?? ['Round']);
+  protected readonly alphas = computed(() => {
+    const named = this.store.vocabulary()?.alphas ?? ['Round'];
+    const alpha = this.store.brush().alpha;
+    return alpha && !named.includes(alpha) ? [...named, alpha] : named;
+  });
 
   protected set<K extends keyof BrushSettings>(key: K, value: BrushSettings[K]): void {
     this.store.brush.update(brush => ({ ...brush, [key]: value }));

@@ -64,6 +64,11 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
         return IpcMessage.Ok(request.Id);
     }
 
+    public IpcMessage Thumbnails(IpcMessage request) {
+        var ask = request.StackThumbnails ?? throw new IpcException("stack.thumbnails names no stack.");
+        return new() { Type = IpcTypes.Ok, StackLayerThumbnails = Find(ask.Session).Thumbnails(previews, ask.Folder) };
+    }
+
     public IpcMessage Sync(IpcMessage request) {
         var sync = request.StackSync ?? throw new IpcException("stack.sync says nothing.");
         Find(sync.Session).Sync(sync);
@@ -263,6 +268,8 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
     }
 
     internal sealed class Session : IDisposable {
+        const int ThumbnailSide = 64;
+        const string ThumbnailMap = "baseColor";
         static readonly NoContext Context = new();
 
         readonly string path;
@@ -271,6 +278,9 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
         readonly PublishedCompounds compounds;
         readonly PaintCanvasStore canvases = new(long.MaxValue);
         readonly HashSet<string> touched = new(StringComparer.Ordinal);
+        readonly Dictionary<string, string> thumbnails = new(StringComparer.Ordinal);
+        readonly TexturePlanEvaluator evaluator;
+        readonly LayerStackPictures fill;
         readonly List<Applied> applied = [];
         readonly Dictionary<long, Applied> known = [];
         readonly Dictionary<string, PaintMeshSurface> surfaces = new(StringComparer.Ordinal);
@@ -294,21 +304,18 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
             folder = Path.GetDirectoryName(Path.GetFullPath(load.Path))!;
             this.compounds = compounds;
             document = LayerStackYaml.Read(load.Document);
-            Run = new(
-                evaluator,
-                canvases,
-                load.Path,
-                (uploads, plan, owed) => pictures.Fill(
-                        uploads,
-                        plan,
-                        [..owed],
-                        load.ImageRoots,
-                        load.MeshMaps,
-                        Unbaked
-                    )
-                    .Refusals.Select(static refusal => refusal.Message)
-                    .ToArray()
-            );
+            this.evaluator = evaluator;
+            fill = (uploads, plan, owed) => pictures.Fill(
+                    uploads,
+                    plan,
+                    [..owed],
+                    load.ImageRoots,
+                    load.MeshMaps,
+                    Unbaked
+                )
+                .Refusals.Select(static refusal => refusal.Message)
+                .ToArray();
+            Run = new(evaluator, canvases, load.Path, fill);
             if (load.Checkpoint is { } checkpoint) {
                 Restore(checkpoint);
             }
@@ -319,6 +326,54 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
         }
 
         public LayerStackEvaluator Run { get; }
+
+        /// <summary>
+        ///     Each fill with something to show, alone and small. It is its own stack, so a stroke's plan pays nothing,
+        ///     and a layer that has not changed is not drawn again.
+        /// </summary>
+        public IReadOnlyList<StackLayerThumbnail> Thumbnails(PreviewWriter writer, string folder) {
+            List<StackLayerThumbnail> drawn = [];
+            var chosen = document.Sets.First(candidate => candidate.Name == set);
+            foreach (var layer in Fills(chosen.Layers)) {
+                var alone = chosen with {
+                    Layers = [layer with { Mask = new(), Opacity = 1f, Blend = LayerBlendMode.Copy, Enabled = true }]
+                };
+                var small = document with { BaseWidth = ThumbnailSide, BaseHeight = ThumbnailSide, Sets = [alone] };
+                var key = LayerStackYaml.Write(small);
+                if (!thumbnails.TryGetValue(key, out var hash) && Draw(small, alone, writer, folder) is { } made) {
+                    hash = thumbnails[key] = made;
+                }
+
+                if (hash is not null) {
+                    drawn.Add(new(layer.Id, hash));
+                }
+            }
+
+            return drawn;
+        }
+
+        string? Draw(LayerStackAsset small, TextureSetAsset alone, PreviewWriter writer, string folder) {
+            using LayerStackEvaluator run = new(evaluator, canvases, path, fill);
+            if (run.Prepare(small, alone, compounds.Registry, compounds.Source).Count > 0) {
+                return null;
+            }
+
+            var output = run.Outputs.FirstOrDefault(static output => output.Usage == ThumbnailMap);
+            if (output.Usage is null) {
+                return null;
+            }
+
+            using var bake = run.Evaluate();
+            return writer.Write(bake, [output.Image], folder)[0].Hash;
+        }
+
+        static IEnumerable<LayerAsset> Fills(IEnumerable<LayerAsset> layers) =>
+            layers.SelectMany(static layer => layer.Kind == LayerKind.Group
+                    ? Fills(layer.Children)
+                    : layer is { Kind: LayerKind.Fill, Fill: not LayerFillSource.Constant }
+                        ? [layer]
+                        : (IEnumerable<LayerAsset>)[]
+            );
 
         /// <summary>The mesh maps layers read that no bake has given, which read as grey until one does.</summary>
         public SortedSet<string> Unbaked { get; } = new(StringComparer.Ordinal);

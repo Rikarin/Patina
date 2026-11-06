@@ -21,6 +21,7 @@ import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
 
 const ReconnectMs = 1_000;
+const ThumbnailQuiet = 400;
 
 /** How many stamp-to-frame times are kept, which is what the readout and the bench read. */
 const StampTimes = 2048;
@@ -232,6 +233,8 @@ export class PaintStore {
     this.state.set(null);
     this.worn.set(false);
     this.picture.set(null);
+    clearTimeout(this.thumbnailWait);
+    this.thumbnails.set(new Map());
     this.layer.set(null);
     this.idColours.set(null);
     this.picking.set(null);
@@ -534,6 +537,7 @@ export class PaintStore {
     }
 
     this.show(state.previews);
+    this.thumbnailsSoon(state.id);
   }
 
   /** Shows a channel, whose picture may already be here. */
@@ -546,6 +550,45 @@ export class PaintStore {
     const preview = previews.find(p => p.usage === this.channel());
     if (preview) {
       void this.load(preview.hash);
+    }
+  }
+
+  /** The fills drawn alone, once the stack has been quiet for a moment. */
+  readonly thumbnails = signal<ReadonlyMap<string, string>>(new Map());
+  private thumbnailWait: ReturnType<typeof setTimeout> | undefined;
+  private readonly thumbnailUrls = new Map<string, string>();
+
+  private thumbnailsSoon(id: string): void {
+    clearTimeout(this.thumbnailWait);
+    // A thumbnail is a nicety: without one a layer keeps its letter, so a failure here tells nobody anything.
+    this.thumbnailWait = setTimeout(() => void this.loadThumbnails(id).catch(() => undefined), ThumbnailQuiet);
+  }
+
+  private async loadThumbnails(id: string): Promise<void> {
+    const client = await this.api();
+    const { data } = await client.GET('/api/v1/stacks/{id}/thumbnails', { params: { path: { id } } });
+    if (!data || this.state()?.id !== id) {
+      return;
+    }
+
+    const shown = new Map<string, string>();
+    for (const { layer, hash } of data.items) {
+      let url = this.thumbnailUrls.get(hash);
+      if (!url) {
+        const blob = await client.GET('/api/v1/previews/{hash}', { params: { path: { hash } }, parseAs: 'blob' });
+        if (!blob.data) {
+          continue;
+        }
+
+        url = URL.createObjectURL(blob.data);
+        this.thumbnailUrls.set(hash, url);
+      }
+
+      shown.set(layer, url);
+    }
+
+    if (this.state()?.id === id) {
+      this.thumbnails.set(shown);
     }
   }
 
@@ -609,6 +652,7 @@ export class PaintStore {
           : state
       );
       this.show(previews);
+      this.thumbnailsSoon(this.state()?.id ?? '');
     }
 
     if (event.delta) {

@@ -77,6 +77,7 @@ sealed class WorkerLoop(
                     or IpcTypes.GraphClose
                     or IpcTypes.StackLoad
                     or IpcTypes.StackSync
+                    or IpcTypes.StackThumbnails
                     or IpcTypes.StackEvaluate
                     or IpcTypes.StackSave
                     or IpcTypes.StackCheckpoint
@@ -102,6 +103,7 @@ sealed class WorkerLoop(
                 IpcTypes.GraphClose => graphs.Close(request),
                 IpcTypes.StackLoad => stacks.Load(request),
                 IpcTypes.StackSync => stacks.Sync(request),
+                IpcTypes.StackThumbnails => stacks.Thumbnails(request),
                 IpcTypes.StackEvaluate => stacks.Evaluate(request),
                 IpcTypes.StackSave or IpcTypes.StackCheckpoint => stacks.Save(request),
                 IpcTypes.StackPixels => stacks.Pixels(request),

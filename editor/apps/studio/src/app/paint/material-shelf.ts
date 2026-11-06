@@ -96,16 +96,38 @@ export class MaterialShelf {
 
     this.failure.set(null);
     try {
-      if (material.kind === 'graph') {
+      if (material.role === 'brush') {
+        const client = await this.library.api();
+        const body = { project: project.path, source: material.source };
+        const { alpha } = unwrap(await client.POST('/api/v1/library/materials/brush', { body }));
+        this.paint.brush.update(brush => ({ ...brush, alpha }));
+      } else if (material.kind === 'graph') {
         const client = await this.library.api();
         const body = { project: project.path, source: material.source };
         const { graph } = unwrap(await client.POST('/api/v1/library/materials/use', { body }));
-        await this.paint.addGraphLayer(material.name, graph);
+        await this.useGraph(material, graph);
       } else {
         await this.paint.edit({ op: 'addLayer', kind: 'material', name: material.name, material: material.source });
       }
     } catch (failure) {
       this.failure.set(failure instanceof Error ? failure.message : String(failure));
+    }
+  }
+
+  /** A graph lands where its role says: a fill, a filter over the stack, or the chosen layer's mask. */
+  private async useGraph(material: MaterialInfo, graph: string): Promise<void> {
+    if (material.role === 'filter') {
+      await this.paint.edit({ op: 'addLayer', kind: 'filter', name: material.name, filterNode: graph });
+    } else if (material.role === 'mask') {
+      const layer = this.paint.chosen();
+      if (!layer) {
+        this.failure.set('Choose a layer for this mask first.');
+        return;
+      }
+
+      await this.paint.setMask(layer, { ...layer.mask, source: 'Generator', generator: graph });
+    } else {
+      await this.paint.addGraphLayer(material.name, graph);
     }
   }
 

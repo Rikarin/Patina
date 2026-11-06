@@ -289,6 +289,23 @@ export class ProjectStore {
     }
   }
 
+  /** Says what a graph is for, which decides where the shelf puts it. A graph of the wrong shape is refused. */
+  async setRole(project: string, document: ProjectDocumentInfo, role: string): Promise<void> {
+    if (!document.id) {
+      return;
+    }
+
+    try {
+      const client = await this.library.api();
+      const body = { project, document: document.id, role };
+      const contents = unwrap(await client.PATCH('/api/v1/library/project/document/role', { body }));
+      this.mutableContents.update(all => new Map(all).set(project, contents));
+      this.library.refreshSoon();
+    } catch (failure) {
+      this.mutableFailure.set(messageOf(failure));
+    }
+  }
+
   /** Asks the user for a picture and brings it into the project, for a layer or a mask to read. */
   async pickPicture(): Promise<string | null> {
     const project = this.current();

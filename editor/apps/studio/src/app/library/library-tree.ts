@@ -174,6 +174,22 @@ interface MenuAt {
             Open
           </button>
         }
+        @if (at.row?.kind === 'document' && at.row.document.kind === 'graph') {
+          <div class="border-hairline my-1 border-t"></div>
+          @for (role of graphRoles; track role) {
+            <button
+              type="button"
+              class="hover:bg-selection px-3 py-1 text-start"
+              role="menuitemradio"
+              [attr.aria-checked]="(at.row.document.role ?? 'material') === role"
+              [attr.data-testid]="'menu-role-' + role"
+              (click)="setRole(at.row, role)"
+            >
+              Use as {{ role }}
+            </button>
+          }
+          <div class="border-hairline my-1 border-t"></div>
+        }
         <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="menu-new-project" (click)="act(newProject)">
           New Project…
         </button>
@@ -375,6 +391,13 @@ export class LibraryTree {
   }
 
   /** Carries out a menu item on what the menu was opened over. */
+  protected readonly graphRoles = ['material', 'mask', 'brush', 'filter'] as const;
+
+  protected setRole(row: Extract<TreeRow, { kind: 'document' }>, role: string): void {
+    this.menu.set(null);
+    void this.project.setRole(row.project, row.document, role);
+  }
+
   protected act(item: (row: TreeRow | null) => void | Promise<void>): void {
     const at = this.menu();
     this.menu.set(null);

@@ -103,6 +103,7 @@ from .library_info import LibraryInfo
 from .library_move_request import LibraryMoveRequest
 from .library_moved import LibraryMoved
 from .library_report import LibraryReport
+from .material_brush import MaterialBrush
 from .material_info import MaterialInfo
 from .material_list import MaterialList
 from .material_use import MaterialUse
@@ -114,10 +115,13 @@ from .project_create_request import ProjectCreateRequest
 from .project_document_info import ProjectDocumentInfo
 from .project_document_mesh_request import ProjectDocumentMeshRequest
 from .project_document_request import ProjectDocumentRequest
+from .project_document_role_request import ProjectDocumentRoleRequest
 from .project_file import ProjectFile
 from .project_mesh_info import ProjectMeshInfo
 from .project_mesh_request import ProjectMeshRequest
 from .project_page import ProjectPage
+from .project_picture import ProjectPicture
+from .project_picture_request import ProjectPictureRequest
 from .project_rename_request import ProjectRenameRequest
 from .project_report import ProjectReport
 from .project_report_page import ProjectReportPage
@@ -136,6 +140,7 @@ from .stack_command_stack_remove_layer import StackCommandStackRemoveLayer
 from .stack_command_stack_remove_layer_op import StackCommandStackRemoveLayerOp
 from .stack_command_stack_set_layer import StackCommandStackSetLayer
 from .stack_command_stack_set_layer_op import StackCommandStackSetLayerOp
+from .stack_command_stack_set_layer_parameters_type_1 import StackCommandStackSetLayerParametersType1
 from .stack_command_stack_set_layer_settings_type_1 import StackCommandStackSetLayerSettingsType1
 from .stack_command_stack_set_layer_textures_type_1 import StackCommandStackSetLayerTexturesType1
 from .stack_command_stack_set_layer_values_type_1 import StackCommandStackSetLayerValuesType1
@@ -146,6 +151,8 @@ from .stack_command_stack_stroke_op import StackCommandStackStrokeOp
 from .stack_create_request import StackCreateRequest
 from .stack_delta import StackDelta
 from .stack_edit_result import StackEditResult
+from .stack_effect_kind import StackEffectKind
+from .stack_effect_port import StackEffectPort
 from .stack_evaluation import StackEvaluation
 from .stack_event import StackEvent
 from .stack_event_page import StackEventPage
@@ -154,18 +161,25 @@ from .stack_filter_kind import StackFilterKind
 from .stack_id_colour import StackIdColour
 from .stack_id_colours import StackIdColours
 from .stack_layer import StackLayer
+from .stack_layer_parameters_type_1 import StackLayerParametersType1
 from .stack_layer_settings import StackLayerSettings
 from .stack_layer_textures import StackLayerTextures
 from .stack_layer_values import StackLayerValues
 from .stack_mask import StackMask
+from .stack_mask_effect import StackMaskEffect
+from .stack_mask_effect_texts_type_1 import StackMaskEffectTextsType1
+from .stack_mask_effect_values_type_1 import StackMaskEffectValuesType1
 from .stack_mesh_maps_request import StackMeshMapsRequest
 from .stack_open_request import StackOpenRequest
 from .stack_painted import StackPainted
 from .stack_pixels import StackPixels
+from .stack_placement import StackPlacement
 from .stack_preview import StackPreview
 from .stack_stamp import StackStamp
 from .stack_state import StackState
 from .stack_summary import StackSummary
+from .stack_thumbnail import StackThumbnail
+from .stack_thumbnails import StackThumbnails
 from .stack_view import StackView
 from .stack_vocabulary import StackVocabulary
 from .system_info import SystemInfo
@@ -287,6 +301,7 @@ __all__ = (
     "LibraryMoved",
     "LibraryMoveRequest",
     "LibraryReport",
+    "MaterialBrush",
     "MaterialInfo",
     "MaterialList",
     "MaterialUse",
@@ -298,10 +313,13 @@ __all__ = (
     "ProjectDocumentInfo",
     "ProjectDocumentMeshRequest",
     "ProjectDocumentRequest",
+    "ProjectDocumentRoleRequest",
     "ProjectFile",
     "ProjectMeshInfo",
     "ProjectMeshRequest",
     "ProjectPage",
+    "ProjectPicture",
+    "ProjectPictureRequest",
     "ProjectRenameRequest",
     "ProjectReport",
     "ProjectReportPage",
@@ -320,6 +338,7 @@ __all__ = (
     "StackCommandStackRemoveLayerOp",
     "StackCommandStackSetLayer",
     "StackCommandStackSetLayerOp",
+    "StackCommandStackSetLayerParametersType1",
     "StackCommandStackSetLayerSettingsType1",
     "StackCommandStackSetLayerTexturesType1",
     "StackCommandStackSetLayerValuesType1",
@@ -330,6 +349,8 @@ __all__ = (
     "StackCreateRequest",
     "StackDelta",
     "StackEditResult",
+    "StackEffectKind",
+    "StackEffectPort",
     "StackEvaluation",
     "StackEvent",
     "StackEventPage",
@@ -338,18 +359,25 @@ __all__ = (
     "StackIdColour",
     "StackIdColours",
     "StackLayer",
+    "StackLayerParametersType1",
     "StackLayerSettings",
     "StackLayerTextures",
     "StackLayerValues",
     "StackMask",
+    "StackMaskEffect",
+    "StackMaskEffectTextsType1",
+    "StackMaskEffectValuesType1",
     "StackMeshMapsRequest",
     "StackOpenRequest",
     "StackPainted",
     "StackPixels",
+    "StackPlacement",
     "StackPreview",
     "StackStamp",
     "StackState",
     "StackSummary",
+    "StackThumbnail",
+    "StackThumbnails",
     "StackView",
     "StackVocabulary",
     "SystemInfo",

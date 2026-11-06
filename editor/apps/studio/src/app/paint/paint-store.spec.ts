@@ -20,6 +20,7 @@ const PickedView = {
 
 function layer(id: string, kind: string, children: StackLayer[] = []): StackLayer {
   return {
+    filterNode: '',
     id,
     name: id,
     kind,

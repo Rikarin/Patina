@@ -31,6 +31,7 @@ class ProjectDocumentInfo:
             path (str): Its path below the library, which the graph and stack routes take.
             id (None | Unset | UUID): Its GUID. Null until the project lists it.
             mesh (None | Unset | UUID): The id of the mesh it is on.
+            role (None | str | Unset): What a graph is for: `material`, `mask`, `brush` or `filter`.
      """
 
     kind: str
@@ -38,6 +39,7 @@ class ProjectDocumentInfo:
     path: str
     id: None | Unset | UUID = UNSET
     mesh: None | Unset | UUID = UNSET
+    role: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -67,6 +69,12 @@ class ProjectDocumentInfo:
         else:
             mesh = self.mesh
 
+        role: None | str | Unset
+        if isinstance(self.role, Unset):
+            role = UNSET
+        else:
+            role = self.role
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -79,6 +87,8 @@ class ProjectDocumentInfo:
             field_dict["id"] = id
         if mesh is not UNSET:
             field_dict["mesh"] = mesh
+        if role is not UNSET:
+            field_dict["role"] = role
 
         return field_dict
 
@@ -133,12 +143,23 @@ class ProjectDocumentInfo:
         mesh = _parse_mesh(d.pop("mesh", UNSET))
 
 
+        def _parse_role(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        role = _parse_role(d.pop("role", UNSET))
+
+
         project_document_info = cls(
             kind=kind,
             name=name,
             path=path,
             id=id,
             mesh=mesh,
+            role=role,
         )
 
 

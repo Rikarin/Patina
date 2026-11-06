@@ -134,6 +134,21 @@ static class ProjectFiles {
         return changed;
     }
 
+    /// <summary>Says what a graph is for.</summary>
+    public static ProjectItem SetRole(string root, string path, AssetId id, string role) {
+        var (_, document) = Project(root, path);
+        var item = document.Documents.FirstOrDefault(d => d.Id == id)
+            ?? throw new FileNotFoundException($"This project has no document {id}.");
+        if (item.Kind != DocumentKinds.Graph || !GraphRoles.Known(role)) {
+            throw new ProjectRefusedException($"'{item.Name}' cannot be a {role}.");
+        }
+
+        var changed = item with { Role = role };
+        List<ProjectItem> documents = [..document.Documents.Select(d => d.Id == id ? changed : d)];
+        LibraryFiles.WriteProject(root, path, document with { Documents = documents });
+        return changed;
+    }
+
     /// <summary>Gives a project a new display name. Its folder stays, so what refers to it by path does too.</summary>
     /// <exception cref="ProjectRefusedException">The name cannot be used.</exception>
     public static void Rename(string root, string path, string name) {
@@ -201,7 +216,7 @@ static class ProjectFiles {
         new(mesh.Id.Value, Below(path, mesh.File), mesh.High is { } high ? Below(path, high) : null);
 
     static ProjectDocumentInfo Listed(string path, ProjectItem item) =>
-        new(item.Id.Value, item.Kind, item.Name, Below(path, item.File), item.Mesh?.Value);
+        new(item.Id.Value, item.Kind, item.Name, Below(path, item.File), item.Mesh?.Value, item.Role);
 
     static bool IsMesh(string file) => MeshExtensions.Contains(Path.GetExtension(file));
 

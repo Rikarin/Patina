@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
+using Patina.Ipc;
 using Patina.Library;
 using Patina.Server.Graphs;
 using Patina.Server.Stacks;
@@ -16,6 +17,9 @@ static class LibraryTreeEndpoints {
     const int DefaultResolution = 2048;
     const int MinResolution = 16;
     const int MaxResolution = 8192;
+    const string BrushFolder = "brushes";
+    static readonly TimeSpan BrushPatience = TimeSpan.FromSeconds(60);
+    static readonly TimeSpan BrushRetry = TimeSpan.FromMilliseconds(100);
 
     public static void MapLibraryTreeApi(this IEndpointRouteBuilder api) {
         var library = api.MapGroup("/library").WithTags(Tag);
@@ -44,6 +48,11 @@ static class LibraryTreeEndpoints {
                 "Moves folders and projects into a folder, all of them or none. Nothing moved may be open."
             );
 
+        MapProjectRoutes(library);
+        MapMaterialRoutes(library);
+    }
+
+    static void MapProjectRoutes(RouteGroupBuilder library) {
         library.MapGet("/project", GetProject)
             .Described(
                 "GetProjectContents",
@@ -62,17 +71,25 @@ static class LibraryTreeEndpoints {
         library.MapPatch("/project/document", SetDocumentMesh)
             .Described("SetDocumentMesh", "Puts a texturing document on another mesh of its project.");
 
+        library.MapPatch("/project/document/role", SetDocumentRole)
+            .Described("SetDocumentRole", "Says what a graph is for: a material, a mask, a brush or a filter.");
+
+        library.MapPatch("/project", RenameProject)
+            .Described("RenameProject", "Gives a project a new display name. Its folder stays.");
+    }
+
+    static void MapMaterialRoutes(RouteGroupBuilder library) {
         library.MapGet("/materials", GetMaterials)
             .Described("GetMaterials", "What a project's layers can be filled with.");
 
         library.MapPost("/materials/use", UseMaterial)
             .Described("UseMaterial", "Makes a material graph ready for a project's layers, and names it for them.");
 
+        library.MapPost("/materials/brush", MakeBrush)
+            .Described("MakeBrush", "Renders a graph to a picture in its project, which a brush can stamp.");
+
         library.MapPost("/materials/refresh", RefreshMaterials)
             .Described("RefreshMaterials", "Brings a project's layers up to edits saved in the graphs they read.");
-
-        library.MapPatch("/project", RenameProject)
-            .Described("RenameProject", "Gives a project a new display name. Its folder stays.");
     }
 
     /// <summary>Makes a document and its file.</summary>
@@ -223,7 +240,10 @@ static class LibraryTreeEndpoints {
         );
 
     static Results<Ok<ProjectPicture>, ProblemHttpResult> AddPicture(LibraryHost host, ProjectPictureRequest request) =>
-        Guarded(host, library => TypedResults.Ok(new ProjectPicture(library.AddPicture(request.Project, request.Picture))));
+        Guarded(
+            host,
+            library => TypedResults.Ok(new ProjectPicture(library.AddPicture(request.Project, request.Picture)))
+        );
 
     static Results<Ok<ProjectContents>, ProblemHttpResult> AddDocument(
         LibraryHost host,
@@ -286,6 +306,90 @@ static class LibraryTreeEndpoints {
                 return TypedResults.Ok(new MaterialList(MaterialShelf.List(library, project)));
             }
         );
+
+    static Results<Ok<ProjectContents>, ProblemHttpResult> SetDocumentRole(
+        LibraryHost host,
+        ProjectDocumentRoleRequest request
+    ) =>
+        Guarded(
+            host,
+            library => {
+                var document = library.Contents(request.Project).Documents.FirstOrDefault(d => d.Id == request.Document)
+                    ?? throw new FileNotFoundException($"This project has no document {request.Document}.");
+                MaterialShelf.CheckRole(library, document.Path, request.Role);
+                library.SetDocumentRole(request.Project, new(request.Document), request.Role);
+                host.RequestRescan();
+                return TypedResults.Ok(library.Contents(request.Project));
+            }
+        );
+
+    /// <summary>
+    ///     A graph's Output as a picture in <c>brushes/</c>, through a session of its own unless one is open. The
+    ///     Worker only has a picture once it has evaluated, so this asks until it does.
+    /// </summary>
+    static async Task<Results<Ok<MaterialBrush>, ProblemHttpResult>> MakeBrush(
+        LibraryHost host,
+        GraphSessions graphs,
+        GraphEvaluator evaluator,
+        PreviewStore previews,
+        MaterialUseRequest request,
+        CancellationToken cancellationToken
+    ) {
+        if (host.Library is not { } library) {
+            return NoLibrary();
+        }
+
+        var full = Path.GetFullPath(request.Source, library.RootPath);
+        if (!File.Exists(full)) {
+            return TypedResults.Problem(
+                $"There is no graph '{request.Source}'.",
+                statusCode: StatusCodes.Status404NotFound
+            );
+        }
+
+        var held = graphs.All.Any(open => open.Path == full);
+        var session = graphs.Open(request.Source);
+        try {
+            var (node, usage) = MaterialShelf.BrushOutput(await File.ReadAllTextAsync(full, cancellationToken));
+            session.Evaluate();
+            using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            patience.CancelAfter(BrushPatience);
+            var picture = await RenderedAsync(session, evaluator, node, usage, patience.Token);
+            var name = Path.GetFileNameWithoutExtension(request.Source);
+            var alpha = $"{BrushFolder}/{name}.png";
+            var file = library.ProjectFile(request.Project, alpha);
+            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+            File.Copy(previews.Find(picture.Hash)!, file, true);
+            return TypedResults.Ok(new MaterialBrush(alpha));
+        } catch (ProjectRefusedException e) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+        } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+            return TypedResults.Problem(
+                "The graph did not render in time.",
+                statusCode: StatusCodes.Status503ServiceUnavailable
+            );
+        } finally {
+            if (!held) {
+                graphs.Close(session);
+            }
+        }
+    }
+
+    static async Task<GraphFullImage> RenderedAsync(
+        GraphSession session,
+        GraphEvaluator evaluator,
+        int node,
+        string usage,
+        CancellationToken cancellationToken
+    ) {
+        while (true) {
+            try {
+                return await evaluator.ImageAsync(session, node, usage, cancellationToken);
+            } catch (IpcException) when (!cancellationToken.IsCancellationRequested) {
+                await Task.Delay(BrushRetry, cancellationToken);
+            }
+        }
+    }
 
     static Results<Ok<ProjectContents>, ProblemHttpResult> RenameProject(
         LibraryHost host,

@@ -109,6 +109,15 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
             Token
         );
         Assert.Equal(HttpStatusCode.OK, graph.StatusCode);
+        var made = (await graph.Content.ReadFromJsonAsync<ProjectContents>(Token))!.Documents.First(static d =>
+            d.Kind == "graph"
+        );
+        var filter = await client.PatchAsJsonAsync(
+            "/api/v1/library/project/document/role",
+            new ProjectDocumentRoleRequest("crate", made.Id!.Value, "filter"),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.BadRequest, filter.StatusCode);
         var moved = await client.PatchAsJsonAsync(
             "/api/v1/library/project/document",
             new ProjectDocumentMeshRequest("crate", contents.Documents[0].Id!.Value, other.Id!.Value),

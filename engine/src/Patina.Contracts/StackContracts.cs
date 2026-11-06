@@ -41,6 +41,7 @@ public sealed record StackChannel(string Usage, IReadOnlyList<float> Default);
 /// <param name="PlanarAxis">The world axis a planar projection looks along or a cylinder wraps: X, Y or Z.</param>
 /// <param name="Placement">Where a fill sits on the surface.</param>
 /// <param name="Parameters">What a graph fill sets the graph's knobs to, as text.</param>
+/// <param name="FilterNode">The compound a graph filter runs, or empty for one of the named filters.</param>
 public sealed record StackLayer(
     string Id,
     string Name,
@@ -61,7 +62,8 @@ public sealed record StackLayer(
     StackMask Mask,
     string PlanarAxis = "Y",
     StackPlacement? Placement = null,
-    IReadOnlyDictionary<string, string>? Parameters = null
+    IReadOnlyDictionary<string, string>? Parameters = null,
+    string FilterNode = ""
 );
 
 /// <summary>What decides where a layer shows.</summary>
@@ -74,6 +76,7 @@ public sealed record StackLayer(
 /// <param name="Colour">The colour a bake mask selects from its map, as three numbers, or null for all of it.</param>
 /// <param name="Tolerance">How far from that colour still counts.</param>
 /// <param name="Softness">How much further the mask takes to reach nothing.</param>
+/// <param name="Effects">What runs on the mask, in order, or null to keep them.</param>
 public sealed record StackMask(
     string Source,
     float Value = 1f,
@@ -83,8 +86,34 @@ public sealed record StackMask(
     string Map = "",
     IReadOnlyList<float>? Colour = null,
     float Tolerance = 0.02f,
-    float Softness = 0f
+    float Softness = 0f,
+    IReadOnlyList<StackMaskEffect>? Effects = null
 );
+
+/// <summary>One step run on a mask.</summary>
+/// <param name="Node">The node type or compound it is.</param>
+/// <param name="Enabled">Whether it runs.</param>
+/// <param name="Values">Its numbers, by port.</param>
+/// <param name="Texts">Its settings, by name.</param>
+public sealed record StackMaskEffect(
+    string Node,
+    bool Enabled = true,
+    IReadOnlyDictionary<string, IReadOnlyList<float>>? Values = null,
+    IReadOnlyDictionary<string, string>? Texts = null
+);
+
+/// <summary>A number a mask effect takes.</summary>
+/// <param name="Name">Its port.</param>
+/// <param name="Default">What it starts at.</param>
+/// <param name="Minimum">Its lower bound, or null for none.</param>
+/// <param name="Maximum">Its upper bound, or null for none.</param>
+public sealed record StackEffectPort(string Name, float Default, float? Minimum, float? Maximum);
+
+/// <summary>A step a mask can run.</summary>
+/// <param name="Node">The node type.</param>
+/// <param name="Name">What a person calls it.</param>
+/// <param name="Ports">The numbers it takes.</param>
+public sealed record StackEffectKind(string Node, string Name, IReadOnlyList<StackEffectPort> Ports);
 
 /// <summary>One colour of a stack's id map.</summary>
 /// <param name="Colour">Red, green and blue, 0 to 1, as the map stores them.</param>
@@ -108,14 +137,25 @@ public sealed record StackFilterKind(string Kind, IReadOnlyList<string> Settings
 /// <param name="Generators">The compounds that read a mesh's bakes.</param>
 /// <param name="MeshMaps">The maps a bake mask or a generator can read.</param>
 /// <param name="Alphas">The named brush alphas.</param>
+/// <param name="MaskEffects">The steps a mask can run.</param>
 public sealed record StackVocabulary(
     IReadOnlyList<string> Blends,
     IReadOnlyList<StackFilterKind> Filters,
     IReadOnlyList<string> Masks,
     IReadOnlyList<string> Generators,
     IReadOnlyList<string> MeshMaps,
-    IReadOnlyList<string> Alphas
+    IReadOnlyList<string> Alphas,
+    IReadOnlyList<StackEffectKind> MaskEffects
 );
+
+/// <summary>What a layer looks like alone.</summary>
+/// <param name="Layer">The layer.</param>
+/// <param name="Hash">Its name under <c>/previews/{hash}</c>.</param>
+public sealed record StackThumbnail(string Layer, string Hash);
+
+/// <summary>The fills of a stack, each drawn alone.</summary>
+/// <param name="Items">Them.</param>
+public sealed record StackThumbnails(IReadOnlyList<StackThumbnail> Items);
 
 /// <summary>Chooses the bake a stack's generators and bake masks read.</summary>
 /// <param name="Folder">The bake's folder, or null for none.</param>
@@ -216,13 +256,15 @@ public abstract record StackCommand;
 ///     A material to unfold into the stack as layers: a shipped one as <c>smart:Name</c>, or a stack below the library.
 ///     Then <paramref name="Kind" /> and <paramref name="Name" /> say nothing.
 /// </param>
+/// <param name="FilterNode">The compound a filter layer runs, instead of a named filter.</param>
 public sealed record StackAddLayer(
     string Kind,
     string Name,
     IReadOnlyDictionary<string, IReadOnlyList<float>>? Values = null,
     string? Parent = null,
     string? Filter = null,
-    string? Material = null
+    string? Material = null,
+    string? FilterNode = null
 ) : StackCommand;
 
 /// <summary>Moves a layer to the top of a group, or of the stack.</summary>

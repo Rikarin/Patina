@@ -1,5 +1,6 @@
 using Patina.Contracts;
 using Patina.Library;
+using Vixen.NodeGraph;
 using Vixen.TextureGraph;
 using Vixen.Texturing;
 using Vixen.Texturing.Layers;
@@ -45,7 +46,8 @@ public static class StackDocuments {
             )
         ],
         TextureNodeLibrary.MeshMaps,
-        PaintAlphas.Names
+        PaintAlphas.Names,
+        MaskEffects()
     );
 
     /// <summary>The stack a new file starts as: a base, and somewhere to paint.</summary>
@@ -91,7 +93,9 @@ public static class StackDocuments {
 
     /// <summary>A mask's effects with its colour selection as the mask asks, and the others as they were.</summary>
     public static List<MaskEffectAsset> WithSelection(List<MaskEffectAsset> effects, StackMask mask) {
-        List<MaskEffectAsset> kept = [..effects.Where(static effect => effect.Node != ColourSelect)];
+        List<MaskEffectAsset> kept = mask.Effects is { } chosen
+            ? [..chosen.Select(static effect => Effect(effect))]
+            : [..effects.Where(static effect => effect.Node != ColourSelect)];
         if (mask.Colour is { Count: >= 3 } colour) {
             kept.Insert(
                 0,
@@ -107,6 +111,52 @@ public static class StackDocuments {
         }
 
         return kept;
+    }
+
+    static MaskEffectAsset Effect(StackMaskEffect effect) =>
+        new() {
+            Node = effect.Node,
+            Enabled = effect.Enabled,
+            Values = effect.Values?.ToDictionary(
+                    static pair => pair.Key,
+                    static pair => pair.Value.ToArray(),
+                    StringComparer.Ordinal
+                )
+                ?? [],
+            Texts = effect.Texts?.ToDictionary(StringComparer.Ordinal) ?? []
+        };
+
+    /// <summary>A step a mask can run, with the numbers its node takes.</summary>
+    static StackEffectKind EffectKind(NodeTypeRegistry registry, string node, string name) =>
+        new(
+            node,
+            name,
+            [
+                ..registry.Get(node)
+                    .Ports.Where(static port => port is {
+                            Direction: PortDirection.Input, Kind: not PortKind.Image, Default.Length: 1
+                        }
+                    )
+                    .Select(static port => new StackEffectPort(
+                            port.Name,
+                            port.Default[0],
+                            float.IsFinite(port.Minimum) ? port.Minimum : null,
+                            float.IsFinite(port.Maximum) ? port.Maximum : null
+                        )
+                    )
+            ]
+        );
+
+    static IReadOnlyList<StackEffectKind> MaskEffects() {
+        NodeTypeRegistry registry = new();
+        NodeTypes.Register(registry);
+        return [
+            EffectKind(registry, "Colour/Levels", "Levels"),
+            EffectKind(registry, "Colour/Invert", "Invert"),
+            EffectKind(registry, "Colour/Auto Levels", "Auto Levels"),
+            EffectKind(registry, "Filters/Blur", "Blur"),
+            EffectKind(registry, "Filters/Sharpen", "Sharpen")
+        ];
     }
 
     static MaskEffectAsset? Selection(MaskAsset mask) =>
@@ -144,7 +194,17 @@ public static class StackDocuments {
                 layer.Mask.Map,
                 Selection(layer.Mask)?.Values.GetValueOrDefault(SelectColour),
                 Selection(layer.Mask)?.Values.GetValueOrDefault(SelectTolerance)?[0] ?? DefaultTolerance,
-                Selection(layer.Mask)?.Values.GetValueOrDefault(SelectSoftness)?[0] ?? 0f
+                Selection(layer.Mask)?.Values.GetValueOrDefault(SelectSoftness)?[0] ?? 0f,
+                [
+                    ..layer.Mask.Effects.Where(static effect => effect.Node != ColourSelect)
+                        .Select(static effect => new StackMaskEffect(
+                                effect.Node,
+                                effect.Enabled,
+                                Numbers(effect.Values),
+                                effect.Texts
+                            )
+                        )
+                ]
             ),
             layer.PlanarAxis.ToString(),
             new(
@@ -154,7 +214,8 @@ public static class StackDocuments {
                 layer.Placement.OffsetY,
                 layer.Placement.Sharpness
             ),
-            layer.Texts
+            layer.Texts,
+            layer.FilterNode
         );
 
     static Dictionary<string, IReadOnlyList<float>> Numbers(Dictionary<string, float[]> numbers) =>

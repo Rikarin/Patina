@@ -11,6 +11,8 @@ from ..types import UNSET, Unset
 from ..types import UNSET, Unset
 from typing import cast
 
+if TYPE_CHECKING:
+  from ..models.stack_mask_effect import StackMaskEffect
 
 
 
@@ -35,6 +37,7 @@ class StackMask:
             softness (float): How much further the mask takes to reach nothing. Default: 0.0.
             colour (list[float] | None | Unset): The colour a bake mask selects from its map, as three numbers, or null for
                 all of it.
+            effects (list[StackMaskEffect] | None | Unset): What runs on the mask, in order, or null to keep them.
      """
 
     source: str
@@ -46,6 +49,7 @@ class StackMask:
     tolerance: float = 0.02
     softness: float = 0.0
     colour: list[float] | None | Unset = UNSET
+    effects: list[StackMaskEffect] | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -53,6 +57,7 @@ class StackMask:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.stack_mask_effect import StackMaskEffect # noqa: PLC0415
         source = self.source
 
         value = self.value
@@ -79,6 +84,19 @@ class StackMask:
         else:
             colour = self.colour
 
+        effects: list[dict[str, Any]] | None | Unset
+        if isinstance(self.effects, Unset):
+            effects = UNSET
+        elif isinstance(self.effects, list):
+            effects = []
+            for effects_type_1_item_data in self.effects:
+                effects_type_1_item = effects_type_1_item_data.to_dict()
+                effects.append(effects_type_1_item)
+
+
+        else:
+            effects = self.effects
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -94,6 +112,8 @@ class StackMask:
         })
         if colour is not UNSET:
             field_dict["colour"] = colour
+        if effects is not UNSET:
+            field_dict["effects"] = effects
 
         return field_dict
 
@@ -101,6 +121,7 @@ class StackMask:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.stack_mask_effect import StackMaskEffect # noqa: PLC0415
         d = dict(src_dict)
         source = d.pop("source")
 
@@ -136,6 +157,31 @@ class StackMask:
         colour = _parse_colour(d.pop("colour", UNSET))
 
 
+        def _parse_effects(data: object) -> list[StackMaskEffect] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                effects_type_1 = []
+                _effects_type_1 = data
+                for effects_type_1_item_data in (_effects_type_1):
+                    effects_type_1_item = StackMaskEffect.from_dict(effects_type_1_item_data)
+
+
+
+                    effects_type_1.append(effects_type_1_item)
+
+                return effects_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[StackMaskEffect] | None | Unset, data)
+
+        effects = _parse_effects(d.pop("effects", UNSET))
+
+
         stack_mask = cls(
             source=source,
             value=value,
@@ -146,6 +192,7 @@ class StackMask:
             tolerance=tolerance,
             softness=softness,
             colour=colour,
+            effects=effects,
         )
 
 

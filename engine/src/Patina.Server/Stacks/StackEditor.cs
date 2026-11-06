@@ -321,6 +321,7 @@ public sealed class StackEditor : ILayerStackDocument {
                 Name = add.Name,
                 Kind = kind,
                 Filter = filter,
+                FilterNode = add.FilterNode ?? string.Empty,
                 Values = Copied(add.Values) ?? []
             },
             $"Add {add.Name}"

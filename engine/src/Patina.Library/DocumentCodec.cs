@@ -13,6 +13,7 @@ public static class DocumentCodec {
     const string NameKey = "name";
     const string TagsKey = "tags";
     const string MeshKey = "mesh";
+    const string RoleKey = "role";
     const string MeshesKey = "meshes";
     const string DocumentsKey = "documents";
     const string FileKey = "file";
@@ -90,7 +91,8 @@ public static class DocumentCodec {
                 Pair(KindKey, YamlText.Plain(item.Kind)),
                 Pair(NameKey, YamlText.Text(item.Name)),
                 Pair(FileKey, YamlText.Text(item.File)),
-                ..Present(MeshKey, item.Mesh?.ToString())
+                ..Present(MeshKey, item.Mesh?.ToString()),
+                ..Present(RoleKey, item.Role)
             ]
         );
 
@@ -196,12 +198,18 @@ public static class DocumentCodec {
             throw fields.Problem("a texturing document is on a mesh, and no other kind is.");
         }
 
+        var role = fields.Optional(RoleKey);
+        if (role is not null && (kind != DocumentKinds.Graph || !GraphRoles.Known(role))) {
+            throw fields.Problem($"'{role}' is no role of a {kind} document.");
+        }
+
         return new(
             fields.Id<AssetId>(IdKey),
             kind,
             Inside(fields, fields.Require(FileKey)),
             fields.Require(NameKey),
-            mesh
+            mesh,
+            role
         );
     }
 

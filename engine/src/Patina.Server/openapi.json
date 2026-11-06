@@ -1752,6 +1752,67 @@
         }
       }
     },
+    "/api/v1/library/project/document/role": {
+      "patch": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Says what a graph is for: a material, a mask, a brush or a filter.",
+        "operationId": "SetDocumentRole",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectDocumentRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/materials": {
       "get": {
         "tags": [
@@ -1836,6 +1897,67 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MaterialUse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/materials/brush": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Renders a graph to a picture in its project, which a brush can stamp.",
+        "operationId": "MakeBrush",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialUseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialBrush"
                 }
               }
             }
@@ -3262,6 +3384,47 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/StackIdColours"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/thumbnails": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Each fill drawn alone and small, under /previews. A layer that has not changed is not drawn again.",
+        "operationId": "GetStackThumbnails",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackThumbnails"
                 }
               }
             }
@@ -6951,6 +7114,19 @@
         },
         "description": "What a whole build did."
       },
+      "MaterialBrush": {
+        "required": [
+          "alpha"
+        ],
+        "type": "object",
+        "properties": {
+          "alpha": {
+            "type": "string",
+            "description": "The picture, relative to the project\u0027s stacks, as a brush names it."
+          }
+        },
+        "description": "A graph rendered to a picture a brush stamps."
+      },
       "MaterialInfo": {
         "required": [
           "name",
@@ -6976,7 +7152,7 @@
           },
           "role": {
             "type": "string",
-            "description": "\u0060material\u0060, or \u0060empty\u0060 for a graph with no output yet."
+            "description": "\u0060material\u0060, \u0060mask\u0060, \u0060brush\u0060, \u0060filter\u0060, or \u0060empty\u0060 for a graph with no\n            output yet."
           },
           "origin": {
             "type": "string",
@@ -7282,6 +7458,13 @@
             ],
             "description": "The id of the mesh it is on.",
             "format": "uuid"
+          },
+          "role": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What a graph is for: \u0060material\u0060, \u0060mask\u0060, \u0060brush\u0060 or \u0060filter\u0060."
           }
         },
         "description": "Something in a project that can be opened and edited (ADR 0012)."
@@ -7356,6 +7539,30 @@
           }
         },
         "description": "The body of \u0060POST /api/v1/library/project/documents\u0060."
+      },
+      "ProjectDocumentRoleRequest": {
+        "required": [
+          "project",
+          "document",
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "document": {
+            "type": "string",
+            "description": "The graph.",
+            "format": "uuid"
+          },
+          "role": {
+            "type": "string",
+            "description": "\u0060material\u0060, \u0060mask\u0060, \u0060brush\u0060 or \u0060filter\u0060."
+          }
+        },
+        "description": "The body of \u0060PATCH /api/v1/library/project/document/role\u0060."
       },
       "ProjectFile": {
         "required": [
@@ -7867,6 +8074,13 @@
               "string"
             ],
             "description": "A material to unfold into the stack as layers: a shipped one as \u0060smart:Name\u0060, or a stack below the library.\nThen Kind and Name say nothing."
+          },
+          "filterNode": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The compound a filter layer runs, instead of a named filter."
           }
         },
         "description": "Adds a layer at the top of the stack."
@@ -8272,6 +8486,67 @@
         },
         "description": "Where an edit left the session."
       },
+      "StackEffectKind": {
+        "required": [
+          "node",
+          "name",
+          "ports"
+        ],
+        "type": "object",
+        "properties": {
+          "node": {
+            "type": "string",
+            "description": "The node type."
+          },
+          "name": {
+            "type": "string",
+            "description": "What a person calls it."
+          },
+          "ports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackEffectPort"
+            },
+            "description": "The numbers it takes."
+          }
+        },
+        "description": "A step a mask can run."
+      },
+      "StackEffectPort": {
+        "required": [
+          "name",
+          "default"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Its port."
+          },
+          "default": {
+            "type": "number",
+            "description": "What it starts at.",
+            "format": "float"
+          },
+          "minimum": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Its lower bound, or null for none.",
+            "format": "float"
+          },
+          "maximum": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Its upper bound, or null for none.",
+            "format": "float"
+          }
+        },
+        "description": "A number a mask effect takes."
+      },
       "StackEvaluation": {
         "required": [
           "revision",
@@ -8522,7 +8797,8 @@
           "filter",
           "settings",
           "mask",
-          "planarAxis"
+          "planarAxis",
+          "filterNode"
         ],
         "type": "object",
         "properties": {
@@ -8643,6 +8919,11 @@
               "type": "string"
             },
             "description": "What a graph fill sets the graph\u0027s knobs to, as text."
+          },
+          "filterNode": {
+            "type": "string",
+            "description": "The compound a graph filter runs, or empty for one of the named filters.",
+            "default": ""
           }
         },
         "description": "One layer, without its pixels."
@@ -8712,9 +8993,62 @@
             "description": "How much further the mask takes to reach nothing.",
             "format": "float",
             "default": 0
+          },
+          "effects": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/StackMaskEffect"
+            },
+            "description": "What runs on the mask, in order, or null to keep them."
           }
         },
         "description": "What decides where a layer shows."
+      },
+      "StackMaskEffect": {
+        "required": [
+          "node",
+          "enabled"
+        ],
+        "type": "object",
+        "properties": {
+          "node": {
+            "type": "string",
+            "description": "The node type or compound it is."
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether it runs.",
+            "default": true
+          },
+          "values": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "float"
+              }
+            },
+            "description": "Its numbers, by port."
+          },
+          "texts": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Its settings, by name."
+          }
+        },
+        "description": "One step run on a mask."
       },
       "StackMeshMapsRequest": {
         "type": "object",
@@ -9041,6 +9375,40 @@
         },
         "description": "An open stack, for a list."
       },
+      "StackThumbnail": {
+        "required": [
+          "layer",
+          "hash"
+        ],
+        "type": "object",
+        "properties": {
+          "layer": {
+            "type": "string",
+            "description": "The layer."
+          },
+          "hash": {
+            "type": "string",
+            "description": "Its name under \u0060/previews/{hash}\u0060."
+          }
+        },
+        "description": "What a layer looks like alone."
+      },
+      "StackThumbnails": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackThumbnail"
+            },
+            "description": "Them."
+          }
+        },
+        "description": "The fills of a stack, each drawn alone."
+      },
       "StackView": {
         "required": [
           "eye",
@@ -9110,7 +9478,8 @@
           "masks",
           "generators",
           "meshMaps",
-          "alphas"
+          "alphas",
+          "maskEffects"
         ],
         "type": "object",
         "properties": {
@@ -9155,6 +9524,13 @@
               "type": "string"
             },
             "description": "The named brush alphas."
+          },
+          "maskEffects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackEffectKind"
+            },
+            "description": "The steps a mask can run."
           }
         },
         "description": "The words a stack\u0027s fields take, so that a client holds no list of its own."

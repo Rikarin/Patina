@@ -13,10 +13,12 @@ from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
+  from ..models.stack_command_stack_set_layer_parameters_type_1 import StackCommandStackSetLayerParametersType1
   from ..models.stack_command_stack_set_layer_settings_type_1 import StackCommandStackSetLayerSettingsType1
   from ..models.stack_command_stack_set_layer_textures_type_1 import StackCommandStackSetLayerTexturesType1
   from ..models.stack_command_stack_set_layer_values_type_1 import StackCommandStackSetLayerValuesType1
   from ..models.stack_mask import StackMask
+  from ..models.stack_placement import StackPlacement
 
 
 
@@ -44,12 +46,15 @@ class StackCommandStackSetLayer:
             textures (None | StackCommandStackSetLayerTexturesType1 | Unset): What a texture fill reads, replacing what
                 these channels held.
             graph (None | str | Unset): The graph a graph fill reads.
-            projection (None | str | Unset): How a fill lands on the mesh: Uv, Triplanar or Planar.
+            projection (None | str | Unset): How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical.
             filter_ (None | str | Unset): What a filter does.
             settings (None | StackCommandStackSetLayerSettingsType1 | Unset): A filter's numbers, replacing what these names
                 held.
             mask (None | StackMask | Unset):
-            planar_axis (None | str | Unset): The world axis a planar projection looks along: X, Y or Z.
+            planar_axis (None | str | Unset): The world axis a planar projection looks along or a cylinder wraps: X, Y or Z.
+            placement (None | StackPlacement | Unset):
+            parameters (None | StackCommandStackSetLayerParametersType1 | Unset): What a graph fill sets the graph's knobs
+                to, replacing what these names held.
      """
 
     op: StackCommandStackSetLayerOp
@@ -68,6 +73,8 @@ class StackCommandStackSetLayer:
     settings: None | StackCommandStackSetLayerSettingsType1 | Unset = UNSET
     mask: None | StackMask | Unset = UNSET
     planar_axis: None | str | Unset = UNSET
+    placement: None | StackPlacement | Unset = UNSET
+    parameters: None | StackCommandStackSetLayerParametersType1 | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -75,10 +82,12 @@ class StackCommandStackSetLayer:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.stack_command_stack_set_layer_parameters_type_1 import StackCommandStackSetLayerParametersType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_layer_settings_type_1 import StackCommandStackSetLayerSettingsType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_layer_textures_type_1 import StackCommandStackSetLayerTexturesType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_layer_values_type_1 import StackCommandStackSetLayerValuesType1 # noqa: PLC0415
         from ..models.stack_mask import StackMask # noqa: PLC0415
+        from ..models.stack_placement import StackPlacement # noqa: PLC0415
         op = self.op.value
 
         layer = self.layer
@@ -179,6 +188,22 @@ class StackCommandStackSetLayer:
         else:
             planar_axis = self.planar_axis
 
+        placement: dict[str, Any] | None | Unset
+        if isinstance(self.placement, Unset):
+            placement = UNSET
+        elif isinstance(self.placement, StackPlacement):
+            placement = self.placement.to_dict()
+        else:
+            placement = self.placement
+
+        parameters: dict[str, Any] | None | Unset
+        if isinstance(self.parameters, Unset):
+            parameters = UNSET
+        elif isinstance(self.parameters, StackCommandStackSetLayerParametersType1):
+            parameters = self.parameters.to_dict()
+        else:
+            parameters = self.parameters
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -214,6 +239,10 @@ class StackCommandStackSetLayer:
             field_dict["mask"] = mask
         if planar_axis is not UNSET:
             field_dict["planarAxis"] = planar_axis
+        if placement is not UNSET:
+            field_dict["placement"] = placement
+        if parameters is not UNSET:
+            field_dict["parameters"] = parameters
 
         return field_dict
 
@@ -221,10 +250,12 @@ class StackCommandStackSetLayer:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.stack_command_stack_set_layer_parameters_type_1 import StackCommandStackSetLayerParametersType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_layer_settings_type_1 import StackCommandStackSetLayerSettingsType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_layer_textures_type_1 import StackCommandStackSetLayerTexturesType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_layer_values_type_1 import StackCommandStackSetLayerValuesType1 # noqa: PLC0415
         from ..models.stack_mask import StackMask # noqa: PLC0415
+        from ..models.stack_placement import StackPlacement # noqa: PLC0415
         d = dict(src_dict)
         op = StackCommandStackSetLayerOp(d.pop("op"))
 
@@ -421,6 +452,46 @@ class StackCommandStackSetLayer:
         planar_axis = _parse_planar_axis(d.pop("planarAxis", UNSET))
 
 
+        def _parse_placement(data: object) -> None | StackPlacement | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                placement_type_1 = StackPlacement.from_dict(data)
+
+
+
+                return placement_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackPlacement | Unset, data)
+
+        placement = _parse_placement(d.pop("placement", UNSET))
+
+
+        def _parse_parameters(data: object) -> None | StackCommandStackSetLayerParametersType1 | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                parameters_type_1 = StackCommandStackSetLayerParametersType1.from_dict(data)
+
+
+
+                return parameters_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackCommandStackSetLayerParametersType1 | Unset, data)
+
+        parameters = _parse_parameters(d.pop("parameters", UNSET))
+
+
         stack_command_stack_set_layer = cls(
             op=op,
             layer=layer,
@@ -438,6 +509,8 @@ class StackCommandStackSetLayer:
             settings=settings,
             mask=mask,
             planar_axis=planar_axis,
+            placement=placement,
+            parameters=parameters,
         )
 
 

@@ -1,5 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
-import type { GraphSettingDefinition, MaterialInfo, StackLayer, StackMask } from '@patina/api-client';
+import type {
+  GraphSettingDefinition,
+  MaterialInfo,
+  StackEffectPort,
+  StackLayer,
+  StackMask,
+  StackMaskEffect
+} from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiInputImports } from '@xui/input';
 import { XuiNumericInputImports } from '@xui/numeric-input';
@@ -245,54 +252,6 @@ export function hexOf(colour: readonly number[] | undefined): string {
               <p class="text-foreground-muted text-xs" data-testid="paint-fill-graph">
                 {{ layer.graph ? 'From ' + layer.graph.split('/').pop() : 'Choose a graph from the Materials shelf.' }}
               </p>
-              @for (parameter of knobs(); track parameter.name) {
-                <div class="flex items-center gap-2">
-                  <span class="text-foreground-muted w-16 shrink-0 truncate text-xs" [title]="parameter.summary">{{
-                    parameter.name
-                  }}</span>
-                  @if (parameter.accepted.length > 0) {
-                    <select
-                      class="well h-7 min-w-0 flex-1 px-1 text-sm"
-                      [attr.aria-label]="parameter.name"
-                      [attr.data-testid]="'paint-knob-' + parameter.name"
-                      (change)="setKnob(layer, parameter.name, text($event))"
-                    >
-                      @for (value of parameter.accepted; track value) {
-                        <option [value]="value" [selected]="value === knob(layer, parameter)">{{ value }}</option>
-                      }
-                    </select>
-                  } @else if (parameter.kind === 'Float' || parameter.kind === 'Int') {
-                    <xui-numeric-input
-                      class="min-w-0 flex-1"
-                      size="sm"
-                      [ariaLabel]="parameter.name"
-                      [attr.data-testid]="'paint-knob-' + parameter.name"
-                      [stepSize]="parameter.kind === 'Int' ? 1 : 0.1"
-                      [value]="+knob(layer, parameter)"
-                      (valueChange)="setKnob(layer, parameter.name, ($event ?? 0).toString())"
-                    />
-                  } @else if (parameter.kind === 'Bool') {
-                    <input
-                      type="checkbox"
-                      [attr.aria-label]="parameter.name"
-                      [attr.data-testid]="'paint-knob-' + parameter.name"
-                      [checked]="knob(layer, parameter) === 'true'"
-                      (change)="setKnob(layer, parameter.name, checked($event).toString())"
-                    />
-                  } @else {
-                    <input
-                      class="min-w-0 flex-1"
-                      xuiInput
-                      size="sm"
-                      autocomplete="off"
-                      [attr.aria-label]="parameter.name"
-                      [attr.data-testid]="'paint-knob-' + parameter.name"
-                      [value]="knob(layer, parameter)"
-                      (change)="setKnob(layer, parameter.name, text($event))"
-                    />
-                  }
-                </div>
-              }
             }
           }
           @case ('filter') {
@@ -321,6 +280,55 @@ export function hexOf(colour: readonly number[] | undefined): string {
               </div>
             }
           }
+        }
+
+        @for (parameter of knobs(); track parameter.name) {
+          <div class="flex items-center gap-2">
+            <span class="text-foreground-muted w-16 shrink-0 truncate text-xs" [title]="parameter.summary">{{
+              parameter.name
+            }}</span>
+            @if (parameter.accepted.length > 0) {
+              <select
+                class="well h-7 min-w-0 flex-1 px-1 text-sm"
+                [attr.aria-label]="parameter.name"
+                [attr.data-testid]="'paint-knob-' + parameter.name"
+                (change)="setKnob(layer, parameter.name, text($event))"
+              >
+                @for (value of parameter.accepted; track value) {
+                  <option [value]="value" [selected]="value === knob(layer, parameter)">{{ value }}</option>
+                }
+              </select>
+            } @else if (parameter.kind === 'Float' || parameter.kind === 'Int') {
+              <xui-numeric-input
+                class="min-w-0 flex-1"
+                size="sm"
+                [ariaLabel]="parameter.name"
+                [attr.data-testid]="'paint-knob-' + parameter.name"
+                [stepSize]="parameter.kind === 'Int' ? 1 : 0.1"
+                [value]="+knob(layer, parameter)"
+                (valueChange)="setKnob(layer, parameter.name, ($event ?? 0).toString())"
+              />
+            } @else if (parameter.kind === 'Bool') {
+              <input
+                type="checkbox"
+                [attr.aria-label]="parameter.name"
+                [attr.data-testid]="'paint-knob-' + parameter.name"
+                [checked]="knob(layer, parameter) === 'true'"
+                (change)="setKnob(layer, parameter.name, checked($event).toString())"
+              />
+            } @else {
+              <input
+                class="min-w-0 flex-1"
+                xuiInput
+                size="sm"
+                autocomplete="off"
+                [attr.aria-label]="parameter.name"
+                [attr.data-testid]="'paint-knob-' + parameter.name"
+                [value]="knob(layer, parameter)"
+                (change)="setKnob(layer, parameter.name, text($event))"
+              />
+            }
+          </div>
         }
 
         <div class="flex items-center gap-2">
@@ -368,7 +376,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
             <xui-select
               aria-label="Generator"
               data-testid="paint-mask-generator"
-              [items]="generators()"
+              [items]="generatorsWith(layer.mask.generator)"
               [value]="layer.mask.generator"
               (valueChange)="setMask(layer, { generator: $event ?? '' })"
             />
@@ -436,6 +444,64 @@ export function hexOf(colour: readonly number[] | undefined): string {
         }
       </div>
 
+      @if (store.chosen(); as layer) {
+        @if (layer.mask.source !== 'None') {
+          <div class="flex items-center gap-2" data-testid="paint-mask-effects">
+            <span class="text-foreground-muted w-16 shrink-0 text-xs">Effects</span>
+            <select
+              class="well h-7 min-w-0 flex-1 px-1 text-sm"
+              aria-label="Add mask effect"
+              data-testid="paint-mask-effect-add"
+              (change)="addEffect(layer, $event)"
+            >
+              <option value="">Add…</option>
+              @for (effect of maskEffects(); track effect.node) {
+                <option [value]="effect.node">{{ effect.name }}</option>
+              }
+            </select>
+          </div>
+          @for (effect of layer.mask.effects ?? []; track $index; let index = $index) {
+            <div class="well flex flex-col gap-1 p-1" [attr.data-testid]="'paint-mask-effect-' + index">
+              <div class="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  [attr.aria-label]="'Run ' + effectName(effect.node)"
+                  [checked]="effect.enabled"
+                  (change)="setEffect(layer, index, { enabled: checked($event) })"
+                />
+                <span class="min-w-0 flex-1 truncate text-xs">{{ effectName(effect.node) }}</span>
+                <button
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  variant="ghost"
+                  [attr.aria-label]="'Remove ' + effectName(effect.node)"
+                  (click)="removeEffect(layer, index)"
+                >
+                  ✕
+                </button>
+              </div>
+              @for (port of effectPorts(effect.node); track port.name) {
+                <div class="flex items-center gap-2">
+                  <span class="text-foreground-muted w-16 shrink-0 truncate text-xs">{{ port.name }}</span>
+                  <xui-numeric-input
+                    class="min-w-0 flex-1"
+                    size="sm"
+                    [ariaLabel]="port.name"
+                    [attr.data-testid]="'paint-effect-' + index + '-' + port.name"
+                    [stepSize]="0.05"
+                    [min]="port.minimum ?? undefined"
+                    [max]="port.maximum ?? undefined"
+                    [value]="effect.values?.[port.name]?.[0] ?? port.default"
+                    (valueChange)="setEffectValue(layer, index, port.name, $event ?? port.default)"
+                  />
+                </div>
+              }
+            </div>
+          }
+        }
+      }
+
       <p class="text-foreground-muted text-xs" data-testid="paint-mesh-maps">
         {{ store.state()?.meshMaps ? 'Using the bake.' : 'No bake yet.' }}
       </p>
@@ -461,7 +527,8 @@ export class LayerPanel {
 
   constructor() {
     effect(() => {
-      const graph = this.store.chosen()?.graph;
+      const layer = this.store.chosen();
+      const graph = layer?.graph || layer?.filterNode;
       const project = this.project.current()?.path;
       if (graph && project) {
         void untracked(() => this.loadShelf(project));
@@ -581,7 +648,14 @@ export class LayerPanel {
   /** The chosen layer's graph, which knows its own knobs. */
   private readonly shelf = signal<readonly MaterialInfo[]>([]);
   protected readonly knobs = computed(() => {
-    const graph = this.store.chosen()?.graph.split('/').pop();
+    const layer = this.store.chosen();
+    const graph = (layer?.kind === 'filter' ? layer.filterNode : layer?.fill === 'Graph' ? layer.graph : '')
+      .split('/')
+      .pop();
+    if (!graph) {
+      return [];
+    }
+
     const stem = (source: string): string | undefined => source.split('/').pop()?.replace(/\.[^.]*$/u, '');
     return this.shelf().find(material => material.kind === 'graph' && stem(material.source) === graph)?.parameters ?? [];
   });
@@ -598,6 +672,53 @@ export class LayerPanel {
 
   protected setKnob(layer: StackLayer, name: string, value: string): void {
     void this.store.edit({ op: 'setLayer', layer: layer.id, parameters: { [name]: value } });
+  }
+
+  protected readonly maskEffects = computed(() => this.store.vocabulary()?.maskEffects ?? []);
+
+  protected generatorsWith(chosen: string): readonly string[] {
+    const named = this.generators();
+    return chosen && !named.includes(chosen) ? [...named, chosen] : named;
+  }
+
+  protected effectName(node: string): string {
+    return this.maskEffects().find(effect => effect.node === node)?.name ?? node.split('/').pop() ?? node;
+  }
+
+  protected effectPorts(node: string): readonly StackEffectPort[] {
+    return this.maskEffects().find(effect => effect.node === node)?.ports ?? [];
+  }
+
+  protected addEffect(layer: StackLayer, event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    const node = select.value;
+    select.value = '';
+    if (node) {
+      this.setEffects(layer, [...(layer.mask.effects ?? []), { node, enabled: true }]);
+    }
+  }
+
+  protected removeEffect(layer: StackLayer, index: number): void {
+    this.setEffects(
+      layer,
+      (layer.mask.effects ?? []).filter((_, at) => at !== index)
+    );
+  }
+
+  protected setEffect(layer: StackLayer, index: number, change: Partial<StackMaskEffect>): void {
+    this.setEffects(
+      layer,
+      (layer.mask.effects ?? []).map((effect, at) => (at === index ? { ...effect, ...change } : effect))
+    );
+  }
+
+  protected setEffectValue(layer: StackLayer, index: number, port: string, value: number): void {
+    const values = { ...layer.mask.effects?.[index]?.values, [port]: [value] };
+    this.setEffect(layer, index, { values });
+  }
+
+  private setEffects(layer: StackLayer, effects: readonly StackMaskEffect[]): void {
+    this.setMask(layer, { effects: [...effects] });
   }
 
   protected fileOf(path: string | undefined): string {
