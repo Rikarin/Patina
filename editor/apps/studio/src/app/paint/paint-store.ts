@@ -38,16 +38,21 @@ export interface Aim {
 }
 
 /** A layer with how deep in groups it is, top of the stack first. */
+/** How the Worker says a stack read mesh maps with no bake, before their names. */
+const NeedsBake = 'Needs a bake: ';
+
 export interface LayerRow {
   layer: StackLayer;
   depth: number;
+  /** The folder it is in, or null at the top of the stack. */
+  parent: string | null;
 }
 
 /** The stack as a list, each group above what it holds. */
-export function rowsOf(layers: readonly StackLayer[], depth = 0): LayerRow[] {
+export function rowsOf(layers: readonly StackLayer[], depth = 0, parent: string | null = null): LayerRow[] {
   return [...layers]
     .reverse()
-    .flatMap(layer => [{ layer, depth }, ...rowsOf(layer.children, depth + 1)]);
+    .flatMap(layer => [{ layer, depth, parent }, ...rowsOf(layer.children, depth + 1, layer.id)]);
 }
 
 /** Where a client follows a stack from. */
@@ -121,6 +126,8 @@ export class PaintStore {
     pressureFlow: 0
   });
   readonly vocabulary = signal<StackVocabulary | null>(null);
+  /** The mesh maps layers want and no bake has given, which read as grey until one does. */
+  readonly unbaked = signal<string | null>(null);
   /** Whether the viewport is wearing this stack, so a stroke can be made on the mesh. */
   readonly worn = signal(false);
   /** From a stamp leaving the pointer to the first frame painted with it, newest last, in milliseconds. */
@@ -530,6 +537,10 @@ export class PaintStore {
   private hear(event: StackEvent): void {
     this.sequence = event.sequence;
     this.state.update(state => (state ? { ...state, history: event.history, revision: event.revision } : state));
+    if (event.evaluation) {
+      this.heardNotes(event.evaluation.diagnostics);
+    }
+
     const previews = event.evaluation?.previews ?? [];
     if (previews.length > 0) {
       this.state.update(state =>
@@ -547,6 +558,11 @@ export class PaintStore {
       const layers = event.delta.layers;
       this.state.update(state => (state ? { ...state, layers: [...layers] } : state));
     }
+  }
+
+  private heardNotes(notes: readonly string[]): void {
+    const note = notes.find(held => held.startsWith(NeedsBake));
+    this.unbaked.set(note ? note.slice(NeedsBake.length) : null);
   }
 
   private async api(): Promise<PatinaClient> {

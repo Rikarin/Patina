@@ -24,7 +24,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
 }
 
 /**
- * The stack: every kind of layer, what each one reads, its mask and how it blends. The Server owns all of it, so a
+ * What the chosen layer is: what it reads, how it lands on the mesh, its mask and how it blends. The Server owns all of it, so a
  * row shows the last event it heard, and a field under the hand shows the hand ({@link LiveValue}).
  */
 @Component({
@@ -40,103 +40,6 @@ export function hexOf(colour: readonly number[] | undefined): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex flex-col gap-1.5' },
   template: `
-    <div class="flex flex-wrap items-center gap-1">
-      <button type="button" xuiButton size="sm" variant="ghost" data-testid="paint-add" (click)="store.addLayer()">
-        Paint
-      </button>
-      <button
-        type="button"
-        xuiButton
-        size="sm"
-        variant="ghost"
-        data-testid="paint-add-fill"
-        (click)="store.addLayer('fill', 'Fill')"
-      >
-        Fill
-      </button>
-      <button
-        type="button"
-        xuiButton
-        size="sm"
-        variant="ghost"
-        data-testid="paint-add-filter"
-        (click)="store.addLayer('filter', 'Filter', 'Levels')"
-      >
-        Filter
-      </button>
-      <button
-        type="button"
-        xuiButton
-        size="sm"
-        variant="ghost"
-        data-testid="paint-add-group"
-        (click)="store.addLayer('group', 'Group')"
-      >
-        Group
-      </button>
-      <span class="flex-1"></span>
-      @if (store.chosen(); as layer) {
-        <button
-          type="button"
-          xuiButton
-          size="sm"
-          variant="ghost"
-          aria-label="Move layer up"
-          data-testid="paint-up"
-          (click)="store.edit({ op: 'moveLayer', layer: layer.id, delta: 1 })"
-        >
-          ↑
-        </button>
-        <button
-          type="button"
-          xuiButton
-          size="sm"
-          variant="ghost"
-          aria-label="Move layer down"
-          data-testid="paint-down"
-          (click)="store.edit({ op: 'moveLayer', layer: layer.id, delta: -1 })"
-        >
-          ↓
-        </button>
-        <button
-          type="button"
-          xuiButton
-          size="sm"
-          variant="ghost"
-          data-testid="paint-remove"
-          (click)="store.edit({ op: 'removeLayer', layer: layer.id })"
-        >
-          Remove
-        </button>
-      }
-    </div>
-
-    <ul class="flex flex-col gap-0.5" aria-label="Layers" data-testid="paint-layers">
-      @for (row of store.layers(); track row.layer.id) {
-        <li
-          class="pane flex items-center gap-2 px-2 py-1"
-          [attr.data-testid]="'paint-layer-' + row.layer.id"
-          [style.margin-left.px]="row.depth * 12"
-        >
-          <xui-switch
-            [attr.aria-label]="'Show ' + row.layer.name"
-            [checked]="row.layer.enabled"
-            (checkedChange)="store.setEnabled(row.layer, $event)"
-          />
-          <button
-            type="button"
-            class="min-w-0 flex-1 truncate text-left text-xs"
-            [class.font-semibold]="row.layer.id === store.layer()"
-            (click)="store.layer.set(row.layer.id)"
-          >
-            {{ row.layer.name }}
-          </button>
-          <span class="readout">{{ row.layer.blend }}</span>
-          <span class="readout">{{ row.layer.kind }}</span>
-        </li>
-      }
-    </ul>
-
     @if (store.chosen(); as layer) {
       <div class="well flex flex-col gap-1.5 p-2" data-testid="paint-details">
         <div class="flex items-center gap-2">
@@ -344,17 +247,6 @@ export function hexOf(colour: readonly number[] | undefined): string {
               (valueChange)="setMask(layer, { map: $event ?? '' })"
             />
           }
-        }
-        @if (layer.kind === 'paint') {
-          <label class="flex items-center gap-2 text-xs">
-            <xui-switch
-              ariaLabel="Paint the mask"
-              data-testid="paint-on-mask"
-              [checked]="store.masking()"
-              (checkedChange)="store.masking.set($event)"
-            />
-            Brush paints the mask
-          </label>
         }
       </div>
 

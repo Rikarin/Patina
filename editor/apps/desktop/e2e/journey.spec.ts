@@ -31,6 +31,17 @@ async function launch(): Promise<void> {
 const answerSave = (path: string) => answerAgain(app, path);
 const answerOpen = (path: string) => answerFile(app, path);
 
+/** What the 2D view shows, by its pixels: its address changes with every picture, the same or not. */
+const pictureHash = () =>
+  window.getByTestId('paint-picture').evaluate(image => {
+    const source = image as HTMLImageElement;
+    const canvas = globalThis.document.createElement('canvas');
+    [canvas.width, canvas.height] = [64, 64];
+    const context = canvas.getContext('2d');
+    context?.drawImage(source, 0, 0, 64, 64);
+    return context?.getImageData(0, 0, 64, 64).data.join(',');
+  });
+
 const row = (path: string) => window.locator(`[data-testid=tree-row][data-path="${path}"]`);
 
 async function drag(from: string, to: string): Promise<void> {
@@ -161,6 +172,29 @@ test('a shipped material reaches a stack from the shelf', async () => {
   await expect(window.getByTestId('paint-layer-moulding')).toBeVisible({ timeout: 15_000 });
   await expect.poll(() => window.getByTestId('paint-picture').getAttribute('src'), { timeout: 30_000 }).not.toBe(before);
   await window.screenshot({ path: join(shots, 'shelf.png') });
+});
+
+test('a material with wear masks shows at once, and a bake sharpens it', async () => {
+  await launch();
+  await newLibrary(app, window, join(scratch, 'Ember.ptlib'));
+  await newProject(app, window, 'Housing', mesh);
+  await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 30_000 });
+  const blank = await pictureHash();
+
+  // Rusted Iron's wear masks read baked maps. Without a bake they are grey, and the rest of it still shows.
+  await window.getByTestId('shelf-material').filter({ hasText: 'Rusted Iron' }).click();
+  await expect(window.getByTestId('layers-need-bake')).toBeVisible({ timeout: 30_000 });
+  await expect.poll(pictureHash, { timeout: 30_000 }).not.toBe(blank);
+  const grey = await pictureHash();
+
+  await window.getByTestId('layers-bake').click();
+  await expect(window.getByTestId('bake-low')).toHaveValue(/housing_low\.glb$/);
+  await window.getByTestId('bake-start').click();
+  await expect(window.getByTestId('bake-state')).toHaveText('done', { timeout: 120_000 });
+  await window.keyboard.press('Escape');
+
+  await expect(window.getByTestId('layers-need-bake')).toHaveCount(0, { timeout: 30_000 });
+  await expect.poll(pictureHash, { timeout: 30_000 }).not.toBe(grey);
 });
 
 test('a layered material is seen on a shape, and a photo becomes a material', async () => {

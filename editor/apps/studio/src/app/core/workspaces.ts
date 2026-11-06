@@ -3,7 +3,7 @@ import type { XuiDockContentPane, XuiDockManagerLayout, XuiDockPane } from '@xui
 /** What the app is doing, which decides what is on screen (ADR 0012). */
 export type WorkspaceName = 'start' | 'texturing' | 'layered-material' | 'image-material' | 'graph';
 
-const Version = 3;
+const Version = 4;
 
 type Part = XuiDockPane;
 
@@ -29,7 +29,10 @@ const root = (...panes: Part[]): XuiDockManagerLayout => ({
 
 const library = pane('library', 'Library');
 const inspector = pane('inspector', 'Inspector');
-const layers = pane('paint', 'Layers');
+const layers = pane('layers', 'Layers');
+const properties = pane('paint', 'Properties');
+/** What is on the stack over what the chosen layer is, as a painting tool has them. */
+const stack = down(1.4, layers, tabs(1.2, properties, inspector));
 const shelf = pane('shelf', 'Materials');
 /** Where a document's materials come from: the Library, and what it can be filled with. */
 const sources = down(1, library, shelf);
@@ -41,13 +44,13 @@ const Layouts: Readonly<Record<WorkspaceName, XuiDockManagerLayout>> = {
   texturing: root(
     sources,
     across(4, pane('viewport', 'Viewport', 3), tabs(2, pane('atlas', '2D View'), pane('texture', 'Maps'))),
-    tabs(1.4, layers, inspector)
+    stack
   ),
   // There is no mesh, so the map leads and a shape only previews it.
   'layered-material': root(
     sources,
     across(4, pane('atlas', '2D View', 3), pane('viewport', 'Preview', 2)),
-    tabs(1.4, layers, inspector)
+    stack
   ),
   'image-material': root(library, pane('image', 'Maps', 1), pane('texture', 'Result', 3), inspector),
   // The canvas is the work; pictures of it are at the side.

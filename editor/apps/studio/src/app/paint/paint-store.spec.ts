@@ -289,7 +289,7 @@ describe('PaintStore', () => {
         kind: 'evaluated',
         revision: 2,
         history: { canUndo: true, canRedo: false, dirty: true },
-        evaluation: { previews: [{ usage: 'baseColor', hash: 'aa', width: 512, height: 512 }] }
+        evaluation: { previews: [{ usage: 'baseColor', hash: 'aa', width: 512, height: 512 }], diagnostics: [] }
       })
     } as MessageEvent);
     await vi.waitFor(() => expect(store.picture()).toBe('blob:map'));

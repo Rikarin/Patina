@@ -2,6 +2,7 @@ import { Injectable, computed, effect, inject, signal, untracked } from '@angula
 import { type ProjectContents, type ProjectDocumentInfo, unwrap } from '@patina/api-client';
 import { BakeStore } from '../bake/bake-store';
 import { desktop } from '../core/desktop';
+import { SystemStatus } from '../core/system-status';
 import { UnsavedWork } from '../core/unsaved-work';
 import type { WorkspaceName } from '../core/workspaces';
 import { GraphStore } from '../graph/graph-store';
@@ -46,6 +47,7 @@ export class ProjectStore {
   private readonly graph = inject(GraphStore);
   private readonly bakes = inject(BakeStore);
   private readonly unsaved = inject(UnsavedWork);
+  private readonly status = inject(SystemStatus);
   private readonly mutableTabs = signal<readonly DocumentTab[]>([]);
   private readonly mutableActive = signal<string | null>(null);
   private readonly mutableContents = signal<ReadonlyMap<string, ProjectContents>>(new Map());
@@ -53,9 +55,13 @@ export class ProjectStore {
   private readonly mutableClosing = signal<string | null>(null);
   private readonly mutableQuitting = signal(false);
   private readonly mutableNewKind = signal<{ kind: string } | null>(null);
+  private readonly mutableBakeAsked = signal(0);
+  private linkedBake: string | null = null;
   private switching = false;
 
   readonly tabs = this.mutableTabs.asReadonly();
+  /** Goes up each time something asks for the Bake dialog. */
+  readonly bakeAsked = this.mutableBakeAsked.asReadonly();
   readonly failure = this.mutableFailure.asReadonly();
   /** The tab waiting on what to do with its unsaved edits. */
   readonly closing = this.mutableClosing.asReadonly();
@@ -113,6 +119,16 @@ export class ProjectStore {
       }
     });
 
+    // A bake of the open project is what its layers were waiting for.
+    effect(() => {
+      const job = this.bakes.current();
+      const folder = job?.bake?.output;
+      if (job?.state === 'done' && folder && folder !== this.linkedBake) {
+        this.linkedBake = folder;
+        untracked(() => void this.linkBake(folder));
+      }
+    });
+
     desktop()?.onQuitRequested(() => {
       this.mutableQuitting.set(true);
     });
@@ -163,6 +179,7 @@ export class ProjectStore {
         await this.refreshMaterials(tab.project);
         await this.paint.open(path, false);
         this.update(path, { session: this.paint.state()?.id ?? null });
+        await this.reconnectBake(tab);
         if (tab.kind === 'layered-material') {
           await this.paint.wear();
           this.bakes.viewportChanged.update(count => count + 1);
@@ -230,6 +247,10 @@ export class ProjectStore {
   /** Saves what is in front. */
   async saveActive(): Promise<void> {
     await (isGraph(this.active()) ? this.graph.save() : this.paint.act('save'));
+  }
+
+  askToBake(): void {
+    this.mutableBakeAsked.update(count => count + 1);
   }
 
   /** Asks to start a project with this kind of document. */
@@ -384,6 +405,27 @@ export class ProjectStore {
     const contents = unwrap(await client.GET('/api/v1/library/project', { params: { query: { path } } }));
     this.mutableContents.update(all => new Map(all).set(path, contents));
     return contents;
+  }
+
+  /** A stack reads its project's bake with nothing to choose. */
+  private async reconnectBake(tab: DocumentTab): Promise<void> {
+    const contents = tab.project ? this.mutableContents().get(tab.project) : null;
+    const bake = contents?.bakes.at(-1);
+    const library = this.status.state();
+    if (bake && library.kind === 'online' && library.system.library && this.paint.state()?.meshMaps == null) {
+      await this.paint.useMeshMaps(`${library.system.library}/${bake.path}`);
+    }
+  }
+
+  private async linkBake(folder: string): Promise<void> {
+    if (this.paint.state()) {
+      await this.paint.useMeshMaps(folder);
+    }
+
+    const project = this.current()?.path;
+    if (project) {
+      await this.read(project);
+    }
   }
 
   /** A graph saved since a stack last opened reaches its layers now. */

@@ -157,13 +157,13 @@ test('layers of every kind compose on the mesh', async () => {
   const blend = window.getByRole('combobox', { name: 'Blend mode' });
   await blend.click();
   await window.getByRole('option', { name: 'Multiply', exact: true }).click();
-  await expect(window.getByRole('list', { name: 'Layers' })).toContainText('Multiply');
+  await expect(window.getByTestId('paint-layers')).toContainText('Multiply');
 
   await window.getByTestId('paint-add-filter').click();
-  await expect(window.getByRole('list', { name: 'Layers' })).toContainText('Filter');
+  await expect(window.getByTestId('paint-layers')).toContainText('Filter');
   await window.getByTestId('paint-add-group').click();
   await window.getByTestId('paint-add').click();
-  await expect(window.getByRole('list', { name: 'Layers' }).getByText('Paint')).not.toHaveCount(0);
+  await expect(window.getByTestId('paint-layers').getByText('Paint')).not.toHaveCount(0);
   await window.screenshot({ path: join(shots, 'paint-layers.png') });
   await expect(window.getByTestId('paint-failure')).toHaveCount(0);
 });

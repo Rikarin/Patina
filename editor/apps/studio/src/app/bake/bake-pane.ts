@@ -27,6 +27,9 @@ const ExtraMaps: readonly { name: string; label: string }[] = [
   { name: 'id', label: 'ID' }
 ];
 
+/** What a project's masks and materials read. */
+const ProjectMaps = ['ao', 'curvature', 'thickness', 'position', 'world'];
+
 type PathField = 'high' | 'low' | 'cage' | 'skewMap' | 'output';
 
 /**
@@ -281,6 +284,8 @@ export class BakePane {
   protected readonly store = inject(BakeStore);
   private readonly project = inject(ProjectStore);
   private readonly status = inject(SystemStatus);
+  /** The project the fields were filled from, which a user's edits outrank from then on. */
+  private filledFor: string | null = null;
   protected readonly graph = inject(GraphStore);
   protected readonly sides = Sides;
   protected readonly formats = Formats;
@@ -321,16 +326,23 @@ export class BakePane {
     effect(() => {
       const project = this.project.current();
       const mesh = this.project.mesh();
+      if (project?.path === this.filledFor) {
+        return;
+      }
+
       const status = this.status.state();
       const library = status.kind === 'online' ? status.system.library : null;
       if (project && library) {
+        this.filledFor = project.path;
         untracked(() => {
           this.paths.update(paths => ({
             ...paths,
             low: mesh ? `${library}/${mesh.path}` : paths.low,
-            high: mesh?.high ? `${library}/${mesh.high}` : paths.high,
+            // A mesh with nothing finer bakes from itself, which still gives its curvature and occlusion.
+            high: mesh ? `${library}/${mesh.high ?? mesh.path}` : paths.high,
             output: `${library}/${project.bakeFolder}/maps`
           }));
+          this.maps.set(new Set(ProjectMaps));
         });
       }
     });

@@ -22,6 +22,9 @@ namespace Patina.Worker;
 ///     again (ADR 0009). All the painting is Vixen's; what is here is holding sessions and answering the socket.
 /// </summary>
 sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) : SessionHost<StackHost.Session> {
+    /// <summary>How a note about missing bakes starts, which a client reads the map names after.</summary>
+    const string NeedsBake = "Needs a bake: ";
+
     /// <summary>How far a stamp on a mesh is dilated past an island's edge, in texels.</summary>
     const int Gutter = 4;
 
@@ -87,7 +90,7 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
         }
 
         if (ask.PreviewSide <= 0) {
-            return Reply(new(stack.Run.Compiled, true, ran, repaired, reused, Milliseconds(start), [], []));
+            return Reply(new(stack.Run.Compiled, true, ran, repaired, reused, Milliseconds(start), [], stack.Notes));
         }
 
         var outputs = stack.Run.Outputs;
@@ -121,7 +124,7 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
                 reused + thumbnails.Reused,
                 Milliseconds(start),
                 written,
-                []
+                stack.Notes
             )
         );
     }
@@ -300,7 +303,8 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
                         plan,
                         [..owed],
                         load.ImageRoots,
-                        load.MeshMaps
+                        load.MeshMaps,
+                        Unbaked
                     )
                     .Refusals.Select(static refusal => refusal.Message)
                     .ToArray()
@@ -315,6 +319,12 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes) 
         }
 
         public LayerStackEvaluator Run { get; }
+
+        /// <summary>The mesh maps layers read that no bake has given, which read as grey until one does.</summary>
+        public SortedSet<string> Unbaked { get; } = new(StringComparer.Ordinal);
+
+        /// <summary>What a client is told after an evaluation that went ahead.</summary>
+        public IReadOnlyList<string> Notes => Unbaked.Count == 0 ? [] : [$"{NeedsBake}{string.Join(", ", Unbaked)}"];
 
         /// <summary>
         ///     Which version of each map the viewport holds, by slot. ⚠ Not by image: an undone first stroke takes the

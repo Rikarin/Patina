@@ -15,6 +15,7 @@ import { LibraryPane } from './library/library-pane';
 import { ProjectStore } from './library/project-store';
 import { keepLayout, layoutOf, showing } from './core/workspaces';
 import { StartPane } from './core/start-pane';
+import { LayerStack } from './paint/layer-stack';
 import { MaterialShelf } from './paint/material-shelf';
 import { PaintAtlas } from './paint/paint-atlas';
 import { PaintPane } from './paint/paint-pane';
@@ -29,6 +30,7 @@ import { ViewportPane } from './viewport/viewport-pane';
     GraphPane,
     ImageMaterialPane,
     Inspector,
+    LayerStack,
     LibraryPane,
     MaterialShelf,
     PaintAtlas,
@@ -85,6 +87,9 @@ import { ViewportPane } from './viewport/viewport-pane';
       </ng-template>
       <ng-template xuiDockContent="image">
         <ptn-image-material />
+      </ng-template>
+      <ng-template xuiDockContent="layers">
+        <ptn-layer-stack />
       </ng-template>
       <ng-template xuiDockContent="shelf">
         <ptn-material-shelf />
@@ -199,6 +204,12 @@ export class App {
       if (this.bakes.shown()) {
         this.baking.set(false);
         this.layout.update(layout => showing(layout, 'texture'));
+      }
+    });
+
+    effect(() => {
+      if (this.project.bakeAsked() > 0) {
+        this.baking.set(true);
       }
     });
 

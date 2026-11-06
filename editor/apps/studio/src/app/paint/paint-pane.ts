@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
@@ -57,46 +57,9 @@ import { PaintStore } from './paint-store';
           }
         </div>
 
-        <ptn-brush-panel />
-
-        <div class="flex items-center gap-1">
-          <button
-            type="button"
-            xuiButton
-            size="sm"
-            variant="ghost"
-            data-testid="paint-undo"
-            [disabled]="!state.history.canUndo"
-            (click)="store.act('undo')"
-          >
-            Undo
-          </button>
-          <button
-            type="button"
-            xuiButton
-            size="sm"
-            variant="ghost"
-            data-testid="paint-redo"
-            [disabled]="!state.history.canRedo"
-            (click)="store.act('redo')"
-          >
-            Redo
-          </button>
-          <button
-            type="button"
-            xuiButton
-            size="sm"
-            variant="ghost"
-            data-testid="paint-save"
-            [disabled]="!state.history.dirty"
-            (click)="store.act('save')"
-          >
-            Save
-          </button>
-          @if (state.history.dirty) {
-            <span class="text-foreground-muted text-xs" data-testid="paint-unsaved">Unsaved changes</span>
-          }
-        </div>
+        @if (brushes()) {
+          <ptn-brush-panel />
+        }
 
         <ptn-layer-panel />
       } @else {
@@ -114,4 +77,6 @@ export class PaintPane {
   protected readonly store = inject(PaintStore);
   protected readonly project = inject(ProjectStore);
   protected readonly canPick = desktop() !== undefined;
+  /** A brush matters while something can be painted: a paint layer, or any layer's mask. */
+  protected readonly brushes = computed(() => this.store.chosen()?.kind === 'paint' || this.store.masking());
 }

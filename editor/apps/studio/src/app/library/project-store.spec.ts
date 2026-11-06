@@ -2,6 +2,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BakeStore } from '../bake/bake-store';
+import { SystemStatus } from '../core/system-status';
 import { GraphStore } from '../graph/graph-store';
 import { PaintStore } from '../paint/paint-store';
 import { LibraryStore } from './library-store';
@@ -29,6 +30,7 @@ function harness() {
   const graphDirty = signal(false);
   const paint = {
     state: paintState,
+    useMeshMaps: vi.fn(() => Promise.resolve()),
     open: vi.fn((path: string) => {
       paintState.set({ id: `session:${path}`, history: { dirty: false } });
       return Promise.resolve();
@@ -64,7 +66,8 @@ function harness() {
     providers: [
       { provide: PaintStore, useValue: paint },
       { provide: GraphStore, useValue: graph },
-      { provide: BakeStore, useValue: { viewportChanged: signal(0) } },
+      { provide: BakeStore, useValue: { viewportChanged: signal(0), current: signal(null) } },
+      { provide: SystemStatus, useValue: { state: signal({ kind: 'connecting' }) } },
       { provide: LibraryStore, useValue: { api: () => Promise.resolve(client) } }
     ]
   });
