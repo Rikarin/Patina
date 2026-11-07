@@ -525,10 +525,15 @@ test('the minimap leaves a small canvas, and steps aside for a wire on a large o
     throw new Error('The canvas is not on screen.');
   }
 
-  // A node's input sits below where it was asked for, which puts this one's under the minimap's corner.
-  await addNodeAt('Source/Noise', box.width - 500, box.height - 150);
+  // A node's input sits below where it was asked for, which puts the Output's under the minimap's corner. The Noise
+  // stands higher: with its preview it is taller than 150 pixels, and asked for there its output port was below the
+  // canvas, where no press can start a wire.
+  // Nothing selected before the Output, or it would wire itself to the Noise and the drop below would prove nothing.
+  await addNodeAt('Source/Noise', box.width - 500, box.height - 450);
+  await window.getByTestId('graph-canvas').click({ position: { x: 40, y: 40 } });
   await addNodeAt('Output/Output', box.width - 100, box.height - 150);
   await expect(nodes()).toHaveCount(2);
+  await expect(window.getByTestId('graph-diagnostics').getByText('TG0002')).toHaveCount(1);
   const target = await centre(connector(2, 'Input'));
 
   // The instrument: the minimap really is over the port, so the drop below proves something.
