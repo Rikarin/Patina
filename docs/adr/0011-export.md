@@ -49,14 +49,15 @@ the picture, and each converts a mesh's `v` to fit on import. Green is another m
 |---|---|---|
 | A bake | **up the image (Y+)** | `MikkTSpace.Generate` turns `v` over before it runs, so the bitangent runs up the picture (ADR 0008) |
 | A graph's `Height to Normal` | **down the image (Y-)** | Vixen's frame takes the bitangent along `v`, which runs down. `Vixen.TextureGraph`'s README derives it, and a ramp test holds it |
+| A layer stack | **down the image (Y-)** | What fills its normal channel is a graph, and the compositor leaves the numbers as they are |
 
 So a normal map carries the way it runs, in its output's manifest, and `ChannelPacker` turns green over only when source and target
-disagree. A graph output that composes a baked normal says `green: up` in its settings; nothing can work that out. The stored
-number is the same one the viewport's shader reads, so this is a one-minus in unit space and not a sign flip of the byte.
+disagree. An output that composes a baked normal says `green: up` in its settings; nothing can work that out. The stored number is
+the same one the viewport's shader reads, so this is a one-minus in unit space and not a sign flip of the byte. `Export Maps` writes
+a stack's numbers as they are, so its normal is Y-.
 
-⚠ This turned up a defect that is not fixed here. Patina's viewport shader treats every normal as Y+ (`ViewportForward.rvn`), so a
-graph's `Height to Normal` laid over a mesh with `PUT /viewport/graph` is lit from the wrong side. It looks plausible, which is the
-trouble with a flipped green. Export is right; the viewport is not, and fixing it means the viewport knowing where a map came from.
+The viewport's shader reads Y+ and takes a sign: `-1` for a graph's maps (`PUT /viewport/graph`) and for a stack on the mesh, and `+1`
+for a bake. A stack's green was once declared Y+ and shown Y+, so the two agreed with each other and both disagreed with its fills.
 
 ## What each engine reads
 
@@ -96,8 +97,8 @@ Epic's [naming conventions](https://dev.epicgames.com/documentation/unreal-engin
 
 Plan images have no transfer function. Vixen's material bake puts a graph's bytes straight into an sRGB texture and Patina's viewport
 reads them so, whatever `TexturePixels` says of linear. So **base colour is sRGB numbers at any depth**, and an sRGB file holds them
-unchanged, which is what the viewport showed. Everything else is linear, emissive included, because it goes past one; no viewport
-shows emissive yet, so nothing contradicts that. A linear file of base colour decodes it. A float file holds linear numbers.
+unchanged, which is what the viewport showed. Everything else is linear, emissive included, because it goes past one, and the
+viewport's emissive slot reads it so. A linear file of base colour decodes it. A float file holds linear numbers.
 
 `PUT /viewport/look` views frames through a `.cube` table in the Worker, on the tonemapped, sRGB-encoded frame, after read-back. It
 is a viewing aid and no export sees it. A table is taken to expect those numbers, which the format does not state. OCIO stays out.

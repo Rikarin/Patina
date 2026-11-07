@@ -34,6 +34,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Normals from a graph fill are lit from the right side on the mesh, and export with the right green for every engine. A stack's normal was treated as Y+ though its fills are Y-.
 - Every place that takes a picture reads the same formats, and file dialogs offer that list: PNG, JPEG, TGA, BMP, PSD, GIF, EXR and HDR. An `.exr` in a layer and a `.tga` skew map no longer fail after they are chosen.
 - Layers and image materials keep a picture's depth: 16-bit PNGs, EXR and HDR were narrowed to 8 bits, or refused.
 - The viewport's environment takes `.exr` panoramas as well as `.hdr`.

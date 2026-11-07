@@ -355,7 +355,8 @@ public sealed class ViewportRenderer : IDisposable {
             Covered(worn, ViewportSlot.Roughness, maps.Roughness) ? 1f : factors.Roughness,
             laidOver ? 1f : own.NormalScale,
             hasNormal,
-            laidOver && maps.GreenDown ? -1f : 1f,
+            // A stack's normal is what its graph fills made, and those run down as any graph's does (ADR 0011).
+            worn[(int)ViewportSlot.Normal] is not null || (laidOver && maps.GreenDown) ? -1f : 1f,
             new(
                 Slot(worn, ViewportSlot.BaseColor, maps.BaseColor, own.BaseColor, MapMeaning.Colour, textures.White),
                 normal,

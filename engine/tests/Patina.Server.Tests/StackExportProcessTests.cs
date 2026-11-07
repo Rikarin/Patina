@@ -1,6 +1,7 @@
 using Patina.Bench;
 using Patina.Contracts;
 using Patina.Library;
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -104,6 +105,90 @@ public sealed partial class StackProcessTests {
         var at = ((int)(v * height) * width + (int)(u * width)) * channels;
         return [..samples.AsSpan(at, channels).ToArray().Select(static sample => sample / (float)ushort.MaxValue)];
     }
+
+    /// <summary>
+    ///     A graph's normal and the same normal through a stack export as one map, on both sides of green. A stack's
+    ///     output was declared green up, though what fills it runs down, so it reached one kind of engine turned over.
+    /// </summary>
+    [Theory]
+    [InlineData("godot", "Crate_{0}_normal.png")]
+    [InlineData("unreal", "T_Crate_{0}_N.png")]
+    public async Task A_graphs_normal_keeps_its_green_through_a_stack(string preset, string file) {
+        using var deadline = Deadline(240);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        await StartAsync("Unused.vxlayers", deadline.Token);
+        var made = await http.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new { name = "Crate", kind = "layered-material", resolution = ExportSide },
+            deadline.Token
+        );
+        Assert.True(made.IsSuccessStatusCode, await made.Content.ReadAsStringAsync(deadline.Token));
+        var listed = await http.PostAsJsonAsync(
+            "/api/v1/library/project/documents",
+            new { project = "crate", kind = "graph", name = "Slope" },
+            deadline.Token
+        );
+        Assert.True(listed.IsSuccessStatusCode, await listed.Content.ReadAsStringAsync(deadline.Token));
+        await File.WriteAllTextAsync(
+            Path.Combine(Library, "projects", "crate", "slope.vxtexgraph"),
+            SlopeGraph,
+            deadline.Token
+        );
+        var used = await http.PostAsJsonAsync(
+            "/api/v1/library/materials/use",
+            new { project = "crate", source = "projects/crate/slope.vxtexgraph" },
+            deadline.Token
+        );
+        var reply = await used.Content.ReadAsStringAsync(deadline.Token);
+        Assert.True(used.IsSuccessStatusCode, reply);
+        var graph = JsonDocument.Parse(reply).RootElement.GetProperty("graph").GetString();
+
+        var state = await OpenAsync("projects/crate/crate.vxlayers", deadline.Token);
+        await EditAsync(state.Id, deadline.Token, new StackAddChannel("normal"));
+        await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Slope"));
+        var layer = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
+        await EditAsync(state.Id, deadline.Token, new StackSetLayer(layer, Fill: "Graph", Graph: graph));
+        using (var saved = await http.PostAsync($"/api/v1/stacks/{state.Id}/save", null, deadline.Token)) {
+            Assert.True(saved.IsSuccessStatusCode, await saved.Content.ReadAsStringAsync(deadline.Token));
+        }
+
+        var job = await BuildAsync(preset, deadline.Token);
+        var report = await ReportedAsync(job.Id, deadline.Token);
+        SkipWithoutDevice(report);
+        Assert.True(
+            job.Report!.Failed == 0,
+            string.Join(' ', report.Outputs.Select(static o => o.Error).OfType<string>())
+        );
+
+        var exported = Path.Combine(Library, "exports", preset, "crate");
+        var alone = Texel(
+            Path.Combine(exported, string.Format(CultureInfo.InvariantCulture, file, "Slope")),
+            0.5f,
+            0.5f
+        );
+        var stacked = Texel(
+            Path.Combine(exported, string.Format(CultureInfo.InvariantCulture, file, "Crate")),
+            0.5f,
+            0.5f
+        );
+
+        Assert.True(Math.Abs(alone[1] - 0.5f) > 0.02f, "The slope has no green to compare.");
+        Assert.Equal(alone[1], stacked[1], 0.02f);
+    }
+
+    /// <summary>A ramp down the picture, as a material: its normal leans in green and nowhere else.</summary>
+    const string SlopeGraph = """
+                              name: Slope
+                              nodes:
+                                - { id: 1, type: Source/Gradient, values: { Angle: [1.5708] } }
+                                - { id: 2, type: Surface/Height to Normal, values: { Intensity: [4] } }
+                                - { id: 3, type: Output/Output, texts: { Usage: normal } }
+                                - { id: 4, type: Colour/Grayscale }
+                              edges:
+                                - { fromNode: 1, fromPort: Out, toNode: 4, toPort: Input }
+                                - { fromNode: 4, fromPort: Out, toNode: 2, toPort: Height }
+                                - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Input }
+                              """;
 
     /// <summary>
     ///     A picture keeps its depth to the exported file. The ramp spans a few bytes' worth of height across a

@@ -176,7 +176,7 @@ public sealed class OutputBuilders(
             }
         );
 
-        return Pictures(step, folder, usages, raw, GreenOf(step, GreenAxis.Up));
+        return Pictures(step, folder, usages, raw, GreenOf(step, GreenAxis.Down));
     }
 
     static BuildManifest Bake(OutputStep step, string folder, int threads, CancellationToken cancellationToken) {
@@ -219,7 +219,8 @@ public sealed class OutputBuilders(
 
     /// <summary>
     ///     The way a map's green runs. A bake's runs up. A graph's <c>Height to Normal</c> runs down (Vixen's README,
-    ///     and a test there), so that is a graph's default, and an output that composes a baked normal says
+    ///     and a test there), and a stack carries what its graph fills make without touching it, so that is the
+    ///     default of both. An output that composes a baked normal says
     ///     <c>
     ///         green:
     ///         up
