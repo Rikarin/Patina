@@ -236,7 +236,12 @@ test('a layer keeps to named meshes, a folder takes a mask, and the mesh reloads
   await window.getByRole('textbox', { name: 'Hex color' }).fill('#00ff00');
   await window.getByRole('textbox', { name: 'Hex color' }).press('Enter');
   await window.keyboard.press('Escape');
-  await expect(window.getByTestId('layer-blending')).toBeVisible();
+  const fillRow = window.locator('[data-testid^=paint-layer-fill]');
+  await expect(fillRow.getByTestId('paint-layer-blend')).toHaveValue('Copy');
+  await fillRow.getByTestId('paint-layer-opacity').locator('[role=slider]').focus();
+  await window.keyboard.press('ArrowLeft');
+  await expect(fillRow.getByTestId('layer-blending')).toContainText('99');
+  await window.keyboard.press('ArrowRight');
 
   const greenAt = (across: number): Promise<number> =>
     window.getByTestId('paint-picture').evaluate((image, x) => {

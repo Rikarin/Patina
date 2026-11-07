@@ -1,17 +1,15 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal } from '@angular/core';
 import type { StackLayer } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
-import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
-import { blendName as blendLabelOf, blendName } from '../core/labels';
+import { blendName as blendLabelOf } from '../core/labels';
 import { ProjectStore } from '../library/project-store';
 import { type DropZone, dropManyCommands } from './layer-drag';
 import { hexOf } from './layer-panel';
-import { LiveValue } from './live-value';
 import { MaterialUse } from './material-use';
 import { type LayerRow, PaintStore } from './paint-store';
 
-const RowHeight = 44;
+const RowHeight = 52;
 
 const KindMarks: Readonly<Record<string, string>> = { paint: 'P', fill: 'F', filter: 'Fx', group: '' };
 
@@ -36,11 +34,12 @@ interface MenuAt {
  */
 @Component({
   selector: 'ptn-layer-stack',
-  imports: [XuiButtonImports, XuiSelectImports, XuiSliderImports],
+  imports: [XuiButtonImports, XuiSliderImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'flex h-full min-h-0 flex-col',
     '(document:click)': 'menu.set(null); meshes.set(null)',
+    '(document:pointerup)': 'letGo()',
     '(document:keydown)': 'press($event)'
   },
   template: `
@@ -154,33 +153,6 @@ interface MenuAt {
       </div>
     }
 
-    @if (store.chosen(); as layer) {
-      <div class="chrome-bar flex shrink-0 items-center gap-2 px-2 py-1" data-testid="layer-blending">
-        <xui-select
-          class="w-28 shrink-0"
-          aria-label="Blend mode"
-          data-testid="paint-layer-blend"
-          [itemText]="blendLabel"
-          [items]="blends()"
-          [value]="layer.blend"
-          (valueChange)="store.edit({ op: 'setLayer', layer: layer.id, blend: $event })"
-        />
-        <xui-slider
-          class="min-w-0 flex-1"
-          labelStepSize="0"
-          aria-label="Layer opacity"
-          data-testid="paint-layer-opacity"
-          [max]="1"
-          [min]="0"
-          [stepSize]="0.01"
-          [value]="opacity.shown()"
-          (valueChange)="setOpacity(layer, $event)"
-          (pointerup)="opacity.release()"
-        />
-        <span class="readout w-9 shrink-0 text-end text-xs">{{ round(opacity.shown()) }}%</span>
-      </div>
-    }
-
     <div
       class="min-h-0 flex-1 overflow-auto"
       role="tree"
@@ -194,8 +166,8 @@ interface MenuAt {
         <div
           class="border-hairline relative flex items-center gap-1.5 border-b pe-2"
           role="treeitem"
-          draggable="true"
           [attr.aria-level]="row.depth + 1"
+          [attr.draggable]="sliding() !== row.layer.id"
           [attr.aria-selected]="store.selection().has(row.layer.id)"
           [attr.aria-expanded]="row.layer.kind === 'group' ? !closed().has(row.layer.id) : null"
           [attr.data-testid]="'paint-layer-' + row.layer.id"
@@ -290,24 +262,6 @@ interface MenuAt {
             </button>
           }
 
-          <button
-            type="button"
-            class="border-hairline grid size-5 shrink-0 place-items-center border"
-            data-testid="layer-mesh-mask"
-            [attr.aria-label]="'Meshes of ' + row.layer.name"
-            [attr.aria-pressed]="!!row.layer.mask.meshParts"
-            [class.bg-selection]="!!row.layer.mask.meshParts"
-            [title]="row.layer.mask.meshParts ? 'On some meshes' : 'On every mesh'"
-            (click)="$event.stopPropagation(); openMeshes($event, row.layer)"
-          >
-            <svg viewBox="0 0 16 16" class="size-3" aria-hidden="true">
-              <path d="M2 2h12v12H2z" fill="none" stroke="currentColor" stroke-width="1.5" />
-              @if (row.layer.mask.meshParts) {
-                <path d="M2 2h6v6H2z" fill="currentColor" />
-              }
-            </svg>
-          </button>
-
           <span class="min-w-0 flex-1 leading-tight">
             @if (renaming() === row.layer.id) {
               <input
@@ -325,10 +279,61 @@ interface MenuAt {
                 {{ row.layer.name }}
               </span>
             }
-            <span class="text-foreground-muted block truncate text-xs">
-              {{ blendName(row.layer) }} {{ percent(row.layer) }}%
+          </span>
+
+          <span
+            class="flex w-20 shrink-0 flex-col gap-1"
+            role="group"
+            tabindex="-1"
+            data-testid="layer-blending"
+            [attr.aria-label]="'Blending of ' + row.layer.name"
+            (click)="$event.stopPropagation()"
+            (keydown)="$event.stopPropagation()"
+            (pointerdown)="sliding.set(row.layer.id)"
+          >
+            <select
+              class="well h-5 w-full px-0.5 text-xs"
+              data-testid="paint-layer-blend"
+              [attr.aria-label]="'Blend mode of ' + row.layer.name"
+              (change)="setBlend(row.layer, $event)"
+            >
+              @for (blend of blends(); track blend) {
+                <option [selected]="blend === row.layer.blend" [value]="blend">{{ blendLabel(blend) }}</option>
+              }
+            </select>
+            <span class="flex items-center gap-1">
+              <xui-slider
+                class="min-w-0 flex-1"
+                labelStepSize="0"
+                data-testid="paint-layer-opacity"
+                [attr.aria-label]="'Opacity of ' + row.layer.name"
+                [max]="1"
+                [min]="0"
+                [stepSize]="0.01"
+                [value]="opacityOf(row.layer)"
+                (valueChange)="setOpacity(row.layer, $event)"
+              />
+              <span class="readout w-7 shrink-0 text-end text-xs">{{ round(opacityOf(row.layer)) }}</span>
             </span>
           </span>
+
+          <button
+            type="button"
+            class="border-hairline grid size-5 shrink-0 place-items-center border"
+            data-testid="layer-mesh-mask"
+            [attr.aria-label]="'Meshes of ' + row.layer.name"
+            [attr.aria-pressed]="!!row.layer.mask.meshParts"
+            [class.bg-selection]="!!row.layer.mask.meshParts"
+            [title]="row.layer.mask.meshParts ? 'On some meshes' : 'On every mesh'"
+            (click)="$event.stopPropagation(); openMeshes($event, row.layer)"
+          >
+            <svg viewBox="0 0 16 16" class="size-3" aria-hidden="true">
+              <path d="M2 2h12v12H2z" fill="none" stroke="currentColor" stroke-width="1.5" />
+              @if (row.layer.mask.meshParts) {
+                <path d="M2 2h6v6H2z" fill="currentColor" />
+              }
+            </svg>
+          </button>
         </div>
       } @empty {
         <p class="text-foreground-muted p-3 text-sm">Nothing open.</p>
@@ -443,9 +448,18 @@ export class LayerStack {
     return Math.round(share * 100);
   }
 
+  protected opacityOf(layer: StackLayer): number {
+    const draft = this.draft();
+    return draft?.layer === layer.id ? draft.opacity : layer.opacity;
+  }
+
+  protected setBlend(layer: StackLayer, event: Event): void {
+    void this.store.edit({ op: 'setLayer', layer: layer.id, blend: (event.target as HTMLSelectElement).value });
+  }
+
   /** One request out at a time, the newest value next, so that a fast slider costs what the Server can take. */
   protected setOpacity(layer: StackLayer, opacity: number): void {
-    this.opacity.edit(opacity);
+    this.draft.set({ layer: layer.id, opacity });
     this.latest = { layer: layer.id, opacity };
     void this.sendOpacity();
   }
@@ -463,6 +477,16 @@ export class LayerStack {
     }
 
     this.sendingOpacity = false;
+    if (this.sliding() === null) {
+      this.draft.set(null);
+    }
+  }
+
+  protected letGo(): void {
+    this.sliding.set(null);
+    if (!this.sendingOpacity) {
+      this.draft.set(null);
+    }
   }
 
   protected async openMeshes(event: MouseEvent, layer: StackLayer): Promise<void> {
@@ -503,7 +527,10 @@ export class LayerStack {
   protected readonly parts = signal<readonly string[]>([]);
   protected readonly blends = computed(() => this.store.vocabulary()?.blends ?? []);
   protected readonly blendLabel = blendLabelOf;
-  protected readonly opacity = new LiveValue<number>(() => this.store.chosen()?.opacity ?? 1);
+  /** The row whose controls are under the hand, which must not start dragging the layer. */
+  protected readonly sliding = signal<string | null>(null);
+  /** The opacity under the hand, ahead of what the Server last said. */
+  private readonly draft = signal<{ layer: string; opacity: number } | null>(null);
   private latest: { layer: string; opacity: number } | null = null;
   private sendingOpacity = false;
   protected readonly renaming = signal<string | null>(null);
@@ -652,14 +679,6 @@ export class LayerStack {
 
   protected maskColour(layer: StackLayer): string | null {
     return layer.mask.colour ? hexOf(layer.mask.colour) : null;
-  }
-
-  protected blendName(layer: StackLayer): string {
-    return blendName(layer.blend);
-  }
-
-  protected percent(layer: StackLayer): number {
-    return Math.round(layer.opacity * 100);
   }
 
   protected openMenu(event: MouseEvent, layer: StackLayer): void {
