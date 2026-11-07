@@ -89,14 +89,14 @@ public static class MapPictures {
     /// <summary>What a preset calls a baked map, or null when no preset reads it.</summary>
     public static string? ExportNameOf(string bakedMap) =>
         bakedMap switch {
-            "normal" => ExportMaps.Normal,
-            "height" => ExportMaps.Height,
             "ao" => ExportMaps.Occlusion,
+            ExportMaps.Normal or ExportMaps.Height or ExportMaps.Curvature or ExportMaps.Thickness or ExportMaps.Id
+                or ExportMaps.Position or ExportMaps.WorldNormal or ExportMaps.BentNormal => bakedMap,
             _ => null
         };
 
     static FloatImage Centred(FloatImage image, BakedMapFile map) {
-        if (map.Map is not ("normal" or "height")) {
+        if (!BakedMapPicture.IsSigned(map.Map)) {
             return image;
         }
 

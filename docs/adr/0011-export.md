@@ -9,8 +9,9 @@ has been opened in Unreal, Unity or Godot; that is the largest gap, and it is li
 Factory presets are in `content/export-presets` and are embedded. A library adds one, or replaces one of the same `id`, by putting
 a file in `export-presets`; it needs no sidecar, because its `id` says what it is. A preset lists files, and each file lists
 one to four lanes from a map (`roughness.r`), one minus a map (`1-roughness.r`) or a number. A map is one of a graph's Output
-usages; a bake's `ao` arrives as `occlusion`. A texture none of whose maps a project has is left out, and a lane whose map is
-missing takes what a surface without it would be, with a warning in the report. Unknown fields and lane counts a block cannot hold
+usages or a bake's map under its own name, so `curvature`, `thickness`, `id`, `position`, `world` and `bent` can be packed; a bake's
+`ao` arrives as `occlusion`. A texture none of whose maps a project has is left out, and a lane whose map is
+missing takes what a surface without it would be, with a warning in the report. Unknown fields, values the reader cannot read (`mips: True`) and lane counts a block cannot hold
 are refused: the alternative is an uncompressed texture in a shipped game. An export's key holds the bytes of the preset's file.
 
 `{project}`, `{preset}` and `{set}` are the whole naming language. A value cannot make a folder. In a project of several texture

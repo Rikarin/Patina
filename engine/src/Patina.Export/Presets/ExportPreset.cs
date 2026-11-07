@@ -111,9 +111,17 @@ public static class ExportMaps {
     public const string Emissive = "emissive";
     public const string Opacity = "opacity";
     public const string Mask = "mask";
+    public const string Curvature = "curvature";
+    public const string Thickness = "thickness";
+    public const string Id = "id";
+    public const string Position = "position";
+    public const string WorldNormal = "world";
+    public const string BentNormal = "bent";
 
-    public static IReadOnlyList<string> All { get; } =
-        [BaseColor, Normal, Roughness, Metalness, Occlusion, Height, Emissive, Opacity, Mask];
+    public static IReadOnlyList<string> All { get; } = [
+        BaseColor, Normal, Roughness, Metalness, Occlusion, Height, Emissive, Opacity, Mask, Curvature, Thickness, Id,
+        Position, WorldNormal, BentNormal
+    ];
 
     /// <summary>
     ///     A lane's value where a project has no such map: what a surface without that map would be. A texture that
@@ -121,11 +129,11 @@ public static class ExportMaps {
     /// </summary>
     public static float Default(string map, int lane) =>
         (map, lane) switch {
-            (Normal, 2) => 1f,
-            (Normal, _) => 0.5f,
+            (Normal or WorldNormal or BentNormal, 2) => 1f,
+            (Normal or WorldNormal or BentNormal, not 3) => 0.5f,
             (Opacity or Occlusion or Mask, _) => 1f,
             (_, 3) => 1f,
-            (BaseColor or Roughness or Height, _) => 0.5f,
+            (BaseColor or Roughness or Height or Curvature or Position, _) => 0.5f,
             _ => 0f
         };
 

@@ -7,6 +7,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- A preset can read every baked map: curvature, thickness, ID, position, world normal and bent normal, not only normal, height and occlusion.
 - Export works on a project made in the app: every texture set of a texturing project goes through the preset with its bake, and a material project exports its materials. Nothing has to be declared. Files of a project with several sets carry the set's name, and presets can place it with `{set}`.
 - Preview and the report say so when a build would write nothing, and why, instead of Done with no files.
 - Project Settings holds the project's mesh, Auto Unwrap and Preserve Paint. A mesh with no UVs gets a layout in a new file beside it, when it is set or from the error's Unwrap Mesh button.
@@ -33,6 +34,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The Export panel reports every way a build can end: failed steps with their reasons, files a preset left out, and what a stopped or failed build finished. Preview numbers and the Export Maps count clear when the question changes.
+- Export Maps writes the open document's maps wherever the viewport is looking. It used to write every set of the model if the viewport wore them, and only one otherwise.
+- `mips: True` in a preset is refused. It used to mean no mips.
 - Fractional opacity exports as it is. All five presets wrote it through sRGB, so 0.5 came out as 0.735.
 - `1-map` lanes in an sRGB file invert the value and not its encoded number, and a lane with no map goes through the file's encoding like any other.
 - Bake formats, export presets, job states and layer blend modes show plain names instead of internal ids.

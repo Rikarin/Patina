@@ -133,6 +133,54 @@ public sealed class ExportPresetTests : IDisposable {
         Assert.Equal(expected.Replace('/', Path.DirectorySeparatorChar), path);
     }
 
+    /// <summary>YAML's other spelling once meant no mips, with no error.</summary>
+    [Theory]
+    [InlineData("True")]
+    [InlineData("yes")]
+    public void A_mips_value_it_cannot_read_is_refused(string value) {
+        var text = """
+                   version: 1
+                   id: p
+                   name: P
+                   normal: y-up
+                   textures:
+                     - file: x
+                       format: ktx2
+                       compression: bc7
+                       space: srgb
+                       mips: VALUE
+                       channels: [baseColor.r, baseColor.g, baseColor.b]
+                   """.Replace("VALUE", value, StringComparison.Ordinal);
+
+        var refused = Assert.Throws<ExportPresetException>(() => ExportPresetReader.Read(text, "test"));
+
+        Assert.Contains(value, refused.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("curvature", 1)]
+    [InlineData("thickness", 1)]
+    [InlineData("id", 3)]
+    [InlineData("position", 3)]
+    [InlineData("world", 3)]
+    [InlineData("bent", 3)]
+    public void Every_baked_map_is_one_a_preset_can_read(string map, int lanes) {
+        var text = $$"""
+                     version: 1
+                     id: p
+                     name: P
+                     normal: y-up
+                     textures:
+                       - file: x
+                         format: png8
+                         space: linear
+                         channels: [{{string.Join(", ", "rgb"[..lanes].Select(lane => $"{map}.{lane}"))}}]
+                     """;
+
+        Assert.Equal(map, Assert.Single(Assert.Single(ExportPresetReader.Read(text, "test").Textures).Maps));
+        Assert.Equal(map, MapPictures.ExportNameOf(map));
+    }
+
     [Theory]
     [InlineData("T_{project}_D", "T_{project}_{set}_D")]
     [InlineData("T_{set}_D", "T_{set}_D")]

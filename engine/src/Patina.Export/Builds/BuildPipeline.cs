@@ -96,51 +96,65 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
         var steps = Math.Max(1, plan.Steps);
         var done = 0;
 
-        foreach (var project in plan.Work) {
-            var identity = new ProjectIdentity(project.Project.Id.Value, project.Project.Name, project.Project.Path);
-            var failed = false;
-            foreach (var output in project.Unresolved) {
-                failed = true;
-                journal.Ended(
-                    $"unresolved:{project.Project.Path}:{output.Output.Name}",
-                    identity,
-                    new OutputReport(
-                        output.Output.Name,
-                        output.Output.Tool,
-                        null,
-                        BuildStatuses.Failed,
-                        0,
-                        output.Problem
-                    )
-                );
-            }
-
-            foreach (var output in project.Stale) {
-                await Yield(yield);
-                cancellationToken.ThrowIfCancellationRequested();
-                failed |= !await BuildOutputAsync(journal, identity, project, output, cancellationToken);
-                done++;
-                progress?.Invoke(done / (double)steps, journal.Totals(fresh, exportsFresh));
-            }
-
-            foreach (var export in project.Exports.Where(static e => !e.Fresh)) {
-                await Yield(yield);
-                cancellationToken.ThrowIfCancellationRequested();
-                await RunExportAsync(
-                    journal,
-                    identity,
-                    project,
-                    export,
-                    presets[export.Preset.Id],
-                    failed,
-                    cancellationToken
-                );
-                done++;
-                progress?.Invoke(done / (double)steps, journal.Totals(fresh, exportsFresh));
-            }
+        try {
+            await RunPlanAsync();
+        } catch (Exception e) when (e is OperationCanceledException or IOException or UnauthorizedAccessException) {
+            // However it stopped, what it finished is reported. A Worker going away is no end: the job comes back.
+            journal.Finish(fresh, exportsFresh, null, clock.GetUtcNow());
+            throw;
         }
 
-        return journal.Finish(fresh, exportsFresh, plan.Nothing, clock.GetUtcNow());
+        return journal.Finish(fresh, exportsFresh, plan.Nothing ?? BuildJournal.NoFiles, clock.GetUtcNow());
+
+        async Task RunPlanAsync() {
+            foreach (var project in plan.Work) {
+                var identity = new ProjectIdentity(
+                    project.Project.Id.Value,
+                    project.Project.Name,
+                    project.Project.Path
+                );
+                var failed = false;
+                foreach (var output in project.Unresolved) {
+                    failed = true;
+                    journal.Ended(
+                        $"unresolved:{project.Project.Path}:{output.Output.Name}",
+                        identity,
+                        new OutputReport(
+                            output.Output.Name,
+                            output.Output.Tool,
+                            null,
+                            BuildStatuses.Failed,
+                            0,
+                            output.Problem
+                        )
+                    );
+                }
+
+                foreach (var output in project.Stale) {
+                    await Yield(yield);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    failed |= !await BuildOutputAsync(journal, identity, project, output, cancellationToken);
+                    done++;
+                    progress?.Invoke(done / (double)steps, journal.Totals(fresh, exportsFresh));
+                }
+
+                foreach (var export in project.Exports.Where(static e => !e.Fresh)) {
+                    await Yield(yield);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await RunExportAsync(
+                        journal,
+                        identity,
+                        project,
+                        export,
+                        presets[export.Preset.Id],
+                        failed,
+                        cancellationToken
+                    );
+                    done++;
+                    progress?.Invoke(done / (double)steps, journal.Totals(fresh, exportsFresh));
+                }
+            }
+        }
     }
 
     /// <summary>Every preset named, or the library's own targets.</summary>
