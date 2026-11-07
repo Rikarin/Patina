@@ -276,7 +276,7 @@ static class FanOut {
 
         public Task<ExportManifest> ExportAsync(ExportStep work, CancellationToken cancellationToken) {
             exports++;
-            return Task.FromResult(OutputBuilders.Export(work, cancellationToken));
+            return Task.FromResult(ExportSteps.Run(work, cancellationToken));
         }
     }
 
@@ -285,6 +285,6 @@ static class FanOut {
             Task.FromResult(builders.Build(work, 0, cancellationToken));
 
         public Task<ExportManifest> ExportAsync(ExportStep work, CancellationToken cancellationToken) =>
-            Task.FromResult(OutputBuilders.Export(work, cancellationToken));
+            Task.FromResult(ExportSteps.Run(work, cancellationToken));
     }
 }

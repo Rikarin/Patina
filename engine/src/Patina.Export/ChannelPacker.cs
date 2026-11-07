@@ -100,8 +100,8 @@ public static class ChannelPacker {
 
     /// <summary>
     ///     What moves a number into a lane of the file. A file's alpha holds linear numbers in any space, and so does a
-    ///     map's, so only the colour lanes of a colour map start out sRGB, and only the colour lanes of an sRGB file end
-    ///     up that way. It is the lane being written that decides the second, and not the one being read:
+    ///     map's, so only the colour lanes of a colour map start out sRGB, and only the colour lanes of an sRGB file
+    ///     end up that way. It is the lane being written that decides the second, and not the one being read:
     ///     <c>opacity.r</c> reads lane 0 and writes alpha.
     /// </summary>
     static Func<float, float> Transfer(string map, int sourceLane, int fileLane, string space) =>

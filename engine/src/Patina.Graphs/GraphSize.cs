@@ -31,7 +31,8 @@ public static class GraphSize {
         if (!int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var side)
             || side <= 0
             || side > TextureSizes.Largest) {
-            return $"'{text}' is no size for a graph, so it evaluated at its base. A size is 1 to {TextureSizes.Largest}.";
+            return $"'{text}' is no size for a graph, so it evaluated at its base. "
+                + $"A size is 1 to {TextureSizes.Largest}.";
         }
 
         var width = TextureGraphSettings.Extent(graph, TextureGraphSettings.BaseWidth, compiler.BaseWidth, out _);

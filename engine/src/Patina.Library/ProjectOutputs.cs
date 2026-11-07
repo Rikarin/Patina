@@ -14,7 +14,9 @@ public static class BuildTools {
     /// <summary>A mesh at lower levels of detail. It reads the first of <c>files</c>.</summary>
     public const string MeshLod = "mesh-lod";
 
-    /// <summary>The maps of a bake already in a project's folder. It reads the bake's manifest among <c>files</c>.</summary>
+    /// <summary>
+    ///     The maps of a bake already in a project's folder. It reads the bake's manifest among <c>files</c>.
+    /// </summary>
     public const string BakedMaps = "baked-maps";
 }
 
@@ -28,7 +30,8 @@ public static class DocumentBakes {
 
     /// <summary>
     ///     The folder of a document's bake, or null. The bake a person pointed it at comes first, then the folder a
-    ///     bake of that document goes to unless someone says otherwise. A folder with no finished bake in it is no bake.
+    ///     bake of that document goes to unless someone says otherwise. A folder with no finished bake in it is no
+    ///     bake.
     /// </summary>
     /// <param name="project">The project's folder.</param>
     /// <param name="item">The document.</param>
@@ -103,7 +106,9 @@ public static class DocumentBakes {
 ///     its own with settings nobody chose, and a project that has not baked exports what its layers make.
 /// </remarks>
 public static class ProjectOutputs {
-    /// <summary>The texture set an output belongs to. Outputs without one belong to every set of their project.</summary>
+    /// <summary>
+    ///     The texture set an output belongs to. Outputs without one belong to every set of their project.
+    /// </summary>
     public const string SetSetting = "set";
 
     /// <summary>The folder of the bake a document reads, relative to it.</summary>

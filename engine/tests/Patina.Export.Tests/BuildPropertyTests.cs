@@ -115,7 +115,7 @@ public sealed class BuildPropertyTests {
 
         public Task<ExportManifest> ExportAsync(ExportStep work, CancellationToken cancellationToken) {
             Exports++;
-            return Task.FromResult(Patina.Graphs.OutputBuilders.Export(work, cancellationToken));
+            return Task.FromResult(ExportSteps.Run(work, cancellationToken));
         }
     }
 

@@ -96,7 +96,9 @@ public sealed partial class StackVocabularyTests {
         );
     }
 
-    /// <summary>Nothing moves on a spacing of nothing, and the Worker's fallback must not turn it into something else.</summary>
+    /// <summary>
+    ///     Nothing moves on a spacing of nothing, and the Worker's fallback must not turn it into something else.
+    /// </summary>
     [Fact]
     public void A_brush_with_no_spacing_is_refused() {
         var editor = new StackEditor(

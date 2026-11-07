@@ -58,7 +58,9 @@ public sealed class BuildPlan {
     /// <summary>The projects a build would touch.</summary>
     public IEnumerable<PlannedProject> Work => Projects.Where(static p => p.HasWork);
 
-    /// <summary>Why a build would write nothing, in words for a person, or null when it would write something.</summary>
+    /// <summary>
+    ///     Why a build would write nothing, in words for a person, or null when it would write something.
+    /// </summary>
     public string? Nothing =>
         Projects.Count == 0 ? "No project here has anything to export: it needs a texturing document or a material."
         : Work.Any() ? null

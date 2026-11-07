@@ -26,7 +26,9 @@ public sealed class StackEditorPropertyTests {
         Assert.Equal(LayerBlendMode.Multiply, Mask(editor).Layers[0].Blend);
     }
 
-    /// <summary>What a new fill shows in Properties is what it has to hold, or it composites nothing until set.</summary>
+    /// <summary>
+    ///     What a new fill shows in Properties is what it has to hold, or it composites nothing until set.
+    /// </summary>
     [Fact]
     public void A_new_fill_holds_the_defaults_it_shows() {
         var editor = new StackEditor("/tmp/Fill.vxlayers", Sample());
@@ -36,7 +38,9 @@ public sealed class StackEditorPropertyTests {
         Assert.Equal([0.5f, 0.5f, 0.5f, 1f], editor.Set.Layers[^1].Values["baseColor"]);
     }
 
-    /// <summary>A fill that says what it writes keeps to that: leaving a channel alone is what a fill is often for.</summary>
+    /// <summary>
+    ///     A fill that says what it writes keeps to that: leaving a channel alone is what a fill is often for.
+    /// </summary>
     [Fact]
     public void A_fill_given_values_writes_only_those() {
         var editor = new StackEditor("/tmp/Fill.vxlayers", Sample());

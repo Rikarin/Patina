@@ -488,6 +488,8 @@ public sealed record StackSync(
 /// <param name="PreviewFolder">The content-addressed folder previews go in.</param>
 public sealed record StackEvaluate(string Session, int PreviewSide, string PreviewFolder);
 
+// SK7005: a message record's constructor is its wire shape, one parameter per field.
+#pragma warning disable SK7005
 /// <summary>How an evaluation went.</summary>
 /// <param name="Compiled">Whether the plan compiled.</param>
 /// <param name="Evaluated">Whether anything was evaluated at all.</param>
@@ -509,6 +511,7 @@ public sealed record StackResult(
     IReadOnlyList<string> Problems,
     IReadOnlyList<StackProblem> Found
 );
+#pragma warning restore SK7005
 
 /// <summary>Gives a mesh that has no UV layout one, in a new file.</summary>
 /// <param name="Source">The mesh file.</param>
@@ -520,7 +523,9 @@ public sealed record MeshUnwrapAsk(string Source, string Output);
 /// <param name="To">The mesh they go to.</param>
 /// <param name="Paints">The paint files.</param>
 /// <param name="Set">The texture set they belong to, whose triangles are all that are read.</param>
-/// <param name="Backup">Where copies of what they were go. Paint on a layout that did not change stays as it is.</param>
+/// <param name="Backup">
+///     Where copies of what they were go. Paint on a layout that did not change stays as it is.
+/// </param>
 public sealed record MeshMovePaintAsk(string From, string To, IReadOnlyList<string> Paints, string Set, string Backup);
 
 /// <summary>Draws where some of a model's named meshes lie in its layout, white on black.</summary>

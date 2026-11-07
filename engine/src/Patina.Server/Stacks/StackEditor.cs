@@ -620,13 +620,16 @@ public sealed class StackEditor : ILayerStackDocument {
     ///     The one number a mask stood at, which is what a canvas taking its place starts as, so that a stroke changes
     ///     only what it touches. A paint mask nobody has painted reads nothing, and so hides nothing.
     /// </summary>
-    /// <exception cref="StackEditRefusedException">The mask is a picture, which one number cannot stand for.</exception>
+    /// <exception cref="StackEditRefusedException">
+    ///     The mask is a picture, which one number cannot stand for.
+    /// </exception>
     static float Showed(LayerAsset layer) =>
         layer.Mask.Source switch {
             LayerMaskSource.None or LayerMaskSource.Paint => 1f,
             LayerMaskSource.Constant => layer.Mask.Value,
             var source => throw new StackEditRefusedException(
-                $"A brush would replace the {source} mask of '{layer.Name}'. Set the mask's source to Paint to paint it."
+                $"A brush would replace the {source} mask of '{layer.Name}'. "
+                + "Set the mask's source to Paint to paint it."
             )
         };
 

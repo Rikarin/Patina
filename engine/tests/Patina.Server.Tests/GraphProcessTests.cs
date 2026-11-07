@@ -239,8 +239,8 @@ public sealed class GraphProcessTests : IDisposable {
     }
 
     /// <summary>
-    ///     A plan is copied on its way to a preview, so what a build compiles and what a client sees could part on either
-    ///     number. One graph with both set, one axis of it clamped, is the same bytes each way.
+    ///     A plan is copied on its way to a preview, so what a build compiles and what a client sees could part on
+    ///     either number. One graph with both set, one axis of it clamped, is the same bytes each way.
     /// </summary>
     [Fact]
     public async Task A_preview_and_a_build_agree_on_a_graphs_size_and_its_tiling() {

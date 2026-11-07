@@ -91,7 +91,9 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         Evaluate();
     }
 
-    /// <summary>Counts how often a bake was chosen, for one baked again into the same folder to be read again.</summary>
+    /// <summary>
+    ///     Counts how often a bake was chosen, for one baked again into the same folder to be read again.
+    /// </summary>
     public int BakeEdits { get; private set; }
 
     /// <summary>Chooses a bake: a new Worker copy loads it, since the images are external to the plan.</summary>

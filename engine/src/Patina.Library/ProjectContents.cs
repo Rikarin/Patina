@@ -18,7 +18,6 @@ static class ProjectFiles {
     static readonly FrozenSet<string> MeshExtensions =
         new[] { ".glb", ".gltf", ".fbx", ".obj" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>What a layer or a mask can read, which is 8-bit pictures: an EXR is for the viewport and bakes.</summary>
     /// <summary>Everything in a project, with paths below the library.</summary>
     public static ProjectContents Read(string root, string path) {
         var (full, document) = Project(root, path);
@@ -99,8 +98,9 @@ static class ProjectFiles {
     }
 
     /// <summary>
-    ///     A path inside the library travels with it, so the project file holds that. One outside means nothing on another
-    ///     machine and would put this one's folders in Git, so it stays in the cache, and a clone chooses the file once.
+    ///     A path inside the library travels with it, so the project file holds that. One outside means nothing on
+    ///     another machine and would put this one's folders in Git, so it stays in the cache, and a clone chooses the
+    ///     file once.
     /// </summary>
     static void RememberSource(string root, ProjectMesh mesh, string origin) {
         var kept = LibraryLayout.MeshSourcePath(root, mesh.Id);
@@ -120,8 +120,8 @@ static class ProjectFiles {
     }
 
     /// <summary>
-    ///     Whether a file differs from the mesh the project has. The copy brought in is what counts: an unwrapped mesh is
-    ///     a new file, and the one it came from stays beside it under its own name.
+    ///     Whether a file differs from the mesh the project has. The copy brought in is what counts: an unwrapped mesh
+    ///     is a new file, and the one it came from stays beside it under its own name.
     /// </summary>
     /// <exception cref="FileNotFoundException">The project or the file is not there.</exception>
     public static bool MeshChanged(string root, string path, string mesh) {
@@ -148,7 +148,8 @@ static class ProjectFiles {
             AddPicture(root, path, file);
         } else {
             throw new ProjectRefusedException(
-                $"Nothing in Patina reads '{Path.GetFileName(file)}'. A project takes meshes ({Known(MeshExtensions)}) and pictures ({Known(PictureFormats.Pictures)})."
+                $"Nothing in Patina reads '{Path.GetFileName(file)}'. A project takes meshes ({Known(MeshExtensions)}) "
+                + $"and pictures ({Known(PictureFormats.Pictures)})."
             );
         }
     }
@@ -160,7 +161,8 @@ static class ProjectFiles {
         var (full, _) = Project(root, path);
         if (!PictureFormats.IsPicture(picture)) {
             throw new ProjectRefusedException(
-                $"'{Path.GetFileName(picture)}' is not a picture a layer can read: use {Known(PictureFormats.Pictures)}."
+                $"'{Path.GetFileName(picture)}' is not a picture a layer can read: "
+                + $"use {Known(PictureFormats.Pictures)}."
             );
         }
 
@@ -453,7 +455,9 @@ static class ProjectFiles {
         ];
     }
 
-    /// <summary>Whether a bake was made on a mesh the project no longer has. One that does not say is left alone.</summary>
+    /// <summary>
+    ///     Whether a bake was made on a mesh the project no longer has. One that does not say is left alone.
+    /// </summary>
     static bool OutOfDate(string bake, IReadOnlyList<ProjectMesh> meshes) {
         HashSet<string?> current = [..meshes.Select(static mesh => mesh.Hash)];
         current.Remove(null);

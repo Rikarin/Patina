@@ -157,7 +157,7 @@ static class BuildCommand {
             Task.Run(() => builders.Build(work, 0, cancellationToken), cancellationToken);
 
         public Task<ExportManifest> ExportAsync(ExportStep work, CancellationToken cancellationToken) =>
-            Task.Run(() => OutputBuilders.Export(work, cancellationToken), cancellationToken);
+            Task.Run(() => ExportSteps.Run(work, cancellationToken), cancellationToken);
 
         public void Dispose() {
             evaluator?.Dispose();

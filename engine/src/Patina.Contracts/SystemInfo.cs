@@ -28,8 +28,8 @@ public sealed record FileFormats(IReadOnlyList<string> Pictures, IReadOnlyList<s
 
 /// <summary>
 ///     The one list of the pictures Patina reads. Every path that takes a person's picture reads all of these, and a
-///     file dialog offers them from here, so nothing is offered that fails later. KTX2 and DDS have decoders and are not
-///     here: they arrive block-compressed, which nothing after them can read.
+///     file dialog offers them from here, so nothing is offered that fails later. KTX2 and DDS have decoders and are
+///     not here: they arrive block-compressed, which nothing after them can read.
 /// </summary>
 public static class PictureFormats {
     public static IReadOnlyList<string> Pictures { get; } =
