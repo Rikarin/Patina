@@ -182,6 +182,9 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
+    /// <summary>The file a mesh came from on this machine, or null if it is not known here.</summary>
+    public string? SourceOf(ProjectMesh mesh) => ProjectFiles.SourceOf(RootPath, mesh);
+
     /// <summary>Whether a mesh file differs from the one the project already has, by what is in it.</summary>
     /// <exception cref="FileNotFoundException">The project or the file is not there.</exception>
     public bool MeshChanged(string path, string mesh) => ProjectFiles.MeshChanged(RootPath, path, mesh);

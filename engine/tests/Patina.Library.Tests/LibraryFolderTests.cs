@@ -39,6 +39,60 @@ public sealed class LibraryFolderTests : IDisposable {
     }
 
     [Fact]
+    public void A_mesh_from_outside_the_library_leaves_no_path_in_what_is_committed() {
+        var elsewhere = Directory.CreateTempSubdirectory("patina-art-");
+        try {
+            var made = library.CreateProject(new("Crate"));
+            var outside = Path.Combine(elsewhere.FullName, "low.glb");
+            File.WriteAllBytes(outside, [1, 2, 3]);
+
+            library.AddMesh(made.Path, outside, null);
+
+            var yaml = File.ReadAllText(Path.Combine(root, "projects", made.Path, "project.yaml"));
+            Assert.DoesNotContain("source", yaml, StringComparison.Ordinal);
+            Assert.DoesNotContain(elsewhere.Name, yaml, StringComparison.Ordinal);
+            Assert.Equal(outside, Assert.Single(library.Contents(made.Path).Meshes).Source);
+
+            // Another machine has the project and none of this.
+            Directory.Delete(Path.Combine(root, LibraryLayout.CacheFolder, "mesh-sources"), true);
+            Assert.Null(Assert.Single(library.Contents(made.Path).Meshes).Source);
+        } finally {
+            elsewhere.Delete(true);
+        }
+    }
+
+    [Fact]
+    public void A_mesh_from_inside_the_library_is_remembered_relative_to_it() {
+        var made = library.CreateProject(new("Crate"));
+        var art = Directory.CreateDirectory(Path.Combine(root, "art"));
+        var inside = Path.Combine(art.FullName, "low.glb");
+        File.WriteAllBytes(inside, [1, 2, 3]);
+
+        library.AddMesh(made.Path, inside, null);
+
+        var yaml = File.ReadAllText(Path.Combine(root, "projects", made.Path, "project.yaml"));
+        Assert.Contains("source: art/low.glb", yaml, StringComparison.Ordinal);
+        Assert.Equal(Path.GetFullPath(inside), Assert.Single(library.Contents(made.Path).Meshes).Source);
+    }
+
+    [Fact]
+    public void A_mesh_brought_in_again_from_inside_the_project_keeps_where_it_came_from() {
+        var elsewhere = Directory.CreateTempSubdirectory("patina-art-");
+        try {
+            var made = library.CreateProject(new("Crate"));
+            var outside = Path.Combine(elsewhere.FullName, "low.glb");
+            File.WriteAllBytes(outside, [1, 2, 3]);
+            library.AddMesh(made.Path, outside, null);
+
+            library.AddMesh(made.Path, Path.Combine(root, "projects", made.Path, "low.glb"), null);
+
+            Assert.Equal(outside, Assert.Single(library.Contents(made.Path).Meshes).Source);
+        } finally {
+            elsewhere.Delete(true);
+        }
+    }
+
+    [Fact]
     public void A_picture_is_copied_into_the_project_unless_it_is_there() {
         var made = library.CreateProject(new("Crate"));
         var outside = Path.Combine(root, "rust.png");

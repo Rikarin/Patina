@@ -26,7 +26,7 @@ static class ProjectFiles {
     public static ProjectContents Read(string root, string path) {
         var (full, document) = Project(root, path);
         var files = Files(full);
-        var meshes = document.Meshes.Select(mesh => Listed(path, mesh)).ToList();
+        var meshes = document.Meshes.Select(mesh => Listed(root, path, mesh)).ToList();
         meshes.AddRange(
             files.Where(f => IsMesh(f) && !document.Meshes.Any(m => m.File == f || m.High == f))
                 .Select(f => new ProjectMeshInfo(null, Below(path, f), null))
@@ -74,16 +74,52 @@ static class ProjectFiles {
         var outside = Path.GetFullPath(mesh).StartsWith(full + Path.DirectorySeparatorChar, StringComparison.Ordinal)
             ? null
             : Path.GetFullPath(mesh);
+        var origin = source ?? outside;
         var added = new ProjectMesh(
             held?.Id ?? AssetId.New(),
             file,
             high is null ? held?.High : Bring(full, high),
-            source ?? outside ?? held?.Source,
+            origin is null ? held?.Source : InLibrary(root, origin),
             LibraryFiles.Digest(Path.Combine(full, file))
         );
+        if (origin is not null) {
+            RememberSource(root, added, origin);
+        }
+
         var others = document.Meshes.Where(m => m.File != file);
         LibraryFiles.WriteProject(root, path, document with { Meshes = [..others, added] });
         return added;
+    }
+
+    /// <summary>The file a mesh came from on this machine, or null if it is not known here.</summary>
+    public static string? SourceOf(string root, ProjectMesh mesh) {
+        if (mesh.Source is { } held) {
+            return Path.GetFullPath(LibraryLayout.Full(root, held));
+        }
+
+        var kept = LibraryLayout.MeshSourcePath(root, mesh.Id);
+        return File.Exists(kept) ? File.ReadAllText(kept) : null;
+    }
+
+    /// <summary>
+    ///     A path inside the library travels with it, so the project file holds that. One outside means nothing on another
+    ///     machine and would put this one's folders in Git, so it stays in the cache, and a clone chooses the file once.
+    /// </summary>
+    static void RememberSource(string root, ProjectMesh mesh, string origin) {
+        var kept = LibraryLayout.MeshSourcePath(root, mesh.Id);
+        if (mesh.Source is null) {
+            Directory.CreateDirectory(Path.GetDirectoryName(kept)!);
+            LibraryFiles.Replace(kept, Path.GetFullPath(origin));
+        } else if (File.Exists(kept)) {
+            File.Delete(kept);
+        }
+    }
+
+    static string? InLibrary(string root, string file) {
+        var full = Path.GetFullPath(file);
+        return full.StartsWith(Path.GetFullPath(root) + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+            ? LibraryLayout.Relative(root, full)
+            : null;
     }
 
     /// <summary>
@@ -100,7 +136,7 @@ static class ProjectFiles {
         var name = Path.GetFileName(mesh);
         var held = Path.Combine(full, name);
         var same = File.Exists(held)
-            && document.Meshes.Any(m => m.File == name || Path.GetFileName(m.Source) == name)
+            && document.Meshes.Any(m => m.File == name || Path.GetFileName(SourceOf(root, m)) == name)
             && LibraryFiles.Digest(held) == LibraryFiles.Digest(mesh);
         return !same;
     }
@@ -439,8 +475,13 @@ static class ProjectFiles {
         }
     }
 
-    static ProjectMeshInfo Listed(string path, ProjectMesh mesh) =>
-        new(mesh.Id.Value, Below(path, mesh.File), mesh.High is { } high ? Below(path, high) : null, mesh.Source);
+    static ProjectMeshInfo Listed(string root, string path, ProjectMesh mesh) =>
+        new(
+            mesh.Id.Value,
+            Below(path, mesh.File),
+            mesh.High is { } high ? Below(path, high) : null,
+            SourceOf(root, mesh)
+        );
 
     static ProjectDocumentInfo Listed(string path, ProjectItem item) =>
         new(item.Id.Value, item.Kind, item.Name, Below(path, item.File), item.Mesh?.Value, item.Role, item.Material);

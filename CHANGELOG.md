@@ -33,6 +33,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- `project.yaml` no longer records the absolute path a mesh came from. A source inside the library is stored relative to it, one outside stays on this machine, and a fresh clone asks for the file once on Reload Mesh.
 - Reload Mesh with an unchanged file does nothing and says so, and a changed file on the same UV layout keeps its paint as it is. Paint is only resampled, and copied to `.paint-backup`, when the layout really moved.
 - Importing a file nothing can read, such as a `.dae`, `.usd` or `.txt`, is refused and says why, instead of being copied into the project as a picture. EXR is refused as a layer picture too, because layers read 8-bit pictures only.
 - A layered document that cannot save says why, and one whose file changed on disk asks whether to overwrite it, as a graph does. Closing or quitting stays put when the save did not happen.

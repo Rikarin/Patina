@@ -312,7 +312,7 @@ test('a layer keeps to named meshes, a folder takes a mask, and the mesh reloads
   });
   await expect(window.getByTestId('document-tab-name').filter({ hasText: '•' })).toHaveCount(0, { timeout: 30_000 });
   const yaml = join(scratch, 'Parts.ptlib', 'projects', 'parts', 'project.yaml');
-  expect(readFileSync(yaml, 'utf8')).toContain(`source: ${mesh}`);
+  expect(readFileSync(yaml, 'utf8')).not.toContain(mesh);
   await app.evaluate(({ BrowserWindow }) => {
     BrowserWindow.getAllWindows()[0]?.webContents.send('patina:command', 'reloadMesh');
   });

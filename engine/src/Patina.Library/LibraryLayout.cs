@@ -89,6 +89,10 @@ public static class LibraryLayout {
 
     public static string PaintPath(string root) => Path.Combine(root, CacheFolder, "paint");
 
+    /// <summary>Where this machine keeps the file a mesh came from, when that is outside the library.</summary>
+    public static string MeshSourcePath(string root, AssetId mesh) =>
+        Path.Combine(root, CacheFolder, "mesh-sources", mesh.Value.ToString("N"));
+
     public static string PreviewsPath(string root) => Path.Combine(root, CacheFolder, "previews");
 
     /// <summary>The full path of a <paramref name="relative" /> path stored with forward slashes.</summary>

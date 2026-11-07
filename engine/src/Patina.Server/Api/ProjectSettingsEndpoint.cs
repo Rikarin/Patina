@@ -205,6 +205,6 @@ static class ProjectSettingsEndpoint {
             cancellationToken
         );
         var high = mesh.High is null ? null : library.ProjectFile(project, mesh.High);
-        return reply.MeshUnwrapped == true ? library.AddMesh(project, output, high, mesh.Source) : mesh;
+        return reply.MeshUnwrapped == true ? library.AddMesh(project, output, high, library.SourceOf(mesh)) : mesh;
     }
 }
