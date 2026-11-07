@@ -261,10 +261,9 @@ test('builds a tiling material from a new graph, down to its channels and full s
   // Settings: smaller, and a seed of its own.
   await window.getByTestId('graph-settings').click();
   await expect(window.getByTestId('inspector-title')).toHaveText('Tiling Rust');
-  await window.getByTestId('setting-baseWidth').getByRole('combobox').click();
+  await window.getByTestId('setting-size').getByRole('combobox').click();
   await window.getByRole('option', { name: '512' }).click();
-  await window.getByTestId('setting-baseHeight').getByRole('combobox').click();
-  await window.getByRole('option', { name: '512' }).click();
+  await window.screenshot({ path: join(shots, 'graph-settings-size.png') });
   await window.getByTestId('setting-seed').getByRole('spinbutton').fill('11');
   await window.getByTestId('setting-seed').getByRole('spinbutton').press('Enter');
   await expect(window.getByTestId('graph-unsaved')).toBeVisible();
@@ -338,7 +337,8 @@ test('builds a tiling material from a new graph, down to its channels and full s
   const file = readFileSync(join(library, 'projects', 'tiling-rust', 'tiling-rust.vxtexgraph'), 'utf8');
   expect(file).toContain('ramp:0 000000ff,0.45 a0522dff,1 ffffffff');
   expect(file).toMatch(/curve:r=0 0,0\.5 \d\.\d+,1 1;/);
-  expect(file).toContain("baseWidth: '512'");
+  expect(file).toContain("size: '512'");
+  expect(file).toContain("baseWidth: '1024'");
 });
 
 test('exposes a parameter, drives a number from it and edits its default', async () => {
