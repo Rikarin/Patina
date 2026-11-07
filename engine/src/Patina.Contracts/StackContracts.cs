@@ -237,6 +237,7 @@ public sealed record StackEvaluation(
 /// <param name="Settled">The newest revision an evaluation has reached.</param>
 /// <param name="Model">The mesh it is painted on, as the document names it, or empty.</param>
 /// <param name="MeshMaps">The bake its generators read, or null.</param>
+/// <param name="Seed">The number every procedural step derives from.</param>
 public sealed record StackState(
     string Id,
     string Path,
@@ -253,7 +254,8 @@ public sealed record StackState(
     StackEvaluation? Evaluation,
     long Settled,
     string Model,
-    string? MeshMaps = null
+    string? MeshMaps = null,
+    uint Seed = 0
 );
 #pragma warning restore SK7005
 
@@ -276,12 +278,15 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackSetModel), "setModel")]
 [JsonDerivedType(typeof(StackAddChannel), "addChannel")]
 [JsonDerivedType(typeof(StackNestLayer), "nestLayer")]
+[JsonDerivedType(typeof(StackSetSeed), "setSeed")]
 public abstract record StackCommand;
 
 /// <summary>Adds a layer at the top of the stack.</summary>
 /// <param name="Kind">fill, paint, filter or group.</param>
-/// <param name="Name">What it is called.</param>
-/// <param name="Values">What a fill writes to each channel, as four numbers. Ignored for other kinds.</param>
+/// <param name="Name">What it is called, with a number after it when a layer has that name already.</param>
+/// <param name="Values">
+///     What a fill writes to each channel, as four numbers, or null for the default of each one. Ignored for other kinds.
+/// </param>
 /// <param name="Parent">The group it goes at the top of, or null for the stack itself.</param>
 /// <param name="Filter">What a filter layer does: Levels, Hsl, Blur, Invert or Grayscale.</param>
 /// <param name="Material">
@@ -337,6 +342,7 @@ public sealed record StackMoveLayer(string Layer, int Delta) : StackCommand;
 /// <param name="PlanarAxis">The world axis a planar projection looks along or a cylinder wraps: X, Y or Z.</param>
 /// <param name="Placement">Where a fill sits on the surface, which replaces where it sat.</param>
 /// <param name="Parameters">What a graph fill sets the graph's knobs to, replacing what these names held.</param>
+/// <param name="FilterNode">The compound a filter runs, or empty to go back to the named filter.</param>
 public sealed record StackSetLayer(
     string Layer,
     string? Name = null,
@@ -355,7 +361,8 @@ public sealed record StackSetLayer(
     StackMeshMask? MeshMask = null,
     string? PlanarAxis = null,
     StackPlacement? Placement = null,
-    IReadOnlyDictionary<string, string>? Parameters = null
+    IReadOnlyDictionary<string, string>? Parameters = null,
+    string? FilterNode = null
 ) : StackCommand;
 #pragma warning restore SK7005
 
@@ -380,6 +387,10 @@ public sealed record StackSetModel(string Model) : StackCommand;
 /// <summary>Adds a channel to the stack, so that layers can write it and a preset can export it.</summary>
 /// <param name="Usage">Which, one of the vocabulary's usages.</param>
 public sealed record StackAddChannel(string Usage) : StackCommand;
+
+/// <summary>Sets the number every procedural step of the stack derives from.</summary>
+/// <param name="Seed">It.</param>
+public sealed record StackSetSeed(uint Seed) : StackCommand;
 
 /// <summary>Where the brush goes: in texels of the image, or on the picture of a stroke with a view.</summary>
 /// <param name="X">Its column.</param>

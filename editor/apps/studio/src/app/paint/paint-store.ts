@@ -184,7 +184,13 @@ export class PaintStore {
   /** Whether a stroke would land on what is chosen, which is the Server's rule so that a drag is never refused. */
   readonly canPaint = computed(() => {
     const layer = this.chosen();
-    return this.masking() ? FlatMasks.has(layer?.mask.source ?? '') : layer?.kind === 'paint';
+    if (!layer) {
+      return false;
+    }
+
+    return this.masking()
+      ? FlatMasks.has(layer.mask.source)
+      : layer.kind === 'paint' && writesChannel(layer, this.channel());
   });
 
   /** Whether one would land on the mesh, which also takes a mesh: a layered material's sphere is only a preview. */
@@ -647,12 +653,13 @@ export class PaintStore {
     const mirror = this.mirror();
     // A material brush writes every channel it holds, each in the one stroke and the one undo step. A mask has one.
     const grey = this.maskGrey();
+    const target = this.layers().find(row => row.layer.id === layer)?.layer;
     const channels: [string, number[]][] = this.masking()
       ? [[this.channel(), [grey, grey, grey, 1]]]
       : [
           [this.channel(), colourOf(this.colour())],
           ...[...this.alsoPaints()]
-            .filter(([usage]) => usage !== this.channel())
+            .filter(([usage]) => usage !== this.channel() && (!target || writesChannel(target, usage)))
             .map(([usage, colour]): [string, number[]] => [usage, colourOf(colour)])
         ];
     const revision = await this.command({
@@ -868,6 +875,11 @@ export class PaintStore {
 /** How hard a pointer is pressing: a mouse says 0.5 for a button held, and means nothing by it. */
 export function pressureOf(event: PointerEvent): number {
   return event.pointerType === 'pen' ? event.pressure : 1;
+}
+
+/** Whether a layer composites a channel. No list at all means every one of them. */
+export function writesChannel(layer: StackLayer, usage: string): boolean {
+  return layer.channels.length === 0 || layer.channels.includes(usage);
 }
 
 /** What a stack's toolbar says about its last evaluation, in the graph's words. */

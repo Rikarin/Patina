@@ -79,7 +79,7 @@ interface MenuAt {
         [items]="channels()"
         [matchTargetWidth]="false"
         [value]="store.channel()"
-        (valueChange)="store.channel.set($event ?? store.channel())"
+        (valueChange)="store.showChannel($event ?? store.channel())"
       />
       <span class="readout text-foreground-muted min-w-0 flex-1 truncate px-1 text-xs" data-testid="layers-evaluation">{{
         store.evaluated()
@@ -532,6 +532,7 @@ interface MenuAt {
               type="checkbox"
               [attr.data-testid]="'layer-mesh-' + part"
               [checked]="onPart(at.layer, part)"
+              [disabled]="isLastPart(at.layer, part)"
               (change)="setPart(at.layer, part, checked($event))"
             />
             <span class="truncate">{{ part }}</span>
@@ -609,6 +610,15 @@ interface MenuAt {
           >
             Add Colour Selection Mask
           </button>
+          <button
+            type="button"
+            class="hover:bg-selection px-3 py-1 text-start"
+            role="menuitem"
+            data-testid="layer-menu-mask-generator"
+            (click)="addMask(at.layer, 'Generator')"
+          >
+            Add Generator
+          </button>
         } @else {
           <button
             type="button"
@@ -630,15 +640,6 @@ interface MenuAt {
           </button>
         }
         <div class="border-hairline my-1 border-t"></div>
-        <button
-          type="button"
-          class="hover:bg-selection px-3 py-1 text-start"
-          role="menuitem"
-          data-testid="layer-menu-mask-generator"
-          (click)="addMask(at.layer, 'Generator')"
-          >
-          Add Generator
-        </button>
         @if (!store.masking()) {
           <button
             type="button"
@@ -752,6 +753,11 @@ export class LayerStack {
 
   protected onPart(layer: StackLayer, part: string): boolean {
     return layer.mask.meshParts?.includes(part) ?? true;
+  }
+
+  /** ⚠ No meshes at all means the whole model to the Server, so the last one stays: the eye hides a layer. */
+  protected isLastPart(layer: StackLayer, part: string): boolean {
+    return this.onPart(layer, part) && this.parts().filter(name => this.onPart(layer, name)).length === 1;
   }
 
   protected checked(event: Event): boolean {
@@ -885,7 +891,7 @@ export class LayerStack {
 
     if (event.key === 'Delete' || event.key === 'Backspace') {
       event.preventDefault();
-      void this.removeSelected();
+      void this.removeInFront();
     } else if (event.key === 'g' && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       void this.groupSelected();
@@ -905,14 +911,19 @@ export class LayerStack {
     return target === globalThis.document.body || this.host.nativeElement.contains(target);
   }
 
-  protected async removeSelected(): Promise<void> {
+  /** The Delete key takes what is in front: a mask that is, or else the layers. Anything that says layers takes those. */
+  private async removeInFront(): Promise<void> {
     const layer = this.store.chosen();
     if (this.store.masking() && layer) {
       this.store.masking.set(false);
       await this.store.setMask(layer, { ...layer.mask, source: 'None' });
-      return;
+    } else {
+      await this.removeSelected();
     }
+  }
 
+  protected async removeSelected(): Promise<void> {
+    this.store.masking.set(false);
     const selected = this.store.selection();
     const rows = this.store.layers();
     const going = rows.filter(row => selected.has(row.layer.id));

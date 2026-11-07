@@ -214,6 +214,7 @@ public sealed class StackEditor : ILayerStackDocument {
             StackSetLayer => "Change layer",
             StackSetModel => "Bind mesh",
             StackAddChannel add => $"Add {add.Usage}",
+            StackSetSeed => "Change seed",
             StackStroke => "Stroke",
             _ => "Edit"
         };
@@ -299,6 +300,9 @@ public sealed class StackEditor : ILayerStackDocument {
             case StackAddChannel add:
                 Do(AddChannel(add.Usage));
                 break;
+            case StackSetSeed seed:
+                Do(new SetDocumentCommand(this, Document with { Seed = seed.Seed }, "Change seed"));
+                break;
             case StackStroke stroke:
                 Stroke(stroke, step, set, Do);
                 break;
@@ -337,15 +341,37 @@ public sealed class StackEditor : ILayerStackDocument {
             Top(set, add.Parent),
             new() {
                 Id = id,
-                Name = add.Name,
+                Name = FreeName(add.Name),
                 Kind = kind,
                 Filter = filter,
                 FilterNode = add.FilterNode ?? string.Empty,
-                Values = Copied(add.Values) ?? []
+                Values = Copied(add.Values) ?? (kind == LayerKind.Fill ? ChannelDefaults() : [])
             },
             $"Add {add.Name}"
         );
     }
+
+    /// <summary>What a fill nobody has set yet writes, which is what Properties shows for it.</summary>
+    Dictionary<string, float[]> ChannelDefaults() =>
+        Set.Channels.ToDictionary(static channel => channel.Usage, static channel => channel.Default.ToArray());
+
+    /// <summary>A name no layer has, so that two rows can be told apart.</summary>
+    string FreeName(string name) {
+        HashSet<string> taken = new(Names(Set.Layers), StringComparer.Ordinal);
+        if (!taken.Contains(name)) {
+            return name;
+        }
+
+        for (var count = 2;; count++) {
+            var numbered = string.Create(CultureInfo.InvariantCulture, $"{name} {count}");
+            if (!taken.Contains(numbered)) {
+                return numbered;
+            }
+        }
+    }
+
+    static IEnumerable<string> Names(IEnumerable<LayerAsset> layers) =>
+        layers.SelectMany(static layer => Names(layer.Children).Prepend(layer.Name));
 
     /// <summary>The slot at the top of a group, or of the stack.</summary>
     LayerSlot Top(string set, string? parent) {
@@ -447,6 +473,7 @@ public sealed class StackEditor : ILayerStackDocument {
                 PlanarAxis = Parsed(change.PlanarAxis, layer.PlanarAxis, "axis"),
                 Placement = change.Placement is { } placement ? Placed(placement) : layer.Placement,
                 Filter = Parsed(change.Filter, layer.Filter, "filter"),
+                FilterNode = change.FilterNode ?? layer.FilterNode,
                 Settings = Merged(layer.Settings, Copied(change.Settings)),
                 Texts = Merged(layer.Texts, change.Parameters),
                 Mask = StackDocuments.MeshMasked(Masked(layer.Mask, change.Mask), change.MeshMask)
@@ -536,6 +563,12 @@ public sealed class StackEditor : ILayerStackDocument {
 
         if (!stroke.Mask && Set.Channels.TrueForAll(channel => channel.Usage != stroke.Channel)) {
             throw new StackEditRefusedException($"This stack has no channel '{stroke.Channel}'.");
+        }
+
+        if (!stroke.Mask && !layer.Writes(stroke.Channel)) {
+            throw new StackEditRefusedException(
+                $"'{layer.Name}' does not write '{stroke.Channel}', so a stroke there would never show."
+            );
         }
 
         var stem = Path.GetFileNameWithoutExtension(AssetPath);

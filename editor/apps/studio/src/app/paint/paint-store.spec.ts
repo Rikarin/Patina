@@ -67,6 +67,7 @@ function stack(overrides: Partial<StackState> = {}): StackState {
     previews: [],
     settled: 0,
     model: '',
+    seed: 0,
     ...overrides
   };
   return state;
@@ -212,6 +213,27 @@ describe('PaintStore', () => {
       store.state.update(state => (state ? { ...state, layers: [masked(source)] } : state));
       expect(store.canPaint()).toBe(paintable);
     }
+  });
+
+  it('offers no brush on a channel the layer leaves alone, and a material brush skips it', async () => {
+    const { store, bodies } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    store.state.update(state =>
+      state
+        ? { ...state, layers: state.layers.map(held => (held.id === 'paint' ? { ...held, channels: ['roughness'] } : held)) }
+        : state
+    );
+    expect(store.canPaint()).toBe(false);
+
+    store.channel.set('roughness');
+    expect(store.canPaint()).toBe(true);
+    store.alsoPaints.set(new Map([['baseColor', '#808080']]));
+    store.begin({ x: 1, y: 2, pressure: 1 });
+    store.end();
+    await vi.waitFor(() => {
+      const batches = bodies.map(body => (body as { commands: { channel: string }[] }).commands);
+      expect(batches[0]?.map(command => command.channel)).toEqual(['roughness']);
+    });
   });
 
   it('says what the stack is doing, as a graph does', () => {

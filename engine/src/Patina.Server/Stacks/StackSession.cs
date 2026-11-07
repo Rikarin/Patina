@@ -177,7 +177,8 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                     evaluation,
                     settled,
                     editor.Document.Model,
-                    MeshMaps
+                    MeshMaps,
+                    editor.Document.Seed
                 );
             }
         }

@@ -8681,6 +8681,9 @@
           },
           {
             "$ref": "#/components/schemas/StackCommandStackNestLayer"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackSetSeed"
           }
         ],
         "description": "One edit of a stack. A batch of these is one undo step.",
@@ -8694,7 +8697,8 @@
             "stroke": "#/components/schemas/StackCommandStackStroke",
             "setModel": "#/components/schemas/StackCommandStackSetModel",
             "addChannel": "#/components/schemas/StackCommandStackAddChannel",
-            "nestLayer": "#/components/schemas/StackCommandStackNestLayer"
+            "nestLayer": "#/components/schemas/StackCommandStackNestLayer",
+            "setSeed": "#/components/schemas/StackCommandStackSetSeed"
           }
         }
       },
@@ -8759,7 +8763,7 @@
           },
           "name": {
             "type": "string",
-            "description": "What it is called."
+            "description": "What it is called, with a number after it when a layer has that name already."
           },
           "values": {
             "type": [
@@ -8773,7 +8777,7 @@
                 "format": "float"
               }
             },
-            "description": "What a fill writes to each channel, as four numbers. Ignored for other kinds."
+            "description": "What a fill writes to each channel, as four numbers, or null for the default of each one. Ignored for other kinds."
           },
           "parent": {
             "type": [
@@ -9034,6 +9038,13 @@
               "type": "string"
             },
             "description": "What a graph fill sets the graph\u0027s knobs to, replacing what these names held."
+          },
+          "filterNode": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The compound a filter runs, or empty to go back to the named filter."
           }
         },
         "description": "Changes what a layer\u0027s row shows. What is null stays."
@@ -9056,6 +9067,26 @@
           }
         },
         "description": "Names the mesh a stack is painted on, which is undone like any other edit."
+      },
+      "StackCommandStackSetSeed": {
+        "required": [
+          "seed",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "setSeed"
+            ],
+            "type": "string"
+          },
+          "seed": {
+            "type": "integer",
+            "description": "It.",
+            "format": "uint32"
+          }
+        },
+        "description": "Sets the number every procedural step of the stack derives from."
       },
       "StackCommandStackStroke": {
         "required": [
@@ -10088,6 +10119,7 @@
           "channels",
           "layers",
           "previews",
+          "seed",
           "settled",
           "model"
         ],
@@ -10180,6 +10212,12 @@
               "string"
             ],
             "description": "The bake its generators read, or null."
+          },
+          "seed": {
+            "type": "integer",
+            "description": "The number every procedural step derives from.",
+            "format": "uint32",
+            "default": 0
           }
         },
         "description": "A whole stack: everything a client needs to draw it, and no pixels."
