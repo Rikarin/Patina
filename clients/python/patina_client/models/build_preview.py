@@ -8,6 +8,7 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
+from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
@@ -39,6 +40,7 @@ class BuildPreview:
             items (list[BuildPreviewProject]): One page of the projects, by name.
             offset (int): The offset the page starts at.
             limit (int): The most items a page holds.
+            nothing (None | str | Unset): Why a build would write nothing, or null when it would write something.
      """
 
     projects: int
@@ -52,6 +54,7 @@ class BuildPreview:
     items: list[BuildPreviewProject]
     offset: int
     limit: int
+    nothing: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -87,6 +90,12 @@ class BuildPreview:
 
         limit = self.limit
 
+        nothing: None | str | Unset
+        if isinstance(self.nothing, Unset):
+            nothing = UNSET
+        else:
+            nothing = self.nothing
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -103,6 +112,8 @@ class BuildPreview:
             "offset": offset,
             "limit": limit,
         })
+        if nothing is not UNSET:
+            field_dict["nothing"] = nothing
 
         return field_dict
 
@@ -142,6 +153,16 @@ class BuildPreview:
 
         limit = d.pop("limit")
 
+        def _parse_nothing(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        nothing = _parse_nothing(d.pop("nothing", UNSET))
+
+
         build_preview = cls(
             projects=projects,
             rebuilds=rebuilds,
@@ -154,6 +175,7 @@ class BuildPreview:
             items=items,
             offset=offset,
             limit=limit,
+            nothing=nothing,
         )
 
 

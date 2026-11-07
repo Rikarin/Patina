@@ -6,6 +6,7 @@ import {
   type GraphCompound,
   type GraphEditResult,
   type GraphEvent,
+  type GraphEdgeState,
   type GraphInterfacePort,
   type GraphNodeType,
   type GraphSettingDefinition,
@@ -18,7 +19,8 @@ import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { LibrarySelection } from '../library/library-selection';
 import { DraftLayer } from './draft-layer';
 import { EditQueue } from './edit-queue';
-import { type GraphDocument, applyEvent, classify, documentOf } from './graph-model';
+import { wireFamily } from './graph-fields';
+import { type GraphDocument, applyEvent, classify, documentOf, edgeKey } from './graph-model';
 import { PreviewLoader } from './preview-loader';
 
 export type GraphSessionState =
@@ -104,6 +106,7 @@ export class GraphStore {
   private readonly mutableProblem = signal<string | null>(null);
   private readonly mutableNotice = signal<string | null>(null);
   private readonly mutableSelection = signal<ReadonlySet<number>>(new Set());
+  private readonly mutableShownPorts = signal<ReadonlySet<string>>(new Set());
   private readonly mutableLeaving = signal<GraphLeaving | null>(null);
   private readonly mutableSaveConflict = signal(false);
   private readonly mutableCompounds = signal<ReadonlyMap<string, GraphCompound>>(new Map());
@@ -157,6 +160,20 @@ export class GraphStore {
   /** Whether the Inspector shows the graph itself. */
   readonly graphInspected = this.mutableGraphInspected.asReadonly();
 
+  /** The number inputs someone asked to see on the canvas, by `edgeKey`, since a port is where a wire would arrive. */
+  readonly shownPorts = this.mutableShownPorts.asReadonly();
+
+  /**
+   * Whether anything in this graph can drive a number. Nothing in the catalogue outputs one, so today that is a
+   * compound's own number input, seen from inside it.
+   */
+  readonly hasNumberSource = computed(() => {
+    const types = this.types();
+    return [...(this.mutableDocument()?.nodes.values() ?? [])].some(node =>
+      types.get(node.type)?.ports.some(port => port.direction === 'Output' && port.kind !== 'Image')
+    );
+  });
+
   /** Whether anything open here differs from its file, on this level or one above it. */
   readonly unsaved = computed(
     () => (this.mutableDocument()?.history.dirty ?? false) || this.mutableTrail().some(crumb => crumb.dirty)
@@ -202,7 +219,27 @@ export class GraphStore {
     this.endSession();
     this.mutableTrail.set([]);
     this.mutableDocument.set(null);
+    this.mutableShownPorts.set(new Set());
     this.mutableSession.set({ kind: 'none' });
+  }
+
+  /** The wire arriving at an input, if it has one. */
+  wireInto(node: number, port: string): GraphEdgeState | undefined {
+    return this.mutableDocument()?.edges.get(edgeKey({ toNode: node, toPort: port }));
+  }
+
+  /**
+   * Shows or hides a number input's port on the canvas. This is a view of the graph, like the selection, so it is not
+   * saved: what needs keeping is the wire, and a wire keeps its port.
+   */
+  togglePort(node: number, port: string): void {
+    const key = edgeKey({ toNode: node, toPort: port });
+    const shown = new Set(this.mutableShownPorts());
+    if (!shown.delete(key)) {
+      shown.add(key);
+    }
+
+    this.mutableShownPorts.set(shown);
   }
 
   /** A node's thumbnail. */
@@ -225,9 +262,9 @@ export class GraphStore {
   }
 
   /** Writes a new graph into the library and opens it. The Server's refusal is what the caller shows. */
-  async create(name: string, project: string | null): Promise<void> {
+  async create(name: string, project: string | null, resolution: number | null = null): Promise<void> {
     const client = await this.reconnect();
-    const { path } = unwrap(await client.POST('/api/v1/library/graphs', { body: { name, project } }));
+    const { path } = unwrap(await client.POST('/api/v1/library/graphs', { body: { name, project, resolution } }));
     await this.open(path);
   }
 
@@ -563,13 +600,15 @@ export class GraphStore {
   async addNode(
     type: GraphNodeType,
     position: GraphPoint,
-    from?: { node: number; port: string; incoming: boolean }
+    from?: { node: number; port: string; incoming: boolean; family: string }
   ): Promise<void> {
     const reference = -1;
     const commands: GraphCommand[] = [{ op: 'addNode', type: type.path, x: position.x, y: position.y, ref: reference }];
     if (from) {
       const wanted = from.incoming ? 'Output' : 'Input';
-      const port = type.ports.find(candidate => candidate.direction === wanted && candidate.kind === 'Image');
+      const port = type.ports.find(
+        candidate => candidate.direction === wanted && wireFamily(candidate.kind) === from.family
+      );
       if (port) {
         commands.push(
           from.incoming
@@ -1339,6 +1378,7 @@ export class GraphStore {
     this.evaluateAsked = false;
     this.mutableDocument.set(null);
     this.mutableSelection.set(new Set());
+    this.mutableShownPorts.set(new Set());
     this.mutableNote.set(null);
     this.mutableGraphInspected.set(false);
     this.mutableCompounds.set(new Map());

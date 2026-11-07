@@ -195,6 +195,165 @@ public sealed class GraphProcessTests : IDisposable {
         }
     }
 
+    /// <summary>
+    ///     Issue 96. A radius is counted in texels of the authoring base, so a size that moves the base moves the
+    ///     radius, and a size that leaves the base alone is the same picture with more texels.
+    /// </summary>
+    [Fact]
+    public async Task The_same_graph_at_two_sizes_is_the_same_picture_resampled() {
+        using var deadline = Deadline(120);
+        var instance = await StartServerAsync(deadline.Token);
+        StartWorker();
+
+        var state = await http.OpenAsync(GraphTesting.Write(Library, Blurred(128), "small.vxtexgraph"), deadline.Token);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        await EvaluatedAsync(socket, state.Revision, deadline.Token);
+        var small = await OutputAsync(state, deadline.Token);
+
+        // Size is an edit like any other, and it compiles, because a plan is built for one size.
+        var edit = await http.EditAsync(
+            state.Id,
+            deadline.Token,
+            new GraphSetSetting(TextureSizes.GraphSetting, "256")
+        );
+        Assert.True((await EvaluatedAsync(socket, edit.Revision, deadline.Token)).Compiled);
+        var large = await OutputAsync(state, deadline.Token);
+
+        var rebased = await OutputAsync(instance, Blurred(256), "rebased.vxtexgraph", deadline.Token);
+
+        Assert.Equal((128, 128), (small.Width, small.Height));
+        Assert.Equal((256, 256), (large.Width, large.Height));
+        Assert.True(Distance(small, Halved(large)) < 2.0, $"{Distance(small, Halved(large))}");
+
+        // What the Width setting used to do, and the reason this comparison can fail at all.
+        Assert.True(Distance(small, Halved(rebased)) > 6.0, $"{Distance(small, Halved(rebased))}");
+
+        // A build asks for the same model, and gets the same bytes.
+        var baked = Path.Combine(folder.FullName, "bake-at-size");
+        var info = new ProcessStartInfo("dotnet") { RedirectStandardOutput = true, RedirectStandardError = true };
+        foreach (var argument in new[] {
+                     Engine.Dll("Patina.Cli", "patina"), "bake",
+                     GraphTesting.Write(Library, Blurred(128), "cli.vxtexgraph"), baked, "--size", "256"
+                 }) {
+            info.ArgumentList.Add(argument);
+        }
+
+        using var cli = Process.Start(info)!;
+        var error = cli.StandardError.ReadToEndAsync(deadline.Token);
+        await cli.StandardOutput.ReadToEndAsync(deadline.Token);
+        await cli.WaitForExitAsync(deadline.Token);
+        Assert.True(cli.ExitCode == 0, await error);
+        Assert.Equal(large.Pixels, PngCodec.Load(Path.Combine(baked, "baseColor.png")).Pixels);
+
+        // A number still reaches a plan built for another size without compiling it.
+        var slid = await http.EditAsync(state.Id, deadline.Token, new GraphSetValue(2, "Radius", [4f]));
+        Assert.False((await EvaluatedAsync(socket, slid.Revision, deadline.Token)).Compiled);
+    }
+
+    /// <summary>
+    ///     Issue 98: whether a flood settled depends on the mask, so only an evaluation can say, and it says so against
+    ///     the node. Both budgets, because a warning that cannot be absent proves nothing.
+    /// </summary>
+    [Theory]
+    [InlineData(4, true)]
+    [InlineData(256, false)]
+    public async Task A_flood_fill_that_ran_out_says_so_against_the_node(int iterations, bool warned) {
+        using var deadline = Deadline(120);
+        var (_, _, socket, first) = await OpenSampleAsync(Flooded(iterations), deadline.Token);
+        using (socket) {
+            var warnings = first.Diagnostics.Where(static d => d is { Severity: "Warning", Node: 2 }).ToList();
+            Assert.Equal(warned, warnings.Count == 1);
+            Assert.All(warnings, static warning => Assert.Equal("Iterations", warning.Port));
+        }
+    }
+
+    static NodeGraphAsset Flooded(int iterations) =>
+        new() {
+            Name = "Flooded",
+            Nodes = [
+                new() { Id = 1, Type = "Source/Noise", Values = new() { ["Scale"] = [48f] } },
+                new() {
+                    Id = 2, Type = "Analysis/Flood Fill", X = 300, Values = new() { ["Iterations"] = [iterations] }
+                },
+                new() { Id = 3, Type = "Output/Output", X = 600, Texts = new() { ["Usage"] = "baseColor" } }
+            ],
+            Edges = [
+                new() { FromNode = 1, FromPort = "Out", ToNode = 2, ToPort = "Mask" },
+                new() { FromNode = 2, FromPort = "Out", ToNode = 3, ToPort = "Input" }
+            ],
+            Settings = new() { ["seed"] = "7", ["baseWidth"] = "256", ["baseHeight"] = "256" }
+        };
+
+    /// <summary>A hard-edged picture and a blur wide enough for its radius to show in the result.</summary>
+    static NodeGraphAsset Blurred(int side) =>
+        new() {
+            Name = "Blurred",
+            Nodes = [
+                new() { Id = 1, Type = "Source/Checker", Values = new() { ["Scale X"] = [4f], ["Scale Y"] = [4f] } },
+                new() { Id = 2, Type = "Filters/Blur", X = 300, Values = new() { ["Radius"] = [8f] } },
+                new() { Id = 3, Type = "Output/Output", X = 600, Texts = new() { ["Usage"] = "baseColor" } }
+            ],
+            Edges = [
+                new() { FromNode = 1, FromPort = "Out", ToNode = 2, ToPort = "Input" },
+                new() { FromNode = 2, FromPort = "Out", ToNode = 3, ToPort = "Input" }
+            ],
+            Settings = new() { ["seed"] = "7", ["baseWidth"] = $"{side}", ["baseHeight"] = $"{side}" }
+        };
+
+    async Task<Bitmap> OutputAsync(
+        ServerInstance instance,
+        NodeGraphAsset asset,
+        string name,
+        CancellationToken cancellationToken
+    ) {
+        var state = await http.OpenAsync(GraphTesting.Write(Library, asset, name), cancellationToken);
+        using var socket = await FollowAsync(instance, state, cancellationToken);
+        await EvaluatedAsync(socket, state.Revision, cancellationToken);
+        return await OutputAsync(state, cancellationToken);
+    }
+
+    async Task<Bitmap> OutputAsync(GraphState state, CancellationToken cancellationToken) {
+        using var response = await http.PostAsJsonAsync(
+            $"/api/v1/graphs/{state.Id}/images",
+            new(3, "baseColor"),
+            ContractsJsonContext.Default.GraphImageRequest,
+            cancellationToken
+        );
+        response.EnsureSuccessStatusCode();
+        var image = (await response.Content.ReadFromJsonAsync(
+            ContractsJsonContext.Default.GraphImage,
+            cancellationToken
+        ))!;
+        return PngCodec.Decode(await http.GetByteArrayAsync($"/api/v1/previews/{image.Hash}", cancellationToken));
+    }
+
+    /// <summary>A picture at half the size, each texel the mean of the four it covers.</summary>
+    static Bitmap Halved(Bitmap picture) {
+        var (width, height) = (picture.Width / 2, picture.Height / 2);
+        var pixels = new byte[width * height * 4];
+        for (var y = 0; y < height; y++) {
+            for (var x = 0; x < width; x++) {
+                for (var lane = 0; lane < 4; lane++) {
+                    var sum = 0;
+                    for (var tap = 0; tap < 4; tap++) {
+                        sum += picture.Pixels[((y * 2 + (tap >> 1)) * picture.Width + x * 2 + (tap & 1)) * 4 + lane];
+                    }
+
+                    pixels[(y * width + x) * 4 + lane] = (byte)((sum + 2) / 4);
+                }
+            }
+        }
+
+        return new(width, height, pixels);
+    }
+
+    /// <summary>The mean difference of two pictures of one size, out of 255.</summary>
+    static double Distance(Bitmap a, Bitmap b) {
+        Assert.Equal((a.Width, a.Height), (b.Width, b.Height));
+        var (first, second) = (a.Pixels, b.Pixels);
+        return Enumerable.Range(0, first.Length).Average(at => Math.Abs(first[at] - second[at]));
+    }
+
     [Fact]
     public async Task A_big_graph_gets_small_previews_of_the_real_image() {
         using var deadline = Deadline(120);

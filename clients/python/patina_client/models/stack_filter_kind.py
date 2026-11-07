@@ -10,6 +10,8 @@ from ..types import UNSET, Unset
 
 from typing import cast
 
+if TYPE_CHECKING:
+  from ..models.graph_port_definition import GraphPortDefinition
 
 
 
@@ -25,11 +27,12 @@ class StackFilterKind:
 
         Attributes:
             kind (str): Levels, Hsl, Blur, Invert or Grayscale.
-            settings (list[str]): Its numbers' names.
+            settings (list[GraphPortDefinition]): Its numbers, each saying what it is and what it starts as, in the order a
+                person reads them.
      """
 
     kind: str
-    settings: list[str]
+    settings: list[GraphPortDefinition]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -37,9 +40,13 @@ class StackFilterKind:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.graph_port_definition import GraphPortDefinition # noqa: PLC0415
         kind = self.kind
 
-        settings = self.settings
+        settings = []
+        for settings_item_data in self.settings:
+            settings_item = settings_item_data.to_dict()
+            settings.append(settings_item)
 
 
 
@@ -57,10 +64,18 @@ class StackFilterKind:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.graph_port_definition import GraphPortDefinition # noqa: PLC0415
         d = dict(src_dict)
         kind = d.pop("kind")
 
-        settings = cast(list[str], d.pop("settings"))
+        settings = []
+        _settings = d.pop("settings")
+        for settings_item_data in (_settings):
+            settings_item = GraphPortDefinition.from_dict(settings_item_data)
+
+
+
+            settings.append(settings_item)
 
 
         stack_filter_kind = cls(

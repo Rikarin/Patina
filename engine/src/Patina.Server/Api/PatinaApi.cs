@@ -19,7 +19,15 @@ static class PatinaApi {
                 "/system",
                 static (ServerIdentity identity, WorkerLink worker) =>
                     TypedResults.Ok(
-                        new SystemInfo(ProductInfo.Version, ApiVersion, identity.Library, Host(), worker.Status)
+                        new SystemInfo(
+                            ProductInfo.Version,
+                            ApiVersion,
+                            identity.Library,
+                            Host(),
+                            worker.Status,
+                            TextureSizes.Sides,
+                            TextureSizes.Default
+                        )
                     )
             )
             .WithName("GetSystem")

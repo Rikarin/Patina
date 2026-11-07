@@ -42,6 +42,10 @@ function provide(library: () => Response, projects: () => Response = () => Respo
       return Promise.resolve(library());
     }
 
+    if (path.endsWith('/system')) {
+      return Promise.resolve(Response.json({ textureSides: [1024, 2048], defaultTextureSide: 2048 }));
+    }
+
     return Promise.resolve(path.endsWith('/library/projects') ? projects() : Response.json(nothing));
   };
   TestBed.configureTestingModule({

@@ -28,7 +28,8 @@ class StackBrush:
             radius (float): In texels, or in the units of the picture for a stroke with a view.
             flow (float): How much one stamp lays down, 0 to 1. Default: 1.0.
             opacity (float): How much a whole stroke can lay down, 0 to 1. Default: 1.0.
-            spacing (float): How far apart stamps are, as a share of the radius. Default: 0.15.
+            spacing (float): How far apart stamps are, as a share of the radius: above zero, and above 2 leaves gaps.
+                Default: 0.15.
             falloff (float): How soft its edge is, 0 to 1. Default: 0.5.
             angle (float): Its fixed rotation, in radians. Default: 0.0.
             rotation (str): fixed, along or random. Default: 'fixed'.

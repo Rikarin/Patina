@@ -21,7 +21,7 @@ T = TypeVar("T", bound="StackCommandStackAddLayerValuesType1")
 
 @_attrs_define
 class StackCommandStackAddLayerValuesType1:
-    """ What a fill writes to each channel, as four numbers. Ignored for other kinds.
+    """ What a fill writes to each channel, as four numbers, or null for the default of each one. Ignored for other kinds.
 
      """
 

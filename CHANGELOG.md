@@ -64,6 +64,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `mips: True` in a preset is refused. It used to mean no mips.
 - Fractional opacity exports as it is. All five presets wrote it through sRGB, so 0.5 came out as 0.735.
 - `1-map` lanes in an sRGB file invert the value and not its encoded number, and a lane with no map goes through the file's encoding like any other.
+- Changing a graph's size no longer changes its picture. Graph settings has a Size, up to 8192, and Width and Height move under Authored At, where they keep their old meaning. New Graph and New Project start a graph at the chosen size, `patina bake` takes `--size`, and a `texture-graph` output takes a `size` setting.
+- Graph settings, New Graph, New Project and Bake offer the same sizes, 256 to 8192, from the Server.
+- Number wires show in the graph, and node accents and frames show all their colours: a wired number has a port and says what drives it, in place of a control that would do nothing, and Disconnect removes the wire. In a compound, the Inspector's port button on a number gives it a port to wire to, so a Float input can be connected.
+- Flood Fill finds whole islands of any width by default, at any size, and it and Distance work past 2048. If its Iterations run out on a very twisty mask, the graph says so.
 - Bake formats, export presets, job states and layer blend modes show plain names instead of internal ids.
 - The first stroke after opening a 4K stack no longer waits seconds for the maps to reach the mesh.
 - Save All on the quit dialog stays open and says why if a document could not be saved, instead of doing nothing or quitting without it.

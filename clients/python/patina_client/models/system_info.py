@@ -12,6 +12,7 @@ from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
+  from ..models.file_formats import FileFormats
   from ..models.host_info import HostInfo
   from ..models.worker_status import WorkerStatus
 
@@ -32,6 +33,9 @@ class SystemInfo:
             api_version (int): The major version of the REST API; it is the `v1` in the URL.
             host (HostInfo): The machine and runtime a process runs on.
             worker (WorkerStatus): The Worker as the Server sees it. All but `Connected` are null while there is none.
+            texture_sides (list[int]): The texture sides a client offers, smallest first.
+            default_texture_side (int): The side a new document gets when nobody says.
+            formats (FileFormats): What a client may offer, with the dot.
             library (None | str | Unset): The library this Server owns, or null when it was started without one.
      """
 
@@ -39,6 +43,9 @@ class SystemInfo:
     api_version: int
     host: HostInfo
     worker: WorkerStatus
+    texture_sides: list[int]
+    default_texture_side: int
+    formats: FileFormats
     library: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -47,6 +54,7 @@ class SystemInfo:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.file_formats import FileFormats # noqa: PLC0415
         from ..models.host_info import HostInfo # noqa: PLC0415
         from ..models.worker_status import WorkerStatus # noqa: PLC0415
         version = self.version
@@ -56,6 +64,14 @@ class SystemInfo:
         host = self.host.to_dict()
 
         worker = self.worker.to_dict()
+
+        texture_sides = self.texture_sides
+
+
+
+        default_texture_side = self.default_texture_side
+
+        formats = self.formats.to_dict()
 
         library: None | str | Unset
         if isinstance(self.library, Unset):
@@ -71,6 +87,9 @@ class SystemInfo:
             "apiVersion": api_version,
             "host": host,
             "worker": worker,
+            "textureSides": texture_sides,
+            "defaultTextureSide": default_texture_side,
+            "formats": formats,
         })
         if library is not UNSET:
             field_dict["library"] = library
@@ -81,6 +100,7 @@ class SystemInfo:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.file_formats import FileFormats # noqa: PLC0415
         from ..models.host_info import HostInfo # noqa: PLC0415
         from ..models.worker_status import WorkerStatus # noqa: PLC0415
         d = dict(src_dict)
@@ -94,6 +114,16 @@ class SystemInfo:
 
 
         worker = WorkerStatus.from_dict(d.pop("worker"))
+
+
+
+
+        texture_sides = cast(list[int], d.pop("textureSides"))
+
+
+        default_texture_side = d.pop("defaultTextureSide")
+
+        formats = FileFormats.from_dict(d.pop("formats"))
 
 
 
@@ -113,6 +143,9 @@ class SystemInfo:
             api_version=api_version,
             host=host,
             worker=worker,
+            texture_sides=texture_sides,
+            default_texture_side=default_texture_side,
+            formats=formats,
             library=library,
         )
 

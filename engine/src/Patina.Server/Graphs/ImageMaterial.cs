@@ -1,5 +1,6 @@
 using Patina.Contracts;
 using Patina.Library;
+using System.Globalization;
 
 namespace Patina.Server.Graphs;
 
@@ -35,7 +36,7 @@ static class ImageMaterial {
                             groups: []
                             comments: []
                             interface: []
-                            settings: { baseWidth: '2048', baseHeight: '2048', seed: '1' }
+                            settings: { baseWidth: '2048', baseHeight: '2048', seed: '1', size: 'SIZE' }
                             parameters: []
                             """;
 
@@ -56,7 +57,12 @@ static class ImageMaterial {
         var quoted = picture.Replace("'", "''", StringComparison.Ordinal);
         var name = request.Name.Replace("'", "''", StringComparison.Ordinal);
         var text = Template.Replace("NAME", name, StringComparison.Ordinal)
-            .Replace("PICTURE", quoted, StringComparison.Ordinal);
+            .Replace("PICTURE", quoted, StringComparison.Ordinal)
+            .Replace(
+                "SIZE",
+                (request.Resolution ?? TextureSizes.Default).ToString(CultureInfo.InvariantCulture),
+                StringComparison.Ordinal
+            );
         File.WriteAllText(library.ProjectFile(request.Project, file), GraphDocuments.Text(GraphDocuments.Parse(text)));
         library.AddDocument(request.Project, DocumentKinds.ImageMaterial, file, request.Name, null);
     }

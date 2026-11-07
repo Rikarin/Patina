@@ -23,7 +23,7 @@ class ViewportEnvironmentRequest:
     """ Chooses what lights the model.
 
         Attributes:
-            source (str): A built-in room (studio, overcast or sunset), or the path of an `.hdr` panorama.
+            source (str): A built-in room (studio, overcast or sunset), or the path of an `.hdr` or `.exr` panorama.
      """
 
     source: str

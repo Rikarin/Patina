@@ -45,6 +45,16 @@ public sealed class SystemApiTests : IDisposable {
     }
 
     [Fact]
+    public async Task There_is_one_list_of_sizes_and_a_client_reads_it_from_the_server() {
+        using var client = server.AuthorisedClient();
+
+        var system = await SystemAsync(client);
+
+        Assert.Equal([256, 512, 1024, 2048, 4096, 8192], system!.TextureSides);
+        Assert.Contains(system.DefaultTextureSide, system.TextureSides);
+    }
+
+    [Fact]
     public async Task System_says_what_the_server_is() {
         using var client = server.AuthorisedClient();
 

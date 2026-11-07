@@ -15,6 +15,7 @@ from .export_preset_file import ExportPresetFile
 from .export_preset_info import ExportPresetInfo
 from .export_preset_list import ExportPresetList
 from .export_report import ExportReport
+from .file_formats import FileFormats
 from .folder_create_request import FolderCreateRequest
 from .folder_list import FolderList
 from .folder_summary import FolderSummary
@@ -121,6 +122,8 @@ from .project_document_request import ProjectDocumentRequest
 from .project_document_role_request import ProjectDocumentRoleRequest
 from .project_duplicate_request import ProjectDuplicateRequest
 from .project_file import ProjectFile
+from .project_file_request import ProjectFileRequest
+from .project_mesh_change import ProjectMeshChange
 from .project_mesh_info import ProjectMeshInfo
 from .project_mesh_request import ProjectMeshRequest
 from .project_page import ProjectPage
@@ -153,6 +156,8 @@ from .stack_command_stack_set_layer_textures_type_1 import StackCommandStackSetL
 from .stack_command_stack_set_layer_values_type_1 import StackCommandStackSetLayerValuesType1
 from .stack_command_stack_set_model import StackCommandStackSetModel
 from .stack_command_stack_set_model_op import StackCommandStackSetModelOp
+from .stack_command_stack_set_seed import StackCommandStackSetSeed
+from .stack_command_stack_set_seed_op import StackCommandStackSetSeedOp
 from .stack_command_stack_stroke import StackCommandStackStroke
 from .stack_command_stack_stroke_op import StackCommandStackStrokeOp
 from .stack_create_request import StackCreateRequest
@@ -186,6 +191,7 @@ from .stack_painted import StackPainted
 from .stack_pixels import StackPixels
 from .stack_placement import StackPlacement
 from .stack_preview import StackPreview
+from .stack_problem import StackProblem
 from .stack_stamp import StackStamp
 from .stack_state import StackState
 from .stack_summary import StackSummary
@@ -226,6 +232,7 @@ __all__ = (
     "ExportPresetInfo",
     "ExportPresetList",
     "ExportReport",
+    "FileFormats",
     "FolderCreateRequest",
     "FolderList",
     "FolderSummary",
@@ -332,6 +339,8 @@ __all__ = (
     "ProjectDocumentRoleRequest",
     "ProjectDuplicateRequest",
     "ProjectFile",
+    "ProjectFileRequest",
+    "ProjectMeshChange",
     "ProjectMeshInfo",
     "ProjectMeshRequest",
     "ProjectPage",
@@ -364,6 +373,8 @@ __all__ = (
     "StackCommandStackSetLayerValuesType1",
     "StackCommandStackSetModel",
     "StackCommandStackSetModelOp",
+    "StackCommandStackSetSeed",
+    "StackCommandStackSetSeedOp",
     "StackCommandStackStroke",
     "StackCommandStackStrokeOp",
     "StackCreateRequest",
@@ -397,6 +408,7 @@ __all__ = (
     "StackPixels",
     "StackPlacement",
     "StackPreview",
+    "StackProblem",
     "StackStamp",
     "StackState",
     "StackSummary",

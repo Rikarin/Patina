@@ -45,6 +45,7 @@ class StackState:
             previews (list[StackPreview]): The newest maps.
             settled (int): The newest revision an evaluation has reached.
             model (str): The mesh it is painted on, as the document names it, or empty.
+            seed (int): The number every procedural step derives from. Default: 0.
             evaluation (None | StackEvaluation | Unset):
             mesh_maps (None | str | Unset): The bake its generators read, or null.
      """
@@ -63,6 +64,7 @@ class StackState:
     previews: list[StackPreview]
     settled: int
     model: str
+    seed: int = 0
     evaluation: None | StackEvaluation | Unset = UNSET
     mesh_maps: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -120,6 +122,8 @@ class StackState:
 
         model = self.model
 
+        seed = self.seed
+
         evaluation: dict[str, Any] | None | Unset
         if isinstance(self.evaluation, Unset):
             evaluation = UNSET
@@ -152,6 +156,7 @@ class StackState:
             "previews": previews,
             "settled": settled,
             "model": model,
+            "seed": seed,
         })
         if evaluation is not UNSET:
             field_dict["evaluation"] = evaluation
@@ -225,6 +230,8 @@ class StackState:
 
         model = d.pop("model")
 
+        seed = d.pop("seed")
+
         def _parse_evaluation(data: object) -> None | StackEvaluation | Unset:
             if data is None:
                 return data
@@ -270,6 +277,7 @@ class StackState:
             previews=previews,
             settled=settled,
             model=model,
+            seed=seed,
             evaluation=evaluation,
             mesh_maps=mesh_maps,
         )

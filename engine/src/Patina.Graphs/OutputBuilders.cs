@@ -113,6 +113,11 @@ public sealed class OutputBuilders(
 
         var shelf = compounds.Of(CompoundFolders.Of(graph));
         var compiler = new TextureGraphCompiler(shelf.Registry) { SubGraphSource = shelf.Source };
+        var size = step.Settings.GetValueOrDefault(TextureSizes.OutputSetting);
+        if (GraphSize.Apply(compiler, model, size) is { } badSize) {
+            throw new InvalidDataException(badSize);
+        }
+
         var compilation = compiler.Compile(model);
         if (!compilation.Succeeded || compiler.Outputs.Length == 0) {
             var problems = string.Join(' ', compilation.Diagnostics.Select(static d => $"{d.Id}: {d.Message}"));
@@ -121,6 +126,7 @@ public sealed class OutputBuilders(
 
         var plan = compilation.Value;
         var outputs = compiler.Outputs;
+        List<string> warnings = [];
         var raw = gpu(() => {
                 var runner = evaluator();
                 using var uploads = new TextureUploads(runner.Device);
@@ -132,11 +138,15 @@ public sealed class OutputBuilders(
                 }
 
                 using var bake = runner.Evaluate(plan, uploads.Externals);
+                warnings.AddRange(
+                    compiler.Checks.Where(check => check.Failed(bake)).Select(static check => check.Problem.Message)
+                );
                 return [..bake.ReadRaw([..outputs.Select(static output => output.Image)])];
             }
         );
 
-        return Pictures(step, folder, [..outputs.Select(static o => o.Usage)], raw, GreenOf(step, GreenAxis.Down));
+        var usages = outputs.Select(static o => o.Usage).ToArray();
+        return Pictures(step, folder, usages, raw, GreenOf(step, GreenAxis.Down)) with { Warnings = warnings };
     }
 
     BuildManifest Stack(OutputStep step, string folder) {

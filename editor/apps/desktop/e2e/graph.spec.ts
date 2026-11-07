@@ -261,10 +261,9 @@ test('builds a tiling material from a new graph, down to its channels and full s
   // Settings: smaller, and a seed of its own.
   await window.getByTestId('graph-settings').click();
   await expect(window.getByTestId('inspector-title')).toHaveText('Tiling Rust');
-  await window.getByTestId('setting-baseWidth').getByRole('combobox').click();
+  await window.getByTestId('setting-size').getByRole('combobox').click();
   await window.getByRole('option', { name: '512' }).click();
-  await window.getByTestId('setting-baseHeight').getByRole('combobox').click();
-  await window.getByRole('option', { name: '512' }).click();
+  await window.screenshot({ path: join(shots, 'graph-settings-size.png') });
   await window.getByTestId('setting-seed').getByRole('spinbutton').fill('11');
   await window.getByTestId('setting-seed').getByRole('spinbutton').press('Enter');
   await expect(window.getByTestId('graph-unsaved')).toBeVisible();
@@ -338,7 +337,8 @@ test('builds a tiling material from a new graph, down to its channels and full s
   const file = readFileSync(join(library, 'projects', 'tiling-rust', 'tiling-rust.vxtexgraph'), 'utf8');
   expect(file).toContain('ramp:0 000000ff,0.45 a0522dff,1 ffffffff');
   expect(file).toMatch(/curve:r=0 0,0\.5 \d\.\d+,1 1;/);
-  expect(file).toContain("baseWidth: '512'");
+  expect(file).toContain("size: '512'");
+  expect(file).toContain("baseWidth: '1024'");
 });
 
 test('exposes a parameter, drives a number from it and edits its default', async () => {
@@ -540,6 +540,42 @@ test('copies a shipped compound beside the graph so that it can be edited', asyn
   await expect(window.getByTestId('graph-name')).toHaveText('Cells Copy');
   await expect(window.getByTestId('graph-add')).toBeEnabled();
   expect(existsSync(join(library, 'projects', 'graphs', 'Compounds', 'Patterns', 'Cells Copy.vxtexgraph'))).toBe(true);
+});
+
+test('draws the number wires of a compound, and unmakes and remakes one', async () => {
+  await openGraph();
+  await addNodeAt('Patterns/Brick', 60, 60);
+  await hashOf(thumbnail(Nodes + 1));
+  await window.getByTestId('graph-open-compound').click();
+  await window.getByTestId('graph-copy-compound').click();
+  await expect(window.getByTestId('graph-name')).toHaveText('Brick Copy');
+
+  // Columns and Rows reach the Tile's repeats, and a wired number has a port and no control.
+  const tile = 2;
+  const inputs = 4;
+  await expect(connector(tile, 'Repeat X')).toBeVisible();
+  await expect(connector(tile, 'Repeat Y')).toBeVisible();
+
+  // Drawn means seen: four wires, each with a colour, since a wire in an unset variable has a stroke of none.
+  const wires = window.locator('xui-node-graph svg path[stroke^="var(--color-chart"]');
+  await expect(wires).toHaveCount(4);
+  const strokes = await wires.evaluateAll(paths => paths.map(path => getComputedStyle(path).stroke));
+  expect(strokes.filter(stroke => stroke === 'none')).toEqual([]);
+  expect(new Set(strokes).size).toBe(2); // images and integers
+  await window.screenshot({ path: join(shots, 'graph-number-wires.png') });
+  await node(tile).locator('xui-graph-node-preview').click();
+  await expect(window.getByTestId('wired-Repeat X')).toContainText('Columns');
+
+  // Unmake it from the Inspector: the port goes with the wire, and a number has its control back.
+  await window.getByTestId('wired-Repeat X').getByRole('button').click();
+  await expect(connector(tile, 'Repeat X')).toHaveCount(0);
+  await expect(window.getByTestId('field-Repeat X').getByRole('spinbutton')).toBeVisible();
+
+  // Remake it from the port the Inspector shows.
+  await window.getByTestId('port-Repeat X').click();
+  await dragBetween(await centre(connector(inputs, 'Columns')), await centre(connector(tile, 'Repeat X')));
+  await expect(window.getByTestId('wired-Repeat X')).toContainText('Columns');
+  await window.screenshot({ path: join(shots, 'graph-number-wire-remade.png') });
 });
 
 test('a graph computes at 32 bits from its settings, and the file says so', async () => {

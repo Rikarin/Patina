@@ -2078,6 +2078,11 @@ export interface components {
       name: string;
       /** @description A project's path below `projects/` to put it in, or null for a new project of its own. */
       project?: null | string;
+      /**
+       * Format: int32
+       * @description The side it evaluates at. Null is 2048. Its authoring base does not depend on this.
+       */
+      resolution?: null | number;
     };
     /** @description What changed in the document, the same for an edit, an undo and a redo. */
     GraphDelta: {
@@ -2809,7 +2814,7 @@ export interface components {
       mesh?: null | string;
       /**
        * Format: int32
-       * @description The width and height of a stack it starts with. Null is 2048.
+       * @description The width and height of a stack it starts with, or the side a graph it starts with evaluates at. Null is 2048.
        */
       resolution?: null | number;
       /**
@@ -2889,7 +2894,7 @@ export interface components {
       mesh?: null | string;
       /**
        * Format: int32
-       * @description The width and height of a stack. Null is 2048.
+       * @description The width and height of a stack, or the side a graph evaluates at. Null is 2048.
        */
       resolution?: null | number;
       /** @description The picture an `image-material` starts from, on the Server's machine. */
@@ -3921,6 +3926,13 @@ export interface components {
       host: components['schemas']['HostInfo'];
       /** @description The Worker process as the Server sees it. */
       worker: components['schemas']['WorkerStatus'];
+      /** @description The texture sides a client offers, smallest first. */
+      textureSides: number[];
+      /**
+       * Format: int32
+       * @description The side a new document gets when nobody says.
+       */
+      defaultTextureSide: number;
       /** @description What can be read, for a client's file dialogs. */
       formats: components['schemas']['FileFormats'];
     };

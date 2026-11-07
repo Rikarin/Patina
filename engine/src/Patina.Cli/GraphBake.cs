@@ -17,8 +17,8 @@ namespace Patina.Cli;
 /// </summary>
 internal static class GraphBake {
     /// <summary>The options after the folder, or null when they are not options this takes.</summary>
-    public static (string? Library, string? MeshMaps)? Options(string[] options) {
-        (string? Library, string? MeshMaps) found = default;
+    public static (string? Library, string? MeshMaps, string? Size)? Options(string[] options) {
+        (string? Library, string? MeshMaps, string? Size) found = default;
         for (var at = 0; at + 1 < options.Length; at += 2) {
             switch (options[at]) {
                 case "--library":
@@ -26,6 +26,9 @@ internal static class GraphBake {
                     break;
                 case "--mesh-maps":
                     found.MeshMaps = Path.GetFullPath(options[at + 1]);
+                    break;
+                case "--size":
+                    found.Size = options[at + 1];
                     break;
                 default:
                     return null;
@@ -41,7 +44,14 @@ internal static class GraphBake {
     /// <param name="meshMaps">
     ///     The folder its Mesh Map nodes read a bake from, or null for the one chosen beside the graph, if any.
     /// </param>
-    public static int Run(string graph, string folder, string? library = null, string? meshMaps = null) {
+    /// <param name="size">The side to evaluate at, or null for the one the graph says.</param>
+    public static int Run(
+        string graph,
+        string folder,
+        string? library = null,
+        string? meshMaps = null,
+        string? size = null
+    ) {
         if (!File.Exists(graph)) {
             Console.Error.WriteLine($"There is no file at '{graph}'.");
             return 2;
@@ -58,6 +68,11 @@ internal static class GraphBake {
 
         var compounds = new CompoundShelf().Of(CompoundFolders.Of(graph));
         var compiler = new TextureGraphCompiler(compounds.Registry) { SubGraphSource = compounds.Source };
+        if (GraphSize.Apply(compiler, model, size) is { } badSize) {
+            Console.Error.WriteLine($"Nothing baked: {badSize}");
+            return 2;
+        }
+
         var compilation = compiler.Compile(model);
 
         foreach (var diagnostic in compilation.Diagnostics) {
@@ -94,6 +109,10 @@ internal static class GraphBake {
 
             using TexturePlanEvaluator evaluator = new(device);
             using var bake = evaluator.Evaluate(plan, uploads.Externals);
+
+            foreach (var check in compiler.Checks.Where(check => check.Failed(bake))) {
+                Console.Error.WriteLine($"{check.Problem.Id}: {check.Problem.Message}");
+            }
 
             Directory.CreateDirectory(folder);
 

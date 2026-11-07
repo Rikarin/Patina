@@ -16,3 +16,4 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0011](0011-export.md): presets as files, the green each source and engine uses, and a batch rebuild that is a plan from keys.
 - [0012](0012-documents.md): accepted: a project holds typed documents, each with its own workspace, joined by a material contract.
 - [0013](0013-paths.md): accepted: names in library files stay inside their folder, and API paths are the caller's.
+- [0014](0014-graph-size.md): accepted: a graph's size is separate from what it is authored at, with one list of sides.

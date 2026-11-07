@@ -36,6 +36,7 @@ class ProjectContents:
             documents (list[ProjectDocumentInfo]): What can be opened in it.
             bake_folder (str): Where its bakes go, below the library.
             bakes (list[ProjectFile]): The bakes it has.
+            pictures (list[ProjectFile]): The pictures brought in for layers and masks.
             auto_unwrap (bool): Whether a mesh with no UV layout is given one when it is set.
             preserve_paint (bool): Whether paint moves to a new mesh's layout.
      """
@@ -47,6 +48,7 @@ class ProjectContents:
     documents: list[ProjectDocumentInfo]
     bake_folder: str
     bakes: list[ProjectFile]
+    pictures: list[ProjectFile]
     auto_unwrap: bool
     preserve_paint: bool
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -88,6 +90,13 @@ class ProjectContents:
 
 
 
+        pictures = []
+        for pictures_item_data in self.pictures:
+            pictures_item = pictures_item_data.to_dict()
+            pictures.append(pictures_item)
+
+
+
         auto_unwrap = self.auto_unwrap
 
         preserve_paint = self.preserve_paint
@@ -103,6 +112,7 @@ class ProjectContents:
             "documents": documents,
             "bakeFolder": bake_folder,
             "bakes": bakes,
+            "pictures": pictures,
             "autoUnwrap": auto_unwrap,
             "preservePaint": preserve_paint,
         })
@@ -158,6 +168,16 @@ class ProjectContents:
             bakes.append(bakes_item)
 
 
+        pictures = []
+        _pictures = d.pop("pictures")
+        for pictures_item_data in (_pictures):
+            pictures_item = ProjectFile.from_dict(pictures_item_data)
+
+
+
+            pictures.append(pictures_item)
+
+
         auto_unwrap = d.pop("autoUnwrap")
 
         preserve_paint = d.pop("preservePaint")
@@ -170,6 +190,7 @@ class ProjectContents:
             documents=documents,
             bake_folder=bake_folder,
             bakes=bakes,
+            pictures=pictures,
             auto_unwrap=auto_unwrap,
             preserve_paint=preserve_paint,
         )

@@ -28,10 +28,13 @@ class GraphCreateRequest:
             name (str): The graph's name. The Server makes its file name from it.
             project (None | str | Unset): A project's path below `projects/` to put it in, or null for a new project of its
                 own.
+            resolution (int | None | Unset): The side it evaluates at. Null is 2048. Its authoring base does not depend on
+                this.
      """
 
     name: str
     project: None | str | Unset = UNSET
+    resolution: int | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -47,6 +50,12 @@ class GraphCreateRequest:
         else:
             project = self.project
 
+        resolution: int | None | Unset
+        if isinstance(self.resolution, Unset):
+            resolution = UNSET
+        else:
+            resolution = self.resolution
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -55,6 +64,8 @@ class GraphCreateRequest:
         })
         if project is not UNSET:
             field_dict["project"] = project
+        if resolution is not UNSET:
+            field_dict["resolution"] = resolution
 
         return field_dict
 
@@ -75,9 +86,20 @@ class GraphCreateRequest:
         project = _parse_project(d.pop("project", UNSET))
 
 
+        def _parse_resolution(data: object) -> int | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(int | None | Unset, data)
+
+        resolution = _parse_resolution(d.pop("resolution", UNSET))
+
+
         graph_create_request = cls(
             name=name,
             project=project,
+            resolution=resolution,
         )
 
 

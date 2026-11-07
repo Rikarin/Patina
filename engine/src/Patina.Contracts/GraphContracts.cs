@@ -484,7 +484,8 @@ public sealed record GraphImage(string Hash, int Width, int Height);
 /// <param name="Project">
 ///     A project's path below <c>projects/</c> to put it in, or null for a new project of its own.
 /// </param>
-public sealed record GraphCreateRequest(string Name, string? Project = null);
+/// <param name="Resolution">The side it evaluates at. Null is 2048. Its authoring base does not depend on this.</param>
+public sealed record GraphCreateRequest(string Name, string? Project = null, int? Resolution = null);
 
 /// <summary>A new graph's file.</summary>
 /// <param name="Path">Relative to the library, with forward slashes, as <c>POST /graphs</c> takes it.</param>

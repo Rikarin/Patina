@@ -653,6 +653,7 @@ public sealed class GraphApiTests : IDisposable {
                 [new GraphSetText(4, "Nope", "x")],
                 [new GraphSetSetting("nope", "1")],
                 [new GraphSetSetting("baseWidth", "0")],
+                [new GraphSetSetting(TextureSizes.GraphSetting, "300")],
                 [new GraphAddNode("Colour/Invert", 0, 0, 5)],
                 []
             ];

@@ -89,7 +89,7 @@ import { ProjectStore } from './project-store';
               data-testid="new-project-resolution"
               (change)="resolution.set(number($event))"
             >
-              @for (side of sides; track side) {
+              @for (side of sides(); track side) {
                 <option [value]="side" [selected]="side === resolution()">{{ side }} × {{ side }}</option>
               }
             </select>
@@ -136,6 +136,7 @@ export class NewProjectDialog {
   private readonly store = inject(LibraryStore);
   private readonly tree = inject(LibraryTreeStore);
   private readonly project = inject(ProjectStore);
+  private readonly status = inject(SystemStatus);
 
   readonly open = model(false);
   /** The folder it goes in, where empty is the top of the library. */
@@ -145,7 +146,7 @@ export class NewProjectDialog {
 
   protected readonly name = signal('');
   protected readonly canPick = desktop() !== undefined;
-  protected readonly sides = [512, 1024, 2048, 4096];
+  protected readonly sides = this.status.textureSides;
   protected readonly kinds = [
     { value: 'texturing', label: 'Texturing: paint a mesh' },
     { value: 'layered-material', label: 'Layered Material: layers with no mesh' },
@@ -156,7 +157,7 @@ export class NewProjectDialog {
   protected readonly mesh = signal('');
   protected readonly image = signal('');
   protected readonly imageName = computed(() => this.image().split(/[\\/]/u).pop() ?? '');
-  protected readonly resolution = signal(2048);
+  protected readonly resolution = linkedSignal(() => this.status.defaultTextureSide());
   protected readonly meshName = computed(() => this.mesh().split(/[\\/]/).pop() ?? '');
   protected readonly tags = signal<string[]>([]);
   protected readonly autoUnwrap = signal(true);

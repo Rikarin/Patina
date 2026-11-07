@@ -19,6 +19,7 @@ if TYPE_CHECKING:
   from ..models.stack_command_stack_remove_layer import StackCommandStackRemoveLayer
   from ..models.stack_command_stack_set_layer import StackCommandStackSetLayer
   from ..models.stack_command_stack_set_model import StackCommandStackSetModel
+  from ..models.stack_command_stack_set_seed import StackCommandStackSetSeed
   from ..models.stack_command_stack_stroke import StackCommandStackStroke
 
 
@@ -36,11 +37,11 @@ class StackCommandBatch:
         Attributes:
             commands (list[StackCommandStackAddChannel | StackCommandStackAddLayer | StackCommandStackMoveLayer |
                 StackCommandStackNestLayer | StackCommandStackRemoveLayer | StackCommandStackSetLayer |
-                StackCommandStackSetModel | StackCommandStackStroke]): The edits, in order.
+                StackCommandStackSetModel | StackCommandStackSetSeed | StackCommandStackStroke]): The edits, in order.
             label (None | str | Unset): What the undo step says.
      """
 
-    commands: list[StackCommandStackAddChannel | StackCommandStackAddLayer | StackCommandStackMoveLayer | StackCommandStackNestLayer | StackCommandStackRemoveLayer | StackCommandStackSetLayer | StackCommandStackSetModel | StackCommandStackStroke]
+    commands: list[StackCommandStackAddChannel | StackCommandStackAddLayer | StackCommandStackMoveLayer | StackCommandStackNestLayer | StackCommandStackRemoveLayer | StackCommandStackSetLayer | StackCommandStackSetModel | StackCommandStackSetSeed | StackCommandStackStroke]
     label: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -56,6 +57,7 @@ class StackCommandBatch:
         from ..models.stack_command_stack_remove_layer import StackCommandStackRemoveLayer # noqa: PLC0415
         from ..models.stack_command_stack_set_layer import StackCommandStackSetLayer # noqa: PLC0415
         from ..models.stack_command_stack_set_model import StackCommandStackSetModel # noqa: PLC0415
+        from ..models.stack_command_stack_set_seed import StackCommandStackSetSeed # noqa: PLC0415
         from ..models.stack_command_stack_stroke import StackCommandStackStroke # noqa: PLC0415
         commands = []
         for commands_item_data in self.commands:
@@ -73,6 +75,8 @@ class StackCommandBatch:
             elif isinstance(commands_item_data, StackCommandStackSetModel):
                 commands_item = commands_item_data.to_dict()
             elif isinstance(commands_item_data, StackCommandStackAddChannel):
+                commands_item = commands_item_data.to_dict()
+            elif isinstance(commands_item_data, StackCommandStackNestLayer):
                 commands_item = commands_item_data.to_dict()
             else:
                 commands_item = commands_item_data.to_dict()
@@ -109,12 +113,13 @@ class StackCommandBatch:
         from ..models.stack_command_stack_remove_layer import StackCommandStackRemoveLayer # noqa: PLC0415
         from ..models.stack_command_stack_set_layer import StackCommandStackSetLayer # noqa: PLC0415
         from ..models.stack_command_stack_set_model import StackCommandStackSetModel # noqa: PLC0415
+        from ..models.stack_command_stack_set_seed import StackCommandStackSetSeed # noqa: PLC0415
         from ..models.stack_command_stack_stroke import StackCommandStackStroke # noqa: PLC0415
         d = dict(src_dict)
         commands = []
         _commands = d.pop("commands")
         for commands_item_data in (_commands):
-            def _parse_commands_item(data: object) -> StackCommandStackAddChannel | StackCommandStackAddLayer | StackCommandStackMoveLayer | StackCommandStackNestLayer | StackCommandStackRemoveLayer | StackCommandStackSetLayer | StackCommandStackSetModel | StackCommandStackStroke:
+            def _parse_commands_item(data: object) -> StackCommandStackAddChannel | StackCommandStackAddLayer | StackCommandStackMoveLayer | StackCommandStackNestLayer | StackCommandStackRemoveLayer | StackCommandStackSetLayer | StackCommandStackSetModel | StackCommandStackSetSeed | StackCommandStackStroke:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
@@ -185,13 +190,23 @@ class StackCommandBatch:
                     return componentsschemas_stack_command_type_6
                 except (TypeError, ValueError, AttributeError, KeyError):
                     pass
+                try:
+                    if not isinstance(data, dict):
+                        raise TypeError()
+                    componentsschemas_stack_command_type_7 = StackCommandStackNestLayer.from_dict(data)
+
+
+
+                    return componentsschemas_stack_command_type_7
+                except (TypeError, ValueError, AttributeError, KeyError):
+                    pass
                 if not isinstance(data, dict):
                     raise TypeError()
-                componentsschemas_stack_command_type_7 = StackCommandStackNestLayer.from_dict(data)
+                componentsschemas_stack_command_type_8 = StackCommandStackSetSeed.from_dict(data)
 
 
 
-                return componentsschemas_stack_command_type_7
+                return componentsschemas_stack_command_type_8
 
             commands_item = _parse_commands_item(commands_item_data)
 

@@ -13,6 +13,7 @@ from typing import cast
 
 if TYPE_CHECKING:
   from ..models.stack_preview import StackPreview
+  from ..models.stack_problem import StackProblem
 
 
 
@@ -35,6 +36,7 @@ class StackEvaluation:
             milliseconds (float): How long the Worker took.
             previews (list[StackPreview]): The maps that changed.
             diagnostics (list[str]): Why it could not evaluate, or what it warned about.
+            problems (list[StackProblem]): What the compile said, by layer.
             error (None | str | Unset): Why the evaluation failed, or null.
      """
 
@@ -46,6 +48,7 @@ class StackEvaluation:
     milliseconds: float
     previews: list[StackPreview]
     diagnostics: list[str]
+    problems: list[StackProblem]
     error: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -55,6 +58,7 @@ class StackEvaluation:
 
     def to_dict(self) -> dict[str, Any]:
         from ..models.stack_preview import StackPreview # noqa: PLC0415
+        from ..models.stack_problem import StackProblem # noqa: PLC0415
         revision = self.revision
 
         compiled = self.compiled
@@ -78,6 +82,13 @@ class StackEvaluation:
 
 
 
+        problems = []
+        for problems_item_data in self.problems:
+            problems_item = problems_item_data.to_dict()
+            problems.append(problems_item)
+
+
+
         error: None | str | Unset
         if isinstance(self.error, Unset):
             error = UNSET
@@ -96,6 +107,7 @@ class StackEvaluation:
             "milliseconds": milliseconds,
             "previews": previews,
             "diagnostics": diagnostics,
+            "problems": problems,
         })
         if error is not UNSET:
             field_dict["error"] = error
@@ -107,6 +119,7 @@ class StackEvaluation:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.stack_preview import StackPreview # noqa: PLC0415
+        from ..models.stack_problem import StackProblem # noqa: PLC0415
         d = dict(src_dict)
         revision = d.pop("revision")
 
@@ -133,6 +146,16 @@ class StackEvaluation:
         diagnostics = cast(list[str], d.pop("diagnostics"))
 
 
+        problems = []
+        _problems = d.pop("problems")
+        for problems_item_data in (_problems):
+            problems_item = StackProblem.from_dict(problems_item_data)
+
+
+
+            problems.append(problems_item)
+
+
         def _parse_error(data: object) -> None | str | Unset:
             if data is None:
                 return data
@@ -152,6 +175,7 @@ class StackEvaluation:
             milliseconds=milliseconds,
             previews=previews,
             diagnostics=diagnostics,
+            problems=problems,
             error=error,
         )
 

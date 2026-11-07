@@ -84,7 +84,7 @@ def sync_detailed(
     body: ViewportEnvironmentRequest,
 
 ) -> Response[ProblemDetails | ViewportState]:
-    """ Chooses what lights the model: a built-in room, or an .hdr panorama.
+    """ Chooses what lights the model: a built-in room, or an .hdr or .exr panorama.
 
     Args:
         body (ViewportEnvironmentRequest): Chooses what lights the model.
@@ -115,7 +115,7 @@ def sync(
     body: ViewportEnvironmentRequest,
 
 ) -> ProblemDetails | ViewportState | None:
-    """ Chooses what lights the model: a built-in room, or an .hdr panorama.
+    """ Chooses what lights the model: a built-in room, or an .hdr or .exr panorama.
 
     Args:
         body (ViewportEnvironmentRequest): Chooses what lights the model.
@@ -141,7 +141,7 @@ async def asyncio_detailed(
     body: ViewportEnvironmentRequest,
 
 ) -> Response[ProblemDetails | ViewportState]:
-    """ Chooses what lights the model: a built-in room, or an .hdr panorama.
+    """ Chooses what lights the model: a built-in room, or an .hdr or .exr panorama.
 
     Args:
         body (ViewportEnvironmentRequest): Chooses what lights the model.
@@ -172,7 +172,7 @@ async def asyncio(
     body: ViewportEnvironmentRequest,
 
 ) -> ProblemDetails | ViewportState | None:
-    """ Chooses what lights the model: a built-in room, or an .hdr panorama.
+    """ Chooses what lights the model: a built-in room, or an .hdr or .exr panorama.
 
     Args:
         body (ViewportEnvironmentRequest): Chooses what lights the model.

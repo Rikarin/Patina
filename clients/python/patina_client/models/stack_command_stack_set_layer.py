@@ -57,6 +57,7 @@ class StackCommandStackSetLayer:
             placement (None | StackPlacement | Unset):
             parameters (None | StackCommandStackSetLayerParametersType1 | Unset): What a graph fill sets the graph's knobs
                 to, replacing what these names held.
+            filter_node (None | str | Unset): The compound a filter runs, or empty to go back to the named filter.
      """
 
     op: StackCommandStackSetLayerOp
@@ -78,6 +79,7 @@ class StackCommandStackSetLayer:
     planar_axis: None | str | Unset = UNSET
     placement: None | StackPlacement | Unset = UNSET
     parameters: None | StackCommandStackSetLayerParametersType1 | Unset = UNSET
+    filter_node: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -216,6 +218,12 @@ class StackCommandStackSetLayer:
         else:
             parameters = self.parameters
 
+        filter_node: None | str | Unset
+        if isinstance(self.filter_node, Unset):
+            filter_node = UNSET
+        else:
+            filter_node = self.filter_node
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -257,6 +265,8 @@ class StackCommandStackSetLayer:
             field_dict["placement"] = placement
         if parameters is not UNSET:
             field_dict["parameters"] = parameters
+        if filter_node is not UNSET:
+            field_dict["filterNode"] = filter_node
 
         return field_dict
 
@@ -527,6 +537,16 @@ class StackCommandStackSetLayer:
         parameters = _parse_parameters(d.pop("parameters", UNSET))
 
 
+        def _parse_filter_node(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        filter_node = _parse_filter_node(d.pop("filterNode", UNSET))
+
+
         stack_command_stack_set_layer = cls(
             op=op,
             layer=layer,
@@ -547,6 +567,7 @@ class StackCommandStackSetLayer:
             planar_axis=planar_axis,
             placement=placement,
             parameters=parameters,
+            filter_node=filter_node,
         )
 
 

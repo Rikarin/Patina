@@ -33,13 +33,15 @@ class StackCommandStackStroke:
         Attributes:
             op (StackCommandStackStrokeOp):
             stroke (str): A name the client chose for this drag.
-            layer (str): The paint layer.
+            layer (str): The paint layer, or for a mask any layer.
             channel (str): Which of its channels. Ignored for a mask.
             brush (StackBrush): A brush. Everything but the radius has the value a new brush has.
-            colour (list[float]): Red, green, blue and alpha, 0 to 1, which the first part decides.
+            colour (list[float]): Red, green, blue and alpha, 0 to 1, which the first part decides. A mask reads the red.
             stamps (list[StackStamp]): Where the brush went since the last part.
             open_ (bool): Whether more of this drag is coming. Default: False.
-            mask (bool): Whether this paints the layer's mask. Default: False.
+            mask (bool): Whether this paints the layer's mask. A flat mask becomes a canvas of what it showed; a mask that
+                is a picture
+                refuses, since nothing yet keeps that picture under paint. Default: False.
             curve (str): free follows the stamps; line and path run through them as control points when it ends. Default:
                 'free'.
             view (None | StackView | Unset):

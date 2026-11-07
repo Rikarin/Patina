@@ -7,8 +7,9 @@ switch (args) {
         return 0;
     case ["bake-maps", .. var options]:
         return MeshMapCommand.Run(options);
-    case ["bake", var graph, var folder, .. var options] when GraphBake.Options(options) is var (library, meshMaps):
-        return GraphBake.Run(graph, folder, library, meshMaps);
+    case ["bake", var graph, var folder, .. var options] when GraphBake.Options(options) is var (library, meshMaps,
+        size):
+        return GraphBake.Run(graph, folder, library, meshMaps, size);
     case ["build", .. var options]:
         return await BuildCommand.RunAsync(options);
     case ["library", "new", var path, .. var options]:
@@ -22,7 +23,7 @@ switch (args) {
             """
             Usage:
               patina version
-              patina bake <graph.vxtexgraph> <folder> [--library <path>] [--mesh-maps <bake folder>]
+              patina bake <graph.vxtexgraph> <folder> [--library <path>] [--mesh-maps <bake folder>] [--size <side>]
               patina cache prune <library> [--days <n>]
             """
             + "\n"

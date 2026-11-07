@@ -26,11 +26,13 @@ class ProjectFile:
             kind (str): What it is.
             name (str): Its name.
             path (str): Its path below the library.
+            stale (bool): For a bake, whether the mesh has changed since it was made. Default: False.
      """
 
     kind: str
     name: str
     path: str
+    stale: bool = False
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -44,6 +46,8 @@ class ProjectFile:
 
         path = self.path
 
+        stale = self.stale
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -51,6 +55,7 @@ class ProjectFile:
             "kind": kind,
             "name": name,
             "path": path,
+            "stale": stale,
         })
 
         return field_dict
@@ -66,10 +71,13 @@ class ProjectFile:
 
         path = d.pop("path")
 
+        stale = d.pop("stale")
+
         project_file = cls(
             kind=kind,
             name=name,
             path=path,
+            stale=stale,
         )
 
 

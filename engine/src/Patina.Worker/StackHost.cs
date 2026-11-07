@@ -118,7 +118,8 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
         var extended = GraphPreviews.Extend(
             plan,
             [..outputs.Select(static (output, index) => new GraphPreviewSource(index, output.Usage, output.Image))],
-            ask.PreviewSide
+            ask.PreviewSide,
+            []
         );
         using var thumbnails = stack.Run.Evaluate(extended.Plan);
         var stored = previews.Write(

@@ -38,6 +38,8 @@ class LibraryReport:
             files (int): Files written by exports.
             folder (str): The folder holding this report and one file per project.
             finished (datetime.datetime | None | Unset): When it finished, while it has not null.
+            nothing (None | str | Unset): Why a finished build wrote nothing, or null when it wrote something or something
+                failed.
      """
 
     build: str
@@ -52,6 +54,7 @@ class LibraryReport:
     files: int
     folder: str
     finished: datetime.datetime | None | Unset = UNSET
+    nothing: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -89,6 +92,12 @@ class LibraryReport:
         else:
             finished = self.finished
 
+        nothing: None | str | Unset
+        if isinstance(self.nothing, Unset):
+            nothing = UNSET
+        else:
+            nothing = self.nothing
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -107,6 +116,8 @@ class LibraryReport:
         })
         if finished is not UNSET:
             field_dict["finished"] = finished
+        if nothing is not UNSET:
+            field_dict["nothing"] = nothing
 
         return field_dict
 
@@ -160,6 +171,16 @@ class LibraryReport:
         finished = _parse_finished(d.pop("finished", UNSET))
 
 
+        def _parse_nothing(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        nothing = _parse_nothing(d.pop("nothing", UNSET))
+
+
         library_report = cls(
             build=build,
             started=started,
@@ -173,6 +194,7 @@ class LibraryReport:
             files=files,
             folder=folder,
             finished=finished,
+            nothing=nothing,
         )
 
 

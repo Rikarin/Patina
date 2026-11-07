@@ -33,6 +33,7 @@ class ProjectDocumentInfo:
             mesh (None | Unset | UUID): The id of the mesh it is on.
             role (None | str | Unset): What a graph is for: `material`, `mask`, `brush` or `filter`.
             material (None | str | Unset): The material of the mesh it paints, as one of the project's texture sets.
+            bake (None | str | Unset): The folder of the bake it reads, below the library, or null.
      """
 
     kind: str
@@ -42,6 +43,7 @@ class ProjectDocumentInfo:
     mesh: None | Unset | UUID = UNSET
     role: None | str | Unset = UNSET
     material: None | str | Unset = UNSET
+    bake: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -83,6 +85,12 @@ class ProjectDocumentInfo:
         else:
             material = self.material
 
+        bake: None | str | Unset
+        if isinstance(self.bake, Unset):
+            bake = UNSET
+        else:
+            bake = self.bake
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -99,6 +107,8 @@ class ProjectDocumentInfo:
             field_dict["role"] = role
         if material is not UNSET:
             field_dict["material"] = material
+        if bake is not UNSET:
+            field_dict["bake"] = bake
 
         return field_dict
 
@@ -173,6 +183,16 @@ class ProjectDocumentInfo:
         material = _parse_material(d.pop("material", UNSET))
 
 
+        def _parse_bake(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        bake = _parse_bake(d.pop("bake", UNSET))
+
+
         project_document_info = cls(
             kind=kind,
             name=name,
@@ -181,6 +201,7 @@ class ProjectDocumentInfo:
             mesh=mesh,
             role=role,
             material=material,
+            bake=bake,
         )
 
 

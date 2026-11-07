@@ -30,7 +30,8 @@ class ProjectCreateRequest:
             tags (list[str] | None | Unset): The project's tags.
             mesh (None | str | Unset): A mesh file on the Server's machine to copy in. Null leaves the project to get one
                 later.
-            resolution (int | None | Unset): The width and height of a stack it starts with. Null is 2048.
+            resolution (int | None | Unset): The width and height of a stack it starts with, or the side a graph it starts
+                with evaluates at. Null is 2048.
             kind (None | str | Unset): The document it starts with: `texturing`, `layered-material`, `image-material` or
                 `graph`.
                 Null is `texturing` with a mesh and nothing without one.

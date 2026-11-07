@@ -144,6 +144,41 @@ public sealed class OutputBuildersTests : IDisposable {
     }
 
     [Fact]
+    public void A_size_that_means_nothing_fails_the_build_and_leaves_nothing() {
+        var graph = Path.Combine(folder.FullName, "graph.vxtexgraph");
+        File.WriteAllText(graph, "name: Graph\nsettings: { baseWidth: '64', baseHeight: '64', seed: '1' }\n");
+        var made = Path.Combine(folder.FullName, "made");
+
+        var refused = Assert.Throws<BuildStepFailedException>(() => NoGpu()
+            .Build(
+                new(
+                    BuildTools.TextureGraph,
+                    [graph],
+                    [],
+                    new Dictionary<string, string> { [TextureSizes.OutputSetting] = "huge" },
+                    made,
+                    null
+                ),
+                1,
+                Token
+            )
+        );
+
+        Assert.Contains("huge", refused.Message, StringComparison.Ordinal);
+        Assert.Empty(folder.GetDirectories());
+    }
+
+    [Theory]
+    [InlineData(1024, 1024, 1024, 0)]
+    [InlineData(1024, 1024, 4096, -2)]
+    [InlineData(1024, 1024, 256, 2)]
+    [InlineData(2048, 1024, 4096, -1)] // the longer side
+    [InlineData(1024, 2048, 1024, 1)]
+    [InlineData(301, 167, 1024, -2)] // no step of the base lands on it, so the nearest does
+    public void A_side_is_the_nearest_whole_step_of_the_base(int width, int height, int side, int level) =>
+        Assert.Equal(level, TextureSizes.LevelOf(width, height, side));
+
+    [Fact]
     public void A_tool_nothing_builds_says_so() {
         var refused = Assert.Throws<BuildStepFailedException>(() => NoGpu()
             .Build(

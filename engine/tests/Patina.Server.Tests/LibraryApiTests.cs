@@ -155,6 +155,7 @@ public sealed class LibraryApiTests : IDisposable {
         Assert.Equal("Heavy Rust", state.Name);
         Assert.Empty(state.Nodes);
         Assert.Equal("1024", state.Settings["baseWidth"]);
+        Assert.Equal($"{TextureSizes.Default}", state.Settings[TextureSizes.GraphSetting]);
 
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(Token);
         deadline.CancelAfter(TimeSpan.FromSeconds(30));

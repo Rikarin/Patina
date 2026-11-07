@@ -41,6 +41,21 @@ export class SystemStatus {
   /** What a file dialog offers for an environment. */
   readonly environments = computed(() => this.formats()?.environments);
 
+  /** The texture sides the Server offers, so that every panel offers the same ones. Empty until it answers. */
+  readonly textureSides = computed<readonly number[]>(
+    () => {
+      const state = this.state();
+      return state.kind === 'online' ? state.system.textureSides : [];
+    },
+    { equal: (a, b) => a.join() === b.join() }
+  );
+
+  /** The side a new document starts at, or null until the Server answers. */
+  readonly defaultTextureSide = computed(() => {
+    const state = this.state();
+    return state.kind === 'online' ? state.system.defaultTextureSide : null;
+  });
+
   constructor() {
     inject(DestroyRef).onDestroy(() => {
       this.stopped = true;
