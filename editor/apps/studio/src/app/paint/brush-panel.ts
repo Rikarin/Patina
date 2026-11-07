@@ -12,7 +12,7 @@ import { type BrushSettings, type Mirror, PaintStore, type PaintTool } from './p
 const Tools: readonly { id: PaintTool; label: string; icon: string }[] = [
   { id: 'brush', label: 'Brush (B)', icon: 'matBrush' },
   { id: 'eraser', label: 'Eraser (E)', icon: 'matAutoFixOff' },
-  { id: 'picker', label: 'Picker (I)', icon: 'matColorize' },
+  { id: 'picker', label: 'Picker (C)', icon: 'matColorize' },
   { id: 'line', label: 'Line (L)', icon: 'matHorizontalRule' },
   { id: 'path', label: 'Path (P)', icon: 'matPolyline' }
 ];
@@ -81,6 +81,7 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number; min?: 
         class="well h-7 min-w-0 flex-1 px-1 text-sm"
         aria-label="Mirror"
         data-testid="paint-mirror"
+        [disabled]="!store.state()?.model"
         (change)="store.mirror.set(asMirror(text($event)))"
       >
         @for (mirror of mirrors; track mirror.value) {

@@ -397,6 +397,46 @@ describe('PaintStore', () => {
     });
   });
 
+  it('takes one point from a double click', () => {
+    const { store } = setup();
+    store.tool.set('path');
+    const gesture = new StrokeGesture(store, () => undefined);
+    for (const x of [1, 2, 2]) {
+      gesture.press({ x, y: 1, pressure: 1 });
+      gesture.release();
+    }
+
+    expect(gesture.points()).toHaveLength(2);
+  });
+
+  it('aims a path through the camera its first point was placed with', async () => {
+    const { store, picks } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    store.tool.set('path');
+    const camera = { yaw: 0, pitch: 0, distance: 2, panX: 0, panY: 0, panZ: 0, exposure: 1, lightRotation: 0 };
+    let yaw = 0;
+    const gesture = new StrokeGesture(store, () => ({
+      width: 100,
+      height: 100,
+      camera: { ...camera, yaw: yaw++ }
+    }));
+    for (const x of [10, 20, 30]) {
+      gesture.press({ x, y: 1, pressure: 1 });
+      gesture.release();
+    }
+
+    gesture.finish();
+    await vi.waitFor(() => expect(picks).toHaveLength(1));
+    expect((picks[0] as { camera: { yaw: number } }).camera.yaw).toBe(0);
+  });
+
+  it('lets go of a mask waiting for its colour', () => {
+    const { store } = setup();
+    store.picking.set('paint');
+    new StrokeGesture(store, () => undefined).cancel();
+    expect(store.picking()).toBeNull();
+  });
+
   it('times a stamp to the first frame that shows its revision, and not an earlier one', async () => {
     const { store, bodies } = setup();
     await store.open('/a/Crate.vxlayers', false);

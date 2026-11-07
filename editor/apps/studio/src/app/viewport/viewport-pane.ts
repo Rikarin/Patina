@@ -8,6 +8,7 @@ import {
   effect,
   inject,
   signal,
+  untracked,
   viewChild
 } from '@angular/core';
 import type { ViewportCameraState } from '@patina/api-client';
@@ -237,7 +238,18 @@ export class ViewportPane implements AfterViewInit {
     return this.viewport.error() ?? (this.viewport.mesh() ? null : 'Open a mesh to see it here.');
   });
 
+  /** Where the view is, and nothing about how it is lit. */
+  private readonly view = computed(() => {
+    const { yaw, pitch, distance, panX, panY, panZ } = this.viewport.camera();
+    return [yaw, pitch, distance, panX, panY, panZ].join();
+  });
+
   constructor() {
+    // A path's points are places on this picture, so one the view has left is painted as it was placed.
+    effect(() => {
+      this.view();
+      untracked(() => this.gesture.finish());
+    });
     effect(() => {
       const followed = this.followed();
       const document = this.graph.document();

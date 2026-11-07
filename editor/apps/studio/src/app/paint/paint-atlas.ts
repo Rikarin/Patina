@@ -30,6 +30,11 @@ import { StrokeGesture } from './stroke-gesture';
           </option>
         }
       </select>
+      @if (store.mirror() !== 'none' && state.model) {
+        <span class="readout absolute top-3 left-48 z-10 text-xs" data-testid="paint-mirror-mesh">
+          Mirror paints on the mesh, not here
+        </span>
+      }
     }
     @if (tiling()) {
       <button

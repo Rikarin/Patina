@@ -13,6 +13,9 @@ export class StrokeGesture {
   /** The points of a line or a path so far, for the pane to draw over itself. Nothing has been sent for these. */
   readonly points = signal<readonly StackStamp[]>([]);
 
+  /** What the points of a line or a path were placed through: a position on a picture means nothing without it. */
+  private placedOn: Aim | undefined;
+
   constructor(
     private readonly store: PaintStore,
     private readonly aim: () => Aim | undefined
@@ -26,10 +29,12 @@ export class StrokeGesture {
         this.store.begin(stamp, this.aim());
         break;
       case 'line':
+        this.placedOn = this.aim();
         this.points.set([stamp, stamp]);
         break;
       case 'path':
-        this.points.update(points => [...points, stamp]);
+        this.placedOn = this.points().length > 0 ? this.placedOn : this.aim();
+        this.points.update(points => (sameSpot(points.at(-1), stamp) ? points : [...points, stamp]));
         break;
       case 'picker':
         break;
@@ -75,13 +80,20 @@ export class StrokeGesture {
     }
   }
 
+  /** Lets go of whatever is under way: the points placed, and a mask waiting for its colour. */
   cancel(): void {
     this.points.set([]);
+    this.store.picking.set(null);
   }
 
   private commit(curve: 'line' | 'path'): void {
     const points = this.points();
     this.points.set([]);
-    void this.store.paintCurve(points, curve, this.aim());
+    void this.store.paintCurve(points, curve, this.placedOn);
   }
+}
+
+/** A double click is two presses in one place, and a second point there adds nothing. */
+function sameSpot(last: StackStamp | undefined, stamp: StackStamp): boolean {
+  return last?.x === stamp.x && last.y === stamp.y;
 }

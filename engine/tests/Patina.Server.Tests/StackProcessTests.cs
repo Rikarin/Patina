@@ -637,6 +637,34 @@ public sealed partial class StackProcessTests : IDisposable {
         Assert.True(runs > 5, $"{runs} separate marks along the row.");
     }
 
+    /// <summary>A line carries the pressure of its ends, as a drag carries every stamp's.</summary>
+    [Theory]
+    [InlineData("line")]
+    [InlineData("path")]
+    public async Task A_curve_keeps_its_pressure(string curve) {
+        using var deadline = Deadline(120);
+        var (_, state) = await StartAsync("Pressed.vxlayers", deadline.Token);
+        StackBrush brush = new(40f, Falloff: 0f, PressureSize: 1f);
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackStroke("hard", "paint", "baseColor", brush, Red, [new(100f, 200f, 1f), new(700f, 200f, 1f)], Curve: curve),
+            new StackStroke("light", "paint", "roughness", brush, Red, [new(100f, 200f, 0.1f), new(700f, 200f, 0.1f)], Curve: curve)
+        );
+        var maps = await ExportAsync(state.Id, Path.Combine(folder.FullName, "pressed"), deadline.Token);
+
+        var (hard, light) = (Height(maps, "baseColor"), Height(maps, "roughness"));
+
+        Assert.True(hard > light * 2, $"Pressed hard it is {hard} texels tall, and lightly {light}.");
+
+        static int Height(IReadOnlyList<StackPixels> maps, string usage) {
+            var map = PngCodec.Decode(File.ReadAllBytes(maps.Single(map => map.Usage == usage).File!));
+            var first = map.Pixels.AsSpan(0, 4).ToArray();
+            return Enumerable.Range(0, map.Height)
+                .Count(y => !map.Pixels.AsSpan((y * map.Width + 400) * 4, 4).SequenceEqual(first));
+        }
+    }
+
     async Task<string> MaskedFillAsync(string id, StackMask mask, CancellationToken token) {
         await EditAsync(id, token, new StackAddLayer("fill", "Tint", Tint));
         var fill = (await StateAsync(id, token)).Layers[^1].Id;

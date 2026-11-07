@@ -31,6 +31,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Line and path strokes keep a pen's pressure, and a path lands where its points were placed: moving the view paints what has been placed so far. Mirror says when it does not apply, the picker's tooltip names its real key, and Esc cancels picking a colour.
 - Smaller layer fixes: Add Generator no longer replaces a working mask, a graph fill chooses its graph in Properties, a filter from a graph can go back to a named one, the Layers channel select also changes what 2D View shows, the last mesh of a layer stays ticked, a brush on a channel the layer leaves alone says so instead of landing unseen, a new fill holds the defaults it shows, Delete Layers deletes layers with a mask in front, added layers are numbered, and colour selection masks have Softness. The stack's seed is in Properties.
 - A filter shows the numbers it really runs with, as sliders and switches like the graph Inspector's, rather than 0 until set. Brush spacing goes past where stamps touch, so a brush can lay a spaced pattern.
 - A new occlusion channel starts white, so the model no longer goes dark, and channels and blend modes that showed internal words have plain names.

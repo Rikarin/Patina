@@ -684,14 +684,15 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
         void Extend(Applied stroke, StackPaintPart part) {
             if (stroke.Curve is { } curve) {
                 foreach (var stamp in part.Stamps) {
-                    curve.Add(new(stamp.X, stamp.Y));
+                    curve.Add(new(stamp.X, stamp.Y), stamp.Pressure);
                 }
 
                 if (!part.Open) {
                     List<Vector2> points = [];
-                    curve.Sample(points);
-                    foreach (var point in points) {
-                        stroke.Stroke.MoveTo(point, dirtied);
+                    List<float> pressures = [];
+                    curve.Sample(points, pressures);
+                    foreach (var (point, pressure) in points.Zip(pressures)) {
+                        stroke.Stroke.MoveTo(point, dirtied, pressure);
                     }
                 }
             } else {
