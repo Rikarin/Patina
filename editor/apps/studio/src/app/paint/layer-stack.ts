@@ -23,6 +23,7 @@ import { MaterialUse } from './material-use';
 import { type LayerRow, PaintStore } from './paint-store';
 
 const RowHeight = 56;
+const EffectHeight = 32;
 
 /** One thing added to a layer's mask. No effect index means the generator that is the mask. */
 interface LayerWork {
@@ -221,7 +222,7 @@ interface MenuAt {
           [attr.data-testid]="'paint-layer-' + row.layer.id"
           [class.bg-selection]="store.selection().has(row.layer.id)"
           [class.opacity-50]="!row.layer.enabled"
-          [style.height.px]="rowHeight"
+          [style.height.px]="row.effect ? effectHeight : rowHeight"
           [style.padding-inline-start.px]="row.depth * 14 + 4"
           (click)="click($event, row.layer)"
           (contextmenu)="openMenu($event, row.layer)"
@@ -260,7 +261,11 @@ interface MenuAt {
             </svg>
           </button>
 
-          @if (row.layer.kind === 'group') {
+          @if (row.effect) {
+            <span class="text-foreground-muted grid size-5 shrink-0 place-items-center text-xs" data-testid="layer-effect-mark">
+              {{ mark(row.layer) }}
+            </span>
+          } @else if (row.layer.kind === 'group') {
             <button
               type="button"
               class="text-foreground-muted grid size-4 shrink-0 place-items-center"
@@ -353,26 +358,34 @@ interface MenuAt {
             }
           </span>
 
-          <button
-            type="button"
-            class="border-hairline bg-background text-foreground-muted grid size-8 shrink-0 place-items-center rounded-sm border text-xs"
-            data-testid="layer-mesh-mask"
-            [attr.aria-label]="'Meshes of ' + row.layer.name"
-            [attr.aria-pressed]="!!row.layer.mask.meshParts"
-            [class.bg-selection]="!!row.layer.mask.meshParts"
-            [title]="row.layer.mask.meshParts ? 'On some meshes' : 'On every mesh'"
-            (click)="$event.stopPropagation(); openMeshes($event, row.layer)"
-          >
-            <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
-              <path d="M2 2h12v12H2z" fill="none" stroke="currentColor" stroke-width="1.5" />
-              @if (row.layer.mask.meshParts) {
-                <path d="M2 2h6v6H2z" fill="currentColor" />
-              }
-            </svg>
-          </button>
+          @if (!row.effect) {
+            <button
+              type="button"
+              class="border-hairline bg-background text-foreground-muted grid size-8 shrink-0 place-items-center rounded-sm border text-xs"
+              data-testid="layer-mesh-mask"
+              [attr.aria-label]="'Meshes of ' + row.layer.name"
+              [attr.aria-pressed]="!!row.layer.mask.meshParts"
+              [class.bg-selection]="!!row.layer.mask.meshParts"
+              [title]="row.layer.mask.meshParts ? 'On some meshes' : 'On every mesh'"
+              (click)="$event.stopPropagation(); openMeshes($event, row.layer)"
+            >
+              <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
+                <path d="M2 2h12v12H2z" fill="none" stroke="currentColor" stroke-width="1.5" />
+                @if (row.layer.mask.meshParts) {
+                  <path d="M2 2h6v6H2z" fill="currentColor" />
+                }
+              </svg>
+            </button>
+          }
 
           <span
-            class="flex w-20 shrink-0 flex-col gap-2"
+            class="flex shrink-0"
+            [class.flex-col]="!row.effect"
+            [class.gap-1]="row.effect"
+            [class.gap-2]="!row.effect"
+            [class.items-center]="row.effect"
+            [class.w-20]="!row.effect"
+            [class.w-40]="row.effect"
             role="group"
             tabindex="-1"
             data-testid="layer-blending"
@@ -382,18 +395,20 @@ interface MenuAt {
             (pointerdown)="sliding.set(row.layer.id)"
           >
             <xui-select
-              class="w-full min-w-0 [&_button]:text-xs"
+              class="min-w-0 [&_button]:text-xs"
               style="--control-height-md: 1.375rem; --control-padding-md: 0.375rem"
               data-testid="paint-layer-blend"
               [ariaLabel]="'Blend mode of ' + row.layer.name"
               [filterable]="false"
+              [class.w-20]="row.effect"
+              [class.w-full]="!row.effect"
               [itemText]="blendLabel"
               [items]="blends()"
               [matchTargetWidth]="false"
               [value]="row.layer.blend"
               (valueChange)="setBlend(row.layer, $event)"
             />
-            <span class="flex items-center gap-1">
+            <span class="flex min-w-0 flex-1 items-center gap-1">
               <xui-slider
                 class="h-4 min-w-0 flex-1 pb-0"
                 labelStepSize="0"
@@ -408,6 +423,18 @@ interface MenuAt {
               <span class="readout w-7 shrink-0 text-end text-xs">{{ round(opacityOf(row.layer)) }}</span>
             </span>
           </span>
+
+          @if (row.effect) {
+            <button
+              type="button"
+              class="text-foreground-muted grid size-5 shrink-0 place-items-center"
+              data-testid="layer-effect-remove"
+              [attr.aria-label]="'Remove ' + row.layer.name"
+              (click)="$event.stopPropagation(); remove(row.layer)"
+            >
+              ×
+            </button>
+          }
 
         </div>
         @for (item of workOf(row.layer); track item.key) {
@@ -443,7 +470,7 @@ interface MenuAt {
               type="button"
               class="text-foreground-muted grid size-5 shrink-0 place-items-center"
               data-testid="layer-work-remove"
-              [attr.aria-label]="'Remove ' + item.name"
+              [attr.aria-label]="'Take off ' + item.name"
               (click)="removeWork(row.layer, item.effect)"
             >
               ×
@@ -579,15 +606,35 @@ interface MenuAt {
           >
           Add Generator
         </button>
-        @for (kind of ['Levels', 'Blur'] ; track kind) {
+        @if (!store.masking()) {
+          <button
+            type="button"
+            class="hover:bg-selection px-3 py-1 text-start"
+            role="menuitem"
+            data-testid="layer-menu-effect-paint"
+            (click)="addContent(at.layer, 'paint', 'Paint')"
+          >
+            Add Paint
+          </button>
+          <button
+            type="button"
+            class="hover:bg-selection px-3 py-1 text-start"
+            role="menuitem"
+            data-testid="layer-menu-effect-fill"
+            (click)="addContent(at.layer, 'fill', 'Fill')"
+          >
+            Add Fill
+          </button>
+        }
+        @for (kind of ['Levels', 'Blur', 'Invert']; track kind) {
           <button
             type="button"
             class="hover:bg-selection px-3 py-1 text-start"
             role="menuitem"
             [attr.data-testid]="'layer-menu-effect-' + kind"
-            (click)="addWork(at.layer, kind)"
+            (click)="addStep(at.layer, kind)"
           >
-            Add {{ kind }}
+            Add {{ kind }}{{ store.masking() ? ' to Mask' : '' }}
           </button>
         }
         <div class="border-hairline my-1 border-t"></div>
@@ -696,6 +743,7 @@ export class LayerStack {
     }
   }
   protected readonly rowHeight = RowHeight;
+  protected readonly effectHeight = EffectHeight;
   protected readonly closed = signal<ReadonlySet<string>>(new Set());
   protected readonly menu = signal<MenuAt | null>(null);
   protected readonly channels = computed(() => (this.store.state()?.channels ?? []).map(channel => channel.usage));
@@ -896,7 +944,7 @@ export class LayerStack {
   }
 
   protected hasContent(layer: StackLayer): boolean {
-    return layer.kind === 'filter' || (layer.kind === 'fill' && layer.fill !== 'Constant');
+    return layer.children.length > 0 && layer.kind !== 'group';
   }
 
   protected hasMaskWork(layer: StackLayer): boolean {
@@ -944,6 +992,22 @@ export class LayerStack {
         effects: [...(layer.mask.effects ?? []), { node, enabled: true }]
       });
     }
+  }
+
+  /** The layer an effect goes in: an effect has none of its own, so the next goes beside it. */
+  private ownerOf(layer: StackLayer): StackLayer {
+    const row = this.store.layers().find(held => held.layer.id === layer.id);
+    return row?.effect ? (this.store.layers().find(held => held.layer.id === row.parent)?.layer ?? layer) : layer;
+  }
+
+  protected async addContent(layer: StackLayer, kind: string, name: string, filter?: string): Promise<void> {
+    this.menu.set(null);
+    await this.store.addEffect(this.ownerOf(layer), kind, name, filter);
+  }
+
+  /** With the mask in front a step runs on the mask, and otherwise on the layer's content. */
+  protected addStep(layer: StackLayer, kind: string): Promise<void> {
+    return this.store.masking() ? this.addWork(layer, kind) : this.addContent(layer, 'filter', kind, kind);
   }
 
   protected async addValueMask(layer: StackLayer, value: number): Promise<void> {

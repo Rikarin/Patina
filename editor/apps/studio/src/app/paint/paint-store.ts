@@ -48,15 +48,25 @@ const NeedsBake = 'Needs a bake: ';
 export interface LayerRow {
   layer: StackLayer;
   depth: number;
-  /** The folder it is in, or null at the top of the stack. */
+  /** The folder or layer it is in, or null at the top of the stack. */
   parent: string | null;
+  /** Whether it is an effect inside a layer rather than a layer of the stack. */
+  effect: boolean;
 }
 
 /** The stack as a list, each group above what it holds. */
-export function rowsOf(layers: readonly StackLayer[], depth = 0, parent: string | null = null): LayerRow[] {
+export function rowsOf(
+  layers: readonly StackLayer[],
+  depth = 0,
+  parent: string | null = null,
+  effect = false
+): LayerRow[] {
   return [...layers]
     .reverse()
-    .flatMap(layer => [{ layer, depth, parent }, ...rowsOf(layer.children, depth + 1, layer.id)]);
+    .flatMap(layer => [
+      { layer, depth, parent, effect },
+      ...rowsOf(layer.children, depth + 1, layer.id, layer.kind !== 'group')
+    ]);
 }
 
 /** Where a client follows a stack from. */
@@ -287,6 +297,18 @@ export class PaintStore {
   }
 
   /** Adds a layer at the top of the stack, or of the chosen group, and chooses it. */
+  /** Adds an effect inside a layer, over its content and under its mask, and chooses it. */
+  async addEffect(layer: StackLayer, kind: string, name: string, filter?: string): Promise<void> {
+    const before = new Set(this.layers().map(row => row.layer.id));
+    await this.command({ commands: [{ op: 'addLayer', kind, name, parent: layer.id, filter: filter ?? null }] });
+    await this.refresh();
+    const added = this.layers().find(row => !before.has(row.layer.id));
+    if (added) {
+      this.layer.set(added.layer.id);
+      this.masking.set(false);
+    }
+  }
+
   /** The named meshes in this texture set, which a layer can be kept to. */
   async meshParts(): Promise<readonly string[]> {
     const id = this.state()?.id;

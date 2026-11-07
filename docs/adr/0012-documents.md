@@ -186,6 +186,9 @@ panes: they are dialogs started from a Texturing document, which already knows i
    stack, so each has its own layers, maps, undo and save. The viewport wears a model's sets together, the Server holding open those
    no tab has, and a stroke reaches only its own material's triangles. ⚠ A mesh written by Auto Unwrap is one material, so one set.
 
+8. **Effects inside layers:** built. The children of any layer that is not a group are its effects: a small stack run over its
+   content, after its projection and inside its mask. They are ordinary layers, so saving, undo and paint files need nothing new.
+
 ## Open questions
 
 1. **Project naming.** This keeps Project as the container with typed documents, while InstaMAT calls the document the project. If you

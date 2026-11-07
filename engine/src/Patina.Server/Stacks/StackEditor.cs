@@ -349,10 +349,8 @@ public sealed class StackEditor : ILayerStackDocument {
             return new(set, null, Set.Layers.Count);
         }
 
-        var group = Require(parent);
-        return group.Kind == LayerKind.Group
-            ? new(set, parent, group.Children.Count)
-            : throw new StackEditRefusedException($"'{group.Name}' is not a group.");
+        // A group holds layers, and any other layer holds its effects: both are children.
+        return new(set, parent, Require(parent).Children.Count);
     }
 
     void Nest(StackNestLayer nest, string set, Action<IAuthoringCommand> run) {

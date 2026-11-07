@@ -260,10 +260,38 @@ test('a layer keeps to named meshes, a folder takes a mask, and the mesh reloads
   await expect.poll(() => greenAt(0.75), { timeout: 30_000 }).toBeLessThan(200);
   expect(await greenAt(0.25)).toBeGreaterThan(200);
 
-  const fillLayer = window.locator('[data-testid^=paint-layer-fill]');
+  const fillLayer = window.locator('[data-testid^=paint-layer-fill]').first();
+  await fillLayer.click({ button: 'right' });
+  await window.getByTestId('layer-menu-effect-fill').click();
+  await expect(fillLayer.getByTestId('layer-content-mark')).toHaveClass(/bg-warning/);
+  await expect(window.getByTestId('layer-effect-mark')).toHaveCount(1);
+  await window.getByTestId('paint-fill-baseColor').locator('button').first().click();
+  await window.getByRole('textbox', { name: 'Hex color' }).fill('#ff0000');
+  await window.getByRole('textbox', { name: 'Hex color' }).press('Enter');
+  await window.keyboard.press('Escape');
+  // Inside the layer it keeps to the layer's meshes: red on the lid, and nothing on the hinge.
+  const redAt = (across: number): Promise<number> =>
+    window.getByTestId('paint-picture').evaluate((image, x) => {
+      const canvas = globalThis.document.createElement('canvas');
+      [canvas.width, canvas.height] = [64, 64];
+      const context = canvas.getContext('2d');
+      context?.drawImage(image as HTMLImageElement, 0, 0, 64, 64);
+      return context?.getImageData(Math.floor(x * 64), 32, 1, 1).data[0] ?? 0;
+    }, across);
+  await expect.poll(() => redAt(0.25), { timeout: 30_000 }).toBeGreaterThan(200);
+  expect(await greenAt(0.25)).toBeLessThan(50);
+  expect(await redAt(0.75)).toBeLessThan(200);
+  await window.getByTestId('layer-effect-remove').click();
+  await expect(window.getByTestId('layer-effect-mark')).toHaveCount(0);
+  await expect.poll(() => greenAt(0.25), { timeout: 30_000 }).toBeGreaterThan(200);
+
+  await fillLayer.click();
+  await fillLayer.click({ button: 'right' });
+  await window.getByTestId('layer-menu-mask-white').click();
+  await expect(fillLayer.getByTestId('layer-mask')).toBeVisible();
+  await fillLayer.getByTestId('layer-mask').click();
   await fillLayer.click({ button: 'right' });
   await window.getByTestId('layer-menu-effect-Levels').click();
-  await expect(fillLayer.getByTestId('layer-mask')).toBeVisible();
   await expect(fillLayer.getByTestId('layer-mask-mark')).toHaveClass(/bg-warning/);
   await expect(window.getByTestId('layer-work')).toContainText('Levels');
   await window.getByTestId('layer-work-remove').click();
@@ -338,8 +366,13 @@ test('layers of every kind compose on the mesh', async () => {
   await window.keyboard.press('Escape');
   await expect.poll(async () => changed(before, await shot()), { timeout: 30_000 }).toBeGreaterThan(2000);
 
-  const blend = window.getByRole('combobox', { name: 'Blend mode' });
-  await blend.click();
+  await window
+    .locator('[data-testid^=paint-layer-fill]')
+    .first()
+    .getByTestId('paint-layer-blend')
+    .locator('button')
+    .first()
+    .click();
   await window.getByRole('option', { name: 'Multiply', exact: true }).click();
   await expect(window.getByTestId('paint-layers')).toContainText('Multiply');
 

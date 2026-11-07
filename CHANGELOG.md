@@ -9,6 +9,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Project Settings holds the project's mesh, Auto Unwrap and Preserve Paint. A mesh with no UVs gets a layout in a new file beside it, when it is set or from the error's Unwrap Mesh button.
 - A layer can be kept to named meshes, from the square on the right of its row. It combines with any mask the layer has.
+- Effects inside layers: a layer can hold paint, fills and filters, each with its own blend, opacity and eye, over its content and under its mask.
 - Each layer row has a small blend dropdown and opacity slider on its right, beside the mesh square.
 - A Texture Sets pane sits over Layers, whose toolbar is icons with a channel dropdown. Layers show a shaded sphere, a mask icon and an orange mark when something has been added, with mask steps listed under the layer.
 - The layer menu adds white, black and bitmap masks, inverts a mask, adds generators, Levels and Blur, and groups layers (Cmd+G). Properties has headed sections.
