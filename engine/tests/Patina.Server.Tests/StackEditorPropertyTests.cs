@@ -87,6 +87,35 @@ public sealed class StackEditorPropertyTests {
 
     /// <summary>A first stroke names the file, and undoing it takes the name back.</summary>
     [Fact]
+    public void A_channel_can_be_added_once_and_undone() {
+        var editor = new StackEditor("/tmp/Crate.vxlayers", Sample());
+        var before = editor.Set.Channels.Count;
+
+        editor.Apply(new([new StackAddChannel("height")]));
+
+        Assert.Equal(before + 1, editor.Set.Channels.Count);
+        Assert.Throws<StackEditRefusedException>(() => editor.Apply(new([new StackAddChannel("height")])));
+        Assert.Throws<StackEditRefusedException>(() => editor.Apply(new([new StackAddChannel("sparkle")])));
+        Assert.NotNull(editor.Undo());
+        Assert.Equal(before, editor.Set.Channels.Count);
+    }
+
+    [Fact]
+    public void One_stroke_can_paint_several_channels_as_one_step() {
+        var editor = new StackEditor("/tmp/Crate.vxlayers", Sample());
+        editor.Apply(new([new StackAddChannel("roughness")]));
+
+        editor.Apply(new([Stroke("a", true, 2), Stroke("a", true, 2) with { Channel = "roughness" }]));
+        editor.Apply(new([Stroke("a", false, 2), Stroke("a", false, 2) with { Channel = "roughness" }]));
+
+        Assert.Equal(2, editor.Standing.Count);
+        Assert.All(editor.Standing, static entry => Assert.Equal(4, entry.Stamps.Count));
+        Assert.NotNull(editor.Undo());
+        Assert.Empty(editor.Standing);
+        Assert.Contains(editor.Set.Channels, static channel => channel.Usage == "roughness");
+    }
+
+    [Fact]
     public void More_of_a_saved_drag_leaves_the_stack_unsaved() {
         var editor = new StackEditor("/tmp/Crate.vxlayers", Sample());
         editor.Apply(new([Stroke("a", true, 2)]));

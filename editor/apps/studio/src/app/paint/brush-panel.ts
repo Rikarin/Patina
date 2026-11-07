@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { XuiButtonImports } from '@xui/button';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
+import { channelName } from '../core/labels';
 import { type BrushSettings, type Mirror, PaintStore, type PaintTool } from './paint-store';
 
 const Tools: readonly { id: PaintTool; label: string }[] = [
@@ -119,6 +120,40 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number }[] = [
         }
       </select>
     </div>
+    <div class="flex flex-col gap-1" data-testid="paint-channels">
+      <span class="section-label">Also paints</span>
+      @for (channel of others(); track channel.usage) {
+        <div class="flex items-center gap-2">
+          <input
+            type="checkbox"
+            [attr.aria-label]="'Paint ' + nameOf(channel.usage)"
+            [attr.data-testid]="'paint-also-' + channel.usage"
+            [checked]="store.alsoPaints().has(channel.usage)"
+            (change)="toggleChannel(channel.usage, $event)"
+          />
+          <span class="min-w-0 flex-1 truncate text-xs">{{ nameOf(channel.usage) }}</span>
+          <input
+            type="color"
+            [attr.aria-label]="nameOf(channel.usage) + ' colour'"
+            [value]="store.alsoPaints().get(channel.usage) ?? '#808080'"
+            (input)="setChannel(channel.usage, text($event))"
+          />
+        </div>
+      }
+      @if (addable().length > 0) {
+        <select
+          class="well h-7 min-w-0 px-1 text-sm"
+          aria-label="Add a channel to this stack"
+          data-testid="paint-add-channel"
+          (change)="addChannel($event)"
+        >
+          <option value="">Add a channel…</option>
+          @for (usage of addable(); track usage) {
+            <option [value]="usage">{{ nameOf(usage) }}</option>
+          }
+        </select>
+      }
+    </div>
     @for (slider of sliders; track slider.key) {
       <div class="flex items-center gap-2">
         <span class="text-foreground-muted w-24 shrink-0 truncate text-xs">{{ slider.label }}</span>
@@ -144,6 +179,38 @@ export class BrushPanel {
   protected readonly mirrors = Mirrors;
   protected readonly rotations = Rotations;
   protected readonly sliders = Sliders;
+  protected readonly nameOf = channelName;
+  protected readonly others = computed(() =>
+    (this.store.state()?.channels ?? []).filter(channel => channel.usage !== this.store.channel())
+  );
+  protected readonly addable = computed(() => {
+    const held = this.store.state()?.channels.map(channel => channel.usage) ?? [];
+    return (this.store.vocabulary()?.usages ?? []).filter(usage => !held.includes(usage));
+  });
+
+  protected toggleChannel(usage: string, event: Event): void {
+    const next = new Map(this.store.alsoPaints());
+    if ((event.target as HTMLInputElement).checked) {
+      next.set(usage, next.get(usage) ?? '#808080');
+    } else {
+      next.delete(usage);
+    }
+
+    this.store.alsoPaints.set(next);
+  }
+
+  protected setChannel(usage: string, colour: string): void {
+    this.store.alsoPaints.set(new Map(this.store.alsoPaints()).set(usage, colour));
+  }
+
+  protected addChannel(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    const usage = select.value;
+    select.value = '';
+    if (usage) {
+      void this.store.edit({ op: 'addChannel', usage });
+    }
+  }
 
   /** What a slider stands at: angles in degrees and the rest as a percentage of what it holds. */
   protected shown(key: NumberSetting): string {

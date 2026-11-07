@@ -2978,6 +2978,7 @@ export interface components {
       | components['schemas']['StackCommandStackSetLayer']
       | components['schemas']['StackCommandStackStroke']
       | components['schemas']['StackCommandStackSetModel']
+      | components['schemas']['StackCommandStackAddChannel']
       | components['schemas']['StackCommandStackNestLayer'];
     /** @description Edits applied whole or not at all, as one undo step. */
     StackCommandBatch: {
@@ -2985,6 +2986,13 @@ export interface components {
       commands: components['schemas']['StackCommand'][];
       /** @description What the undo step says. */
       label?: null | string;
+    };
+    /** @description Adds a channel to the stack, so that layers can write it and a preset can export it. */
+    StackCommandStackAddChannel: {
+      /** @enum {string} */
+      op: 'addChannel';
+      /** @description Which, one of the vocabulary's usages. */
+      usage: string;
     };
     /** @description Adds a layer at the top of the stack. */
     StackCommandStackAddLayer: {
@@ -3646,6 +3654,8 @@ export interface components {
       alphas: string[];
       /** @description The steps a mask can run. */
       maskEffects: components['schemas']['StackEffectKind'][];
+      /** @description The channels a stack can have. */
+      usages: string[];
     };
     /** @description The reply to `GET /api/v1/system`. */
     SystemInfo: {
@@ -3712,9 +3722,27 @@ export interface components {
       pitch: number;
       /**
        * Format: double
-       * @description From the model's centre, in bounding radii.
+       * @description From the point it circles, in bounding radii.
        */
       distance: number;
+      /**
+       * Format: double
+       * @description How far that point is off the model's centre along x, in bounding radii.
+       * @default 0
+       */
+      panX: number;
+      /**
+       * Format: double
+       * @description The same along y.
+       * @default 0
+       */
+      panY: number;
+      /**
+       * Format: double
+       * @description The same along z.
+       * @default 0
+       */
+      panZ: number;
     };
     /** @description Asks the viewport to lay a graph's Output nodes over the mesh it is showing, as they stand now. */
     ViewportGraphRequest: {

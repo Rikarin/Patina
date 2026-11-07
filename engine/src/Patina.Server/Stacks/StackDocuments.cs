@@ -47,7 +47,8 @@ public static class StackDocuments {
         ],
         TextureNodeLibrary.MeshMaps,
         PaintAlphas.Names,
-        MaskEffects()
+        MaskEffects(),
+        Usages()
     );
 
     /// <summary>The stack a new file starts as: a base, and somewhere to paint.</summary>
@@ -146,6 +147,13 @@ public static class StackDocuments {
                     )
             ]
         );
+
+    /// <summary>The usages an Output node takes, which is the one list of what a channel can be.</summary>
+    static IReadOnlyList<string> Usages() {
+        NodeTypeRegistry registry = new();
+        NodeTypes.Register(registry);
+        return [..registry.Get("Output/Output").Setting("Usage")!.Accepted];
+    }
 
     static IReadOnlyList<StackEffectKind> MaskEffects() {
         NodeTypeRegistry registry = new();

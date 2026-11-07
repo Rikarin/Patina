@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('patina', {
     ipcRenderer.on('patina:sidecars', (_event, statuses: unknown) => listener(statuses));
   },
   logs: () => ipcRenderer.invoke('patina:sidecars:logs'),
+  restartEngine: () => ipcRenderer.invoke('patina:sidecars:restart'),
   recentLibraries: () => ipcRenderer.invoke('patina:libraries:recent'),
   openLibrary: () => ipcRenderer.invoke('patina:libraries:open'),
   newLibrary: () => ipcRenderer.invoke('patina:libraries:new'),

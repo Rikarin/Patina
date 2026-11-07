@@ -19,7 +19,7 @@ import { ViewOptions } from '../core/view-options';
 import { StrokeGesture } from '../paint/stroke-gesture';
 import { FramePainter } from './frame-painter';
 import type { ViewportFrame } from './frame-transport';
-import { orbit, zoom } from './orbit';
+import { framed, orbit, pan, zoom } from './orbit';
 import { ViewportClient } from './viewport-client';
 
 /** The docked viewport: frames from the Worker on a canvas, and orbit input going the other way. */
@@ -28,7 +28,11 @@ import { ViewportClient } from './viewport-client';
   imports: [XuiButtonImports],
   providers: [ViewportClient],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'flex h-full min-h-0 flex-col', '(document:keydown.escape)': 'gesture.cancel()' },
+  host: {
+    class: 'flex h-full min-h-0 flex-col',
+    '(document:keydown.escape)': 'gesture.cancel()',
+    '(document:keydown.f)': 'frame($event)'
+  },
   template: `
     <div class="chrome-bar flex h-9 shrink-0 items-center gap-2 px-2">
       @if (!paint.worn()) {
@@ -84,6 +88,7 @@ import { ViewportClient } from './viewport-client';
         [class.cursor-grabbing]="dragging()"
         [class.cursor-grab]="!dragging() && !painting()"
         [class.cursor-crosshair]="painting() || paint.picking() !== null"
+        (contextmenu)="$event.preventDefault()"
         (pointerdown)="press($event)"
         (pointermove)="drag($event)"
         (pointerup)="release($event)"
@@ -130,7 +135,9 @@ export class ViewportPane implements AfterViewInit {
   private stroking = false;
 
   /** Whether a left drag paints rather than orbits. */
-  protected readonly painting = signal(false);
+  /** Left paints as soon as a stack is on the mesh. Alt-left and right turn the model, middle or Shift moves it. */
+  protected readonly painting = signal(true);
+  private panning = false;
   /** Where the brush is over the canvas, in the units of a stroke. */
   protected readonly brushAt = signal<{ x: number; y: number } | null>(null);
   protected readonly options = inject(ViewOptions);
@@ -167,7 +174,7 @@ export class ViewportPane implements AfterViewInit {
       if (this.paint.worn()) {
         void this.viewport.sync();
       } else {
-        this.painting.set(false);
+        this.painting.set(true);
       }
     });
   }
@@ -195,6 +202,13 @@ export class ViewportPane implements AfterViewInit {
     }
   }
 
+  /** F brings the whole model back, as it does in every 3D tool. */
+  protected frame(event: Event): void {
+    if (!(event.target as Element).closest('input, textarea, select, [contenteditable=true]')) {
+      this.viewport.moveCamera(framed(), false);
+    }
+  }
+
   protected press(event: PointerEvent): void {
     if (this.paint.picking() !== null && event.button === 0) {
       void this.paint.pickColourOnMesh(this.stamp(event), this.aim());
@@ -202,12 +216,13 @@ export class ViewportPane implements AfterViewInit {
     }
 
     this.canvas().nativeElement.setPointerCapture(event.pointerId);
-    if (this.painting() && event.button === 0 && !event.altKey) {
+    if (this.paint.worn() && this.painting() && event.button === 0 && !event.altKey && !event.shiftKey) {
       this.stroking = true;
       this.gesture.press(this.stamp(event));
       return;
     }
 
+    this.panning = event.button === 1 || event.shiftKey;
     this.dragging.set(true);
     this.viewport.moveCamera(this.viewport.camera(), true);
   }
@@ -221,7 +236,8 @@ export class ViewportPane implements AfterViewInit {
         this.gesture.move(this.stamp(move));
       }
     } else if (this.dragging()) {
-      this.viewport.camera.set(orbit(this.viewport.camera(), event.movementX, event.movementY));
+      const move = this.panning ? pan : orbit;
+      this.viewport.camera.set(move(this.viewport.camera(), event.movementX, event.movementY));
       this.scheduleCamera();
     }
   }

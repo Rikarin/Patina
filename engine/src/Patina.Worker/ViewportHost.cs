@@ -41,11 +41,18 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
     public ViewportRenderer Live => Renderer();
 
     /// <summary>What is under a position on the picture, through the camera asked about. It opens no device.</summary>
+    static OrbitCamera Orbit(Ipc.ViewportCamera camera) =>
+        new(
+            (float)camera.Yaw,
+            (float)camera.Pitch,
+            (float)camera.Distance,
+            new((float)camera.PanX, (float)camera.PanY, (float)camera.PanZ)
+        );
+
     public IpcMessage Pick(IpcMessage request) {
         var pick = request.Pick ?? throw new IpcException("viewport.pick says nothing.");
         var shelf = meshes.Of(pick.Mesh);
-        var (yaw, pitch, distance) = (pick.Camera.Yaw, pick.Camera.Pitch, pick.Camera.Distance);
-        var orbit = new OrbitCamera((float)yaw, (float)pitch, (float)distance);
+        var orbit = Orbit(pick.Camera);
         var bounds = shelf.Geometry.Bounds;
         var (right, up, forward) = orbit.Axes(bounds);
         var view = new PaintView(
@@ -124,7 +131,7 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
 
     public IpcMessage SetCamera(IpcMessage request) {
         var next = request.Camera ?? throw new IpcException("viewport.camera has no camera.");
-        camera = new((float)next.Yaw, (float)next.Pitch, (float)next.Distance);
+        camera = Orbit(next);
         return IpcMessage.Ok(request.Id);
     }
 

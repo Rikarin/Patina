@@ -8230,6 +8230,9 @@
             "$ref": "#/components/schemas/StackCommandStackSetModel"
           },
           {
+            "$ref": "#/components/schemas/StackCommandStackAddChannel"
+          },
+          {
             "$ref": "#/components/schemas/StackCommandStackNestLayer"
           }
         ],
@@ -8243,6 +8246,7 @@
             "setLayer": "#/components/schemas/StackCommandStackSetLayer",
             "stroke": "#/components/schemas/StackCommandStackStroke",
             "setModel": "#/components/schemas/StackCommandStackSetModel",
+            "addChannel": "#/components/schemas/StackCommandStackAddChannel",
             "nestLayer": "#/components/schemas/StackCommandStackNestLayer"
           }
         }
@@ -8269,6 +8273,25 @@
           }
         },
         "description": "Edits applied whole or not at all, as one undo step."
+      },
+      "StackCommandStackAddChannel": {
+        "required": [
+          "usage",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "addChannel"
+            ],
+            "type": "string"
+          },
+          "usage": {
+            "type": "string",
+            "description": "Which, one of the vocabulary\u0027s usages."
+          }
+        },
+        "description": "Adds a channel to the stack, so that layers can write it and a preset can export it."
       },
       "StackCommandStackAddLayer": {
         "required": [
@@ -9730,7 +9753,8 @@
           "generators",
           "meshMaps",
           "alphas",
-          "maskEffects"
+          "maskEffects",
+          "usages"
         ],
         "type": "object",
         "properties": {
@@ -9782,6 +9806,13 @@
               "$ref": "#/components/schemas/StackEffectKind"
             },
             "description": "The steps a mask can run."
+          },
+          "usages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The channels a stack can have."
           }
         },
         "description": "The words a stack\u0027s fields take, so that a client holds no list of its own."
@@ -9892,7 +9923,10 @@
         "required": [
           "yaw",
           "pitch",
-          "distance"
+          "distance",
+          "panX",
+          "panY",
+          "panZ"
         ],
         "type": "object",
         "properties": {
@@ -9908,8 +9942,26 @@
           },
           "distance": {
             "type": "number",
-            "description": "From the model\u0027s centre, in bounding radii.",
+            "description": "From the point it circles, in bounding radii.",
             "format": "double"
+          },
+          "panX": {
+            "type": "number",
+            "description": "How far that point is off the model\u0027s centre along x, in bounding radii.",
+            "format": "double",
+            "default": 0
+          },
+          "panY": {
+            "type": "number",
+            "description": "The same along y.",
+            "format": "double",
+            "default": 0
+          },
+          "panZ": {
+            "type": "number",
+            "description": "The same along z.",
+            "format": "double",
+            "default": 0
           }
         },
         "description": "The viewport\u0027s camera: an orbit around the model."

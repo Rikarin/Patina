@@ -80,6 +80,7 @@ function template(actions: MenuActions): MenuItemConstructorOptions[] {
         { label: 'Show Statistics', click: () => actions.command('toggleStats') },
         { label: 'Reset Layout', click: () => actions.command('resetLayout') },
         { label: 'Keyboard Shortcuts…', click: () => actions.command('shortcuts') },
+        { label: 'Diagnostics…', click: () => actions.command('diagnostics') },
         { type: 'separator' },
         { role: 'togglefullscreen' }
       ]

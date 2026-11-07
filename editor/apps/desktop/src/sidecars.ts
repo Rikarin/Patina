@@ -211,6 +211,12 @@ export class Sidecars {
     this.ready = null;
   }
 
+  /** Stops both processes and starts them again, on the library they had. */
+  async restart(): Promise<void> {
+    await this.stop();
+    await this.start();
+  }
+
   /**
    * Moves to another library. A Server belongs to one library for its whole life, so this stops it and the next
    * {@link start} starts another; what was open goes with the old one, which is why the app asks about unsaved work

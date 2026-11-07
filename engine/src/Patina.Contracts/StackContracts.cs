@@ -138,6 +138,7 @@ public sealed record StackFilterKind(string Kind, IReadOnlyList<string> Settings
 /// <param name="MeshMaps">The maps a bake mask or a generator can read.</param>
 /// <param name="Alphas">The named brush alphas.</param>
 /// <param name="MaskEffects">The steps a mask can run.</param>
+/// <param name="Usages">The channels a stack can have.</param>
 public sealed record StackVocabulary(
     IReadOnlyList<string> Blends,
     IReadOnlyList<StackFilterKind> Filters,
@@ -145,7 +146,8 @@ public sealed record StackVocabulary(
     IReadOnlyList<string> Generators,
     IReadOnlyList<string> MeshMaps,
     IReadOnlyList<string> Alphas,
-    IReadOnlyList<StackEffectKind> MaskEffects
+    IReadOnlyList<StackEffectKind> MaskEffects,
+    IReadOnlyList<string> Usages
 );
 
 /// <summary>What a layer looks like alone.</summary>
@@ -243,6 +245,7 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackSetLayer), "setLayer")]
 [JsonDerivedType(typeof(StackStroke), "stroke")]
 [JsonDerivedType(typeof(StackSetModel), "setModel")]
+[JsonDerivedType(typeof(StackAddChannel), "addChannel")]
 [JsonDerivedType(typeof(StackNestLayer), "nestLayer")]
 public abstract record StackCommand;
 
@@ -340,6 +343,10 @@ public sealed record StackPlacement(
 /// <summary>Names the mesh a stack is painted on, which is undone like any other edit.</summary>
 /// <param name="Model">A model file, absolute or relative to the stack. Empty takes the mesh away.</param>
 public sealed record StackSetModel(string Model) : StackCommand;
+
+/// <summary>Adds a channel to the stack, so that layers can write it and a preset can export it.</summary>
+/// <param name="Usage">Which, one of the vocabulary's usages.</param>
+public sealed record StackAddChannel(string Usage) : StackCommand;
 
 /// <summary>Where the brush goes: in texels of the image, or on the picture of a stroke with a view.</summary>
 /// <param name="X">Its column.</param>

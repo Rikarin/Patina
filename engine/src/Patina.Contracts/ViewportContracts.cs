@@ -3,8 +3,18 @@ namespace Patina.Contracts;
 /// <summary>The viewport's camera: an orbit around the model.</summary>
 /// <param name="Yaw">Radians around the up axis.</param>
 /// <param name="Pitch">Radians above the horizon.</param>
-/// <param name="Distance">From the model's centre, in bounding radii.</param>
-public sealed record ViewportCameraState(double Yaw, double Pitch, double Distance);
+/// <param name="Distance">From the point it circles, in bounding radii.</param>
+/// <param name="PanX">How far that point is off the model's centre along x, in bounding radii.</param>
+/// <param name="PanY">The same along y.</param>
+/// <param name="PanZ">The same along z.</param>
+public sealed record ViewportCameraState(
+    double Yaw,
+    double Pitch,
+    double Distance,
+    double PanX = 0,
+    double PanY = 0,
+    double PanZ = 0
+);
 
 /// <summary>Asks what is under a position in the viewport.</summary>
 /// <param name="X">Across the picture, 0 to 1.</param>

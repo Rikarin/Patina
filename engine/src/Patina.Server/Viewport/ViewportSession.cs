@@ -250,7 +250,14 @@ public sealed class ViewportSession(
         }
 
         if (work.Camera != toldCamera) {
-            var camera = new ViewportCamera(work.Camera.Yaw, work.Camera.Pitch, work.Camera.Distance);
+            var camera = new ViewportCamera(
+                work.Camera.Yaw,
+                work.Camera.Pitch,
+                work.Camera.Distance,
+                work.Camera.PanX,
+                work.Camera.PanY,
+                work.Camera.PanZ
+            );
             await connection.SendAsync(new() { Type = IpcTypes.ViewportCamera, Camera = camera }, cancellationToken);
             toldCamera = work.Camera;
         }
@@ -285,7 +292,7 @@ public sealed class ViewportSession(
         var reply = await connection.SendAsync(
             new() {
                 Type = IpcTypes.ViewportPick,
-                Pick = new(request.X, request.Y, new(look.Yaw, look.Pitch, look.Distance), across, down, path)
+                Pick = new(request.X, request.Y, new(look.Yaw, look.Pitch, look.Distance, look.PanX, look.PanY, look.PanZ), across, down, path)
             },
             cancellationToken
         );

@@ -164,7 +164,7 @@ describe('PaintStore', () => {
     const { store, bodies, picks } = setup();
     await store.open('/a/Crate.vxlayers', false);
     store.mirror.set('x');
-    const aim = { width: 100, height: 100, camera: { yaw: 0, pitch: 0, distance: 2 } };
+    const aim = { width: 100, height: 100, camera: { yaw: 0, pitch: 0, distance: 2, panX: 0, panY: 0, panZ: 0 } };
     store.begin({ x: 50, y: 25, pressure: 1 }, aim);
     store.move({ x: 60, y: 25, pressure: 1 });
     store.end();

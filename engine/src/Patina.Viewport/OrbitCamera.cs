@@ -11,7 +11,8 @@ namespace Patina.Viewport;
 /// <param name="Yaw">Radians around the up axis.</param>
 /// <param name="Pitch">Radians above the horizon.</param>
 /// <param name="Distance">From the model's centre, in bounding radii.</param>
-public readonly record struct OrbitCamera(float Yaw, float Pitch, float Distance) {
+/// <param name="Pan">How far the point it circles has moved off the model's centre, in bounding radii.</param>
+public readonly record struct OrbitCamera(float Yaw, float Pitch, float Distance, Vector3 Pan = default) {
     /// <summary>The vertical field of view, in radians.</summary>
     public const float FieldOfView = 0.7f;
 
@@ -22,12 +23,15 @@ public readonly record struct OrbitCamera(float Yaw, float Pitch, float Distance
     public Vector3 Eye(BoundingBox bounds) {
         var radial = MathF.Cos(Pitch);
         var direction = new Vector3(radial * MathF.Sin(Yaw), MathF.Sin(Pitch), radial * MathF.Cos(Yaw));
-        return bounds.Center + direction * (Distance * Radius(bounds));
+        return Target(bounds) + direction * (Distance * Radius(bounds));
     }
+
+    /// <summary>The point it looks at and circles.</summary>
+    public Vector3 Target(BoundingBox bounds) => bounds.Center + Pan * Radius(bounds);
 
     /// <summary>The camera's axes for a model with these bounds: Vixen's look-at, right-handed.</summary>
     public (Vector3 Right, Vector3 Up, Vector3 Forward) Axes(BoundingBox bounds) {
-        var forward = Vector3.Normalize(bounds.Center - Eye(bounds));
+        var forward = Vector3.Normalize(Target(bounds) - Eye(bounds));
         var right = Vector3.Normalize(Vector3.Cross(forward, new(0f, 1f, 0f)));
         return (right, Vector3.Cross(right, forward), forward);
     }
@@ -35,9 +39,9 @@ public readonly record struct OrbitCamera(float Yaw, float Pitch, float Distance
     /// <summary>The view-projection matrix for a model with these bounds, on Vixen's reversed depth.</summary>
     public Matrix4x4 ViewProjection(BoundingBox bounds, float aspectRatio) {
         var radius = Radius(bounds);
-        var view = Matrix4x4.LookAt(Eye(bounds), bounds.Center, new(0f, 1f, 0f));
+        var view = Matrix4x4.LookAt(Eye(bounds), Target(bounds), new(0f, 1f, 0f));
         var near = Math.Max(0.01f * radius, (Distance - 1.5f) * radius);
-        var far = (Distance + 2f) * radius;
+        var far = (Distance + 2f + Pan.Length()) * radius;
         return view * Matrix4x4.PerspectiveFieldOfView(FieldOfView, aspectRatio, near, far);
     }
 

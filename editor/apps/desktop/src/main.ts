@@ -308,6 +308,10 @@ function handleIpc(): void {
   handle('patina:connection', () => backend().start());
   handle('patina:sidecars', () => sidecars?.statuses() ?? []);
   handle('patina:sidecars:logs', () => sidecars?.logs() ?? { worker: [], server: [] });
+  handle('patina:sidecars:restart', async () => {
+    await backend().restart();
+    window?.webContents.reload(); // a new Server has a new address, and autosave offers back what was open
+  });
   handle('patina:libraries:recent', () => places().recent());
   handle('patina:libraries:open', async () => openLibrary(await askForLibrary()));
   handle('patina:libraries:new', async () => openLibrary(await askForNewLibrary()));

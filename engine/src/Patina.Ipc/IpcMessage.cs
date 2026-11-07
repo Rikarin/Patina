@@ -274,7 +274,14 @@ public sealed record ViewportMapSet(
 );
 
 /// <summary>An orbit around the model: radians, and a distance in bounding radii.</summary>
-public sealed record ViewportCamera(double Yaw, double Pitch, double Distance);
+public sealed record ViewportCamera(
+    double Yaw,
+    double Pitch,
+    double Distance,
+    double PanX = 0,
+    double PanY = 0,
+    double PanZ = 0
+);
 
 /// <summary>
 ///     One frame to render, and the slot of the shared-memory file to write it to: RGBA, tightly packed, top row first.

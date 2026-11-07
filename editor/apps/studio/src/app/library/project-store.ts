@@ -293,6 +293,10 @@ export class ProjectStore {
   /** A name for Save As is being asked for. */
   readonly savingAs = signal(false);
 
+  clearFailure(): void {
+    this.mutableFailure.set(null);
+  }
+
   /** Autosaved work for the document in front, which is offered until it is taken or refused. */
   readonly recoverable = signal<{ path: string; saved: string } | null>(null);
 

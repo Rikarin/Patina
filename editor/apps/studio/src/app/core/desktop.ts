@@ -19,6 +19,8 @@ export interface DesktopBridge {
   sidecars(): Promise<SidecarStatus[]>;
   onSidecars(listener: (statuses: SidecarStatus[]) => void): void;
   logs(): Promise<Record<SidecarStatus['name'], string[]>>;
+  /** Stops what runs behind the app and starts it again. */
+  restartEngine(): Promise<void>;
   /** The libraries opened lately, newest first. */
   recentLibraries(): Promise<string[]>;
   /** Asks for a library and moves the app to it, reloading this page. Null if they cancelled. */

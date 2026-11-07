@@ -44,7 +44,7 @@ import { ExportStore } from './export-store';
       }
 
       @for (problem of store.problems(); track problem) {
-        <xui-callout intent="warning">{{ problem }}</xui-callout>
+        <xui-callout color="warning">{{ problem }}</xui-callout>
       }
 
       @if (paint.state(); as stack) {
@@ -104,7 +104,7 @@ import { ExportStore } from './export-store';
       </div>
 
       @if (error(); as message) {
-        <xui-callout intent="danger" data-testid="export-error">{{ message }}</xui-callout>
+        <xui-callout color="error" data-testid="export-error">{{ message }}</xui-callout>
       }
 
       @if (store.build(); as build) {
@@ -113,7 +113,7 @@ import { ExportStore } from './export-store';
           <span class="readout" data-testid="export-percent">{{ percent() }}%</span>
         </div>
         @if (build.error) {
-          <xui-callout intent="warning">{{ build.error }}</xui-callout>
+          <xui-callout color="warning">{{ build.error }}</xui-callout>
         }
       }
 

@@ -7,6 +7,7 @@ import { XuiInputImports } from '@xui/input';
 import { BakePane } from './bake/bake-pane';
 import { BakeStore } from './bake/bake-store';
 import { desktop } from './core/desktop';
+import { DiagnosticsDialog } from './core/diagnostics-dialog';
 import { EditCommands } from './core/edit-commands';
 import { Shortcuts } from './core/shortcuts';
 import { StartPane } from './core/start-pane';
@@ -24,6 +25,7 @@ import { LayerStack } from './paint/layer-stack';
 import { MaterialShelf } from './paint/material-shelf';
 import { PaintAtlas } from './paint/paint-atlas';
 import { PaintPane } from './paint/paint-pane';
+import { PaintStore } from './paint/paint-store';
 import { ViewportPane } from './viewport/viewport-pane';
 
 /** The app shell: a title bar, the docked panes and the status bar. `chrome-bar` and `readout` are bezel's. */
@@ -38,6 +40,7 @@ import { ViewportPane } from './viewport/viewport-pane';
     LayerStack,
     LibraryPane,
     DatePipe,
+    DiagnosticsDialog,
     MaterialShelf,
     XuiInputImports,
     PaintAtlas,
@@ -137,6 +140,26 @@ import { ViewportPane } from './viewport/viewport-pane';
       </ng-template>
     </xui-dock-manager>
 
+    @if (failure(); as reason) {
+      <div
+        class="bg-error-subtle flex shrink-0 items-center gap-2 px-3 py-1 text-sm"
+        role="alert"
+        data-testid="app-failure"
+      >
+        <span class="min-w-0 flex-1 truncate" [title]="reason">{{ reason }}</span>
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          data-testid="app-failure-dismiss"
+          (click)="dismissFailure()"
+        >
+          Dismiss
+        </button>
+      </div>
+    }
+
     <footer class="chrome-bar flex h-7 shrink-0 items-center gap-4 px-3" role="status" aria-label="Server status">
       @let current = status.state();
       @switch (current.kind) {
@@ -194,6 +217,8 @@ import { ViewportPane } from './viewport/viewport-pane';
         </button>
       </xui-dialog-footer>
     </xui-dialog>
+
+    <ptn-diagnostics [(open)]="diagnosing" />
 
     <xui-dialog size="sm" title="Keyboard Shortcuts" [(open)]="keys">
       <xui-dialog-body>
@@ -294,6 +319,10 @@ export class App {
   private readonly options = inject(ViewOptions);
   protected readonly shortcuts = inject(Shortcuts);
   protected readonly keys = signal(false);
+  protected readonly diagnosing = signal(false);
+  private readonly paint = inject(PaintStore);
+  /** The one thing that went wrong last, which stays until it is read. */
+  protected readonly failure = computed(() => this.paint.failure() ?? this.project.failure());
   protected readonly baking = signal(false);
   protected readonly exporting = signal(false);
   /** The layout of what is in front. Each kind of document keeps its own (ADR 0012). */
@@ -349,6 +378,8 @@ export class App {
         this.layout.set(resetLayout(this.project.workspace()));
       } else if (command === 'shortcuts') {
         this.keys.set(true);
+      } else if (command === 'diagnostics') {
+        this.diagnosing.set(true);
       }
     });
     if (bridge) {
@@ -365,6 +396,11 @@ export class App {
       event.stopPropagation();
       this.shortcuts.rebind(id, event.key);
     }
+  }
+
+  protected dismissFailure(): void {
+    this.paint.failure.set(null);
+    this.project.clearFailure();
   }
 
   protected saveAs(event: Event, name: string): void {

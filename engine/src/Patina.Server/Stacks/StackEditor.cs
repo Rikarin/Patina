@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Patina.Contracts;
 using Patina.Server.Graphs;
 using System.Globalization;
@@ -208,6 +209,7 @@ public sealed class StackEditor : ILayerStackDocument {
             StackMoveLayer => "Move layer",
             StackSetLayer => "Change layer",
             StackSetModel => "Bind mesh",
+            StackAddChannel add => $"Add {add.Usage}",
             StackStroke => "Stroke",
             _ => "Edit"
         };
@@ -289,6 +291,9 @@ public sealed class StackEditor : ILayerStackDocument {
                 break;
             case StackSetModel model:
                 Do(new SetModelCommand(this, model.Model, "Bind mesh"));
+                break;
+            case StackAddChannel add:
+                Do(AddChannel(add.Usage));
                 break;
             case StackStroke stroke:
                 Stroke(stroke, step, set, Do);
@@ -444,6 +449,49 @@ public sealed class StackEditor : ILayerStackDocument {
             OffsetY = placement.OffsetY,
             Sharpness = placement.Sharpness
         };
+    }
+
+    /// <summary>What a channel holds before anything paints it, which is what leaves its material alone.</summary>
+    static float[] DefaultOf(string usage) =>
+        usage switch {
+            "normal" => [0.5f, 0.5f, 1f, 1f],
+            "height" => [0.5f, 0.5f, 0.5f, 1f],
+            "opacity" or "ambientOcclusion" => [1f, 1f, 1f, 1f],
+            _ => [0f, 0f, 0f, 1f]
+        };
+
+    SetDocumentCommand AddChannel(string usage) {
+        if (!StackDocuments.Vocabulary.Usages.Contains(usage)) {
+            throw new StackEditRefusedException($"'{usage}' is not a channel.");
+        }
+
+        var chosen = Set;
+        if (chosen.Channels.Exists(channel => channel.Usage == usage)) {
+            throw new StackEditRefusedException($"This stack has '{usage}' already.");
+        }
+
+        var added = chosen with { Channels = [..chosen.Channels, new() { Usage = usage, Default = DefaultOf(usage) }] };
+        return new SetDocumentCommand(
+            this,
+            Document with { Sets = [..Document.Sets.Select(held => held == chosen ? added : held)] },
+            $"Add {usage}"
+        );
+    }
+
+    /// <summary>A whole-document change, which is how a texture set's own fields are undone.</summary>
+    sealed class SetDocumentCommand(ILayerStackDocument document, LayerStackAsset after, string name) : IAuthoringCommand {
+        readonly LayerStackAsset before = document.Document;
+
+        public string Name { get; } = name;
+
+        public void Do(ICommandContext context) => document.Document = after;
+
+        public void Undo(ICommandContext context) => document.Document = before;
+
+        public bool TryMergeWith(IAuthoringCommand previous, [NotNullWhen(true)] out IAuthoringCommand? merged) {
+            merged = null;
+            return false;
+        }
     }
 
     void Stroke(StackStroke stroke, Step step, string set, Action<IAuthoringCommand> run) {

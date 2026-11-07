@@ -110,6 +110,9 @@ export class PaintStore {
   readonly marked = signal<ReadonlySet<string>>(new Set());
   readonly channel = signal('baseColor');
   readonly radius = signal(24);
+
+  /** What else a stroke paints beside {@link channel}: each channel, and the colour it gets. */
+  readonly alsoPaints = signal<ReadonlyMap<string, string>>(new Map());
   readonly colour = signal('#d9401a');
   readonly picture = signal<string | null>(null);
   readonly tool = signal<PaintTool>('brush');
@@ -492,23 +495,26 @@ export class PaintStore {
     since: number
   ): Promise<void> {
     const mirror = this.mirror();
+    // A material brush writes every channel it holds, each in the one stroke and the one undo step. A mask has one.
+    const channels: [string, string][] = [
+      [this.channel(), this.colour()],
+      ...(this.masking() ? [] : [...this.alsoPaints()].filter(([usage]) => usage !== this.channel()))
+    ];
     const revision = await this.command({
-      commands: [
-        {
-          op: 'stroke',
-          stroke,
-          layer,
-          channel: this.channel(),
-          brush: { ...this.brush(), radius: this.radius() },
-          colour: colourOf(this.colour()),
-          stamps,
-          open,
-          mask: this.masking(),
-          view,
-          curve,
-          mirror: view && mirror !== 'none' ? mirror : null
-        }
-      ]
+      commands: channels.map(([channel, colour]) => ({
+        op: 'stroke' as const,
+        stroke,
+        layer,
+        channel,
+        brush: { ...this.brush(), radius: this.radius() },
+        colour: colourOf(colour),
+        stamps,
+        open,
+        mask: this.masking(),
+        view,
+        curve,
+        mirror: view && mirror !== 'none' ? mirror : null
+      }))
     });
     if (revision !== null && revision > this.lastShown) {
       this.sentAt.set(revision, since);

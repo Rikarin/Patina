@@ -84,7 +84,6 @@ async function openOnMesh(): Promise<void> {
   await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 60_000 });
   await expect(window.getByTestId('viewport-mesh')).toHaveText('housing_low.glb', { timeout: 30_000 });
   await expect(window.getByTestId('viewport-paint')).toBeVisible();
-  await window.getByTestId('viewport-paint').click();
   await settled();
 }
 
@@ -137,8 +136,7 @@ test('a line, a mirrored stroke and an alpha paint through the same journal', as
   const lined = await shot();
 
   await window.getByTestId('paint-tool-brush').click();
-  await window.getByRole('combobox', { name: 'Mirror' }).click();
-  await window.getByRole('option', { name: 'x' }).click();
+  await window.getByRole('combobox', { name: 'Mirror' }).selectOption('x');
   await drag(0.62, 0.55, 0.66, 0.62);
   await expect.poll(async () => changed(lined, await shot()), { timeout: 30_000 }).toBeGreaterThan(200);
   await window.screenshot({ path: join(shots, 'paint-tools.png') });
