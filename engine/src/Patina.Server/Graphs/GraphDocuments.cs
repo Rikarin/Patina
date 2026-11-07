@@ -121,18 +121,21 @@ public static class GraphDocuments {
                 )
             ],
             [
-                ..type.Settings.Select(static setting => new GraphSettingDefinition(
-                        setting.Name,
-                        setting.Default,
-                        setting.Summary,
-                        setting.Kind.ToString(),
-                        Bound(setting.Minimum),
-                        Bound(setting.Maximum),
-                        setting.Group,
-                        setting.Accepted
-                    )
-                )
+                ..type.Settings.Select(Definition)
             ]
+        );
+
+    /// <summary>What a client is told about a setting of a node, a compound or a generator.</summary>
+    public static GraphSettingDefinition Definition(SettingDefinition setting) =>
+        new(
+            setting.Name,
+            setting.Default,
+            setting.Summary,
+            setting.Kind.ToString(),
+            Bound(setting.Minimum),
+            Bound(setting.Maximum),
+            setting.Group,
+            setting.Accepted
         );
 
     static GraphPortRange? RangeOf(PortDefinition port) {

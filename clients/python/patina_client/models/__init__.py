@@ -175,6 +175,7 @@ from .stack_mask import StackMask
 from .stack_mask_effect import StackMaskEffect
 from .stack_mask_effect_texts_type_1 import StackMaskEffectTextsType1
 from .stack_mask_effect_values_type_1 import StackMaskEffectValuesType1
+from .stack_mask_parameters_type_1 import StackMaskParametersType1
 from .stack_mesh_maps_request import StackMeshMapsRequest
 from .stack_open_request import StackOpenRequest
 from .stack_painted import StackPainted
@@ -188,6 +189,7 @@ from .stack_thumbnail import StackThumbnail
 from .stack_thumbnails import StackThumbnails
 from .stack_view import StackView
 from .stack_vocabulary import StackVocabulary
+from .stack_vocabulary_generator_parameters import StackVocabularyGeneratorParameters
 from .system_info import SystemInfo
 from .tag_count import TagCount
 from .tag_page import TagPage
@@ -380,6 +382,7 @@ __all__ = (
     "StackMaskEffect",
     "StackMaskEffectTextsType1",
     "StackMaskEffectValuesType1",
+    "StackMaskParametersType1",
     "StackMeshMapsRequest",
     "StackOpenRequest",
     "StackPainted",
@@ -393,6 +396,7 @@ __all__ = (
     "StackThumbnails",
     "StackView",
     "StackVocabulary",
+    "StackVocabularyGeneratorParameters",
     "SystemInfo",
     "TagCount",
     "TagPage",

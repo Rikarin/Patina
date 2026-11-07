@@ -9459,6 +9459,16 @@
               "$ref": "#/components/schemas/StackMaskEffect"
             },
             "description": "What runs on the mask, in order, or null to keep them."
+          },
+          "parameters": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "What a generator\u0027s knobs are set to, as text, or null to keep them."
           }
         },
         "description": "What decides where a layer shows."
@@ -9936,7 +9946,8 @@
           "meshMaps",
           "alphas",
           "maskEffects",
-          "usages"
+          "usages",
+          "generatorParameters"
         ],
         "type": "object",
         "properties": {
@@ -9995,6 +10006,16 @@
               "type": "string"
             },
             "description": "The channels a stack can have."
+          },
+          "generatorParameters": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/GraphSettingDefinition"
+              }
+            },
+            "description": "The knobs each generator has, by its path."
           }
         },
         "description": "The words a stack\u0027s fields take, so that a client holds no list of its own."

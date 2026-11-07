@@ -414,6 +414,35 @@ export function hexOf(colour: readonly number[] | undefined): string {
               [value]="layer.mask.generator"
               (valueChange)="setMask(layer, { generator: $event ?? '' })"
             />
+            @for (parameter of generatorKnobs(); track parameter.name) {
+              <div class="flex items-center gap-2">
+                <span class="text-foreground-muted w-16 shrink-0 truncate text-xs" [title]="parameter.summary">{{
+                  parameter.name
+                }}</span>
+                @if (parameter.accepted.length > 0) {
+                  <select
+                    class="well h-7 min-w-0 flex-1 px-1 text-sm"
+                    [attr.aria-label]="parameter.name"
+                    [attr.data-testid]="'paint-mask-knob-' + parameter.name"
+                    (change)="setGeneratorKnob(layer, parameter.name, text($event))"
+                  >
+                    @for (value of parameter.accepted; track value) {
+                      <option [value]="value" [selected]="value === generatorKnob(layer, parameter)">{{ value }}</option>
+                    }
+                  </select>
+                } @else {
+                  <xui-numeric-input
+                    class="min-w-0 flex-1"
+                    size="sm"
+                    [ariaLabel]="parameter.name"
+                    [attr.data-testid]="'paint-mask-knob-' + parameter.name"
+                    [stepSize]="parameter.kind === 'Int' ? 1 : 0.05"
+                    [value]="+generatorKnob(layer, parameter)"
+                    (valueChange)="setGeneratorKnob(layer, parameter.name, ($event ?? 0).toString())"
+                  />
+                }
+              </div>
+            }
           }
           @case ('Bake') {
             <xui-select
@@ -734,6 +763,20 @@ export class LayerPanel {
 
   protected setKnob(layer: StackLayer, name: string, value: string): void {
     void this.store.edit({ op: 'setLayer', layer: layer.id, parameters: { [name]: value } });
+  }
+
+  /** What the chosen mask's generator can be told. */
+  protected readonly generatorKnobs = computed(() => {
+    const generator = this.store.chosen()?.mask.generator ?? '';
+    return this.store.vocabulary()?.generatorParameters[generator] ?? [];
+  });
+
+  protected generatorKnob(layer: StackLayer, parameter: GraphSettingDefinition): string {
+    return layer.mask.parameters?.[parameter.name] ?? parameter.default;
+  }
+
+  protected setGeneratorKnob(layer: StackLayer, name: string, value: string): void {
+    this.setMask(layer, { parameters: { ...layer.mask.parameters, [name]: value } });
   }
 
   protected readonly maskEffects = computed(() => this.store.vocabulary()?.maskEffects ?? []);

@@ -303,6 +303,7 @@ public sealed partial class StackProcessTests : IDisposable {
         ))!;
         Assert.Equal(16, words.Blends.Count);
         Assert.Contains("Generators/Dirt", words.Generators);
+        Assert.Contains(words.GeneratorParameters["Generators/Metal Edge Wear"], static knob => knob.Name == "amount");
 
         await EditAsync(
             state.Id,

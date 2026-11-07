@@ -13,6 +13,7 @@ from typing import cast
 if TYPE_CHECKING:
   from ..models.stack_effect_kind import StackEffectKind
   from ..models.stack_filter_kind import StackFilterKind
+  from ..models.stack_vocabulary_generator_parameters import StackVocabularyGeneratorParameters
 
 
 
@@ -35,6 +36,7 @@ class StackVocabulary:
             alphas (list[str]): The named brush alphas.
             mask_effects (list[StackEffectKind]): The steps a mask can run.
             usages (list[str]): The channels a stack can have.
+            generator_parameters (StackVocabularyGeneratorParameters): The knobs each generator has, by its path.
      """
 
     blends: list[str]
@@ -45,6 +47,7 @@ class StackVocabulary:
     alphas: list[str]
     mask_effects: list[StackEffectKind]
     usages: list[str]
+    generator_parameters: StackVocabularyGeneratorParameters
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -54,6 +57,7 @@ class StackVocabulary:
     def to_dict(self) -> dict[str, Any]:
         from ..models.stack_effect_kind import StackEffectKind # noqa: PLC0415
         from ..models.stack_filter_kind import StackFilterKind # noqa: PLC0415
+        from ..models.stack_vocabulary_generator_parameters import StackVocabularyGeneratorParameters # noqa: PLC0415
         blends = self.blends
 
 
@@ -92,6 +96,8 @@ class StackVocabulary:
 
 
 
+        generator_parameters = self.generator_parameters.to_dict()
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -104,6 +110,7 @@ class StackVocabulary:
             "alphas": alphas,
             "maskEffects": mask_effects,
             "usages": usages,
+            "generatorParameters": generator_parameters,
         })
 
         return field_dict
@@ -114,6 +121,7 @@ class StackVocabulary:
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.stack_effect_kind import StackEffectKind # noqa: PLC0415
         from ..models.stack_filter_kind import StackFilterKind # noqa: PLC0415
+        from ..models.stack_vocabulary_generator_parameters import StackVocabularyGeneratorParameters # noqa: PLC0415
         d = dict(src_dict)
         blends = cast(list[str], d.pop("blends"))
 
@@ -153,6 +161,11 @@ class StackVocabulary:
         usages = cast(list[str], d.pop("usages"))
 
 
+        generator_parameters = StackVocabularyGeneratorParameters.from_dict(d.pop("generatorParameters"))
+
+
+
+
         stack_vocabulary = cls(
             blends=blends,
             filters=filters,
@@ -162,6 +175,7 @@ class StackVocabulary:
             alphas=alphas,
             mask_effects=mask_effects,
             usages=usages,
+            generator_parameters=generator_parameters,
         )
 
 

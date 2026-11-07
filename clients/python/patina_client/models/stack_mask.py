@@ -13,6 +13,7 @@ from typing import cast
 
 if TYPE_CHECKING:
   from ..models.stack_mask_effect import StackMaskEffect
+  from ..models.stack_mask_parameters_type_1 import StackMaskParametersType1
 
 
 
@@ -38,6 +39,8 @@ class StackMask:
             colour (list[float] | None | Unset): The colour a bake mask selects from its map, as three numbers, or null for
                 all of it.
             effects (list[StackMaskEffect] | None | Unset): What runs on the mask, in order, or null to keep them.
+            parameters (None | StackMaskParametersType1 | Unset): What a generator's knobs are set to, as text, or null to
+                keep them.
      """
 
     source: str
@@ -50,6 +53,7 @@ class StackMask:
     softness: float = 0.0
     colour: list[float] | None | Unset = UNSET
     effects: list[StackMaskEffect] | None | Unset = UNSET
+    parameters: None | StackMaskParametersType1 | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -58,6 +62,7 @@ class StackMask:
 
     def to_dict(self) -> dict[str, Any]:
         from ..models.stack_mask_effect import StackMaskEffect # noqa: PLC0415
+        from ..models.stack_mask_parameters_type_1 import StackMaskParametersType1 # noqa: PLC0415
         source = self.source
 
         value = self.value
@@ -97,6 +102,14 @@ class StackMask:
         else:
             effects = self.effects
 
+        parameters: dict[str, Any] | None | Unset
+        if isinstance(self.parameters, Unset):
+            parameters = UNSET
+        elif isinstance(self.parameters, StackMaskParametersType1):
+            parameters = self.parameters.to_dict()
+        else:
+            parameters = self.parameters
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -114,6 +127,8 @@ class StackMask:
             field_dict["colour"] = colour
         if effects is not UNSET:
             field_dict["effects"] = effects
+        if parameters is not UNSET:
+            field_dict["parameters"] = parameters
 
         return field_dict
 
@@ -122,6 +137,7 @@ class StackMask:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.stack_mask_effect import StackMaskEffect # noqa: PLC0415
+        from ..models.stack_mask_parameters_type_1 import StackMaskParametersType1 # noqa: PLC0415
         d = dict(src_dict)
         source = d.pop("source")
 
@@ -182,6 +198,26 @@ class StackMask:
         effects = _parse_effects(d.pop("effects", UNSET))
 
 
+        def _parse_parameters(data: object) -> None | StackMaskParametersType1 | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                parameters_type_1 = StackMaskParametersType1.from_dict(data)
+
+
+
+                return parameters_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackMaskParametersType1 | Unset, data)
+
+        parameters = _parse_parameters(d.pop("parameters", UNSET))
+
+
         stack_mask = cls(
             source=source,
             value=value,
@@ -193,6 +229,7 @@ class StackMask:
             softness=softness,
             colour=colour,
             effects=effects,
+            parameters=parameters,
         )
 
 

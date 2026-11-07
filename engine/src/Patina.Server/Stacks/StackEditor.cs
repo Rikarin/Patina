@@ -401,9 +401,16 @@ public sealed class StackEditor : ILayerStackDocument {
                 Asset = mask.Asset,
                 Anchor = mask.Anchor,
                 Generator = mask.Generator,
+                GeneratorTexts = GeneratorKnobs(held, mask),
                 Map = mask.Map,
                 Effects = StackDocuments.WithSelection(held.Effects, mask)
             };
+
+    /// <summary>Another generator has other knobs, so what was set for the last one does not follow.</summary>
+    static Dictionary<string, string> GeneratorKnobs(MaskAsset held, StackMask mask) =>
+        mask.Generator != held.Generator ? []
+        : mask.Parameters is { } chosen ? new(chosen)
+        : held.GeneratorTexts;
 
     SetLayerCommand Change(StackSetLayer change, string set) {
         var layer = Require(change.Layer);

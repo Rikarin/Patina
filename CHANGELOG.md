@@ -7,6 +7,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Mask generators have settings: how far Metal Edge Wear reaches, how much Dust settles, and the rest of what each one exposes.
 - The viewport works from the keyboard: arrows turn it, Shift and the arrows pan it, plus and minus zoom, and F frames the model.
 - The viewport has shadows, and an environment to choose: Studio, Overcast, Sunset, or an `.hdr` panorama. Turning the light turns the environment with it.
 - Projects can be duplicated and deleted from the Library. A deleted project goes to the library's hidden `.trash` folder.

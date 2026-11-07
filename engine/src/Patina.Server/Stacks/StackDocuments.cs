@@ -1,5 +1,6 @@
 using Patina.Contracts;
 using Patina.Library;
+using Patina.Server.Graphs;
 using Vixen.NodeGraph;
 using Vixen.TextureGraph;
 using Vixen.Texturing;
@@ -48,7 +49,8 @@ public static class StackDocuments {
         TextureNodeLibrary.MeshMaps,
         PaintAlphas.Names,
         MaskEffects(),
-        Usages()
+        Usages(),
+        GeneratorParameters()
     );
 
     /// <summary>The stack a new file starts as: a base, and somewhere to paint.</summary>
@@ -155,6 +157,20 @@ public static class StackDocuments {
         return [..registry.Get("Output/Output").Setting("Usage")!.Accepted];
     }
 
+    static Dictionary<string, IReadOnlyList<GraphSettingDefinition>> GeneratorParameters() {
+        var library = LayerStackCompiler.Library(out _);
+        return TextureCompoundLibrary.Shipped
+            .Where(static path => path.StartsWith("Generators/", StringComparison.Ordinal))
+            .Where(path => library.TryGet(path, out _))
+            .ToDictionary(
+                static path => path,
+                path => {
+                    library.TryGet(path, out var type);
+                    return (IReadOnlyList<GraphSettingDefinition>)[..type!.Settings.Select(GraphDocuments.Definition)];
+                }
+            );
+    }
+
     static IReadOnlyList<StackEffectKind> MaskEffects() {
         NodeTypeRegistry registry = new();
         NodeTypes.Register(registry);
@@ -212,7 +228,8 @@ public static class StackDocuments {
                                 effect.Texts
                             )
                         )
-                ]
+                ],
+                layer.Mask.GeneratorTexts
             ),
             layer.PlanarAxis.ToString(),
             new(

@@ -3450,6 +3450,10 @@ export interface components {
       softness: number;
       /** @description What runs on the mask, in order, or null to keep them. */
       effects?: null | components['schemas']['StackMaskEffect'][];
+      /** @description What a generator's knobs are set to, as text, or null to keep them. */
+      parameters?: null | {
+        [key: string]: string;
+      };
     };
     /** @description One step run on a mask. */
     StackMaskEffect: {
@@ -3698,6 +3702,10 @@ export interface components {
       maskEffects: components['schemas']['StackEffectKind'][];
       /** @description The channels a stack can have. */
       usages: string[];
+      /** @description The knobs each generator has, by its path. */
+      generatorParameters: {
+        [key: string]: components['schemas']['GraphSettingDefinition'][];
+      };
     };
     /** @description The reply to `GET /api/v1/system`. */
     SystemInfo: {

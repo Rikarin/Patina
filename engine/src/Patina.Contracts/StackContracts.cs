@@ -77,6 +77,7 @@ public sealed record StackLayer(
 /// <param name="Tolerance">How far from that colour still counts.</param>
 /// <param name="Softness">How much further the mask takes to reach nothing.</param>
 /// <param name="Effects">What runs on the mask, in order, or null to keep them.</param>
+/// <param name="Parameters">What a generator's knobs are set to, as text, or null to keep them.</param>
 public sealed record StackMask(
     string Source,
     float Value = 1f,
@@ -87,7 +88,8 @@ public sealed record StackMask(
     IReadOnlyList<float>? Colour = null,
     float Tolerance = 0.02f,
     float Softness = 0f,
-    IReadOnlyList<StackMaskEffect>? Effects = null
+    IReadOnlyList<StackMaskEffect>? Effects = null,
+    IReadOnlyDictionary<string, string>? Parameters = null
 );
 
 /// <summary>One step run on a mask.</summary>
@@ -139,6 +141,7 @@ public sealed record StackFilterKind(string Kind, IReadOnlyList<string> Settings
 /// <param name="Alphas">The named brush alphas.</param>
 /// <param name="MaskEffects">The steps a mask can run.</param>
 /// <param name="Usages">The channels a stack can have.</param>
+/// <param name="GeneratorParameters">The knobs each generator has, by its path.</param>
 public sealed record StackVocabulary(
     IReadOnlyList<string> Blends,
     IReadOnlyList<StackFilterKind> Filters,
@@ -147,7 +150,8 @@ public sealed record StackVocabulary(
     IReadOnlyList<string> MeshMaps,
     IReadOnlyList<string> Alphas,
     IReadOnlyList<StackEffectKind> MaskEffects,
-    IReadOnlyList<string> Usages
+    IReadOnlyList<string> Usages,
+    IReadOnlyDictionary<string, IReadOnlyList<GraphSettingDefinition>> GeneratorParameters
 );
 
 /// <summary>What a layer looks like alone.</summary>
