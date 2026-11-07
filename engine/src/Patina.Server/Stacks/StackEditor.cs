@@ -239,6 +239,7 @@ public sealed class StackEditor : ILayerStackDocument {
             StackSetModel => "Bind mesh",
             StackAddChannel add => $"Add {add.Usage}",
             StackSetSeed => "Change seed",
+            StackSetHeightNormal => "Height to normal",
             StackStroke => "Stroke",
             StackDuplicateLayers => "Duplicate layers",
             StackPasteLayers => "Paste layers",
@@ -328,6 +329,9 @@ public sealed class StackEditor : ILayerStackDocument {
                 break;
             case StackSetSeed seed:
                 Do(new SetDocumentCommand(this, Document with { Seed = seed.Seed }, "Change seed"));
+                break;
+            case StackSetHeightNormal height:
+                Do(HeightNormal(height.Method));
                 break;
             case StackStroke stroke:
                 Stroke(stroke, step, set, Do);
@@ -560,6 +564,22 @@ public sealed class StackEditor : ILayerStackDocument {
             this,
             Document with { Sets = [..Document.Sets.Select(held => held == chosen ? added : held)] },
             $"Add {usage}"
+        );
+    }
+
+    SetDocumentCommand HeightNormal(string method) {
+        if (!Enum.TryParse<LayerHeightNormal>(method, false, out var chosen) || !Enum.IsDefined(chosen)) {
+            throw new StackEditRefusedException(
+                $"'{method}' is no way to turn height into a normal. Use {string.Join(" or ", Enum.GetNames<LayerHeightNormal>())}."
+            );
+        }
+
+        var set = Set;
+        var changed = set with { HeightNormal = chosen };
+        return new(
+            this,
+            Document with { Sets = [..Document.Sets.Select(held => held == set ? changed : held)] },
+            "Height to normal"
         );
     }
 

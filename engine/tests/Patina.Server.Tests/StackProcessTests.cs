@@ -285,6 +285,45 @@ public sealed partial class StackProcessTests : IDisposable {
     }
 
     /// <summary>
+    ///     Painted height reaches the surface: a set with a height channel writes a normal, a stroke in height changes
+    ///     it and nothing else, the viewport wears it and an export writes it. Height once reached the height file
+    ///     alone, and the viewport had no slot for it.
+    /// </summary>
+    [Fact]
+    public async Task Painted_height_is_the_normal_the_viewport_wears_and_the_export_writes() {
+        using var deadline = Deadline(240);
+        var (instance, state) = await StartAsync("Relief.vxlayers", deadline.Token);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        await BindMeshAsync(state.Id, deadline.Token);
+        await EditAsync(state.Id, deadline.Token, new StackAddChannel("height"));
+        using var frames = await WearAsync(instance, state.Id, deadline.Token);
+        var flat = await PixelsAsync(state.Id, true, deadline.Token);
+
+        var bump = await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackStroke("bump", "paint", "height", new(24f, Spacing: 0.25f), [1f, 1f, 1f, 1f], Line(300, 300, 20))
+        );
+        await EvaluatedAsync(socket, bump.Revision, deadline.Token);
+        var bumped = await PixelsAsync(state.Id, false, deadline.Token);
+
+        Assert.NotEqual(Digest(flat, "normal"), Digest(bumped, "normal"));
+        Assert.NotEqual(Digest(flat, "height"), Digest(bumped, "height"));
+        Assert.Equal(Digest(flat, "baseColor"), Digest(bumped, "baseColor"));
+        Assert.Equal(Digest(bumped, "normal"), Digest(await PixelsAsync(state.Id, true, deadline.Token), "normal"));
+        await WornAsExportedAsync(state, "bumped", deadline.Token);
+
+        var sharp = await EditAsync(state.Id, deadline.Token, new StackSetHeightNormal("Sharp"));
+        await EvaluatedAsync(socket, sharp.Revision, deadline.Token);
+        Assert.Equal("Sharp", (await StateAsync(state.Id, deadline.Token)).HeightNormal);
+        Assert.NotEqual(Digest(bumped, "normal"), Digest(await PixelsAsync(state.Id, true, deadline.Token), "normal"));
+        await WornAsExportedAsync(state, "sharp", deadline.Token);
+
+        await ActAsync(state.Id, "undo", deadline.Token);
+        Assert.Equal(Digest(bumped, "normal"), Digest(await PixelsAsync(state.Id, true, deadline.Token), "normal"));
+    }
+
+    /// <summary>
     ///     Every kind of layer the stack has, through the API alone: a fill, a filter, a group holding a layer that
     ///     moved into it, and masks of each source that needs no bake. What the viewport samples stays what exports,
     ///     whatever compiled or repaired on the way.
@@ -1005,6 +1044,23 @@ public sealed partial class StackProcessTests : IDisposable {
         }
 
         Assert.Equal(exported.Count, sampled.Count);
+    }
+
+    /// <summary>
+    ///     The normal the viewport wears is the file an export writes. ⚠ Not <see cref="SameAsExportAsync" />, which
+    ///     waits for every exported map to be worn, and a height map has no slot to wear it in.
+    /// </summary>
+    async Task WornAsExportedAsync(StackState state, string when, CancellationToken token) {
+        var exported = (await ExportAsync(state.Id, Path.Combine(folder.FullName, when), token))
+            .Single(static map => map.Usage == "normal");
+        var file = PngCodec.Decode(File.ReadAllBytes(exported.File!));
+        Assert.Equal(exported.Digest, Convert.ToHexStringLower(SHA256.HashData(file.Pixels)));
+
+        // The viewport hears which stack it wears on its own loop, so on a slow machine it can still be on its way.
+        while ((await SampledAsync(state.Id, token)).FirstOrDefault(static map => map.Usage == "normal") is not { } worn
+               || worn.Digest != exported.Digest) {
+            await Task.Delay(50, token);
+        }
     }
 
     async Task BindMeshAsync(string id, CancellationToken token) {

@@ -8153,7 +8153,8 @@
           "bakes",
           "pictures",
           "autoUnwrap",
-          "preservePaint"
+          "preservePaint",
+          "unwrap"
         ],
         "type": "object",
         "properties": {
@@ -8209,6 +8210,10 @@
           "preservePaint": {
             "type": "boolean",
             "description": "Whether paint moves to a new mesh\u0027s layout."
+          },
+          "unwrap": {
+            "description": "How Auto Unwrap lays a mesh out.",
+            "$ref": "#/components/schemas/UnwrapOptions"
           }
         },
         "description": "A project as it opens."
@@ -8567,6 +8572,17 @@
               "string"
             ],
             "description": "The file it was brought in from, which reloading reads again."
+          },
+          "unwrapped": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What Auto Unwrap did, for a mesh it wrote.",
+                "$ref": "#/components/schemas/UnwrapReport"
+              }
+            ]
           }
         },
         "description": "A mesh in a project."
@@ -8790,6 +8806,17 @@
               "boolean"
             ],
             "description": "Whether paint moves to a new mesh\u0027s layout, by where it sits on the surface. Open documents have to be closed\nfirst, as it rewrites their paint files."
+          },
+          "unwrap": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "How Auto Unwrap lays a mesh out. A mesh it already wrote is unwrapped again with these, from the file it came\nfrom, and its paint moves across as a new mesh\u0027s would.",
+                "$ref": "#/components/schemas/UnwrapOptions"
+              }
+            ]
           }
         },
         "description": "The body of \u0060PATCH /api/v1/library/project/settings\u0060. Null leaves a setting as it is."
@@ -9036,6 +9063,9 @@
           },
           {
             "$ref": "#/components/schemas/StackCommandStackPasteLayers"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackSetHeightNormal"
           }
         ],
         "description": "One edit of a stack. A batch of these is one undo step.",
@@ -9052,7 +9082,8 @@
             "nestLayer": "#/components/schemas/StackCommandStackNestLayer",
             "setSeed": "#/components/schemas/StackCommandStackSetSeed",
             "duplicateLayers": "#/components/schemas/StackCommandStackDuplicateLayers",
-            "pasteLayers": "#/components/schemas/StackCommandStackPasteLayers"
+            "pasteLayers": "#/components/schemas/StackCommandStackPasteLayers",
+            "setHeightNormal": "#/components/schemas/StackCommandStackSetHeightNormal"
           }
         }
       },
@@ -9281,6 +9312,25 @@
           }
         },
         "description": "Removes a layer."
+      },
+      "StackCommandStackSetHeightNormal": {
+        "required": [
+          "method",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "setHeightNormal"
+            ],
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "description": "\u0060Sharp\u0060, the height\u0027s slope as painted, or \u0060Smooth\u0060, the slope of the height blurred by a texel, which\n            hides an eight-bit height\u0027s steps."
+          }
+        },
+        "description": "Says how the texture set\u0027s height becomes the normal its surface is lit with."
       },
       "StackCommandStackSetLayer": {
         "required": [
@@ -10485,7 +10535,8 @@
           "previews",
           "seed",
           "settled",
-          "model"
+          "model",
+          "heightNormal"
         ],
         "type": "object",
         "properties": {
@@ -10582,6 +10633,11 @@
             "description": "The number every procedural step derives from.",
             "format": "uint32",
             "default": 0
+          },
+          "heightNormal": {
+            "type": "string",
+            "description": "How a height channel becomes the set\u0027s normal: \u0060Sharp\u0060 or \u0060Smooth\u0060. Read only when the set has a height\nchannel, and then it writes a normal whether or not it declares one.",
+            "default": "Smooth"
           }
         },
         "description": "A whole stack: everything a client needs to draw it, and no pixels."
@@ -10907,6 +10963,120 @@
           }
         },
         "description": "One page of tags, by name."
+      },
+      "UnwrapOptions": {
+        "required": [
+          "resolution",
+          "margin",
+          "quality",
+          "rotations",
+          "texelDensity",
+          "overflow"
+        ],
+        "type": "object",
+        "properties": {
+          "resolution": {
+            "type": "integer",
+            "description": "The atlas side the margin is counted against, in texels. A map of another size only rescales it.",
+            "format": "int32"
+          },
+          "margin": {
+            "type": "integer",
+            "description": "The empty texels between two islands.",
+            "format": "int32"
+          },
+          "quality": {
+            "type": "string",
+            "description": "How islands are packed: \u0060boxes\u0060 by their bounding boxes, \u0060outlines\u0060 by their shapes, and \u0060groups\u0060\nby their shapes after joining nearly square neighbours."
+          },
+          "rotations": {
+            "type": "integer",
+            "description": "How many ways an island may be turned: 1 never, 2 a half turn, 4 every quarter turn.",
+            "format": "int32"
+          },
+          "texelDensity": {
+            "type": "number",
+            "description": "Texels per world unit every island is scaled to, or zero for each island at its own scale.",
+            "format": "double"
+          },
+          "overflow": {
+            "type": "string",
+            "description": "What happens when the islands do not fit at that density: \u0060shrink\u0060 scales them all down, and \u0060refuse\u0060\nstops and says so. Spilling into a second UDIM tile is not offered while Patina paints one tile."
+          }
+        },
+        "description": "How Auto Unwrap lays out a mesh. Each texture set gets an atlas of its own."
+      },
+      "UnwrapReport": {
+        "required": [
+          "from",
+          "sets"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "The file it unwrapped, relative to the project. Changing the options unwraps it again."
+          },
+          "sets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnwrapSet"
+            },
+            "description": "One entry per texture set it laid out. A set whose material had a layout kept it and is absent."
+          }
+        },
+        "description": "What Auto Unwrap did to a mesh."
+      },
+      "UnwrapSet": {
+        "required": [
+          "material",
+          "charts",
+          "flipped",
+          "stretch",
+          "worstStretch",
+          "packed",
+          "warnings"
+        ],
+        "type": "object",
+        "properties": {
+          "material": {
+            "type": "string",
+            "description": "The material, which is the texture set."
+          },
+          "charts": {
+            "type": "integer",
+            "description": "How many islands. Fewer is better at the same stretch.",
+            "format": "int32"
+          },
+          "flipped": {
+            "type": "integer",
+            "description": "Triangles turned over in the atlas. Anything but zero paints and bakes in the wrong place.",
+            "format": "int32"
+          },
+          "stretch": {
+            "type": "number",
+            "description": "The stretch averaged over area. 1 is none.",
+            "format": "double"
+          },
+          "worstStretch": {
+            "type": "number",
+            "description": "The stretch of the worst triangle.",
+            "format": "double"
+          },
+          "packed": {
+            "type": "number",
+            "description": "The share of the atlas the islands cover, after the margin.",
+            "format": "double"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What a person should know: an island split, a rescale."
+          }
+        },
+        "description": "What one texture set\u0027s unwrap came to."
       },
       "ViewportBakeRequest": {
         "required": [

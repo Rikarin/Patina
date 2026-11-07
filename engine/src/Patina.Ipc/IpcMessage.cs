@@ -206,7 +206,8 @@ public sealed class IpcMessage {
 
     public MeshUnwrapAsk? MeshUnwrap { get; set; }
 
-    public bool? MeshUnwrapped { get; set; }
+    /// <summary>What each set's unwrap came to, in the answer to <see cref="IpcTypes.MeshUnwrap" />. Null wrote nothing.</summary>
+    public IReadOnlyList<UnwrapSet>? MeshUnwrapped { get; set; }
 
     public MeshMovePaintAsk? MeshMovePaint { get; set; }
 
@@ -523,7 +524,8 @@ public sealed record StackResult(
 /// <summary>Gives a mesh that has no UV layout one, in a new file.</summary>
 /// <param name="Source">The mesh file.</param>
 /// <param name="Output">Where the unwrapped mesh goes.</param>
-public sealed record MeshUnwrapAsk(string Source, string Output);
+/// <param name="Options">How to lay it out.</param>
+public sealed record MeshUnwrapAsk(string Source, string Output, UnwrapOptions Options);
 
 /// <summary>Moves paint files from one mesh's layout to another's, rewriting them.</summary>
 /// <param name="From">The mesh they are on.</param>

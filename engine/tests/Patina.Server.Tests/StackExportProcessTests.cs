@@ -484,4 +484,124 @@ public sealed partial class StackProcessTests {
         var occluded = Enumerable.Range(0, width * height).Count(at => samples[at * lanes] < 60000);
         Assert.True(occluded > 0 && height == ExportSide, "Baked occlusion never reached the ORM file.");
     }
+
+    /// <summary>
+    ///     Auto Unwrap keeps a two-material mesh two texture sets, says what each layout came to, and lays the mesh out
+    ///     again from the file it came from when its options change. It once wrote one material, so one set.
+    /// </summary>
+    [Fact]
+    public async Task An_unwrap_keeps_each_material_a_set_and_its_options_lay_it_out_again() {
+        using var deadline = Deadline(180);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        var mesh = Path.Combine(folder.FullName, "box.obj");
+        File.WriteAllText(
+            mesh,
+            """
+            v 0 0 0
+            v 1 0 0
+            v 1 1 0
+            v 0 1 0
+            v 0 0 1
+            v 1 0 1
+            v 1 1 1
+            v 0 1 1
+            usemtl lid
+            f 5 6 7 8
+            f 4 8 7 3
+            usemtl walls
+            f 1 4 3 2
+            f 2 3 7 6
+            f 1 5 8 4
+            f 1 2 6 5
+            """
+        );
+        await StartAsync("Unused.vxlayers", deadline.Token);
+        var project = await MakeTexturingProjectAsync(mesh, deadline.Token);
+
+        async Task<ProjectContents> SetAsync(object body) {
+            using var set = await http.PatchAsJsonAsync("/api/v1/library/project/settings", body, deadline.Token);
+            Assert.True(set.IsSuccessStatusCode, await set.Content.ReadAsStringAsync(deadline.Token));
+            return (await set.Content.ReadFromJsonAsync<ProjectContents>(deadline.Token))!;
+        }
+
+        var unwrapped = await SetAsync(new { project, autoUnwrap = true });
+
+        var held = Assert.Single(unwrapped.Meshes, static m => m.Unwrapped is not null);
+        Assert.EndsWith("box_unwrapped.glb", held.Path, StringComparison.Ordinal);
+        Assert.Equal("box.obj", held.Unwrapped!.From);
+        Assert.Equal(["lid", "walls"], held.Unwrapped.Sets.Select(static s => s.Material).Order());
+        Assert.All(held.Unwrapped.Sets, static s => Assert.True(s.Charts > 0 && s.Packed > 0));
+        Assert.Equal(["lid", "walls"], unwrapped.Documents.Select(static d => d.Material ?? string.Empty).Order());
+
+        var file = Path.Combine(Library, held.Path);
+        var first = await File.ReadAllBytesAsync(file, deadline.Token);
+        var again = await SetAsync(
+            new {
+                project, unwrap = new UnwrapOptions { Resolution = 512, Margin = 16, Quality = "boxes", Rotations = 1 }
+            }
+        );
+
+        Assert.Equal(
+            new() { Resolution = 512, Margin = 16, Quality = "boxes", Rotations = 1 },
+            again.Unwrap
+        );
+        Assert.NotEqual(first, await File.ReadAllBytesAsync(file, deadline.Token));
+        Assert.Equal("box.obj", Assert.Single(again.Meshes, static m => m.Unwrapped is not null).Unwrapped!.From);
+        Assert.Equal(2, again.Documents.Count);
+
+        using var refused = await http.PatchAsJsonAsync(
+            "/api/v1/library/project/settings",
+            new { project, unwrap = new { resolution = 2048, margin = 4, quality = "outlines", rotations = 3 } },
+            deadline.Token
+        );
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+    }
+
+    /// <summary>
+    ///     A set laid out past UDIM tile 1001 says so in its problems as soon as it is open, because a stroke there
+    ///     paints nothing and the viewport shows 1001's maps on it. It once said nothing until the export.
+    /// </summary>
+    [Fact]
+    public async Task A_set_on_a_second_udim_tile_says_so_when_it_opens() {
+        using var deadline = Deadline(180);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        var mesh = Path.Combine(folder.FullName, "tiles.obj");
+        File.WriteAllText(
+            mesh,
+            """
+            v 0 0 0
+            v 1 0 0
+            v 1 1 0
+            v 0 1 0
+            v 2 0 0
+            v 3 0 0
+            v 3 1 0
+            v 2 1 0
+            vt 0.1 0.1
+            vt 0.9 0.1
+            vt 0.9 0.9
+            vt 0.1 0.9
+            vt 1.1 0.1
+            vt 1.9 0.1
+            vt 1.9 0.9
+            vt 1.1 0.9
+            f 1/1 2/2 3/3 4/4
+            f 5/5 6/6 7/7 8/8
+            """
+        );
+        var (instance, _) = await StartAsync("Unused.vxlayers", deadline.Token);
+        var project = await MakeTexturingProjectAsync(mesh, deadline.Token);
+        using var contents = JsonDocument.Parse(
+            await http.GetStringAsync($"/api/v1/library/project?path={project}", deadline.Token)
+        );
+        var document = contents.RootElement.GetProperty("documents")[0].GetProperty("path").GetString()!;
+
+        var state = await OpenAsync(document, deadline.Token);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        var evaluation = await EvaluatedAsync(socket, state.Revision, deadline.Token);
+
+        var said = Assert.Single(evaluation.Problems, static p => p.Message.Contains("UDIM", StringComparison.Ordinal));
+        Assert.Equal("Warning", said.Severity);
+        Assert.Contains("1001, 1002", said.Message, StringComparison.Ordinal);
+    }
 }

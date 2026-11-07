@@ -213,7 +213,8 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                     settled,
                     editor.Document.Model,
                     MeshMaps,
-                    editor.Document.Seed
+                    editor.Document.Seed,
+                    set.HeightNormal.ToString()
                 );
             }
         }

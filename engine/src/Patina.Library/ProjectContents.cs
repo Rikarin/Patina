@@ -52,13 +52,26 @@ static class ProjectFiles {
                 ..files.Where(IsPicture)
                     .Select(f => new ProjectFile("picture", Path.GetFileName(f), Below(path, f)))
             ]
-        ) { AutoUnwrap = document.AutoUnwrap, PreservePaint = document.PreservePaint };
+        ) { AutoUnwrap = document.AutoUnwrap, PreservePaint = document.PreservePaint, Unwrap = document.Unwrap };
     }
 
     /// <summary>Brings a mesh into a project, unless it is in there already, and lists it.</summary>
     /// <exception cref="FileNotFoundException">The project or a mesh is not there.</exception>
     /// <exception cref="ProjectRefusedException">A file is not a mesh.</exception>
-    public static ProjectMesh AddMesh(string root, string path, string mesh, string? high, string? source = null) {
+    /// <param name="root">The library.</param>
+    /// <param name="path">The project.</param>
+    /// <param name="mesh">The mesh file.</param>
+    /// <param name="high">The detailed mesh it bakes from.</param>
+    /// <param name="source">The file it was brought in from, when that is not <paramref name="mesh" />.</param>
+    /// <param name="unwrapped">What Auto Unwrap did, when it wrote this mesh.</param>
+    public static ProjectMesh AddMesh(
+        string root,
+        string path,
+        string mesh,
+        string? high,
+        string? source = null,
+        UnwrapReport? unwrapped = null
+    ) {
         var (full, document) = Project(root, path);
         Require(mesh);
         if (high is not null) {
@@ -78,7 +91,7 @@ static class ProjectFiles {
             high is null ? held?.High : Bring(full, high),
             origin is null ? held?.Source : InLibrary(root, origin),
             LibraryFiles.Digest(Path.Combine(full, file))
-        );
+        ) { Unwrapped = unwrapped };
         if (origin is not null) {
             RememberSource(root, added, origin);
         }
@@ -234,13 +247,21 @@ static class ProjectFiles {
     }
 
     /// <summary>Says what happens to a mesh with no UV layout, and to paint on a new layout.</summary>
-    public static void SetMeshHandling(string root, string path, bool? autoUnwrap, bool? preservePaint) {
+    public static void SetMeshHandling(
+        string root,
+        string path,
+        bool? autoUnwrap,
+        bool? preservePaint,
+        UnwrapOptions? unwrap = null
+    ) {
         var (_, document) = Project(root, path);
         LibraryFiles.WriteProject(
             root,
             path,
             document with {
-                AutoUnwrap = autoUnwrap ?? document.AutoUnwrap, PreservePaint = preservePaint ?? document.PreservePaint
+                AutoUnwrap = autoUnwrap ?? document.AutoUnwrap,
+                PreservePaint = preservePaint ?? document.PreservePaint,
+                Unwrap = unwrap ?? document.Unwrap
             }
         );
     }
@@ -483,7 +504,7 @@ static class ProjectFiles {
             Below(path, mesh.File),
             mesh.High is { } high ? Below(path, high) : null,
             SourceOf(root, mesh)
-        );
+        ) { Unwrapped = mesh.Unwrapped };
 
     static ProjectDocumentInfo Listed(string full, string path, ProjectItem item) =>
         new(item.Id.Value, item.Kind, item.Name, Below(path, item.File), item.Mesh?.Value, item.Role, item.Material) {

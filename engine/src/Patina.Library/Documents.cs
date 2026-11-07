@@ -1,3 +1,5 @@
+using Patina.Contracts;
+
 namespace Patina.Library;
 
 /// <summary>How a reference follows a shared asset (plan §5).</summary>
@@ -67,6 +69,9 @@ public sealed record ProjectDocument(
 
     /// <summary>Whether paint moves to a new mesh's layout, by where it sits on the surface.</summary>
     public bool PreservePaint { get; init; } = true;
+
+    /// <summary>How Auto Unwrap lays a mesh out.</summary>
+    public UnwrapOptions Unwrap { get; init; } = new();
 }
 
 /// <summary>A mesh a project owns.</summary>
@@ -81,7 +86,10 @@ public sealed record ProjectMesh(
     string? High = null,
     string? Source = null,
     string? Hash = null
-);
+) {
+    /// <summary>What Auto Unwrap did, for a mesh it wrote.</summary>
+    public UnwrapReport? Unwrapped { get; init; }
+}
 
 /// <summary>A document a project lists.</summary>
 /// <param name="Id">Its identity, which a reference to it survives a move by.</param>

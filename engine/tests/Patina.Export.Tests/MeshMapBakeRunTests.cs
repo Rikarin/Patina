@@ -86,6 +86,51 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
         Assert.Contains("Strap", refused.Message, StringComparison.Ordinal);
     }
 
+    /// <summary>Two quads side by side in the file, the second laid out on UDIM tile 1002.</summary>
+    internal const string TwoTiles = """
+                                     v 0 0 0
+                                     v 1 0 0
+                                     v 1 1 0
+                                     v 0 1 0
+                                     v 2 0 0
+                                     v 3 0 0
+                                     v 3 1 0
+                                     v 2 1 0
+                                     vt 0.1 0.1
+                                     vt 0.9 0.1
+                                     vt 0.9 0.9
+                                     vt 0.1 0.9
+                                     vt 1.1 0.1
+                                     vt 1.9 0.1
+                                     vt 1.9 0.9
+                                     vt 1.1 0.9
+                                     f 1/1 2/2 3/3 4/4
+                                     f 5/5 6/6 7/7 8/8
+                                     """;
+
+    /// <summary>
+    ///     A bake filled tile 1001, left 1002 empty and said nothing, because it only warned when no texel was covered at
+    ///     all. A set laid out past the first tile is refused, by name, until Patina bakes UDIM.
+    /// </summary>
+    [Fact]
+    public void A_low_mesh_on_a_second_udim_tile_is_refused_by_name() {
+        var low = Into("tiles.obj");
+        File.WriteAllText(low, TwoTiles);
+
+        var refused = Assert.Throws<InvalidDataException>(() => MeshMapBakeRun.Run(
+                Request() with { High = low, Low = low },
+                Into("baked"),
+                0,
+                null,
+                TestContext.Current.CancellationToken
+            )
+        );
+
+        Assert.Contains("1002", refused.Message, StringComparison.Ordinal);
+        Assert.Contains("UDIM", refused.Message, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(Into("baked")));
+    }
+
     /// <summary>The low was cut to its set and the cage was not, so their layouts could never agree.</summary>
     [Fact]
     public void A_cage_is_cut_to_the_same_set_as_the_low_mesh() {

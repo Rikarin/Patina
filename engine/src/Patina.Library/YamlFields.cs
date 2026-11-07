@@ -66,6 +66,9 @@ sealed class YamlFields(YamlMappingNode node, string path, string prefix = "") {
         return [..Sequence(key).Select(item => Child(item, $"{prefix}{key}[{index++}]."))];
     }
 
+    /// <summary>A mapping under a key, or null when there is none.</summary>
+    public YamlFields? Map(string key) => Find(key) is { } value ? Child(value, $"{prefix}{key}.") : null;
+
     public IReadOnlyDictionary<string, string> TextMap(string key) {
         if (Find(key) is not { } value) {
             return new Dictionary<string, string>();

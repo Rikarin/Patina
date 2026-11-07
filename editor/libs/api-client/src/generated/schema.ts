@@ -2818,6 +2818,8 @@ export interface components {
       autoUnwrap: boolean;
       /** @description Whether paint moves to a new mesh's layout. */
       preservePaint: boolean;
+      /** @description How Auto Unwrap lays a mesh out. */
+      unwrap: components['schemas']['UnwrapOptions'];
     };
     /** @description The body of `POST /api/v1/library/projects`. */
     ProjectCreateRequest: {
@@ -2975,6 +2977,7 @@ export interface components {
       high?: null | string;
       /** @description The file it was brought in from, which reloading reads again. */
       source?: null | string;
+      unwrapped?: null | components['schemas']['UnwrapReport'];
     };
     /** @description The body of `POST /api/v1/library/project/meshes`. */
     ProjectMeshRequest: {
@@ -3078,6 +3081,7 @@ export interface components {
        *     first, as it rewrites their paint files.
        */
       preservePaint?: null | boolean;
+      unwrap?: null | components['schemas']['UnwrapOptions'];
     };
     /** @description One project as the browser shows it. The project itself loads on open. */
     ProjectSummary: {
@@ -3216,7 +3220,8 @@ export interface components {
       | components['schemas']['StackCommandStackNestLayer']
       | components['schemas']['StackCommandStackSetSeed']
       | components['schemas']['StackCommandStackDuplicateLayers']
-      | components['schemas']['StackCommandStackPasteLayers'];
+      | components['schemas']['StackCommandStackPasteLayers']
+      | components['schemas']['StackCommandStackSetHeightNormal'];
     /** @description Edits applied whole or not at all, as one undo step. */
     StackCommandBatch: {
       /** @description The edits, in order. */
@@ -3304,6 +3309,16 @@ export interface components {
       op: 'removeLayer';
       /** @description Which. */
       layer: string;
+    };
+    /** @description Says how the texture set's height becomes the normal its surface is lit with. */
+    StackCommandStackSetHeightNormal: {
+      /** @enum {string} */
+      op: 'setHeightNormal';
+      /**
+       * @description `Sharp`, the height's slope as painted, or `Smooth`, the slope of the height blurred by a texel, which
+       *                 hides an eight-bit height's steps.
+       */
+      method: string;
     };
     /** @description Changes what a layer's row shows. What is null stays. */
     StackCommandStackSetLayer: {
@@ -3877,6 +3892,12 @@ export interface components {
        * @default 0
        */
       seed: number;
+      /**
+       * @description How a height channel becomes the set's normal: `Sharp` or `Smooth`. Read only when the set has a height
+       *     channel, and then it writes a normal whether or not it declares one.
+       * @default Smooth
+       */
+      heightNormal: string;
     };
     /** @description An open stack, for a list. */
     StackSummary: {
@@ -4012,6 +4033,78 @@ export interface components {
        * @description The most items a page holds.
        */
       limit: number;
+    };
+    /** @description How Auto Unwrap lays out a mesh. Each texture set gets an atlas of its own. */
+    UnwrapOptions: {
+      /**
+       * Format: int32
+       * @description The atlas side the margin is counted against, in texels. A map of another size only rescales it.
+       */
+      resolution: number;
+      /**
+       * Format: int32
+       * @description The empty texels between two islands.
+       */
+      margin: number;
+      /**
+       * @description How islands are packed: `boxes` by their bounding boxes, `outlines` by their shapes, and `groups`
+       *     by their shapes after joining nearly square neighbours.
+       */
+      quality: string;
+      /**
+       * Format: int32
+       * @description How many ways an island may be turned: 1 never, 2 a half turn, 4 every quarter turn.
+       */
+      rotations: number;
+      /**
+       * Format: double
+       * @description Texels per world unit every island is scaled to, or zero for each island at its own scale.
+       */
+      texelDensity: number;
+      /**
+       * @description What happens when the islands do not fit at that density: `shrink` scales them all down, and `refuse`
+       *     stops and says so. Spilling into a second UDIM tile is not offered while Patina paints one tile.
+       */
+      overflow: string;
+    };
+    /** @description What Auto Unwrap did to a mesh. */
+    UnwrapReport: {
+      /** @description The file it unwrapped, relative to the project. Changing the options unwraps it again. */
+      from: string;
+      /** @description One entry per texture set it laid out. A set whose material had a layout kept it and is absent. */
+      sets: components['schemas']['UnwrapSet'][];
+    };
+    /** @description What one texture set's unwrap came to. */
+    UnwrapSet: {
+      /** @description The material, which is the texture set. */
+      material: string;
+      /**
+       * Format: int32
+       * @description How many islands. Fewer is better at the same stretch.
+       */
+      charts: number;
+      /**
+       * Format: int32
+       * @description Triangles turned over in the atlas. Anything but zero paints and bakes in the wrong place.
+       */
+      flipped: number;
+      /**
+       * Format: double
+       * @description The stretch averaged over area. 1 is none.
+       */
+      stretch: number;
+      /**
+       * Format: double
+       * @description The stretch of the worst triangle.
+       */
+      worstStretch: number;
+      /**
+       * Format: double
+       * @description The share of the atlas the islands cover, after the margin.
+       */
+      packed: number;
+      /** @description What a person should know: an island split, a rescale. */
+      warnings: string[];
     };
     /** @description Asks the viewport to show a finished bake on the mesh it was baked onto. */
     ViewportBakeRequest: {

@@ -239,6 +239,10 @@ public sealed record StackEvaluation(
 /// <param name="Model">The mesh it is painted on, as the document names it, or empty.</param>
 /// <param name="MeshMaps">The bake its generators read, or null.</param>
 /// <param name="Seed">The number every procedural step derives from.</param>
+/// <param name="HeightNormal">
+///     How a height channel becomes the set's normal: <c>Sharp</c> or <c>Smooth</c>. Read only when the set has a height
+///     channel, and then it writes a normal whether or not it declares one.
+/// </param>
 public sealed record StackState(
     string Id,
     string Path,
@@ -256,7 +260,8 @@ public sealed record StackState(
     long Settled,
     string Model,
     string? MeshMaps = null,
-    uint Seed = 0
+    uint Seed = 0,
+    string HeightNormal = "Smooth"
 );
 #pragma warning restore SK7005
 
@@ -282,6 +287,7 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackSetSeed), "setSeed")]
 [JsonDerivedType(typeof(StackDuplicateLayers), "duplicateLayers")]
 [JsonDerivedType(typeof(StackPasteLayers), "pasteLayers")]
+[JsonDerivedType(typeof(StackSetHeightNormal), "setHeightNormal")]
 public abstract record StackCommand;
 
 /// <summary>Adds a layer at the top of the stack.</summary>
@@ -421,6 +427,13 @@ public sealed record StackClip(string Id, int Layers, string Stack);
 /// <summary>Sets the number every procedural step of the stack derives from.</summary>
 /// <param name="Seed">It.</param>
 public sealed record StackSetSeed(uint Seed) : StackCommand;
+
+/// <summary>Says how the texture set's height becomes the normal its surface is lit with.</summary>
+/// <param name="Method">
+///     <c>Sharp</c>, the height's slope as painted, or <c>Smooth</c>, the slope of the height blurred by a texel, which
+///     hides an eight-bit height's steps.
+/// </param>
+public sealed record StackSetHeightNormal(string Method) : StackCommand;
 
 /// <summary>Where the brush goes: in texels of the image, or on the picture of a stroke with a view.</summary>
 /// <param name="X">Its column.</param>

@@ -83,7 +83,10 @@ public sealed record ProjectFile(string Kind, string Name, string Path, bool Sta
 /// <param name="Path">Its path below the library.</param>
 /// <param name="High">The detailed mesh it bakes from, below the library.</param>
 /// <param name="Source">The file it was brought in from, which reloading reads again.</param>
-public sealed record ProjectMeshInfo(Guid? Id, string Path, string? High, string? Source = null);
+public sealed record ProjectMeshInfo(Guid? Id, string Path, string? High, string? Source = null) {
+    /// <summary>What Auto Unwrap did, for a mesh it wrote.</summary>
+    public UnwrapReport? Unwrapped { get; init; }
+}
 
 /// <summary>Something in a project that can be opened and edited (ADR 0012).</summary>
 /// <param name="Id">Its GUID. Null until the project lists it.</param>
@@ -129,6 +132,9 @@ public sealed record ProjectContents(
 
     /// <summary>Whether paint moves to a new mesh's layout.</summary>
     public bool PreservePaint { get; init; } = true;
+
+    /// <summary>How Auto Unwrap lays a mesh out.</summary>
+    public UnwrapOptions Unwrap { get; init; } = new();
 }
 
 /// <summary>The body of <c>POST /api/v1/library/project/meshes</c>.</summary>
@@ -160,12 +166,17 @@ public sealed record ProjectFileRequest(string Project, string File);
 ///     Whether paint moves to a new mesh's layout, by where it sits on the surface. Open documents have to be closed
 ///     first, as it rewrites their paint files.
 /// </param>
+/// <param name="Unwrap">
+///     How Auto Unwrap lays a mesh out. A mesh it already wrote is unwrapped again with these, from the file it came
+///     from, and its paint moves across as a new mesh's would.
+/// </param>
 public sealed record ProjectSettingsRequest(
     string Project,
     string? Mesh,
     string? High,
     bool? AutoUnwrap,
-    bool? PreservePaint = null
+    bool? PreservePaint = null,
+    UnwrapOptions? Unwrap = null
 );
 
 /// <summary>The body of <c>POST /api/v1/library/project/documents</c>.</summary>

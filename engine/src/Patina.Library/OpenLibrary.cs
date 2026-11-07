@@ -174,9 +174,15 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
 
     /// <summary>Brings a mesh into a project, and its detailed mesh if it has one.</summary>
     /// <returns>The mesh as the project lists it.</returns>
-    public ProjectMesh AddMesh(string path, string mesh, string? high, string? source = null) {
+    public ProjectMesh AddMesh(
+        string path,
+        string mesh,
+        string? high,
+        string? source = null,
+        UnwrapReport? unwrapped = null
+    ) {
         lock (createGate) {
-            var added = ProjectFiles.AddMesh(RootPath, path, mesh, high, source);
+            var added = ProjectFiles.AddMesh(RootPath, path, mesh, high, source, unwrapped);
             Interlocked.Increment(ref unscannedWrites);
             return added;
         }
@@ -253,9 +259,9 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     }
 
     /// <summary>Says what a project does with a mesh with no UV layout, and with paint on a new layout.</summary>
-    public void SetMeshHandling(string path, bool? autoUnwrap, bool? preservePaint) {
+    public void SetMeshHandling(string path, bool? autoUnwrap, bool? preservePaint, UnwrapOptions? unwrap = null) {
         lock (createGate) {
-            ProjectFiles.SetMeshHandling(RootPath, path, autoUnwrap, preservePaint);
+            ProjectFiles.SetMeshHandling(RootPath, path, autoUnwrap, preservePaint, unwrap);
             Interlocked.Increment(ref unscannedWrites);
         }
     }
