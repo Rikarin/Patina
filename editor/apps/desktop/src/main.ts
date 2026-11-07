@@ -85,6 +85,7 @@ protocol.registerSchemesAsPrivileged([
 
 let sidecars: Sidecars | null = null;
 let window: BrowserWindow | null = null;
+const QuitDeadlineMs = 8_000;
 let quitting = false;
 /** What the renderer last said: whether quitting now would lose edits. */
 let unsaved = false;
@@ -466,5 +467,9 @@ app.on('before-quit', event => {
   // Stop the backend cleanly (the Server leaves the discovery file and deletes its socket) and really quit.
   event.preventDefault();
   quitting = true;
+  // A process that will not die must not keep the app on screen: each is killed at 3 s, so this is already wrong.
+  setTimeout(() => {
+    app.exit(0);
+  }, QuitDeadlineMs).unref();
   void sidecars.stop().finally(() => app.quit());
 });

@@ -66,7 +66,13 @@ test('a stamp reaches the screen through the real window', async () => {
   await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 120_000 });
   console.log(`opened and evaluated in ${Date.now() - opened} ms`);
   await window.getByTestId('paint-layer-layer1').click();
-  await window.getByTestId('paint-size').locator('input').fill(Radius);
+  const size = window.getByTestId('paint-size').getByRole('slider');
+  await size.focus();
+  await size.press('Home');
+  for (let step = 1; step < Number(Radius); step += 1) {
+    await size.press('ArrowRight');
+  }
+
   await window.waitForTimeout(1_000);
 
   const box = await window.getByRole('application', { name: 'Viewport' }).boundingBox();
@@ -90,7 +96,11 @@ test('a stamp reaches the screen through the real window', async () => {
   }
 
   const held = await window.getByTestId('viewport-stamp').getAttribute('data-stamp-ms');
-  const times = (held ?? '').split(',').map(Number).filter(Number.isFinite).sort((a, b) => a - b);
+  const times = (held ?? '')
+    .split(',')
+    .map(Number)
+    .filter(Number.isFinite)
+    .sort((a, b) => a - b);
   console.log(
     `${Size}², ${Layers} layers, radius ${Radius} px, ${times.length} parts: ` +
       `stamp to frame shown p50 ${percentile(times, 0.5).toFixed(1)} ms, ` +
@@ -98,7 +108,16 @@ test('a stamp reaches the screen through the real window', async () => {
       `load average ${Math.min(...loads).toFixed(0)} to ${Math.max(...loads).toFixed(0)}`
   );
   await window.screenshot({ path: join(shots, 'paint-bench.png') });
-  await app.close();
+  // Strokes leave the stack unsaved, and the quit dialog would wait for an answer nobody is here to give.
+  const closed = app.waitForEvent('close');
+  void app.evaluate(({ app: electronApp }) => {
+    electronApp.quit();
+  });
+  await window
+    .getByRole('button', { name: "Don't Save" })
+    .click({ timeout: 5_000 })
+    .catch(() => undefined); // it quit without asking
+  await closed;
   rmSync(scratch, { recursive: true, force: true });
   expect(times.length).toBeGreaterThan(20);
 });

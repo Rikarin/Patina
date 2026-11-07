@@ -94,6 +94,22 @@ describe('ProjectStore', () => {
     vi.unstubAllGlobals();
   });
 
+  it('stays open when Save All cannot save', async () => {
+    const quit = vi.fn();
+    vi.stubGlobal('patina', { quit, onQuitRequested: vi.fn(), setUnsaved: vi.fn() });
+    const { store, graph, graphDirty } = harness();
+    await store.openDocument('a', paths.graph);
+    TestBed.tick();
+    graphDirty.set(true);
+    TestBed.tick();
+    graph.save.mockRejectedValueOnce(new Error('The disk is full.'));
+
+    await store.resolveQuitting('save');
+
+    expect(quit).not.toHaveBeenCalled();
+    expect(store.failure()).toBe('The disk is full.');
+  });
+
   it('reopens on what was last in front', async () => {
     vi.stubGlobal('localStorage', memoryStorage());
     globalThis.localStorage.setItem('patina.library.last.lib', JSON.stringify({ project: 'a', path: paths.graph }));

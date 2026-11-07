@@ -129,6 +129,20 @@ test('a brush on the mesh shows on it in the viewport, across its flats, and und
   await expect.poll(async () => changed(before, await shot()), { timeout: 30_000 }).toBeGreaterThan(1500);
 });
 
+test('Save All on the quit dialog saves a painted stack and quits', async () => {
+  await openOnMesh();
+  await drag(0.3, 0.45, 0.72, 0.55);
+  await expect(window.getByTestId('paint-undo')).toBeEnabled();
+
+  const closed = app.waitForEvent('close');
+  void app.evaluate(({ app: electronApp }) => {
+    electronApp.quit();
+  });
+  await expect(window.getByTestId('app-quitting')).toBeVisible();
+  await window.getByRole('button', { name: 'Save All' }).click();
+  await closed;
+});
+
 test('a line, a mirrored stroke and an alpha paint through the same journal', async () => {
   await openOnMesh();
   const before = await shot();

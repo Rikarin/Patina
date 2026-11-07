@@ -285,9 +285,20 @@ export class ProjectStore {
     }
 
     if (choice === 'save') {
-      for (const tab of this.unsavedTabs()) {
-        await this.activate(tab.path);
-        await this.saveActive();
+      try {
+        for (const tab of this.unsavedTabs()) {
+          await this.activate(tab.path);
+          await this.saveActive();
+        }
+      } catch (failure) {
+        // Quitting now would lose what could not be saved, so the app stays and says why.
+        this.mutableFailure.set(messageOf(failure));
+        return;
+      }
+
+      if (this.unsavedTabs().length > 0) {
+        this.mutableFailure.set('Some documents could not be saved, so Patina stayed open.');
+        return;
       }
     }
 
