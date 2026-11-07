@@ -341,6 +341,7 @@ public sealed class GraphEditor {
             TextureGraphSettings.Seed =>
                 uint.TryParse(setting.Value, NumberStyles.None, CultureInfo.InvariantCulture, out _),
             TextureGraphSettings.BitDepth => setting.Value is "16" or "32",
+            TextureGraphSettings.TilingX or TextureGraphSettings.TilingY => setting.Value is "true" or "false",
             _ => throw new GraphEditRefusedException($"There is no graph setting '{setting.Key}'.")
         };
         return valid

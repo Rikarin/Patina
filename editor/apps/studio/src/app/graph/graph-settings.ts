@@ -13,6 +13,7 @@ const Kinds = ['Float', 'Int', 'Bool', 'Text'];
 const BitDepths = ['16', '32'];
 const PortKinds = ['Image', 'Float', 'Int', 'Bool', 'Float2', 'Float3', 'Float4'];
 const DefaultBitDepth = '16';
+const MeshMap = 'Source/Mesh Map';
 const SliderSteps = 1000;
 
 /** What a kind's default starts as, which the Server has to accept. */
@@ -101,6 +102,24 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
           [items]="bitDepths"
           [value]="bitDepth()"
           (valueChange)="setBitDepth($event)"
+        />
+      </div>
+      <div class="flex items-center justify-between gap-2" data-testid="setting-tilingX">
+        <span class="text-foreground-muted text-xs">Tile across</span>
+        <xui-switch
+          ariaLabel="Tile across"
+          [checked]="tiles('tilingX')"
+          [disabled]="!store.editable()"
+          (checkedChange)="store.setSetting('tilingX', String($event))"
+        />
+      </div>
+      <div class="flex items-center justify-between gap-2" data-testid="setting-tilingY">
+        <span class="text-foreground-muted text-xs">Tile down</span>
+        <xui-switch
+          ariaLabel="Tile down"
+          [checked]="tiles('tilingY')"
+          [disabled]="!store.editable()"
+          (checkedChange)="store.setSetting('tilingY', String($event))"
         />
       </div>
       <div class="flex flex-col gap-1" data-testid="setting-seed">
@@ -326,6 +345,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
 export class GraphSettings {
   protected readonly store = inject(GraphStore);
   protected readonly kinds = Kinds;
+  protected readonly String = String;
   protected readonly bitDepths = BitDepths;
   protected readonly portKinds = PortKinds;
 
@@ -338,6 +358,16 @@ export class GraphSettings {
 
   protected settingOf(key: string): string {
     return this.store.document()?.settings[key] ?? '';
+  }
+
+  /** A graph that says nothing tiles, unless it reads a mesh map, because an atlas has no far side. */
+  protected tiles(key: string): boolean {
+    const declared = this.settingOf(key);
+    if (declared !== '') {
+      return declared === 'true';
+    }
+
+    return ![...(this.store.document()?.nodes.values() ?? [])].some(node => node.type === MeshMap);
   }
 
   /** The usual sizes, and the one this graph has if it is something else. */

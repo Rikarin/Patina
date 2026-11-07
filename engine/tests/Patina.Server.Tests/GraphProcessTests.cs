@@ -549,7 +549,7 @@ public sealed class GraphProcessTests : IDisposable {
         var sample = GraphTesting.Sample(512);
         var nodes = sample.Nodes.Select(static node => node.Id != 1
                     ? node
-                    : node with { Values = new() { ["Scale"] = [4f], ["Tiling"] = [1f] } }
+                    : node with { Values = new() { ["Scale"] = [4f] } }
             )
             .ToArray();
         var (_, state, socket, _) = await OpenSampleAsync(sample with { Nodes = nodes }, deadline.Token);
