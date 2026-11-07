@@ -78,6 +78,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
             (keydown.enter)="commitName(layer)"
           />
         </div>
+        <p class="section-label mt-1">Material Channels</p>
         <div class="flex flex-wrap items-center gap-1">
           @for (channel of store.state()?.channels ?? []; track channel.usage) {
             <button
@@ -93,6 +94,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
           }
         </div>
 
+        <p class="section-label mt-1">Content</p>
         @switch (layer.kind) {
           @case ('fill') {
             <div class="flex items-center gap-2">
@@ -137,6 +139,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
                   </select>
                 </div>
               }
+              <p class="section-label mt-1">UV Transformations</p>
               <div class="flex items-center gap-2">
                 <span class="text-foreground-muted w-16 shrink-0 text-xs">Scale</span>
                 <xui-numeric-input
@@ -331,6 +334,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
           </div>
         }
 
+        <p class="section-label mt-1">Mask</p>
         <div class="flex items-center gap-2">
           <span class="text-foreground-muted w-16 shrink-0 text-xs">Mask</span>
           <xui-select

@@ -1,9 +1,21 @@
+import { provideIcons } from '@ng-icons/core';
+import {
+  matBrush,
+  matDeleteOutline,
+  matFolder,
+  matFormatColorFill,
+  matRedo,
+  matSave,
+  matTune,
+  matUndo
+} from '@ng-icons/material-icons/baseline';
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal } from '@angular/core';
 import type { StackLayer } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
-import { blendName as blendLabelOf } from '../core/labels';
+import { IconImports } from '../core/icons';
+import { blendName as blendLabelOf, channelName } from '../core/labels';
 import { ProjectStore } from '../library/project-store';
 import { type DropZone, dropManyCommands } from './layer-drag';
 import { hexOf } from './layer-panel';
@@ -11,6 +23,14 @@ import { MaterialUse } from './material-use';
 import { type LayerRow, PaintStore } from './paint-store';
 
 const RowHeight = 56;
+
+/** One thing added to a layer's mask. No effect index means the generator that is the mask. */
+interface LayerWork {
+  key: string;
+  name: string;
+  enabled: boolean;
+  effect: number | null;
+}
 
 const KindMarks: Readonly<Record<string, string>> = { paint: 'P', fill: 'F', filter: 'Fx', group: '' };
 
@@ -35,7 +55,10 @@ interface MenuAt {
  */
 @Component({
   selector: 'ptn-layer-stack',
-  imports: [XuiButtonImports, XuiSelectImports, XuiSliderImports],
+  imports: [IconImports, XuiButtonImports, XuiSelectImports, XuiSliderImports],
+  viewProviders: [
+    provideIcons({ matBrush, matDeleteOutline, matFolder, matFormatColorFill, matRedo, matSave, matTune, matUndo })
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'flex h-full min-h-0 flex-col',
@@ -44,103 +67,127 @@ interface MenuAt {
     '(document:keydown)': 'press($event)'
   },
   template: `
-    @if (project.textureSets().length > 1) {
-      <div class="well flex shrink-0 flex-col gap-0.5 p-1" role="listbox" aria-label="Texture sets" data-testid="texture-sets">
-        @for (set of project.textureSets(); track set.path) {
-          <button
-            type="button"
-            role="option"
-            xuiButton
-            size="sm"
-            class="justify-start"
-            [attr.aria-selected]="set.path === project.document()?.path"
-            [attr.data-testid]="'texture-set-' + set.material"
-            [variant]="set.path === project.document()?.path ? 'default' : 'ghost'"
-            (click)="chooseSet(set.path)"
-          >
-            {{ set.material }}
-          </button>
-        }
-      </div>
-    }
-    <div class="chrome-bar flex shrink-0 flex-wrap items-center gap-0.5 px-1 py-0.5" role="toolbar" aria-label="Layers">
-      <button
-        type="button"
-        xuiButton
-        size="sm"
-        variant="ghost"
-        data-testid="paint-add"
-        title="Add a paint layer"
-        (click)="add('paint', 'Paint')"
-      >
-        Paint
-      </button>
-      <button
-        type="button"
-        xuiButton
-        size="sm"
-        variant="ghost"
-        data-testid="paint-add-fill"
-        title="Add a fill layer"
-        (click)="add('fill', 'Fill')"
-      >
-        Fill
-      </button>
-      <button
-        type="button"
-        xuiButton
-        size="sm"
-        variant="ghost"
-        data-testid="paint-add-filter"
-        title="Add a filter"
-        (click)="add('filter', 'Filter', 'Levels')"
-      >
-        Filter
-      </button>
-      <button
-        type="button"
-        xuiButton
-        size="sm"
-        variant="ghost"
-        data-testid="paint-add-group"
-        title="Add a folder"
-        (click)="add('group', 'Folder')"
-      >
-        Folder
-      </button>
+    <div class="chrome-bar flex shrink-0 items-center gap-0.5 px-1 py-0.5" role="toolbar" aria-label="Layers">
+      <xui-select
+        class="w-24 min-w-0 shrink-0 [&_button]:text-xs"
+        style="--control-height-md: 1.375rem; --control-padding-md: 0.375rem"
+        ariaLabel="Channel"
+        data-testid="layers-channel"
+        [filterable]="false"
+        [itemText]="channelLabel"
+        [items]="channels()"
+        [matchTargetWidth]="false"
+        [value]="store.channel()"
+        (valueChange)="store.channel.set($event ?? store.channel())"
+      />
       <span class="flex-1"></span>
       <button
         type="button"
         xuiButton
         size="sm"
         variant="ghost"
+        class="w-6 shrink-0 px-0"
+        data-testid="paint-add"
+        title="Add a paint layer"
+        aria-label="Add a paint layer"
+        (click)="add('paint', 'Paint')"
+      >
+        <ng-icon xui size="sm" name="matBrush" />
+      </button>
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        class="w-6 shrink-0 px-0"
+        data-testid="paint-add-fill"
+        title="Add a fill layer"
+        aria-label="Add a fill layer"
+        (click)="add('fill', 'Fill')"
+      >
+        <ng-icon xui size="sm" name="matFormatColorFill" />
+      </button>
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        class="w-6 shrink-0 px-0"
+        data-testid="paint-add-filter"
+        title="Add a filter layer"
+        aria-label="Add a filter layer"
+        (click)="add('filter', 'Filter', 'Levels')"
+      >
+        <ng-icon xui size="sm" name="matTune" />
+      </button>
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        class="w-6 shrink-0 px-0"
+        data-testid="paint-add-group"
+        title="Add a folder"
+        aria-label="Add a folder"
+        (click)="add('group', 'Folder')"
+      >
+        <ng-icon xui size="sm" name="matFolder" />
+      </button>
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        class="w-6 shrink-0 px-0"
+        data-testid="paint-remove-selected"
+        title="Delete the selected layers"
+        aria-label="Delete the selected layers"
+        [disabled]="store.selection().size === 0"
+        (click)="removeSelected()"
+      >
+        <ng-icon xui size="sm" name="matDeleteOutline" />
+      </button>
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        class="w-6 shrink-0 px-0"
         data-testid="paint-undo"
+        title="Undo"
+        aria-label="Undo"
         [disabled]="!store.state()?.history?.canUndo"
         (click)="store.act('undo')"
       >
-        Undo
+        <ng-icon xui size="sm" name="matUndo" />
       </button>
       <button
         type="button"
         xuiButton
         size="sm"
         variant="ghost"
+        class="w-6 shrink-0 px-0"
         data-testid="paint-redo"
+        title="Redo"
+        aria-label="Redo"
         [disabled]="!store.state()?.history?.canRedo"
         (click)="store.act('redo')"
       >
-        Redo
+        <ng-icon xui size="sm" name="matRedo" />
       </button>
       <button
         type="button"
         xuiButton
         size="sm"
         variant="ghost"
+        class="w-6 shrink-0 px-0"
         data-testid="paint-save"
+        title="Save"
+        aria-label="Save"
         [disabled]="!store.state()?.history?.dirty"
         (click)="store.act('save')"
       >
-        Save
+        <ng-icon xui size="sm" name="matSave" />
       </button>
       @if (store.state()?.history?.dirty) {
         <span class="text-foreground-muted text-xs" data-testid="paint-unsaved" title="Unsaved changes">•</span>
@@ -234,33 +281,57 @@ interface MenuAt {
               <path d="M1.5 3.5h5l1.5 2h6.5v7.5h-13z" fill="currentColor" fill-opacity="0.45" />
             </svg>
           } @else {
-            <span
-              class="border-hairline text-foreground-muted grid size-8 shrink-0 place-items-center overflow-hidden rounded-sm border text-xs"
-              data-testid="layer-thumbnail"
-              [class.outline]="row.layer.id === store.layer() && !store.masking()"
-              [style.background]="swatch(row.layer)"
-            >
-              @if (store.thumbnails().get(row.layer.id); as picture) {
-                <img class="size-full object-cover" alt="" [src]="picture" />
-              } @else {
-                {{ mark(row.layer) }}
-              }
+            <span class="flex shrink-0 flex-col gap-0.5">
+              <span
+                class="border-hairline text-foreground-muted relative grid size-8 place-items-center overflow-hidden rounded-full border"
+                data-testid="layer-thumbnail"
+                [class.outline]="row.layer.id === store.layer() && !store.masking()"
+                [style.background]="swatch(row.layer)"
+              >
+                @if (store.thumbnails().get(row.layer.id); as picture) {
+                  <img class="size-full object-cover" alt="" [src]="picture" />
+                } @else {
+                  {{ mark(row.layer) }}
+                }
+                <span
+                  class="pointer-events-none absolute inset-0 rounded-full"
+                  style="background: radial-gradient(circle at 35% 30%, rgb(255 255 255 / 0.5), transparent 45%, rgb(0 0 0 / 0.5))"
+                  aria-hidden="true"
+                ></span>
+              </span>
+              <span
+                class="h-[3px] w-8 rounded-full"
+                data-testid="layer-content-mark"
+                [class.bg-surface-sunken]="!hasContent(row.layer)"
+                [class.bg-warning]="hasContent(row.layer)"
+              ></span>
             </span>
           }
 
           @if (row.layer.mask.source !== 'None') {
-            <button
-              type="button"
-              class="border-hairline bg-background text-foreground-muted grid size-8 shrink-0 place-items-center rounded-sm border text-xs"
-              data-testid="layer-mask"
-              [attr.aria-label]="'Mask of ' + row.layer.name"
-              [class.outline]="row.layer.id === store.layer() && store.masking()"
-              [style.background]="maskColour(row.layer)"
-              [title]="row.layer.mask.source + ' mask'"
-              (click)="$event.stopPropagation(); choose(row.layer, true)"
-            >
-              {{ maskMark(row.layer) }}
-            </button>
+            <span class="flex shrink-0 flex-col gap-0.5">
+              <button
+                type="button"
+                class="border-hairline bg-background text-foreground-muted grid size-8 place-items-center rounded-sm border text-xs"
+                data-testid="layer-mask"
+                [attr.aria-label]="'Mask of ' + row.layer.name"
+                [class.outline]="row.layer.id === store.layer() && store.masking()"
+                [style.background]="maskColour(row.layer)"
+                [title]="row.layer.mask.source + ' mask'"
+                (click)="$event.stopPropagation(); choose(row.layer, true)"
+              >
+                <svg viewBox="0 0 16 16" class="size-5" aria-hidden="true">
+                  <path d="M1 1h14v14H1z" fill="currentColor" fill-opacity="0.35" />
+                  <circle cx="8" cy="8" r="4.5" fill="currentColor" />
+                </svg>
+              </button>
+              <span
+                class="h-[3px] w-8 rounded-full"
+                data-testid="layer-mask-mark"
+                [class.bg-surface-sunken]="!hasMaskWork(row.layer)"
+                [class.bg-warning]="hasMaskWork(row.layer)"
+              ></span>
+            </span>
           }
 
           <span class="min-w-0 flex-1 leading-tight">
@@ -339,6 +410,46 @@ interface MenuAt {
           </span>
 
         </div>
+        @for (item of workOf(row.layer); track item.key) {
+          <div
+            class="border-hairline flex h-7 items-center gap-1.5 border-b pe-2"
+            data-testid="layer-work"
+            [style.padding-inline-start.px]="row.depth * 14 + 34"
+          >
+            <button
+              type="button"
+              class="grid size-5 shrink-0 place-items-center"
+              data-testid="layer-work-eye"
+              [attr.aria-label]="(item.enabled ? 'Hide ' : 'Show ') + item.name"
+              [attr.aria-pressed]="item.enabled"
+              [disabled]="item.effect === null"
+              (click)="setWork(row.layer, item.effect, !item.enabled)"
+            >
+              <svg viewBox="0 0 16 16" class="size-3.5" aria-hidden="true">
+                <path d="M1 8s2.6-4.5 7-4.5S15 8 15 8s-2.6 4.5-7 4.5S1 8 1 8z" fill="none" stroke="currentColor" stroke-width="1.3" />
+                @if (item.enabled) {
+                  <circle cx="8" cy="8" r="2.2" fill="currentColor" />
+                }
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="hover:bg-selection min-w-0 flex-1 truncate text-start text-xs"
+              (click)="choose(row.layer, true)"
+            >
+              {{ item.name }}
+            </button>
+            <button
+              type="button"
+              class="text-foreground-muted grid size-5 shrink-0 place-items-center"
+              data-testid="layer-work-remove"
+              [attr.aria-label]="'Remove ' + item.name"
+              (click)="removeWork(row.layer, item.effect)"
+            >
+              ×
+            </button>
+          </div>
+        }
       } @empty {
         <p class="text-foreground-muted p-3 text-sm">Nothing open.</p>
       }
@@ -391,45 +502,104 @@ interface MenuAt {
         >
           Rename
         </button>
+        <div class="border-hairline my-1 border-t"></div>
         @if (at.layer.mask.source === 'None') {
-            <button
-              type="button"
-              class="hover:bg-selection px-3 py-1 text-start"
-              role="menuitem"
-              data-testid="layer-menu-mask-paint"
-              (click)="addMask(at.layer, 'Paint')"
-            >
-              Add Paint Mask
-            </button>
-            <button
-              type="button"
-              class="hover:bg-selection px-3 py-1 text-start"
-              role="menuitem"
-              data-testid="layer-menu-mask-generator"
-              (click)="addMask(at.layer, 'Generator')"
-            >
-              Add Generator Mask
-            </button>
-            <button
-              type="button"
-              class="hover:bg-selection px-3 py-1 text-start"
-              role="menuitem"
-              data-testid="layer-menu-mask-colour"
-              (click)="addColourMask(at.layer)"
-            >
-              Add Colour Selection Mask
-            </button>
-          } @else {
-            <button
-              type="button"
-              class="hover:bg-selection px-3 py-1 text-start"
-              role="menuitem"
-              data-testid="layer-menu-mask-remove"
-              (click)="addMask(at.layer, 'None')"
-            >
-              Remove Mask
-            </button>
-          }
+          <button
+            type="button"
+            class="hover:bg-selection px-3 py-1 text-start"
+            role="menuitem"
+            data-testid="layer-menu-mask-white"
+            (click)="addValueMask(at.layer, 1)"
+          >
+            Add White Mask
+          </button>
+          <button
+            type="button"
+            class="hover:bg-selection px-3 py-1 text-start"
+            role="menuitem"
+            data-testid="layer-menu-mask-black"
+            (click)="addValueMask(at.layer, 0)"
+          >
+            Add Black Mask
+          </button>
+          <button
+            type="button"
+            class="hover:bg-selection px-3 py-1 text-start"
+            role="menuitem"
+            data-testid="layer-menu-mask-bitmap"
+            (click)="addBitmapMask(at.layer)"
+          >
+            Add Bitmap Mask…
+          </button>
+          <button
+            type="button"
+            class="hover:bg-selection px-3 py-1 text-start"
+            role="menuitem"
+            data-testid="layer-menu-mask-paint"
+            (click)="addMask(at.layer, 'Paint')"
+          >
+            Add Paint Mask
+          </button>
+          <button
+            type="button"
+            class="hover:bg-selection px-3 py-1 text-start"
+            role="menuitem"
+            data-testid="layer-menu-mask-colour"
+            (click)="addColourMask(at.layer)"
+          >
+            Add Colour Selection Mask
+          </button>
+        } @else {
+          <button
+            type="button"
+            class="hover:bg-selection px-3 py-1 text-start"
+            role="menuitem"
+            data-testid="layer-menu-mask-invert"
+            (click)="invertMask(at.layer)"
+          >
+            Invert Mask
+          </button>
+          <button
+            type="button"
+            class="hover:bg-selection px-3 py-1 text-start"
+            role="menuitem"
+            data-testid="layer-menu-mask-remove"
+            (click)="addMask(at.layer, 'None')"
+          >
+            Remove Mask
+          </button>
+        }
+        <div class="border-hairline my-1 border-t"></div>
+        <button
+          type="button"
+          class="hover:bg-selection px-3 py-1 text-start"
+          role="menuitem"
+          data-testid="layer-menu-mask-generator"
+          (click)="addMask(at.layer, 'Generator')"
+          >
+          Add Generator
+        </button>
+        @for (kind of ['Levels', 'Blur'] ; track kind) {
+          <button
+            type="button"
+            class="hover:bg-selection px-3 py-1 text-start"
+            role="menuitem"
+            [attr.data-testid]="'layer-menu-effect-' + kind"
+            (click)="addWork(at.layer, kind)"
+          >
+            Add {{ kind }}
+          </button>
+        }
+        <div class="border-hairline my-1 border-t"></div>
+        <button
+          type="button"
+          class="hover:bg-selection px-3 py-1 text-start"
+          role="menuitem"
+          data-testid="layer-menu-group"
+          (click)="groupSelected()"
+        >
+          Group Layers
+        </button>
         <div class="border-hairline my-1 border-t"></div>
         <button
           type="button"
@@ -438,7 +608,7 @@ interface MenuAt {
           data-testid="paint-remove"
           (click)="remove(at.layer)"
         >
-          Delete
+          Delete Layers
         </button>
       </div>
     }
@@ -528,6 +698,8 @@ export class LayerStack {
   protected readonly rowHeight = RowHeight;
   protected readonly closed = signal<ReadonlySet<string>>(new Set());
   protected readonly menu = signal<MenuAt | null>(null);
+  protected readonly channels = computed(() => (this.store.state()?.channels ?? []).map(channel => channel.usage));
+  protected readonly channelLabel = channelName;
   /** The list of meshes a layer can be kept to, where it was asked for. */
   protected readonly meshes = signal<MenuAt | null>(null);
   protected readonly parts = signal<readonly string[]>([]);
@@ -612,6 +784,9 @@ export class LayerStack {
     if (event.key === 'Delete' || event.key === 'Backspace') {
       event.preventDefault();
       void this.removeSelected();
+    } else if (event.key === 'g' && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      void this.groupSelected();
     } else if (event.key === 'a' && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       this.store.marked.set(new Set(this.rows().map(row => row.layer.id)));
@@ -628,7 +803,7 @@ export class LayerStack {
     return target === globalThis.document.body || this.host.nativeElement.contains(target);
   }
 
-  private async removeSelected(): Promise<void> {
+  protected async removeSelected(): Promise<void> {
     const layer = this.store.chosen();
     if (this.store.masking() && layer) {
       this.store.masking.set(false);
@@ -720,6 +895,91 @@ export class LayerStack {
     this.renaming.set(null);
   }
 
+  protected hasContent(layer: StackLayer): boolean {
+    return layer.kind === 'filter' || (layer.kind === 'fill' && layer.fill !== 'Constant');
+  }
+
+  protected hasMaskWork(layer: StackLayer): boolean {
+    return layer.mask.source === 'Generator' || (layer.mask.effects?.length ?? 0) > 0;
+  }
+
+  /** What has been added to a layer's mask, listed under it. A generator is the mask itself, and has no switch. */
+  protected workOf(layer: StackLayer): readonly LayerWork[] {
+    const effects = (layer.mask.effects ?? []).map((effect, index) => ({
+      key: `effect-${index}`,
+      name: this.store.vocabulary()?.maskEffects.find(kind => kind.node === effect.node)?.name ?? effect.node,
+      enabled: effect.enabled,
+      effect: index
+    }));
+    return layer.mask.source === 'Generator' && layer.mask.generator
+      ? [{ key: 'generator', name: layer.mask.generator, enabled: true, effect: null }, ...effects]
+      : effects;
+  }
+
+  protected setWork(layer: StackLayer, effect: number | null, enabled: boolean): void {
+    void this.store.setMask(layer, {
+      ...layer.mask,
+      effects: (layer.mask.effects ?? []).map((held, index) => (index === effect ? { ...held, enabled } : held))
+    });
+  }
+
+  protected removeWork(layer: StackLayer, effect: number | null): void {
+    void this.store.setMask(
+      layer,
+      effect === null
+        ? { ...layer.mask, source: 'None' }
+        : { ...layer.mask, effects: (layer.mask.effects ?? []).filter((_, index) => index !== effect) }
+    );
+  }
+
+  /** Adds a step to the mask, which needs a mask to run on, so a layer with none gets a white one. */
+  protected async addWork(layer: StackLayer, kind: string): Promise<void> {
+    this.menu.set(null);
+    const node = this.store.vocabulary()?.maskEffects.find(effect => effect.name === kind)?.node;
+    if (node) {
+      await this.store.setMask(layer, {
+        ...layer.mask,
+        source: layer.mask.source === 'None' ? 'Constant' : layer.mask.source,
+        value: layer.mask.source === 'None' ? 1 : layer.mask.value,
+        effects: [...(layer.mask.effects ?? []), { node, enabled: true }]
+      });
+    }
+  }
+
+  protected async addValueMask(layer: StackLayer, value: number): Promise<void> {
+    this.menu.set(null);
+    await this.store.setMask(layer, { ...layer.mask, source: 'Constant', value });
+    this.store.masking.set(false);
+  }
+
+  protected async addBitmapMask(layer: StackLayer): Promise<void> {
+    this.menu.set(null);
+    const asset = await this.project.pickPicture();
+    if (asset) {
+      await this.store.setMask(layer, { ...layer.mask, source: 'Texture', asset });
+    }
+  }
+
+  protected invertMask(layer: StackLayer): Promise<void> {
+    return this.addWork(layer, 'Invert');
+  }
+
+  /** Puts the selected layers in a new folder, where the top one of them was. */
+  protected async groupSelected(): Promise<void> {
+    this.menu.set(null);
+    const chosen = [...this.store.selection()];
+    if (chosen.length === 0) {
+      return;
+    }
+
+    await this.add('group', 'Folder');
+    const folder = this.store.layer();
+    if (folder) {
+      const moves = dropManyCommands(this.dragRows(), chosen, folder, 'into');
+      await this.store.edit(...moves);
+    }
+  }
+
   protected async addMask(layer: StackLayer, source: string): Promise<void> {
     this.menu.set(null);
     await this.store.setMask(layer, { ...layer.mask, source });
@@ -795,13 +1055,16 @@ export class LayerStack {
     }
   }
 
-  private commands(row: LayerRow, zone: DropZone) {
-    const rows = this.store.layers().map(held => ({
+  private dragRows() {
+    return this.store.layers().map(held => ({
       id: held.layer.id,
       parent: held.parent,
       folder: held.layer.kind === 'group'
     }));
-    return dropManyCommands(rows, this.dragged, row.layer.id, zone);
+  }
+
+  private commands(row: LayerRow, zone: DropZone) {
+    return dropManyCommands(this.dragRows(), this.dragged, row.layer.id, zone);
   }
 
   /** The middle of a folder is into it, and everywhere else is above or below. */

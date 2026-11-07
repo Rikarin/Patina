@@ -22,6 +22,7 @@ import { NodeLibrary } from './graph/node-library';
 import { TextureView } from './graph/texture-view';
 import { LibraryPane } from './library/library-pane';
 import { ProjectSettingsDialog } from './library/project-settings-dialog';
+import { TextureSets } from './paint/texture-sets';
 import { ProjectStore } from './library/project-store';
 import { LayerStack } from './paint/layer-stack';
 import { MaterialShelf } from './paint/material-shelf';
@@ -41,6 +42,7 @@ import { ViewportPane } from './viewport/viewport-pane';
     Inspector,
     NodeLibrary,
     ProjectSettingsDialog,
+    TextureSets,
     LayerStack,
     LibraryPane,
     DatePipe,
@@ -122,6 +124,9 @@ import { ViewportPane } from './viewport/viewport-pane';
       </ng-template>
       <ng-template xuiDockContent="image">
         <ptn-image-material />
+      </ng-template>
+      <ng-template xuiDockContent="sets">
+        <ptn-texture-sets />
       </ng-template>
       <ng-template xuiDockContent="layers">
         <ptn-layer-stack />

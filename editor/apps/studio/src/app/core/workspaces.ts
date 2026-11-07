@@ -3,7 +3,7 @@ import type { XuiDockContentPane, XuiDockManagerLayout, XuiDockPane } from '@xui
 /** What the app is doing, which decides what is on screen (ADR 0012). */
 export type WorkspaceName = 'start' | 'texturing' | 'layered-material' | 'image-material' | 'graph';
 
-const Version = 5;
+const Version = 6;
 
 type Part = XuiDockPane;
 
@@ -38,6 +38,8 @@ const layers = pane('layers', 'Layers');
 const properties = pane('paint', 'Properties');
 /** What is on the stack over what the chosen layer is, as a painting tool has them. */
 const stack = down(1.4, layers, tabs(1.2, properties, inspector));
+/** The same with the model's texture sets over it, which only a mesh has. */
+const texturingStack = down(1.4, pane('sets', 'Texture Sets', 0.28), { ...layers, size: 1 }, tabs(1, properties, inspector));
 const shelf = pane('shelf', 'Materials');
 /** Where a document's materials come from: the Library, and what it can be filled with. */
 const sources = down(1, library, shelf);
@@ -49,7 +51,7 @@ const Layouts: Readonly<Record<WorkspaceName, XuiDockManagerLayout>> = {
   texturing: root(
     sources,
     across(4, pane('viewport', 'Viewport', 3), tabs(2, pane('atlas', '2D View'), pane('texture', 'Maps'))),
-    stack
+    texturingStack
   ),
   // There is no mesh, so the map leads and a shape only previews it.
   'layered-material': root(sources, across(4, pane('atlas', '2D View', 3), pane('viewport', 'Preview', 2)), stack),

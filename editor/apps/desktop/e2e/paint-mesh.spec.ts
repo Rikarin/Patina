@@ -260,11 +260,24 @@ test('a layer keeps to named meshes, a folder takes a mask, and the mesh reloads
   await expect.poll(() => greenAt(0.75), { timeout: 30_000 }).toBeLessThan(200);
   expect(await greenAt(0.25)).toBeGreaterThan(200);
 
+  const fillLayer = window.locator('[data-testid^=paint-layer-fill]');
+  await fillLayer.click({ button: 'right' });
+  await window.getByTestId('layer-menu-effect-Levels').click();
+  await expect(fillLayer.getByTestId('layer-mask')).toBeVisible();
+  await expect(fillLayer.getByTestId('layer-mask-mark')).toHaveClass(/bg-warning/);
+  await expect(window.getByTestId('layer-work')).toContainText('Levels');
+  await window.getByTestId('layer-work-remove').click();
+  await expect(window.getByTestId('layer-work')).toHaveCount(0);
+
   await window.getByTestId('paint-add-group').click();
   const folder = window.locator('[data-testid^=paint-layer-]', { hasText: 'Folder' }).first();
   await folder.click({ button: 'right' });
   await window.getByTestId('layer-menu-mask-paint').click();
   await expect(folder.getByTestId('layer-mask')).toBeVisible();
+
+  await window.locator('[data-testid^=paint-layer-paint]').first().click();
+  await window.keyboard.press('ControlOrMeta+g');
+  await expect(window.locator('[data-testid^=paint-layer-]', { hasText: 'Folder' })).toHaveCount(2);
 
   await app.evaluate(({ BrowserWindow }) => {
     BrowserWindow.getAllWindows()[0]?.webContents.send('patina:command', 'save');
