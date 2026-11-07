@@ -14,7 +14,10 @@ public sealed partial class StackProcessTests {
     public async Task Shelf_materials_have_pictures_by_hash_that_a_deleted_cache_only_draws_again() {
         using var deadline = Deadline(240);
         LibraryFiles.CreateDefaultLibrary(Library, "Game");
-        await StartAsync("Unused.vxlayers", deadline.Token);
+        var (_, unused) = await StartAsync("Unused.vxlayers", deadline.Token);
+        // ⚠ A material that cannot draw has no picture, by design, so a Worker with no device answers as one with a
+        // broken drawing would. A stack's pixels say which it is, and skip where there is no device.
+        await PixelsAsync(unused.Id, false, deadline.Token);
         var made = await http.PostAsJsonAsync(
             "/api/v1/library/projects",
             new { name = "Crate", kind = "layered-material" },
