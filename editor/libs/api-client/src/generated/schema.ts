@@ -3177,7 +3177,8 @@ export interface components {
       | components['schemas']['StackCommandStackSetModel']
       | components['schemas']['StackCommandStackAddChannel']
       | components['schemas']['StackCommandStackNestLayer']
-      | components['schemas']['StackCommandStackSetSeed'];
+      | components['schemas']['StackCommandStackSetSeed']
+      | components['schemas']['StackCommandStackSetHeightNormal'];
     /** @description Edits applied whole or not at all, as one undo step. */
     StackCommandBatch: {
       /** @description The edits, in order. */
@@ -3243,6 +3244,16 @@ export interface components {
       op: 'removeLayer';
       /** @description Which. */
       layer: string;
+    };
+    /** @description Says how the texture set's height becomes the normal its surface is lit with. */
+    StackCommandStackSetHeightNormal: {
+      /** @enum {string} */
+      op: 'setHeightNormal';
+      /**
+       * @description `Sharp`, the height's slope as painted, or `Smooth`, the slope of the height blurred by a texel, which
+       *                 hides an eight-bit height's steps.
+       */
+      method: string;
     };
     /** @description Changes what a layer's row shows. What is null stays. */
     StackCommandStackSetLayer: {
@@ -3834,6 +3845,12 @@ export interface components {
        * @default 0
        */
       seed: number;
+      /**
+       * @description How a height channel becomes the set's normal: `Sharp` or `Smooth`. Read only when the set has a height
+       *     channel, and then it writes a normal whether or not it declares one.
+       * @default Smooth
+       */
+      heightNormal: string;
     };
     /** @description An open stack, for a list. */
     StackSummary: {

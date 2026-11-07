@@ -111,6 +111,20 @@ public sealed class StackEditorPropertyTests {
         Assert.Equal(7u, session.State.Seed);
     }
 
+    [Fact]
+    public void How_height_becomes_the_normal_is_the_sets_and_undoes_like_any_edit() {
+        var session = new StackSession("/tmp/Height.vxlayers", StackDocuments.Text(Sample()), static () => { });
+        Assert.Equal("Smooth", session.State.HeightNormal);
+
+        session.Apply(new([new StackSetHeightNormal("Sharp")]));
+        Assert.Equal("Sharp", session.State.HeightNormal);
+        Assert.Contains("heightNormal: Sharp", session.Text, StringComparison.Ordinal);
+
+        Assert.Throws<StackEditRefusedException>(() => session.Apply(new([new StackSetHeightNormal("Blurry")])));
+        session.Undo();
+        Assert.Equal("Smooth", session.State.HeightNormal);
+    }
+
     static MaskAsset Mask(StackEditor editor) =>
         LayerStackEdit.Find(editor.Document, new(editor.Set.Name, "paint"))!.Mask;
 

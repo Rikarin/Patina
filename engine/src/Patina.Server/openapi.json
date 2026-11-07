@@ -8939,6 +8939,9 @@
           },
           {
             "$ref": "#/components/schemas/StackCommandStackSetSeed"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackSetHeightNormal"
           }
         ],
         "description": "One edit of a stack. A batch of these is one undo step.",
@@ -8953,7 +8956,8 @@
             "setModel": "#/components/schemas/StackCommandStackSetModel",
             "addChannel": "#/components/schemas/StackCommandStackAddChannel",
             "nestLayer": "#/components/schemas/StackCommandStackNestLayer",
-            "setSeed": "#/components/schemas/StackCommandStackSetSeed"
+            "setSeed": "#/components/schemas/StackCommandStackSetSeed",
+            "setHeightNormal": "#/components/schemas/StackCommandStackSetHeightNormal"
           }
         }
       },
@@ -9134,6 +9138,25 @@
           }
         },
         "description": "Removes a layer."
+      },
+      "StackCommandStackSetHeightNormal": {
+        "required": [
+          "method",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "setHeightNormal"
+            ],
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "description": "\u0060Sharp\u0060, the height\u0027s slope as painted, or \u0060Smooth\u0060, the slope of the height blurred by a texel, which\n            hides an eight-bit height\u0027s steps."
+          }
+        },
+        "description": "Says how the texture set\u0027s height becomes the normal its surface is lit with."
       },
       "StackCommandStackSetLayer": {
         "required": [
@@ -10376,7 +10399,8 @@
           "previews",
           "seed",
           "settled",
-          "model"
+          "model",
+          "heightNormal"
         ],
         "type": "object",
         "properties": {
@@ -10473,6 +10497,11 @@
             "description": "The number every procedural step derives from.",
             "format": "uint32",
             "default": 0
+          },
+          "heightNormal": {
+            "type": "string",
+            "description": "How a height channel becomes the set\u0027s normal: \u0060Sharp\u0060 or \u0060Smooth\u0060. Read only when the set has a height\nchannel, and then it writes a normal whether or not it declares one.",
+            "default": "Smooth"
           }
         },
         "description": "A whole stack: everything a client needs to draw it, and no pixels."

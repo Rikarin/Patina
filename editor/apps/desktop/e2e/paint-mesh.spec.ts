@@ -110,6 +110,33 @@ async function drag(fromX: number, fromY: number, toX: number, toY: number): Pro
   await window.mouse.up();
 }
 
+test('height painted on the mesh lights it as a bump, sharp or smooth', async () => {
+  await openOnMesh();
+  await window.getByTestId('paint-add-channel').selectOption('height');
+  await expect(window.getByTestId('texture-set-height-normal')).toBeVisible({ timeout: 30_000 });
+  await window.getByTestId('layers-channel').click();
+  await window.getByRole('option', { name: 'Height' }).click();
+  await window.getByTestId('paint-colour').locator('button').first().click();
+  await window.getByRole('textbox', { name: 'Hex color' }).fill('#ffffff');
+  await window.keyboard.press('Enter');
+  await window.keyboard.press('Escape');
+  await settled();
+  const before = await shot();
+  await window.screenshot({ path: join(shots, 'paint-height-before.png') });
+
+  await drag(0.3, 0.45, 0.72, 0.55);
+  await settled();
+  await window.screenshot({ path: join(shots, 'paint-height.png') });
+  // Height has no colour of its own, so whatever changed on the picture is the surface's lighting.
+  await expect.poll(async () => changed(before, await shot()), { timeout: 30_000 }).toBeGreaterThan(300);
+
+  const smooth = await shot();
+  await window.getByTestId('texture-set-height-normal').getByText('Sharp').click();
+  await expect.poll(async () => changed(smooth, await shot()), { timeout: 30_000 }).toBeGreaterThan(0);
+  await settled();
+  await window.screenshot({ path: join(shots, 'paint-height-sharp.png') });
+});
+
 test('a brush on the mesh shows on it in the viewport, across its flats, and undo takes it back', async () => {
   await openOnMesh();
   await window.getByTestId('paint-colour').locator('button').first().click();

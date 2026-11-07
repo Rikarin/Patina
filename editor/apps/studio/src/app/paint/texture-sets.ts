@@ -1,10 +1,18 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore } from './paint-store';
+
+/** How a set's height becomes its normal: as painted, or blurred a texel first so eight-bit steps do not show. */
+const HeightNormals: readonly XuiSegmentedOption[] = [
+  { value: 'Sharp', label: 'Sharp' },
+  { value: 'Smooth', label: 'Smooth' }
+];
 
 /** The model's texture sets: a document per material, of which one is being painted. */
 @Component({
   selector: 'ptn-texture-sets',
+  imports: [XuiSegmentedControlImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col overflow-auto p-1' },
   template: `
@@ -28,11 +36,28 @@ import { PaintStore } from './paint-store';
         <p class="text-foreground-muted p-2 text-sm">Nothing open.</p>
       }
     </div>
+    @if (heightNormal(); as method) {
+      <div
+        class="flex items-center gap-2 px-2 py-1"
+        title="A height channel lights the surface through the normal. Smooth blurs it a texel first."
+        data-testid="texture-set-height-normal"
+      >
+        <span class="text-foreground-muted min-w-0 flex-1 truncate text-xs">Height to normal</span>
+        <xui-segmented-control
+          size="sm"
+          ariaLabel="Height to normal"
+          [options]="heightNormals"
+          [value]="method"
+          (valueChange)="setHeightNormal($event)"
+        />
+      </div>
+    }
   `
 })
 export class TextureSets {
   private readonly project = inject(ProjectStore);
   private readonly store = inject(PaintStore);
+  protected readonly heightNormals = HeightNormals;
   protected readonly front = computed(() => this.project.document()?.path);
   /** A mesh with one material has one set, which is the document itself. */
   protected readonly sets = computed(() => {
@@ -48,11 +73,22 @@ export class TextureSets {
     const state = this.store.state();
     return state ? `${state.width}×${state.height}` : null;
   });
+  /** How the open set's height reaches its normal, for a set that has a height channel to say it of. */
+  protected readonly heightNormal = computed(() => {
+    const state = this.store.state();
+    return state?.channels.some(channel => channel.usage === 'height') ? state.heightNormal : null;
+  });
 
   protected choose(path: string): void {
     const project = this.project.current();
     if (project) {
       void this.project.openDocument(project.path, path);
+    }
+  }
+
+  protected setHeightNormal(method: string | null): void {
+    if (method && method !== this.heightNormal()) {
+      void this.store.edit({ op: 'setHeightNormal', method });
     }
   }
 }
