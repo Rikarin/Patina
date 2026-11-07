@@ -39,6 +39,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Flood Fill goes round the wrap: on a graph that tiles, an island over the seam is one island, with its true size and a UV that runs across the seam. Its box can pass 1, by as much as it runs past the image.
 - `project.yaml` no longer records the absolute path a mesh came from. A source inside the library is stored relative to it, one outside stays on this machine, and a fresh clone asks for the file once on Reload Mesh.
 - Reload Mesh with an unchanged file does nothing and says so, and a changed file on the same UV layout keeps its paint as it is. Paint is only resampled, and copied to `.paint-backup`, when the layout really moved.
 - Importing a file nothing can read, such as a `.dae`, `.usd` or `.txt`, is refused and says why, instead of being copied into the project as a picture.

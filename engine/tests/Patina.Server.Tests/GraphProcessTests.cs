@@ -9,6 +9,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Vixen.Core.Imaging;
 using Vixen.NodeGraph;
+using Vixen.TextureGraph;
 
 namespace Patina.Server.Tests;
 
@@ -229,25 +230,38 @@ public sealed class GraphProcessTests : IDisposable {
         Assert.True(Distance(small, Halved(rebased)) > 6.0, $"{Distance(small, Halved(rebased))}");
 
         // A build asks for the same model, and gets the same bytes.
-        var baked = Path.Combine(folder.FullName, "bake-at-size");
-        var info = new ProcessStartInfo("dotnet") { RedirectStandardOutput = true, RedirectStandardError = true };
-        foreach (var argument in new[] {
-                     Engine.Dll("Patina.Cli", "patina"), "bake",
-                     GraphTesting.Write(Library, Blurred(128), "cli.vxtexgraph"), baked, "--size", "256"
-                 }) {
-            info.ArgumentList.Add(argument);
-        }
-
-        using var cli = Process.Start(info)!;
-        var error = cli.StandardError.ReadToEndAsync(deadline.Token);
-        await cli.StandardOutput.ReadToEndAsync(deadline.Token);
-        await cli.WaitForExitAsync(deadline.Token);
-        Assert.True(cli.ExitCode == 0, await error);
-        Assert.Equal(large.Pixels, PngCodec.Load(Path.Combine(baked, "baseColor.png")).Pixels);
+        var baked = await BakedAsync(Blurred(128), "cli", deadline.Token, "--size", "256");
+        Assert.Equal(large.Pixels, baked.Pixels);
 
         // A number still reaches a plan built for another size without compiling it.
         var slid = await http.EditAsync(state.Id, deadline.Token, new GraphSetValue(2, "Radius", [4f]));
         Assert.False((await EvaluatedAsync(socket, slid.Revision, deadline.Token)).Compiled);
+    }
+
+    /// <summary>
+    ///     A plan is copied on its way to a preview, so what a build compiles and what a client sees could part on either
+    ///     number. One graph with both set, one axis of it clamped, is the same bytes each way.
+    /// </summary>
+    [Fact]
+    public async Task A_preview_and_a_build_agree_on_a_graphs_size_and_its_tiling() {
+        using var deadline = Deadline(120);
+        var instance = await StartServerAsync(deadline.Token);
+        StartWorker();
+
+        static NodeGraphAsset At256(string tilingX) {
+            var asset = Blurred(128);
+            asset.Settings[TextureSizes.GraphSetting] = "256";
+            asset.Settings[TextureGraphSettings.TilingX] = tilingX;
+            return asset;
+        }
+
+        var preview = await OutputAsync(instance, At256("false"), "clamped.vxtexgraph", deadline.Token);
+        var clamped = await BakedAsync(At256("false"), "clamped-bake", deadline.Token);
+        var tiled = await BakedAsync(At256("true"), "tiled-bake", deadline.Token);
+
+        Assert.Equal((256, 256), (preview.Width, preview.Height));
+        Assert.Equal(preview.Pixels, clamped.Pixels);
+        Assert.NotEqual(tiled.Pixels, clamped.Pixels);
     }
 
     /// <summary>
@@ -299,6 +313,29 @@ public sealed class GraphProcessTests : IDisposable {
             ],
             Settings = new() { ["seed"] = "7", ["baseWidth"] = $"{side}", ["baseHeight"] = $"{side}" }
         };
+
+    async Task<Bitmap> BakedAsync(
+        NodeGraphAsset asset,
+        string name,
+        CancellationToken cancellationToken,
+        params string[] options
+    ) {
+        var baked = Path.Combine(folder.FullName, name);
+        var info = new ProcessStartInfo("dotnet") { RedirectStandardOutput = true, RedirectStandardError = true };
+        foreach (var argument in (string[]) [
+                     Engine.Dll("Patina.Cli", "patina"), "bake",
+                     GraphTesting.Write(Library, asset, $"{name}.vxtexgraph"), baked, ..options
+                 ]) {
+            info.ArgumentList.Add(argument);
+        }
+
+        using var cli = Process.Start(info)!;
+        var error = cli.StandardError.ReadToEndAsync(cancellationToken);
+        await cli.StandardOutput.ReadToEndAsync(cancellationToken);
+        await cli.WaitForExitAsync(cancellationToken);
+        Assert.True(cli.ExitCode == 0, await error);
+        return PngCodec.Load(Path.Combine(baked, "baseColor.png"));
+    }
 
     async Task<Bitmap> OutputAsync(
         ServerInstance instance,
