@@ -40,6 +40,14 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Don't Save on a layered document throws the edits away. They used to stay open on the Server and come back on the next open, and autosaved copies of refused edits are no longer offered back.
 - Discard in the recovery dialog works, and closing that dialog keeps the autosaved work and asks again next time. Work still open in a session is no longer offered back as if it had been lost.
 - A failure shows once, in the bar above the status bar or in the dialog that caused it, and goes when the next action starts.
+- Line and path strokes keep a pen's pressure, and a path lands where its points were placed: moving the view paints what has been placed so far. Mirror says when it does not apply, the picker's tooltip names its real key, and Esc cancels picking a colour.
+- Smaller layer fixes: Add Generator no longer replaces a working mask, a graph fill chooses its graph in Properties, a filter from a graph can go back to a named one, the Layers channel select also changes what 2D View shows, the last mesh of a layer stays ticked, a brush on a channel the layer leaves alone says so instead of landing unseen, a new fill holds the defaults it shows, Delete Layers deletes layers with a mask in front, added layers are numbered, and colour selection masks have Softness. The stack's seed is in Properties.
+- A filter shows the numbers it really runs with, as sliders and switches like the graph Inspector's, rather than 0 until set. Brush spacing goes past where stamps touch, so a brush can lay a spaced pattern.
+- A new occlusion channel starts white, so the model no longer goes dark, and channels and blend modes that showed internal words have plain names.
+- A drag on the mesh or the map turns the model or does nothing when no stroke can land, instead of raising a refusal, and the cursor shows which it will do.
+- A layer that is half set up no longer stops the whole stack updating: an empty texture channel, graph, generator, bitmap, mesh map or anchor leaves that part out. Layers lists what the compile said, marks the layer at fault on its row, and shows Evaluating… as the graph does.
+- A mask on a fill, filter or folder can be painted, not only one on a paint layer.
+- Painting a white or grey mask changes only what the brush touches, instead of hiding the rest of the layer, and a new paint mask starts by showing the whole layer. The brush paints a mask in grey. A mask that is a picture refuses the brush and says why, rather than being replaced. Remove Mask takes all of the mask away, and Invert Mask turns off again.
 - Bake formats, export presets, job states and layer blend modes show plain names instead of internal ids.
 - The first stroke after opening a 4K stack no longer waits seconds for the maps to reach the mesh.
 - Save All on the quit dialog stays open and says why if a document could not be saved, instead of doing nothing or quitting without it.

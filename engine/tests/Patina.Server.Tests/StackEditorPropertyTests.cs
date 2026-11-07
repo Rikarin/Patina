@@ -11,6 +11,110 @@ public sealed class StackEditorPropertyTests {
     static readonly StackView View = new([0f, 0f, 4f], [1f, 0f, 0f], [0f, 1f, 0f], [0f, 0f, -1f], 0.7f, 64, 64);
 
     /// <summary>
+    ///     What keeps a layer to some meshes is the bottom of a mask with no base, and has to multiply once a stroke
+    ///     gives it one: as a copy it would replace everything painted beneath it.
+    /// </summary>
+    [Fact]
+    public void A_first_mask_stroke_puts_the_canvas_under_what_keeps_a_layer_to_some_meshes() {
+        var editor = new StackEditor("/tmp/Kept.vxlayers", Sample());
+        editor.Apply(new([new StackSetLayer("paint", MeshMask: new(["Lid"], "lid.png"))]));
+        Assert.Equal(LayerBlendMode.Copy, Mask(editor).Layers[0].Blend);
+
+        editor.Apply(new([new StackStroke("mask", "paint", "baseColor", new(4f), White, [new(1f, 1f)], Mask: true)]));
+
+        Assert.Equal(LayerMaskSource.Paint, Mask(editor).Source);
+        Assert.Equal(LayerBlendMode.Multiply, Mask(editor).Layers[0].Blend);
+    }
+
+    /// <summary>What a new fill shows in Properties is what it has to hold, or it composites nothing until set.</summary>
+    [Fact]
+    public void A_new_fill_holds_the_defaults_it_shows() {
+        var editor = new StackEditor("/tmp/Fill.vxlayers", Sample());
+
+        editor.Apply(new([new StackAddLayer("fill", "Fill")]));
+
+        Assert.Equal([0.5f, 0.5f, 0.5f, 1f], editor.Set.Layers[^1].Values["baseColor"]);
+    }
+
+    /// <summary>A fill that says what it writes keeps to that: leaving a channel alone is what a fill is often for.</summary>
+    [Fact]
+    public void A_fill_given_values_writes_only_those() {
+        var editor = new StackEditor("/tmp/Fill.vxlayers", Sample());
+
+        editor.Apply(
+            new(
+                [
+                    new StackAddLayer(
+                        "fill",
+                        "Fill",
+                        new Dictionary<string, IReadOnlyList<float>> { ["roughness"] = White }
+                    )
+                ]
+            )
+        );
+
+        Assert.Equal(["roughness"], editor.Set.Layers[^1].Values.Keys);
+    }
+
+    [Fact]
+    public void Added_layers_are_numbered_whatever_they_sit_in() {
+        var editor = new StackEditor("/tmp/Names.vxlayers", Sample());
+
+        editor.Apply(new([new StackAddLayer("paint", "Paint"), new StackAddLayer("group", "Folder")]));
+        editor.Apply(new([new StackAddLayer("paint", "Paint", Parent: editor.Set.Layers[^1].Id)]));
+        editor.Apply(new([new StackAddLayer("paint", "Paint")]));
+
+        Assert.Equal("Paint 2", editor.Set.Layers[2].Name);
+        Assert.Equal("Paint 3", editor.Set.Layers[3].Children[0].Name);
+        Assert.Equal("Paint 4", editor.Set.Layers[^1].Name);
+    }
+
+    /// <summary>A stroke the composite would never read is not a stroke: nothing tells the hand otherwise.</summary>
+    [Fact]
+    public void A_channel_a_layer_does_not_write_takes_no_brush() {
+        var editor = new StackEditor("/tmp/Off.vxlayers", Sample());
+        editor.Apply(new([new StackAddChannel("roughness")]));
+        editor.Apply(new([new StackSetLayer("paint", Channels: ["roughness"])]));
+
+        Assert.Throws<StackEditRefusedException>(() =>
+            editor.Apply(new([new StackStroke("off", "paint", "baseColor", new(4f), White, [new(1f, 1f)])]))
+        );
+        Assert.Single(editor.Apply(new([new StackStroke("on", "paint", "roughness", new(4f), White, [new(1f, 1f)])])));
+    }
+
+    /// <summary>A filter a graph brought can go back to being a named one, which is its only way out.</summary>
+    [Fact]
+    public void A_filter_from_a_graph_can_become_a_named_filter() {
+        var editor = new StackEditor("/tmp/Filter.vxlayers", Sample());
+        editor.Apply(new([new StackAddLayer("filter", "Soft", FilterNode: "Colour/Levels")]));
+        var filter = editor.Set.Layers[^1].Id;
+
+        editor.Apply(new([new StackSetLayer(filter, Filter: "Blur", FilterNode: string.Empty)]));
+
+        Assert.Empty(editor.Set.Layers[^1].FilterNode);
+        Assert.Equal(LayerFilterKind.Blur, editor.Set.Layers[^1].Filter);
+    }
+
+    [Fact]
+    public void A_seed_is_in_the_state_and_undoes_like_any_edit() {
+        var session = new StackSession(
+            "/tmp/Seed.vxlayers",
+            StackDocuments.Text(Sample() with { Seed = 7 }),
+            static () => { }
+        );
+        Assert.Equal(7u, session.State.Seed);
+
+        session.Apply(new([new StackSetSeed(9)]));
+        Assert.Equal(9u, session.State.Seed);
+
+        session.Undo();
+        Assert.Equal(7u, session.State.Seed);
+    }
+
+    static MaskAsset Mask(StackEditor editor) =>
+        LayerStackEdit.Find(editor.Document, new(editor.Set.Name, "paint"))!.Mask;
+
+    /// <summary>
     ///     Random batches of every command, some of which are refused, then undoing all of them, gives the original
     ///     document and an empty journal; redoing all of them gives the edited document and the same journal.
     /// </summary>

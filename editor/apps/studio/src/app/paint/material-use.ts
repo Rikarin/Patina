@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { type MaterialInfo, unwrap } from '@patina/api-client';
+import { type MaterialInfo, type StackLayer, unwrap } from '@patina/api-client';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { type DropZone, dropManyCommands } from './layer-drag';
@@ -42,6 +42,15 @@ export class MaterialUse {
       }
     } catch (failure) {
       this.failure.set(failure instanceof Error ? failure.message : String(failure));
+    }
+  }
+
+  /** Makes a graph fill read this graph, keeping the layer it is on. */
+  async fillWith(layer: StackLayer, material: MaterialInfo): Promise<void> {
+    const project = this.project.current();
+    if (project) {
+      const graph = await this.publish(project.path, material);
+      await this.paint.edit({ op: 'setLayer', layer: layer.id, fill: 'Graph', graph });
     }
   }
 

@@ -38,10 +38,7 @@ public static class StackDocuments {
     /// <summary>The words a stack's fields take, from the enumerations and libraries that mean them.</summary>
     public static StackVocabulary Vocabulary { get; } = new(
         Enum.GetNames<LayerBlendMode>(),
-        [
-            ..Enum.GetValues<LayerFilterKind>()
-                .Select(static kind => new StackFilterKind(kind.ToString(), LayerStackGraph.Filter(kind).Ports))
-        ],
+        Filters(),
         Enum.GetNames<LayerMaskSource>(),
         [
             ..TextureCompoundLibrary.Shipped.Where(static path => path.StartsWith(
@@ -153,6 +150,30 @@ public static class StackDocuments {
                     )
             ]
         );
+
+    /// <summary>The filters, each with the numbers its node declares, so that a client shows what will run.</summary>
+    static IReadOnlyList<StackFilterKind> Filters() {
+        NodeTypeRegistry registry = new();
+        NodeTypes.Register(registry);
+        return [
+            ..Enum.GetValues<LayerFilterKind>()
+                .Select(kind => {
+                        var (node, names) = LayerStackGraph.Filter(kind);
+                        var type = registry.Get(node);
+                        return new StackFilterKind(
+                            kind.ToString(),
+                            [
+                                ..names.Select(name => GraphDocuments.Definition(
+                                        type.Port(name, PortDirection.Input)
+                                        ?? throw new InvalidOperationException($"'{node}' has no number '{name}'.")
+                                    )
+                                )
+                            ]
+                        );
+                    }
+                )
+        ];
+    }
 
     /// <summary>The usages an Output node takes, which is the one list of what a channel can be.</summary>
     static IReadOnlyList<string> Usages() {

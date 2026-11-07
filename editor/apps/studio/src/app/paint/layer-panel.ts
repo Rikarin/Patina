@@ -15,10 +15,12 @@ import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { blendName, channelName } from '../core/labels';
+import { type GraphField, fieldOfPort, sliderRange } from '../graph/graph-fields';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { LiveValue } from './live-value';
-import { colourOf, PaintStore } from './paint-store';
+import { MaterialUse } from './material-use';
+import { colourOf, PaintStore, writesChannel } from './paint-store';
 
 const Fills: readonly string[] = ['Constant', 'Texture', 'Graph'];
 const Projections: readonly { value: string; label: string }[] = [
@@ -32,7 +34,22 @@ const Axes: readonly string[] = ['X', 'Y', 'Z'];
 
 /** Four numbers as a swatch's value. */
 /** Channels that hold one number, which a slider says better than a colour. */
-const ScalarChannels: ReadonlySet<string> = new Set(['roughness', 'metalness', 'height', 'occlusion', 'opacity']);
+const ScalarChannels: ReadonlySet<string> = new Set([
+  'roughness',
+  'metalness',
+  'height',
+  'occlusion',
+  'opacity',
+  'mask'
+]);
+
+/** What a graph is called by a layer: its file's name without the extension. */
+function stemOf(source: string): string | undefined {
+  return source
+    .split('/')
+    .pop()
+    ?.replace(/\.[^.]*$/u, '');
+}
 
 export function hexOf(colour: readonly number[] | undefined): string {
   const [r = 0, g = 0, b = 0] = colour ?? [];
@@ -93,6 +110,11 @@ export function hexOf(colour: readonly number[] | undefined): string {
             </button>
           }
         </div>
+        @if (layer.kind === 'paint' && !store.masking() && !writes(layer, store.channel())) {
+          <p class="text-foreground-muted text-xs" data-testid="paint-not-written">
+            This layer leaves {{ channelName(store.channel()) }} alone, so turn it on here to paint it.
+          </p>
+        }
 
         <p class="section-label mt-1">Content</p>
         @switch (layer.kind) {
@@ -252,9 +274,17 @@ export function hexOf(colour: readonly number[] | undefined): string {
               </div>
             }
             @if (layer.fill === 'Graph') {
-              <p class="text-foreground-muted text-xs" data-testid="paint-fill-graph">
-                {{ layer.graph ? 'From ' + layer.graph.split('/').pop() : 'Choose a graph from the Materials shelf.' }}
-              </p>
+              <div class="flex items-center gap-2">
+                <span class="text-foreground-muted w-16 shrink-0 text-xs">Graph</span>
+                <xui-select
+                  class="min-w-0 flex-1"
+                  aria-label="Graph"
+                  data-testid="paint-fill-graph"
+                  [items]="graphs(layer)"
+                  [value]="graphOf(layer)"
+                  (valueChange)="chooseGraph(layer, $event)"
+                />
+              </div>
             }
           }
           @case ('filter') {
@@ -265,21 +295,50 @@ export function hexOf(colour: readonly number[] | undefined): string {
                 aria-label="Filter"
                 data-testid="paint-filter"
                 [items]="filters()"
-                [value]="layer.filter"
-                (valueChange)="store.edit({ op: 'setLayer', layer: layer.id, filter: $event })"
+                [value]="layer.filterNode ? null : layer.filter"
+                (valueChange)="store.edit({ op: 'setLayer', layer: layer.id, filter: $event, filterNode: '' })"
               />
             </div>
-            @for (setting of settings(layer); track setting) {
-              <div class="flex items-center gap-2">
-                <span class="text-foreground-muted w-24 shrink-0 truncate text-xs">{{ setting }}</span>
-                <xui-numeric-input
-                  class="min-w-0 flex-1"
-                  size="sm"
-                  [ariaLabel]="setting"
-                  [stepSize]="0.05"
-                  [value]="layer.settings[setting]?.[0] ?? 0"
-                  (valueChange)="setSetting(layer, setting, $event ?? 0)"
-                />
+            @if (layer.filterNode) {
+              <p class="text-foreground-muted text-xs" data-testid="paint-filter-node">
+                From {{ layer.filterNode.split('/').pop() }}. Choosing a filter above replaces it.
+              </p>
+            }
+            @for (field of settings(layer); track field.name) {
+              <div class="flex items-center gap-2" [attr.data-testid]="'paint-setting-' + field.name" [title]="field.summary">
+                <span class="text-foreground-muted w-24 shrink-0 truncate text-xs">{{ field.name }}</span>
+                @switch (field.control) {
+                  @case ('switch') {
+                    <xui-switch
+                      [ariaLabel]="field.name"
+                      [checked]="settingOf(layer, field) !== 0"
+                      (checkedChange)="setSetting(layer, field.name, $event ? 1 : 0)"
+                    />
+                  }
+                  @case ('number') {
+                    @if (field.source === 'value' && !field.whole) {
+                      @let range = rangeOf(layer, field);
+                      <xui-slider
+                        class="min-w-0 flex-1"
+                        labelStepSize="0"
+                        [attr.aria-label]="field.name + ' slider'"
+                        [max]="range.max"
+                        [min]="range.min"
+                        [stepSize]="(range.max - range.min) / 100"
+                        [value]="settingOf(layer, field)"
+                        (valueChange)="setSetting(layer, field.name, $event)"
+                      />
+                    }
+                    <xui-numeric-input
+                      class="w-20 shrink-0"
+                      size="sm"
+                      [ariaLabel]="field.name"
+                      [stepSize]="field.source === 'value' && field.whole ? 1 : 0.05"
+                      [value]="settingOf(layer, field)"
+                      (valueChange)="setSetting(layer, field.name, $event ?? settingOf(layer, field))"
+                    />
+                  }
+                }
               </div>
             }
           }
@@ -346,6 +405,11 @@ export function hexOf(colour: readonly number[] | undefined): string {
             (valueChange)="setMask(layer, { source: $event ?? 'None' })"
           />
         </div>
+        @if (store.masking() && !store.canPaint()) {
+          <p class="text-foreground-muted text-xs" data-testid="paint-mask-no-brush">
+            A brush would replace this mask. Set Mask to Paint to paint it.
+          </p>
+        }
         @switch (layer.mask.source) {
           @case ('Constant') {
             <xui-slider
@@ -484,6 +548,20 @@ export function hexOf(colour: readonly number[] | undefined): string {
                     (valueChange)="setMask(layer, { tolerance: $event })"
                   />
                 </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-foreground-muted w-16 shrink-0 text-xs">Softness</span>
+                  <xui-slider
+                    class="min-w-0 flex-1"
+                    labelStepSize="0"
+                    aria-label="Colour softness"
+                    data-testid="paint-mask-softness"
+                    [max]="0.5"
+                    [min]="0"
+                    [stepSize]="0.005"
+                    [value]="layer.mask.softness"
+                    (valueChange)="setMask(layer, { softness: $event })"
+                  />
+                </div>
               </div>
             }
           }
@@ -548,6 +626,19 @@ export function hexOf(colour: readonly number[] | undefined): string {
         }
       }
 
+      <div class="flex items-center gap-2">
+        <span class="text-foreground-muted w-16 shrink-0 text-xs" title="What the stack's generators and graphs vary by">Seed</span>
+        <xui-numeric-input
+          class="min-w-0 flex-1"
+          size="sm"
+          ariaLabel="Seed"
+          data-testid="paint-seed"
+          [min]="0"
+          [stepSize]="1"
+          [value]="store.state()?.seed ?? 0"
+          (valueChange)="setSeed($event)"
+        />
+      </div>
       <p class="text-foreground-muted text-xs" data-testid="paint-mesh-maps">
         {{ store.state()?.meshMaps ? 'Using the bake.' : 'No bake yet.' }}
       </p>
@@ -558,6 +649,7 @@ export class LayerPanel {
   protected readonly store = inject(PaintStore);
   private readonly project = inject(ProjectStore);
   private readonly library = inject(LibraryStore);
+  private readonly using = inject(MaterialUse);
   protected readonly fills = Fills;
   protected readonly projections = Projections;
   protected readonly axes = Axes;
@@ -572,9 +664,9 @@ export class LayerPanel {
   constructor() {
     effect(() => {
       const layer = this.store.chosen();
-      const graph = layer?.graph || layer?.filterNode;
+      const wanted = layer?.fill === 'Graph' || layer?.graph || layer?.filterNode;
       const project = this.project.current()?.path;
-      if (graph && project) {
+      if (wanted && project) {
         void untracked(() => this.loadShelf(project));
       }
     });
@@ -605,9 +697,7 @@ export class LayerPanel {
     return (event.target as HTMLInputElement).value;
   }
 
-  protected writes(layer: StackLayer, usage: string): boolean {
-    return layer.channels.length === 0 || layer.channels.includes(usage);
-  }
+  protected readonly writes = writesChannel;
 
   protected toggleChannel(layer: StackLayer, usage: string): void {
     const all = this.store.state()?.channels.map(channel => channel.usage) ?? [];
@@ -651,8 +741,23 @@ export class LayerPanel {
     void this.store.edit({ op: 'setLayer', layer: layer.id, textures: { [usage]: path } });
   }
 
-  protected settings(layer: StackLayer): readonly string[] {
-    return this.store.vocabulary()?.filters.find(filter => filter.kind === layer.filter)?.settings ?? [];
+  /** A filter's numbers as the Inspector shows a node's. */
+  protected settings(layer: StackLayer): readonly GraphField[] {
+    if (layer.filterNode) {
+      return [];
+    }
+
+    const ports = this.store.vocabulary()?.filters.find(filter => filter.kind === layer.filter)?.settings ?? [];
+    return ports.map(fieldOfPort).filter(field => field !== null);
+  }
+
+  /** What a number stands at, which until it is set is what the node starts it as. */
+  protected settingOf(layer: StackLayer, field: GraphField): number {
+    return layer.settings[field.name]?.[0] ?? (field.source === 'value' ? (field.fallback[0] ?? 0) : 0);
+  }
+
+  protected rangeOf(layer: StackLayer, field: Extract<GraphField, { control: 'number'; source: 'value' }>) {
+    return sliderRange(this.settingOf(layer, field), field.fallback[0] ?? 0, field);
   }
 
   protected place(layer: StackLayer, change: Partial<NonNullable<StackLayer['placement']>>): void {
@@ -694,13 +799,8 @@ export class LayerPanel {
       return [];
     }
 
-    const stem = (source: string): string | undefined =>
-      source
-        .split('/')
-        .pop()
-        ?.replace(/\.[^.]*$/u, '');
     return (
-      this.shelf().find(material => material.kind === 'graph' && stem(material.source) === graph)?.parameters ?? []
+      this.shelf().find(material => material.kind === 'graph' && stemOf(material.source) === graph)?.parameters ?? []
     );
   });
 
@@ -708,6 +808,41 @@ export class LayerPanel {
     const client = await this.library.api();
     const list = await client.GET('/api/v1/library/materials', { params: { query: { project } } });
     this.shelf.set(list.data?.items ?? []);
+  }
+
+  /** The shelf's graphs a fill can read, and the one it reads even if the shelf has lost it. */
+  protected graphs(layer: StackLayer): readonly string[] {
+    const named = this.fillGraphs().map(material => material.name);
+    const held = this.graphOf(layer);
+    return held && !named.includes(held) ? [...named, held] : named;
+  }
+
+  protected graphOf(layer: StackLayer): string | null {
+    const stem = layer.graph.split('/').pop();
+    return stem ? (this.fillGraphs().find(material => stemOf(material.source) === stem)?.name ?? stem) : null;
+  }
+
+  protected chooseGraph(layer: StackLayer, name: string | null): void {
+    const material = this.fillGraphs().find(held => held.name === name);
+    if (material) {
+      void this.using.fillWith(layer, material);
+    }
+  }
+
+  private readonly fillGraphs = computed(() =>
+    this.shelf().filter(
+      material =>
+        (material.kind === 'graph' || material.kind === 'image-material') &&
+        material.role !== 'mask' &&
+        material.role !== 'filter' &&
+        material.role !== 'brush'
+    )
+  );
+
+  protected setSeed(seed: number | null): void {
+    if (seed !== null && Number.isInteger(seed) && seed >= 0 && seed !== this.store.state()?.seed) {
+      void this.store.edit({ op: 'setSeed', seed });
+    }
   }
 
   protected knob(layer: StackLayer, parameter: GraphSettingDefinition): string {

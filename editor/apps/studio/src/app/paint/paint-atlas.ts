@@ -30,6 +30,11 @@ import { StrokeGesture } from './stroke-gesture';
           </option>
         }
       </select>
+      @if (store.mirror() !== 'none' && state.model) {
+        <span class="readout absolute top-3 left-48 z-10 text-xs" data-testid="paint-mirror-mesh">
+          Mirror paints on the mesh, not here
+        </span>
+      }
     }
     @if (tiling()) {
       <button
@@ -61,7 +66,7 @@ import { StrokeGesture } from './stroke-gesture';
         >
           <img
             class="size-full select-none"
-            [class.cursor-crosshair]="store.picking() !== null"
+            [class.cursor-crosshair]="store.canPaint() || store.picking() !== null"
             alt="The composited map"
             draggable="false"
             data-testid="paint-picture"
@@ -134,6 +139,10 @@ export class PaintAtlas {
     if (this.store.picking() !== null) {
       const box = (event.target as HTMLElement).getBoundingClientRect();
       void this.store.pickColourAt((event.clientX - box.left) / box.width, (event.clientY - box.top) / box.height);
+      return;
+    }
+
+    if (!this.store.canPaint()) {
       return;
     }
 

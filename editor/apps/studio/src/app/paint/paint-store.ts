@@ -10,7 +10,9 @@ import {
   type StackIdColour,
   type StackLayer,
   type StackMask,
+  type StackMaskEffect,
   type StackPreview,
+  type StackProblem,
   type StackStamp,
   type StackState,
   type StackView,
@@ -45,6 +47,9 @@ export interface Aim {
 /** A layer with how deep in groups it is, top of the stack first. */
 /** How the Worker says a stack read mesh maps with no bake, before their names. */
 const NeedsBake = 'Needs a bake: ';
+
+/** The masks a brush can paint: a picture has to stay itself, and these are one number or a canvas already. */
+const FlatMasks: ReadonlySet<string> = new Set(['None', 'Constant', 'Paint']);
 
 export interface LayerRow {
   layer: StackLayer;
@@ -144,6 +149,8 @@ export class PaintStore {
   readonly mirror = signal<Mirror>('none');
   /** Whether strokes go to the chosen layer's mask rather than its channels. */
   readonly masking = signal(false);
+  /** What a stroke on a mask lays down, from nothing shown to everything: a mask is one number, not a colour. */
+  readonly maskGrey = signal(0);
   readonly brush = signal<BrushSettings>({
     flow: 1,
     opacity: 1,
@@ -181,6 +188,48 @@ export class PaintStore {
   });
 
   readonly chosen = computed(() => this.layers().find(row => row.layer.id === this.layer())?.layer ?? null);
+
+  /** Whether a stroke would land on what is chosen, which is the Server's rule so that a drag is never refused. */
+  readonly canPaint = computed(() => {
+    const layer = this.chosen();
+    if (!layer) {
+      return false;
+    }
+
+    return this.masking()
+      ? FlatMasks.has(layer.mask.source)
+      : layer.kind === 'paint' && writesChannel(layer, this.channel());
+  });
+
+  /** Whether one would land on the mesh, which also takes a mesh: a layered material's sphere is only a preview. */
+  readonly canPaintMesh = computed(() => this.canPaint() && !!this.state()?.model.trim());
+
+  /** What the stack's compile had to say, and why an evaluation failed. */
+  readonly problems = computed<readonly StackProblem[]>(() => {
+    const evaluation = this.state()?.evaluation;
+    return [
+      ...(evaluation?.error ? [{ layer: '', severity: 'Error', message: evaluation.error }] : []),
+      ...(evaluation?.problems ?? [])
+    ];
+  });
+
+  /** The worst thing said about each layer, for its row. */
+  readonly faults = computed<ReadonlyMap<string, StackProblem>>(() => {
+    const worst = new Map<string, StackProblem>();
+    for (const problem of this.problems()) {
+      if (problem.layer && (problem.severity === 'Error' || !worst.has(problem.layer))) {
+        worst.set(problem.layer, problem);
+      }
+    }
+
+    return worst;
+  });
+
+  /** What the toolbar says about the last evaluation. */
+  readonly evaluated = computed(() => {
+    const state = this.state();
+    return state ? stackSummary(state) : '';
+  });
 
   constructor() {
     inject(DestroyRef).onDestroy(() => {
@@ -266,7 +315,12 @@ export class PaintStore {
     const context = canvas.getContext('2d');
     context?.drawImage(image, u * image.width, v * image.height, 1, 1, 0, 0, 1, 1);
     const [r = 0, g = 0, b = 0] = context?.getImageData(0, 0, 1, 1).data ?? [];
-    this.colour.set(`#${[r, g, b].map(value => value.toString(16).padStart(2, '0')).join('')}`);
+    if (this.masking()) {
+      this.maskGrey.set(r / 255);
+    } else {
+      this.colour.set(`#${[r, g, b].map(value => value.toString(16).padStart(2, '0')).join('')}`);
+    }
+
     this.tool.set('brush');
   }
 
@@ -302,6 +356,15 @@ export class PaintStore {
     const socket = this.socket;
     this.socket = null;
     socket?.close();
+  }
+
+  /** Puts a layer's mask in front of the brush, which starts as what shows on a flat mask: white on black, or black. */
+  chooseMask(layer: StackLayer): void {
+    this.layer.set(layer.id);
+    this.masking.set(true);
+    if (layer.mask.source === 'Constant') {
+      this.maskGrey.set(layer.mask.value < 0.5 ? 1 : 0);
+    }
   }
 
   /** Adds a layer at the top of the stack, or of the chosen group, and chooses it. */
@@ -506,7 +569,7 @@ export class PaintStore {
     this.strokes += 1;
     this.stroke = `drag-${Date.now()}-${this.strokes}`;
     this.view = null;
-    if (this.tool() !== 'eraser') {
+    if (this.tool() !== 'eraser' && !this.masking()) {
       this.remember(this.colour());
     }
 
@@ -623,10 +686,16 @@ export class PaintStore {
   ): Promise<void> {
     const mirror = this.mirror();
     // A material brush writes every channel it holds, each in the one stroke and the one undo step. A mask has one.
-    const channels: [string, string][] = [
-      [this.channel(), this.colour()],
-      ...(this.masking() ? [] : [...this.alsoPaints()].filter(([usage]) => usage !== this.channel()))
-    ];
+    const grey = this.maskGrey();
+    const target = this.layers().find(row => row.layer.id === layer)?.layer;
+    const channels: [string, number[]][] = this.masking()
+      ? [[this.channel(), [grey, grey, grey, 1]]]
+      : [
+          [this.channel(), colourOf(this.colour())],
+          ...[...this.alsoPaints()]
+            .filter(([usage]) => usage !== this.channel() && (!target || writesChannel(target, usage)))
+            .map(([usage, colour]): [string, number[]] => [usage, colourOf(colour)])
+        ];
     const revision = await this.command({
       commands: channels.map(([channel, colour]) => ({
         op: 'stroke' as const,
@@ -635,7 +704,7 @@ export class PaintStore {
         channel,
         brush: { ...this.brush(), radius: this.radius() },
         // A stamp mixes towards its colour, so towards nothing at all takes paint away.
-        colour: this.tool() === 'eraser' ? [0, 0, 0, 0] : colourOf(colour),
+        colour: this.tool() === 'eraser' ? [0, 0, 0, 0] : colour,
         stamps,
         open,
         mask: this.masking(),
@@ -679,6 +748,10 @@ export class PaintStore {
     const rows = rowsOf(state.layers);
     if (!rows.some(row => row.layer.id === this.layer())) {
       this.layer.set(rows.find(row => row.layer.kind === 'paint')?.layer.id ?? null);
+    }
+
+    if (state.evaluation) {
+      this.heardNotes(state.evaluation.diagnostics);
     }
 
     this.show(state.previews);
@@ -788,7 +861,16 @@ export class PaintStore {
 
   private hear(event: StackEvent): void {
     this.sequence = event.sequence;
-    this.state.update(state => (state ? { ...state, history: event.history, revision: event.revision } : state));
+    this.state.update(state =>
+      state
+        ? {
+            ...state,
+            history: event.history,
+            revision: event.revision,
+            ...(event.evaluation ? { evaluation: event.evaluation, settled: event.evaluation.revision } : {})
+          }
+        : state
+    );
     if (event.evaluation) {
       this.heardNotes(event.evaluation.diagnostics);
     }
@@ -827,6 +909,38 @@ export class PaintStore {
 /** How hard a pointer is pressing: a mouse says 0.5 for a button held, and means nothing by it. */
 export function pressureOf(event: PointerEvent): number {
   return event.pointerType === 'pen' ? event.pressure : 1;
+}
+
+/** Whether a layer composites a channel. No list at all means every one of them. */
+export function writesChannel(layer: StackLayer, usage: string): boolean {
+  return layer.channels.length === 0 || layer.channels.includes(usage);
+}
+
+/** What a stack's toolbar says about its last evaluation, in the graph's words. */
+export function stackSummary(state: Pick<StackState, 'revision' | 'settled' | 'evaluation'>): string {
+  if (state.settled < state.revision) {
+    return 'Evaluating…';
+  }
+
+  const evaluation = state.evaluation;
+  if (!evaluation || evaluation.error) {
+    return '';
+  }
+
+  if (evaluation.problems.some(problem => problem.severity === 'Error')) {
+    return 'Not evaluated';
+  }
+
+  return evaluation.ran === 0
+    ? 'Up to date'
+    : `${String(evaluation.ran)} ran, ${evaluation.milliseconds.toFixed(0)} ms`;
+}
+
+/** A mask's effects with one more of a node, or none of it if it had one: what a toggle such as Invert sends. */
+export function toggledEffect(effects: readonly StackMaskEffect[], node: string): StackMaskEffect[] {
+  return effects.some(effect => effect.node === node)
+    ? effects.filter(effect => effect.node !== node)
+    : [...effects, { node, enabled: true }];
 }
 
 /** A colour swatch's value as the four numbers a stroke carries. */

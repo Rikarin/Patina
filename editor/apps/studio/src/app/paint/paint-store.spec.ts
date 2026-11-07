@@ -5,7 +5,16 @@ import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
 import { hexOf } from './layer-panel';
 import { LiveValue } from './live-value';
-import { PaintStore, colourOf, pressureOf, rowsOf, stackSocketUrl, toTexels } from './paint-store';
+import {
+  PaintStore,
+  colourOf,
+  pressureOf,
+  rowsOf,
+  stackSocketUrl,
+  stackSummary,
+  toTexels,
+  toggledEffect
+} from './paint-store';
 import { StrokeGesture } from './stroke-gesture';
 
 const PickedView = {
@@ -58,6 +67,7 @@ function stack(overrides: Partial<StackState> = {}): StackState {
     previews: [],
     settled: 0,
     model: '',
+    seed: 0,
     ...overrides
   };
   return state;
@@ -226,6 +236,141 @@ describe('PaintStore', () => {
     });
   });
 
+  it('paints a mask in grey, whatever the swatch says, and in one channel', async () => {
+    const { store, bodies } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    store.colour.set('#0000ff');
+    store.alsoPaints.set(new Map([['roughness', '#808080']]));
+    store.masking.set(true);
+    store.maskGrey.set(0.25);
+    store.begin({ x: 1, y: 2, pressure: 1 });
+    store.end();
+    await vi.waitFor(() => {
+      const batches = bodies.map(body => (body as { commands: { colour: number[]; open: boolean }[] }).commands);
+      expect(batches.at(-1)?.[0]?.open).toBe(false);
+      expect(batches.every(batch => batch.length === 1)).toBe(true);
+      expect(batches[0]?.[0]?.colour).toEqual([0.25, 0.25, 0.25, 1]);
+    });
+    expect(store.recentColours()).toEqual([]);
+  });
+
+  it('starts a brush on a flat mask as what would show on it', () => {
+    const { store } = setup();
+    const masked = (value: number): StackLayer => {
+      const held = layer('a', 'fill');
+      return { ...held, mask: { ...held.mask, source: 'Constant', value } };
+    };
+    store.chooseMask(masked(0));
+    expect(store.maskGrey()).toBe(1);
+    expect(store.masking()).toBe(true);
+    store.chooseMask(masked(1));
+    expect(store.maskGrey()).toBe(0);
+  });
+
+  it('offers a stroke only where the Server would take it', async () => {
+    const { store } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    expect(store.layer()).toBe('paint');
+    expect(store.canPaint()).toBe(true);
+    expect(store.canPaintMesh()).toBe(false);
+
+    store.layer.set('base');
+    expect(store.canPaint()).toBe(false);
+    store.masking.set(true);
+    expect(store.canPaint()).toBe(true);
+
+    const base = store.state()?.layers[0];
+    const masked = (source: string) => ({ ...(base as StackLayer), mask: { ...(base as StackLayer).mask, source } });
+    store.state.update(state => (state ? { ...state, model: 'crate.glb' } : state));
+    expect(store.canPaintMesh()).toBe(true);
+    for (const [source, paintable] of [
+      ['Constant', true],
+      ['Paint', true],
+      ['Generator', false],
+      ['Texture', false],
+      ['Bake', false],
+      ['Anchor', false]
+    ] as const) {
+      store.state.update(state => (state ? { ...state, layers: [masked(source)] } : state));
+      expect(store.canPaint()).toBe(paintable);
+    }
+  });
+
+  it('offers no brush on a channel the layer leaves alone, and a material brush skips it', async () => {
+    const { store, bodies } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    store.state.update(state =>
+      state
+        ? { ...state, layers: state.layers.map(held => (held.id === 'paint' ? { ...held, channels: ['roughness'] } : held)) }
+        : state
+    );
+    expect(store.canPaint()).toBe(false);
+
+    store.channel.set('roughness');
+    expect(store.canPaint()).toBe(true);
+    store.alsoPaints.set(new Map([['baseColor', '#808080']]));
+    store.begin({ x: 1, y: 2, pressure: 1 });
+    store.end();
+    await vi.waitFor(() => {
+      const batches = bodies.map(body => (body as { commands: { channel: string }[] }).commands);
+      expect(batches[0]?.map(command => command.channel)).toEqual(['roughness']);
+    });
+  });
+
+  it('says what the stack is doing, as a graph does', () => {
+    const evaluation = {
+      revision: 2,
+      compiled: false,
+      ran: 3,
+      repaired: 0,
+      reused: 0,
+      milliseconds: 12.4,
+      previews: [],
+      diagnostics: [],
+      error: null,
+      problems: []
+    };
+    expect(stackSummary({ revision: 3, settled: 2, evaluation })).toBe('Evaluating…');
+    expect(stackSummary({ revision: 2, settled: 2, evaluation })).toBe('3 ran, 12 ms');
+    expect(stackSummary({ revision: 2, settled: 2, evaluation: { ...evaluation, ran: 0 } })).toBe('Up to date');
+    const stopped = { ...evaluation, problems: [{ layer: 'a', severity: 'Error', message: 'No.' }] };
+    expect(stackSummary({ revision: 2, settled: 2, evaluation: stopped })).toBe('Not evaluated');
+  });
+
+  it('hears what a compile said, and keeps the worst for each row', async () => {
+    const { store, sockets } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    const hear = sockets[0]?.onmessage as unknown as (event: MessageEvent) => void;
+    hear({
+      data: JSON.stringify({
+        sequence: 5,
+        kind: 'evaluated',
+        revision: 2,
+        history: { canUndo: false, canRedo: false, dirty: true },
+        evaluation: {
+          revision: 2,
+          previews: [],
+          diagnostics: [],
+          error: null,
+          problems: [
+            { layer: 'base', severity: 'Warning', message: 'Half set.' },
+            { layer: 'base', severity: 'Error', message: 'A loop.' },
+            { layer: '', severity: 'Error', message: 'Of the stack.' }
+          ]
+        }
+      })
+    } as MessageEvent);
+    expect(store.problems()).toHaveLength(3);
+    expect(store.faults().get('base')?.message).toBe('A loop.');
+    expect(store.faults().size).toBe(1);
+  });
+
+  it('turns an effect on, and off again rather than twice', () => {
+    const once = toggledEffect([{ node: 'Filters/Blur', enabled: true }], 'Colour/Invert');
+    expect(once.map(effect => effect.node)).toEqual(['Filters/Blur', 'Colour/Invert']);
+    expect(toggledEffect(once, 'Colour/Invert').map(effect => effect.node)).toEqual(['Filters/Blur']);
+  });
+
   it('lists a group above what it holds, top first and indented', () => {
     const rows = rowsOf([layer('base', 'fill'), layer('group', 'group', [layer('a', 'paint'), layer('b', 'filter')])]);
     expect(rows.map(row => [row.layer.id, row.depth])).toEqual([
@@ -331,6 +476,46 @@ describe('PaintStore', () => {
       expect(parts[0]?.curve).toBe('path');
       expect(parts[0]?.stamps).toHaveLength(2);
     });
+  });
+
+  it('takes one point from a double click', () => {
+    const { store } = setup();
+    store.tool.set('path');
+    const gesture = new StrokeGesture(store, () => undefined);
+    for (const x of [1, 2, 2]) {
+      gesture.press({ x, y: 1, pressure: 1 });
+      gesture.release();
+    }
+
+    expect(gesture.points()).toHaveLength(2);
+  });
+
+  it('aims a path through the camera its first point was placed with', async () => {
+    const { store, picks } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    store.tool.set('path');
+    const camera = { yaw: 0, pitch: 0, distance: 2, panX: 0, panY: 0, panZ: 0, exposure: 1, lightRotation: 0 };
+    let yaw = 0;
+    const gesture = new StrokeGesture(store, () => ({
+      width: 100,
+      height: 100,
+      camera: { ...camera, yaw: yaw++ }
+    }));
+    for (const x of [10, 20, 30]) {
+      gesture.press({ x, y: 1, pressure: 1 });
+      gesture.release();
+    }
+
+    gesture.finish();
+    await vi.waitFor(() => expect(picks).toHaveLength(1));
+    expect((picks[0] as { camera: { yaw: number } }).camera.yaw).toBe(0);
+  });
+
+  it('lets go of a mask waiting for its colour', () => {
+    const { store } = setup();
+    store.picking.set('paint');
+    new StrokeGesture(store, () => undefined).cancel();
+    expect(store.picking()).toBeNull();
   });
 
   it('times a stamp to the first frame that shows its revision, and not an earlier one', async () => {

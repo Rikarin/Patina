@@ -24,7 +24,8 @@ public sealed class StackJournalEntry(
     string paint,
     string usage,
     uint colour,
-    string model
+    string model,
+    uint? start
 ) {
     public long Id { get; } = id;
 
@@ -42,6 +43,9 @@ public sealed class StackJournalEntry(
 
     /// <summary>The mesh that stood when this was painted: a later binding must not move it.</summary>
     public string Model { get; } = model;
+
+    /// <summary>What a canvas this stroke was the first on starts as, or null to leave it as it is.</summary>
+    public uint? Start { get; } = start;
 
     public StackView? View { get; } = first.View;
 
@@ -210,6 +214,7 @@ public sealed class StackEditor : ILayerStackDocument {
             StackSetLayer => "Change layer",
             StackSetModel => "Bind mesh",
             StackAddChannel add => $"Add {add.Usage}",
+            StackSetSeed => "Change seed",
             StackStroke => "Stroke",
             _ => "Edit"
         };
@@ -295,6 +300,9 @@ public sealed class StackEditor : ILayerStackDocument {
             case StackAddChannel add:
                 Do(AddChannel(add.Usage));
                 break;
+            case StackSetSeed seed:
+                Do(new SetDocumentCommand(this, Document with { Seed = seed.Seed }, "Change seed"));
+                break;
             case StackStroke stroke:
                 Stroke(stroke, step, set, Do);
                 break;
@@ -333,15 +341,37 @@ public sealed class StackEditor : ILayerStackDocument {
             Top(set, add.Parent),
             new() {
                 Id = id,
-                Name = add.Name,
+                Name = FreeName(add.Name),
                 Kind = kind,
                 Filter = filter,
                 FilterNode = add.FilterNode ?? string.Empty,
-                Values = Copied(add.Values) ?? []
+                Values = Copied(add.Values) ?? (kind == LayerKind.Fill ? ChannelDefaults() : [])
             },
             $"Add {add.Name}"
         );
     }
+
+    /// <summary>What a fill nobody has set yet writes, which is what Properties shows for it.</summary>
+    Dictionary<string, float[]> ChannelDefaults() =>
+        Set.Channels.ToDictionary(static channel => channel.Usage, static channel => channel.Default.ToArray());
+
+    /// <summary>A name no layer has, so that two rows can be told apart.</summary>
+    string FreeName(string name) {
+        HashSet<string> taken = new(Names(Set.Layers), StringComparer.Ordinal);
+        if (!taken.Contains(name)) {
+            return name;
+        }
+
+        for (var count = 2;; count++) {
+            var numbered = string.Create(CultureInfo.InvariantCulture, $"{name} {count}");
+            if (!taken.Contains(numbered)) {
+                return numbered;
+            }
+        }
+    }
+
+    static IEnumerable<string> Names(IEnumerable<LayerAsset> layers) =>
+        layers.SelectMany(static layer => Names(layer.Children).Prepend(layer.Name));
 
     /// <summary>The slot at the top of a group, or of the stack.</summary>
     LayerSlot Top(string set, string? parent) {
@@ -389,12 +419,20 @@ public sealed class StackEditor : ILayerStackDocument {
                 ? parsed
                 : throw new StackEditRefusedException($"'{name}' is not a {what}.");
 
-    /// <summary>A mask as asked for, keeping the canvas it may already paint.</summary>
-    static MaskAsset Masked(MaskAsset held, StackMask? mask) =>
-        mask is null
-            ? held
+    /// <summary>
+    ///     A mask as asked for, keeping the canvas it may already paint. Taking it away takes all of it, and what keeps
+    ///     the layer to some meshes is not the mask's.
+    /// </summary>
+    static MaskAsset Masked(MaskAsset held, StackMask? mask) {
+        if (mask is null) {
+            return held;
+        }
+
+        var source = Parsed(mask.Source, held.Source, "mask source");
+        return source == LayerMaskSource.None
+            ? new() { Layers = held.Layers }
             : held with {
-                Source = Parsed(mask.Source, held.Source, "mask source"),
+                Source = source,
                 Value = mask.Value,
                 Asset = mask.Asset,
                 Anchor = mask.Anchor,
@@ -403,6 +441,7 @@ public sealed class StackEditor : ILayerStackDocument {
                 Map = mask.Map,
                 Effects = StackDocuments.WithSelection(held.Effects, mask)
             };
+    }
 
     /// <summary>Another generator has other knobs, so what was set for the last one does not follow.</summary>
     static Dictionary<string, string> GeneratorKnobs(MaskAsset held, StackMask mask) =>
@@ -434,6 +473,7 @@ public sealed class StackEditor : ILayerStackDocument {
                 PlanarAxis = Parsed(change.PlanarAxis, layer.PlanarAxis, "axis"),
                 Placement = change.Placement is { } placement ? Placed(placement) : layer.Placement,
                 Filter = Parsed(change.Filter, layer.Filter, "filter"),
+                FilterNode = change.FilterNode ?? layer.FilterNode,
                 Settings = Merged(layer.Settings, Copied(change.Settings)),
                 Texts = Merged(layer.Texts, change.Parameters),
                 Mask = StackDocuments.MeshMasked(Masked(layer.Mask, change.Mask), change.MeshMask)
@@ -457,12 +497,14 @@ public sealed class StackEditor : ILayerStackDocument {
     }
 
     /// <summary>What a channel holds before anything paints it, which is what leaves its material alone.</summary>
-    static float[] DefaultOf(string usage) =>
+    /// <exception cref="StackEditRefusedException">It is not a channel a stack can have.</exception>
+    public static float[] DefaultOf(string usage) =>
         usage switch {
             "normal" => [0.5f, 0.5f, 1f, 1f],
-            "height" => [0.5f, 0.5f, 0.5f, 1f],
-            "opacity" or "ambientOcclusion" => [1f, 1f, 1f, 1f],
-            _ => [0f, 0f, 0f, 1f]
+            "baseColor" or "roughness" or "height" => [0.5f, 0.5f, 0.5f, 1f],
+            "opacity" or "occlusion" or "mask" => [1f, 1f, 1f, 1f],
+            "metalness" or "emissive" => [0f, 0f, 0f, 1f],
+            _ => throw new StackEditRefusedException($"'{usage}' is not a channel.")
         };
 
     SetDocumentCommand AddChannel(string usage) {
@@ -502,44 +544,21 @@ public sealed class StackEditor : ILayerStackDocument {
 
     void Stroke(StackStroke stroke, Step step, string set, Action<IAuthoringCommand> run) {
         var layer = Require(stroke.Layer);
-        if (layer.Kind != LayerKind.Paint) {
-            throw new StackEditRefusedException(
-                $"'{layer.Name}' is a {layer.Kind} layer, and only a paint layer takes a brush."
-            );
-        }
-
         if (stroke.Brush.Radius <= 0f) {
             throw new StackEditRefusedException("A brush has a radius.");
         }
 
+        if (stroke.Brush.Spacing <= 0f) {
+            throw new StackEditRefusedException("A brush's stamps are some distance apart.");
+        }
+
+        if (!stroke.Mask) {
+            Writable(stroke, layer);
+        }
+
         Aimed(stroke);
 
-        if (!stroke.Mask && Set.Channels.TrueForAll(channel => channel.Usage != stroke.Channel)) {
-            throw new StackEditRefusedException($"This stack has no channel '{stroke.Channel}'.");
-        }
-
-        var stem = Path.GetFileNameWithoutExtension(AssetPath);
-        string paint;
-        if (stroke.Mask) {
-            paint = layer.Mask.Paint.Trim();
-            if (paint.Length == 0) {
-                paint = LayerPaint.NameFor(stem, set, layer.Id, true);
-                run(
-                    Named(
-                        layer,
-                        layer with { Mask = layer.Mask with { Source = LayerMaskSource.Paint, Paint = paint } },
-                        set
-                    )
-                );
-            }
-        } else {
-            paint = layer.Paint.Trim();
-            if (paint.Length == 0) {
-                // The first stroke writes the name down, and undoing it takes the name back with the pixels.
-                paint = LayerPaint.NameFor(stem, set, layer.Id);
-                run(Named(layer, layer with { Paint = paint }, set));
-            }
-        }
+        var (paint, start) = stroke.Mask ? MaskCanvas(layer, set, run) : (LayerCanvas(layer, set, run), null);
 
         // ⚠ Live, two strokes of one batch take turns; replayed, they run one after the other. Where they meet in one
         // channel that is two pictures, and a journal has to be one.
@@ -547,7 +566,84 @@ public sealed class StackEditor : ILayerStackDocument {
             throw new StackEditRefusedException("One batch paints one channel of a layer once.");
         }
 
-        step.Strokes.Add(new(nextEntry++, stroke, paint, Channel(stroke), Packed(stroke.Colour), Document.Model));
+        step.Strokes.Add(
+            new(nextEntry++, stroke, paint, Channel(stroke), Packed(stroke.Colour), Document.Model, start)
+        );
+    }
+
+    /// <summary>Refuses a stroke on a layer's own pixels that would land nowhere, or nowhere that shows.</summary>
+    void Writable(StackStroke stroke, LayerAsset layer) {
+        // A mask is any layer's, and only a paint layer has pixels of its own besides.
+        if (layer.Kind != LayerKind.Paint) {
+            throw new StackEditRefusedException(
+                $"'{layer.Name}' is a {layer.Kind} layer, and only a paint layer takes a brush."
+            );
+        }
+
+        if (Set.Channels.TrueForAll(channel => channel.Usage != stroke.Channel)) {
+            throw new StackEditRefusedException($"This stack has no channel '{stroke.Channel}'.");
+        }
+
+        if (!layer.Writes(stroke.Channel)) {
+            throw new StackEditRefusedException(
+                $"'{layer.Name}' does not write '{stroke.Channel}', so a stroke there would never show."
+            );
+        }
+    }
+
+    /// <summary>The canvas of a paint layer. The first stroke names it, and undoing that takes the name back.</summary>
+    string LayerCanvas(LayerAsset layer, string set, Action<IAuthoringCommand> run) {
+        var paint = layer.Paint.Trim();
+        if (paint.Length == 0) {
+            paint = LayerPaint.NameFor(Path.GetFileNameWithoutExtension(AssetPath), set, layer.Id);
+            run(Named(layer, layer with { Paint = paint }, set));
+        }
+
+        return paint;
+    }
+
+    /// <summary>The canvas of a mask, and what it starts as if this is the stroke that makes one.</summary>
+    (string Paint, uint? Start) MaskCanvas(LayerAsset layer, string set, Action<IAuthoringCommand> run) {
+        var paint = layer.Mask.Paint.Trim();
+        if (layer.Mask.Source == LayerMaskSource.Paint && paint.Length > 0) {
+            return (paint, null);
+        }
+
+        var showed = Showed(layer);
+        paint = FreeMaskCanvas(Path.GetFileNameWithoutExtension(AssetPath), set, layer.Id);
+        var painted = layer.Mask with { Source = LayerMaskSource.Paint, Paint = paint };
+        run(Named(layer, layer with { Mask = StackDocuments.MeshMasked(painted, null) }, set));
+        return (paint, PaintImage.Pack(showed, showed, showed, 1f));
+    }
+
+    /// <summary>
+    ///     The one number a mask stood at, which is what a canvas taking its place starts as, so that a stroke changes
+    ///     only what it touches. A paint mask nobody has painted reads nothing, and so hides nothing.
+    /// </summary>
+    /// <exception cref="StackEditRefusedException">The mask is a picture, which one number cannot stand for.</exception>
+    static float Showed(LayerAsset layer) =>
+        layer.Mask.Source switch {
+            LayerMaskSource.None or LayerMaskSource.Paint => 1f,
+            LayerMaskSource.Constant => layer.Mask.Value,
+            var source => throw new StackEditRefusedException(
+                $"A brush would replace the {source} mask of '{layer.Name}'. Set the mask's source to Paint to paint it."
+            )
+        };
+
+    /// <summary>
+    ///     A file for a new mask canvas. ⚠ Never one anything can reach: a removed mask's strokes can still be undone
+    ///     back onto its canvas, and a file beside the stack holds what a save kept.
+    /// </summary>
+    string FreeMaskCanvas(string stem, string set, string layer) {
+        var folder = Path.GetDirectoryName(AssetPath)!;
+        HashSet<string> taken = [..Standing.Concat(Redoable).Select(static stroke => stroke.Paint)];
+        for (var count = 1;; count++) {
+            var id = count == 1 ? layer : string.Create(CultureInfo.InvariantCulture, $"{layer}-{count}");
+            var name = LayerPaint.NameFor(stem, set, id, true);
+            if (!taken.Contains(name) && !File.Exists(Path.Combine(folder, name))) {
+                return name;
+            }
+        }
     }
 
     /// <summary>Refuses what a Worker could not do with a stroke, while nothing has happened yet.</summary>

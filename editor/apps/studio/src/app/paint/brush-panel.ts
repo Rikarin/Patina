@@ -12,7 +12,7 @@ import { type BrushSettings, type Mirror, PaintStore, type PaintTool } from './p
 const Tools: readonly { id: PaintTool; label: string; icon: string }[] = [
   { id: 'brush', label: 'Brush (B)', icon: 'matBrush' },
   { id: 'eraser', label: 'Eraser (E)', icon: 'matAutoFixOff' },
-  { id: 'picker', label: 'Picker (I)', icon: 'matColorize' },
+  { id: 'picker', label: 'Picker (C)', icon: 'matColorize' },
   { id: 'line', label: 'Line (L)', icon: 'matHorizontalRule' },
   { id: 'path', label: 'Path (P)', icon: 'matPolyline' }
 ];
@@ -32,11 +32,14 @@ type NumberSetting = {
   [K in keyof BrushSettings]-?: NonNullable<BrushSettings[K]> extends number ? K : never;
 }[keyof BrushSettings];
 
-/** The sliders of a brush, which all run from nothing to all of it but the angle's. */
-const Sliders: readonly { key: NumberSetting; label: string; max: number }[] = [
+/**
+ * The sliders of a brush, which all run from nothing to all of it but the angle's. Spacing is a share of the radius, so
+ * stamps touch at 200%, and past that it is a pattern. Nothing is never a spacing: stamps have to move.
+ */
+const Sliders: readonly { key: NumberSetting; label: string; max: number; min?: number }[] = [
   { key: 'flow', label: 'Flow', max: 1 },
   { key: 'opacity', label: 'Opacity', max: 1 },
-  { key: 'spacing', label: 'Spacing', max: 2 },
+  { key: 'spacing', label: 'Spacing', max: 4, min: 0.01 },
   { key: 'falloff', label: 'Softness', max: 1 },
   { key: 'angle', label: 'Angle', max: 6.28 },
   { key: 'positionJitter', label: 'Scatter', max: 1 },
@@ -78,6 +81,7 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number }[] = [
         class="well h-7 min-w-0 flex-1 px-1 text-sm"
         aria-label="Mirror"
         data-testid="paint-mirror"
+        [disabled]="!store.state()?.model"
         (change)="store.mirror.set(asMirror(text($event)))"
       >
         @for (mirror of mirrors; track mirror.value) {
@@ -100,16 +104,34 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number }[] = [
       />
       <span class="readout w-12 shrink-0 text-end text-xs">{{ store.radius() }} px</span>
     </div>
-    <div class="flex items-center gap-2">
-      <span class="text-foreground-muted w-16 shrink-0 text-xs">Colour</span>
-      <xui-color-picker
-        aria-label="Brush colour"
-        data-testid="paint-colour"
-        [presets]="store.recentColours()"
-        [value]="store.colour()"
-        (valueChange)="store.colour.set($event)"
-      />
-    </div>
+    @if (store.masking()) {
+      <div class="flex items-center gap-2">
+        <span class="text-foreground-muted w-16 shrink-0 text-xs" title="Black hides the layer and white shows it">Grey</span>
+        <xui-slider
+          class="min-w-0 flex-1"
+          labelStepSize="0"
+          aria-label="Mask grey"
+          data-testid="paint-mask-grey"
+          [max]="1"
+          [min]="0"
+          [stepSize]="0.01"
+          [value]="store.maskGrey()"
+          (valueChange)="store.maskGrey.set($event)"
+        />
+        <span class="readout w-12 shrink-0 text-end text-xs">{{ store.maskGrey().toFixed(2) }}</span>
+      </div>
+    } @else {
+      <div class="flex items-center gap-2">
+        <span class="text-foreground-muted w-16 shrink-0 text-xs">Colour</span>
+        <xui-color-picker
+          aria-label="Brush colour"
+          data-testid="paint-colour"
+          [presets]="store.recentColours()"
+          [value]="store.colour()"
+          (valueChange)="store.colour.set($event)"
+        />
+      </div>
+    }
     <div class="flex items-center gap-1">
       <span class="text-foreground-muted w-16 shrink-0 text-xs">Alpha</span>
       <xui-select
@@ -136,7 +158,7 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number }[] = [
         }
       </select>
     </div>
-    <div class="flex flex-col gap-1" data-testid="paint-channels">
+    <div class="flex flex-col gap-1" data-testid="paint-channels" [hidden]="store.masking()">
       <span class="section-label">Also paints</span>
       @for (channel of others(); track channel.usage) {
         <div class="flex items-center gap-2">
@@ -178,8 +200,8 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number }[] = [
           [attr.aria-label]="slider.label"
           [attr.data-testid]="'paint-' + slider.key"
           [max]="slider.max"
-          [min]="0"
-          [stepSize]="slider.max / 100"
+          [min]="slider.min ?? 0"
+          [stepSize]="slider.min ?? slider.max / 100"
           [value]="store.brush()[slider.key]"
           (valueChange)="set(slider.key, $event)"
         />

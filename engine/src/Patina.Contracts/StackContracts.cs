@@ -145,8 +145,8 @@ public sealed record StackIdColours(IReadOnlyList<StackIdColour> Colours, IReadO
 
 /// <summary>A filter a layer can be, and the numbers it takes.</summary>
 /// <param name="Kind">Levels, Hsl, Blur, Invert or Grayscale.</param>
-/// <param name="Settings">Its numbers' names.</param>
-public sealed record StackFilterKind(string Kind, IReadOnlyList<string> Settings);
+/// <param name="Settings">Its numbers, each saying what it is and what it starts as, in the order a person reads them.</param>
+public sealed record StackFilterKind(string Kind, IReadOnlyList<GraphPortDefinition> Settings);
 
 /// <summary>The words a stack's fields take, so that a client holds no list of its own.</summary>
 /// <param name="Blends">The sixteen blend modes.</param>
@@ -190,6 +190,12 @@ public sealed record StackMeshMapsRequest(string? Folder);
 /// <param name="Height">Its height in pixels.</param>
 public sealed record StackPreview(string Usage, string Hash, int Width, int Height);
 
+/// <summary>Something a stack's compile had to say.</summary>
+/// <param name="Layer">The layer it is about, or empty when it is about the stack.</param>
+/// <param name="Severity">Warning, or Error when nothing could evaluate.</param>
+/// <param name="Message">What is wrong.</param>
+public sealed record StackProblem(string Layer, string Severity, string Message);
+
 /// <summary>How an evaluation went.</summary>
 /// <param name="Revision">The revision it was of.</param>
 /// <param name="Compiled">Whether the plan had to compile.</param>
@@ -200,6 +206,7 @@ public sealed record StackPreview(string Usage, string Hash, int Width, int Heig
 /// <param name="Previews">The maps that changed.</param>
 /// <param name="Diagnostics">Why it could not evaluate, or what it warned about.</param>
 /// <param name="Error">Why the evaluation failed, or null.</param>
+/// <param name="Problems">What the compile said, by layer.</param>
 public sealed record StackEvaluation(
     long Revision,
     bool Compiled,
@@ -209,7 +216,8 @@ public sealed record StackEvaluation(
     double Milliseconds,
     IReadOnlyList<StackPreview> Previews,
     IReadOnlyList<string> Diagnostics,
-    string? Error
+    string? Error,
+    IReadOnlyList<StackProblem> Problems
 );
 
 /// <summary>A whole stack: everything a client needs to draw it, and no pixels.</summary>
@@ -229,6 +237,7 @@ public sealed record StackEvaluation(
 /// <param name="Settled">The newest revision an evaluation has reached.</param>
 /// <param name="Model">The mesh it is painted on, as the document names it, or empty.</param>
 /// <param name="MeshMaps">The bake its generators read, or null.</param>
+/// <param name="Seed">The number every procedural step derives from.</param>
 public sealed record StackState(
     string Id,
     string Path,
@@ -245,7 +254,8 @@ public sealed record StackState(
     StackEvaluation? Evaluation,
     long Settled,
     string Model,
-    string? MeshMaps = null
+    string? MeshMaps = null,
+    uint Seed = 0
 );
 #pragma warning restore SK7005
 
@@ -268,12 +278,15 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackSetModel), "setModel")]
 [JsonDerivedType(typeof(StackAddChannel), "addChannel")]
 [JsonDerivedType(typeof(StackNestLayer), "nestLayer")]
+[JsonDerivedType(typeof(StackSetSeed), "setSeed")]
 public abstract record StackCommand;
 
 /// <summary>Adds a layer at the top of the stack.</summary>
 /// <param name="Kind">fill, paint, filter or group.</param>
-/// <param name="Name">What it is called.</param>
-/// <param name="Values">What a fill writes to each channel, as four numbers. Ignored for other kinds.</param>
+/// <param name="Name">What it is called, with a number after it when a layer has that name already.</param>
+/// <param name="Values">
+///     What a fill writes to each channel, as four numbers, or null for the default of each one. Ignored for other kinds.
+/// </param>
 /// <param name="Parent">The group it goes at the top of, or null for the stack itself.</param>
 /// <param name="Filter">What a filter layer does: Levels, Hsl, Blur, Invert or Grayscale.</param>
 /// <param name="Material">
@@ -322,11 +335,14 @@ public sealed record StackMoveLayer(string Layer, int Delta) : StackCommand;
 /// <param name="Projection">How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical.</param>
 /// <param name="Filter">What a filter does.</param>
 /// <param name="Settings">A filter's numbers, replacing what these names held.</param>
-/// <param name="Mask">Its mask, which replaces the old one and keeps any painted canvas.</param>
+/// <param name="Mask">
+///     Its mask, which replaces the old one and keeps any painted canvas. A source of None takes the mask away, whole.
+/// </param>
 /// <param name="MeshMask">The named meshes it is kept to, or null to leave that as it is.</param>
 /// <param name="PlanarAxis">The world axis a planar projection looks along or a cylinder wraps: X, Y or Z.</param>
 /// <param name="Placement">Where a fill sits on the surface, which replaces where it sat.</param>
 /// <param name="Parameters">What a graph fill sets the graph's knobs to, replacing what these names held.</param>
+/// <param name="FilterNode">The compound a filter runs, or empty to go back to the named filter.</param>
 public sealed record StackSetLayer(
     string Layer,
     string? Name = null,
@@ -345,7 +361,8 @@ public sealed record StackSetLayer(
     StackMeshMask? MeshMask = null,
     string? PlanarAxis = null,
     StackPlacement? Placement = null,
-    IReadOnlyDictionary<string, string>? Parameters = null
+    IReadOnlyDictionary<string, string>? Parameters = null,
+    string? FilterNode = null
 ) : StackCommand;
 #pragma warning restore SK7005
 
@@ -370,6 +387,10 @@ public sealed record StackSetModel(string Model) : StackCommand;
 /// <summary>Adds a channel to the stack, so that layers can write it and a preset can export it.</summary>
 /// <param name="Usage">Which, one of the vocabulary's usages.</param>
 public sealed record StackAddChannel(string Usage) : StackCommand;
+
+/// <summary>Sets the number every procedural step of the stack derives from.</summary>
+/// <param name="Seed">It.</param>
+public sealed record StackSetSeed(uint Seed) : StackCommand;
 
 /// <summary>Where the brush goes: in texels of the image, or on the picture of a stroke with a view.</summary>
 /// <param name="X">Its column.</param>
@@ -405,7 +426,7 @@ public sealed record StackView(
 /// <param name="Radius">In texels, or in the units of the picture for a stroke with a view.</param>
 /// <param name="Flow">How much one stamp lays down, 0 to 1.</param>
 /// <param name="Opacity">How much a whole stroke can lay down, 0 to 1.</param>
-/// <param name="Spacing">How far apart stamps are, as a share of the radius.</param>
+/// <param name="Spacing">How far apart stamps are, as a share of the radius: above zero, and above 2 leaves gaps.</param>
 /// <param name="Falloff">How soft its edge is, 0 to 1.</param>
 /// <param name="Alpha">A named alpha (Round, Square, Chisel, Cross) or an image relative to the stack, or null.</param>
 /// <param name="Angle">Its fixed rotation, in radians.</param>
@@ -440,13 +461,16 @@ public sealed record StackBrush(
 ///     <paramref name="Stroke" /> and they make one undo step, ended by one with <paramref name="Open" /> false.
 /// </summary>
 /// <param name="Stroke">A name the client chose for this drag.</param>
-/// <param name="Layer">The paint layer.</param>
+/// <param name="Layer">The paint layer, or for a mask any layer.</param>
 /// <param name="Channel">Which of its channels. Ignored for a mask.</param>
 /// <param name="Brush">The brush, which the first part decides.</param>
-/// <param name="Colour">Red, green, blue and alpha, 0 to 1, which the first part decides.</param>
+/// <param name="Colour">Red, green, blue and alpha, 0 to 1, which the first part decides. A mask reads the red.</param>
 /// <param name="Stamps">Where the brush went since the last part.</param>
 /// <param name="Open">Whether more of this drag is coming.</param>
-/// <param name="Mask">Whether this paints the layer's mask.</param>
+/// <param name="Mask">
+///     Whether this paints the layer's mask. A flat mask becomes a canvas of what it showed; a mask that is a picture
+///     refuses, since nothing yet keeps that picture under paint.
+/// </param>
 /// <param name="View">
 ///     The camera, which makes this a stroke on the mesh: stamps are positions on its picture, each one is found on the
 ///     surface by the Worker, and it lands wherever the brush's disc falls, seams or no seams. Null paints the atlas.

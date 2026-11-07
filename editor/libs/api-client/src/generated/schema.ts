@@ -3084,7 +3084,7 @@ export interface components {
       opacity: number;
       /**
        * Format: float
-       * @description How far apart stamps are, as a share of the radius.
+       * @description How far apart stamps are, as a share of the radius: above zero, and above 2 leaves gaps.
        * @default 0.15
        */
       spacing: number;
@@ -3154,7 +3154,8 @@ export interface components {
       | components['schemas']['StackCommandStackStroke']
       | components['schemas']['StackCommandStackSetModel']
       | components['schemas']['StackCommandStackAddChannel']
-      | components['schemas']['StackCommandStackNestLayer'];
+      | components['schemas']['StackCommandStackNestLayer']
+      | components['schemas']['StackCommandStackSetSeed'];
     /** @description Edits applied whole or not at all, as one undo step. */
     StackCommandBatch: {
       /** @description The edits, in order. */
@@ -3175,9 +3176,9 @@ export interface components {
       op: 'addLayer';
       /** @description fill, paint, filter or group. */
       kind: string;
-      /** @description What it is called. */
+      /** @description What it is called, with a number after it when a layer has that name already. */
       name: string;
-      /** @description What a fill writes to each channel, as four numbers. Ignored for other kinds. */
+      /** @description What a fill writes to each channel, as four numbers, or null for the default of each one. Ignored for other kinds. */
       values?: null | {
         [key: string]: number[];
       };
@@ -3269,6 +3270,8 @@ export interface components {
       parameters?: null | {
         [key: string]: string;
       };
+      /** @description The compound a filter runs, or empty to go back to the named filter. */
+      filterNode?: null | string;
     };
     /** @description Names the mesh a stack is painted on, which is undone like any other edit. */
     StackCommandStackSetModel: {
@@ -3276,6 +3279,16 @@ export interface components {
       op: 'setModel';
       /** @description A model file, absolute or relative to the stack. Empty takes the mesh away. */
       model: string;
+    };
+    /** @description Sets the number every procedural step of the stack derives from. */
+    StackCommandStackSetSeed: {
+      /** @enum {string} */
+      op: 'setSeed';
+      /**
+       * Format: uint32
+       * @description It.
+       */
+      seed: number;
     };
     /**
      * @description Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one
@@ -3286,13 +3299,13 @@ export interface components {
       op: 'stroke';
       /** @description A name the client chose for this drag. */
       stroke: string;
-      /** @description The paint layer. */
+      /** @description The paint layer, or for a mask any layer. */
       layer: string;
       /** @description Which of its channels. Ignored for a mask. */
       channel: string;
       /** @description The brush, which the first part decides. */
       brush: components['schemas']['StackBrush'];
-      /** @description Red, green, blue and alpha, 0 to 1, which the first part decides. */
+      /** @description Red, green, blue and alpha, 0 to 1, which the first part decides. A mask reads the red. */
       colour: number[];
       /** @description Where the brush went since the last part. */
       stamps: components['schemas']['StackStamp'][];
@@ -3302,7 +3315,8 @@ export interface components {
        */
       open: boolean;
       /**
-       * @description Whether this paints the layer's mask.
+       * @description Whether this paints the layer's mask. A flat mask becomes a canvas of what it showed; a mask that is a picture
+       *     refuses, since nothing yet keeps that picture under paint.
        * @default false
        */
       mask: boolean;
@@ -3416,6 +3430,8 @@ export interface components {
       diagnostics: string[];
       /** @description Why the evaluation failed, or null. */
       error?: null | string;
+      /** @description What the compile said, by layer. */
+      problems: components['schemas']['StackProblem'][];
     };
     /** @description Something that happened to a stack, with the same kinds and numbering as a graph's events. */
     StackEvent: {
@@ -3457,8 +3473,8 @@ export interface components {
     StackFilterKind: {
       /** @description Levels, Hsl, Blur, Invert or Grayscale. */
       kind: string;
-      /** @description Its numbers' names. */
-      settings: string[];
+      /** @description Its numbers, each saying what it is and what it starts as, in the order a person reads them. */
+      settings: components['schemas']['GraphPortDefinition'][];
     };
     /** @description One colour of a stack's id map. */
     StackIdColour: {
@@ -3714,6 +3730,15 @@ export interface components {
        */
       height: number;
     };
+    /** @description Something a stack's compile had to say. */
+    StackProblem: {
+      /** @description The layer it is about, or empty when it is about the stack. */
+      layer: string;
+      /** @description Warning, or Error when nothing could evaluate. */
+      severity: string;
+      /** @description What is wrong. */
+      message: string;
+    };
     /** @description Where the brush goes: in texels of the image, or on the picture of a stroke with a view. */
     StackStamp: {
       /**
@@ -3781,6 +3806,12 @@ export interface components {
       model: string;
       /** @description The bake its generators read, or null. */
       meshMaps?: null | string;
+      /**
+       * Format: uint32
+       * @description The number every procedural step derives from.
+       * @default 0
+       */
+      seed: number;
     };
     /** @description An open stack, for a list. */
     StackSummary: {

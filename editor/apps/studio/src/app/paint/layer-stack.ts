@@ -20,7 +20,7 @@ import { ProjectStore } from '../library/project-store';
 import { type DropZone, dropManyCommands } from './layer-drag';
 import { hexOf } from './layer-panel';
 import { MaterialUse } from './material-use';
-import { type LayerRow, PaintStore } from './paint-store';
+import { type LayerRow, PaintStore, toggledEffect } from './paint-store';
 
 const RowHeight = 56;
 const EffectHeight = 32;
@@ -79,7 +79,7 @@ interface MenuAt {
         [items]="channels()"
         [matchTargetWidth]="false"
         [value]="store.channel()"
-        (valueChange)="store.channel.set($event ?? store.channel())"
+        (valueChange)="store.showChannel($event ?? store.channel())"
       />
       <span class="flex-1"></span>
       <button
@@ -207,6 +207,30 @@ interface MenuAt {
         <span class="min-w-0 flex-1" [title]="maps">Some masks need baked maps, and show grey until then.</span>
         <button type="button" xuiButton size="sm" data-testid="layers-bake" (click)="project.askToBake()">Bake…</button>
       </div>
+    }
+
+    @if (store.evaluated(); as evaluated) {
+      <div class="readout text-foreground-muted shrink-0 truncate px-2 text-xs" data-testid="layers-evaluation">
+        {{ evaluated }}
+      </div>
+    }
+
+    @if (store.problems().length > 0) {
+      <ul class="well max-h-24 shrink-0 overflow-auto text-xs" aria-label="Problems" data-testid="layers-problems">
+        @for (item of store.problems(); track $index) {
+          <li>
+            <button
+              type="button"
+              class="hover:bg-surface-hover flex w-full items-baseline gap-2 px-2 py-0.5 text-start"
+              [disabled]="!item.layer"
+              (click)="reveal(item.layer)"
+            >
+              <span class="readout shrink-0" [class.text-error]="item.severity === 'Error'">{{ item.severity }}</span>
+              <span class="truncate" [title]="item.message">{{ item.message }}</span>
+            </button>
+          </li>
+        }
+      </ul>
     }
 
     <div
@@ -344,6 +368,19 @@ interface MenuAt {
                 [class.bg-warning]="hasMaskWork(row.layer)"
               ></span>
             </span>
+          }
+
+          @if (store.faults().get(row.layer.id); as fault) {
+            <span
+              class="shrink-0 text-xs font-semibold"
+              data-testid="layer-fault"
+              role="img"
+              [attr.aria-label]="fault.message"
+              [class.text-error]="fault.severity === 'Error'"
+              [class.text-warning]="fault.severity !== 'Error'"
+              [title]="fault.message"
+              >!</span
+            >
           }
 
           <span class="min-w-0 flex-1 leading-tight">
@@ -506,6 +543,7 @@ interface MenuAt {
               type="checkbox"
               [attr.data-testid]="'layer-mesh-' + part"
               [checked]="onPart(at.layer, part)"
+              [disabled]="isLastPart(at.layer, part)"
               (change)="setPart(at.layer, part, checked($event))"
             />
             <span class="truncate">{{ part }}</span>
@@ -583,6 +621,15 @@ interface MenuAt {
           >
             Add Colour Selection Mask
           </button>
+          <button
+            type="button"
+            class="hover:bg-selection px-3 py-1 text-start"
+            role="menuitem"
+            data-testid="layer-menu-mask-generator"
+            (click)="addMask(at.layer, 'Generator')"
+          >
+            Add Generator
+          </button>
         } @else {
           <button
             type="button"
@@ -604,15 +651,6 @@ interface MenuAt {
           </button>
         }
         <div class="border-hairline my-1 border-t"></div>
-        <button
-          type="button"
-          class="hover:bg-selection px-3 py-1 text-start"
-          role="menuitem"
-          data-testid="layer-menu-mask-generator"
-          (click)="addMask(at.layer, 'Generator')"
-          >
-          Add Generator
-        </button>
         @if (!store.masking()) {
           <button
             type="button"
@@ -728,6 +766,11 @@ export class LayerStack {
     return layer.mask.meshParts?.includes(part) ?? true;
   }
 
+  /** ⚠ No meshes at all means the whole model to the Server, so the last one stays: the eye hides a layer. */
+  protected isLastPart(layer: StackLayer, part: string): boolean {
+    return this.onPart(layer, part) && this.parts().filter(name => this.onPart(layer, name)).length === 1;
+  }
+
   protected checked(event: Event): boolean {
     return (event.target as HTMLInputElement).checked;
   }
@@ -793,8 +836,29 @@ export class LayerStack {
 
   protected choose(layer: StackLayer, mask: boolean): void {
     this.store.marked.set(new Set());
-    this.store.layer.set(layer.id);
-    this.store.masking.set(mask);
+    if (mask) {
+      this.store.chooseMask(layer);
+    } else {
+      this.store.layer.set(layer.id);
+      this.store.masking.set(false);
+    }
+  }
+
+  /** Goes to the layer a problem is about, opening the folders it is in. */
+  protected reveal(id: string): void {
+    const rows = this.store.layers();
+    const closed = new Set(this.closed());
+    for (let at = rows.find(row => row.layer.id === id); at?.parent; ) {
+      closed.delete(at.parent);
+      const parent = at.parent;
+      at = rows.find(row => row.layer.id === parent);
+    }
+
+    this.closed.set(closed);
+    const row = rows.find(held => held.layer.id === id);
+    if (row) {
+      this.choose(row.layer, false);
+    }
   }
 
   /** A click chooses one layer, Cmd adds or takes away, and Shift takes everything from the current layer to here. */
@@ -838,7 +902,7 @@ export class LayerStack {
 
     if (event.key === 'Delete' || event.key === 'Backspace') {
       event.preventDefault();
-      void this.removeSelected();
+      void this.removeInFront();
     } else if (event.key === 'g' && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       void this.groupSelected();
@@ -858,14 +922,19 @@ export class LayerStack {
     return target === globalThis.document.body || this.host.nativeElement.contains(target);
   }
 
-  protected async removeSelected(): Promise<void> {
+  /** The Delete key takes what is in front: a mask that is, or else the layers. Anything that says layers takes those. */
+  private async removeInFront(): Promise<void> {
     const layer = this.store.chosen();
     if (this.store.masking() && layer) {
       this.store.masking.set(false);
       await this.store.setMask(layer, { ...layer.mask, source: 'None' });
-      return;
+    } else {
+      await this.removeSelected();
     }
+  }
 
+  protected async removeSelected(): Promise<void> {
+    this.store.masking.set(false);
     const selected = this.store.selection();
     const rows = this.store.layers();
     const going = rows.filter(row => selected.has(row.layer.id));
@@ -1031,8 +1100,13 @@ export class LayerStack {
     }
   }
 
-  protected invertMask(layer: StackLayer): Promise<void> {
-    return this.addWork(layer, 'Invert');
+  /** Invert is on or off, so a second time takes it away rather than stacking another. */
+  protected async invertMask(layer: StackLayer): Promise<void> {
+    this.menu.set(null);
+    const node = this.store.vocabulary()?.maskEffects.find(effect => effect.name === 'Invert')?.node;
+    if (node) {
+      await this.store.setMask(layer, { ...layer.mask, effects: toggledEffect(layer.mask.effects ?? [], node) });
+    }
   }
 
   /** Puts the selected layers in a new folder, where the top one of them was. */
@@ -1055,6 +1129,7 @@ export class LayerStack {
     this.menu.set(null);
     await this.store.setMask(layer, { ...layer.mask, source });
     this.store.masking.set(source === 'Paint');
+    this.store.maskGrey.set(0);
   }
 
   /** A mask from one colour of the id map, which the Properties pane then offers to choose. */

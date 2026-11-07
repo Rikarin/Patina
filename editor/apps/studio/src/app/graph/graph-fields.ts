@@ -49,7 +49,7 @@ export function isWireable(port: GraphPortDefinition): boolean {
   return port.direction === 'Output' || port.kind === 'Image';
 }
 
-function fieldOfPort(port: GraphPortDefinition): GraphField | null {
+export function fieldOfPort(port: GraphPortDefinition): GraphField | null {
   const base = { source: 'value', name: port.name, summary: port.summary, fallback: port.default } as const;
   const range = {
     minimum: port.range?.softMinimum ?? port.range?.minimum ?? null,

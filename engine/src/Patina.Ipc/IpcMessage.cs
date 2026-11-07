@@ -447,6 +447,7 @@ public sealed record StackLoad(
 /// <param name="View">The camera of a stroke on the mesh, or null for one in the atlas.</param>
 /// <param name="Curve">free, line or path.</param>
 /// <param name="Mirror">x, y, z or null.</param>
+/// <param name="Start">What a canvas this stroke is the first on starts as, packed like the colour, or null.</param>
 public sealed record StackPaintPart(
     long Id,
     string Paint,
@@ -458,7 +459,8 @@ public sealed record StackPaintPart(
     string Model,
     StackView? View,
     string Curve,
-    string? Mirror
+    string? Mirror,
+    uint? Start = null
 );
 
 #pragma warning restore SK7005
@@ -494,7 +496,8 @@ public sealed record StackEvaluate(string Session, int PreviewSide, string Previ
 /// <param name="Reused">How many came from the cache.</param>
 /// <param name="Milliseconds">How long it took here.</param>
 /// <param name="Previews">The maps, by hash.</param>
-/// <param name="Problems">Why it could not evaluate.</param>
+/// <param name="Problems">Why it could not evaluate, or what a client should be told.</param>
+/// <param name="Found">What the compile said, by layer.</param>
 public sealed record StackResult(
     bool Compiled,
     bool Evaluated,
@@ -503,7 +506,8 @@ public sealed record StackResult(
     int Reused,
     double Milliseconds,
     IReadOnlyList<StackPreview> Previews,
-    IReadOnlyList<string> Problems
+    IReadOnlyList<string> Problems,
+    IReadOnlyList<StackProblem> Found
 );
 
 /// <summary>Gives a mesh that has no UV layout one, in a new file.</summary>
