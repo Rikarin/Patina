@@ -1,3 +1,5 @@
+using Patina.Contracts;
+using System.Globalization;
 using YamlDotNet.RepresentationModel;
 
 namespace Patina.Library;
@@ -20,6 +22,8 @@ public static class DocumentCodec {
     const string SourceKey = "source";
     const string HashKey = "hash";
     const string PreservePaintKey = "preservePaint";
+    const string UnwrapKey = "unwrap";
+    const string UnwrappedKey = "unwrapped";
     const string DocumentsKey = "documents";
     const string FileKey = "file";
     const string HighKey = "high";
@@ -63,6 +67,7 @@ public static class DocumentCodec {
                     ..Listed(DocumentsKey, document.Documents.Select(static d => Item(d))),
                     ..document.AutoUnwrap ? [] : new[] { Pair(AutoUnwrapKey, YamlText.Plain("false")) },
                     ..document.PreservePaint ? [] : new[] { Pair(PreservePaintKey, YamlText.Plain("false")) },
+                    ..Named(UnwrapKey, document.Unwrap != new UnwrapOptions(), Unwrap(document.Unwrap)),
                     Pair(ReferencesKey, References(document.References)),
                     Pair(
                         OutputsKey,
@@ -92,9 +97,86 @@ public static class DocumentCodec {
                 Pair(FileKey, YamlText.Text(mesh.File)),
                 ..Present(HighKey, mesh.High),
                 ..Present(SourceKey, mesh.Source),
-                ..Present(HashKey, mesh.Hash)
+                ..Present(HashKey, mesh.Hash),
+                ..Named(UnwrappedKey, mesh.Unwrapped is not null, Unwrapped(mesh.Unwrapped))
             ]
         );
+
+    static YamlMappingNode Unwrap(UnwrapOptions options) =>
+        new(
+            Pair("resolution", YamlText.Plain(options.Resolution)),
+            Pair("margin", YamlText.Plain(options.Margin)),
+            Pair("quality", YamlText.Plain(options.Quality)),
+            Pair("rotations", YamlText.Plain(options.Rotations)),
+            Pair("texelDensity", YamlText.Plain(options.TexelDensity)),
+            Pair("overflow", YamlText.Plain(options.Overflow))
+        );
+
+    static UnwrapOptions ReadUnwrap(IReadOnlyDictionary<string, string> map, YamlFields fields) {
+        var defaults = new UnwrapOptions();
+        int Whole(string key, int fallback) =>
+            !map.TryGetValue(key, out var text) ? fallback
+            : int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value
+            : throw fields.Problem($"'{UnwrapKey}.{key}' is not a whole number.");
+
+        var options = new UnwrapOptions {
+            Resolution = Whole("resolution", defaults.Resolution),
+            Margin = Whole("margin", defaults.Margin),
+            Quality = map.GetValueOrDefault("quality", defaults.Quality),
+            Rotations = Whole("rotations", defaults.Rotations),
+            TexelDensity = map.TryGetValue("texelDensity", out var density)
+                && double.TryParse(density, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)
+                    ? number
+                    : defaults.TexelDensity,
+            Overflow = map.GetValueOrDefault("overflow", defaults.Overflow)
+        };
+        return options.Problem() is { } problem ? throw fields.Problem(problem) : options;
+    }
+
+    static YamlMappingNode Unwrapped(UnwrapReport? report) =>
+        report is null
+            ? new()
+            : new(
+                Pair("from", YamlText.Text(report.From)),
+                Pair(
+                    "sets",
+                    new YamlSequenceNode(
+                        report.Sets.Select(static set => new YamlMappingNode(
+                                Pair(MaterialKey, YamlText.Text(set.Material)),
+                                Pair("charts", YamlText.Plain(set.Charts)),
+                                Pair("flipped", YamlText.Plain(set.Flipped)),
+                                Pair("stretch", YamlText.Plain(set.Stretch)),
+                                Pair("worstStretch", YamlText.Plain(set.WorstStretch)),
+                                Pair("packed", YamlText.Plain(set.Packed)),
+                                Pair("warnings", YamlText.Texts(set.Warnings))
+                            )
+                        )
+                    )
+                )
+            );
+
+    static UnwrapReport? ReadUnwrapped(YamlFields mesh) {
+        if (mesh.Map(UnwrappedKey) is not { } held) {
+            return null;
+        }
+
+        return new(
+            held.Require("from"),
+            [
+                ..held.Maps("sets")
+                    .Select(static set => new UnwrapSet(
+                            set.Require(MaterialKey),
+                            (int)set.Number("charts", 0),
+                            (int)set.Number("flipped", 0),
+                            set.Number("stretch", 1),
+                            set.Number("worstStretch", 1),
+                            set.Number("packed", 0),
+                            set.Texts("warnings")
+                        )
+                    )
+            ]
+        );
+    }
 
     static YamlMappingNode Item(ProjectItem item) =>
         new(
@@ -165,7 +247,8 @@ public static class DocumentCodec {
                     Meshes = ReadMeshes(fields),
                     Documents = ReadItems(fields),
                     AutoUnwrap = fields.Optional(AutoUnwrapKey) != "false",
-                    PreservePaint = fields.Optional(PreservePaintKey) != "false"
+                    PreservePaint = fields.Optional(PreservePaintKey) != "false",
+                    Unwrap = ReadUnwrap(fields.TextMap(UnwrapKey), fields)
                 };
             }
         );
@@ -189,7 +272,7 @@ public static class DocumentCodec {
                         mesh.Optional(HighKey) is { } high ? Inside(mesh, high) : null,
                         mesh.Optional(SourceKey),
                         mesh.Optional(HashKey)
-                    )
+                    ) { Unwrapped = ReadUnwrapped(mesh) }
                 )
         ];
         return meshes.DistinctBy(static m => m.Id).Count() == meshes.Count

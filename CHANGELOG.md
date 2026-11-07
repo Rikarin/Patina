@@ -39,6 +39,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Auto Unwrap keeps what it did not lay out: smooth normals, every material (each its own texture set with an atlas of its own), vertex colours and part names. A material that already has UVs keeps them. Project Settings sets its atlas size, margin, packing, island turns, texel density and what happens when islands do not fit, lays the mesh out again when they change, and shows what each set's layout came to: islands, stretch, how much of the atlas is used, and any turned-over triangles.
 - Flood Fill goes round the wrap: on a graph that tiles, an island over the seam is one island, with its true size and a UV that runs across the seam. Its box can pass 1, by as much as it runs past the image.
 - `project.yaml` no longer records the absolute path a mesh came from. A source inside the library is stored relative to it, one outside stays on this machine, and a fresh clone asks for the file once on Reload Mesh.
 - Reload Mesh with an unchanged file does nothing and says so, and a changed file on the same UV layout keeps its paint as it is. Paint is only resampled, and copied to `.paint-backup`, when the layout really moved.

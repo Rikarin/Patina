@@ -4,17 +4,44 @@ import { XuiCalloutImports } from '@xui/callout';
 import { XuiDialogImports } from '@xui/dialog';
 import { XuiInputImports } from '@xui/input';
 import { XuiSwitchImports } from '@xui/switch';
+import { XuiNumericInputImports } from '@xui/numeric-input';
+import { XuiSelectImports } from '@xui/select';
+import type { UnwrapOptions } from '@patina/api-client';
 import { desktop } from '../core/desktop';
 import { ProjectStore } from './project-store';
+
+/** What a project unwraps with until someone says otherwise, as the Server has it. */
+const DefaultUnwrap: UnwrapOptions = {
+  resolution: 2048,
+  margin: 4,
+  quality: 'outlines',
+  rotations: 4,
+  texelDensity: 0,
+  overflow: 'shrink'
+};
 
 function fileName(path: string | null | undefined): string {
   return path?.split(/[\\/]/u).pop() ?? '';
 }
 
+/** The options with their keys in one order, so that comparing their text compares them. */
+function sameOrder(options: UnwrapOptions): UnwrapOptions {
+  const { resolution, margin, quality, rotations, texelDensity, overflow } = options;
+  return { resolution, margin, quality, rotations, texelDensity, overflow };
+}
+
 /** What a whole project shares. The mesh is here once, and every texturing document in the project is on it. */
 @Component({
   selector: 'ptn-project-settings',
-  imports: [XuiButtonImports, XuiCalloutImports, XuiDialogImports, XuiInputImports, XuiSwitchImports],
+  imports: [
+    XuiButtonImports,
+    XuiCalloutImports,
+    XuiDialogImports,
+    XuiInputImports,
+    XuiNumericInputImports,
+    XuiSelectImports,
+    XuiSwitchImports
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <xui-dialog
@@ -56,6 +83,108 @@ function fileName(path: string | null | undefined): string {
             </span>
             <xui-switch ariaLabel="Auto Unwrap" data-testid="project-settings-unwrap" [(checked)]="autoUnwrap" />
           </label>
+          @if (autoUnwrap()) {
+            <div class="well grid grid-cols-2 gap-2 px-2 py-2" data-testid="project-settings-unwrap-options">
+              <label class="flex flex-col gap-1">
+                <span class="text-foreground-muted text-xs">Atlas</span>
+                <xui-select
+                  size="sm"
+                  ariaLabel="Unwrap atlas size"
+                  data-testid="unwrap-resolution"
+                  [items]="resolutions"
+                  [itemText]="texels"
+                  [value]="options().resolution"
+                  (valueChange)="set({ resolution: $event ?? options().resolution })"
+                />
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-foreground-muted text-xs">Margin, in texels</span>
+                <xui-numeric-input
+                  size="sm"
+                  ariaLabel="Unwrap margin in texels"
+                  data-testid="unwrap-margin"
+                  [min]="0"
+                  [max]="64"
+                  [stepSize]="1"
+                  [value]="options().margin"
+                  (valueChange)="set({ margin: $event ?? 0 })"
+                />
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-foreground-muted text-xs">Packing</span>
+                <xui-select
+                  size="sm"
+                  ariaLabel="Unwrap packing"
+                  data-testid="unwrap-quality"
+                  [items]="qualities"
+                  [itemText]="qualityName"
+                  [value]="options().quality"
+                  (valueChange)="set({ quality: $event ?? options().quality })"
+                />
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-foreground-muted text-xs">Island turns</span>
+                <xui-select
+                  size="sm"
+                  ariaLabel="Unwrap island turns"
+                  data-testid="unwrap-rotations"
+                  [items]="turns"
+                  [itemText]="turnName"
+                  [value]="options().rotations"
+                  (valueChange)="set({ rotations: $event ?? options().rotations })"
+                />
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-foreground-muted text-xs">Texels per unit, 0 for each island's own</span>
+                <xui-numeric-input
+                  size="sm"
+                  ariaLabel="Unwrap texel density"
+                  data-testid="unwrap-density"
+                  [min]="0"
+                  [stepSize]="64"
+                  [value]="options().texelDensity"
+                  (valueChange)="set({ texelDensity: $event ?? 0 })"
+                />
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-foreground-muted text-xs">If islands do not fit</span>
+                <xui-select
+                  size="sm"
+                  ariaLabel="Unwrap overflow"
+                  data-testid="unwrap-overflow"
+                  [items]="overflows"
+                  [itemText]="overflowName"
+                  [value]="options().overflow"
+                  (valueChange)="set({ overflow: $event ?? options().overflow })"
+                />
+              </label>
+            </div>
+          }
+          @if (report(); as report) {
+            <div class="flex flex-col gap-1" data-testid="project-settings-unwrap-report">
+              <span class="section-label">Unwrapped from {{ report.from }}</span>
+              @for (set of report.sets; track set.material) {
+                <div class="flex flex-col" data-testid="unwrap-report-set">
+                  <div class="flex items-center gap-2 text-sm">
+                    <span class="min-w-0 flex-1 truncate">{{ set.material || 'Mesh' }}</span>
+                    <span class="readout" title="Islands">{{ set.charts }} islands</span>
+                    <span class="readout" title="Stretch, averaged and worst. 1 is none.">
+                      ×{{ set.stretch.toFixed(2) }} / {{ set.worstStretch.toFixed(2) }}
+                    </span>
+                    <span class="readout" title="Share of the atlas the islands cover">{{ percent(set.packed) }}</span>
+                  </div>
+                  @if (set.flipped > 0) {
+                    <span class="text-error text-xs">
+                      {{ set.flipped }} triangles are turned over in the atlas and will paint in the wrong place.
+                    </span>
+                  }
+                  @for (warning of set.warnings; track $index) {
+                    <span class="text-foreground-muted text-xs">{{ warning }}</span>
+                  }
+                </div>
+              }
+            </div>
+          }
           <label class="flex items-center justify-between gap-2">
             <span class="flex flex-col">
               <span class="text-sm">Preserve Paint</span>
@@ -119,11 +248,34 @@ export class ProjectSettingsDialog {
     ];
   });
 
+  protected readonly options = signal<UnwrapOptions>(DefaultUnwrap);
+  protected readonly resolutions = [512, 1024, 2048, 4096, 8192];
+  protected readonly qualities = ['boxes', 'outlines', 'groups'];
+  protected readonly turns = [1, 2, 4];
+  protected readonly overflows = ['shrink', 'refuse'];
+  protected readonly texels = (side: number): string => `${side} px`;
+  protected readonly qualityName = (quality: string): string =>
+    ({ boxes: 'Fast, by boxes', outlines: 'Tight, by outlines', groups: 'Tightest, grouped' })[quality] ?? quality;
+  protected readonly turnName = (count: number): string =>
+    ({ 1: 'Never', 2: 'Half turns', 4: 'Quarter turns' })[count] ?? `${count}`;
+  protected readonly overflowName = (overflow: string): string =>
+    ({ shrink: 'Shrink them all', refuse: 'Stop and say so' })[overflow] ?? overflow;
+  /** What Auto Unwrap made of the mesh the documents are on. */
+  protected readonly report = computed(() => {
+    const contents = this.project.current();
+    const on = contents?.documents.find(document => !!document.mesh)?.mesh;
+    return contents?.meshes.find(mesh => !!on && mesh.id === on)?.unwrapped ?? null;
+  });
+  protected readonly optionsChanged = computed(
+    () => JSON.stringify(this.options()) !== JSON.stringify(this.project.current()?.unwrap ?? DefaultUnwrap)
+  );
+
   protected readonly changed = computed(
     () =>
       this.mesh().trim() !== '' ||
       this.autoUnwrap() !== (this.project.current()?.autoUnwrap ?? true) ||
-      this.preservePaint() !== (this.project.current()?.preservePaint ?? true)
+      this.preservePaint() !== (this.project.current()?.preservePaint ?? true) ||
+      this.optionsChanged()
   );
 
   constructor() {
@@ -133,8 +285,17 @@ export class ProjectSettingsDialog {
         this.mesh.set('');
         this.autoUnwrap.set(this.project.current()?.autoUnwrap ?? true);
         this.preservePaint.set(this.project.current()?.preservePaint ?? true);
+        this.options.set(sameOrder(this.project.current()?.unwrap ?? DefaultUnwrap));
       }
     });
+  }
+
+  protected set(change: Partial<UnwrapOptions>): void {
+    this.options.update(options => ({ ...options, ...change }));
+  }
+
+  protected percent(share: number): string {
+    return `${Math.round(share * 100)}%`;
   }
 
   protected text(event: Event): string {
@@ -151,6 +312,8 @@ export class ProjectSettingsDialog {
       mesh: this.mesh().trim() || null,
       // Sent only when changed: setting auto unwrap on is what closes documents to unwrap the mesh.
       ...(this.autoUnwrap() === this.project.current()?.autoUnwrap ? {} : { autoUnwrap: this.autoUnwrap() }),
+      // Sent only when changed too: new options lay out again the mesh Auto Unwrap wrote, and move its paint.
+      ...(this.optionsChanged() ? { unwrap: this.options() } : {}),
       preservePaint: this.preservePaint()
     });
     if (applied) {

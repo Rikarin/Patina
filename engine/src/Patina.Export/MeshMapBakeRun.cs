@@ -86,15 +86,7 @@ public static class MeshMapBakeRun {
     ///     place would bake every part into one atlas, overlaps included.
     /// </exception>
     public static FlatModel Read(string path, string? material) {
-        var options = new ModelReadOptions {
-            GenerateTangents = false, ImportAnimations = false, ImportBlendShapes = false, ImportVertexColours = true
-        };
-        var read = ModelReader.Read(
-            File.ReadAllBytes(path),
-            Path.GetExtension(path),
-            Path.GetFileNameWithoutExtension(path),
-            options
-        );
+        var read = Model(path);
         var names = MaterialNames.Unique(read.Model.Materials);
         if (material is not null) {
             var index = Array.IndexOf(names, material);
@@ -110,6 +102,18 @@ public static class MeshMapBakeRun {
 
         return ModelGeometry.Flatten(read);
     }
+
+    /// <summary>Reads a mesh file as it is, keeping what a bake and an unwrap need.</summary>
+    /// <exception cref="ModelFormatException">It is not a readable model.</exception>
+    internal static ReadModel Model(string path) =>
+        ModelReader.Read(
+            File.ReadAllBytes(path),
+            Path.GetExtension(path),
+            Path.GetFileNameWithoutExtension(path),
+            new ModelReadOptions {
+                GenerateTangents = false, ImportAnimations = false, ImportBlendShapes = false, ImportVertexColours = true
+            }
+        );
 
     static BakeSettings Settings(BakeRequest request, FlatModel high, FlatModel low, EditMesh? cage, int threads) =>
         new() {

@@ -1,5 +1,11 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
-import { ApiError, type ProjectContents, type ProjectDocumentInfo, unwrap } from '@patina/api-client';
+import {
+  ApiError,
+  type ProjectContents,
+  type ProjectDocumentInfo,
+  type UnwrapOptions,
+  unwrap
+} from '@patina/api-client';
 import { BakeStore } from '../bake/bake-store';
 import { desktop } from '../core/desktop';
 import { SystemStatus } from '../core/system-status';
@@ -360,6 +366,7 @@ export class ProjectStore {
     high?: string | null;
     autoUnwrap?: boolean;
     preservePaint?: boolean;
+    unwrap?: UnwrapOptions;
   }): Promise<boolean> {
     const project = this.current();
     if (!project) {
@@ -367,7 +374,9 @@ export class ProjectStore {
     }
 
     const front = this.mutableActive();
-    const moving = !!settings.mesh || settings.autoUnwrap === true;
+    // New unwrap options lay out again a mesh Auto Unwrap wrote, which moves its paint like a new mesh.
+    const relaid = !!settings.unwrap && project.meshes.some(mesh => !!mesh.unwrapped);
+    const moving = !!settings.mesh || settings.autoUnwrap === true || relaid;
     this.startAction();
     this.settingsFailure.set(null);
     this.mutableUnwrapping.set(true);
@@ -384,7 +393,8 @@ export class ProjectStore {
             mesh: settings.mesh ?? null,
             high: settings.high ?? null,
             autoUnwrap: settings.autoUnwrap ?? null,
-            preservePaint: settings.preservePaint ?? null
+            preservePaint: settings.preservePaint ?? null,
+            unwrap: settings.unwrap ?? null
           }
         })
       );

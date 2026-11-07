@@ -1,3 +1,5 @@
+using Patina.Contracts;
+
 namespace Patina.Library.Tests;
 
 /// <summary>Folders are folders on disk, and a move keeps a project's id.</summary>
@@ -326,6 +328,30 @@ public sealed class LibraryFolderTests : IDisposable {
         Assert.All(contents.Documents, document => Assert.Equal(after.Id.Value, document.Mesh));
         Assert.Equal(after.Id.Value, contents.Meshes.Single(static mesh => mesh.Id is not null).Id);
         Assert.True(File.Exists(library.ProjectFile(made.Path, before.File)));
+    }
+
+    [Fact]
+    public void A_project_remembers_how_it_unwraps_and_what_an_unwrap_came_to() {
+        var made = library.CreateProject(new("Ball"));
+        var scratch = Directory.CreateTempSubdirectory("patina-unwrap-");
+        var plain = Path.Combine(scratch.FullName, "ball.obj");
+        var unwrapped = Path.Combine(scratch.FullName, "ball_unwrapped.glb");
+        File.WriteAllText(plain, "mesh");
+        File.WriteAllText(unwrapped, "mesh");
+        UnwrapOptions options = new() { Resolution = 1024, Margin = 8, Quality = "boxes", Rotations = 2, TexelDensity = 512 };
+        UnwrapReport report = new("ball.obj", [new("red", 3, 0, 1.04, 1.4, 0.61, ["A chart was split."]), new("blue", 2, 1, 1.1, 2, 0.5, [])]);
+
+        library.SetMeshHandling(made.Path, null, null, options);
+        library.AddMesh(made.Path, plain, null);
+        library.AddMesh(made.Path, unwrapped, null, null, report);
+
+        var contents = library.Contents(made.Path);
+        Assert.Equal(options, contents.Unwrap);
+        var listed = contents.Meshes.Single(static mesh => mesh.Path.EndsWith("ball_unwrapped.glb", StringComparison.Ordinal));
+        Assert.Equal(report.From, listed.Unwrapped!.From);
+        Assert.Equal(report.Sets.Select(static set => set with { Warnings = [] }), listed.Unwrapped.Sets.Select(static set => set with { Warnings = [] }));
+        Assert.Equal(["A chart was split."], listed.Unwrapped.Sets[0].Warnings);
+        Assert.Null(contents.Meshes.Single(static mesh => mesh.Path.EndsWith("ball.obj", StringComparison.Ordinal)).Unwrapped);
     }
 
     [Fact]

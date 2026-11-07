@@ -184,7 +184,8 @@ panes: they are dialogs started from a Texturing document, which already knows i
 
 7. **Texture sets:** built. A set is a texturing document on one material of the mesh, named after it in `project.yaml` and in the
    stack, so each has its own layers, maps, undo and save. The viewport wears a model's sets together, the Server holding open those
-   no tab has, and a stroke reaches only its own material's triangles. ⚠ A mesh written by Auto Unwrap is one material, so one set.
+   no tab has, and a stroke reaches only its own material's triangles. Auto Unwrap keeps the materials, and gives each set an atlas
+   of its own.
 
 8. **Effects inside layers:** built. The children of any layer that is not a group are its effects: a small stack run over its
    content, after its projection and inside its mask. They are ordinary layers, so saving, undo and paint files need nothing new.

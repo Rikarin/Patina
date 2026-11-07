@@ -19,9 +19,14 @@ static class ProjectSettingsEndpoint {
             return LibraryTreeEndpoints.NoLibrary();
         }
 
+        if (request.Unwrap?.Problem() is { } wrong) {
+            return TypedResults.Problem(wrong, statusCode: StatusCodes.Status400BadRequest);
+        }
+
         var project = request.Project;
         try {
-            library.SetMeshHandling(project, request.AutoUnwrap, request.PreservePaint);
+            var options = library.Contents(project).Unwrap;
+            library.SetMeshHandling(project, request.AutoUnwrap, request.PreservePaint, request.Unwrap);
 
             var before = library.Contents(project);
             var onDocument = before.Documents.FirstOrDefault(static d => d.Mesh is not null)?.Mesh;
@@ -30,23 +35,28 @@ static class ProjectSettingsEndpoint {
             string? Held(string? below) =>
                 below is null ? null : library.ProjectFile(project, LibraryTreeEndpoints.Relative(project, below));
 
-            var mesh = request.Mesh ?? Held(current?.Path);
-            if (mesh is null || (request.Mesh is null && request.High is null && request.AutoUnwrap is null)) {
+            // New options lay out again what Auto Unwrap wrote, from the file it came from.
+            var again = before.AutoUnwrap && request.Mesh is null && before.Unwrap != options
+                ? current?.Unwrapped?.From
+                : null;
+            var mesh = request.Mesh ?? (again is null ? Held(current?.Path) : library.ProjectFile(project, again));
+            if (mesh is null
+                || (request.Mesh is null && request.High is null && request.AutoUnwrap is null && again is null)) {
                 return TypedResults.Ok(before);
             }
 
             // ⚠ Nothing below can improve on the same file, and all of it costs: the paint would be resampled.
-            if (request.High is null && request.AutoUnwrap is null && !library.MeshChanged(project, mesh)) {
+            if (request.High is null && request.AutoUnwrap is null && again is null && !library.MeshChanged(project, mesh)) {
                 return TypedResults.Ok(before);
             }
 
             // ⚠ Bringing a file of the same name overwrites the old mesh, and the paint is still on its layout.
-            var moving = before.PreservePaint && request.Mesh is not null && current is not null
+            var moving = before.PreservePaint && (request.Mesh is not null || again is not null) && current is not null
                 ? KeepOld(Held(current.Path)!)
                 : null;
             var added = library.AddMesh(project, mesh, request.High ?? Held(current?.High));
             if (before.AutoUnwrap) {
-                added = await UnwrappedAsync(library, worker, project, added, cancellationToken);
+                added = await UnwrappedAsync(library, worker, project, added, before.Unwrap, cancellationToken);
             }
 
             await PutOnAsync(library, worker, stacks, project, added, moving, cancellationToken);
@@ -195,16 +205,19 @@ static class ProjectSettingsEndpoint {
         WorkerLink worker,
         string project,
         ProjectMesh mesh,
+        UnwrapOptions options,
         CancellationToken cancellationToken
     ) {
         var source = library.ProjectFile(project, mesh.File);
         var output = library.ProjectFile(project, $"{Path.GetFileNameWithoutExtension(mesh.File)}_unwrapped.glb");
         var connection = await worker.ConnectionAsync(cancellationToken);
         var reply = await connection.SendAsync(
-            new() { Type = IpcTypes.MeshUnwrap, MeshUnwrap = new(source, output) },
+            new() { Type = IpcTypes.MeshUnwrap, MeshUnwrap = new(source, output, options) },
             cancellationToken
         );
         var high = mesh.High is null ? null : library.ProjectFile(project, mesh.High);
-        return reply.MeshUnwrapped == true ? library.AddMesh(project, output, high, library.SourceOf(mesh)) : mesh;
+        return reply.MeshUnwrapped is { } sets
+            ? library.AddMesh(project, output, high, library.SourceOf(mesh), new(mesh.File, sets))
+            : mesh;
     }
 }

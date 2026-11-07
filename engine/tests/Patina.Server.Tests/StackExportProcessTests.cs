@@ -484,4 +484,71 @@ public sealed partial class StackProcessTests {
         var occluded = Enumerable.Range(0, width * height).Count(at => samples[at * lanes] < 60000);
         Assert.True(occluded > 0 && height == ExportSide, "Baked occlusion never reached the ORM file.");
     }
+
+    /// <summary>
+    ///     Auto Unwrap keeps a two-material mesh two texture sets, says what each layout came to, and lays the mesh out
+    ///     again from the file it came from when its options change. It once wrote one material, so one set.
+    /// </summary>
+    [Fact]
+    public async Task An_unwrap_keeps_each_material_a_set_and_its_options_lay_it_out_again() {
+        using var deadline = Deadline(180);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        var mesh = Path.Combine(folder.FullName, "box.obj");
+        File.WriteAllText(
+            mesh,
+            """
+            v 0 0 0
+            v 1 0 0
+            v 1 1 0
+            v 0 1 0
+            v 0 0 1
+            v 1 0 1
+            v 1 1 1
+            v 0 1 1
+            usemtl lid
+            f 5 6 7 8
+            f 4 8 7 3
+            usemtl walls
+            f 1 4 3 2
+            f 2 3 7 6
+            f 1 5 8 4
+            f 1 2 6 5
+            """
+        );
+        await StartAsync("Unused.vxlayers", deadline.Token);
+        var project = await MakeTexturingProjectAsync(mesh, deadline.Token);
+
+        async Task<ProjectContents> SetAsync(object body) {
+            using var set = await http.PatchAsJsonAsync("/api/v1/library/project/settings", body, deadline.Token);
+            Assert.True(set.IsSuccessStatusCode, await set.Content.ReadAsStringAsync(deadline.Token));
+            return (await set.Content.ReadFromJsonAsync<ProjectContents>(deadline.Token))!;
+        }
+
+        var unwrapped = await SetAsync(new { project, autoUnwrap = true });
+
+        var held = Assert.Single(unwrapped.Meshes, static m => m.Unwrapped is not null);
+        Assert.EndsWith("box_unwrapped.glb", held.Path, StringComparison.Ordinal);
+        Assert.Equal("box.obj", held.Unwrapped!.From);
+        Assert.Equal(["lid", "walls"], held.Unwrapped.Sets.Select(static s => s.Material).Order());
+        Assert.All(held.Unwrapped.Sets, static s => Assert.True(s.Charts > 0 && s.Packed > 0));
+        Assert.Equal(["lid", "walls"], unwrapped.Documents.Select(static d => d.Material ?? "").Order());
+
+        var file = Path.Combine(Library, held.Path);
+        var first = await File.ReadAllBytesAsync(file, deadline.Token);
+        var again = await SetAsync(
+            new { project, unwrap = new UnwrapOptions { Resolution = 512, Margin = 16, Quality = "boxes", Rotations = 1 } }
+        );
+
+        Assert.Equal(new UnwrapOptions { Resolution = 512, Margin = 16, Quality = "boxes", Rotations = 1 }, again.Unwrap);
+        Assert.NotEqual(first, await File.ReadAllBytesAsync(file, deadline.Token));
+        Assert.Equal("box.obj", Assert.Single(again.Meshes, static m => m.Unwrapped is not null).Unwrapped!.From);
+        Assert.Equal(2, again.Documents.Count);
+
+        using var refused = await http.PatchAsJsonAsync(
+            "/api/v1/library/project/settings",
+            new { project, unwrap = new { resolution = 2048, margin = 4, quality = "outlines", rotations = 3 } },
+            deadline.Token
+        );
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+    }
 }
