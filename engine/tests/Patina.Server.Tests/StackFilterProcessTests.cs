@@ -20,6 +20,9 @@ public sealed partial class StackProcessTests {
             ContractsJsonContext.Default.StackVocabulary,
             deadline.Token
         ))!;
+        // A height channel, so that every filter also runs beside the set's own relief stage, which greys the height
+        // for Height to Normal while the stack greys a measuring filter for itself.
+        await EditAsync(state.Id, deadline.Token, new StackAddChannel("height"));
         await PaintAsync(state.Id, "dot", Line(300, 300, 30), false, deadline.Token);
         await EditAsync(state.Id, deadline.Token, MaskStroke("hole", "paint", 330f, 300f, [0.5f, 0.5f, 0.5f, 1f]));
         await EditAsync(state.Id, deadline.Token, new StackAddLayer("filter", "Filter", Filter: "Levels"));
