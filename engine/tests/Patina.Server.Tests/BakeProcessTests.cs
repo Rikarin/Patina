@@ -671,6 +671,11 @@ public sealed class BakeProcessTests : IDisposable {
         };
         var graph = await http.OpenAsync(GraphTesting.Write(Library, asset, "painted.vxtexgraph"), deadline.Token);
 
+        // A machine with no Vulkan never holds a picture to show, so this is where it skips.
+        var instance = (await new InstanceRegistry(DiscoveryFile).FindAsync(Library, deadline.Token))!;
+        using var evaluations = await FollowAsync(instance, graph, deadline.Token);
+        await NextAsync(evaluations, graph.Revision, deadline.Token);
+
         using var socket = await ViewportAsync(deadline.Token);
 
         // With no mesh open, a graph is seen on a shape.
