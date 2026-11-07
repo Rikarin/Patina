@@ -38,6 +38,19 @@ reply carries the hash, and `GET /previews/{hash}` serves the bytes. So there is
 plain HTTP, and a file trimmed from the budget is written again by asking again. It holds up the next evaluation while it
 encodes, and a Worker that has not evaluated the graph answers 409.
 
+## The shelf's pictures
+
+A material on the shelf has no session, so nothing evaluates it until its picture is wanted. `POST
+/library/materials/thumbnails` takes some sources and answers each with a hash under `/previews`, drawing those it lacks
+first: the Worker composites a copy of the document at 256 by 256 (`material.thumbnail`) and keeps nothing but the PNG. A
+graph draws its base colour Output, or its first, and a layered material its first set's base colour.
+
+A picture is found again by a key: the hash of the document at that size, its source, and the size and time of every file
+that decides it (compounds, paint beside a stack, the pictures a Bitmap reads). The key's answer is a one-line file in
+`previews/shelf/`, beside the pictures, so a restarted Server draws nothing again. Every part of it is cache: a key whose
+picture was trimmed or deleted is drawn again, and so is a deleted `previews/` folder, to the same hash on the same
+machine. A client asks a few at a time in list order, so the first rows fill while the rest are drawn.
+
 ## Numbers
 
 A slider, from the start of the REST call to the hash arriving in an event on the WebSocket: 2048×2048, 40 nodes (a noise,

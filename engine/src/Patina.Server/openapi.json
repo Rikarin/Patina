@@ -2416,6 +2416,67 @@
         }
       }
     },
+    "/api/v1/library/materials/thumbnails": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "The pictures of some materials, by hash under /previews, drawing those the cache lacks first.",
+        "operationId": "GetMaterialThumbnails",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialThumbnailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialThumbnails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/materials/use": {
       "post": {
         "tags": [
@@ -2796,6 +2857,78 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graphs/{id}/node-types/search": {
+      "get": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "The nodes this graph can use, best match first. takes and gives keep those a wire of that kind can use.",
+        "operationId": "SearchGraphNodeTypes",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "takes",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "gives",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphNodeMatches"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -5678,6 +5811,9 @@
             "$ref": "#/components/schemas/GraphCommandGraphConnect"
           },
           {
+            "$ref": "#/components/schemas/GraphCommandGraphWire"
+          },
+          {
             "$ref": "#/components/schemas/GraphCommandGraphDisconnect"
           },
           {
@@ -5734,6 +5870,7 @@
             "removeNodes": "#/components/schemas/GraphCommandGraphRemoveNodes",
             "moveNodes": "#/components/schemas/GraphCommandGraphMoveNodes",
             "connect": "#/components/schemas/GraphCommandGraphConnect",
+            "wire": "#/components/schemas/GraphCommandGraphWire",
             "disconnect": "#/components/schemas/GraphCommandGraphDisconnect",
             "setValue": "#/components/schemas/GraphCommandGraphSetValue",
             "setText": "#/components/schemas/GraphCommandGraphSetText",
@@ -6356,6 +6493,46 @@
           }
         },
         "description": "Sets the numbers on a node\u0027s input. This is what a slider sends."
+      },
+      "GraphCommandGraphWire": {
+        "required": [
+          "fromNode",
+          "toNode",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "wire"
+            ],
+            "type": "string"
+          },
+          "fromNode": {
+            "type": "integer",
+            "description": "The node the wire leaves.",
+            "format": "int32"
+          },
+          "toNode": {
+            "type": "integer",
+            "description": "The node the wire reaches.",
+            "format": "int32"
+          },
+          "fromPort": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The output, or null for the first that fits."
+          },
+          "toPort": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The input, or null for the first that fits."
+          }
+        },
+        "description": "Wires two nodes through the first ports that fit, for a node just made from a selection or a dropped wire, whose\nclient cannot know its kinds. Nothing happens when none fit: a generator takes no input, and it is still wanted."
       },
       "GraphCommentState": {
         "required": [
@@ -7076,6 +7253,22 @@
           }
         },
         "description": "Says which folder of baked maps a graph\u0027s Mesh Map nodes read."
+      },
+      "GraphNodeMatches": {
+        "required": [
+          "paths"
+        ],
+        "type": "object",
+        "properties": {
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Their paths, best first."
+          }
+        },
+        "description": "The nodes a search found."
       },
       "GraphNodePosition": {
         "required": [
@@ -8031,6 +8224,58 @@
           }
         },
         "description": "The materials a project can use."
+      },
+      "MaterialThumbnail": {
+        "required": [
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "The material."
+          },
+          "hash": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The picture, or null when the material has nothing to show."
+          }
+        },
+        "description": "A material\u0027s picture in the preview cache. The pixels are at \u0060/previews/{hash}\u0060."
+      },
+      "MaterialThumbnailRequest": {
+        "required": [
+          "sources"
+        ],
+        "type": "object",
+        "properties": {
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The materials, as their list names them."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/materials/thumbnails\u0060."
+      },
+      "MaterialThumbnails": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MaterialThumbnail"
+            },
+            "description": "Them, in the order they were asked for."
+          }
+        },
+        "description": "The pictures of some materials."
       },
       "MaterialUse": {
         "required": [

@@ -18,6 +18,9 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
     readonly GraphPictures pictures = new();
     readonly CompoundShelf compounds = new();
 
+    /// <summary>What a thumbnail's copy is called. It is never held, so it never meets a session.</summary>
+    const string ThumbnailSession = "thumbnail";
+
     protected override string Kind => "graph";
 
     public IpcMessage Load(IpcMessage request) {
@@ -72,6 +75,31 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
         var picture = previews.WriteOne(bake, image.Image, ask.Folder);
         return new() { Type = IpcTypes.Ok, GraphFullImage = new(picture.Hash, picture.Width, picture.Height) };
     }
+
+    /// <summary>
+    ///     One Output of a graph, drawn for the shelf from a copy that goes as soon as it has. The Server has already set
+    ///     the graph's size to the picture's, so nothing is computed larger than it is shown.
+    /// </summary>
+    public IpcMessage Thumbnail(MaterialThumbnailAsk ask) {
+        var load = new GraphLoad(ThumbnailSession, ask.Document, ask.Folder, ask.ImageRoots);
+        using Loaded graph = new(load, compounds.Of(ask.Folder), pictures);
+        var runner = gpu.Evaluator;
+        graph.Prepare(runner, out _);
+        var source = graph.Images.FirstOrDefault(image => image.Node == ask.Node && image.Port == ask.Usage);
+        if (graph.Plan is not { } plan || source.Port is null) {
+            return Drawn(null);
+        }
+
+        var extended = GraphPreviews.Extend(plan, [source], int.MaxValue, []);
+        if (extended.Images.Count == 0) {
+            return Drawn(null);
+        }
+
+        using var bake = runner.EvaluateIncremental(extended.Plan, graph.Uploads!.Externals);
+        return Drawn(previews.Write(bake, [extended.Images[0].Image], ask.PreviewFolder)[0].Hash);
+    }
+
+    internal static IpcMessage Drawn(string? hash) => new() { Type = IpcTypes.Ok, ThumbnailHash = hash };
 
     static IpcMessage Reply(GraphResult result) => new() { Type = IpcTypes.Ok, GraphResult = result };
 

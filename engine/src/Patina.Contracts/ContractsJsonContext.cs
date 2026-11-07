@@ -30,6 +30,7 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(GraphState))]
 [JsonSerializable(typeof(IReadOnlyList<GraphSummary>))]
 [JsonSerializable(typeof(IReadOnlyList<GraphNodeType>))]
+[JsonSerializable(typeof(GraphNodeMatches))]
 [JsonSerializable(typeof(GraphCommandBatch))]
 [JsonSerializable(typeof(GraphEditResult))]
 [JsonSerializable(typeof(GraphEvent))]

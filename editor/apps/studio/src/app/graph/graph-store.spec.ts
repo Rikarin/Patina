@@ -249,7 +249,7 @@ describe('GraphStore', () => {
     expect(test.store.valueOf(1, 'Scale', [8])).toEqual([8]);
   });
 
-  it('adds a node with a wire, in one batch, and selects what it made', async () => {
+  it('adds a node with a wire the Server fits, in one batch, and selects what it made', async () => {
     const test = await opened();
     test.routes['POST graphs/g1/commands'] = () =>
       Response.json({ revision: 2, sequence: 1, history: dirty, created: [{ ref: -1, node: 9 }] });
@@ -257,12 +257,12 @@ describe('GraphStore', () => {
     await test.store.addNode(
       { ...noiseType, ports: [{ name: 'Input', direction: 'Input', kind: 'Image', default: [], summary: '' }] },
       { x: 1, y: 2 },
-      { node: 1, port: 'Out', incoming: false, family: 'Image' }
+      { kind: 'from', node: 1, port: 'Out' }
     );
 
     expect(test.commands()[0]?.commands).toEqual([
       { op: 'addNode', type: 'Source/Noise', x: 1, y: 2, ref: -1 },
-      { op: 'connect', fromNode: 1, fromPort: 'Out', toNode: -1, toPort: 'Input' }
+      { op: 'wire', fromNode: 1, fromPort: 'Out', toNode: -1 }
     ]);
     test.socket().send({
       sequence: 1,
@@ -272,6 +272,20 @@ describe('GraphStore', () => {
       delta: { ...noDelta, nodes: [node(9)] }
     });
     expect([...test.store.selection()]).toEqual([9]);
+  });
+
+  it('puts a node into a wire as two wires the Server fits, which replace the one it was', async () => {
+    const test = await opened();
+    test.routes['POST graphs/g1/commands'] = () =>
+      Response.json({ revision: 2, sequence: 1, history: dirty, created: [{ ref: -1, node: 9 }] });
+
+    await test.store.addNode(noiseType, { x: 1, y: 2 }, { kind: 'wire', node: 1, port: 'Out', toNode: 2, toPort: 'Input' });
+
+    expect(test.commands()[0]?.commands).toEqual([
+      { op: 'addNode', type: 'Source/Noise', x: 1, y: 2, ref: -1 },
+      { op: 'wire', fromNode: 1, fromPort: 'Out', toNode: -1 },
+      { op: 'wire', fromNode: -1, toNode: 2, toPort: 'Input' }
+    ]);
   });
 
   it('turns a selected wire into a disconnect', async () => {

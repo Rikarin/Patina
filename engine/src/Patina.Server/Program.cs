@@ -86,6 +86,7 @@ builder.Services.AddHostedService(static s => s.GetRequiredService<ViewportSessi
 builder.Services.AddSingleton<GraphSessions>();
 builder.Services.AddSingleton<Holders>();
 builder.Services.AddSingleton<PreviewStore>();
+builder.Services.AddSingleton<ShelfThumbnails>();
 builder.Services.AddSingleton<GraphEvaluator>();
 builder.Services.AddHostedService(static services => services.GetRequiredService<GraphEvaluator>());
 builder.Services.AddSingleton<StackClips>();

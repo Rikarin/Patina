@@ -174,6 +174,34 @@ test('a shipped material reaches a stack from the shelf', async () => {
   await window.screenshot({ path: join(shots, 'shelf.png') });
 });
 
+test('the shelf shows each material as a picture, at a size of choice, and narrows by type and origin', async () => {
+  await launch();
+  await newLibrary(app, window, join(scratch, 'Ember.ptlib'));
+  await newProject(app, window, 'Crate');
+  await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 30_000 });
+
+  // Every picture comes from the preview cache by hash, through a blob URL: no pixels in any JSON.
+  const pictures = window.getByTestId('shelf-picture');
+  await expect.poll(() => pictures.count(), { timeout: 60_000 }).toBeGreaterThan(4);
+  await expect(pictures.first()).toHaveAttribute('src', /^blob:/u);
+
+  await window.getByTestId('shelf-view').getByText('Large').click();
+  await expect(window.getByTestId('shelf-materials')).toHaveAttribute('data-view', 'large');
+  await expect(window.getByTestId('shelf-material').filter({ hasText: 'Plastic' }).getByTestId('shelf-picture')).toBeVisible();
+  await window.screenshot({ path: join(shots, 'shelf-pictures-large.png') });
+
+  await window.getByTestId('shelf-view').getByText('Small').click();
+  await window.screenshot({ path: join(shots, 'shelf-pictures-small.png') });
+
+  const all = await window.getByTestId('shelf-material').count();
+  await window.getByTestId('shelf-origin').click();
+  await window.getByRole('option', { name: 'Starter' }).click();
+  await expect.poll(() => window.getByTestId('shelf-material').count()).toBeLessThanOrEqual(all);
+
+  await window.getByTestId('shelf-search').fill('plastic material');
+  await expect(window.getByTestId('shelf-material').first()).toContainText('Plastic');
+});
+
 test('a material with wear masks shows at once, and a bake sharpens it', async () => {
   await launch();
   await newLibrary(app, window, join(scratch, 'Ember.ptlib'));

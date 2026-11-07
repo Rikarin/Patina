@@ -19,7 +19,6 @@ import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { LibrarySelection } from '../library/library-selection';
 import { DraftLayer } from './draft-layer';
 import { EditQueue } from './edit-queue';
-import { wireFamily } from './graph-fields';
 import { type GraphDocument, applyEvent, classify, documentOf, edgeKey } from './graph-model';
 import { PreviewLoader } from './preview-loader';
 
@@ -48,6 +47,21 @@ export interface GraphCrumb {
 export interface GraphPoint {
   x: number;
   y: number;
+}
+
+/**
+ * What a new node is wired to: an output it takes, an input it drives, or a wire it goes into the middle of. A port left
+ * out is the first that fits, which the Server finds.
+ */
+export type NodeLink =
+  | { kind: 'from'; node: number; port?: string }
+  | { kind: 'to'; node: number; port: string }
+  | { kind: 'wire'; node: number; port: string; toNode: number; toPort: string };
+
+/** The kinds of wire a node must suit: one it can take on an input, and an input it can drive. */
+export interface NodeWire {
+  takes?: string | undefined;
+  gives?: string | undefined;
 }
 
 /** What a graph's follower needs of a WebSocket. */
@@ -597,31 +611,54 @@ export class GraphStore {
   }
 
   /** Adds a node, and wires it to the port a dropped wire came from. */
-  async addNode(
-    type: GraphNodeType,
-    position: GraphPoint,
-    from?: { node: number; port: string; incoming: boolean; family: string }
-  ): Promise<void> {
+  async addNode(type: GraphNodeType, position: GraphPoint, link?: NodeLink): Promise<void> {
     const reference = -1;
     const commands: GraphCommand[] = [{ op: 'addNode', type: type.path, x: position.x, y: position.y, ref: reference }];
-    if (from) {
-      const wanted = from.incoming ? 'Output' : 'Input';
-      const port = type.ports.find(
-        candidate => candidate.direction === wanted && wireFamily(candidate.kind) === from.family
-      );
-      if (port) {
-        commands.push(
-          from.incoming
-            ? { op: 'connect', fromNode: reference, fromPort: port.name, toNode: from.node, toPort: from.port }
-            : { op: 'connect', fromNode: from.node, fromPort: from.port, toNode: reference, toPort: port.name }
-        );
-      }
+    // The Server picks the ports, since it is what knows which of them fit.
+    if (link?.kind === 'from' || link?.kind === 'wire') {
+      commands.push({ op: 'wire', fromNode: link.node, fromPort: link.port ?? null, toNode: reference });
+    }
+
+    if (link?.kind === 'to') {
+      commands.push({ op: 'wire', fromNode: reference, toNode: link.node, toPort: link.port });
+    }
+
+    if (link?.kind === 'wire') {
+      commands.push({ op: 'wire', fromNode: reference, toNode: link.toNode, toPort: link.toPort });
     }
 
     const result = await this.apply(commands, `Add ${type.title}`);
     const created = result?.created.find(item => item.ref === reference);
     if (created) {
       this.selectOnceHeld([created.node], result?.revision ?? 0);
+    }
+  }
+
+  /** The nodes that match what was typed, best first. Every palette asks here, so that they agree on the order. */
+  async findNodes(query: string, wire: NodeWire = {}): Promise<readonly GraphNodeType[]> {
+    const id = this.mutableDocument()?.id;
+    if (id === undefined) {
+      return [];
+    }
+
+    const asked: { query: string; takes?: string; gives?: string } = { query };
+    if (wire.takes) {
+      asked.takes = wire.takes;
+    }
+
+    if (wire.gives) {
+      asked.gives = wire.gives;
+    }
+
+    try {
+      const found = unwrap(
+        await this.api().GET('/api/v1/graphs/{id}/node-types/search', { params: { path: { id }, query: asked } })
+      );
+      const types = this.mutableTypes();
+      return found.paths.flatMap(path => types.get(path) ?? []);
+    } catch (failure) {
+      this.mutableProblem.set(failure instanceof Error ? failure.message : String(failure));
+      return [];
     }
   }
 

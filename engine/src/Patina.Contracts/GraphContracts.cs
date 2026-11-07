@@ -86,6 +86,10 @@ public sealed record GraphNodeType(
     IReadOnlyList<GraphSettingDefinition> Settings
 );
 
+/// <summary>The nodes a search found.</summary>
+/// <param name="Paths">Their paths, best first.</param>
+public sealed record GraphNodeMatches(IReadOnlyList<string> Paths);
+
 /// <summary>A frame round some nodes. It holds no geometry: a client draws it from where its nodes are.</summary>
 /// <param name="Id">What a command names it by. It never changes and is never reused while a session lasts.</param>
 /// <param name="Title">What it is called.</param>
@@ -224,6 +228,7 @@ public sealed record GraphSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(GraphRemoveNodes), "removeNodes")]
 [JsonDerivedType(typeof(GraphMoveNodes), "moveNodes")]
 [JsonDerivedType(typeof(GraphConnect), "connect")]
+[JsonDerivedType(typeof(GraphWire), "wire")]
 [JsonDerivedType(typeof(GraphDisconnect), "disconnect")]
 [JsonDerivedType(typeof(GraphSetValue), "setValue")]
 [JsonDerivedType(typeof(GraphSetText), "setText")]
@@ -265,6 +270,16 @@ public sealed record GraphMoveNodes(IReadOnlyList<GraphNodePosition> Positions) 
 
 /// <summary>Wires an output to an input, replacing what was on that input.</summary>
 public sealed record GraphConnect(int FromNode, string FromPort, int ToNode, string ToPort) : GraphCommand;
+
+/// <summary>
+///     Wires two nodes through the first ports that fit, for a node just made from a selection or a dropped wire, whose
+///     client cannot know its kinds. Nothing happens when none fit: a generator takes no input, and it is still wanted.
+/// </summary>
+/// <param name="FromNode">The node the wire leaves.</param>
+/// <param name="ToNode">The node the wire reaches.</param>
+/// <param name="FromPort">The output, or null for the first that fits.</param>
+/// <param name="ToPort">The input, or null for the first that fits.</param>
+public sealed record GraphWire(int FromNode, int ToNode, string? FromPort = null, string? ToPort = null) : GraphCommand;
 
 /// <summary>Takes the wire off an input.</summary>
 public sealed record GraphDisconnect(int ToNode, string ToPort) : GraphCommand;

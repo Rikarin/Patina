@@ -4,6 +4,7 @@ using Patina.Ipc;
 using Patina.Library;
 using Patina.Server.Graphs;
 using Patina.Server.Stacks;
+using Vixen.NodeGraph;
 
 namespace Patina.Server.Api;
 
@@ -44,6 +45,13 @@ static class GraphEndpoints {
                 "GetGraphNodeTypes",
                 "Every node this graph can use, with ports and settings, for a palette.",
                 Missing
+            );
+        graphs.MapGet("/{id}/node-types/search", SearchNodeTypes)
+            .Describe(
+                "SearchGraphNodeTypes",
+                "The nodes this graph can use, best match first. takes and gives keep those a wire of that kind can use.",
+                Missing,
+                Refused
             );
         graphs.MapGet("/{id}/compounds", GetCompounds)
             .Describe(
@@ -184,6 +192,58 @@ static class GraphEndpoints {
                 ]
             )
             : NoSession(id);
+
+    /// <summary>Ranks through Vixen's search, so that every palette of every client agrees on the order.</summary>
+    /// <param name="id">The session.</param>
+    /// <param name="query">What was typed. Empty offers everything, in path order.</param>
+    /// <param name="takes">The kind of wire a node must have an input for.</param>
+    /// <param name="gives">The kind of input a node must have an output for.</param>
+    /// <param name="sessions">The open graphs.</param>
+    static Results<Ok<GraphNodeMatches>, ProblemHttpResult> SearchNodeTypes(
+        string id,
+        string? query,
+        string? takes,
+        string? gives,
+        GraphSessions sessions
+    ) {
+        if (sessions.Find(id) is not { } session) {
+            return NoSession(id);
+        }
+
+        if (!TryFilter(takes, PortDirection.Input, out var input)
+            || !TryFilter(gives, PortDirection.Output, out var output)) {
+            return TypedResults.Problem(
+                $"'{takes ?? gives}' does not name a port kind.",
+                statusCode: StatusCodes.Status422UnprocessableEntity
+            );
+        }
+
+        var found = NodeSearch.Rank(session.NodeTypes, query, input);
+        return TypedResults.Ok(
+            new GraphNodeMatches(
+                [
+                    ..found.Where(match => output is not { } wanted
+                            || NodeSearch.Landing(match.Type, wanted) is not null
+                        )
+                        .Select(static match => match.Type.Path)
+                ]
+            )
+        );
+    }
+
+    static bool TryFilter(string? kind, PortDirection direction, out PortFilter? filter) {
+        filter = null;
+        if (string.IsNullOrEmpty(kind)) {
+            return true;
+        }
+
+        if (!Enum.TryParse<PortKind>(kind, out var parsed) || !Enum.IsDefined(parsed)) {
+            return false;
+        }
+
+        filter = new(parsed, direction);
+        return true;
+    }
 
     static Results<Ok<IReadOnlyList<GraphCompound>>, ProblemHttpResult> GetCompounds(
         string id,
