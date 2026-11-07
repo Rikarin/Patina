@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal } from '@angular/core';
 import type { StackLayer } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
+import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { blendName as blendLabelOf } from '../core/labels';
 import { ProjectStore } from '../library/project-store';
@@ -9,7 +10,7 @@ import { hexOf } from './layer-panel';
 import { MaterialUse } from './material-use';
 import { type LayerRow, PaintStore } from './paint-store';
 
-const RowHeight = 52;
+const RowHeight = 56;
 
 const KindMarks: Readonly<Record<string, string>> = { paint: 'P', fill: 'F', filter: 'Fx', group: '' };
 
@@ -34,7 +35,7 @@ interface MenuAt {
  */
 @Component({
   selector: 'ptn-layer-stack',
-  imports: [XuiButtonImports, XuiSliderImports],
+  imports: [XuiButtonImports, XuiSelectImports, XuiSliderImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'flex h-full min-h-0 flex-col',
@@ -281,8 +282,26 @@ interface MenuAt {
             }
           </span>
 
+          <button
+            type="button"
+            class="border-hairline bg-background text-foreground-muted grid size-8 shrink-0 place-items-center rounded-sm border text-xs"
+            data-testid="layer-mesh-mask"
+            [attr.aria-label]="'Meshes of ' + row.layer.name"
+            [attr.aria-pressed]="!!row.layer.mask.meshParts"
+            [class.bg-selection]="!!row.layer.mask.meshParts"
+            [title]="row.layer.mask.meshParts ? 'On some meshes' : 'On every mesh'"
+            (click)="$event.stopPropagation(); openMeshes($event, row.layer)"
+          >
+            <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
+              <path d="M2 2h12v12H2z" fill="none" stroke="currentColor" stroke-width="1.5" />
+              @if (row.layer.mask.meshParts) {
+                <path d="M2 2h6v6H2z" fill="currentColor" />
+              }
+            </svg>
+          </button>
+
           <span
-            class="flex w-20 shrink-0 flex-col gap-1"
+            class="flex w-20 shrink-0 flex-col gap-2"
             role="group"
             tabindex="-1"
             data-testid="layer-blending"
@@ -291,19 +310,21 @@ interface MenuAt {
             (keydown)="$event.stopPropagation()"
             (pointerdown)="sliding.set(row.layer.id)"
           >
-            <select
-              class="well h-5 w-full px-0.5 text-xs"
+            <xui-select
+              class="w-full min-w-0 [&_button]:text-xs"
+              style="--control-height-md: 1.375rem; --control-padding-md: 0.375rem"
               data-testid="paint-layer-blend"
-              [attr.aria-label]="'Blend mode of ' + row.layer.name"
-              (change)="setBlend(row.layer, $event)"
-            >
-              @for (blend of blends(); track blend) {
-                <option [selected]="blend === row.layer.blend" [value]="blend">{{ blendLabel(blend) }}</option>
-              }
-            </select>
+              [ariaLabel]="'Blend mode of ' + row.layer.name"
+              [filterable]="false"
+              [itemText]="blendLabel"
+              [items]="blends()"
+              [matchTargetWidth]="false"
+              [value]="row.layer.blend"
+              (valueChange)="setBlend(row.layer, $event)"
+            />
             <span class="flex items-center gap-1">
               <xui-slider
-                class="min-w-0 flex-1"
+                class="h-4 min-w-0 flex-1 pb-0"
                 labelStepSize="0"
                 data-testid="paint-layer-opacity"
                 [attr.aria-label]="'Opacity of ' + row.layer.name"
@@ -317,23 +338,6 @@ interface MenuAt {
             </span>
           </span>
 
-          <button
-            type="button"
-            class="border-hairline grid size-5 shrink-0 place-items-center border"
-            data-testid="layer-mesh-mask"
-            [attr.aria-label]="'Meshes of ' + row.layer.name"
-            [attr.aria-pressed]="!!row.layer.mask.meshParts"
-            [class.bg-selection]="!!row.layer.mask.meshParts"
-            [title]="row.layer.mask.meshParts ? 'On some meshes' : 'On every mesh'"
-            (click)="$event.stopPropagation(); openMeshes($event, row.layer)"
-          >
-            <svg viewBox="0 0 16 16" class="size-3" aria-hidden="true">
-              <path d="M2 2h12v12H2z" fill="none" stroke="currentColor" stroke-width="1.5" />
-              @if (row.layer.mask.meshParts) {
-                <path d="M2 2h6v6H2z" fill="currentColor" />
-              }
-            </svg>
-          </button>
         </div>
       } @empty {
         <p class="text-foreground-muted p-3 text-sm">Nothing open.</p>
@@ -453,8 +457,10 @@ export class LayerStack {
     return draft?.layer === layer.id ? draft.opacity : layer.opacity;
   }
 
-  protected setBlend(layer: StackLayer, event: Event): void {
-    void this.store.edit({ op: 'setLayer', layer: layer.id, blend: (event.target as HTMLSelectElement).value });
+  protected setBlend(layer: StackLayer, blend: string | null): void {
+    if (blend) {
+      void this.store.edit({ op: 'setLayer', layer: layer.id, blend });
+    }
   }
 
   /** One request out at a time, the newest value next, so that a fast slider costs what the Server can take. */
