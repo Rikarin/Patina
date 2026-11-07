@@ -344,6 +344,7 @@ public sealed class GraphEditor {
             TextureSizes.GraphSetting =>
                 int.TryParse(setting.Value, NumberStyles.None, CultureInfo.InvariantCulture, out var side)
                 && TextureSizes.Sides.Contains(side),
+            TextureGraphSettings.TilingX or TextureGraphSettings.TilingY => setting.Value is "true" or "false",
             _ => throw new GraphEditRefusedException($"There is no graph setting '{setting.Key}'.")
         };
         return valid

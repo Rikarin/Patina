@@ -4,9 +4,10 @@ import { By } from '@angular/platform-browser';
 import type { GraphNodeType } from '@patina/api-client';
 import { CurveEditor, type Curves, GradientRamp, type RampStop, blackToWhite, straightCurves } from '@patina/studio-ui';
 import { XuiColorPicker } from '@xui/color-picker';
+import { XuiNumericInput } from '@xui/numeric-input';
 import { XuiSelect } from '@xui/select';
 import { SystemStatus } from '../core/system-status';
-import { GraphInspector, Inspector } from './graph-inspector';
+import { GraphInspector, Inspector, keptLanes } from './graph-inspector';
 import { GraphSelection, GraphSettings, freeParameterName } from './graph-settings';
 import { GraphStore } from './graph-store';
 import { node } from './graph-testing';
@@ -51,7 +52,7 @@ describe('the colour control', () => {
     fixture.componentRef.setInput('node', { ...node(1), type: tintType.path });
     fixture.detectChanges();
     const picker = fixture.debugElement.query(By.directive(XuiColorPicker));
-    return { store, picker: picker.componentInstance as XuiColorPicker };
+    return { store, fixture, picker: picker.componentInstance as XuiColorPicker };
   }
 
   it("shows the lanes as the picker's hex", () => {
@@ -64,6 +65,22 @@ describe('the colour control', () => {
     expect(store.setValue).not.toHaveBeenCalled();
     picker.value.set('#00FF0080');
     expect(store.setValue).toHaveBeenCalledWith(1, 'Colour', [0, 1, 0, 128 / 255]);
+  });
+
+  it('keeps a lane the picker did not move, past what eight bits hold', () => {
+    expect(keptLanes([2, 0.18, 0.5, 1], [0.25, 46 / 255, 1, 1])).toEqual([0.25, 0.18, 1, 1]);
+    expect(keptLanes([1, 0, 0], [0, 0, 0, 1])).toEqual([0, 0, 0, 1]);
+  });
+
+  it('has a number for each lane, which writes past 1 with the other lanes as they were', () => {
+    const { store, fixture } = render();
+    const lanes = fixture.debugElement
+      .queryAll(By.directive(XuiNumericInput))
+      .map(input => input.componentInstance as XuiNumericInput)
+      .slice(-4);
+    expect(lanes.map(input => input.value())).toEqual([1, 0, 0, 1]);
+    lanes[2]?.valueChange.emit(2);
+    expect(store.setValue).toHaveBeenCalledWith(1, 'Colour', [1, 0, 2, 1]);
   });
 
   it('ignores what the picker sends while it is still being typed', () => {

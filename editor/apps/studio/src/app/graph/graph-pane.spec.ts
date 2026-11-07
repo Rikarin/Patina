@@ -33,7 +33,7 @@ const online = (connected: boolean): ServerState => ({
   }
 });
 
-async function render(status: ServerState = online(true), graph: () => GraphState = state) {
+async function render(status: ServerState = online(true), graph: () => GraphState = state, types = [noiseType]) {
   const sockets: FakeSocket[] = [];
   const answer = (input: RequestInfo | URL): Promise<Response> => {
     const { method, url } = input as Request;
@@ -46,7 +46,7 @@ async function render(status: ServerState = online(true), graph: () => GraphStat
       return Promise.resolve(Response.json([]));
     }
 
-    return Promise.resolve(Response.json(path.endsWith('node-types') ? [noiseType] : graph()));
+    return Promise.resolve(Response.json(path.endsWith('node-types') ? types : graph()));
   };
   TestBed.configureTestingModule({
     providers: [
@@ -121,6 +121,28 @@ describe('GraphPane', () => {
     expect(element.querySelectorAll('[data-testid=graph-node]')).toHaveLength(2);
     expect(found('graph-name')?.textContent).toContain('A');
     expect(found('graph-unsaved')).toBeNull();
+  });
+
+  it('draws a preview box only for a picture a node has', async () => {
+    const { open, sockets, element, fixture } = await render();
+    await open();
+
+    expect(element.querySelectorAll('xui-graph-node-preview')).toHaveLength(0);
+
+    sockets[0]?.send(evaluated(1, { 1: 'a'.repeat(64) }));
+    await fixture.whenStable();
+
+    expect(element.querySelectorAll('xui-graph-node-preview')).toHaveLength(1);
+  });
+
+  it('draws no preview box for a type that has no picture worth one', async () => {
+    const { open, sockets, element, fixture } = await render(online(true), state, [{ ...noiseType, hasPreview: false }]);
+    await open();
+
+    sockets[0]?.send(evaluated(1, { 1: 'a'.repeat(64) }));
+    await fixture.whenStable();
+
+    expect(element.querySelectorAll('xui-graph-node-preview')).toHaveLength(0);
   });
 
   it('marks unsaved changes', async () => {

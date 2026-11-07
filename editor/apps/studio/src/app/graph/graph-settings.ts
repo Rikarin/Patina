@@ -15,6 +15,7 @@ const BitDepths = ['16', '32'];
 const PortKinds = ['Image', 'Float', 'Int', 'Bool', 'Float2', 'Float3', 'Float4'];
 const DefaultBitDepth = '16';
 const NoBake = '';
+const MeshMap = 'Source/Mesh Map';
 const SliderSteps = 1000;
 
 /** What a kind's default starts as, which the Server has to accept. */
@@ -108,6 +109,24 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
           />
         </div>
       }
+      <div class="flex items-center justify-between gap-2" data-testid="setting-tilingX">
+        <span class="text-foreground-muted text-xs">Tile across</span>
+        <xui-switch
+          ariaLabel="Tile across"
+          [checked]="tiles('tilingX')"
+          [disabled]="!store.editable()"
+          (checkedChange)="store.setSetting('tilingX', String($event))"
+        />
+      </div>
+      <div class="flex items-center justify-between gap-2" data-testid="setting-tilingY">
+        <span class="text-foreground-muted text-xs">Tile down</span>
+        <xui-switch
+          ariaLabel="Tile down"
+          [checked]="tiles('tilingY')"
+          [disabled]="!store.editable()"
+          (checkedChange)="store.setSetting('tilingY', String($event))"
+        />
+      </div>
       <div class="flex flex-col gap-1" data-testid="setting-seed">
         <span class="text-foreground-muted text-xs">Seed</span>
         <xui-numeric-input
@@ -361,6 +380,7 @@ export class GraphSettings {
   private readonly project = inject(ProjectStore);
   private readonly status = inject(SystemStatus);
   protected readonly kinds = Kinds;
+  protected readonly String = String;
   protected readonly bitDepths = BitDepths;
   protected readonly portKinds = PortKinds;
 
@@ -400,13 +420,23 @@ export class GraphSettings {
     return this.store.document()?.settings[key] ?? '';
   }
 
-  /** The usual sizes, and the one this graph has if it is something else. */
+  /** A graph that says nothing tiles, unless it reads a mesh map, because an atlas has no far side. */
+  protected tiles(key: string): boolean {
+    const declared = this.settingOf(key);
+    if (declared !== '') {
+      return declared === 'true';
+    }
+
+    return ![...(this.store.document()?.nodes.values() ?? [])].some(node => node.type === MeshMap);
+  }
+
   /** What the graph evaluates at: its size, or its longer base side when it names none. */
   protected size(): string {
     const longest = Math.max(Number(this.settingOf('baseWidth')), Number(this.settingOf('baseHeight')));
     return this.settingOf('size') || (longest > 0 ? String(longest) : '');
   }
 
+  /** The usual sizes, and the one this graph has if it is something else. */
   protected sidesHolding(held: string): readonly string[] {
     const sides = this.status.textureSides().map(String);
     return held === '' || sides.includes(held) ? sides : [...sides, held];

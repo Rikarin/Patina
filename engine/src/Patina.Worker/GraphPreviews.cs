@@ -94,6 +94,8 @@ static class GraphPreviews {
             Ops = ops.ToImmutable(),
             Outputs = [..reduced.Values.Distinct(), ..checks.Select(static check => check.Image)],
             Seed = plan.Seed,
+            WrapX = plan.WrapX,
+            WrapY = plan.WrapY,
             Kernels = plan.Kernels
         };
         return new(extended, previews);
@@ -109,6 +111,8 @@ static class GraphPreviews {
             Ops = plan.Ops,
             Outputs = [image],
             Seed = plan.Seed,
+            WrapX = plan.WrapX,
+            WrapY = plan.WrapY,
             Kernels = plan.Kernels
         };
 

@@ -179,6 +179,19 @@ public sealed class GraphApiTests : IDisposable {
         }
     }
 
+    [Theory]
+    [InlineData(TextureGraphSettings.TilingX, "false", true)]
+    [InlineData(TextureGraphSettings.TilingY, "true", true)]
+    [InlineData(TextureGraphSettings.TilingX, "1", false)]
+    public async Task A_graph_says_whether_it_tiles_along_each_axis(string key, string value, bool accepted) {
+        var (client, state) = await OpenAsync();
+        using (client) {
+            using var response = await client.SendAsync(state.Id, new([new GraphSetSetting(key, value)]), Token);
+            Assert.Equal(accepted ? HttpStatusCode.OK : HttpStatusCode.UnprocessableEntity, response.StatusCode);
+            Assert.Equal(accepted, (await client.StateAsync(state.Id, Token)).Settings.ContainsKey(key));
+        }
+    }
+
     async Task<GraphState> OpenCompoundAsync(HttpClient client) {
         var compounds = Directory.CreateDirectory(Path.Combine(server.Library, LibraryLayout.CompoundsFolder));
         return await client.OpenAsync(
