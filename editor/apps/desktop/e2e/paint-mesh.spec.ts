@@ -151,8 +151,10 @@ test('layers of every kind compose on the mesh', async () => {
 
   await window.getByTestId('paint-add-fill').click();
   await expect(window.getByTestId('paint-layer-name')).toHaveValue('Fill');
-  await window.getByTestId('paint-fill-baseColor').fill('#2050e0');
-  await window.getByTestId('paint-fill-baseColor').dispatchEvent('change');
+  await window.getByTestId('paint-fill-baseColor').locator('button').first().click();
+  await window.getByRole('textbox', { name: 'Hex color' }).fill('#2050e0');
+  await window.getByRole('textbox', { name: 'Hex color' }).press('Enter');
+  await window.keyboard.press('Escape');
   await expect.poll(async () => changed(before, await shot()), { timeout: 30_000 }).toBeGreaterThan(2000);
 
   const blend = window.getByRole('combobox', { name: 'Blend mode' });

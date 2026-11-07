@@ -133,8 +133,10 @@ test('colours painted in Blender bake to an id map, and a mask selects one', asy
   await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 30_000 });
 
   await window.getByTestId('paint-add-fill').click();
-  await window.getByTestId('paint-fill-baseColor').fill('#00ff00');
-  await window.getByTestId('paint-fill-baseColor').dispatchEvent('change');
+  await window.getByTestId('paint-fill-baseColor').locator('button').first().click();
+  await window.getByRole('textbox', { name: 'Hex color' }).fill('#00ff00');
+  await window.getByRole('textbox', { name: 'Hex color' }).press('Enter');
+  await window.keyboard.press('Escape');
   const fill = window.locator('[data-testid^=paint-layer-fill]');
   await fill.click({ button: 'right' });
   await window.getByTestId('layer-menu-mask-colour').click();

@@ -98,7 +98,10 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number }[] = [
         [value]="store.radius()"
         (valueChange)="store.radius.set($event)"
       />
-      <span class="readout w-10 shrink-0 text-end text-xs">{{ store.radius() }} px</span>
+      <span class="readout w-12 shrink-0 text-end text-xs">{{ store.radius() }} px</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="text-foreground-muted w-16 shrink-0 text-xs">Colour</span>
       <xui-color-picker
         aria-label="Brush colour"
         data-testid="paint-colour"

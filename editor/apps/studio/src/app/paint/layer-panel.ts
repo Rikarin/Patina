@@ -8,6 +8,7 @@ import type {
   StackMaskEffect
 } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
+import { XuiColorPickerImports } from '@xui/color-picker';
 import { XuiInputImports } from '@xui/input';
 import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
@@ -50,6 +51,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
   selector: 'ptn-layer-panel',
   imports: [
     XuiButtonImports,
+    XuiColorPickerImports,
     XuiInputImports,
     XuiNumericInputImports,
     XuiSelectImports,
@@ -245,12 +247,11 @@ export function hexOf(colour: readonly number[] | undefined): string {
                         scalar(layer, channel.usage, channel.default).toFixed(2)
                       }}</span>
                     } @else {
-                      <input
-                        type="color"
+                      <xui-color-picker
                         [attr.aria-label]="channelName(channel.usage)"
                         [attr.data-testid]="'paint-fill-' + channel.usage"
                         [value]="hex(layer, channel.usage, channel.default)"
-                        (change)="setValue(layer, channel.usage, text($event))"
+                        (valueChange)="setValue(layer, channel.usage, $event)"
                       />
                     }
                   }
