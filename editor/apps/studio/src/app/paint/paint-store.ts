@@ -1,5 +1,6 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import {
+  ApiError,
   type Connection,
   type PatinaClient,
   type StackBrush,
@@ -119,6 +120,9 @@ export class PaintStore {
 
   /** Told as something new starts, for whoever keeps a failure of its own. */
   onAction: () => void = () => undefined;
+
+  /** The file changed behind this session, so a save waits on whether to replace it. */
+  readonly saveConflict = signal(false);
 
   readonly layer = signal<string | null>(null);
 
@@ -445,25 +449,42 @@ export class PaintStore {
     }
   }
 
-  async act(action: 'undo' | 'redo' | 'save'): Promise<void> {
+  /** Undoes, redoes or saves, and throws nothing. False if it did not happen, and the failure says why. */
+  async act(action: 'undo' | 'redo' | 'save', force = false): Promise<boolean> {
     const id = this.state()?.id;
     if (!id) {
-      return;
+      return false;
     }
 
     this.startAction();
-    // An undo that overtook the end of a drag would take back the part before it and leave the rest standing.
-    await this.drained();
-    const client = await this.api();
-    const path = { params: { path: { id } } };
-    unwrap(
-      await (action === 'undo'
-        ? client.POST('/api/v1/stacks/{id}/undo', path)
-        : action === 'redo'
-          ? client.POST('/api/v1/stacks/{id}/redo', path)
-          : client.POST('/api/v1/stacks/{id}/save', { ...path, params: { ...path.params, query: {} } }))
-    );
-    await this.refresh();
+    this.saveConflict.set(false);
+    try {
+      // An undo that overtook the end of a drag would take back the part before it and leave the rest standing.
+      await this.drained();
+      const client = await this.api();
+      const path = { params: { path: { id } } };
+      unwrap(
+        await (action === 'undo'
+          ? client.POST('/api/v1/stacks/{id}/undo', path)
+          : action === 'redo'
+            ? client.POST('/api/v1/stacks/{id}/redo', path)
+            : client.POST('/api/v1/stacks/{id}/save', {
+                ...path,
+                params: { ...path.params, query: force ? { force } : {} }
+              }))
+      );
+      await this.refresh();
+      return true;
+    } catch (failure) {
+      if (failure instanceof ApiError && failure.status === 409) {
+        // For a step, a 409 is only that there is nothing to step to, and the keys can always ask.
+        this.saveConflict.set(action === 'save');
+      } else {
+        this.failure.set(failure instanceof Error ? failure.message : String(failure));
+      }
+
+      return false;
+    }
   }
 
   /** What went wrong before has nothing to do with what is starting now. */

@@ -31,6 +31,7 @@ import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiOmnibarImports } from '@xui/omnibar';
 import { XuiSpinnerImports } from '@xui/spinner';
 import { XuiTagImports } from '@xui/tag';
+import { FileConflictDialog } from '../core/file-conflict-dialog';
 import { IconImports } from '../core/icons';
 import { NodeDragType } from './node-library';
 import { SystemStatus } from '../core/system-status';
@@ -788,6 +789,7 @@ export class GraphCanvas {
 @Component({
   selector: 'ptn-graph',
   imports: [
+    FileConflictDialog,
     GraphCanvas,
     NewGraphDialog,
     XuiButtonImports,
@@ -865,22 +867,12 @@ export class GraphCanvas {
       </xui-dialog-footer>
     </xui-dialog>
 
-    <xui-dialog
-      size="sm"
-      title="The file changed"
+    <ptn-file-conflict
+      [name]="store.document()?.name ?? ''"
       [open]="store.saveConflict()"
-      (openChange)="$event || store.dismissSaveConflict()"
-    >
-      <xui-dialog-body>
-        {{ store.document()?.name }} changed on disk after it was opened. Saving replaces what is there.
-      </xui-dialog-body>
-      <xui-dialog-footer>
-        <button type="button" xuiButton variant="ghost" (click)="store.dismissSaveConflict()">Cancel</button>
-        <button type="button" xuiButton color="primary" data-testid="graph-overwrite" (click)="store.save(true)">
-          Overwrite
-        </button>
-      </xui-dialog-footer>
-    </xui-dialog>
+      (cancelled)="store.dismissSaveConflict()"
+      (overwrite)="store.save(true)"
+    />
 
     <ptn-new-graph [(open)]="creating" />
   `

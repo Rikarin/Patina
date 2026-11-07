@@ -282,9 +282,12 @@ export class ProjectStore {
       return;
     }
 
+    this.startAction();
     if (choice === 'save') {
       await this.activate(path);
-      await this.saveActive();
+      if (!(await this.saveActive())) {
+        return; // it stays open, and what stopped the save says why
+      }
     }
 
     await this.remove(path, choice === 'discard');
@@ -298,19 +301,17 @@ export class ProjectStore {
     }
 
     if (choice === 'save') {
+      // Quitting now would lose what could not be saved, so the app stays and says why.
       try {
         for (const tab of this.unsavedTabs()) {
           await this.activate(tab.path);
-          await this.saveActive();
+          if (!(await this.saveActive())) {
+            this.mutableFailure.set(`${tab.name} could not be saved, so Patina stayed open.`);
+            return;
+          }
         }
       } catch (failure) {
-        // Quitting now would lose what could not be saved, so the app stays and says why.
         this.mutableFailure.set(messageOf(failure));
-        return;
-      }
-
-      if (this.unsavedTabs().length > 0) {
-        this.mutableFailure.set('Some documents could not be saved, so Patina stayed open.');
         return;
       }
     }
@@ -326,9 +327,9 @@ export class ProjectStore {
     }
   }
 
-  /** Saves what is in front. */
-  async saveActive(): Promise<void> {
-    await (isGraph(this.active()) ? this.graph.save() : this.paint.act('save'));
+  /** Saves what is in front. False if it did not happen, and its store has said why. */
+  async saveActive(): Promise<boolean> {
+    return isGraph(this.active()) ? this.graph.save() : this.paint.act('save');
   }
 
   askToBake(): void {
@@ -478,7 +479,10 @@ export class ProjectStore {
 
     this.startAction();
     try {
-      await this.saveActive();
+      if (!(await this.saveActive())) {
+        return;
+      }
+
       const client = await this.library.api();
       const body = { project, document: document.id, name };
       const contents = unwrap(await client.POST('/api/v1/library/project/document/copy', { body }));

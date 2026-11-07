@@ -1,5 +1,5 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { leave, newLibrary, newProject } from './projects';
@@ -107,6 +107,48 @@ test("Don't Save on a stack throws the edits away, and they stay gone", async ()
   await expect.poll(pictureHash, { timeout: 15_000 }).toBe(saved);
   await expect(window.getByTestId('paint-unsaved')).toHaveCount(0);
   await expect(window.getByTestId('app-recovery')).toHaveCount(0);
+});
+
+test('Saving over a file that changed asks first, and Overwrite saves', async () => {
+  await launch();
+  await paint();
+  appendFileSync(join(library, 'projects', 'crate', 'crate.vxlayers'), '\n# someone else\n');
+
+  await window.getByTestId('paint-save').click();
+
+  await expect(window.getByTestId('file-conflict')).toContainText('Crate changed on disk', { timeout: 30_000 });
+  await expect(window.getByTestId('paint-unsaved')).toBeVisible();
+  await window.getByRole('button', { name: 'Cancel' }).click();
+  await expect(window.getByTestId('file-conflict')).toHaveCount(0);
+  await expect(window.getByTestId('paint-unsaved')).toBeVisible();
+
+  await window.getByTestId('paint-save').click();
+  await window.getByTestId('file-overwrite').click();
+  await expect(window.getByTestId('file-conflict')).toHaveCount(0);
+  await expect(window.getByTestId('paint-unsaved')).toHaveCount(0, { timeout: 30_000 });
+  await expect(window.getByTestId('app-failure')).toHaveCount(0);
+});
+
+test('A save the Server cannot do says why, and keeps the tab', async () => {
+  await launch();
+  await paint();
+  await window.route('**/api/v1/stacks/*/save*', route =>
+    route.fulfill({
+      status: 503,
+      contentType: 'application/problem+json',
+      body: JSON.stringify({ title: 'Unavailable', detail: 'No Worker came.' })
+    })
+  );
+
+  await window.getByTestId('paint-save').click();
+
+  await expect(window.getByTestId('app-failure')).toContainText('No Worker came.');
+  await expect(window.getByTestId('paint-unsaved')).toBeVisible();
+
+  await window.getByTestId('document-tab-close').click();
+  await window.getByTestId('project-save').click();
+  await expect(window.getByTestId('app-failure')).toContainText('No Worker came.');
+  await expect(window.getByTestId('document-tab')).toHaveCount(1);
 });
 
 test('Discard after a crash goes back to the saved file, and nothing is left to offer', async () => {

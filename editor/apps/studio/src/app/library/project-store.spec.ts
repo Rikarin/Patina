@@ -58,7 +58,7 @@ function harness() {
     detach: vi.fn(() => {
       paintState.set(null);
     }),
-    act: vi.fn(() => Promise.resolve())
+    act: vi.fn(() => Promise.resolve(true))
   };
   const graph = {
     document: graphDocument,
@@ -144,6 +144,58 @@ describe('ProjectStore', () => {
 
     expect(quit).not.toHaveBeenCalled();
     expect(store.failure()).toBe('The disk is full.');
+  });
+
+  it('stays open when a save only says it did not happen', async () => {
+    const quit = vi.fn();
+    vi.stubGlobal('patina', { quit, onQuitRequested: vi.fn(), setUnsaved: vi.fn() });
+    const { store, paint, paintState } = harness();
+    await store.open('a');
+    paintState.set({ id: 's', history: { dirty: true } });
+    TestBed.tick();
+    paint.act.mockResolvedValueOnce(false);
+
+    await store.resolveQuitting('save');
+
+    expect(quit).not.toHaveBeenCalled();
+    expect(store.failure()).toContain('stayed open');
+  });
+
+  it('quits once everything is saved, whether or not the tabs have heard yet', async () => {
+    const quit = vi.fn();
+    vi.stubGlobal('patina', { quit, onQuitRequested: vi.fn(), setUnsaved: vi.fn() });
+    const { store, paintState } = harness();
+    await store.open('a');
+    paintState.set({ id: 's', history: { dirty: true } });
+    TestBed.tick();
+
+    await store.resolveQuitting('save');
+
+    expect(quit).toHaveBeenCalled();
+  });
+
+  it('keeps the tab when Save in the close dialog does not save', async () => {
+    const { store, paint, paintState, removed } = harness();
+    await store.open('a');
+    paintState.set({ id: 's', history: { dirty: true } });
+    TestBed.tick();
+    await store.closeTab(paths.texturing);
+    paint.act.mockResolvedValueOnce(false);
+
+    await store.resolveClosing('save');
+
+    expect(store.tabs()).toHaveLength(1);
+    expect(removed.filter(id => id.startsWith('session'))).toEqual([]);
+  });
+
+  it('copies nothing for Save As when the save did not happen', async () => {
+    const { store, paint, client } = harness();
+    await store.open('a');
+    paint.act.mockResolvedValueOnce(false);
+
+    await store.saveAs('Copy');
+
+    expect(client.POST).not.toHaveBeenCalledWith('/api/v1/library/project/document/copy', expect.anything());
   });
 
   it('reopens on what was last in front', async () => {

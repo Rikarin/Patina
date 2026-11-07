@@ -9,6 +9,7 @@ import { BakeStore } from './bake/bake-store';
 import { desktop } from './core/desktop';
 import { DiagnosticsDialog } from './core/diagnostics-dialog';
 import { EditCommands } from './core/edit-commands';
+import { FileConflictDialog } from './core/file-conflict-dialog';
 import { Shortcuts } from './core/shortcuts';
 import { StartPane } from './core/start-pane';
 import { SystemStatus } from './core/system-status';
@@ -47,6 +48,7 @@ import { ViewportPane } from './viewport/viewport-pane';
     LibraryPane,
     DatePipe,
     DiagnosticsDialog,
+    FileConflictDialog,
     MaterialShelf,
     XuiInputImports,
     PaintAtlas,
@@ -249,6 +251,13 @@ import { ViewportPane } from './viewport/viewport-pane';
       </xui-dialog-footer>
     </xui-dialog>
 
+    <ptn-file-conflict
+      [name]="project.active()?.name ?? ''"
+      [open]="paint.saveConflict()"
+      (cancelled)="paint.saveConflict.set(false)"
+      (overwrite)="paint.act('save', true)"
+    />
+
     <ptn-diagnostics [(open)]="diagnosing" />
 
     <xui-dialog size="sm" title="Keyboard Shortcuts" [(open)]="keys">
@@ -352,7 +361,7 @@ export class App {
   protected readonly shortcuts = inject(Shortcuts);
   protected readonly keys = signal(false);
   protected readonly diagnosing = signal(false);
-  private readonly paint = inject(PaintStore);
+  protected readonly paint = inject(PaintStore);
   /** The one thing that went wrong last, which stays until it is read. */
   protected readonly failure = computed(() => this.paint.failure() ?? this.project.failure());
   protected readonly baking = signal(false);
