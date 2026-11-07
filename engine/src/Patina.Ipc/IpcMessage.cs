@@ -447,6 +447,7 @@ public sealed record StackLoad(
 /// <param name="View">The camera of a stroke on the mesh, or null for one in the atlas.</param>
 /// <param name="Curve">free, line or path.</param>
 /// <param name="Mirror">x, y, z or null.</param>
+/// <param name="Start">What a canvas this stroke is the first on starts as, packed like the colour, or null.</param>
 public sealed record StackPaintPart(
     long Id,
     string Paint,
@@ -458,7 +459,8 @@ public sealed record StackPaintPart(
     string Model,
     StackView? View,
     string Curve,
-    string? Mirror
+    string? Mirror,
+    uint? Start = null
 );
 
 #pragma warning restore SK7005

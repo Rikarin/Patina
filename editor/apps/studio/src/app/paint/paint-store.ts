@@ -9,6 +9,7 @@ import {
   type StackIdColour,
   type StackLayer,
   type StackMask,
+  type StackMaskEffect,
   type StackPreview,
   type StackStamp,
   type StackState,
@@ -136,6 +137,8 @@ export class PaintStore {
   readonly mirror = signal<Mirror>('none');
   /** Whether strokes go to the chosen layer's mask rather than its channels. */
   readonly masking = signal(false);
+  /** What a stroke on a mask lays down, from nothing shown to everything: a mask is one number, not a colour. */
+  readonly maskGrey = signal(0);
   readonly brush = signal<BrushSettings>({
     flow: 1,
     opacity: 1,
@@ -258,7 +261,12 @@ export class PaintStore {
     const context = canvas.getContext('2d');
     context?.drawImage(image, u * image.width, v * image.height, 1, 1, 0, 0, 1, 1);
     const [r = 0, g = 0, b = 0] = context?.getImageData(0, 0, 1, 1).data ?? [];
-    this.colour.set(`#${[r, g, b].map(value => value.toString(16).padStart(2, '0')).join('')}`);
+    if (this.masking()) {
+      this.maskGrey.set(r / 255);
+    } else {
+      this.colour.set(`#${[r, g, b].map(value => value.toString(16).padStart(2, '0')).join('')}`);
+    }
+
     this.tool.set('brush');
   }
 
@@ -294,6 +302,15 @@ export class PaintStore {
     const socket = this.socket;
     this.socket = null;
     socket?.close();
+  }
+
+  /** Puts a layer's mask in front of the brush, which starts as what shows on a flat mask: white on black, or black. */
+  chooseMask(layer: StackLayer): void {
+    this.layer.set(layer.id);
+    this.masking.set(true);
+    if (layer.mask.source === 'Constant') {
+      this.maskGrey.set(layer.mask.value < 0.5 ? 1 : 0);
+    }
   }
 
   /** Adds a layer at the top of the stack, or of the chosen group, and chooses it. */
@@ -472,7 +489,7 @@ export class PaintStore {
     this.strokes += 1;
     this.stroke = `drag-${Date.now()}-${this.strokes}`;
     this.view = null;
-    if (this.tool() !== 'eraser') {
+    if (this.tool() !== 'eraser' && !this.masking()) {
       this.remember(this.colour());
     }
 
@@ -589,10 +606,15 @@ export class PaintStore {
   ): Promise<void> {
     const mirror = this.mirror();
     // A material brush writes every channel it holds, each in the one stroke and the one undo step. A mask has one.
-    const channels: [string, string][] = [
-      [this.channel(), this.colour()],
-      ...(this.masking() ? [] : [...this.alsoPaints()].filter(([usage]) => usage !== this.channel()))
-    ];
+    const grey = this.maskGrey();
+    const channels: [string, number[]][] = this.masking()
+      ? [[this.channel(), [grey, grey, grey, 1]]]
+      : [
+          [this.channel(), colourOf(this.colour())],
+          ...[...this.alsoPaints()]
+            .filter(([usage]) => usage !== this.channel())
+            .map(([usage, colour]): [string, number[]] => [usage, colourOf(colour)])
+        ];
     const revision = await this.command({
       commands: channels.map(([channel, colour]) => ({
         op: 'stroke' as const,
@@ -601,7 +623,7 @@ export class PaintStore {
         channel,
         brush: { ...this.brush(), radius: this.radius() },
         // A stamp mixes towards its colour, so towards nothing at all takes paint away.
-        colour: this.tool() === 'eraser' ? [0, 0, 0, 0] : colourOf(colour),
+        colour: this.tool() === 'eraser' ? [0, 0, 0, 0] : colour,
         stamps,
         open,
         mask: this.masking(),
@@ -793,6 +815,13 @@ export class PaintStore {
 /** How hard a pointer is pressing: a mouse says 0.5 for a button held, and means nothing by it. */
 export function pressureOf(event: PointerEvent): number {
   return event.pointerType === 'pen' ? event.pressure : 1;
+}
+
+/** A mask's effects with one more of a node, or none of it if it had one: what a toggle such as Invert sends. */
+export function toggledEffect(effects: readonly StackMaskEffect[], node: string): StackMaskEffect[] {
+  return effects.some(effect => effect.node === node)
+    ? effects.filter(effect => effect.node !== node)
+    : [...effects, { node, enabled: true }];
 }
 
 /** A colour swatch's value as the four numbers a stroke carries. */

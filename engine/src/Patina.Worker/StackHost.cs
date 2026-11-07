@@ -534,6 +534,11 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
                 canvases.Adopt(file, canvas);
             }
 
+            // Before anything reads it. A file a stroke starts is new, or left by strokes that can never stand again.
+            if (part.Start is { } start) {
+                canvas.Channel(part.Usage).Fill(start);
+            }
+
             touched.Add(part.Paint);
             var surface = Surface(part.Model);
             var stroke = new Applied(

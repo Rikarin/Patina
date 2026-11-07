@@ -322,7 +322,9 @@ public sealed record StackMoveLayer(string Layer, int Delta) : StackCommand;
 /// <param name="Projection">How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical.</param>
 /// <param name="Filter">What a filter does.</param>
 /// <param name="Settings">A filter's numbers, replacing what these names held.</param>
-/// <param name="Mask">Its mask, which replaces the old one and keeps any painted canvas.</param>
+/// <param name="Mask">
+///     Its mask, which replaces the old one and keeps any painted canvas. A source of None takes the mask away, whole.
+/// </param>
 /// <param name="MeshMask">The named meshes it is kept to, or null to leave that as it is.</param>
 /// <param name="PlanarAxis">The world axis a planar projection looks along or a cylinder wraps: X, Y or Z.</param>
 /// <param name="Placement">Where a fill sits on the surface, which replaces where it sat.</param>
@@ -443,10 +445,13 @@ public sealed record StackBrush(
 /// <param name="Layer">The paint layer, or for a mask any layer.</param>
 /// <param name="Channel">Which of its channels. Ignored for a mask.</param>
 /// <param name="Brush">The brush, which the first part decides.</param>
-/// <param name="Colour">Red, green, blue and alpha, 0 to 1, which the first part decides.</param>
+/// <param name="Colour">Red, green, blue and alpha, 0 to 1, which the first part decides. A mask reads the red.</param>
 /// <param name="Stamps">Where the brush went since the last part.</param>
 /// <param name="Open">Whether more of this drag is coming.</param>
-/// <param name="Mask">Whether this paints the layer's mask.</param>
+/// <param name="Mask">
+///     Whether this paints the layer's mask. A flat mask becomes a canvas of what it showed; a mask that is a picture
+///     refuses, since nothing yet keeps that picture under paint.
+/// </param>
 /// <param name="View">
 ///     The camera, which makes this a stroke on the mesh: stamps are positions on its picture, each one is found on the
 ///     surface by the Worker, and it lands wherever the brush's disc falls, seams or no seams. Null paints the atlas.

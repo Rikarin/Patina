@@ -11,6 +11,27 @@ public sealed class StackEditorPropertyTests {
     static readonly StackView View = new([0f, 0f, 4f], [1f, 0f, 0f], [0f, 1f, 0f], [0f, 0f, -1f], 0.7f, 64, 64);
 
     /// <summary>
+    ///     What keeps a layer to some meshes is the bottom of a mask with no base, and has to multiply once a stroke
+    ///     gives it one: as a copy it would replace everything painted beneath it.
+    /// </summary>
+    [Fact]
+    public void A_first_mask_stroke_puts_the_canvas_under_what_keeps_a_layer_to_some_meshes() {
+        var editor = new StackEditor("/tmp/Kept.vxlayers", Sample());
+        editor.Apply(new([new StackSetLayer("paint", MeshMask: new(["Lid"], "lid.png"))]));
+        Assert.Equal(LayerBlendMode.Copy, Mask(editor).Layers[0].Blend);
+
+        editor.Apply(
+            new([new StackStroke("mask", "paint", "baseColor", new(4f), White, [new(1f, 1f)], Mask: true)])
+        );
+
+        Assert.Equal(LayerMaskSource.Paint, Mask(editor).Source);
+        Assert.Equal(LayerBlendMode.Multiply, Mask(editor).Layers[0].Blend);
+    }
+
+    static MaskAsset Mask(StackEditor editor) =>
+        LayerStackEdit.Find(editor.Document, new(editor.Set.Name, "paint"))!.Mask;
+
+    /// <summary>
     ///     Random batches of every command, some of which are refused, then undoing all of them, gives the original
     ///     document and an empty journal; redoing all of them gives the edited document and the same journal.
     /// </summary>

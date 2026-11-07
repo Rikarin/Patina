@@ -327,7 +327,8 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                         entry.Model,
                         entry.View,
                         entry.Curve,
-                        entry.Mirror
+                        entry.Mirror,
+                        entry.Start
                     )
                 );
                 sent[entry.Id] = (entry.Stamps.Count, entry.Open);

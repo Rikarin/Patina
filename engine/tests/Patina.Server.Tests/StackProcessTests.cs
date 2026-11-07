@@ -387,6 +387,160 @@ public sealed partial class StackProcessTests : IDisposable {
         }
     }
 
+    /// <summary>
+    ///     The first stroke turns a flat mask into a canvas, and a canvas that started anywhere but where the mask
+    ///     stood would hide or show everything the brush never touched. Undone, the flat mask is back.
+    /// </summary>
+    [Theory]
+    [InlineData(1f)]
+    [InlineData(0.5f)]
+    [InlineData(0f)]
+    public async Task A_stroke_on_a_flat_mask_changes_only_what_it_touches(float value) {
+        using var deadline = Deadline(180);
+        var (_, state) = await StartAsync("Flat.vxlayers", deadline.Token);
+        var fill = await MaskedFillAsync(state.Id, new("Constant", value), deadline.Token);
+        var before = await TexelsAsync(state.Id, "before", deadline.Token);
+
+        var brush = value < 0.5f ? new[] { 1f, 1f, 1f, 1f } : [0f, 0f, 0f, 1f];
+        await EditAsync(state.Id, deadline.Token, MaskStroke("hole", fill, 300f, 300f, brush));
+
+        var after = await TexelsAsync(state.Id, "after", deadline.Token);
+        Near(Texel(before, 800, 800), Texel(after, 800, 800));
+        Assert.NotEqual(Texel(before, 350, 300), Texel(after, 350, 300));
+        Assert.Equal("Paint", Layer(await StateAsync(state.Id, deadline.Token), fill).Mask.Source);
+
+        await ActAsync(state.Id, "undo", deadline.Token);
+        var undone = await StateAsync(state.Id, deadline.Token);
+        Assert.Equal("Constant", Layer(undone, fill).Mask.Source);
+        Assert.Equal(Digest(before.Maps, "baseColor"), Digest(await PixelsAsync(state.Id, true, deadline.Token), "baseColor"));
+    }
+
+    /// <summary>A paint mask nothing has painted yet hides nothing, so its canvas starts as all of it.</summary>
+    [Fact]
+    public async Task A_new_paint_mask_starts_showing_the_whole_layer() {
+        using var deadline = Deadline(180);
+        var (_, state) = await StartAsync("Fresh.vxlayers", deadline.Token);
+        var fill = await MaskedFillAsync(state.Id, new("Paint"), deadline.Token);
+        var before = await TexelsAsync(state.Id, "before", deadline.Token);
+
+        await EditAsync(state.Id, deadline.Token, MaskStroke("hole", fill, 300f, 300f, [0f, 0f, 0f, 1f]));
+
+        var after = await TexelsAsync(state.Id, "after", deadline.Token);
+        Near(Texel(before, 800, 800), Texel(after, 800, 800));
+        Assert.NotEqual(Texel(before, 350, 300), Texel(after, 350, 300));
+    }
+
+    /// <summary>What a mask started as is in the journal, so a new Worker fills the canvas with the same thing.</summary>
+    [Fact]
+    public async Task A_worker_killed_after_a_mask_stroke_starts_the_canvas_again() {
+        using var deadline = Deadline(240);
+        var (instance, state) = await StartAsync("Replay.vxlayers", deadline.Token, out var worker);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        var fill = await MaskedFillAsync(state.Id, new("Constant", 0.5f), deadline.Token);
+        var stroke = await EditAsync(state.Id, deadline.Token, MaskStroke("hole", fill, 300f, 300f, [0f, 0f, 0f, 1f]));
+        await EvaluatedAsync(socket, stroke.Revision, deadline.Token);
+        var painted = await PixelsAsync(state.Id, false, deadline.Token);
+
+        worker.Kill();
+        await worker.WaitForExitAsync(deadline.Token);
+        StartWorker();
+
+        Assert.Equal(Digest(painted, "baseColor"), Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor"));
+    }
+
+    /// <summary>
+    ///     A removed mask is gone: nothing of it comes back with the next mask, whose first stroke starts a canvas of
+    ///     its own. The old pixels stay on their own canvas, for an undo to reach.
+    /// </summary>
+    [Fact]
+    public async Task A_removed_mask_leaves_nothing_for_the_next_one() {
+        using var deadline = Deadline(240);
+        var (_, state) = await StartAsync("Removed.vxlayers", deadline.Token);
+        var fill = await MaskedFillAsync(state.Id, new("Constant"), deadline.Token);
+        var clean = await TexelsAsync(state.Id, "clean", deadline.Token);
+        await EditAsync(state.Id, deadline.Token, MaskStroke("first", fill, 100f, 100f, [0f, 0f, 0f, 1f]));
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(
+                fill,
+                Mask: new("Paint", Effects: [new("Colour/Invert")])
+            )
+        );
+        var inverted = await TexelsAsync(state.Id, "inverted", deadline.Token);
+        await EditAsync(state.Id, deadline.Token, new StackSetLayer(fill, Mask: new("Paint")));
+        var first = await TexelsAsync(state.Id, "first", deadline.Token);
+
+        await EditAsync(state.Id, deadline.Token, new StackSetLayer(fill, Mask: new("None", Effects: [new("Colour/Invert")])));
+        var removed = Layer(await StateAsync(state.Id, deadline.Token), fill).Mask;
+        Assert.Equal("None", removed.Source);
+        Assert.Empty(removed.Effects!);
+
+        await EditAsync(state.Id, deadline.Token, new StackSetLayer(fill, Mask: new("Constant")));
+        Assert.Empty(Layer(await StateAsync(state.Id, deadline.Token), fill).Mask.Effects!);
+        await EditAsync(state.Id, deadline.Token, MaskStroke("second", fill, 600f, 600f, [0f, 0f, 0f, 1f]));
+
+        var second = await TexelsAsync(state.Id, "second", deadline.Token);
+        Near(Texel(clean, 150, 100), Texel(second, 150, 100));
+        Assert.NotEqual(Texel(clean, 650, 600), Texel(second, 650, 600));
+        Assert.NotEqual(Texel(inverted, 800, 800), Texel(second, 800, 800));
+
+        foreach (var _ in Enumerable.Range(0, 3)) {
+            await ActAsync(state.Id, "undo", deadline.Token);
+        }
+
+        Assert.Equal(
+            Digest(first.Maps, "baseColor"),
+            Digest(await PixelsAsync(state.Id, true, deadline.Token), "baseColor")
+        );
+    }
+
+    /// <summary>A stroke cannot keep a picture it would replace, so it says so instead of taking it.</summary>
+    [Theory]
+    [InlineData("Generator")]
+    [InlineData("Texture")]
+    [InlineData("Bake")]
+    [InlineData("Anchor")]
+    public async Task A_brush_leaves_a_mask_that_is_a_picture_alone(string source) {
+        using var deadline = Deadline(120);
+        var (_, state) = await StartAsync("Picture.vxlayers", deadline.Token);
+        var fill = await MaskedFillAsync(
+            state.Id,
+            new(source, Asset: "any.png", Anchor: "paint", Generator: "Generators/Dirt", Map: "curvature"),
+            deadline.Token
+        );
+
+        await RefusedAsync(state.Id, deadline.Token, MaskStroke("hole", fill, 300f, 300f, [0f, 0f, 0f, 1f]));
+
+        Assert.Equal(source, Layer(await StateAsync(state.Id, deadline.Token), fill).Mask.Source);
+    }
+
+    async Task<string> MaskedFillAsync(string id, StackMask mask, CancellationToken token) {
+        await EditAsync(id, token, new StackAddLayer("fill", "Tint", Tint));
+        var fill = (await StateAsync(id, token)).Layers[^1].Id;
+        await EditAsync(id, token, new StackSetLayer(fill, Mask: mask));
+        return fill;
+    }
+
+    static StackLayer Layer(StackState state, string id) => state.Layers.Single(layer => layer.Id == id);
+
+    /// <summary>What each map holds, as digests and as the base colour's texels, from a clean evaluation.</summary>
+    async Task<(IReadOnlyList<StackPixels> Maps, Bitmap BaseColor)> TexelsAsync(string id, string name, CancellationToken token) {
+        var maps = await ExportAsync(id, Path.Combine(folder.FullName, $"{id}-{name}"), token);
+        return (maps, PngCodec.Decode(File.ReadAllBytes(maps.Single(static map => map.Usage == "baseColor").File!)));
+    }
+
+    static byte[] Texel((IReadOnlyList<StackPixels> Maps, Bitmap BaseColor) picture, int x, int y) =>
+        picture.BaseColor.Pixels.AsSpan((y * picture.BaseColor.Width + x) * 4, 4).ToArray();
+
+    /// <summary>Equal to the rounding of one 8-bit canvas read through a mask.</summary>
+    static void Near(byte[] expected, byte[] actual) {
+        Assert.True(
+            expected.Zip(actual).All(static lanes => Math.Abs(lanes.First - lanes.Second) <= 2),
+            $"[{string.Join(", ", expected)}] and [{string.Join(", ", actual)}] are different pictures."
+        );
+    }
+
     static StackStroke MaskStroke(string stroke, string layer, float x, float y, IReadOnlyList<float> colour) =>
         new(stroke, layer, "baseColor", new(30f, Falloff: 0f), colour, Line(x, y, 20), Mask: true);
 

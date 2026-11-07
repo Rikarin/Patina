@@ -20,7 +20,7 @@ import { ProjectStore } from '../library/project-store';
 import { type DropZone, dropManyCommands } from './layer-drag';
 import { hexOf } from './layer-panel';
 import { MaterialUse } from './material-use';
-import { type LayerRow, PaintStore } from './paint-store';
+import { type LayerRow, PaintStore, toggledEffect } from './paint-store';
 
 const RowHeight = 56;
 const EffectHeight = 32;
@@ -786,8 +786,12 @@ export class LayerStack {
 
   protected choose(layer: StackLayer, mask: boolean): void {
     this.store.marked.set(new Set());
-    this.store.layer.set(layer.id);
-    this.store.masking.set(mask);
+    if (mask) {
+      this.store.chooseMask(layer);
+    } else {
+      this.store.layer.set(layer.id);
+      this.store.masking.set(false);
+    }
   }
 
   /** A click chooses one layer, Cmd adds or takes away, and Shift takes everything from the current layer to here. */
@@ -1024,8 +1028,13 @@ export class LayerStack {
     }
   }
 
-  protected invertMask(layer: StackLayer): Promise<void> {
-    return this.addWork(layer, 'Invert');
+  /** Invert is on or off, so a second time takes it away rather than stacking another. */
+  protected async invertMask(layer: StackLayer): Promise<void> {
+    this.menu.set(null);
+    const node = this.store.vocabulary()?.maskEffects.find(effect => effect.name === 'Invert')?.node;
+    if (node) {
+      await this.store.setMask(layer, { ...layer.mask, effects: toggledEffect(layer.mask.effects ?? [], node) });
+    }
   }
 
   /** Puts the selected layers in a new folder, where the top one of them was. */
@@ -1048,6 +1057,7 @@ export class LayerStack {
     this.menu.set(null);
     await this.store.setMask(layer, { ...layer.mask, source });
     this.store.masking.set(source === 'Paint');
+    this.store.maskGrey.set(0);
   }
 
   /** A mask from one colour of the id map, which the Properties pane then offers to choose. */

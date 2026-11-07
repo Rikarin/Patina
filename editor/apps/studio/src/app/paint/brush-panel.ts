@@ -100,16 +100,34 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number }[] = [
       />
       <span class="readout w-12 shrink-0 text-end text-xs">{{ store.radius() }} px</span>
     </div>
-    <div class="flex items-center gap-2">
-      <span class="text-foreground-muted w-16 shrink-0 text-xs">Colour</span>
-      <xui-color-picker
-        aria-label="Brush colour"
-        data-testid="paint-colour"
-        [presets]="store.recentColours()"
-        [value]="store.colour()"
-        (valueChange)="store.colour.set($event)"
-      />
-    </div>
+    @if (store.masking()) {
+      <div class="flex items-center gap-2">
+        <span class="text-foreground-muted w-16 shrink-0 text-xs" title="Black hides the layer and white shows it">Grey</span>
+        <xui-slider
+          class="min-w-0 flex-1"
+          labelStepSize="0"
+          aria-label="Mask grey"
+          data-testid="paint-mask-grey"
+          [max]="1"
+          [min]="0"
+          [stepSize]="0.01"
+          [value]="store.maskGrey()"
+          (valueChange)="store.maskGrey.set($event)"
+        />
+        <span class="readout w-12 shrink-0 text-end text-xs">{{ store.maskGrey().toFixed(2) }}</span>
+      </div>
+    } @else {
+      <div class="flex items-center gap-2">
+        <span class="text-foreground-muted w-16 shrink-0 text-xs">Colour</span>
+        <xui-color-picker
+          aria-label="Brush colour"
+          data-testid="paint-colour"
+          [presets]="store.recentColours()"
+          [value]="store.colour()"
+          (valueChange)="store.colour.set($event)"
+        />
+      </div>
+    }
     <div class="flex items-center gap-1">
       <span class="text-foreground-muted w-16 shrink-0 text-xs">Alpha</span>
       <xui-select
@@ -136,7 +154,7 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number }[] = [
         }
       </select>
     </div>
-    <div class="flex flex-col gap-1" data-testid="paint-channels">
+    <div class="flex flex-col gap-1" data-testid="paint-channels" [hidden]="store.masking()">
       <span class="section-label">Also paints</span>
       @for (channel of others(); track channel.usage) {
         <div class="flex items-center gap-2">

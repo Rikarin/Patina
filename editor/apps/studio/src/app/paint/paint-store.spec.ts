@@ -5,7 +5,7 @@ import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
 import { hexOf } from './layer-panel';
 import { LiveValue } from './live-value';
-import { PaintStore, colourOf, pressureOf, rowsOf, stackSocketUrl, toTexels } from './paint-store';
+import { PaintStore, colourOf, pressureOf, rowsOf, stackSocketUrl, toTexels, toggledEffect } from './paint-store';
 import { StrokeGesture } from './stroke-gesture';
 
 const PickedView = {
@@ -143,6 +143,43 @@ describe('PaintStore', () => {
         { x: 3, y: 4, pressure: 0.5 }
       ]);
     });
+  });
+
+  it('paints a mask in grey, whatever the swatch says, and in one channel', async () => {
+    const { store, bodies } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    store.colour.set('#0000ff');
+    store.alsoPaints.set(new Map([['roughness', '#808080']]));
+    store.masking.set(true);
+    store.maskGrey.set(0.25);
+    store.begin({ x: 1, y: 2, pressure: 1 });
+    store.end();
+    await vi.waitFor(() => {
+      const batches = bodies.map(body => (body as { commands: { colour: number[]; open: boolean }[] }).commands);
+      expect(batches.at(-1)?.[0]?.open).toBe(false);
+      expect(batches.every(batch => batch.length === 1)).toBe(true);
+      expect(batches[0]?.[0]?.colour).toEqual([0.25, 0.25, 0.25, 1]);
+    });
+    expect(store.recentColours()).toEqual([]);
+  });
+
+  it('starts a brush on a flat mask as what would show on it', () => {
+    const { store } = setup();
+    const masked = (value: number): StackLayer => {
+      const held = layer('a', 'fill');
+      return { ...held, mask: { ...held.mask, source: 'Constant', value } };
+    };
+    store.chooseMask(masked(0));
+    expect(store.maskGrey()).toBe(1);
+    expect(store.masking()).toBe(true);
+    store.chooseMask(masked(1));
+    expect(store.maskGrey()).toBe(0);
+  });
+
+  it('turns an effect on, and off again rather than twice', () => {
+    const once = toggledEffect([{ node: 'Filters/Blur', enabled: true }], 'Colour/Invert');
+    expect(once.map(effect => effect.node)).toEqual(['Filters/Blur', 'Colour/Invert']);
+    expect(toggledEffect(once, 'Colour/Invert').map(effect => effect.node)).toEqual(['Filters/Blur']);
   });
 
   it('lists a group above what it holds, top first and indented', () => {
