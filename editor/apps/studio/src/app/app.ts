@@ -203,7 +203,7 @@ import { ViewportPane } from './viewport/viewport-pane';
       }
     </footer>
 
-    <xui-dialog size="lg" title="Bake" [(open)]="baking">
+    <xui-dialog class="max-w-5xl" size="lg" title="Bake" [(open)]="baking">
       <xui-dialog-body>
         <div class="flex h-[70vh] min-h-0 flex-col"><ptn-bake /></div>
       </xui-dialog-body>

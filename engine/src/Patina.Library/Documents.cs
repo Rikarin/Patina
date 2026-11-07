@@ -64,6 +64,9 @@ public sealed record ProjectDocument(
 
     /// <summary>Whether a mesh with no UV layout is given one when it is set.</summary>
     public bool AutoUnwrap { get; init; } = true;
+
+    /// <summary>Whether paint moves to a new mesh's layout, by where it sits on the surface.</summary>
+    public bool PreservePaint { get; init; } = true;
 }
 
 /// <summary>A mesh a project owns.</summary>
@@ -79,13 +82,15 @@ public sealed record ProjectMesh(AssetId Id, string File, string? High = null);
 /// <param name="Name">Its display name.</param>
 /// <param name="Mesh">The mesh it is on. A <c>texturing</c> document has one and no other kind does.</param>
 /// <param name="Role">What a graph is for, one of <see cref="GraphRoles" />. Null is a material.</param>
+/// <param name="Material">The material of the mesh a texturing document paints, as one of its texture sets.</param>
 public sealed record ProjectItem(
     AssetId Id,
     string Kind,
     string File,
     string Name,
     AssetId? Mesh = null,
-    string? Role = null
+    string? Role = null,
+    string? Material = null
 ) {
     /// <summary>What it can be searched by.</summary>
     public IReadOnlyList<string> Tags { get; init; } = [];

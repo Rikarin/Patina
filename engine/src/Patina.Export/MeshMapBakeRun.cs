@@ -37,7 +37,7 @@ public static class MeshMapBakeRun {
 
         var high = Read(request.High);
         cancellationToken.ThrowIfCancellationRequested();
-        var low = Read(request.Low);
+        var low = Read(request.Low, request.Material);
         cancellationToken.ThrowIfCancellationRequested();
 
         if (low.Mesh.TexCoords.Length != low.Mesh.CornerCount) {
@@ -74,7 +74,11 @@ public static class MeshMapBakeRun {
 
     /// <summary>Reads a mesh file into one mesh, in world space, keeping what a bake needs.</summary>
     /// <exception cref="ModelFormatException">It is not a readable model.</exception>
-    public static FlatModel Read(string path) {
+    public static FlatModel Read(string path) => Read(path, null);
+
+    /// <summary>Reads a mesh file, keeping only one material's parts if it has that material.</summary>
+    /// <exception cref="ModelFormatException">It is not a readable model.</exception>
+    public static FlatModel Read(string path, string? material) {
         var options = new ModelReadOptions {
             GenerateTangents = false, ImportAnimations = false, ImportBlendShapes = false, ImportVertexColours = true
         };
@@ -84,6 +88,12 @@ public static class MeshMapBakeRun {
             Path.GetFileNameWithoutExtension(path),
             options
         );
+        var names = MaterialNames.Unique(read.Model.Materials);
+        var index = Array.IndexOf(names, material);
+        if (index >= 0) {
+            read.Model.Parts = [..read.Model.Parts.Where(part => part.Material == index)];
+        }
+
         return ModelGeometry.Flatten(read);
     }
 

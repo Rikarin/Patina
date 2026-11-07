@@ -18,6 +18,7 @@
     <EmbeddedResource Include="../../../external/Vixen/Raven/Library/PostFx/Tonemap.rvn" LogicalName="Patina.Viewport.Library.PostFx.%(Filename)%(Extension)"/>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../Patina.Contracts/Patina.Contracts.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Platform/Vixen.Graphics.Vulkan/Vixen.Graphics.Vulkan.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.Interchange/Vixen.Interchange.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.ShaderCompiler/Vixen.ShaderCompiler.csproj"/>

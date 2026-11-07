@@ -45,9 +45,8 @@ static class ProjectFiles {
             meshes,
             documents,
             Below(path, BakeFolder),
-            Bakes(full, path),
-            document.AutoUnwrap
-        );
+            Bakes(full, path)
+        ) { AutoUnwrap = document.AutoUnwrap, PreservePaint = document.PreservePaint };
     }
 
     /// <summary>Brings a mesh into a project, unless it is in there already, and lists it.</summary>
@@ -132,10 +131,25 @@ static class ProjectFiles {
         return [..documents.Where(static d => d.Kind == DocumentKinds.Texturing)];
     }
 
-    /// <summary>Says whether a mesh with no UV layout is given one.</summary>
-    public static void SetAutoUnwrap(string root, string path, bool automatic) {
+    /// <summary>Says which material of the mesh a document paints.</summary>
+    public static void SetMaterial(string root, string path, AssetId id, string material) {
         var (_, document) = Project(root, path);
-        LibraryFiles.WriteProject(root, path, document with { AutoUnwrap = automatic });
+        List<ProjectItem> documents = [
+            ..document.Documents.Select(d => d.Id == id ? d with { Material = material } : d)
+        ];
+        LibraryFiles.WriteProject(root, path, document with { Documents = documents });
+    }
+
+    /// <summary>Says what happens to a mesh with no UV layout, and to paint on a new layout.</summary>
+    public static void SetMeshHandling(string root, string path, bool? autoUnwrap, bool? preservePaint) {
+        var (_, document) = Project(root, path);
+        LibraryFiles.WriteProject(
+            root,
+            path,
+            document with {
+                AutoUnwrap = autoUnwrap ?? document.AutoUnwrap, PreservePaint = preservePaint ?? document.PreservePaint
+            }
+        );
     }
 
     /// <summary>Puts a texturing document on another mesh.</summary>
@@ -326,6 +340,7 @@ static class ProjectFiles {
             .Select(file => Path.GetRelativePath(full, file).Replace('\\', '/'))
             .Where(static file => !file.StartsWith(BakeFolder + "/", StringComparison.Ordinal)
                 && !file.StartsWith(LibraryLayout.CompoundsFolder + "/", StringComparison.Ordinal)
+                && !file.StartsWith(LibraryLayout.PaintBackupFolder + "/", StringComparison.Ordinal)
             )
             .Take(MaxFiles)
     ];
@@ -345,7 +360,7 @@ static class ProjectFiles {
         new(mesh.Id.Value, Below(path, mesh.File), mesh.High is { } high ? Below(path, high) : null);
 
     static ProjectDocumentInfo Listed(string path, ProjectItem item) =>
-        new(item.Id.Value, item.Kind, item.Name, Below(path, item.File), item.Mesh?.Value, item.Role);
+        new(item.Id.Value, item.Kind, item.Name, Below(path, item.File), item.Mesh?.Value, item.Role, item.Material);
 
     static bool IsMesh(string file) => MeshExtensions.Contains(Path.GetExtension(file));
 

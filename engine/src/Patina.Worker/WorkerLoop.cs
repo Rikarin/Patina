@@ -2,7 +2,9 @@ using Patina.Contracts;
 using Patina.Export;
 using Patina.Ipc;
 using System.Diagnostics;
+using Patina.Viewport;
 using Vixen.Interchange;
+using Vixen.Texturing.Painting;
 
 namespace Patina.Worker;
 
@@ -14,7 +16,8 @@ sealed class WorkerLoop(
     BakeHost bakes,
     BuildHost builds,
     DeviceHost gpu,
-    DeviceWatch watch
+    DeviceWatch watch,
+    MeshShelf meshes
 ) {
     static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
     static readonly long Started = Stopwatch.GetTimestamp();
@@ -99,6 +102,8 @@ sealed class WorkerLoop(
                     or IpcTypes.StackClose
                     or IpcTypes.ViewportStack => OnDevice(request),
                 IpcTypes.MeshUnwrap => Unwrap(request),
+                IpcTypes.MeshMovePaint => MovePaint(request),
+                IpcTypes.MeshMaterials => Materials(request),
                 IpcTypes.BakeStart => bakes.Start(request, link),
                 IpcTypes.BakeCancel => bakes.Cancel(request),
                 IpcTypes.BuildStart => builds.Start(request, link),
@@ -117,6 +122,36 @@ sealed class WorkerLoop(
         } catch (Exception e) when (e is ModelFormatException or IOException or InvalidOperationException) {
             throw new IpcException($"'{Path.GetFileName(ask.Source)}' could not be unwrapped: {e.Message}");
         }
+    }
+
+    static IpcMessage Materials(IpcMessage request) {
+        var file = request.MeshFile ?? throw new IpcException("mesh.materials names no file.");
+        try {
+            return new() { Type = IpcTypes.Ok, Id = request.Id, Materials = ViewportGeometry.Materials(file) };
+        } catch (Exception e) when (e is ModelFormatException or IOException or UnauthorizedAccessException) {
+            throw new IpcException($"'{Path.GetFileName(file)}' would not read: {e.Message}");
+        }
+    }
+
+    /// <summary>Uses no device either, and each file is replaced only when its new paint is whole.</summary>
+    IpcMessage MovePaint(IpcMessage request) {
+        var ask = request.MeshMovePaint ?? throw new IpcException("mesh.move-paint moves nothing.");
+        var (from, to) = (meshes.Of(ask.From, ask.Set).Projection, meshes.Of(ask.To, ask.Set).Projection);
+        foreach (var file in ask.Paints) {
+            PaintCanvas canvas;
+            using (var read = File.OpenRead(file)) {
+                canvas = PaintCanvas.Read(read);
+            }
+
+            var part = $"{file}.{Guid.NewGuid():N}.part";
+            using (var write = File.Create(part)) {
+                PaintTransfer.Move(canvas, from, to).Write(write);
+            }
+
+            File.Move(part, file, true);
+        }
+
+        return IpcMessage.Ok(request.Id);
     }
 
     /// <summary>What uses the device, in turn with a build's step. Health and bakes never wait for this.</summary>

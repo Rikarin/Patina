@@ -10,6 +10,9 @@ public static class LibraryLayout {
     ///     name that is rooted or climbs out of its folder is refused, or a crafted stack could overwrite any file.
     /// </summary>
     /// <returns>The full path.</returns>
+    /// <summary>Where paint is copied before a new mesh moves it, a folder per move. Nothing reads it.</summary>
+    public const string PaintBackupFolder = ".paint-backup";
+
     /// <exception cref="InvalidDataException">The name leaves the folder.</exception>
     public static string Beside(string folder, string name) {
         var root = Path.GetFullPath(folder);

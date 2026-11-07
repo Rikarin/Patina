@@ -20,6 +20,9 @@ public sealed record BakeRequest {
     /// <summary>The atlas's edge, in texels.</summary>
     public int Resolution { get; init; } = 2048;
 
+    /// <summary>The material of the low mesh to bake, for one texture set of a model that has several.</summary>
+    public string? Material { get; init; }
+
     /// <summary>
     ///     What to bake beyond <c>normal</c> and <c>height</c>, which are always baked: <c>ao</c>, <c>bent</c>,
     ///     <c>curvature</c>, <c>thickness</c>, <c>position</c>, <c>world</c>, <c>id</c>.

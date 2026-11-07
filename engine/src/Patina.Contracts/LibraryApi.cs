@@ -88,13 +88,15 @@ public sealed record ProjectMeshInfo(Guid? Id, string Path, string? High);
 /// <param name="Path">Its path below the library, which the graph and stack routes take.</param>
 /// <param name="Mesh">The id of the mesh it is on.</param>
 /// <param name="Role">What a graph is for: <c>material</c>, <c>mask</c>, <c>brush</c> or <c>filter</c>.</param>
+/// <param name="Material">The material of the mesh it paints, as one of the project's texture sets.</param>
 public sealed record ProjectDocumentInfo(
     Guid? Id,
     string Kind,
     string Name,
     string Path,
     Guid? Mesh,
-    string? Role = null);
+    string? Role = null,
+    string? Material = null);
 
 /// <summary>A project as it opens.</summary>
 /// <param name="Id">The project's GUID.</param>
@@ -104,7 +106,6 @@ public sealed record ProjectDocumentInfo(
 /// <param name="Documents">What can be opened in it.</param>
 /// <param name="BakeFolder">Where its bakes go, below the library.</param>
 /// <param name="Bakes">The bakes it has.</param>
-/// <param name="AutoUnwrap">Whether a mesh with no UV layout is given one when it is set.</param>
 public sealed record ProjectContents(
     Guid Id,
     string Name,
@@ -112,9 +113,14 @@ public sealed record ProjectContents(
     IReadOnlyList<ProjectMeshInfo> Meshes,
     IReadOnlyList<ProjectDocumentInfo> Documents,
     string BakeFolder,
-    IReadOnlyList<ProjectFile> Bakes,
-    bool AutoUnwrap = true
-);
+    IReadOnlyList<ProjectFile> Bakes
+) {
+    /// <summary>Whether a mesh with no UV layout is given one when it is set.</summary>
+    public bool AutoUnwrap { get; init; } = true;
+
+    /// <summary>Whether paint moves to a new mesh's layout.</summary>
+    public bool PreservePaint { get; init; } = true;
+}
 
 /// <summary>The body of <c>POST /api/v1/library/project/meshes</c>.</summary>
 /// <param name="Project">The project, below <c>projects/</c>.</param>
@@ -132,7 +138,17 @@ public sealed record ProjectMeshRequest(string Project, string Mesh, string? Hig
 ///     Whether a mesh with no UV layout is given one, in a new file beside it. True also applies it to the mesh the
 ///     project has now.
 /// </param>
-public sealed record ProjectSettingsRequest(string Project, string? Mesh, string? High, bool? AutoUnwrap);
+/// <param name="PreservePaint">
+///     Whether paint moves to a new mesh's layout, by where it sits on the surface. Open documents have to be closed
+///     first, as it rewrites their paint files.
+/// </param>
+public sealed record ProjectSettingsRequest(
+    string Project,
+    string? Mesh,
+    string? High,
+    bool? AutoUnwrap,
+    bool? PreservePaint = null
+);
 
 /// <summary>The body of <c>POST /api/v1/library/project/documents</c>.</summary>
 /// <param name="Project">The project, below <c>projects/</c>.</param>

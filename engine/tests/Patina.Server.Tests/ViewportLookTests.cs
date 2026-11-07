@@ -13,7 +13,7 @@ public sealed class ViewportLookTests {
         var session = server.Services.GetRequiredService<ViewportSession>();
         session.SetLook(new(Table, "hash"));
 
-        session.Wear("session", "/meshes/prop.glb");
+        session.Wear("session", "/meshes/prop.glb", [], []);
 
         Assert.Equal(Table, session.State.Maps.Look);
     }
@@ -23,7 +23,7 @@ public sealed class ViewportLookTests {
         await using var server = new ServerFixture();
         var session = server.Services.GetRequiredService<ViewportSession>();
         session.SetLook(new(Table, "hash"));
-        session.Wear("session", "/meshes/prop.glb");
+        session.Wear("session", "/meshes/prop.glb", [], []);
 
         session.SetMaps(new());
 

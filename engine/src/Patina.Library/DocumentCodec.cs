@@ -14,8 +14,10 @@ public static class DocumentCodec {
     const string TagsKey = "tags";
     const string MeshKey = "mesh";
     const string RoleKey = "role";
+    const string MaterialKey = "material";
     const string MeshesKey = "meshes";
     const string AutoUnwrapKey = "autoUnwrap";
+    const string PreservePaintKey = "preservePaint";
     const string DocumentsKey = "documents";
     const string FileKey = "file";
     const string HighKey = "high";
@@ -58,6 +60,7 @@ public static class DocumentCodec {
                     ..Listed(MeshesKey, document.Meshes.Select(static m => Mesh(m))),
                     ..Listed(DocumentsKey, document.Documents.Select(static d => Item(d))),
                     ..document.AutoUnwrap ? [] : new[] { Pair(AutoUnwrapKey, YamlText.Plain("false")) },
+                    ..document.PreservePaint ? [] : new[] { Pair(PreservePaintKey, YamlText.Plain("false")) },
                     Pair(ReferencesKey, References(document.References)),
                     Pair(
                         OutputsKey,
@@ -98,6 +101,7 @@ public static class DocumentCodec {
                 Pair(FileKey, YamlText.Text(item.File)),
                 ..Present(MeshKey, item.Mesh?.ToString()),
                 ..Present(RoleKey, item.Role),
+                ..Present(MaterialKey, item.Material),
                 ..Named(TagsKey, item.Tags.Count > 0, SortedTexts(item.Tags)),
                 ..Named(DependenciesKey, item.Dependencies.Count > 0, References(item.Dependencies))
             ]
@@ -156,7 +160,8 @@ public static class DocumentCodec {
                 ) {
                     Meshes = ReadMeshes(fields),
                     Documents = ReadItems(fields),
-                    AutoUnwrap = fields.Optional(AutoUnwrapKey) != "false"
+                    AutoUnwrap = fields.Optional(AutoUnwrapKey) != "false",
+                    PreservePaint = fields.Optional(PreservePaintKey) != "false"
                 };
             }
         );
@@ -220,7 +225,8 @@ public static class DocumentCodec {
             Inside(fields, fields.Require(FileKey)),
             fields.Require(NameKey),
             mesh,
-            role
+            role,
+            fields.Optional(MaterialKey)
         ) { Tags = fields.Texts(TagsKey), Dependencies = ReadReferences(fields, DependenciesKey) };
     }
 

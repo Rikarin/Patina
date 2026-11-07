@@ -31,12 +31,15 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
 
     public IpcMessage Open(IpcMessage request) {
         var path = request.Mesh ?? throw new IpcException("viewport.open names no mesh.");
+        // A material index means nothing on another mesh, so what it wore comes off and is sent again.
+        renderer?.ClearLive();
+        followed.Clear();
         Renderer().OpenMesh(path);
         return IpcMessage.Ok(request.Id);
     }
 
-    /// <summary>The stack the viewport wears, whose maps <see cref="StackHost" /> puts here.</summary>
-    public string? Following { get; private set; }
+    /// <summary>The stacks worn: the one in front and the model's other texture sets.</summary>
+    readonly HashSet<string> followed = new(StringComparer.Ordinal);
 
     public ViewportRenderer Live => Renderer();
 
@@ -85,14 +88,23 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
         };
     }
 
-    /// <summary>Starts or stops wearing a stack. What it wore comes off, and the stack sends itself again.</summary>
-    public void Follow(string? session) {
-        if (session == Following) {
-            return;
+    /// <summary>Whether a stack is worn, so its evaluations reach the mesh.</summary>
+    public bool Follows(string session) => followed.Contains(session);
+
+    /// <summary>
+    ///     Wears these stacks. Going between a model's sets changes nothing on it, and a 4K map costs seconds to send,
+    ///     so what stays worn is not sent again. Anything else comes off.
+    /// </summary>
+    /// <returns>The stacks that have to send themselves.</returns>
+    public IReadOnlyList<string> Follow(IReadOnlyCollection<string> sessions) {
+        if (!followed.IsSubsetOf(sessions)) {
+            renderer?.ClearLive();
+            followed.Clear();
         }
 
-        renderer?.ClearLive();
-        Following = session;
+        string[] fresh = [..sessions.Where(session => !followed.Contains(session))];
+        followed.UnionWith(fresh);
+        return fresh;
     }
 
     string environment = "studio";

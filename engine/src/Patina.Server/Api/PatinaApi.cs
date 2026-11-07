@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
+using Patina.Library;
 using Patina.Server.Stacks;
 using Patina.Server.Viewport;
 using System.Runtime.InteropServices;
@@ -36,8 +37,12 @@ static class PatinaApi {
             .WithSummary("Shows a mesh file in the viewport.");
         api.MapDelete(
                 "/viewport/mesh",
-                static (ViewportSession session) => {
+                static (ViewportSession session, StackSessions stacks) => {
                     session.Clear();
+                    foreach (var held in session.Release([]).Select(stacks.Find).OfType<StackSession>()) {
+                        stacks.Close(held);
+                    }
+
                     return TypedResults.Ok(session.State);
                 }
             )
@@ -115,7 +120,8 @@ static class PatinaApi {
         ViewportStackRequest request,
         StackSessions stacks,
         ViewportSession session,
-        ServerIdentity identity
+        ServerIdentity identity,
+        LibraryHost host
     ) {
         if (stacks.Find(request.Stack) is not { } stack) {
             return TypedResults.Problem(
@@ -133,9 +139,40 @@ static class PatinaApi {
             );
         }
 
-        session.Wear(stack.Id, file);
+        // A model's other texture sets are worn with it, or the rest of it would show nothing while one is painted.
+        HashSet<string> before = [..stacks.All.Select(static open => open.Id)];
+        string[] others = [..OtherSets(host.Library, stack).Select(path => stacks.Open(path).Id)];
+        session.Wear(stack.Id, file, others, others.Except(before));
+        foreach (var closing in session.Release([..others]).Select(stacks.Find).OfType<StackSession>()) {
+            stacks.Close(closing);
+        }
+
+        foreach (var other in others.Select(stacks.Find).OfType<StackSession>()) {
+            other.Evaluate();
+        }
+
         stack.Evaluate();
         return TypedResults.Ok(session.State);
+    }
+
+    /// <summary>The documents on the other materials of a stack's model, as the project lists them.</summary>
+    static string[] OtherSets(OpenLibrary? library, StackSession stack) {
+        var root = library is null ? null : Path.Combine(library.RootPath, LibraryLayout.ProjectsFolder);
+        var folder = Path.GetDirectoryName(stack.Path);
+        if (library is null || root is null || folder is null || !folder.StartsWith(root, StringComparison.Ordinal)) {
+            return [];
+        }
+
+        try {
+            var contents = library.Contents(Path.GetRelativePath(root, folder).Replace('\\', '/'));
+            return [
+                ..contents.Documents.Where(static document => document.Material is not null)
+                    .Select(document => Path.GetFullPath(document.Path, library.RootPath))
+                    .Where(path => path != stack.Path)
+            ];
+        } catch (FileNotFoundException) {
+            return []; // a stack beside no project
+        }
     }
 
     static Results<Ok<ViewportState>, ProblemHttpResult> SetMesh(ViewportMeshRequest request, ViewportSession session) {

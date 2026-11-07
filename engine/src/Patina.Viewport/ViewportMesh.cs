@@ -1,3 +1,5 @@
+using Patina.Contracts;
+
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 using Vixen.Core.Mathematics;
@@ -15,7 +17,8 @@ readonly record struct ViewportPart(int FirstIndex, int IndexCount, int Material
 /// <summary>What a material in the file asks for.</summary>
 /// <param name="Factors">Its numbers.</param>
 /// <param name="Textures">Its images.</param>
-readonly record struct ViewportMaterial(ModelMaterialFactors Factors, ModelMaterialTextures Textures);
+/// <param name="Name">What it is called, unique in the file.</param>
+readonly record struct ViewportMaterial(ModelMaterialFactors Factors, ModelMaterialTextures Textures, string Name);
 
 /// <summary>
 ///     A model's triangles in the space the viewport draws it, so that a ray from its camera and a stroke's stamps mean
@@ -36,6 +39,14 @@ public sealed record ViewportGeometry(
     /// <summary>Reads a model file.</summary>
     /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
     public static ViewportGeometry Read(string path) => ViewportMesh.Read(path).Geometry();
+
+    /// <summary>Reads the triangles of one material, or all of them if the file has no material of that name.</summary>
+    /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
+    public static ViewportGeometry Read(string path, string material) => ViewportMesh.Read(path).Geometry(material);
+
+    /// <summary>The materials the file's triangles use, which is its texture sets.</summary>
+    /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
+    public static IReadOnlyList<string> Materials(string path) => ViewportMesh.Read(path).MaterialsInUse();
 }
 
 /// <summary>
@@ -129,6 +140,29 @@ sealed class ViewportMesh {
         return new([..vertices], [..indices], [..parts], ReadMaterials(read), bounds, hasCoordinates, false);
     }
 
+    /// <summary>The materials some part is drawn with.</summary>
+    public string[] MaterialsInUse() =>
+        [..Parts.Select(static part => part.Material).Distinct().Order().Select(material => Materials[material].Name)];
+
+    /// <summary>Which material a texture set paints, by name.</summary>
+    /// <returns>Its index, or -1 for one that is no material here.</returns>
+    public int MaterialOf(string name) => Array.FindIndex(Materials, material => material.Name == name);
+
+    /// <summary>One material's triangles as a brush reaches them, or all of them for an unknown name.</summary>
+    public ViewportGeometry Geometry(string material) {
+        var index = MaterialOf(material);
+        var whole = Geometry();
+        return index < 0
+            ? whole
+            : whole with {
+                Indices = [
+                    ..Parts.Where(part => part.Material == index)
+                        .SelectMany(part => Indices.Skip(part.FirstIndex).Take(part.IndexCount))
+                        .Select(static corner => (int)corner)
+                ]
+            };
+    }
+
     /// <summary>The triangles as a brush reaches them, in the space the viewport draws them in.</summary>
     public ViewportGeometry Geometry() {
         var count = Vertices.Length / FloatsPerVertex;
@@ -187,10 +221,15 @@ sealed class ViewportMesh {
 
     static ViewportMaterial[] ReadMaterials(ReadModel read) {
         var materials = new ViewportMaterial[Math.Max(read.MaterialFactors.Length, 1)];
+        string[] raw = [
+            ..Enumerable.Range(0, materials.Length)
+                .Select(at => at < read.Model.Materials.Length ? read.Model.Materials[at] : string.Empty)
+        ];
+        var names = MaterialNames.Unique(raw);
         for (var at = 0; at < materials.Length; at++) {
             materials[at] = at < read.MaterialFactors.Length
-                ? new(read.MaterialFactors[at], read.MaterialTextures[at])
-                : new(ModelMaterialFactors.Default, new());
+                ? new(read.MaterialFactors[at], read.MaterialTextures[at], names[at])
+                : new(ModelMaterialFactors.Default, new(), names[at]);
         }
 
         return materials;

@@ -21,9 +21,7 @@ static class ProjectSettingsEndpoint {
 
         var project = request.Project;
         try {
-            if (request.AutoUnwrap is { } automatic) {
-                library.SetAutoUnwrap(project, automatic);
-            }
+            library.SetMeshHandling(project, request.AutoUnwrap, request.PreservePaint);
 
             var before = library.Contents(project);
             var onDocument = before.Documents.FirstOrDefault(static d => d.Mesh is not null)?.Mesh;
@@ -33,29 +31,160 @@ static class ProjectSettingsEndpoint {
                 below is null ? null : library.ProjectFile(project, LibraryTreeEndpoints.Relative(project, below));
 
             var mesh = request.Mesh ?? Held(current?.Path);
-            if (mesh is null || (request.Mesh is null && request.High is null && request.AutoUnwrap != true)) {
+            if (mesh is null || (request.Mesh is null && request.High is null && request.AutoUnwrap is null)) {
                 return TypedResults.Ok(before);
             }
 
+            // ⚠ Bringing a file of the same name overwrites the old mesh, and the paint is still on its layout.
+            var moving = before.PreservePaint && request.Mesh is not null && current is not null
+                ? KeepOld(Held(current.Path)!)
+                : null;
             var added = library.AddMesh(project, mesh, request.High ?? Held(current?.High));
             if (before.AutoUnwrap) {
                 added = await UnwrappedAsync(library, worker, project, added, cancellationToken);
             }
 
-            HashSet<string> open = [..stacks.All.Select(static session => session.Path)];
-            foreach (var document in library.UseMesh(project, added.Id)) {
-                var file = library.ProjectFile(project, document.File);
-                if (!open.Contains(file)) {
-                    StackDocuments.SetModel(file, added.File);
-                }
-            }
-
+            await PutOnAsync(library, worker, stacks, project, added, moving, cancellationToken);
             host.RequestRescan();
             return TypedResults.Ok(library.Contents(project));
         } catch (IpcException e) {
             return LibraryTreeEndpoints.Problem(e, StatusCodes.Status422UnprocessableEntity);
         } catch (Exception e) when (LibraryTreeEndpoints.Refusal(e) is { } problem) {
             return problem;
+        }
+    }
+
+    /// <summary>Puts every texturing document on a mesh, makes its texture sets and moves the paint across.</summary>
+    static async Task PutOnAsync(
+        OpenLibrary library,
+        WorkerLink worker,
+        StackSessions stacks,
+        string project,
+        ProjectMesh added,
+        string? moving,
+        CancellationToken cancellationToken
+    ) {
+        HashSet<string> open = [..stacks.All.Select(static session => session.Path)];
+        var documents = library.UseMesh(project, added.Id);
+        string[] files = [..documents.Select(document => library.ProjectFile(project, document.File))];
+        if (!files.Any(open.Contains)) {
+            await MakeSetsAsync(library, worker, project, added, documents, cancellationToken);
+            documents = library.UseMesh(project, added.Id);
+            files = [..documents.Select(document => library.ProjectFile(project, document.File))];
+        }
+
+        foreach (var file in files.Where(file => !open.Contains(file))) {
+            StackDocuments.SetModel(file, added.File);
+        }
+
+        if (moving is null) {
+            return;
+        }
+
+        try {
+            await MovePaintAsync(library, worker, project, moving, added, documents, open, cancellationToken);
+        } finally {
+            File.Delete(moving);
+        }
+    }
+
+    /// <summary>
+    ///     Gives each material of the mesh a document of its own, which is its texture set: its own layers, maps and
+    ///     undo. A mesh with one material needs nothing, and a document already on a material keeps it.
+    /// </summary>
+    static async Task MakeSetsAsync(
+        OpenLibrary library,
+        WorkerLink worker,
+        string project,
+        ProjectMesh mesh,
+        IReadOnlyList<ProjectItem> documents,
+        CancellationToken cancellationToken
+    ) {
+        var connection = await worker.ConnectionAsync(cancellationToken);
+        var reply = await connection.SendAsync(
+            new() { Type = IpcTypes.MeshMaterials, MeshFile = library.ProjectFile(project, mesh.File) },
+            cancellationToken
+        );
+        var materials = reply.Materials ?? [];
+        if (materials.Count < 2 || documents.Count == 0) {
+            return;
+        }
+
+        var side = StackDocuments.Side(library.ProjectFile(project, documents[0].File));
+        var waiting = new Queue<string>(materials.Except(documents.Select(static d => d.Material ?? string.Empty)));
+        foreach (var document in documents.Where(static d => d.Material is null).Where(_ => waiting.Count > 0)) {
+            Claim(library, project, document, waiting.Dequeue());
+        }
+
+        foreach (var material in waiting) {
+            LibraryTreeEndpoints.MakeDocument(
+                library,
+                new(project, DocumentKinds.Texturing, material, mesh.Id.Value, side, null)
+            );
+            var made = library.UseMesh(project, mesh.Id).Last(static d => d.Material is null);
+            Claim(library, project, made, material);
+        }
+    }
+
+    static void Claim(OpenLibrary library, string project, ProjectItem document, string material) {
+        library.SetDocumentMaterial(project, document.Id, material);
+        StackDocuments.SetSetName(library.ProjectFile(project, document.File), material);
+    }
+
+    static string KeepOld(string mesh) {
+        var kept = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}{Path.GetExtension(mesh)}");
+        File.Copy(mesh, kept);
+        return kept;
+    }
+
+    /// <summary>Puts each document's paint on the new layout, keeping a copy of what it was.</summary>
+    static async Task MovePaintAsync(
+        OpenLibrary library,
+        WorkerLink worker,
+        string project,
+        string from,
+        ProjectMesh to,
+        IReadOnlyList<ProjectItem> documents,
+        HashSet<string> open,
+        CancellationToken cancellationToken
+    ) {
+        var backup = library.ProjectFile(
+            project,
+            $"{LibraryLayout.PaintBackupFolder}/{DateTime.UtcNow:yyyyMMdd-HHmmss}"
+        );
+        var connection = await worker.ConnectionAsync(cancellationToken);
+        foreach (var document in documents) {
+            var stack = library.ProjectFile(project, document.File);
+            if (open.Contains(stack)) {
+                throw new ProjectRefusedException($"Close '{document.Name}' first: its paint is about to move.");
+            }
+
+            string[] paints = [
+                ..StackInputs.PaintsOf(document.File, File.ReadAllText(stack))
+                    .Select(paint => library.ProjectFile(project, paint))
+                    .Where(File.Exists)
+            ];
+            if (paints.Length == 0) {
+                continue;
+            }
+
+            Directory.CreateDirectory(backup);
+            foreach (var paint in paints) {
+                File.Copy(paint, Path.Combine(backup, Path.GetFileName(paint)), true);
+            }
+
+            await connection.SendAsync(
+                new() {
+                    Type = IpcTypes.MeshMovePaint,
+                    MeshMovePaint = new(
+                        from,
+                        library.ProjectFile(project, to.File),
+                        paints,
+                        document.Material ?? string.Empty
+                    )
+                },
+                cancellationToken
+            );
         }
     }
 

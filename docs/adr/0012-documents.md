@@ -182,6 +182,10 @@ panes: they are dialogs started from a Texturing document, which already knows i
 6. **Graph brushes and masks:** built. A brush graph renders once to `brushes/<name>.png` through a graph session, so editing the
    graph needs the brush chosen again. A mask graph runs as a generator, and a filter graph as a filter layer.
 
+7. **Texture sets:** built. A set is a texturing document on one material of the mesh, named after it in `project.yaml` and in the
+   stack, so each has its own layers, maps, undo and save. The viewport wears a model's sets together, the Server holding open those
+   no tab has, and a stroke reaches only its own material's triangles. ⚠ A mesh written by Auto Unwrap is one material, so one set.
+
 ## Open questions
 
 1. **Project naming.** This keeps Project as the container with typed documents, while InstaMAT calls the document the project. If you

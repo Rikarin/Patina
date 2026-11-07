@@ -32,12 +32,16 @@ class ProjectSettingsRequest:
             auto_unwrap (bool | None | Unset): Whether a mesh with no UV layout is given one, in a new file beside it. True
                 also applies it to the mesh the
                 project has now.
+            preserve_paint (bool | None | Unset): Whether paint moves to a new mesh's layout, by where it sits on the
+                surface. Open documents have to be closed
+                first, as it rewrites their paint files.
      """
 
     project: str
     mesh: None | str | Unset = UNSET
     high: None | str | Unset = UNSET
     auto_unwrap: bool | None | Unset = UNSET
+    preserve_paint: bool | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -65,6 +69,12 @@ class ProjectSettingsRequest:
         else:
             auto_unwrap = self.auto_unwrap
 
+        preserve_paint: bool | None | Unset
+        if isinstance(self.preserve_paint, Unset):
+            preserve_paint = UNSET
+        else:
+            preserve_paint = self.preserve_paint
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -77,6 +87,8 @@ class ProjectSettingsRequest:
             field_dict["high"] = high
         if auto_unwrap is not UNSET:
             field_dict["autoUnwrap"] = auto_unwrap
+        if preserve_paint is not UNSET:
+            field_dict["preservePaint"] = preserve_paint
 
         return field_dict
 
@@ -117,11 +129,22 @@ class ProjectSettingsRequest:
         auto_unwrap = _parse_auto_unwrap(d.pop("autoUnwrap", UNSET))
 
 
+        def _parse_preserve_paint(data: object) -> bool | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(bool | None | Unset, data)
+
+        preserve_paint = _parse_preserve_paint(d.pop("preservePaint", UNSET))
+
+
         project_settings_request = cls(
             project=project,
             mesh=mesh,
             high=high,
             auto_unwrap=auto_unwrap,
+            preserve_paint=preserve_paint,
         )
 
 

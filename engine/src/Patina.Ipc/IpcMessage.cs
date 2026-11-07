@@ -84,6 +84,10 @@ public static class IpcTypes {
 
     public const string MeshUnwrap = "mesh.unwrap";
 
+    public const string MeshMovePaint = "mesh.move-paint";
+
+    public const string MeshMaterials = "mesh.materials";
+
     /// <summary>Renders each fill of a stack alone, small.</summary>
     public const string StackThumbnails = "stack.thumbnails";
 
@@ -194,6 +198,17 @@ public sealed class IpcMessage {
     public MeshUnwrapAsk? MeshUnwrap { get; set; }
 
     public bool? MeshUnwrapped { get; set; }
+
+    public MeshMovePaintAsk? MeshMovePaint { get; set; }
+
+    /// <summary>The file for <see cref="IpcTypes.MeshMaterials" />.</summary>
+    public string? MeshFile { get; set; }
+
+    /// <summary>A model's materials, in the answer to <see cref="IpcTypes.MeshMaterials" />.</summary>
+    public IReadOnlyList<string>? Materials { get; set; }
+
+    /// <summary>The model's other texture sets, worn along with <see cref="Following" />.</summary>
+    public IReadOnlyList<string>? FollowingAlso { get; set; }
 
     public StackThumbnailAsk? StackThumbnails { get; set; }
 
@@ -483,6 +498,13 @@ public sealed record StackResult(
 /// <param name="Source">The mesh file.</param>
 /// <param name="Output">Where the unwrapped mesh goes.</param>
 public sealed record MeshUnwrapAsk(string Source, string Output);
+
+/// <summary>Moves paint files from one mesh's layout to another's, rewriting them.</summary>
+/// <param name="From">The mesh they are on.</param>
+/// <param name="To">The mesh they go to.</param>
+/// <param name="Paints">The paint files.</param>
+/// <param name="Set">The texture set they belong to, whose triangles are all that are read.</param>
+public sealed record MeshMovePaintAsk(string From, string To, IReadOnlyList<string> Paints, string Set);
 
 /// <summary>Writes canvases to a folder: the stack's own for a save, the cache's for a checkpoint.</summary>
 /// <param name="Session">The session.</param>

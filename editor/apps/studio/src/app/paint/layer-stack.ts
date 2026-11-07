@@ -41,6 +41,25 @@ interface MenuAt {
     '(document:keydown)': 'press($event)'
   },
   template: `
+    @if (project.textureSets().length > 1) {
+      <div class="well flex shrink-0 flex-col gap-0.5 p-1" role="listbox" aria-label="Texture sets" data-testid="texture-sets">
+        @for (set of project.textureSets(); track set.path) {
+          <button
+            type="button"
+            role="option"
+            xuiButton
+            size="sm"
+            class="justify-start"
+            [attr.aria-selected]="set.path === project.document()?.path"
+            [attr.data-testid]="'texture-set-' + set.material"
+            [variant]="set.path === project.document()?.path ? 'default' : 'ghost'"
+            (click)="chooseSet(set.path)"
+          >
+            {{ set.material }}
+          </button>
+        }
+      </div>
+    }
     <div class="chrome-bar flex shrink-0 flex-wrap items-center gap-0.5 px-1 py-0.5" role="toolbar" aria-label="Layers">
       <button
         type="button"
@@ -346,6 +365,14 @@ interface MenuAt {
 export class LayerStack {
   protected readonly store = inject(PaintStore);
   protected readonly project = inject(ProjectStore);
+
+  /** Goes to a texture set, which is a document of the project. */
+  protected chooseSet(path: string): void {
+    const project = this.project.current();
+    if (project) {
+      void this.project.openDocument(project.path, path);
+    }
+  }
   protected readonly rowHeight = RowHeight;
   protected readonly closed = signal<ReadonlySet<string>>(new Set());
   protected readonly menu = signal<MenuAt | null>(null);

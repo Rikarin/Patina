@@ -1391,6 +1391,8 @@ export interface components {
        * @description The atlas's edge, in texels.
        */
       resolution: number;
+      /** @description The material of the low mesh to bake, for one texture set of a model that has several. */
+      material?: null | string;
       /**
        * @description What to bake beyond `normal` and `height`, which are always baked: `ao`, `bent`,
        *     `curvature`, `thickness`, `position`, `world`, `id`.
@@ -2709,11 +2711,10 @@ export interface components {
       bakeFolder: string;
       /** @description The bakes it has. */
       bakes: components['schemas']['ProjectFile'][];
-      /**
-       * @description Whether a mesh with no UV layout is given one when it is set.
-       * @default true
-       */
+      /** @description Whether a mesh with no UV layout is given one when it is set. */
       autoUnwrap: boolean;
+      /** @description Whether paint moves to a new mesh's layout. */
+      preservePaint: boolean;
     };
     /** @description The body of `POST /api/v1/library/projects`. */
     ProjectCreateRequest: {
@@ -2772,6 +2773,8 @@ export interface components {
       mesh?: null | string;
       /** @description What a graph is for: `material`, `mask`, `brush` or `filter`. */
       role?: null | string;
+      /** @description The material of the mesh it paints, as one of the project's texture sets. */
+      material?: null | string;
     };
     /** @description The body of `PATCH /api/v1/library/project/document`. */
     ProjectDocumentMeshRequest: {
@@ -2946,6 +2949,11 @@ export interface components {
        *     project has now.
        */
       autoUnwrap?: null | boolean;
+      /**
+       * @description Whether paint moves to a new mesh's layout, by where it sits on the surface. Open documents have to be closed
+       *     first, as it rewrites their paint files.
+       */
+      preservePaint?: null | boolean;
     };
     /** @description One project as the browser shows it. The project itself loads on open. */
     ProjectSummary: {

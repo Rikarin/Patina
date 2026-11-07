@@ -94,8 +94,8 @@ public static class BakeInputs {
     }
 
     /// <summary>Everything that changes a pixel, and nothing that does not: paths and names stay out.</summary>
-    static Dictionary<string, string> Settings(BakeRequest request) =>
-        new(StringComparer.Ordinal) {
+    static Dictionary<string, string> Settings(BakeRequest request) {
+        var settings = new Dictionary<string, string>(StringComparer.Ordinal) {
             ["resolution"] = Text(request.Resolution),
             ["maps"] = string.Join(
                 ',',
@@ -112,6 +112,12 @@ public static class BakeInputs {
             ["space"] = request.Space,
             ["basis"] = TangentBasis
         };
+        if (request.Material is { } material) {
+            settings["material"] = material; // only then, so a bake of a whole mesh keeps the key it had
+        }
+
+        return settings;
+    }
 
     static string Text(int value) => value.ToString(CultureInfo.InvariantCulture);
 

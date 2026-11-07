@@ -54,6 +54,8 @@ public sealed class ViewportSession(
 
     string? mesh;
     string? stack;
+    IReadOnlyList<string> also = [];
+    readonly HashSet<string> held = new(StringComparer.Ordinal);
     long painted;
     string? toldStack;
     ViewportMapSet maps = new();
@@ -101,9 +103,43 @@ public sealed class ViewportSession(
         }
     }
 
-    /// <summary>Wears a stack on its mesh: the Worker takes the maps from there on, and pictures come off.</summary>
-    public void Wear(string session, string path) {
+    /// <summary>The model's other texture sets being worn.</summary>
+    public IReadOnlyList<string> Also {
+        get {
+            lock (changing) {
+                return also;
+            }
+        }
+    }
+
+    /// <summary>A client opened a session, so it is the client's to close from now on.</summary>
+    public void Claim(string session) {
         lock (changing) {
+            held.Remove(session);
+        }
+    }
+
+    /// <summary>Takes the sessions only the viewport held open, which the caller closes.</summary>
+    public IReadOnlyList<string> Release(IEnumerable<string> keeping) {
+        lock (changing) {
+            string[] dropped = [..held.Except(keeping)];
+            held.ExceptWith(dropped);
+            return dropped;
+        }
+    }
+
+    /// <summary>
+    ///     Wears a stack on its mesh with the model's other texture sets: the Worker takes the maps from there on, and
+    ///     pictures come off.
+    /// </summary>
+    /// <param name="session">The stack in front.</param>
+    /// <param name="path">The mesh.</param>
+    /// <param name="others">The other sets.</param>
+    /// <param name="opened">Those of them only this opened.</param>
+    public void Wear(string session, string path, IReadOnlyList<string> others, IEnumerable<string> opened) {
+        lock (changing) {
+            also = others;
+            held.UnionWith(opened);
             mesh = path;
             stack = session;
             maps = new() { Look = maps.Look };
@@ -119,11 +155,12 @@ public sealed class ViewportSession(
     /// <summary>A stack's maps moved: the next frame shows this revision, if the viewport is wearing it.</summary>
     public void Repainted(string session, long stackRevision) {
         lock (changing) {
-            if (stack != session) {
+            if (stack == session) {
+                painted = stackRevision;
+            } else if (!also.Contains(session)) {
                 return;
             }
 
-            painted = stackRevision;
             revision++;
         }
 
@@ -135,6 +172,7 @@ public sealed class ViewportSession(
         lock (changing) {
             mesh = path;
             stack = null;
+            also = [];
             maps = pictures with { Look = maps.Look };
             error = null;
             mapsError = null;
@@ -149,6 +187,7 @@ public sealed class ViewportSession(
         lock (changing) {
             mesh = null;
             stack = null;
+            also = [];
             maps = new() { Look = maps.Look };
             error = null;
             mapsError = null;
@@ -162,6 +201,7 @@ public sealed class ViewportSession(
     public void SetMaps(ViewportMapSet pictures) {
         lock (changing) {
             stack = null;
+            also = [];
             maps = pictures with { Look = maps.Look };
             mapsError = null;
             revision++;
@@ -264,12 +304,13 @@ public sealed class ViewportSession(
             await TellMapsAsync(connection, work.Maps, cancellationToken);
         }
 
-        if (work.Worn.Stack != toldStack) {
+        var wearing = work.Worn.Stack is null ? null : string.Join('|', [work.Worn.Stack, ..work.Worn.Also]);
+        if (wearing != toldStack) {
             await connection.SendAsync(
-                new() { Type = IpcTypes.ViewportStack, Following = work.Worn.Stack },
+                new() { Type = IpcTypes.ViewportStack, Following = work.Worn.Stack, FollowingAlso = work.Worn.Also },
                 cancellationToken
             );
-            toldStack = work.Worn.Stack;
+            toldStack = wearing;
         }
 
         if (work.Camera != toldCamera) {
@@ -355,7 +396,7 @@ public sealed class ViewportSession(
                 ? (null, revision)
                 : (new(
                     mesh,
-                    new(stack, painted),
+                    new(stack, also, painted),
                     maps with { Environment = environment },
                     camera,
                     (width, height),
@@ -476,7 +517,7 @@ public sealed class ViewportSession(
         );
 
     /// <summary>The stack the viewport wears, if any, and the newest revision of it the Worker has shown.</summary>
-    readonly record struct Wearing(string? Stack, long Revision);
+    readonly record struct Wearing(string? Stack, IReadOnlyList<string> Also, long Revision);
 
     readonly record struct Work(
         string? Mesh,

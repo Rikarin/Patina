@@ -49,7 +49,12 @@ public sealed class ViewportRenderer : IDisposable {
     Targets? targets;
     string? meshFolder;
     ViewportMaps maps = ViewportMaps.None;
-    readonly ViewportLiveMap?[] live = new ViewportLiveMap?[Enum.GetValues<ViewportSlot>().Length];
+
+    /// <summary>The key of a live map on the whole model.</summary>
+    public const int AllMaterials = -1;
+
+    /// <summary>Live maps by material. <see cref="AllMaterials" /> is a stack that paints the whole model.</summary>
+    readonly Dictionary<int, ViewportLiveMap?[]> live = [];
 
     ViewportRenderer(VulkanDevice device, ShaderCache cache) {
         this.device = device;
@@ -179,12 +184,19 @@ public sealed class ViewportRenderer : IDisposable {
     ///     Replaces a slot's picture with live pixels, the bytes an export writes: RGBA, tightly packed, top row first.
     ///     They win over any file, and stay until <see cref="ClearLive" /> or another mesh's stack replaces them.
     /// </summary>
-    public void SetLive(ViewportSlot slot, int width, int height, ReadOnlySpan<byte> pixels) {
-        var map = live[(int)slot];
+    public void SetLive(
+        ViewportSlot slot,
+        int width,
+        int height,
+        ReadOnlySpan<byte> pixels,
+        int material = AllMaterials
+    ) {
+        var maps = LiveOf(material);
+        var map = maps[(int)slot];
         var created = map is null || map.Width != width || map.Height != height;
         if (created) {
             map?.Dispose();
-            map = live[(int)slot] = new(device, Meaning(slot), width, height);
+            map = maps[(int)slot] = new(device, Meaning(slot), width, height);
         }
 
         map!.Repair([new(new(0, 0, width, height), [..pixels])]);
@@ -194,20 +206,23 @@ public sealed class ViewportRenderer : IDisposable {
     }
 
     /// <summary>Rewrites only the rectangles that changed, with the mips above them. Nothing rebinds.</summary>
-    public void RepairLive(ViewportSlot slot, IReadOnlyList<ViewportRepair> repairs) {
+    public void RepairLive(ViewportSlot slot, IReadOnlyList<ViewportRepair> repairs, int material = AllMaterials) {
         ArgumentNullException.ThrowIfNull(repairs);
-        (live[(int)slot] ?? throw new InvalidOperationException($"{slot} has no live map.")).Repair(repairs);
+        (LiveOf(material)[(int)slot] ?? throw new InvalidOperationException($"{slot} has no live map.")).Repair(
+            repairs
+        );
     }
 
     /// <summary>Takes the live maps off.</summary>
     public void ClearLive() {
         var had = false;
         device.WaitIdle();
-        for (var slot = 0; slot < live.Length; slot++) {
-            had |= live[slot] is not null;
-            live[slot]?.Dispose();
-            live[slot] = null;
+        foreach (var map in live.Values.SelectMany(static maps => maps).OfType<ViewportLiveMap>()) {
+            had = true;
+            map.Dispose();
         }
+
+        live.Clear();
 
         if (had && geometry is { } scene) {
             Show(scene.Mesh);
@@ -219,7 +234,26 @@ public sealed class ViewportRenderer : IDisposable {
     ///     row first. Null when the slot has no live map. This is the picture before lighting and tonemapping, which
     ///     is the one that can equal an exported file.
     /// </summary>
-    public byte[]? Sampled(ViewportSlot slot) => live[(int)slot]?.ReadBack();
+    public byte[]? Sampled(ViewportSlot slot, int material = AllMaterials) => LiveOf(material)[(int)slot]?.ReadBack();
+
+    /// <summary>Which material a texture set paints, by name, or every material for a name that is none here.</summary>
+    public int MaterialOf(string name) => geometry?.Mesh.MaterialOf(name) is >= 0 and var at ? at : AllMaterials;
+
+    ViewportLiveMap?[] LiveOf(int material) {
+        if (!live.TryGetValue(material, out var maps)) {
+            live[material] = maps = new ViewportLiveMap?[Enum.GetValues<ViewportSlot>().Length];
+        }
+
+        return maps;
+    }
+
+    /// <summary>What a material wears: a stack of its own, or the one on the whole model, or nothing.</summary>
+    ViewportLiveMap?[] Worn(int material) =>
+        live.TryGetValue(material, out var own)
+            ? own
+            : live.TryGetValue(AllMaterials, out var whole)
+                ? whole
+                : new ViewportLiveMap?[Enum.GetValues<ViewportSlot>().Length];
 
     /// <summary>How dark a shadow is, from none at zero to no direct light at one.</summary>
     public float ShadowStrength { get; set; } = 1f;
@@ -269,7 +303,7 @@ public sealed class ViewportRenderer : IDisposable {
         device.WaitIdle();
         targets?.Dispose();
         geometry?.Dispose();
-        foreach (var map in live) {
+        foreach (var map in live.Values.SelectMany(static maps => maps)) {
             map?.Dispose();
         }
 
@@ -283,12 +317,14 @@ public sealed class ViewportRenderer : IDisposable {
 
     /// <summary>Puts a mesh on the GPU with its materials as they stand, dropping textures no longer used.</summary>
     void Show(ViewportMesh mesh) {
-        var ready = maps.Normal is not null || live[(int)ViewportSlot.Normal] is not null || mesh.WantsTangents
-            ? mesh.WithTangents()
-            : mesh;
+        var ready = maps.Normal is not null
+            || live.Values.Any(static worn => worn[(int)ViewportSlot.Normal] is not null)
+            || mesh.WantsTangents
+                ? mesh.WithTangents()
+                : mesh;
         var next = ReferenceEquals(ready, geometry?.Mesh) ? geometry! : new Geometry(device, ready);
         textures.BeginUse();
-        var sets = next.Bind(forward, material => Material(material, ready));
+        var sets = next.Bind(forward, (index, material) => Material(index, material, ready));
         if (!ReferenceEquals(next, geometry)) {
             geometry?.Dispose();
             geometry = next;
@@ -299,28 +335,32 @@ public sealed class ViewportRenderer : IDisposable {
     }
 
     /// <summary>A material with the pictures laid over it, each slot read as what it means.</summary>
-    MaterialBinding Material(ViewportMaterial material, ViewportMesh mesh) {
+    MaterialBinding Material(int index, ViewportMaterial material, ViewportMesh mesh) {
         var own = material.Textures;
+        var worn = Worn(index);
 
         var factors = material.Factors;
-        var colour = Covered(ViewportSlot.BaseColor, maps.BaseColor) ? new Vector4(1f, 1f, 1f, 1f) : factors.BaseColor;
+        var colour = Covered(worn, ViewportSlot.BaseColor, maps.BaseColor)
+            ? new Vector4(1f, 1f, 1f, 1f)
+            : factors.BaseColor;
         var normal = mesh.HasTangents
-            ? Slot(ViewportSlot.Normal, maps.Normal, own.Normal, MapMeaning.Normal, textures.Open)
+            ? Slot(worn, ViewportSlot.Normal, maps.Normal, own.Normal, MapMeaning.Normal, textures.Open)
             : textures.Open;
-        var laidOver = Covered(ViewportSlot.Normal, maps.Normal);
+        var laidOver = Covered(worn, ViewportSlot.Normal, maps.Normal);
         var hasNormal = mesh.HasTangents && (laidOver || own.Normal is not null);
 
         return new(
             new(colour.X, colour.Y, colour.Z),
-            Covered(ViewportSlot.Metallic, maps.Metallic) ? 1f : factors.Metallic,
-            Covered(ViewportSlot.Roughness, maps.Roughness) ? 1f : factors.Roughness,
+            Covered(worn, ViewportSlot.Metallic, maps.Metallic) ? 1f : factors.Metallic,
+            Covered(worn, ViewportSlot.Roughness, maps.Roughness) ? 1f : factors.Roughness,
             laidOver ? 1f : own.NormalScale,
             hasNormal,
             laidOver && maps.GreenDown ? -1f : 1f,
             new(
-                Slot(ViewportSlot.BaseColor, maps.BaseColor, own.BaseColor, MapMeaning.Colour, textures.White),
+                Slot(worn, ViewportSlot.BaseColor, maps.BaseColor, own.BaseColor, MapMeaning.Colour, textures.White),
                 normal,
                 Slot(
+                    worn,
                     ViewportSlot.Roughness,
                     maps.Roughness,
                     own.MetallicRoughness,
@@ -328,32 +368,42 @@ public sealed class ViewportRenderer : IDisposable {
                     textures.Open
                 ),
                 Slot(
+                    worn,
                     ViewportSlot.Metallic,
                     maps.Metallic,
                     own.MetallicRoughness,
                     MapMeaning.Measurement,
                     textures.Open
                 ),
-                Slot(ViewportSlot.Occlusion, maps.Occlusion, own.Occlusion, MapMeaning.Measurement, textures.Open),
-                Slot(ViewportSlot.Emissive, maps.Emissive, null, MapMeaning.Colour, textures.Black),
-                Slot(ViewportSlot.Opacity, maps.Opacity, null, MapMeaning.Measurement, textures.Open)
+                Slot(
+                    worn,
+                    ViewportSlot.Occlusion,
+                    maps.Occlusion,
+                    own.Occlusion,
+                    MapMeaning.Measurement,
+                    textures.Open
+                ),
+                Slot(worn, ViewportSlot.Emissive, maps.Emissive, null, MapMeaning.Colour, textures.Black),
+                Slot(worn, ViewportSlot.Opacity, maps.Opacity, null, MapMeaning.Measurement, textures.Open)
             ),
             mapSampler
         );
     }
 
     /// <summary>Whether a picture fills a slot, so the material's own factor for it stands down.</summary>
-    bool Covered(ViewportSlot slot, ViewportMapFile? file) => live[(int)slot] is not null || file is not null;
+    static bool Covered(ViewportLiveMap?[] worn, ViewportSlot slot, ViewportMapFile? file) =>
+        worn[(int)slot] is not null || file is not null;
 
     /// <summary>What a slot samples: live pixels, a picture laid over, the material's own image, or nothing.</summary>
     TextureViewHandle Slot(
+        ViewportLiveMap?[] worn,
         ViewportSlot slot,
         ViewportMapFile? file,
         ModelTexture? image,
         MapMeaning meaning,
         TextureViewHandle empty
     ) =>
-        live[(int)slot] is { } map
+        worn[(int)slot] is { } map
             ? map.View
             : file is not null
                 ? textures.Of(file, meaning)
@@ -605,12 +655,12 @@ public sealed class ViewportRenderer : IDisposable {
         /// <summary>Makes a set for every material, for <see cref="Use" /> to swap in once it is all there.</summary>
         public List<(DescriptorSetHandle Set, BufferHandle Constants)> Bind(
             Pass forward,
-            Func<ViewportMaterial, MaterialBinding> describe
+            Func<int, ViewportMaterial, MaterialBinding> describe
         ) {
             var block = forward.Effect.BlockOf(DescriptorSetSlot.PerMaterial);
             List<(DescriptorSetHandle, BufferHandle)> made = [];
-            foreach (var material in Mesh.Materials) {
-                made.Add(Material(forward, block, describe(material)));
+            for (var index = 0; index < Mesh.Materials.Length; index++) {
+                made.Add(Material(forward, block, describe(index, Mesh.Materials[index])));
             }
 
             return made;

@@ -47,7 +47,6 @@ test('a bake runs from the panel and its maps show in the Texture pane', async (
 
   await window.getByTestId('open-bake').click();
   await choose('high', join(scratch, 'meshes', 'housing_high.glb'));
-  await choose('low', join(scratch, 'meshes', 'housing_low.glb'));
   await choose('output', output);
   await window.getByTestId('bake-start').click();
 
@@ -90,7 +89,6 @@ test('a bake can be judged on its low mesh in the viewport, with a cage and a sk
 
   await window.getByTestId('open-bake').click();
   await choose('high', join(scratch, 'meshes', 'housing_high.glb'));
-  await choose('low', low);
   await choose('cage', low);
   await choose('skewMap', skew);
   await choose('output', output);
@@ -112,12 +110,9 @@ test('a bake can be judged on its low mesh in the viewport, with a cage and a sk
   await window.screenshot({ path: join(shots, 'bake-on-mesh.png') });
 });
 
-test('the panel says why the Server refused a bake', async () => {
+test('the panel says why the Server refused a high poly mesh', async () => {
   await window.getByTestId('open-bake').click();
   await choose('high', '/nowhere/high.glb');
-  await choose('low', '/nowhere/low.glb');
-  await choose('output', scratch);
-  await window.getByTestId('bake-start').click();
 
-  await expect(window.getByTestId('bake-refused')).toContainText('/nowhere/high.glb');
+  await expect(window.getByTestId('app-failure')).toContainText('/nowhere/high.glb');
 });

@@ -1,9 +1,9 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { leave, newLibrary, newProject } from './projects';
+import { answerOpen, leave, newLibrary, newProject } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net10.0/patina-bench.dll');
@@ -154,6 +154,64 @@ test('a mesh with no UVs is unwrapped when a project is made, and the setting st
   expect(yaml).toContain('autoUnwrap: false');
   expect(yaml).toContain('plain_unwrapped.glb');
   expect(yaml).not.toContain('file: plain.obj');
+});
+
+test('each material of a mesh is a texture set, and paint follows a repacked mesh', async () => {
+  await newLibrary(app, window, join(scratch, 'Sets.ptlib'));
+  const quads = (u: number, v: number): string[] => [
+    'usemtl metal',
+    'f 1/1 2/2 3/3 4/4',
+    'usemtl wood',
+    'f 5/1 6/2 7/3 8/4',
+    `# ${u} ${v}`
+  ];
+  const obj = (name: string, low: number, high: number): string => {
+    writeFileSync(
+      join(scratch, name),
+      [
+        ...['0 0 0', '1 0 0', '1 1 0', '0 1 0', '2 0 0', '3 0 0', '3 1 0', '2 1 0'].map(v => `v ${v}`),
+        ...[`${low} ${low}`, `${high} ${low}`, `${high} ${high}`, `${low} ${high}`].map(t => `vt ${t}`),
+        ...quads(low, high)
+      ].join('\n')
+    );
+    return join(scratch, name);
+  };
+  await newProject(app, window, 'Sets', obj('sets.obj', 0, 0.5));
+  await expect(window.getByTestId('texture-sets')).toBeVisible({ timeout: 60_000 });
+  await expect(window.getByTestId('app-failure')).toHaveCount(0);
+  await expect(window.getByTestId('texture-set-wood')).toHaveAttribute('aria-selected', 'false');
+
+  await window.getByTestId('texture-set-wood').click();
+  await expect(window.getByTestId('texture-set-wood')).toHaveAttribute('aria-selected', 'true');
+  await window.getByTestId('texture-set-metal').click();
+  await expect(window.getByTestId('texture-set-metal')).toHaveAttribute('aria-selected', 'true');
+
+  await window.getByTestId('paint-add').click();
+  const picture = await window.getByTestId('paint-picture').boundingBox();
+  if (!picture) {
+    throw new Error('The map is not on screen.');
+  }
+
+  await window.mouse.move(picture.x + picture.width * 0.2, picture.y + picture.height * 0.2);
+  await window.mouse.down();
+  await window.mouse.move(picture.x + picture.width * 0.3, picture.y + picture.height * 0.3, { steps: 8 });
+  await window.mouse.up();
+  const unsaved = window.getByTestId('document-tab-name').filter({ hasText: '•' });
+  await expect(unsaved).toHaveCount(1, { timeout: 30_000 });
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]?.webContents.send('patina:command', 'save');
+  });
+  await expect(unsaved).toHaveCount(0, { timeout: 30_000 });
+
+  await answerOpen(app, obj('sets.obj', 0.5, 1));
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]?.webContents.send('patina:command', 'projectSettings');
+  });
+  await window.getByTestId('project-settings-mesh').click();
+  await window.getByTestId('project-settings-apply').click();
+  await expect(window.getByTestId('project-settings')).toHaveCount(0, { timeout: 60_000 });
+  await expect(window.getByTestId('texture-sets')).toBeVisible({ timeout: 60_000 });
+  expect(readdirSync(join(scratch, 'Sets.ptlib', 'projects', 'sets', '.paint-backup'))).toHaveLength(1);
 });
 
 test('Save All on the quit dialog saves a painted stack and quits', async () => {

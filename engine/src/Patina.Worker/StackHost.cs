@@ -47,8 +47,8 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
 
     /// <summary>The viewport starts wearing a stack, or stops. A stack already here sends everything it has.</summary>
     public IpcMessage Follow(IpcMessage request) {
-        viewport.Follow(request.Following);
-        if (request.Following is { } session && Holds(session)) {
+        List<string> sessions = request.Following is { } front ? [front, ..request.FollowingAlso ?? []] : [];
+        foreach (var session in viewport.Follow(sessions).Where(Holds)) {
             var stack = Find(session);
             stack.Fed.Clear();
             if (stack.Prepare().Count == 0 && stack.Run.Plan is not null) {
@@ -89,7 +89,7 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
 
         // ⚠ The plan and not the extension: only the plan's outputs are sure to be readable afterwards, and
         // what the viewport needs is what this repair rewrote.
-        if (viewport.Following == ask.Session) {
+        if (viewport.Follows(ask.Session)) {
             using var bake = stack.Run.Evaluate();
             Feed(stack, bake);
             (ran, repaired, reused) = (bake.Ran.Length, bake.Repaired, bake.Reused);
@@ -141,6 +141,7 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
     ///     process, which is also why a Worker with a dead viewport still paints.
     /// </summary>
     void Feed(Session stack, TextureBake bake) {
+        var material = viewport.Live.MaterialOf(stack.SetName);
         foreach (var output in stack.Run.Outputs) {
             if (Slot(output.Usage) is not { } slot) {
                 continue;
@@ -164,11 +165,12 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
                                     pair.Second.Pixels
                                 )
                             )
-                    ]
+                    ],
+                    material
                 );
             } else {
                 var map = bake.Read(output.Image);
-                viewport.Live.SetLive(slot, map.Width, map.Height, map.Pixels);
+                viewport.Live.SetLive(slot, map.Width, map.Height, map.Pixels, material);
             }
 
             stack.Fed[slot] = key;
@@ -230,7 +232,8 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
     List<StackPixels> Sampled(Session stack) {
         List<StackPixels> pixels = [];
         foreach (var output in stack.Run.Outputs) {
-            if (Slot(output.Usage) is { } slot && viewport.Live.Sampled(slot) is { } bytes) {
+            if (Slot(output.Usage) is { } slot
+                && viewport.Live.Sampled(slot, viewport.Live.MaterialOf(stack.SetName)) is { } bytes) {
                 var size = stack.Run.Plan!.SizeOf(output.Image);
                 pixels.Add(new(output.Usage, size.X, size.Y, Convert.ToHexStringLower(SHA256.HashData(bytes))));
             }
@@ -329,6 +332,9 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
         }
 
         public LayerStackEvaluator Run { get; }
+
+        /// <summary>The texture set this paints, which is a material's name on a model that has several.</summary>
+        public string SetName => set;
 
         /// <summary>
         ///     Each fill with something to show, alone and small. It is its own stack, so a stroke's plan pays nothing,
@@ -581,7 +587,8 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
 
             var file = Path.GetFullPath(model, folder);
             if (!surfaces.TryGetValue(file, out var surface)) {
-                surfaces[file] = surface = new(meshes.Of(file).Projection, document.BaseWidth, document.BaseHeight);
+                surfaces[file] = surface =
+                    new(meshes.Of(file, set).Projection, document.BaseWidth, document.BaseHeight);
             }
 
             return surface;

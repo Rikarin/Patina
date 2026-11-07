@@ -227,10 +227,18 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
-    /// <summary>Says whether a project gives a mesh with no UV layout one.</summary>
-    public void SetAutoUnwrap(string path, bool automatic) {
+    /// <summary>Says which material of the mesh a document paints, as one of the project's texture sets.</summary>
+    public void SetDocumentMaterial(string path, AssetId document, string material) {
         lock (createGate) {
-            ProjectFiles.SetAutoUnwrap(RootPath, path, automatic);
+            ProjectFiles.SetMaterial(RootPath, path, document, material);
+            Interlocked.Increment(ref unscannedWrites);
+        }
+    }
+
+    /// <summary>Says what a project does with a mesh with no UV layout, and with paint on a new layout.</summary>
+    public void SetMeshHandling(string path, bool? autoUnwrap, bool? preservePaint) {
+        lock (createGate) {
+            ProjectFiles.SetMeshHandling(RootPath, path, autoUnwrap, preservePaint);
             Interlocked.Increment(ref unscannedWrites);
         }
     }

@@ -32,6 +32,7 @@ class ProjectDocumentInfo:
             id (None | Unset | UUID): Its GUID. Null until the project lists it.
             mesh (None | Unset | UUID): The id of the mesh it is on.
             role (None | str | Unset): What a graph is for: `material`, `mask`, `brush` or `filter`.
+            material (None | str | Unset): The material of the mesh it paints, as one of the project's texture sets.
      """
 
     kind: str
@@ -40,6 +41,7 @@ class ProjectDocumentInfo:
     id: None | Unset | UUID = UNSET
     mesh: None | Unset | UUID = UNSET
     role: None | str | Unset = UNSET
+    material: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -75,6 +77,12 @@ class ProjectDocumentInfo:
         else:
             role = self.role
 
+        material: None | str | Unset
+        if isinstance(self.material, Unset):
+            material = UNSET
+        else:
+            material = self.material
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -89,6 +97,8 @@ class ProjectDocumentInfo:
             field_dict["mesh"] = mesh
         if role is not UNSET:
             field_dict["role"] = role
+        if material is not UNSET:
+            field_dict["material"] = material
 
         return field_dict
 
@@ -153,6 +163,16 @@ class ProjectDocumentInfo:
         role = _parse_role(d.pop("role", UNSET))
 
 
+        def _parse_material(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        material = _parse_material(d.pop("material", UNSET))
+
+
         project_document_info = cls(
             kind=kind,
             name=name,
@@ -160,6 +180,7 @@ class ProjectDocumentInfo:
             id=id,
             mesh=mesh,
             role=role,
+            material=material,
         )
 
 

@@ -4732,6 +4732,13 @@
             "description": "The atlas\u0027s edge, in texels.",
             "format": "int32"
           },
+          "material": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The material of the low mesh to bake, for one texture set of a model that has several."
+          },
           "maps": {
             "type": [
               "null",
@@ -7765,7 +7772,8 @@
           "documents",
           "bakeFolder",
           "bakes",
-          "autoUnwrap"
+          "autoUnwrap",
+          "preservePaint"
         ],
         "type": "object",
         "properties": {
@@ -7809,8 +7817,11 @@
           },
           "autoUnwrap": {
             "type": "boolean",
-            "description": "Whether a mesh with no UV layout is given one when it is set.",
-            "default": true
+            "description": "Whether a mesh with no UV layout is given one when it is set."
+          },
+          "preservePaint": {
+            "type": "boolean",
+            "description": "Whether paint moves to a new mesh\u0027s layout."
           }
         },
         "description": "A project as it opens."
@@ -7947,6 +7958,13 @@
               "string"
             ],
             "description": "What a graph is for: \u0060material\u0060, \u0060mask\u0060, \u0060brush\u0060 or \u0060filter\u0060."
+          },
+          "material": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The material of the mesh it paints, as one of the project\u0027s texture sets."
           }
         },
         "description": "Something in a project that can be opened and edited (ADR 0012)."
@@ -8327,6 +8345,13 @@
               "boolean"
             ],
             "description": "Whether a mesh with no UV layout is given one, in a new file beside it. True also applies it to the mesh the\nproject has now."
+          },
+          "preservePaint": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether paint moves to a new mesh\u0027s layout, by where it sits on the surface. Open documents have to be closed\nfirst, as it rewrites their paint files."
           }
         },
         "description": "The body of \u0060PATCH /api/v1/library/project/settings\u0060. Null leaves a setting as it is."

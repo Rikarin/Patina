@@ -40,6 +40,8 @@ class BakeRequest:
             gutter (int): How many texels of dilation surround each chart.
             space (str): `tangent` or `object`.
             cage (None | str | Unset): A mesh with the low mesh's faces, moved outward, which the rays start from.
+            material (None | str | Unset): The material of the low mesh to bake, for one texture set of a model that has
+                several.
             maps (list[str] | None | Unset): What to bake beyond `normal` and `height`, which are always baked: `ao`,
                 `bent`,
                 `curvature`, `thickness`, `position`, `world`, `id`.
@@ -61,6 +63,7 @@ class BakeRequest:
     gutter: int
     space: str
     cage: None | str | Unset = UNSET
+    material: None | str | Unset = UNSET
     maps: list[str] | None | Unset = UNSET
     skew_map: None | str | Unset = UNSET
     name: None | str | Unset = UNSET
@@ -102,6 +105,12 @@ class BakeRequest:
             cage = UNSET
         else:
             cage = self.cage
+
+        material: None | str | Unset
+        if isinstance(self.material, Unset):
+            material = UNSET
+        else:
+            material = self.material
 
         maps: list[str] | None | Unset
         if isinstance(self.maps, Unset):
@@ -145,6 +154,8 @@ class BakeRequest:
         })
         if cage is not UNSET:
             field_dict["cage"] = cage
+        if material is not UNSET:
+            field_dict["material"] = material
         if maps is not UNSET:
             field_dict["maps"] = maps
         if skew_map is not UNSET:
@@ -193,6 +204,16 @@ class BakeRequest:
             return cast(None | str | Unset, data)
 
         cage = _parse_cage(d.pop("cage", UNSET))
+
+
+        def _parse_material(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        material = _parse_material(d.pop("material", UNSET))
 
 
         def _parse_maps(data: object) -> list[str] | None | Unset:
@@ -248,6 +269,7 @@ class BakeRequest:
             gutter=gutter,
             space=space,
             cage=cage,
+            material=material,
             maps=maps,
             skew_map=skew_map,
             name=name,

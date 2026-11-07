@@ -31,7 +31,7 @@ const ExtraMaps: readonly { name: string; label: string }[] = [
 /** What a project's masks and materials read. */
 const ProjectMaps = ['ao', 'curvature', 'thickness', 'position', 'world', 'id'];
 
-type PathField = 'high' | 'low' | 'cage' | 'skewMap' | 'output';
+type PathField = 'high' | 'cage' | 'skewMap' | 'output';
 
 /**
  * Asks the Server for a bake and follows it. Everything sent is a path, as for any client (plan §8): a Blender add-on
@@ -64,8 +64,8 @@ type PathField = 'high' | 'low' | 'cage' | 'skewMap' | 'output';
               [attr.data-testid]="'bake-' + field.key"
               [placeholder]="field.placeholder"
               [readOnly]="canPick"
-              [title]="paths()[field.key]"
-              [value]="canPick ? nameOf(paths()[field.key]) : paths()[field.key]"
+              [title]="shown(field.key)"
+              [value]="canPick ? nameOf(shown(field.key)) : shown(field.key)"
               (input)="setPath(field.key, text($event))"
             />
             @if (canPick) {
@@ -323,8 +323,7 @@ export class BakePane {
   protected readonly extraMaps = ExtraMaps;
   protected readonly canPick = desktop() !== undefined;
   protected readonly pathFields: readonly { key: PathField; label: string; placeholder: string }[] = [
-    { key: 'high', label: 'High mesh', placeholder: 'The detailed mesh' },
-    { key: 'low', label: 'Low mesh', placeholder: 'The mesh being textured' },
+    { key: 'high', label: 'High poly mesh', placeholder: 'Optional: bakes from the mesh itself' },
     { key: 'cage', label: 'Cage', placeholder: 'Optional' },
     { key: 'skewMap', label: 'Skew map', placeholder: 'Optional: a square grey image' },
     { key: 'output', label: 'Output folder', placeholder: 'Where the maps go' }
@@ -332,7 +331,6 @@ export class BakePane {
 
   protected readonly paths = signal<Record<PathField, string>>({
     high: '',
-    low: '',
     cage: '',
     skewMap: '',
     output: ''
@@ -349,6 +347,11 @@ export class BakePane {
   protected readonly maps = signal<ReadonlySet<string>>(new Set(['ao']));
   protected readonly refused = signal<string | null>(null);
 
+  private readonly library = computed(() => {
+    const status = this.status.state();
+    return status.kind === 'online' ? status.system.library : null;
+  });
+
   protected readonly running = computed(() => {
     const state = this.store.current()?.state;
     return state === 'queued' || state === 'running';
@@ -358,22 +361,20 @@ export class BakePane {
     // An opened project already knows what to bake and where the maps belong.
     effect(() => {
       const project = this.project.current();
-      const mesh = this.project.mesh();
-      if (project?.path === this.filledFor) {
+      const set = this.project.document()?.material;
+      const key = `${project?.path}/${set}`;
+      if (key === this.filledFor) {
         return;
       }
 
       const status = this.status.state();
       const library = status.kind === 'online' ? status.system.library : null;
       if (project && library) {
-        this.filledFor = project.path;
+        this.filledFor = key;
         untracked(() => {
           this.paths.update(paths => ({
             ...paths,
-            low: mesh ? `${library}/${mesh.path}` : paths.low,
-            // A mesh with nothing finer bakes from itself, which still gives its curvature and occlusion.
-            high: mesh ? `${library}/${mesh.high ?? mesh.path}` : paths.high,
-            output: `${library}/${project.bakeFolder}/maps`
+            output: `${library}/${project.bakeFolder}/maps${set ? `/${set}` : ''}`
           }));
           this.maps.set(new Set(ProjectMaps));
         });
@@ -381,10 +382,25 @@ export class BakePane {
     });
   }
 
-  protected readonly canStart = computed(() => {
-    const { high, low, output } = this.paths();
-    return high.trim() !== '' && low.trim() !== '' && output.trim() !== '' && !this.running();
+  /** The project's mesh. The Project Settings dialog chooses it, so it is the same one in every pane. */
+  private readonly low = computed(() => {
+    const mesh = this.project.mesh();
+    return mesh ? `${this.library()}/${mesh.path}` : '';
   });
+  /** A mesh with nothing finer bakes from itself, which still gives its curvature and occlusion. */
+  private readonly high = computed(() => {
+    const finer = this.project.mesh()?.high;
+    return this.paths().high.trim() || (finer ? `${this.library()}/${finer}` : '');
+  });
+
+  protected readonly canStart = computed(
+    // Choosing a high poly mesh saves it to the project first, or the bake would start from the mesh before it.
+    () => this.low() !== '' && this.paths().output.trim() !== '' && !this.running() && !this.project.unwrapping()
+  );
+
+  protected shown(field: PathField): string {
+    return field === 'high' ? this.high() : this.paths()[field];
+  }
 
   protected text(event: Event): string {
     return (event.target as HTMLInputElement).value;
@@ -418,16 +434,19 @@ export class BakePane {
       : field === 'skewMap'
         ? bridge?.openImage()
         : bridge?.openMesh());
-    if (path) {
+    if (path && field === 'high') {
+      await this.project.applySettings({ high: path }); // the project remembers it, as it does its mesh
+    } else if (path) {
       this.setPath(field, path);
     }
   }
 
   protected request(): BakeRequest {
-    const { high, low, cage, skewMap, output } = this.paths();
+    const { cage, skewMap, output } = this.paths();
     return {
-      high: high.trim(),
-      low: low.trim(),
+      high: this.high() || this.low(),
+      low: this.low(),
+      material: this.project.document()?.material ?? null,
       output: output.trim(),
       cage: cage.trim() || null,
       resolution: Number(this.side()),

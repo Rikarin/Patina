@@ -116,6 +116,8 @@ export class ProjectStore {
     const document = this.document();
     return this.current()?.meshes.find(mesh => mesh.id === document?.mesh) ?? null;
   });
+  /** The model's texture sets, one document per material. A model with one material has none to choose. */
+  readonly textureSets = computed(() => (this.current()?.documents ?? []).filter(document => document.material));
   /** The mesh's file name. */
   readonly meshName = computed(() => this.mesh()?.path.split('/').pop() ?? null);
   /** The tabs with edits that are not saved. */
@@ -333,18 +335,29 @@ export class ProjectStore {
   }
 
   /**
-   * Sets what the whole project shares, and puts the document in front on the mesh that came of it. A mesh with no UVs
-   * can take a while, as the Worker unwraps it first.
+   * Sets what the whole project shares. A mesh rewrites what its documents stand on, so they close first and the one in
+   * front opens again on it. That costs them their undo, and a document with unsaved edits has to be saved.
    */
-  async applySettings(settings: { mesh?: string | null; high?: string | null; autoUnwrap?: boolean }): Promise<boolean> {
+  async applySettings(settings: {
+    mesh?: string | null;
+    high?: string | null;
+    autoUnwrap?: boolean;
+    preservePaint?: boolean;
+  }): Promise<boolean> {
     const project = this.current();
     if (!project) {
       return false;
     }
 
+    const front = this.mutableActive();
+    const moving = !!settings.mesh || settings.autoUnwrap === true;
     this.mutableFailure.set(null);
     this.mutableUnwrapping.set(true);
     try {
+      if (moving && !(await this.release([project.path]))) {
+        return false;
+      }
+
       const client = await this.library.api();
       const contents = unwrap(
         await client.PATCH('/api/v1/library/project/settings', {
@@ -352,20 +365,24 @@ export class ProjectStore {
             project: project.path,
             mesh: settings.mesh ?? null,
             high: settings.high ?? null,
-            autoUnwrap: settings.autoUnwrap ?? null
+            autoUnwrap: settings.autoUnwrap ?? null,
+            preservePaint: settings.preservePaint ?? null
           }
         })
       );
       this.mutableContents.update(all => new Map(all).set(project.path, contents));
       this.paint.failure.set(null);
-      const name = this.meshName();
-      if (name && this.paint.state()) {
-        await this.paint.bindMesh(name);
+      if (moving) {
+        await this.openDocument(project.path, front);
       }
 
       return true;
     } catch (failure) {
       this.mutableFailure.set(messageOf(failure));
+      if (moving) {
+        await this.openDocument(project.path, front);
+      }
+
       return false;
     } finally {
       this.mutableUnwrapping.set(false);
@@ -377,7 +394,7 @@ export class ProjectStore {
     const client = await this.library.api();
     unwrap(
       await client.PATCH('/api/v1/library/project/settings', {
-        body: { project: path, mesh: null, high: null, autoUnwrap }
+        body: { project: path, mesh: null, high: null, autoUnwrap, preservePaint: null }
       })
     );
   }

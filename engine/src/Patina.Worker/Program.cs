@@ -71,5 +71,9 @@ var watch = new DeviceWatch();
 using var stacks = new StackHost(gpu, viewport, meshes, watch);
 using var bakes = new BakeHost();
 using var builds = new BuildHost(gpu);
-await new WorkerLoop(viewport, graphs, stacks, bakes, builds, gpu, watch).RunAsync(socketPath, Console.Out, stop.Token);
+await new WorkerLoop(viewport, graphs, stacks, bakes, builds, gpu, watch, meshes).RunAsync(
+    socketPath,
+    Console.Out,
+    stop.Token
+);
 return 0;

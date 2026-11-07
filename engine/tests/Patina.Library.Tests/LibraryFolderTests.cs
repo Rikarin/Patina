@@ -263,11 +263,12 @@ public sealed class LibraryFolderTests : IDisposable {
         var after = library.AddMesh(made.Path, second, null);
 
         var moved = library.UseMesh(made.Path, after.Id);
-        library.SetAutoUnwrap(made.Path, false);
+        library.SetMeshHandling(made.Path, false, false);
 
         Assert.Equal(2, moved.Count);
         var contents = library.Contents(made.Path);
         Assert.False(contents.AutoUnwrap);
+        Assert.False(contents.PreservePaint);
         Assert.All(contents.Documents, document => Assert.Equal(after.Id.Value, document.Mesh));
         Assert.Equal(after.Id.Value, contents.Meshes.Single(static mesh => mesh.Id is not null).Id);
         Assert.True(File.Exists(library.ProjectFile(made.Path, before.File)));
