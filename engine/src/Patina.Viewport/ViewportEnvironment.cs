@@ -75,7 +75,7 @@ sealed class ViewportEnvironment {
 
     /// <summary>A panorama's numbers, four to a texel.</summary>
     static (float[] Pixels, int Width, int Height) Radiance(string path) {
-        if (string.Equals(Path.GetExtension(path), ".exr", StringComparison.OrdinalIgnoreCase)) {
+        if (Path.GetExtension(path).ToLowerInvariant() == ".exr") {
             var image = ExrCodec.Decode(File.ReadAllBytes(path));
             var lanes = image.Channels;
             var pixels = new float[image.Width * image.Height * 4];

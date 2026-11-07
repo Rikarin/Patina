@@ -90,7 +90,7 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
     [Fact]
     public void A_cage_is_cut_to_the_same_set_as_the_low_mesh() {
         var low = Into("low.obj");
-        BakeFixture.WriteTwoMaterials(low, 0);
+        BakeFixture.WriteTwoMaterials(low);
         var cage = Into("cage.obj");
         BakeFixture.WriteTwoMaterials(cage, 0.1f);
         Assert.Equal(12, MeshMapBakeRun.Read(low).Mesh.CornerCount);

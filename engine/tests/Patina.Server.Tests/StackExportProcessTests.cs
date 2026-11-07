@@ -320,7 +320,7 @@ public sealed partial class StackProcessTests {
         ];
         Assert.Equal(["Body", "Strap"], documents.Select(static d => d.Material).Order());
 
-        IReadOnlyList<float> Colour(string material) => material == "Body" ? Rust : [0.1f, 0.3f, 0.9f, 1f];
+        static IReadOnlyList<float> Colour(string material) => material == "Body" ? Rust : [0.1f, 0.3f, 0.9f, 1f];
 
         foreach (var (path, material) in documents) {
             var state = await OpenAsync(path, deadline.Token);
