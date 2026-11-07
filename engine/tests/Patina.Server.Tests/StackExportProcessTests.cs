@@ -385,7 +385,11 @@ public sealed partial class StackProcessTests {
         var state = await OpenAsync($"projects/{project}/housing.vxlayers", deadline.Token);
         await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Rough"));
         var fill = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
-        await EditAsync(state.Id, deadline.Token, new StackSetLayer(fill, Mask: new("Generator", Anchor: "")));
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(fill, Mask: new("Generator", Anchor: string.Empty))
+        );
         using (var saved = await http.PostAsync($"/api/v1/stacks/{state.Id}/save", null, deadline.Token)) {
             Assert.True(saved.IsSuccessStatusCode, await saved.Content.ReadAsStringAsync(deadline.Token));
         }
