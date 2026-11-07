@@ -7,6 +7,21 @@
 @source '../../../node_modules/@xui';
 @source '../../../libs';
 
+/*
+ * Tailwind emits a theme variable only if it sees it used, and the graph builds these names at runtime for ports, wires,
+ * node accents and frames. Without this, a wire whose colour nothing else happens to use has no stroke at all.
+ */
+@theme static {
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
+}
+
 /* The look is xUI's bezel skin (index.html sets data-skin); nothing here restyles it. Only app-level layout belongs. */
 html,
 body {

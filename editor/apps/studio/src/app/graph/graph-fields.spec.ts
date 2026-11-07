@@ -1,5 +1,5 @@
 import type { GraphNodeType } from '@patina/api-client';
-import { expressionKey, fieldsOf, hexOfLanes, isWireable, lanesOfHex, sliderRange } from './graph-fields';
+import { expressionKey, fieldsOf, hexOfLanes, isWireable, lanesOfHex, sliderRange, wireFamily } from './graph-fields';
 
 const type: GraphNodeType = {
   path: 'Test/Node',
@@ -51,6 +51,17 @@ describe('graph fields', () => {
 
   it('offers wires only where an image can go', () => {
     expect(type.ports.filter(isWireable).map(port => port.name)).toEqual(['Input', 'Out']);
+  });
+
+  it('lets a wire join what the Server lets a wire join', () => {
+    expect(['Image', 'Int', 'Bool', 'Float', 'Float2', 'Float4'].map(wireFamily)).toEqual([
+      'Image',
+      'Int',
+      'Bool',
+      'Float',
+      'Float',
+      'Float'
+    ]);
   });
 
   it('guesses a slider range around a default, and always reaches the value', () => {

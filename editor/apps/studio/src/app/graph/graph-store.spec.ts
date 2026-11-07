@@ -257,7 +257,7 @@ describe('GraphStore', () => {
     await test.store.addNode(
       { ...noiseType, ports: [{ name: 'Input', direction: 'Input', kind: 'Image', default: [], summary: '' }] },
       { x: 1, y: 2 },
-      { node: 1, port: 'Out', incoming: false }
+      { node: 1, port: 'Out', incoming: false, family: 'Image' }
     );
 
     expect(test.commands()[0]?.commands).toEqual([

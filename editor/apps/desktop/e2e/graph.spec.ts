@@ -542,6 +542,42 @@ test('copies a shipped compound beside the graph so that it can be edited', asyn
   expect(existsSync(join(library, 'projects', 'graphs', 'Compounds', 'Patterns', 'Cells Copy.vxtexgraph'))).toBe(true);
 });
 
+test('draws the number wires of a compound, and unmakes and remakes one', async () => {
+  await openGraph();
+  await addNodeAt('Patterns/Brick', 60, 60);
+  await hashOf(thumbnail(Nodes + 1));
+  await window.getByTestId('graph-open-compound').click();
+  await window.getByTestId('graph-copy-compound').click();
+  await expect(window.getByTestId('graph-name')).toHaveText('Brick Copy');
+
+  // Columns and Rows reach the Tile's repeats, and a wired number has a port and no control.
+  const tile = 2;
+  const inputs = 4;
+  await expect(connector(tile, 'Repeat X')).toBeVisible();
+  await expect(connector(tile, 'Repeat Y')).toBeVisible();
+
+  // Drawn means seen: four wires, each with a colour, since a wire in an unset variable has a stroke of none.
+  const wires = window.locator('xui-node-graph svg path[stroke^="var(--color-chart"]');
+  await expect(wires).toHaveCount(4);
+  const strokes = await wires.evaluateAll(paths => paths.map(path => getComputedStyle(path).stroke));
+  expect(strokes.filter(stroke => stroke === 'none')).toEqual([]);
+  expect(new Set(strokes).size).toBe(2); // images and integers
+  await window.screenshot({ path: join(shots, 'graph-number-wires.png') });
+  await node(tile).locator('xui-graph-node-preview').click();
+  await expect(window.getByTestId('wired-Repeat X')).toContainText('Columns');
+
+  // Unmake it from the Inspector: the port goes with the wire, and a number has its control back.
+  await window.getByTestId('wired-Repeat X').getByRole('button').click();
+  await expect(connector(tile, 'Repeat X')).toHaveCount(0);
+  await expect(window.getByTestId('field-Repeat X').getByRole('spinbutton')).toBeVisible();
+
+  // Remake it from the port the Inspector shows.
+  await window.getByTestId('port-Repeat X').click();
+  await dragBetween(await centre(connector(inputs, 'Columns')), await centre(connector(tile, 'Repeat X')));
+  await expect(window.getByTestId('wired-Repeat X')).toContainText('Columns');
+  await window.screenshot({ path: join(shots, 'graph-number-wire-remade.png') });
+});
+
 test('a graph computes at 32 bits from its settings, and the file says so', async () => {
   await openGraph();
   await hashOf(thumbnail(1));

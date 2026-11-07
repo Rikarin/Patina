@@ -34,7 +34,7 @@ import { XuiTagImports } from '@xui/tag';
 import { IconImports } from '../core/icons';
 import { NodeDragType } from './node-library';
 import { SystemStatus } from '../core/system-status';
-import { isWireable } from './graph-fields';
+import { isWireable, wireFamily } from './graph-fields';
 import { diagnosticsOf, edgeKey, evaluationSummary } from './graph-model';
 import { GraphStore } from './graph-store';
 import { NewGraphDialog } from './new-graph-dialog';
@@ -48,7 +48,8 @@ const GroupPrefix = 'group-';
 const NoteOffset = 40;
 /** The canvas height a 128-pixel minimap may sit in: below this it covers more than it shows. */
 const MinimapRoom = 480;
-const portTypes = xuiGraphChartPortTypes(['Image']);
+const portTypes = xuiGraphChartPortTypes(['Image', 'Float', 'Int', 'Bool']);
+const none: ReadonlySet<string> = new Set();
 
 interface PortView {
   name: string;
@@ -65,6 +66,8 @@ interface NodeView {
   title: string;
   accent: string;
   ports: readonly PortView[];
+  /** Which ports it has beyond its type's, as a key: the names of the number inputs it draws. */
+  portKey: string;
   position: XuiGraphPoint;
   /** The frame it sits in, by the id xUI knows that frame by. */
   group: string | undefined;
@@ -93,12 +96,12 @@ function accentOf(category: string): string {
   return `var(--color-chart-${String((hashOf(category) % CategoryColours) + 1)})`;
 }
 
-function portsOf(type: GraphNodeType | undefined): readonly PortView[] {
-  return (type?.ports ?? []).filter(isWireable).map(port => ({
+function portsOf(type: GraphNodeType | undefined, numbers: ReadonlySet<string>): readonly PortView[] {
+  return (type?.ports ?? []).filter(port => isWireable(port) || numbers.has(port.name)).map(port => ({
     name: port.name,
     direction: port.direction === 'Output' ? 'output' : 'input',
     summary: port.summary,
-    dataType: port.kind,
+    dataType: wireFamily(port.kind),
     maxConnections: port.direction === 'Output' ? Number.POSITIVE_INFINITY : 2
   }));
 }
@@ -438,7 +441,7 @@ export class GraphCanvas {
   private readonly portViews = new Map<string, readonly PortView[]>();
   private viewedTypes: ReadonlyMap<string, GraphNodeType> | null = null;
   private addAt: XuiGraphPoint | null = null;
-  private addFrom: { node: number; port: string; incoming: boolean } | null = null;
+  private addFrom: { node: number; port: string; incoming: boolean; family: string } | null = null;
   private fitted: string | null = null;
 
   protected readonly document = this.store.document;
@@ -449,7 +452,7 @@ export class GraphCanvas {
   protected readonly creating = signal(false);
   protected readonly savingCompound = signal(false);
   /** The port kind a dropped wire needs, while the palette is open for one. */
-  private readonly paletteFilter = signal<'Input' | 'Output' | null>(null);
+  private readonly paletteFilter = signal<{ direction: 'Input' | 'Output'; family: string } | null>(null);
 
   protected readonly categoryOf = (type: GraphNodeType): string => type.category || 'Compounds';
   protected readonly titleOf = (type: GraphNodeType): string => type.title;
@@ -461,7 +464,32 @@ export class GraphCanvas {
     const types = [...this.store.types().values()];
     return filter === null
       ? types
-      : types.filter(type => type.ports.some(port => port.direction === filter && port.kind === 'Image'));
+      : types.filter(type =>
+          type.ports.some(port => port.direction === filter.direction && wireFamily(port.kind) === filter.family)
+        );
+  });
+
+  /** The inputs each node has to draw beyond its type's: every wire's, and the ones someone asked for. */
+  private readonly wantedPorts = computed(() => {
+    const wanted = new Map<number, Set<string>>();
+    const add = (node: number, port: string) => {
+      const ports = wanted.get(node);
+      if (ports) {
+        ports.add(port);
+      } else {
+        wanted.set(node, new Set([port]));
+      }
+    };
+    for (const edge of this.document()?.edges.values() ?? []) {
+      add(edge.toNode, edge.toPort);
+    }
+
+    for (const key of this.store.shownPorts()) {
+      const at = key.indexOf('/');
+      add(Number(key.slice(0, at)), key.slice(at + 1));
+    }
+
+    return wanted;
   });
 
   /** The frame each node sits in. xUI gives a node one frame, so the first that names it wins. */
@@ -491,9 +519,10 @@ export class GraphCanvas {
     const drafts = this.store.positions();
     const frames = this.frames();
     const compounds = this.store.compounds();
+    const wanted = this.wantedPorts();
     const views: NodeView[] = [];
     for (const node of nodes?.values() ?? []) {
-      const view = this.viewOf(node, types.get(node.type));
+      const view = this.viewOf(node, types.get(node.type), wanted.get(node.id));
       const draft = drafts.get(String(node.id));
       const group = frames.get(node.id);
       const compound = compounds.has(node.type) ? node.type : null;
@@ -627,8 +656,9 @@ export class GraphCanvas {
 
     const incoming = drop.port.direction === 'input';
     this.addAt = drop.position;
-    this.addFrom = { node: Number(drop.source.nodeId), port: drop.source.portId, incoming };
-    this.paletteFilter.set(incoming ? 'Output' : 'Input');
+    const family = drop.port.dataType ?? 'Image';
+    this.addFrom = { node: Number(drop.source.nodeId), port: drop.source.portId, incoming, family };
+    this.paletteFilter.set({ direction: incoming ? 'Output' : 'Input', family });
     this.paletteOpen.set(true);
   }
 
@@ -744,13 +774,16 @@ export class GraphCanvas {
   }
 
   /** Stable for as long as the node is unchanged, so that one delta touches one node in a graph of 500. */
-  private viewOf(node: GraphNodeState, type: GraphNodeType | undefined): NodeView {
+  private viewOf(node: GraphNodeState, type: GraphNodeType | undefined, wanted: ReadonlySet<string> = none): NodeView {
+    const numbers = (type?.ports ?? []).filter(port => wanted.has(port.name) && !isWireable(port));
+    const portKey = numbers.map(port => port.name).join('\0');
     let view = this.nodeViews.get(node);
-    if (!view) {
-      let ports = this.portViews.get(node.type);
+    if (view?.portKey !== portKey) {
+      const portsKey = `${node.type}\0${portKey}`;
+      let ports = this.portViews.get(portsKey);
       if (!ports) {
-        ports = portsOf(type);
-        this.portViews.set(node.type, ports);
+        ports = portsOf(type, wanted);
+        this.portViews.set(portsKey, ports);
       }
 
       view = {
@@ -759,6 +792,7 @@ export class GraphCanvas {
         title: type?.title ?? node.type,
         accent: accentOf(type?.category ?? ''),
         ports,
+        portKey,
         position: { x: node.x, y: node.y },
         group: undefined,
         compound: null

@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { createPatinaClient } from '@patina/api-client';
+import { type GraphState, createPatinaClient } from '@patina/api-client';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION, type ServerState, SystemStatus } from '../core/system-status';
 import { GraphPane } from './graph-pane';
 import { GRAPH_SOCKET, GraphStore } from './graph-store';
@@ -32,20 +32,20 @@ const online = (connected: boolean): ServerState => ({
   }
 });
 
-async function render(status: ServerState = online(true)) {
+async function render(status: ServerState = online(true), graph: () => GraphState = state) {
   const sockets: FakeSocket[] = [];
   const answer = (input: RequestInfo | URL): Promise<Response> => {
     const { method, url } = input as Request;
     const path = new URL(url).pathname.replace('/api/v1/', '');
     if (path === 'graphs' && method === 'POST') {
-      return Promise.resolve(Response.json(state()));
+      return Promise.resolve(Response.json(graph()));
     }
 
     if (path.endsWith('compounds')) {
       return Promise.resolve(Response.json([]));
     }
 
-    return Promise.resolve(Response.json(path.endsWith('node-types') ? [noiseType] : state()));
+    return Promise.resolve(Response.json(path.endsWith('node-types') ? [noiseType] : graph()));
   };
   TestBed.configureTestingModule({
     providers: [
@@ -82,6 +82,30 @@ async function render(status: ServerState = online(true)) {
 }
 
 describe('GraphPane', () => {
+  /** The ports a node draws on the canvas, by name. */
+  function portsOn(element: HTMLElement, node: number): (string | undefined)[] {
+    const ports = element.querySelectorAll(`[data-node="${String(node)}"] xui-graph-port`);
+    return [...ports].map(port => port.getAttribute('title') ?? port.textContent.trim());
+  }
+
+  it('draws a number input only when it has a wire or someone asked for it', async () => {
+    const wired = () => state({ edges: [{ fromNode: 1, fromPort: 'Out', toNode: 2, toPort: 'Scale' }] });
+    const { open, element, fixture, store } = await render(online(true), wired);
+
+    await open();
+
+    expect(portsOn(element, 1)).toHaveLength(1); // Out
+    expect(portsOn(element, 2)).toHaveLength(2); // Scale, with its wire, and Out
+
+    store.togglePort(1, 'Scale');
+    await fixture.whenStable();
+    expect(portsOn(element, 1)).toHaveLength(2);
+
+    store.togglePort(1, 'Scale');
+    await fixture.whenStable();
+    expect(portsOn(element, 1)).toHaveLength(1);
+  });
+
   it('says when no graph is open', async () => {
     const { found } = await render();
 

@@ -44,9 +44,17 @@ export interface GraphFieldGroup {
 const CurveSetting = 'Curve';
 const RampSetting = 'Ramp';
 
-/** The inputs a wire can reach, which every output in the catalogue is: an Image. Other inputs take numbers. */
+/** The ports a node always draws. A number input takes a slider, and draws a port once it has a wire or is asked to. */
 export function isWireable(port: GraphPortDefinition): boolean {
   return port.direction === 'Output' || port.kind === 'Image';
+}
+
+/**
+ * What a wire carries, so that the canvas offers the wires the Server takes: vectors of any width join, and Int and Bool
+ * join only themselves. The Server still has the last word on every wire.
+ */
+export function wireFamily(kind: string): string {
+  return kind.startsWith('Float') ? 'Float' : kind;
 }
 
 function fieldOfPort(port: GraphPortDefinition): GraphField | null {
