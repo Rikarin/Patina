@@ -395,7 +395,9 @@ public sealed class StackEditorPropertyTests {
         Assert.Throws<StackEditRefusedException>(() => editor.Apply(new([new StackPasteLayers("gone")])));
     }
 
-    /// <summary>A paste into another stack is new layers, with the copy's canvases and none of its mesh limits.</summary>
+    /// <summary>
+    ///     A paste into another stack is new layers, with the copy's canvases and none of its mesh limits.
+    /// </summary>
     [Fact]
     public void A_paste_into_another_stack_reads_the_copy_and_leaves_its_meshes() {
         var source = new StackEditor("/tmp/Source.vxlayers", Sample());

@@ -316,7 +316,9 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
 
     static double Milliseconds(long start) => Stopwatch.GetElapsedTime(start).TotalMilliseconds;
 
-    /// <summary>One stroke as this Worker holds it: under way, or a command that can undo it. A copy has no stroke.</summary>
+    /// <summary>
+    ///     One stroke as this Worker holds it: under way, or a command that can undo it. A copy has no stroke.
+    /// </summary>
     sealed class Applied(long id, PaintStroke? stroke, PaintPath? curve) {
         public long Id { get; } = id;
 
@@ -784,7 +786,8 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
 
         /// <summary>
         ///     Makes a copy the journal holds. ⚠ As its turn comes and not as it begins: a replay begins every stroke
-        ///     before it stamps any, and a copy made then would be of a canvas the strokes before it have not reached yet.
+        ///     before it stamps any, and a copy made then would be of a canvas the strokes before it have not reached
+        ///     yet.
         /// </summary>
         void Copy(Applied copy, IAuthoringCommand command) {
             if (copy.Done) {
@@ -849,8 +852,9 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
 
         /// <summary>
         ///     A canvas made a copy of another, in place. ⚠ Into the canvas object that is there and never a new one: a
-        ///     replay begins every stroke before it stamps any, so a stroke on the copy is bound to its pixels before the
-        ///     copy is made. Done again, the source is as it was the first time, since the journal undid what came after.
+        ///     replay begins every stroke before it stamps any, so a stroke on the copy is bound to its pixels before
+        ///     the copy is made. Done again, the source is as it was the first time, since the journal undid what came
+        ///     after.
         /// </summary>
         sealed class CanvasCopy(PaintCanvasStore canvases, string target, string source, int width, int height)
             : IAuthoringCommand {
@@ -875,7 +879,9 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
                 }
             }
 
-            /// <summary>Back to what a new canvas holds, which nothing reads once the layer naming it has gone.</summary>
+            /// <summary>
+            ///     Back to what a new canvas holds, which nothing reads once the layer naming it has gone.
+            /// </summary>
             public void Undo(ICommandContext context) {
                 var into = Target();
                 foreach (var usage in into.Channels) {

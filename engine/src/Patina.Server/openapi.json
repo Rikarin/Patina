@@ -11232,7 +11232,7 @@
           },
           "quality": {
             "type": "string",
-            "description": "How islands are packed: \u0060boxes\u0060 by their bounding boxes, \u0060outlines\u0060 by their shapes, and \u0060groups\u0060\nby their shapes after joining nearly square neighbours."
+            "description": "How islands are packed: \u0060boxes\u0060 by their bounding boxes, \u0060outlines\u0060 by their shapes, and\n\u0060groups\u0060 by their shapes after joining nearly square neighbours."
           },
           "rotations": {
             "type": "integer",
@@ -11246,7 +11246,7 @@
           },
           "overflow": {
             "type": "string",
-            "description": "What happens when the islands do not fit at that density: \u0060shrink\u0060 scales them all down, and \u0060refuse\u0060\nstops and says so. Spilling into a second UDIM tile is not offered while Patina paints one tile."
+            "description": "What happens when the islands do not fit at that density: \u0060shrink\u0060 scales them all down, and\n\u0060refuse\u0060 stops and says so. Spilling into a second UDIM tile is not offered while Patina paints one\ntile."
           }
         },
         "description": "How Auto Unwrap lays out a mesh. Each texture set gets an atlas of its own."

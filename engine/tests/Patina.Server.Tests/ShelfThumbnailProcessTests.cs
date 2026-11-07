@@ -6,7 +6,9 @@ using System.Text.Json;
 
 namespace Patina.Server.Tests;
 
-/// <summary>The shelf's pictures: drawn by the Worker into the cache, named by hash, and only time lost with the cache.</summary>
+/// <summary>
+///     The shelf's pictures: drawn by the Worker into the cache, named by hash, and only time lost with the cache.
+/// </summary>
 public sealed partial class StackProcessTests {
     [Fact]
     public async Task Shelf_materials_have_pictures_by_hash_that_a_deleted_cache_only_draws_again() {

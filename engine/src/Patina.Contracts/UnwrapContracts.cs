@@ -11,15 +11,17 @@ public sealed record UnwrapOptions {
     /// <summary>The words <see cref="Overflow" /> takes.</summary>
     public static IReadOnlyList<string> Overflows { get; } = ["shrink", "refuse"];
 
-    /// <summary>The atlas side the margin is counted against, in texels. A map of another size only rescales it.</summary>
+    /// <summary>
+    ///     The atlas side the margin is counted against, in texels. A map of another size only rescales it.
+    /// </summary>
     public int Resolution { get; init; } = 2048;
 
     /// <summary>The empty texels between two islands.</summary>
     public int Margin { get; init; } = 4;
 
     /// <summary>
-    ///     How islands are packed: <c>boxes</c> by their bounding boxes, <c>outlines</c> by their shapes, and <c>groups</c>
-    ///     by their shapes after joining nearly square neighbours.
+    ///     How islands are packed: <c>boxes</c> by their bounding boxes, <c>outlines</c> by their shapes, and
+    ///     <c>groups</c> by their shapes after joining nearly square neighbours.
     /// </summary>
     public string Quality { get; init; } = "outlines";
 
@@ -30,8 +32,9 @@ public sealed record UnwrapOptions {
     public double TexelDensity { get; init; }
 
     /// <summary>
-    ///     What happens when the islands do not fit at that density: <c>shrink</c> scales them all down, and <c>refuse</c>
-    ///     stops and says so. Spilling into a second UDIM tile is not offered while Patina paints one tile.
+    ///     What happens when the islands do not fit at that density: <c>shrink</c> scales them all down, and
+    ///     <c>refuse</c> stops and says so. Spilling into a second UDIM tile is not offered while Patina paints one
+    ///     tile.
     /// </summary>
     public string Overflow { get; init; } = "shrink";
 
@@ -53,7 +56,9 @@ public sealed record UnwrapOptions {
 /// <summary>What one texture set's unwrap came to.</summary>
 /// <param name="Material">The material, which is the texture set.</param>
 /// <param name="Charts">How many islands. Fewer is better at the same stretch.</param>
-/// <param name="Flipped">Triangles turned over in the atlas. Anything but zero paints and bakes in the wrong place.</param>
+/// <param name="Flipped">
+///     Triangles turned over in the atlas. Anything but zero paints and bakes in the wrong place.
+/// </param>
 /// <param name="Stretch">The stretch averaged over area. 1 is none.</param>
 /// <param name="WorstStretch">The stretch of the worst triangle.</param>
 /// <param name="Packed">The share of the atlas the islands cover, after the margin.</param>
@@ -70,5 +75,7 @@ public sealed record UnwrapSet(
 
 /// <summary>What Auto Unwrap did to a mesh.</summary>
 /// <param name="From">The file it unwrapped, relative to the project. Changing the options unwraps it again.</param>
-/// <param name="Sets">One entry per texture set it laid out. A set whose material had a layout kept it and is absent.</param>
+/// <param name="Sets">
+///     One entry per texture set it laid out. A set whose material had a layout kept it and is absent.
+/// </param>
 public sealed record UnwrapReport(string From, IReadOnlyList<UnwrapSet> Sets);

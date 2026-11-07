@@ -3,7 +3,9 @@ using System.Net.Http.Json;
 
 namespace Patina.Server.Tests;
 
-/// <summary>Duplicate, copy, cut and paste with a real Worker: the pixels go with a layer, and are never shared.</summary>
+/// <summary>
+///     Duplicate, copy, cut and paste with a real Worker: the pixels go with a layer, and are never shared.
+/// </summary>
 public sealed partial class StackProcessTests {
     static readonly IReadOnlyList<float> Blue = [0.1f, 0.2f, 0.9f, 1f];
 

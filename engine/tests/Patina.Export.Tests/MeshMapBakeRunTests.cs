@@ -109,8 +109,8 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
                                      """;
 
     /// <summary>
-    ///     A bake filled tile 1001, left 1002 empty and said nothing, because it only warned when no texel was covered at
-    ///     all. A set laid out past the first tile is refused, by name, until Patina bakes UDIM.
+    ///     A bake filled tile 1001, left 1002 empty and said nothing, because it only warned when no texel was covered
+    ///     at all. A set laid out past the first tile is refused, by name, until Patina bakes UDIM.
     /// </summary>
     [Fact]
     public void A_low_mesh_on_a_second_udim_tile_is_refused_by_name() {

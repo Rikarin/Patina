@@ -30,7 +30,6 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(GraphState))]
 [JsonSerializable(typeof(IReadOnlyList<GraphSummary>))]
 [JsonSerializable(typeof(IReadOnlyList<GraphNodeType>))]
-[JsonSerializable(typeof(GraphNodeMatches))]
 [JsonSerializable(typeof(GraphCommandBatch))]
 [JsonSerializable(typeof(GraphEditResult))]
 [JsonSerializable(typeof(GraphEvent))]
@@ -86,4 +85,5 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(ProjectReport))]
 [JsonSerializable(typeof(LibraryReport))]
 [JsonSerializable(typeof(ProjectReportPage))]
+[JsonSerializable(typeof(GraphNodeMatches))]
 public sealed partial class ContractsJsonContext : JsonSerializerContext;

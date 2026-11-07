@@ -49,7 +49,8 @@ static class GraphEndpoints {
         graphs.MapGet("/{id}/node-types/search", SearchNodeTypes)
             .Describe(
                 "SearchGraphNodeTypes",
-                "The nodes this graph can use, best match first. takes and gives keep those a wire of that kind can use.",
+                "The nodes this graph can use, best match first. "
+                + "takes and gives keep those a wire of that kind can use.",
                 Missing,
                 Refused
             );

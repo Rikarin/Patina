@@ -209,7 +209,9 @@ public sealed class IpcMessage {
 
     public MeshUnwrapAsk? MeshUnwrap { get; set; }
 
-    /// <summary>What each set's unwrap came to, in the answer to <see cref="IpcTypes.MeshUnwrap" />. Null wrote nothing.</summary>
+    /// <summary>
+    ///     What each set's unwrap came to, in the answer to <see cref="IpcTypes.MeshUnwrap" />. Null wrote nothing.
+    /// </summary>
     public IReadOnlyList<UnwrapSet>? MeshUnwrapped { get; set; }
 
     public MeshMovePaintAsk? MeshMovePaint { get; set; }

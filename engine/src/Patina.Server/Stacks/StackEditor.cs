@@ -63,7 +63,9 @@ public sealed class StackJournalEntry(
     /// </summary>
     public string? From { get; private init; }
 
-    /// <summary>A canvas that starts as a copy of another, which is how a duplicate or a paste gets pixels of its own.</summary>
+    /// <summary>
+    ///     A canvas that starts as a copy of another, which is how a duplicate or a paste gets pixels of its own.
+    /// </summary>
     public static StackJournalEntry Copy(long id, string paint, string from, string model) =>
         new(
             id,
@@ -570,7 +572,8 @@ public sealed class StackEditor : ILayerStackDocument {
     SetDocumentCommand HeightNormal(string method) {
         if (!Enum.TryParse<LayerHeightNormal>(method, false, out var chosen) || !Enum.IsDefined(chosen)) {
             throw new StackEditRefusedException(
-                $"'{method}' is no way to turn height into a normal. Use {string.Join(" or ", Enum.GetNames<LayerHeightNormal>())}."
+                $"'{method}' is no way to turn height into a normal. "
+                + $"Use {string.Join(" or ", Enum.GetNames<LayerHeightNormal>())}."
             );
         }
 
@@ -713,7 +716,7 @@ public sealed class StackEditor : ILayerStackDocument {
     /// <param name="layer">The layer it is for.</param>
     /// <param name="mask">Whether it is the layer's mask.</param>
     /// <param name="alsoTaken">Names given out in this batch, which nothing holds yet.</param>
-    string FreeCanvas(string stem, string set, string layer, bool mask, IReadOnlySet<string> alsoTaken) {
+    internal string FreeCanvas(string stem, string set, string layer, bool mask, IReadOnlySet<string> alsoTaken) {
         var folder = Path.GetDirectoryName(AssetPath)!;
         HashSet<string> taken = [
             ..Standing.Concat(Redoable).Select(static stroke => stroke.Paint),
@@ -789,13 +792,13 @@ public sealed class StackEditor : ILayerStackDocument {
         return (text, standing.Count, [..Canvases(standing).Distinct(StringComparer.Ordinal)]);
     }
 
-    static IEnumerable<LayerAsset> Flattened(IEnumerable<LayerAsset> layers) =>
+    internal static IEnumerable<LayerAsset> Flattened(IEnumerable<LayerAsset> layers) =>
         layers.SelectMany(static layer => Flattened(layer.Children).Prepend(layer));
 
     /// <summary>Each layer duplicated just above itself, with canvases of its own copied from its own.</summary>
     void Duplicate(StackDuplicateLayers duplicate, Step step, string set, Action<IAuthoringCommand> run) {
         var outermost = Outermost(duplicate.Layers, set);
-        Copies copies = new(this, set);
+        StackLayerCopies copies = new(this, set);
         List<(string Source, LayerAsset Copy)> made = [
             ..outermost.Select(id => (id, copies.Of(Written([Require(id)])[0], static paint => paint)))
         ];
@@ -823,7 +826,7 @@ public sealed class StackEditor : ILayerStackDocument {
             );
         }
 
-        Copies copies = new(this, set);
+        StackLayerCopies copies = new(this, set);
         List<LayerAsset> made = [
             ..layers.Select(layer => copies.Of(
                     same ? layer : layer with { Mask = StackDocuments.MeshMasked(layer.Mask, new([], string.Empty)) },
@@ -846,100 +849,9 @@ public sealed class StackEditor : ILayerStackDocument {
         Journal(copies, step);
     }
 
-    void Journal(Copies copies, Step step) {
+    void Journal(StackLayerCopies copies, Step step) {
         foreach (var (from, to) in copies.Canvases) {
             step.Strokes.Add(StackJournalEntry.Copy(nextEntry++, to, from, Document.Model));
-        }
-    }
-
-    /// <summary>Layers made again with ids, names and canvases nothing else has, and where each canvas comes from.</summary>
-    sealed class Copies(StackEditor editor, string set) {
-        readonly HashSet<string> ids = [..Flattened(editor.Set.Layers).Select(static layer => layer.Id)];
-        readonly HashSet<string> names = [..Flattened(editor.Set.Layers).Select(static layer => layer.Name)];
-        readonly HashSet<string> paints = new(StringComparer.Ordinal);
-        readonly Dictionary<string, string> renamed = new(StringComparer.Ordinal);
-
-        public List<(string From, string To)> Canvases { get; } = [];
-
-        /// <summary>A layer of a fresh document, with everything in it made new.</summary>
-        /// <param name="layer">It, which this changes nothing in.</param>
-        /// <param name="source">Where a canvas it names is read from.</param>
-        public LayerAsset Of(LayerAsset layer, Func<string, string> source) {
-            var id = Free(ids, Stem(layer.Id), static (stem, count) => $"{stem}-{count}");
-            renamed[layer.Id] = id;
-            var mask = layer.Mask with {
-                Paint = Canvas(layer.Mask.Paint, id, true, source),
-                Layers = [
-                    ..layer.Mask.Layers.Select((entry, index) => entry with {
-                            Paint = Canvas(
-                                entry.Paint,
-                                string.Create(CultureInfo.InvariantCulture, $"{id}-{index + 1}"),
-                                true,
-                                source
-                            )
-                        }
-                    )
-                ]
-            };
-            return layer with {
-                Id = id,
-                Name = Free(names, layer.Name, static (name, count) => $"{name} {count}"),
-                Paint = Canvas(layer.Paint, id, false, source),
-                Mask = mask,
-                Children = [..layer.Children.Select(child => Of(child, source))]
-            };
-        }
-
-        /// <summary>An anchor onto a layer that came along now reads the copy of it, and any other stays.</summary>
-        public LayerAsset Reanchored(LayerAsset layer) =>
-            layer with {
-                Mask = layer.Mask with {
-                    Anchor = renamed.GetValueOrDefault(layer.Mask.Anchor, layer.Mask.Anchor),
-                    Layers = [
-                        ..layer.Mask.Layers.Select(entry => entry with {
-                                Anchor = renamed.GetValueOrDefault(entry.Anchor, entry.Anchor)
-                            }
-                        )
-                    ]
-                },
-                Children = [..layer.Children.Select(Reanchored)]
-            };
-
-        string Canvas(string paint, string layer, bool mask, Func<string, string> source) {
-            var from = paint.Trim();
-            if (from.Length == 0) {
-                return paint;
-            }
-
-            var to = editor.FreeCanvas(
-                Path.GetFileNameWithoutExtension(editor.AssetPath),
-                set,
-                layer,
-                mask,
-                paints
-            );
-            paints.Add(to);
-            Canvases.Add((source(from), to));
-            return to;
-        }
-
-        /// <summary>An id with no copy number on it, so that a copy of a copy is not paint-1-1.</summary>
-        static string Stem(string id) {
-            var dash = id.LastIndexOf('-');
-            return dash > 0 && id[(dash + 1)..].All(char.IsAsciiDigit) ? id[..dash] : id.Length > 0 ? id : "layer";
-        }
-
-        static string Free(HashSet<string> taken, string wanted, Func<string, int, string> numbered) {
-            if (taken.Add(wanted)) {
-                return wanted;
-            }
-
-            for (var count = 2;; count++) {
-                var name = numbered(wanted, count);
-                if (taken.Add(name)) {
-                    return name;
-                }
-            }
         }
     }
 

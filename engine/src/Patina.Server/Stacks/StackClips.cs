@@ -4,7 +4,9 @@ namespace Patina.Server.Stacks;
 
 /// <summary>Copied layers, as a paste reads them.</summary>
 /// <param name="Id">What a paste names it by.</param>
-/// <param name="Text">The layers, as a stack file holds them, so that every paste starts from objects of its own.</param>
+/// <param name="Text">
+///     The layers, as a stack file holds them, so that every paste starts from objects of its own.
+/// </param>
 /// <param name="Folder">Where their canvases were written as they stood when they were copied.</param>
 /// <param name="Stack">The stack they came from.</param>
 /// <param name="Width">The width of that stack's canvases.</param>

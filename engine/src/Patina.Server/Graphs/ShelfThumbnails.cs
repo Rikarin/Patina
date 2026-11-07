@@ -34,7 +34,9 @@ public sealed class ShelfThumbnails(WorkerLink worker, PreviewStore store) : IDi
 
     readonly ConcurrentDictionary<string, string> known = new(StringComparer.Ordinal);
 
-    /// <summary>One drawing at a time: the Worker draws one at a time anyway, and a shelf asks for many at once.</summary>
+    /// <summary>
+    ///     One drawing at a time: the Worker draws one at a time anyway, and a shelf asks for many at once.
+    /// </summary>
     readonly SemaphoreSlim drawing = new(1, 1);
 
     public void Dispose() => drawing.Dispose();

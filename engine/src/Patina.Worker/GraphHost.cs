@@ -77,8 +77,8 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
     }
 
     /// <summary>
-    ///     One Output of a graph, drawn for the shelf from a copy that goes as soon as it has. The Server has already set
-    ///     the graph's size to the picture's, so nothing is computed larger than it is shown.
+    ///     One Output of a graph, drawn for the shelf from a copy that goes as soon as it has. The Server has already
+    ///     set the graph's size to the picture's, so nothing is computed larger than it is shown.
     /// </summary>
     public IpcMessage Thumbnail(MaterialThumbnailAsk ask) {
         var load = new GraphLoad(ThumbnailSession, ask.Document, ask.Folder, ask.ImageRoots);

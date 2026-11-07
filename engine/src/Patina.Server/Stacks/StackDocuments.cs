@@ -131,8 +131,8 @@ public static class StackDocuments {
         };
 
     /// <summary>
-    ///     Every adjustment a stack can run, read from the same registry and compounds its compile reads, each with what
-    ///     its node declares, so that a client shows what will run.
+    ///     Every adjustment a stack can run, read from the same registry and compounds its compile reads, each with
+    ///     what its node declares, so that a client shows what will run.
     /// </summary>
     static IReadOnlyList<StackFilterKind> Filters() {
         var library = LayerStackCompiler.Library(out _);

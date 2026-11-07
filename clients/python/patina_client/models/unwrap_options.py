@@ -26,14 +26,14 @@ class UnwrapOptions:
             resolution (int): The atlas side the margin is counted against, in texels. A map of another size only rescales
                 it.
             margin (int): The empty texels between two islands.
-            quality (str): How islands are packed: `boxes` by their bounding boxes, `outlines` by their shapes, and `groups`
-                by their shapes after joining nearly square neighbours.
+            quality (str): How islands are packed: `boxes` by their bounding boxes, `outlines` by their shapes, and
+                `groups` by their shapes after joining nearly square neighbours.
             rotations (int): How many ways an island may be turned: 1 never, 2 a half turn, 4 every quarter turn.
             texel_density (float): Texels per world unit every island is scaled to, or zero for each island at its own
                 scale.
             overflow (str): What happens when the islands do not fit at that density: `shrink` scales them all down, and
-                `refuse`
-                stops and says so. Spilling into a second UDIM tile is not offered while Patina paints one tile.
+                `refuse` stops and says so. Spilling into a second UDIM tile is not offered while Patina paints one
+                tile.
      """
 
     resolution: int

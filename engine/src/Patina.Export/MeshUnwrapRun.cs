@@ -7,9 +7,9 @@ namespace Patina.Export;
 
 /// <summary>Gives a mesh a UV layout of its own, in a new file beside it.</summary>
 /// <remarks>
-///     ⚠ <b>Only the coordinates change.</b> Every corner keeps its normal and vertex colour, and every part its name and
-///     material, because a smooth mesh written with a normal per face renders faceted, a lost material is a lost texture
-///     set, a lost colour is a lost id bake, and a lost name is a lost match by name and mesh mask.
+///     ⚠ <b>Only the coordinates change.</b> Every corner keeps its normal and vertex colour, and every part its name
+///     and material, because a smooth mesh written with a normal per face renders faceted, a lost material is a lost
+///     texture set, a lost colour is a lost id bake, and a lost name is a lost match by name and mesh mask.
 /// </remarks>
 public static class MeshUnwrapRun {
     /// <summary>
@@ -19,7 +19,9 @@ public static class MeshUnwrapRun {
     /// <param name="source">The mesh file.</param>
     /// <param name="output">Where the unwrapped mesh goes, ending in <c>.glb</c> or <c>.gltf</c>.</param>
     /// <param name="options">How to lay it out, or null for the defaults.</param>
-    /// <returns>What each unwrapped set came to, or null when every material had a layout and nothing was written.</returns>
+    /// <returns>
+    ///     What each unwrapped set came to, or null when every material had a layout and nothing was written.
+    /// </returns>
     /// <exception cref="ModelFormatException">It is not a readable model.</exception>
     /// <exception cref="InvalidOperationException">Its islands could not be fitted.</exception>
     /// <exception cref="ArgumentException">The options cannot be used.</exception>
@@ -36,8 +38,10 @@ public static class MeshUnwrapRun {
         var names = MaterialNames.Unique(read.Model.Materials);
         int[] used = [..read.Model.Parts.Select(static part => part.Material).Distinct().Order()];
 
+        IEnumerable<ModelPart> PartsOf(int material) => read.Model.Parts.Where(part => part.Material == material);
+
         bool Bare(int material) =>
-            read.Model.Parts.Where(part => part.Material == material)
+            PartsOf(material)
                 .Any(part => meshes[part.Mesh] is var mesh && mesh.TexCoords.Length != mesh.Positions.Length);
 
         if (!used.Any(Bare)) {
@@ -47,17 +51,14 @@ public static class MeshUnwrapRun {
         List<MeshData> written = [];
         List<UnwrapSet> sets = [];
         foreach (var material in used) {
-            var flat = ModelGeometry.Flatten(
-                read with {
-                    Model = read.Model with { Parts = [..read.Model.Parts.Where(part => part.Material == material)] }
-                }
-            );
+            var flat = ModelGeometry.Flatten(read with { Model = read.Model with { Parts = [..PartsOf(material)] } });
             if (!Bare(material)) {
                 written.AddRange(ModelGeometry.ToParts(flat, flat.Mesh.TexCoords.ToArray()));
                 continue;
             }
 
-            // ⚠ Groups that are vertex colours are not material boundaries, and cutting along each would fragment the atlas.
+            // ⚠ Groups that are vertex colours are not material boundaries, and cutting along each would fragment the
+            // atlas.
             var report = UvUnwrap.All(
                 flat.Mesh,
                 new() { KeepGroups = !flat.ColouredGroups },

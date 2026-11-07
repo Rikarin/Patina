@@ -90,7 +90,9 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         }
     }
 
-    /// <summary>Some layers as a copy holds them, and the canvases the Worker writes for it, read under the lock.</summary>
+    /// <summary>
+    ///     Some layers as a copy holds them, and the canvases the Worker writes for it, read under the lock.
+    /// </summary>
     /// <exception cref="StackEditRefusedException">A layer is not in this stack.</exception>
     public (string Text, int Count, IReadOnlyList<string> Canvases, int Width, int Height) Copied(
         IReadOnlyList<string> layers

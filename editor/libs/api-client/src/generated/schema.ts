@@ -4129,8 +4129,8 @@ export interface components {
        */
       margin: number;
       /**
-       * @description How islands are packed: `boxes` by their bounding boxes, `outlines` by their shapes, and `groups`
-       *     by their shapes after joining nearly square neighbours.
+       * @description How islands are packed: `boxes` by their bounding boxes, `outlines` by their shapes, and
+       *     `groups` by their shapes after joining nearly square neighbours.
        */
       quality: string;
       /**
@@ -4144,8 +4144,9 @@ export interface components {
        */
       texelDensity: number;
       /**
-       * @description What happens when the islands do not fit at that density: `shrink` scales them all down, and `refuse`
-       *     stops and says so. Spilling into a second UDIM tile is not offered while Patina paints one tile.
+       * @description What happens when the islands do not fit at that density: `shrink` scales them all down, and
+       *     `refuse` stops and says so. Spilling into a second UDIM tile is not offered while Patina paints one
+       *     tile.
        */
       overflow: string;
     };

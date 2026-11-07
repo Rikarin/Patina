@@ -6,9 +6,9 @@ namespace Patina.Server.Tests;
 /// <summary>What the vocabulary offers is what a real stack runs: every filter, as a layer and on a mask.</summary>
 public sealed partial class StackProcessTests {
     /// <summary>
-    ///     The whole list and not a sample, since it comes from the registry and a node nobody tried would be offered all
-    ///     the same. Each runs over a soft stroke and a half mask, so that it has something to change, and says nothing is
-    ///     wrong.
+    ///     The whole list and not a sample, since it comes from the registry and a node nobody tried would be offered
+    ///     all the same. Each runs over a soft stroke and a half mask, so that it has something to change, and says
+    ///     nothing is wrong.
     /// </summary>
     [Fact]
     public async Task Every_offered_filter_runs_through_a_real_stack() {
@@ -113,7 +113,7 @@ public sealed partial class StackProcessTests {
                 texts[setting.Name] = "curve:r=0 0.3,1 1;g=0 0.3,1 1;b=0 0.3,1 1";
             } else if (setting.Name == "Ramp") {
                 texts[setting.Name] = "ramp:0 ffffffff,1 000000ff";
-            } else if (setting.Accepted.FirstOrDefault(value => value != setting.Default) is { } other) {
+            } else if (OtherThanDefault(setting) is { } other) {
                 texts[setting.Name] = other;
             } else if (setting.Kind is "Float" or "Int"
                        && float.TryParse(
@@ -127,6 +127,10 @@ public sealed partial class StackProcessTests {
 
         return (numbers, texts);
     }
+
+    /// <summary>The first choice a setting takes that is not where it starts, or null for one with no list.</summary>
+    static string? OtherThanDefault(GraphSettingDefinition setting) =>
+        setting.Accepted.FirstOrDefault(value => value != setting.Default);
 
     static string Described(Dictionary<string, IReadOnlyList<float>> numbers, Dictionary<string, string> texts) =>
         string.Join(
