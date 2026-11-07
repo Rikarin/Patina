@@ -198,6 +198,9 @@ export class ViewportPane implements AfterViewInit {
   private cameraDirty = false;
   private stroking = false;
 
+  /** A Shift-press that draws a line on release, unless the pointer moves first and it is a pan after all. */
+  private lining: { x: number; y: number; snap: boolean } | null = null;
+
   /** Whether a left drag paints rather than orbits. */
   /**
    * Left paints as soon as a stack is on the mesh, if a stroke can land. Otherwise it turns the model, as Alt-left and
@@ -347,6 +350,11 @@ export class ViewportPane implements AfterViewInit {
       return;
     }
 
+    // Shift pans, and Shift-click without moving draws a line from where the last stroke ended.
+    this.lining =
+      this.paints() && event.button === 0 && event.shiftKey && this.gesture.canLine()
+        ? { ...this.spot(event), snap: event.ctrlKey || event.metaKey }
+        : null;
     this.panning = event.button === 1 || event.shiftKey;
     this.dragging.set(true);
     this.viewport.moveCamera(this.viewport.camera(), true);
@@ -360,7 +368,10 @@ export class ViewportPane implements AfterViewInit {
       for (const move of moves.length > 0 ? moves : [event]) {
         this.gesture.move(this.stamp(move));
       }
+    } else if (this.lining && Math.hypot(this.spot(event).x - this.lining.x, this.spot(event).y - this.lining.y) < 4) {
+      // Still a click: a hand is never quite still, and a line should not cost the view a nudge.
     } else if (this.dragging()) {
+      this.lining = null;
       const move = this.panning ? pan : orbit;
       this.viewport.camera.set(move(this.viewport.camera(), event.movementX, event.movementY));
       this.scheduleCamera();
@@ -372,6 +383,11 @@ export class ViewportPane implements AfterViewInit {
       this.stroking = false;
       this.gesture.release();
     } else if (this.dragging()) {
+      if (this.lining) {
+        this.gesture.lineTo(this.stamp(event), this.lining.snap);
+        this.lining = null;
+      }
+
       this.canvas().nativeElement.releasePointerCapture(event.pointerId);
       this.dragging.set(false);
       this.viewport.moveCamera(this.viewport.camera(), false);

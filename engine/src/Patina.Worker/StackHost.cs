@@ -628,6 +628,8 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
                     Brush(part.Brush),
                     part.Colour,
                     surface is null ? 0 : Gutter,
+                    // A line or a path runs through its points, and a brush trailing them would stop short of the last.
+                    part.Curve == "free" ? part.Brush.Lazy : 0f,
                     placement: Placement(part, surface)
                 ),
                 part.Curve == "free" ? null : new()

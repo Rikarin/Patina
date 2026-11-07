@@ -203,6 +203,33 @@ public sealed partial class StackVocabularyTests {
         );
     }
 
+    /// <summary>A lazy mouse is a distance: one behind the pointer by less than nothing means nothing.</summary>
+    [Theory]
+    [InlineData(-1f)]
+    [InlineData(float.NaN)]
+    [InlineData(float.PositiveInfinity)]
+    public void A_brush_trailing_by_no_distance_is_refused(float lazy) {
+        var editor = new StackEditor(
+            "/tmp/Lazy.vxlayers",
+            new() {
+                Name = "Lazy",
+                Sets = [
+                    new() {
+                        Name = "Body",
+                        Channels = [new() { Usage = "baseColor" }],
+                        Layers = [new() { Id = "paint", Name = "Paint", Kind = LayerKind.Paint }]
+                    }
+                ]
+            }
+        );
+
+        Assert.Throws<StackEditRefusedException>(() =>
+            editor.Apply(
+                new([new StackStroke("a", "paint", "baseColor", new(4f, Lazy: lazy), [1f, 1f, 1f, 1f], [new(1f, 1f)])])
+            )
+        );
+    }
+
     static List<string> KeysOf(string table) {
         var body = Regex.Match(Labels, $@"const {table}:[^=]*= \{{(?<body>[^}}]*)\}}").Groups["body"].Value;
         return [..Key().Matches(body).Select(static match => match.Groups[1].Value)];

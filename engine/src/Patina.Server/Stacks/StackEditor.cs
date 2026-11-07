@@ -590,6 +590,10 @@ public sealed class StackEditor : ILayerStackDocument {
             throw new StackEditRefusedException("A brush's stamps are some distance apart.");
         }
 
+        if (stroke.Brush.Lazy is < 0f or float.NaN or float.PositiveInfinity) {
+            throw new StackEditRefusedException("A lazy mouse trails the pointer by a distance of 0 or more.");
+        }
+
         if (!stroke.Mask) {
             Writable(stroke, layer);
         }

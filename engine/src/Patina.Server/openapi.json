@@ -8845,7 +8845,8 @@
           "angleJitter",
           "sizeJitter",
           "pressureSize",
-          "pressureFlow"
+          "pressureFlow",
+          "lazy"
         ],
         "type": "object",
         "properties": {
@@ -8923,6 +8924,12 @@
           "pressureFlow": {
             "type": "number",
             "description": "How much of the flow pressure takes off, 0 to 1.",
+            "format": "float",
+            "default": 0
+          },
+          "lazy": {
+            "type": "number",
+            "description": "How far the brush trails the pointer, in the units of the radius: a lazy mouse. 0 follows it. A line or a path\ntakes none, so that it reaches its last point.",
             "format": "float",
             "default": 0
           }

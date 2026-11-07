@@ -15,7 +15,7 @@ import {
   toTexels,
   toggledEffect
 } from './paint-store';
-import { StrokeGesture } from './stroke-gesture';
+import { StrokeGesture, snapped, trailed } from './stroke-gesture';
 
 const PickedView = {
   eye: [0, 0, 4],
@@ -495,6 +495,51 @@ describe('PaintStore', () => {
       expect(part?.stamps).toHaveLength(2);
     });
     expect(gesture.points()).toHaveLength(0);
+  });
+
+  it('draws a Shift-click line on from where the lazy brush stopped, and snaps it with Cmd', async () => {
+    const { store, bodies } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    store.brush.update(brush => ({ ...brush, lazy: 10 }));
+    const gesture = new StrokeGesture(store, () => undefined);
+    expect(gesture.canLine()).toBe(false);
+
+    gesture.press({ x: 0, y: 0, pressure: 1 });
+    gesture.move({ x: 30, y: 0, pressure: 1 });
+    gesture.release();
+    expect(gesture.canLine()).toBe(true);
+    gesture.press({ x: 50, y: 1, pressure: 1 }, { line: true, snap: true });
+
+    await vi.waitFor(() => {
+      const parts = bodies.flatMap(
+        body => (body as { commands: { curve: string; stamps: { x: number; y: number }[] }[] }).commands
+      );
+      const line = parts.find(part => part.curve === 'line');
+      expect(line?.stamps[0]).toMatchObject({ x: 20, y: 0 });
+      expect(line?.stamps[1]?.y).toBeCloseTo(0, 5);
+      expect(line?.stamps[1]?.x).toBeCloseTo(20 + Math.hypot(30, 1), 5);
+    });
+  });
+
+  it('draws no line through a camera that has moved since the stroke', async () => {
+    const { store } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    let width = 100;
+    const gesture = new StrokeGesture(store, () => ({ width, height: 100, camera: {} as never }));
+    gesture.press({ x: 0, y: 0, pressure: 1 });
+    gesture.release();
+    expect(gesture.canLine()).toBe(true);
+
+    width = 120;
+
+    expect(gesture.canLine()).toBe(false);
+  });
+
+  it('trails a pointer by a distance, and turns an end to the nearest snap', () => {
+    expect(trailed({ x: 0, y: 0, pressure: 1 }, { x: 3, y: 4, pressure: 1 }, 5)).toMatchObject({ x: 0, y: 0 });
+    expect(trailed({ x: 0, y: 0, pressure: 1 }, { x: 9, y: 12, pressure: 1 }, 5)).toMatchObject({ x: 6, y: 8 });
+    const end = snapped({ x: 0, y: 0, pressure: 1 }, { x: 10, y: 0.4, pressure: 1 });
+    expect(end.y).toBeCloseTo(0, 5);
   });
 
   it('collects a path until it is finished, and cancelling sends nothing', async () => {

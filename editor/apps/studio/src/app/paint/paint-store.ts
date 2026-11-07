@@ -164,7 +164,8 @@ export class PaintStore {
     angleJitter: 0,
     sizeJitter: 0,
     pressureSize: 1,
-    pressureFlow: 0
+    pressureFlow: 0,
+    lazy: 0
   });
   readonly vocabulary = signal<StackVocabulary | null>(null);
   /** The layers last copied, from this stack or another. The Server holds them, pixels and all. */

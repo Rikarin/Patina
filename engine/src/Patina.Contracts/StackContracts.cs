@@ -466,6 +466,10 @@ public sealed record StackView(
 /// <param name="SizeJitter">How much of its radius a stamp can lose, 0 to 1.</param>
 /// <param name="PressureSize">How much of the radius pressure takes off, 0 to 1.</param>
 /// <param name="PressureFlow">How much of the flow pressure takes off, 0 to 1.</param>
+/// <param name="Lazy">
+///     How far the brush trails the pointer, in the units of the radius: a lazy mouse. 0 follows it. A line or a path
+///     takes none, so that it reaches its last point.
+/// </param>
 public sealed record StackBrush(
     float Radius,
     float Flow = 1f,
@@ -479,7 +483,8 @@ public sealed record StackBrush(
     float AngleJitter = 0f,
     float SizeJitter = 0f,
     float PressureSize = 0f,
-    float PressureFlow = 0f
+    float PressureFlow = 0f,
+    float Lazy = 0f
 );
 #pragma warning restore SK7005
 

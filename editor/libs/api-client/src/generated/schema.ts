@@ -3172,6 +3172,13 @@ export interface components {
        * @default 0
        */
       pressureFlow: number;
+      /**
+       * Format: float
+       * @description How far the brush trails the pointer, in the units of the radius: a lazy mouse. 0 follows it. A line or a path
+       *     takes none, so that it reaches its last point.
+       * @default 0
+       */
+      lazy: number;
     };
     /** @description A channel a stack writes. */
     StackChannel: {
