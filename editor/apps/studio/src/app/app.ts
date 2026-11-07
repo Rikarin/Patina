@@ -18,6 +18,7 @@ import { ExportPane } from './export/export-pane';
 import { Inspector } from './graph/graph-inspector';
 import { GraphPane } from './graph/graph-pane';
 import { ImageMaterialPane } from './graph/image-material-pane';
+import { NodeLibrary } from './graph/node-library';
 import { TextureView } from './graph/texture-view';
 import { LibraryPane } from './library/library-pane';
 import { ProjectStore } from './library/project-store';
@@ -37,6 +38,7 @@ import { ViewportPane } from './viewport/viewport-pane';
     GraphPane,
     ImageMaterialPane,
     Inspector,
+    NodeLibrary,
     LayerStack,
     LibraryPane,
     DatePipe,
@@ -136,6 +138,9 @@ import { ViewportPane } from './viewport/viewport-pane';
       </ng-template>
       <ng-template xuiDockContent="graph">
         <ptn-graph />
+      </ng-template>
+      <ng-template xuiDockContent="nodes">
+        <ptn-node-library />
       </ng-template>
       <ng-template xuiDockContent="inspector">
         <ptn-inspector />

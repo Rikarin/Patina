@@ -32,6 +32,7 @@ import { XuiOmnibarImports } from '@xui/omnibar';
 import { XuiSpinnerImports } from '@xui/spinner';
 import { XuiTagImports } from '@xui/tag';
 import { IconImports } from '../core/icons';
+import { NodeDragType } from './node-library';
 import { SystemStatus } from '../core/system-status';
 import { isWireable } from './graph-fields';
 import { diagnosticsOf, edgeKey, evaluationSummary } from './graph-model';
@@ -332,6 +333,8 @@ export class GraphThumbnail {
       (connectionDrop)="openDropPalette($event)"
       (deleteSelection)="remove($event)"
       (nodeMove)="settle($event)"
+      (dragover)="overCanvas($event)"
+      (drop)="dropOnCanvas($event)"
       (selectionChange)="select($event)"
     >
       @for (group of document()?.groups; track group.id) {
@@ -548,6 +551,13 @@ export class GraphCanvas {
   });
 
   constructor() {
+    effect(() => {
+      const type = this.store.adding();
+      if (type) {
+        this.store.adding.set(null);
+        void this.store.addNode(type, this.viewCentre());
+      }
+    });
     // xUI gap: a press on a node stops at the node, so the canvas never takes focus from it, and Delete, the arrows and
     // select-all only work after a press on empty canvas. Listening in the capture phase gets there first.
     afterNextRender(() => {
@@ -620,6 +630,22 @@ export class GraphCanvas {
     this.addFrom = { node: Number(drop.source.nodeId), port: drop.source.portId, incoming };
     this.paletteFilter.set(incoming ? 'Output' : 'Input');
     this.paletteOpen.set(true);
+  }
+
+  /** Only a node from the library may land here, and only on a graph that can change. */
+  protected overCanvas(event: DragEvent): void {
+    if (this.store.editable() && event.dataTransfer?.types.includes(NodeDragType)) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+    }
+  }
+
+  protected dropOnCanvas(event: DragEvent): void {
+    const type = this.store.types().get(event.dataTransfer?.getData(NodeDragType) ?? '');
+    if (type) {
+      event.preventDefault();
+      void this.store.addNode(type, this.graph().store.toGraphPoint(event.clientX, event.clientY));
+    }
   }
 
   protected add(type: GraphNodeType): void {

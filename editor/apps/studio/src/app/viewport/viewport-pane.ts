@@ -54,9 +54,9 @@ const Rooms: readonly { value: string; label: string }[] = [
           size="sm"
           variant="ghost"
           data-testid="viewport-show-graph"
-          [disabled]="!viewport.mesh()"
-          [title]="'Lays the outputs of ' + document.name + ' over this mesh, as they stand now'"
-          (click)="viewport.showGraph(document.id)"
+          [active]="followed() === document.id"
+          [title]="'Lays the outputs of ' + document.name + ' over the mesh, or a sphere, and keeps up with edits'"
+          (click)="follow(document.id)"
         >
           Show {{ document.name }}
         </button>
@@ -227,6 +227,14 @@ export class ViewportPane implements AfterViewInit {
   });
 
   constructor() {
+    effect(() => {
+      const followed = this.followed();
+      const document = this.graph.document();
+      const revision = document?.evaluation?.revision;
+      if (followed && document?.id === followed && revision !== undefined) {
+        void this.viewport.showGraph(followed);
+      }
+    });
     // What the viewport shows changed from elsewhere, and the label needs telling.
     effect(() => {
       if (this.paint.worn()) {
@@ -260,6 +268,13 @@ export class ViewportPane implements AfterViewInit {
     const source = this.viewport.environment();
     return Rooms.some(room => room.value === source) ? null : source.split(/[/\\]/u).pop();
   });
+
+  /** The graph on the mesh, which follows its evaluations until asked to stop. */
+  protected readonly followed = signal<string | null>(null);
+
+  protected follow(graph: string): void {
+    this.followed.update(now => (now === graph ? null : graph));
+  }
 
   protected async chooseEnvironment(event: Event): Promise<void> {
     const select = event.target as HTMLSelectElement;

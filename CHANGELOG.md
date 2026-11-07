@@ -11,6 +11,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Projects can be duplicated and deleted from the Library. A deleted project goes to the library's hidden `.trash` folder.
 - The graph toolbar and the brush tools are icons, the brush colour keeps recent colours, and roughness, metalness and the like are sliders on a constant fill.
 - A pen's pressure changes brush size by default.
+- A Nodes pane lists every node by category: search it, double-click to add, or drag onto the canvas. A number in the Inspector becomes a parameter with one button.
+- A graph shows on a sphere when no mesh is open, and its button now keeps the 3D view up with edits.
 
 ### Fixed
 

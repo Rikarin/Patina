@@ -365,6 +365,21 @@ test('exposes a parameter, drives a number from it and edits its default', async
   await expect(thumbnail(1)).toHaveAttribute('data-hash', driven);
 });
 
+test('the node library adds a node, and a number becomes a parameter in one step', async () => {
+  await openGraph();
+
+  await window.getByRole('tab', { name: 'Nodes' }).click();
+  await window.getByTestId('node-library-search').fill('Levels');
+  await window.getByTestId('node-library-item').first().dblclick();
+  await expect(nodes()).toHaveCount(Nodes + 1);
+
+  await node(1).click();
+  await window.getByTestId('expose-Scale').click();
+  await expect(window.getByTestId('expression-Scale')).toHaveValue('Scale');
+  await window.getByTestId('graph-settings').click();
+  await expect(window.getByTestId('parameter-Scale')).toBeVisible();
+});
+
 test('groups nodes, keeps notes, and both survive a save and a reopen', async () => {
   await openGraph();
   await inspect(1);

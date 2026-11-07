@@ -628,6 +628,27 @@ public sealed class BakeProcessTests : IDisposable {
         Assert.True(SamePicture(baked, again), "A new Worker drew something else.");
     }
 
+    /// <summary>Shows a graph in the viewport, once its first evaluation holds a picture.</summary>
+    async Task<ViewportState> ShowGraphAsync(string graph, CancellationToken cancellationToken) {
+        while (true) {
+            using var response = await http.PutAsJsonAsync(
+                "/api/v1/viewport/graph",
+                new(graph),
+                ContractsJsonContext.Default.ViewportGraphRequest,
+                cancellationToken
+            );
+            if (response.IsSuccessStatusCode) {
+                return (await response.Content.ReadFromJsonAsync(
+                    ContractsJsonContext.Default.ViewportState,
+                    cancellationToken
+                ))!;
+            }
+
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+            await Task.Delay(100, cancellationToken);
+        }
+    }
+
     [Fact]
     public async Task A_graph_s_outputs_lie_on_the_open_mesh() {
         using var deadline = Deadline(120);
@@ -650,15 +671,12 @@ public sealed class BakeProcessTests : IDisposable {
         };
         var graph = await http.OpenAsync(GraphTesting.Write(Library, asset, "painted.vxtexgraph"), deadline.Token);
 
-        using var early = await http.PutAsJsonAsync(
-            "/api/v1/viewport/graph",
-            new(graph.Id),
-            ContractsJsonContext.Default.ViewportGraphRequest,
-            deadline.Token
-        );
-        Assert.Equal(HttpStatusCode.UnprocessableEntity, early.StatusCode);
-
         using var socket = await ViewportAsync(deadline.Token);
+
+        // With no mesh open, a graph is seen on a shape.
+        var onShape = await ShowGraphAsync(graph.Id, deadline.Token);
+        Assert.EndsWith("Sphere.glb", onShape.Mesh, StringComparison.Ordinal);
+
         using var opened = await http.PutAsJsonAsync(
             "/api/v1/viewport/mesh",
             new(request.Low),
@@ -668,25 +686,7 @@ public sealed class BakeProcessTests : IDisposable {
         opened.EnsureSuccessStatusCode();
         await FrameAsync(socket, deadline.Token);
 
-        ViewportState? shown = null;
-        while (shown is null) {
-            using var response = await http.PutAsJsonAsync(
-                "/api/v1/viewport/graph",
-                new(graph.Id),
-                ContractsJsonContext.Default.ViewportGraphRequest,
-                deadline.Token
-            );
-            if (response.IsSuccessStatusCode) {
-                shown = await response.Content.ReadFromJsonAsync(
-                    ContractsJsonContext.Default.ViewportState,
-                    deadline.Token
-                );
-            } else {
-                // The Worker holds no picture until the graph's first evaluation.
-                Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-                await Task.Delay(100, deadline.Token);
-            }
-        }
+        var shown = await ShowGraphAsync(graph.Id, deadline.Token);
 
         Assert.True(File.Exists(shown.Maps.Roughness), shown.Maps.Roughness);
         Assert.Null(shown.Maps.BaseColor);

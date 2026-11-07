@@ -3,7 +3,7 @@ import type { XuiDockContentPane, XuiDockManagerLayout, XuiDockPane } from '@xui
 /** What the app is doing, which decides what is on screen (ADR 0012). */
 export type WorkspaceName = 'start' | 'texturing' | 'layered-material' | 'image-material' | 'graph';
 
-const Version = 4;
+const Version = 5;
 
 type Part = XuiDockPane;
 
@@ -56,7 +56,7 @@ const Layouts: Readonly<Record<WorkspaceName, XuiDockManagerLayout>> = {
   'image-material': root(library, pane('image', 'Maps', 1), pane('texture', 'Result', 3), inspector),
   // The canvas is the work; pictures of it are at the side.
   graph: root(
-    library,
+    tabs(1, library, pane('nodes', 'Nodes')),
     pane('graph', 'Graph', 4),
     down(1.6, tabs(2, pane('texture', '2D View'), pane('viewport', 'Preview')), { ...inspector, size: 3 })
   )

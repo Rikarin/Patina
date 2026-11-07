@@ -134,6 +134,8 @@ export class GraphStore {
 
   readonly session = this.mutableSession.asReadonly();
   readonly document = this.mutableDocument.asReadonly();
+  /** A node the library asked for, which the canvas places in the middle of what it shows. */
+  readonly adding = signal<GraphNodeType | null>(null);
   readonly types = this.mutableTypes.asReadonly();
   readonly link = this.mutableLink.asReadonly();
   /** Why the last edit did not happen. */

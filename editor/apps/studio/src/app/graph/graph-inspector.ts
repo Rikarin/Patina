@@ -124,6 +124,21 @@ const SliderSteps = 1000;
                     >
                       =
                     </button>
+                    @if (canExpose(field)) {
+                      <button
+                        type="button"
+                        xuiButton
+                        size="sm"
+                        variant="ghost"
+                        title="Make this a parameter of the graph"
+                        [attr.aria-label]="'Expose ' + field.name"
+                        [attr.data-testid]="'expose-' + field.name"
+                        [disabled]="!store.editable()"
+                        (click)="expose(field)"
+                      >
+                        ⇱
+                      </button>
+                    }
                   }
                 </div>
                 @if (field.source === 'value' && showsExpression(field.name)) {
@@ -299,6 +314,35 @@ export class GraphInspector {
     if (lanes && hex.toUpperCase() !== this.hexOf(field)) {
       this.store.setValue(this.node().id, field.name, lanes);
     }
+  }
+
+  /** A number that nothing drives yet can become a parameter in one step. */
+  protected canExpose(field: NumberField): boolean {
+    return field.fallback.length === 1 && this.expressionOf(field.name) === '';
+  }
+
+  /** Makes a parameter of the field's name, starting where the field is, and drives the field from it. */
+  protected expose(field: NumberField): void {
+    const taken = new Set(this.store.document()?.parameters.map(parameter => parameter.name) ?? []);
+    const stem = field.name.replace(/[^A-Za-z0-9]/gu, '') || 'Parameter';
+    let name = stem;
+    for (let count = 2; taken.has(name); count += 1) {
+      name = `${stem}${String(count)}`;
+    }
+
+    const value = this.numberOf(field);
+    this.store.addParameter({
+      name,
+      default: String(value),
+      summary: field.summary,
+      kind: field.whole ? 'Int' : 'Float',
+      minimum: field.minimum ?? Math.min(0, value),
+      maximum: field.maximum ?? Math.max(1, value * 2),
+      group: '',
+      accepted: []
+    });
+    this.store.setText(this.node().id, expressionKey(field.name), name);
+    this.store.endGesture();
   }
 
   protected expressionOf(port: string): string {

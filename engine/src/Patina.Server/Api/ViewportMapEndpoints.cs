@@ -148,14 +148,11 @@ static class ViewportMapEndpoints {
         GraphEvaluator evaluator,
         PreviewStore store,
         ViewportSession session,
+        ServerIdentity identity,
         CancellationToken cancellationToken
     ) {
         if (graphs.Find(request.Graph) is not { } graph) {
             return TypedResults.Problem($"There is no graph session '{request.Graph}'.", statusCode: Missing);
-        }
-
-        if (session.State.Mesh is null) {
-            return TypedResults.Problem("Open a mesh first: a graph has no surface of its own.", statusCode: Refused);
         }
 
         var outputs = graph.Outputs(Slots);
@@ -168,6 +165,11 @@ static class ViewportMapEndpoints {
             foreach (var (node, usage) in outputs) {
                 var image = await evaluator.ImageAsync(graph, node, usage, cancellationToken);
                 files[usage] = new(GraphPreviewFiles.PathOf(store.Root, image.Hash), image.Hash);
+            }
+
+            // A graph has no surface of its own, so with no mesh open it is seen on a shape.
+            if (session.State.Mesh is null) {
+                session.SetMesh(PreviewShape.File(identity.Library));
             }
 
             session.SetMaps(
