@@ -27,6 +27,15 @@ type NumberField = Extract<GraphField, { control: 'number' }>;
 
 const SliderSteps = 1000;
 
+/**
+ * A picked colour over the lanes it replaces. The picker is eight bits and clamps, so a lane it did not move keeps
+ * its number: changing red must not turn a blue of 2.0 into 1, or 0.18 into 46/255.
+ */
+export function keptLanes(held: readonly number[], picked: readonly number[]): readonly number[] {
+  const byte = (lane: number | undefined): number => Math.round(Math.min(1, Math.max(0, lane ?? 0)) * 255);
+  return picked.map((lane, at) => (byte(held[at] ?? (at === 3 ? 1 : 0)) === byte(lane) ? (held[at] ?? lane) : lane));
+}
+
 /** The parameters of the selected node. Every control writes through the store, as live edits. */
 @Component({
   selector: 'ptn-graph-inspector',
@@ -169,6 +178,19 @@ const SliderSteps = 1000;
                   [value]="hexOf(field)"
                   (valueChange)="setHex(field, $event)"
                 />
+                <div class="mt-1 grid grid-cols-4 gap-1" data-testid="colour-lanes">
+                  @for (lane of lanes; track lane) {
+                    <xui-numeric-input
+                      size="sm"
+                      [ariaLabel]="field.name + ' ' + lane"
+                      [disabled]="!store.editable()"
+                      buttonPosition="none"
+                      [stepSize]="0.01"
+                      [value]="laneOf(field, $index)"
+                      (valueChange)="setLane(field, $index, $event)"
+                    />
+                  }
+                </div>
               }
               @case ('choice') {
                 <xui-select
@@ -305,6 +327,8 @@ export class GraphInspector {
     this.store.endGesture();
   }
 
+  protected readonly lanes = ['R', 'G', 'B', 'A'];
+
   protected hexOf(field: Extract<GraphField, { control: 'colour' }>): string {
     return hexOfLanes(this.store.valueOf(this.node().id, field.name, field.fallback));
   }
@@ -312,8 +336,27 @@ export class GraphInspector {
   protected setHex(field: Extract<GraphField, { control: 'colour' }>, hex: string): void {
     const lanes = lanesOfHex(hex);
     if (lanes && hex.toUpperCase() !== this.hexOf(field)) {
-      this.store.setValue(this.node().id, field.name, lanes);
+      this.store.setValue(this.node().id, field.name, keptLanes(this.lanesOf(field), lanes));
     }
+  }
+
+  protected laneOf(field: Extract<GraphField, { control: 'colour' }>, lane: number): number {
+    return this.lanesOf(field)[lane] ?? (lane === 3 ? 1 : 0);
+  }
+
+  protected setLane(field: Extract<GraphField, { control: 'colour' }>, lane: number, value: number | null): void {
+    if (value === null) {
+      return;
+    }
+
+    const lanes = [0, 1, 2, 3].map(at => this.laneOf(field, at));
+    lanes[lane] = value;
+    this.store.setValue(this.node().id, field.name, lanes);
+    this.store.endGesture();
+  }
+
+  private lanesOf(field: Extract<GraphField, { control: 'colour' }>): readonly number[] {
+    return this.store.valueOf(this.node().id, field.name, field.fallback);
   }
 
   /** A number that nothing drives yet can become a parameter in one step. */

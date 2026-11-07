@@ -70,6 +70,8 @@ interface NodeView {
   group: string | undefined;
   /** The graph behind it, when it is a compound. */
   compound: string | null;
+  /** Whether its type has a picture worth a box, which an Output does not. */
+  preview: boolean;
 }
 
 interface NoteView {
@@ -373,7 +375,9 @@ export class GraphThumbnail {
           (dblclick)="enter(view)"
           (positionChange)="move(view.id, $event)"
         >
-          <xui-graph-node-preview><ptn-graph-thumbnail [node]="view.id" /></xui-graph-node-preview>
+          @if (view.preview && store.thumbnail(view.id)()) {
+            <xui-graph-node-preview><ptn-graph-thumbnail [node]="view.id" /></xui-graph-node-preview>
+          }
           @for (port of view.ports; track port.name) {
             <xui-graph-port
               [dataType]="port.dataType"
@@ -761,7 +765,8 @@ export class GraphCanvas {
         ports,
         position: { x: node.x, y: node.y },
         group: undefined,
-        compound: null
+        compound: null,
+        preview: type?.hasPreview ?? true
       };
       this.nodeViews.set(node, view);
     }

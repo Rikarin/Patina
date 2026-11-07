@@ -9,6 +9,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - A graph tiles across and down by default, with a switch for each in its settings, and every filter keeps a tiling picture tiling. A graph reading a mesh map holds at its edges instead, as a layer stack always does.
 - A Pixel Processor has a Format setting. It keeps all four lanes unless it is told to keep grey.
+- A colour field in a graph has a number for each lane, so a colour can be past 1 and hold 0.18 exactly.
 - Project Settings holds the project's mesh, Auto Unwrap and Preserve Paint. A mesh with no UVs gets a layout in a new file beside it, when it is set or from the error's Unwrap Mesh button.
 - A layer can be kept to named meshes, from the square on the right of its row. It combines with any mask the layer has.
 - Effects inside layers: a layer can hold paint, fills and filters, each with its own blend, opacity and eye, over its content and under its mask.
@@ -35,6 +36,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - A default Levels no longer adds noise, which read as a surface tilted by up to 51 degrees once it reached Height to Normal.
 - Each octave of a noise is its own field, rather than the one before it shrunk into the corner.
+- Divide, Colour Dodge and Colour Burn go past 1 in a float graph, so a height of 4 over 2 is 2.
+- Output nodes and nodes with no picture yet no longer draw an empty preview box.
 - All eight grunges tile, along with the filters they are made of.
 - Bake formats, export presets, job states and layer blend modes show plain names instead of internal ids.
 - The first stroke after opening a 4K stack no longer waits seconds for the maps to reach the mesh.
