@@ -71,6 +71,9 @@ static class LibraryTreeEndpoints {
         library.MapPost("/project/documents", AddDocument)
             .Described("AddProjectDocument", "Makes a document of a kind in a project.");
 
+        library.MapPost("/project/files", ImportFile)
+            .Described("ImportProjectFile", "Brings a mesh or a picture into a project. Anything else is refused.");
+
         library.MapPost("/project/pictures", AddPicture)
             .Described("AddProjectPicture", "Brings a picture into a project, for a layer or a mask to read.");
 
@@ -255,6 +258,16 @@ static class LibraryTreeEndpoints {
             host,
             library => {
                 library.AddMesh(request.Project, request.Mesh, request.High);
+                host.RequestRescan();
+                return TypedResults.Ok(library.Contents(request.Project));
+            }
+        );
+
+    static Results<Ok<ProjectContents>, ProblemHttpResult> ImportFile(LibraryHost host, ProjectFileRequest request) =>
+        Guarded(
+            host,
+            library => {
+                library.Import(request.Project, request.File);
                 host.RequestRescan();
                 return TypedResults.Ok(library.Contents(request.Project));
             }

@@ -17,6 +17,10 @@ static class ProjectFiles {
     static readonly FrozenSet<string> MeshExtensions =
         new[] { ".glb", ".gltf", ".fbx", ".obj" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>What a layer or a mask can read, which is 8-bit pictures: an EXR is for the viewport and bakes.</summary>
+    static readonly FrozenSet<string> PictureExtensions =
+        new[] { ".png", ".jpg", ".jpeg", ".tga", ".bmp", ".gif" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Everything in a project, with paths below the library.</summary>
     public static ProjectContents Read(string root, string path) {
         var (full, document) = Project(root, path);
@@ -45,7 +49,11 @@ static class ProjectFiles {
             meshes,
             documents,
             Below(path, BakeFolder),
-            Bakes(full, path)
+            Bakes(full, path),
+            [
+                ..files.Where(IsPicture)
+                    .Select(f => new ProjectFile("picture", Path.GetFileName(f), Below(path, f)))
+            ]
         ) { AutoUnwrap = document.AutoUnwrap, PreservePaint = document.PreservePaint };
     }
 
@@ -76,9 +84,32 @@ static class ProjectFiles {
         return added;
     }
 
+    /// <summary>Brings a file into a project as what it is, which only a mesh or a picture can be.</summary>
+    /// <exception cref="FileNotFoundException">The project or the file is not there.</exception>
+    /// <exception cref="ProjectRefusedException">Nothing here reads it.</exception>
+    public static void Import(string root, string path, string file) {
+        if (IsMesh(file)) {
+            AddMesh(root, path, file, null);
+        } else if (PictureExtensions.Contains(Path.GetExtension(file))) {
+            AddPicture(root, path, file);
+        } else {
+            throw new ProjectRefusedException(
+                $"Nothing in Patina reads '{Path.GetFileName(file)}'. A project takes meshes ({Known(MeshExtensions)}) and pictures ({Known(PictureExtensions)})."
+            );
+        }
+    }
+
     /// <summary>Brings a picture into a project's pictures folder, unless it is in the project already.</summary>
+    /// <exception cref="FileNotFoundException">The project or the picture is not there.</exception>
+    /// <exception cref="ProjectRefusedException">A layer could not read it.</exception>
     public static string AddPicture(string root, string path, string picture) {
         var (full, _) = Project(root, path);
+        if (!PictureExtensions.Contains(Path.GetExtension(picture))) {
+            throw new ProjectRefusedException(
+                $"'{Path.GetFileName(picture)}' is not a picture a layer can read: use {Known(PictureExtensions)}."
+            );
+        }
+
         if (!File.Exists(picture)) {
             throw new FileNotFoundException($"There is no file '{picture}'.", picture);
         }
@@ -313,8 +344,7 @@ static class ProjectFiles {
     /// <exception cref="ProjectRefusedException">It is not a mesh.</exception>
     public static void Require(string mesh) {
         if (!IsMesh(mesh)) {
-            var known = string.Join(", ", MeshExtensions.Order(StringComparer.Ordinal));
-            throw new ProjectRefusedException($"'{Path.GetFileName(mesh)}' is not a mesh: use {known}.");
+            throw new ProjectRefusedException($"'{Path.GetFileName(mesh)}' is not a mesh: use {Known(MeshExtensions)}.");
         }
 
         if (!File.Exists(mesh)) {
@@ -371,6 +401,14 @@ static class ProjectFiles {
         new(item.Id.Value, item.Kind, item.Name, Below(path, item.File), item.Mesh?.Value, item.Role, item.Material);
 
     static bool IsMesh(string file) => MeshExtensions.Contains(Path.GetExtension(file));
+
+    /// <summary>A picture of the user's: what the Server drew for a mesh mask is not one.</summary>
+    static bool IsPicture(string file) =>
+        PictureExtensions.Contains(Path.GetExtension(file))
+        && !Path.GetFileName(file).StartsWith(LibraryLayout.MeshMaskPrefix, StringComparison.Ordinal);
+
+    static string Known(IEnumerable<string> extensions) =>
+        string.Join(", ", extensions.Order(StringComparer.Ordinal));
 
     /// <summary>The kind a file not yet listed is taken for. A stack that names no mesh still opens as one.</summary>
     static string? Unlisted(string file) {

@@ -182,6 +182,16 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
+    /// <summary>Brings a file into a project as the mesh or the picture it is.</summary>
+    /// <exception cref="FileNotFoundException">The project or the file is not there.</exception>
+    /// <exception cref="ProjectRefusedException">Nothing here reads it.</exception>
+    public void Import(string path, string file) {
+        lock (createGate) {
+            ProjectFiles.Import(RootPath, path, file);
+            Interlocked.Increment(ref unscannedWrites);
+        }
+    }
+
     /// <summary>Brings a picture into a project, so that the project travels with what it reads.</summary>
     /// <returns>Its path below the library.</returns>
     /// <exception cref="FileNotFoundException">The project or the picture is not there.</exception>

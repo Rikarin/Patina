@@ -107,6 +107,7 @@ public sealed record ProjectDocumentInfo(
 /// <param name="Documents">What can be opened in it.</param>
 /// <param name="BakeFolder">Where its bakes go, below the library.</param>
 /// <param name="Bakes">The bakes it has.</param>
+/// <param name="Pictures">The pictures brought in for layers and masks.</param>
 public sealed record ProjectContents(
     Guid Id,
     string Name,
@@ -114,7 +115,8 @@ public sealed record ProjectContents(
     IReadOnlyList<ProjectMeshInfo> Meshes,
     IReadOnlyList<ProjectDocumentInfo> Documents,
     string BakeFolder,
-    IReadOnlyList<ProjectFile> Bakes
+    IReadOnlyList<ProjectFile> Bakes,
+    IReadOnlyList<ProjectFile> Pictures
 ) {
     /// <summary>Whether a mesh with no UV layout is given one when it is set.</summary>
     public bool AutoUnwrap { get; init; } = true;
@@ -128,6 +130,11 @@ public sealed record ProjectContents(
 /// <param name="Mesh">A mesh file on the Server's machine.</param>
 /// <param name="High">The detailed mesh it bakes from.</param>
 public sealed record ProjectMeshRequest(string Project, string Mesh, string? High = null);
+
+/// <summary>A file to bring into a project as whatever it is.</summary>
+/// <param name="Project">The project's path.</param>
+/// <param name="File">The file, anywhere the Server can read.</param>
+public sealed record ProjectFileRequest(string Project, string File);
 
 /// <summary>The body of <c>PATCH /api/v1/library/project/settings</c>. Null leaves a setting as it is.</summary>
 /// <param name="Project">The project, below <c>projects/</c>.</param>

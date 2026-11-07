@@ -1,8 +1,8 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { appendFileSync, existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { leave, newLibrary, newProject } from './projects';
+import { answerOpen, leave, newLibrary, newProject } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const softwareWebGl = process.platform === 'linux' ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : [];
@@ -107,6 +107,40 @@ test("Don't Save on a stack throws the edits away, and they stay gone", async ()
   await expect.poll(pictureHash, { timeout: 15_000 }).toBe(saved);
   await expect(window.getByTestId('paint-unsaved')).toHaveCount(0);
   await expect(window.getByTestId('app-recovery')).toHaveCount(0);
+});
+
+const command = (name: string) =>
+  app.evaluate(({ BrowserWindow }, sent) => {
+    BrowserWindow.getAllWindows()[0]?.webContents.send('patina:command', sent);
+  }, name);
+
+/** One grey pixel. */
+const Pixel = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGP4DwABAQEAG7buVgAAAABJRU5ErkJggg==';
+
+test('File > Import says what it did, lists the file, and refuses what nothing reads', async () => {
+  await launch();
+  await newLibrary(app, window, library);
+  await newProject(app, window, 'Crate');
+
+  const picture = join(scratch, 'rust.png');
+  writeFileSync(picture, Buffer.from(Pixel, 'base64'));
+  await answerOpen(app, picture);
+  await command('import');
+  await expect(window.getByTestId('app-notice')).toHaveText('Imported rust.png into Crate');
+  await expect(window.getByTestId('app-failure')).toHaveCount(0);
+
+  await command('projectSettings');
+  await expect(window.getByTestId('project-file').filter({ hasText: 'rust.png' })).toContainText('Picture');
+  await window.keyboard.press('Escape');
+  await expect(window.getByTestId('project-files')).toHaveCount(0);
+
+  const model = join(scratch, 'model.dae');
+  writeFileSync(model, '<COLLADA/>');
+  await answerOpen(app, model);
+  await command('import');
+  await expect(window.getByTestId('app-failure')).toContainText("Nothing in Patina reads 'model.dae'");
+  await expect(window.getByTestId('app-notice')).toHaveCount(0);
+  expect(existsSync(join(library, 'projects', 'crate', 'pictures', 'model.dae'))).toBe(false);
 });
 
 test('Saving over a file that changed asks first, and Overwrite saves', async () => {

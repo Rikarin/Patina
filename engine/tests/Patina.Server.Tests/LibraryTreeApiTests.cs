@@ -347,6 +347,79 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
         Assert.NotNull(await RecoveryOfAsync(document));
     }
 
+    [Fact]
+    public async Task An_import_goes_where_its_kind_goes_and_the_project_lists_it() {
+        await MakeCrateAsync();
+
+        var withMesh = await ImportAsync("Spare.glb");
+        var withPicture = await ImportAsync("Rust.png");
+
+        Assert.Contains(withMesh!.Meshes, static mesh => mesh.Path == "projects/crate/Spare.glb");
+        Assert.Equal(
+            new ProjectFile("picture", "Rust.png", "projects/crate/pictures/Rust.png"),
+            Assert.Single(withPicture!.Pictures)
+        );
+        Assert.True(File.Exists(Path.Combine(server.Library, "projects/crate/pictures/Rust.png")));
+    }
+
+    [Theory]
+    [InlineData("model.dae")]
+    [InlineData("scene.usd")]
+    [InlineData("notes.txt")]
+    [InlineData("height.exr")]
+    public async Task An_import_nothing_can_read_is_refused_and_copies_nothing(string name) {
+        await MakeCrateAsync();
+        var file = Path.Combine(files.FullName, name);
+        File.WriteAllText(file, "not much");
+
+        using var refused = await client.PostAsJsonAsync(
+            "/api/v1/library/project/files",
+            new ProjectFileRequest("crate", file),
+            Token
+        );
+        using var picture = await client.PostAsJsonAsync(
+            "/api/v1/library/project/pictures",
+            new ProjectPictureRequest("crate", file),
+            Token
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.Contains(name, await refused.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
+        Assert.Contains(".glb", await refused.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.BadRequest, picture.StatusCode);
+        Assert.False(Directory.Exists(Path.Combine(server.Library, "projects/crate/pictures")));
+    }
+
+    [Fact]
+    public async Task A_picture_the_Server_drew_for_a_mask_is_not_listed_as_the_users() {
+        await MakeCrateAsync();
+        var pictures = Directory.CreateDirectory(Path.Combine(server.Library, "projects/crate/pictures"));
+        File.WriteAllText(Path.Combine(pictures.FullName, "mesh-mask-1234.png"), "drawn");
+
+        var contents = await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=crate", Token);
+
+        Assert.Empty(contents!.Pictures);
+    }
+
+    Task<HttpResponseMessage> MakeCrateAsync() =>
+        client.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new ProjectCreateRequest("Crate", Kind: "layered-material"),
+            Token
+        );
+
+    async Task<ProjectContents?> ImportAsync(string name) {
+        var file = Path.Combine(files.FullName, name);
+        File.WriteAllText(file, "bytes");
+        using var imported = await client.PostAsJsonAsync(
+            "/api/v1/library/project/files",
+            new ProjectFileRequest("crate", file),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.OK, imported.StatusCode);
+        return await imported.Content.ReadFromJsonAsync<ProjectContents>(Token);
+    }
+
     async Task<(string Document, string File, string Stack)> OpenStackAsync() {
         await client.PostAsJsonAsync(
             "/api/v1/library/projects",

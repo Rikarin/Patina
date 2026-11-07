@@ -7,6 +7,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Project Settings lists a project's meshes, pictures and bakes under Files, and the status bar says what an import brought in.
 - Project Settings holds the project's mesh, Auto Unwrap and Preserve Paint. A mesh with no UVs gets a layout in a new file beside it, when it is set or from the error's Unwrap Mesh button.
 - A layer can be kept to named meshes, from the square on the right of its row. It combines with any mask the layer has.
 - Effects inside layers: a layer can hold paint, fills and filters, each with its own blend, opacity and eye, over its content and under its mask.
@@ -31,6 +32,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Importing a file nothing can read, such as a `.dae`, `.usd` or `.txt`, is refused and says why, instead of being copied into the project as a picture. EXR is refused as a layer picture too, because layers read 8-bit pictures only.
 - A layered document that cannot save says why, and one whose file changed on disk asks whether to overwrite it, as a graph does. Closing or quitting stays put when the save did not happen.
 - Don't Save on a layered document throws the edits away. They used to stay open on the Server and come back on the next open, and autosaved copies of refused edits are no longer offered back.
 - Discard in the recovery dialog works, and closing that dialog keeps the autosaved work and asks again next time. Work still open in a session is no longer offered back as if it had been lost.

@@ -470,6 +470,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/project/files': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Brings a mesh or a picture into a project. Anything else is refused. */
+    post: operations['ImportProjectFile'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/project/pictures': {
     parameters: {
       query?: never;
@@ -2745,6 +2762,8 @@ export interface components {
       bakeFolder: string;
       /** @description The bakes it has. */
       bakes: components['schemas']['ProjectFile'][];
+      /** @description The pictures brought in for layers and masks. */
+      pictures: components['schemas']['ProjectFile'][];
       /** @description Whether a mesh with no UV layout is given one when it is set. */
       autoUnwrap: boolean;
       /** @description Whether paint moves to a new mesh's layout. */
@@ -2873,6 +2892,13 @@ export interface components {
       name: string;
       /** @description Its path below the library. */
       path: string;
+    };
+    /** @description A file to bring into a project as whatever it is. */
+    ProjectFileRequest: {
+      /** @description The project's path. */
+      project: string;
+      /** @description The file, anywhere the Server can read. */
+      file: string;
     };
     /** @description A mesh in a project. */
     ProjectMeshInfo: {
@@ -5456,6 +5482,57 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': components['schemas']['ProjectDocumentRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  ImportProjectFile: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectFileRequest'];
       };
     };
     responses: {

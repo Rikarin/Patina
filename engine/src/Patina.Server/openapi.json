@@ -1794,6 +1794,67 @@
         }
       }
     },
+    "/api/v1/library/project/files": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Brings a mesh or a picture into a project. Anything else is refused.",
+        "operationId": "ImportProjectFile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectFileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/project/pictures": {
       "post": {
         "tags": [
@@ -7904,6 +7965,7 @@
           "documents",
           "bakeFolder",
           "bakes",
+          "pictures",
           "autoUnwrap",
           "preservePaint"
         ],
@@ -7946,6 +8008,13 @@
               "$ref": "#/components/schemas/ProjectFile"
             },
             "description": "The bakes it has."
+          },
+          "pictures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectFile"
+            },
+            "description": "The pictures brought in for layers and masks."
           },
           "autoUnwrap": {
             "type": "boolean",
@@ -8236,6 +8305,24 @@
           }
         },
         "description": "A result of a bake in a project\u0027s folder."
+      },
+      "ProjectFileRequest": {
+        "required": [
+          "project",
+          "file"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project\u0027s path."
+          },
+          "file": {
+            "type": "string",
+            "description": "The file, anywhere the Server can read."
+          }
+        },
+        "description": "A file to bring into a project as whatever it is."
       },
       "ProjectMeshInfo": {
         "required": [

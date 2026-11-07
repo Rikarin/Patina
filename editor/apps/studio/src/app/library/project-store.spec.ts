@@ -21,7 +21,8 @@ const contents = {
     { id: 'g', kind: 'graph', name: 'Rust', path: paths.graph, mesh: null }
   ],
   bakeFolder: 'projects/a/bakes',
-  bakes: []
+  bakes: [],
+  pictures: []
 };
 
 function memoryStorage(): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> {
@@ -116,6 +117,7 @@ function harness() {
         provide: LibraryStore,
         useValue: {
           api: () => Promise.resolve(client),
+          refreshSoon: vi.fn(),
           state: signal({ kind: 'ready', info: { id: 'lib', path: '/game.ptlib' } })
         }
       }
@@ -448,6 +450,67 @@ describe('ProjectStore', () => {
 
     expect(store.failure()).toBe('The Worker went away.');
     expect(store.active()?.path).toBe(paths.texturing);
+  });
+
+  describe('bringing files in', () => {
+    const withPicture = {
+      ...contents,
+      pictures: [{ kind: 'picture', name: 'rust.png', path: 'projects/a/pictures/rust.png' }]
+    };
+    const reply = () => Promise.resolve({ data: withPicture, response: new Response() });
+
+    it('hands each file to the Server, which says what it is, and shows the project as it comes back', async () => {
+      const { store, client } = harness();
+      await store.open('a');
+      client.POST.mockImplementation(reply as never);
+
+      await store.importFiles(['/in/rust.png']);
+
+      expect(client.POST).toHaveBeenCalledWith('/api/v1/library/project/files', {
+        body: { project: 'a', file: '/in/rust.png' }
+      });
+      expect(store.current()?.pictures).toEqual(withPicture.pictures);
+    });
+
+    it('says it worked, and the next action clears that', async () => {
+      const { store, client } = harness();
+      await store.open('a');
+      client.POST.mockImplementation(reply as never);
+
+      await store.importFiles(['C:\\in\\rust.png']);
+      expect(store.notice()).toBe('Imported rust.png into A');
+      expect(store.failure()).toBeNull();
+
+      await store.importFiles(['/in/a.png', '/in/b.png']);
+      expect(store.notice()).toBe('Imported 2 files into A');
+
+      await store.open('a');
+      expect(store.notice()).toBeNull();
+    });
+
+    it('keeps going past a file the Server refuses, and says what happened to both', async () => {
+      const { store, client } = harness();
+      await store.open('a');
+      client.POST.mockImplementationOnce(() => Promise.reject(new ApiError(400, "Nothing reads 'model.dae'.")));
+      client.POST.mockImplementationOnce(reply as never);
+
+      await store.importFiles(['/in/model.dae', '/in/rust.png']);
+
+      expect(store.failure()).toBe("Nothing reads 'model.dae'.");
+      expect(store.notice()).toBe('Imported rust.png into A');
+      expect(store.current()?.pictures).toHaveLength(1);
+    });
+
+    it('says nothing worked when nothing did', async () => {
+      const { store, client } = harness();
+      await store.open('a');
+      client.POST.mockImplementationOnce(() => Promise.reject(new ApiError(400, "Nothing reads 'model.dae'.")));
+
+      await store.importFiles(['/in/model.dae']);
+
+      expect(store.failure()).toBe("Nothing reads 'model.dae'.");
+      expect(store.notice()).toBeNull();
+    });
   });
 
   it('starts an action with nothing left over from the last one', async () => {

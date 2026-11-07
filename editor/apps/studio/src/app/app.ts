@@ -203,6 +203,9 @@ import { ViewportPane } from './viewport/viewport-pane';
           <span class="readout shrink-0">Patina {{ current.system.version }}</span>
           <span class="readout truncate">{{ current.system.library ?? 'No library open' }}</span>
           <span class="readout shrink-0">GPU {{ current.system.worker.connected ? 'ready' : 'starting' }}</span>
+          @if (project.notice(); as notice) {
+            <span class="readout truncate" data-testid="app-notice">{{ notice }}</span>
+          }
         }
         @case ('offline') {
           <span class="readout text-error truncate">The engine stopped: {{ current.reason }}</span>

@@ -75,6 +75,7 @@ export class ProjectStore {
   private readonly mutableActive = signal<string | null>(null);
   private readonly mutableContents = signal<ReadonlyMap<string, ProjectContents>>(new Map());
   private readonly mutableFailure = signal<string | null>(null);
+  private readonly mutableNotice = signal<string | null>(null);
   private readonly mutableClosing = signal<string | null>(null);
   private readonly mutableQuitting = signal(false);
   private readonly mutableNewKind = signal<{ kind: string } | null>(null);
@@ -94,6 +95,8 @@ export class ProjectStore {
   /** Goes up each time something asks for the Bake dialog. */
   readonly bakeAsked = this.mutableBakeAsked.asReadonly();
   readonly failure = this.mutableFailure.asReadonly();
+  /** What just worked, when nothing on screen would show it. */
+  readonly notice = this.mutableNotice.asReadonly();
   /** The tab waiting on what to do with its unsaved edits. */
   readonly closing = this.mutableClosing.asReadonly();
   /** The app wants to quit and something is not saved. */
@@ -187,6 +190,7 @@ export class ProjectStore {
 
     this.paint.onAction = () => {
       this.mutableFailure.set(null);
+      this.mutableNotice.set(null);
     };
   }
 
@@ -426,7 +430,7 @@ export class ProjectStore {
     );
   }
 
-  /** Brings files into the open project: meshes as meshes, pictures for layers and masks. */
+  /** Brings files into the open project. The Server says what each is, and refuses what nothing could read. */
   async importFiles(paths: readonly string[]): Promise<void> {
     const project = this.current();
     if (!project) {
@@ -436,25 +440,28 @@ export class ProjectStore {
     }
 
     this.startAction();
-    try {
-      const client = await this.library.api();
-      for (const path of paths) {
-        const body = { project: project.path, picture: path };
-        if (/\.(?:glb|gltf|fbx|obj)$/iu.test(path)) {
-          unwrap(
-            await client.POST('/api/v1/library/project/meshes', {
-              body: { project: project.path, mesh: path, high: null }
-            })
-          );
-        } else {
-          unwrap(await client.POST('/api/v1/library/project/pictures', { body }));
-        }
+    const imported: string[] = [];
+    const refused: string[] = [];
+    const client = await this.library.api();
+    for (const path of paths) {
+      try {
+        const body = { project: project.path, file: path };
+        const contents = unwrap(await client.POST('/api/v1/library/project/files', { body }));
+        this.mutableContents.update(all => new Map(all).set(project.path, contents));
+        imported.push(path.split(/[\\/]/u).pop() ?? path);
+      } catch (failure) {
+        refused.push(messageOf(failure));
       }
+    }
 
-      await this.read(project.path);
+    if (imported.length > 0) {
+      const what = imported.length === 1 ? imported[0] : `${imported.length} files`;
+      this.mutableNotice.set(`Imported ${what} into ${project.name}`);
       this.library.refreshSoon();
-    } catch (failure) {
-      this.mutableFailure.set(messageOf(failure));
+    }
+
+    if (refused.length > 0) {
+      this.mutableFailure.set(refused.join(' '));
     }
   }
 
@@ -582,7 +589,9 @@ export class ProjectStore {
     try {
       const client = await this.library.api();
       const body = { project: project.path, picture };
-      return unwrap(await client.POST('/api/v1/library/project/pictures', { body })).path;
+      const added = unwrap(await client.POST('/api/v1/library/project/pictures', { body })).path;
+      await this.read(project.path);
+      return added;
     } catch (failure) {
       this.mutableFailure.set(messageOf(failure));
       return null;
@@ -613,6 +622,7 @@ export class ProjectStore {
   /** What went wrong before has nothing to do with what is starting now. */
   private startAction(): void {
     this.mutableFailure.set(null);
+    this.mutableNotice.set(null);
     this.paint.failure.set(null);
   }
 

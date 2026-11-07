@@ -13,6 +13,9 @@ public static class LibraryLayout {
     /// <summary>Where paint is copied before a new mesh moves it, a folder per move. Nothing reads it.</summary>
     public const string PaintBackupFolder = ".paint-backup";
 
+    /// <summary>What a picture the Server drew for a mesh mask is called, which is no picture of the user's.</summary>
+    public const string MeshMaskPrefix = "mesh-mask-";
+
     /// <exception cref="InvalidDataException">The name leaves the folder.</exception>
     public static string Beside(string folder, string name) {
         var root = Path.GetFullPath(folder);
