@@ -1,0 +1,148 @@
+import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
+import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { leave, newLibrary, newProject } from './projects';
+
+const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
+const softwareWebGl = process.platform === 'linux' ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : [];
+
+/** What leaving unsaved work, and coming back to it, does. Autosave runs every second so a test need not wait. */
+let scratch: string;
+let library: string;
+let app: ElectronApplication;
+let window: Page;
+
+async function launch(opening = ''): Promise<void> {
+  const env = {
+    ...process.env,
+    PATINA_USER_DATA: join(scratch, 'user-data'),
+    PATINA_LIBRARY: opening,
+    Patina__AutosaveSeconds: '1'
+  };
+  app = await electron.launch({ args: [...softwareWebGl, main], env });
+  window = await app.firstWindow();
+}
+
+/** What the 2D view shows, by its pixels: its address changes with every picture, the same or not. */
+const pictureHash = () =>
+  window.getByTestId('paint-picture').evaluate(image => {
+    const source = image as HTMLImageElement;
+    const canvas = globalThis.document.createElement('canvas');
+    [canvas.width, canvas.height] = [64, 64];
+    const context = canvas.getContext('2d');
+    context?.drawImage(source, 0, 0, 64, 64);
+    return context?.getImageData(0, 0, 64, 64).data.join(',');
+  });
+
+async function stroke(): Promise<void> {
+  const picture = window.getByTestId('paint-picture');
+  await expect(picture).toBeVisible({ timeout: 30_000 });
+  const box = await picture.boundingBox();
+  if (!box) {
+    throw new Error('The atlas has no box.');
+  }
+
+  await window.mouse.move(box.x + 40, box.y + 40);
+  await window.mouse.down();
+  await window.mouse.move(box.x + 120, box.y + 120, { steps: 5 });
+  await window.mouse.up();
+  await expect(window.getByTestId('paint-unsaved')).toBeVisible({ timeout: 15_000 });
+}
+
+/** The picture before and after a stroke that is left unsaved. */
+async function paint(): Promise<{ saved: string | undefined; painted: string | undefined }> {
+  await newLibrary(app, window, library);
+  await newProject(app, window, 'Crate');
+  await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 30_000 });
+  const saved = await pictureHash();
+  await stroke();
+  await expect.poll(pictureHash, { timeout: 15_000 }).not.toBe(saved);
+  return { saved, painted: await pictureHash() };
+}
+
+const autosaves = () => {
+  const folder = join(library, '.ptcache', 'autosave');
+  return existsSync(folder) ? readdirSync(folder).length : 0;
+};
+
+const open = () => window.locator('[data-testid=tree-row][data-path="crate"]').dblclick();
+
+/** Paints, waits for autosave, and goes without saving, as a crash would. */
+async function crashWithUnsavedWork(): Promise<{ saved: string | undefined; painted: string | undefined }> {
+  await launch();
+  const pictures = await paint();
+  await expect.poll(autosaves, { timeout: 30_000 }).toBeGreaterThan(0);
+  await leave(app);
+  await launch(library);
+  await expect(window.getByTestId('app-recovery')).toBeVisible({ timeout: 60_000 });
+  return pictures;
+}
+
+test.beforeEach(() => {
+  test.skip(process.platform === 'win32' && !!process.env['CI'], 'Windows CI has no Vulkan.');
+  scratch = mkdtempSync(join(tmpdir(), 'patina-saving-'));
+  library = join(scratch, 'Ember.ptlib');
+});
+
+test.afterEach(async () => {
+  await leave(app);
+  rmSync(scratch, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
+});
+
+test("Don't Save on a stack throws the edits away, and they stay gone", async () => {
+  await launch();
+  const { saved } = await paint();
+  await expect.poll(autosaves, { timeout: 30_000 }).toBeGreaterThan(0);
+
+  await window.getByTestId('document-tab').filter({ hasText: 'Crate' }).getByTestId('document-tab-close').click();
+  await expect(window.getByTestId('project-leaving')).toBeVisible();
+  await window.getByTestId('project-discard').click();
+  await expect(window.getByTestId('document-tab')).toHaveCount(0);
+  await expect(window.getByTestId('app-failure')).toHaveCount(0);
+  expect(autosaves()).toBe(0);
+
+  await open();
+  await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 30_000 });
+  await expect.poll(pictureHash, { timeout: 15_000 }).toBe(saved);
+  await expect(window.getByTestId('paint-unsaved')).toHaveCount(0);
+  await expect(window.getByTestId('app-recovery')).toHaveCount(0);
+});
+
+test('Discard after a crash goes back to the saved file, and nothing is left to offer', async () => {
+  const { saved } = await crashWithUnsavedWork();
+
+  await window.getByTestId('recovery-discard').click();
+
+  await expect(window.getByTestId('app-recovery')).toHaveCount(0);
+  await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 30_000 });
+  await expect.poll(pictureHash, { timeout: 15_000 }).toBe(saved);
+  await expect(window.getByTestId('app-failure')).toHaveCount(0);
+  expect(autosaves()).toBe(0);
+});
+
+test('Restore after a crash brings the work back', async () => {
+  const { painted } = await crashWithUnsavedWork();
+
+  await window.getByTestId('recovery-restore').click();
+
+  await expect(window.getByTestId('app-recovery')).toHaveCount(0);
+  await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 30_000 });
+  await expect.poll(pictureHash, { timeout: 15_000 }).toBe(painted);
+  await expect(window.getByTestId('app-failure')).toHaveCount(0);
+});
+
+test('Escape decides nothing: the work stays and the next open asks again', async () => {
+  await crashWithUnsavedWork();
+
+  await window.keyboard.press('Escape');
+
+  await expect(window.getByTestId('app-recovery')).toHaveCount(0);
+  await expect(window.getByTestId('app-failure')).toHaveCount(0);
+  expect(autosaves()).toBeGreaterThan(0);
+
+  await window.getByTestId('document-tab-close').click();
+  await expect(window.getByTestId('document-tab')).toHaveCount(0);
+  await open();
+  await expect(window.getByTestId('app-recovery')).toBeVisible({ timeout: 30_000 });
+});

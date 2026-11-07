@@ -146,7 +146,12 @@ static class GraphEndpoints {
     static Results<Ok<GraphState>, ProblemHttpResult> GetState(string id, GraphSessions sessions) =>
         sessions.Find(id) is { } session ? TypedResults.Ok(session.State) : NoSession(id);
 
-    static Results<NoContent, ProblemHttpResult> Close(string id, GraphSessions sessions, bool discard = false) {
+    static Results<NoContent, ProblemHttpResult> Close(
+        string id,
+        GraphSessions sessions,
+        LibraryHost host,
+        bool discard = false
+    ) {
         if (sessions.Find(id) is not { } session) {
             return NoSession(id);
         }
@@ -158,7 +163,12 @@ static class GraphEndpoints {
             );
         }
 
+        var thrownAway = session.Summary.Dirty;
         sessions.Close(session);
+        if (thrownAway && host.Library is { } library) {
+            Recovery.Clear(library.RootPath, session.Path); // or what was refused would be offered back
+        }
+
         return TypedResults.NoContent();
     }
 

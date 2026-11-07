@@ -304,6 +304,49 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
         Assert.Null(await RecoveryOfAsync(document));
     }
 
+    [Fact]
+    public async Task Discarding_a_stack_forgets_its_autosave_and_reopens_on_the_saved_file() {
+        var (document, file, stack) = await OpenStackAsync();
+        var before = await File.ReadAllTextAsync(file, Token);
+        await EditAsync(stack);
+        LeaveAutosave(file);
+
+        using var refused = await client.DeleteAsync($"/api/v1/stacks/{stack}", Token);
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        using var discarded = await client.DeleteAsync($"/api/v1/stacks/{stack}?discard=true", Token);
+        Assert.Equal(HttpStatusCode.NoContent, discarded.StatusCode);
+
+        Assert.Null(await RecoveryOfAsync(document));
+        using var reopened = await client.PostAsJsonAsync("/api/v1/stacks", new { path = document }, Token);
+        var state = await reopened.Content.ReadFromJsonAsync(ContractsJsonContext.Default.StackState, Token);
+        Assert.False(state!.History.Dirty);
+        Assert.NotEqual(stack, state.Id);
+        Assert.Equal(before, await File.ReadAllTextAsync(file, Token));
+    }
+
+    [Fact]
+    public async Task Discarding_a_graph_forgets_its_autosave() {
+        var state = await client.OpenAsync(GraphTesting.Write(server.Library, GraphTesting.Sample()), Token);
+        await client.EditAsync(state.Id, Token, new GraphSetValue(2, "Hue", [0.5f]));
+        LeaveAutosave(state.Path);
+
+        using var discarded = await client.DeleteAsync($"/api/v1/graphs/{state.Id}?discard=true", Token);
+
+        Assert.Equal(HttpStatusCode.NoContent, discarded.StatusCode);
+        Assert.Null(await RecoveryOfAsync(state.Path));
+    }
+
+    [Fact]
+    public async Task Discard_on_a_clean_session_has_nothing_to_throw_away() {
+        var (document, file, stack) = await OpenStackAsync();
+        LeaveAutosave(file);
+
+        using var closed = await client.DeleteAsync($"/api/v1/stacks/{stack}?discard=true", Token);
+
+        Assert.Equal(HttpStatusCode.NoContent, closed.StatusCode);
+        Assert.NotNull(await RecoveryOfAsync(document));
+    }
+
     async Task<(string Document, string File, string Stack)> OpenStackAsync() {
         await client.PostAsJsonAsync(
             "/api/v1/library/projects",

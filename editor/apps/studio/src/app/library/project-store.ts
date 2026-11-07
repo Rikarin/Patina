@@ -701,7 +701,7 @@ export class ProjectStore {
     try {
       await (isGraph(tab)
         ? client.DELETE('/api/v1/graphs/{id}', { params: { path: { id }, query: { discard } } })
-        : client.DELETE('/api/v1/stacks/{id}', { params: { path: { id } } }));
+        : client.DELETE('/api/v1/stacks/{id}', { params: { path: { id }, query: { discard } } }));
     } catch (failure) {
       // A session already gone is what closing wanted.
       if (!(failure instanceof ApiError && failure.status === 404)) {

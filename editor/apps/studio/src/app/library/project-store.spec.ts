@@ -214,6 +214,48 @@ describe('ProjectStore', () => {
     expect(removed.filter(id => id.startsWith('session'))).toEqual([]);
   });
 
+  it("sends Don't Save to the Server for a stack, or it would stay open with the edits", async () => {
+    const { store, paintState, client } = harness();
+    await store.open('a');
+    paintState.set({ id: `session:${paths.texturing}`, history: { dirty: true } });
+    TestBed.tick();
+    await store.closeTab(paths.texturing);
+
+    await store.resolveClosing('discard');
+
+    expect(client.DELETE).toHaveBeenCalledWith('/api/v1/stacks/{id}', {
+      params: { path: { id: `session:${paths.texturing}` }, query: { discard: true } }
+    });
+    expect(store.tabs()).toHaveLength(0);
+  });
+
+  it("sends Don't Save to the Server for a graph", async () => {
+    const { store, graphDirty, client } = harness();
+    await store.openDocument('a', paths.graph);
+    TestBed.tick();
+    graphDirty.set(true);
+    TestBed.tick();
+    await store.closeTab(paths.graph);
+
+    await store.resolveClosing('discard');
+
+    expect(client.DELETE).toHaveBeenCalledWith('/api/v1/graphs/{id}', {
+      params: { path: { id: `session:${paths.graph}` }, query: { discard: true } }
+    });
+  });
+
+  it('keeps the tab of a session that would not close, so its edits stay in reach', async () => {
+    const { store, client } = harness();
+    await store.open('a');
+    client.DELETE.mockRejectedValueOnce(new ApiError(409, 'This stack has unsaved edits.'));
+
+    await store.closeTab(paths.texturing);
+
+    expect(store.failure()).toBe('This stack has unsaved edits.');
+    expect(store.tabs().map(tab => tab.path)).toEqual([paths.texturing]);
+    expect(store.active()?.path).toBe(paths.texturing);
+  });
+
   it('remembers unsaved edits of a tab that is behind', async () => {
     const { store, paintState } = harness();
     await store.open('a');
@@ -303,6 +345,18 @@ describe('ProjectStore', () => {
 
       await store.open('a');
       expect(store.recoverable()).toEqual({ path: paths.texturing, saved });
+    });
+
+    it('closes for an answer without telling the Server to throw the autosave away', async () => {
+      const { store, autosaves, client } = harness();
+      autosaves.set(paths.texturing, saved);
+      await store.open('a');
+
+      await store.resolveRecovery(true);
+
+      expect(client.DELETE).toHaveBeenCalledWith('/api/v1/stacks/{id}', {
+        params: { path: { id: `session:${paths.texturing}` }, query: { discard: false } }
+      });
     });
 
     it('leaves everything alone when the document will not close', async () => {

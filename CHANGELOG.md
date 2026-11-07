@@ -31,6 +31,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Don't Save on a layered document throws the edits away. They used to stay open on the Server and come back on the next open, and autosaved copies of refused edits are no longer offered back.
 - Discard in the recovery dialog works, and closing that dialog keeps the autosaved work and asks again next time. Work still open in a session is no longer offered back as if it had been lost.
 - A failure shows once, in the bar above the status bar or in the dialog that caused it, and goes when the next action starts.
 - Bake formats, export presets, job states and layer blend modes show plain names instead of internal ids.
