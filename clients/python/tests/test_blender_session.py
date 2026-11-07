@@ -150,10 +150,17 @@ def test_results_are_files_and_a_second_build_does_nothing(session) -> None:
     presets = get_export_presets.sync(client=client)
     assert {"unreal", "unity-urp", "unity-hdrp", "godot", "vixen"} <= {preset.id for preset in presets.presets}
 
-    preview = preview_build.sync(client=client, body=BuildRequest(presets=["unreal"]))
+    # The library holds the baked crate and the Rust graph, which exports too, since a project's documents say what it
+    # makes. The graph needs a GPU and the crate does not, so the add-on builds the crate: the project it works on.
+    everything = preview_build.sync(client=client, body=BuildRequest(presets=["unreal"]))
+    assert everything.rebuilds == everything.projects == 2
+    crate = next(project.id for project in everything.items if project.name == "Crate")
+    request = BuildRequest(presets=["unreal"], projects=[crate])
+
+    preview = preview_build.sync(client=client, body=request)
     assert preview.rebuilds == 1
 
-    job = start_build.sync(client=client, body=BuildRequest(presets=["unreal"]))
+    job = start_build.sync(client=client, body=request)
     finished = until_over(client, job.id)
     assert finished.state == "done", finished.error
     assert finished.report.built == 1
@@ -163,5 +170,5 @@ def test_results_are_files_and_a_second_build_does_nothing(session) -> None:
     assert written and all(path.is_file() for path in written)
     assert any(path.name == "T_Crate_N.png" for path in written)
 
-    again = until_over(client, start_build.sync(client=client, body=BuildRequest(presets=["unreal"])).id)
+    again = until_over(client, start_build.sync(client=client, body=request).id)
     assert again.report.projects == 0
