@@ -3196,7 +3196,10 @@ export interface components {
       kind: string;
       /** @description What it is called, with a number after it when a layer has that name already. */
       name: string;
-      /** @description What a fill writes to each channel, as four numbers, or null for the default of each one. Ignored for other kinds. */
+      /**
+       * @description What a fill writes to each channel, as four numbers, or null for the default of each one.
+       *     Ignored for other kinds.
+       */
       values?: null | {
         [key: string]: number[];
       };

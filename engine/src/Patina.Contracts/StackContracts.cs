@@ -284,8 +284,8 @@ public abstract record StackCommand;
 /// <param name="Kind">fill, paint, filter or group.</param>
 /// <param name="Name">What it is called, with a number after it when a layer has that name already.</param>
 /// <param name="Values">
-///     What a fill writes to each channel, as four numbers, or null for the default of each one. Ignored for other
-///     kinds.
+///     What a fill writes to each channel, as four numbers, or null for the default of each one.
+///     Ignored for other kinds.
 /// </param>
 /// <param name="Parent">The group it goes at the top of, or null for the stack itself.</param>
 /// <param name="Filter">What a filter layer does: Levels, Hsl, Blur, Invert or Grayscale.</param>

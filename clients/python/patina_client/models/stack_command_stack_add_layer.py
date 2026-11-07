@@ -32,7 +32,8 @@ class StackCommandStackAddLayer:
             kind (str): fill, paint, filter or group.
             name (str): What it is called, with a number after it when a layer has that name already.
             values (None | StackCommandStackAddLayerValuesType1 | Unset): What a fill writes to each channel, as four
-                numbers, or null for the default of each one. Ignored for other kinds.
+                numbers, or null for the default of each one.
+                Ignored for other kinds.
             parent (None | str | Unset): The group it goes at the top of, or null for the stack itself.
             filter_ (None | str | Unset): What a filter layer does: Levels, Hsl, Blur, Invert or Grayscale.
             material (None | str | Unset): A material to unfold into the stack as layers: a shipped one as `smart:Name`, or
