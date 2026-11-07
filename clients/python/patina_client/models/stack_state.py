@@ -46,6 +46,9 @@ class StackState:
             settled (int): The newest revision an evaluation has reached.
             model (str): The mesh it is painted on, as the document names it, or empty.
             seed (int): The number every procedural step derives from. Default: 0.
+            height_normal (str): How a height channel becomes the set's normal: `Sharp` or `Smooth`. Read only when the set
+                has a height
+                channel, and then it writes a normal whether or not it declares one. Default: 'Smooth'.
             evaluation (None | StackEvaluation | Unset):
             mesh_maps (None | str | Unset): The bake its generators read, or null.
      """
@@ -65,6 +68,7 @@ class StackState:
     settled: int
     model: str
     seed: int = 0
+    height_normal: str = 'Smooth'
     evaluation: None | StackEvaluation | Unset = UNSET
     mesh_maps: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -124,6 +128,8 @@ class StackState:
 
         seed = self.seed
 
+        height_normal = self.height_normal
+
         evaluation: dict[str, Any] | None | Unset
         if isinstance(self.evaluation, Unset):
             evaluation = UNSET
@@ -157,6 +163,7 @@ class StackState:
             "settled": settled,
             "model": model,
             "seed": seed,
+            "heightNormal": height_normal,
         })
         if evaluation is not UNSET:
             field_dict["evaluation"] = evaluation
@@ -232,6 +239,8 @@ class StackState:
 
         seed = d.pop("seed")
 
+        height_normal = d.pop("heightNormal")
+
         def _parse_evaluation(data: object) -> None | StackEvaluation | Unset:
             if data is None:
                 return data
@@ -278,6 +287,7 @@ class StackState:
             settled=settled,
             model=model,
             seed=seed,
+            height_normal=height_normal,
             evaluation=evaluation,
             mesh_maps=mesh_maps,
         )

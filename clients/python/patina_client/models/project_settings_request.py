@@ -11,6 +11,8 @@ from ..types import UNSET, Unset
 from ..types import UNSET, Unset
 from typing import cast
 
+if TYPE_CHECKING:
+  from ..models.unwrap_options import UnwrapOptions
 
 
 
@@ -35,6 +37,7 @@ class ProjectSettingsRequest:
             preserve_paint (bool | None | Unset): Whether paint moves to a new mesh's layout, by where it sits on the
                 surface. Open documents have to be closed
                 first, as it rewrites their paint files.
+            unwrap (None | Unset | UnwrapOptions):
      """
 
     project: str
@@ -42,6 +45,7 @@ class ProjectSettingsRequest:
     high: None | str | Unset = UNSET
     auto_unwrap: bool | None | Unset = UNSET
     preserve_paint: bool | None | Unset = UNSET
+    unwrap: None | Unset | UnwrapOptions = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -49,6 +53,7 @@ class ProjectSettingsRequest:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.unwrap_options import UnwrapOptions # noqa: PLC0415
         project = self.project
 
         mesh: None | str | Unset
@@ -75,6 +80,14 @@ class ProjectSettingsRequest:
         else:
             preserve_paint = self.preserve_paint
 
+        unwrap: dict[str, Any] | None | Unset
+        if isinstance(self.unwrap, Unset):
+            unwrap = UNSET
+        elif isinstance(self.unwrap, UnwrapOptions):
+            unwrap = self.unwrap.to_dict()
+        else:
+            unwrap = self.unwrap
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -89,6 +102,8 @@ class ProjectSettingsRequest:
             field_dict["autoUnwrap"] = auto_unwrap
         if preserve_paint is not UNSET:
             field_dict["preservePaint"] = preserve_paint
+        if unwrap is not UNSET:
+            field_dict["unwrap"] = unwrap
 
         return field_dict
 
@@ -96,6 +111,7 @@ class ProjectSettingsRequest:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.unwrap_options import UnwrapOptions # noqa: PLC0415
         d = dict(src_dict)
         project = d.pop("project")
 
@@ -139,12 +155,33 @@ class ProjectSettingsRequest:
         preserve_paint = _parse_preserve_paint(d.pop("preservePaint", UNSET))
 
 
+        def _parse_unwrap(data: object) -> None | Unset | UnwrapOptions:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                unwrap_type_1 = UnwrapOptions.from_dict(data)
+
+
+
+                return unwrap_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | Unset | UnwrapOptions, data)
+
+        unwrap = _parse_unwrap(d.pop("unwrap", UNSET))
+
+
         project_settings_request = cls(
             project=project,
             mesh=mesh,
             high=high,
             auto_unwrap=auto_unwrap,
             preserve_paint=preserve_paint,
+            unwrap=unwrap,
         )
 
 

@@ -11,29 +11,28 @@ from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
-  from ..models.stack_effect_port import StackEffectPort
+  from ..models.unwrap_set import UnwrapSet
 
 
 
 
 
-T = TypeVar("T", bound="StackEffectKind")
+T = TypeVar("T", bound="UnwrapReport")
 
 
 
 @_attrs_define
-class StackEffectKind:
-    """ A step a mask can run.
+class UnwrapReport:
+    """ What Auto Unwrap did to a mesh.
 
         Attributes:
-            node (str): The node type.
-            name (str): What a person calls it.
-            ports (list[StackEffectPort]): The numbers it takes.
+            from_ (str): The file it unwrapped, relative to the project. Changing the options unwraps it again.
+            sets (list[UnwrapSet]): One entry per texture set it laid out. A set whose material had a layout kept it and is
+                absent.
      """
 
-    node: str
-    name: str
-    ports: list[StackEffectPort]
+    from_: str
+    sets: list[UnwrapSet]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -41,15 +40,13 @@ class StackEffectKind:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.stack_effect_port import StackEffectPort # noqa: PLC0415
-        node = self.node
+        from ..models.unwrap_set import UnwrapSet # noqa: PLC0415
+        from_ = self.from_
 
-        name = self.name
-
-        ports = []
-        for ports_item_data in self.ports:
-            ports_item = ports_item_data.to_dict()
-            ports.append(ports_item)
+        sets = []
+        for sets_item_data in self.sets:
+            sets_item = sets_item_data.to_dict()
+            sets.append(sets_item)
 
 
 
@@ -57,9 +54,8 @@ class StackEffectKind:
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update({
-            "node": node,
-            "name": name,
-            "ports": ports,
+            "from": from_,
+            "sets": sets,
         })
 
         return field_dict
@@ -68,31 +64,28 @@ class StackEffectKind:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
-        from ..models.stack_effect_port import StackEffectPort # noqa: PLC0415
+        from ..models.unwrap_set import UnwrapSet # noqa: PLC0415
         d = dict(src_dict)
-        node = d.pop("node")
+        from_ = d.pop("from")
 
-        name = d.pop("name")
-
-        ports = []
-        _ports = d.pop("ports")
-        for ports_item_data in (_ports):
-            ports_item = StackEffectPort.from_dict(ports_item_data)
+        sets = []
+        _sets = d.pop("sets")
+        for sets_item_data in (_sets):
+            sets_item = UnwrapSet.from_dict(sets_item_data)
 
 
 
-            ports.append(ports_item)
+            sets.append(sets_item)
 
 
-        stack_effect_kind = cls(
-            node=node,
-            name=name,
-            ports=ports,
+        unwrap_report = cls(
+            from_=from_,
+            sets=sets,
         )
 
 
-        stack_effect_kind.additional_properties = d
-        return stack_effect_kind
+        unwrap_report.additional_properties = d
+        return unwrap_report
 
     @property
     def additional_keys(self) -> list[str]:

@@ -38,7 +38,7 @@ class StackCommandStackAddLayer:
             material (None | str | Unset): A material to unfold into the stack as layers: a shipped one as `smart:Name`, or
                 a stack below the library.
                 Then Kind and Name say nothing.
-            filter_node (None | str | Unset): The compound a filter layer runs, instead of a named filter.
+            filter_node (None | str | Unset): The node or compound a filter layer runs, instead of a named filter.
      """
 
     op: StackCommandStackAddLayerOp

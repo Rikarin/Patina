@@ -20,7 +20,7 @@ T = TypeVar("T", bound="StackCommandStackSetLayerSettingsType1")
 
 @_attrs_define
 class StackCommandStackSetLayerSettingsType1:
-    """ A filter's numbers, replacing what these names held.
+    """ A filter's numbers, replacing what these names held. Choosing another filter starts it from its own defaults.
 
      """
 

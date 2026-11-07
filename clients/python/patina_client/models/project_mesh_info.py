@@ -12,6 +12,8 @@ from ..types import UNSET, Unset
 from typing import cast
 from uuid import UUID
 
+if TYPE_CHECKING:
+  from ..models.unwrap_report import UnwrapReport
 
 
 
@@ -30,12 +32,14 @@ class ProjectMeshInfo:
             id (None | Unset | UUID): Its id. Null until the project lists it.
             high (None | str | Unset): The detailed mesh it bakes from, below the library.
             source (None | str | Unset): The file it was brought in from, which reloading reads again.
+            unwrapped (None | Unset | UnwrapReport):
      """
 
     path: str
     id: None | Unset | UUID = UNSET
     high: None | str | Unset = UNSET
     source: None | str | Unset = UNSET
+    unwrapped: None | Unset | UnwrapReport = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -43,6 +47,7 @@ class ProjectMeshInfo:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.unwrap_report import UnwrapReport # noqa: PLC0415
         path = self.path
 
         id: None | str | Unset
@@ -65,6 +70,14 @@ class ProjectMeshInfo:
         else:
             source = self.source
 
+        unwrapped: dict[str, Any] | None | Unset
+        if isinstance(self.unwrapped, Unset):
+            unwrapped = UNSET
+        elif isinstance(self.unwrapped, UnwrapReport):
+            unwrapped = self.unwrapped.to_dict()
+        else:
+            unwrapped = self.unwrapped
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -77,6 +90,8 @@ class ProjectMeshInfo:
             field_dict["high"] = high
         if source is not UNSET:
             field_dict["source"] = source
+        if unwrapped is not UNSET:
+            field_dict["unwrapped"] = unwrapped
 
         return field_dict
 
@@ -84,6 +99,7 @@ class ProjectMeshInfo:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.unwrap_report import UnwrapReport # noqa: PLC0415
         d = dict(src_dict)
         path = d.pop("path")
 
@@ -127,11 +143,32 @@ class ProjectMeshInfo:
         source = _parse_source(d.pop("source", UNSET))
 
 
+        def _parse_unwrapped(data: object) -> None | Unset | UnwrapReport:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                unwrapped_type_1 = UnwrapReport.from_dict(data)
+
+
+
+                return unwrapped_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | Unset | UnwrapReport, data)
+
+        unwrapped = _parse_unwrapped(d.pop("unwrapped", UNSET))
+
+
         project_mesh_info = cls(
             path=path,
             id=id,
             high=high,
             source=source,
+            unwrapped=unwrapped,
         )
 
 

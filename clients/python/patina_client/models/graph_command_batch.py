@@ -32,6 +32,7 @@ if TYPE_CHECKING:
   from ..models.graph_command_graph_set_setting import GraphCommandGraphSetSetting
   from ..models.graph_command_graph_set_text import GraphCommandGraphSetText
   from ..models.graph_command_graph_set_value import GraphCommandGraphSetValue
+  from ..models.graph_command_graph_wire import GraphCommandGraphWire
 
 
 
@@ -52,14 +53,14 @@ class GraphCommandBatch:
                 GraphCommandGraphRemoveGroup | GraphCommandGraphRemoveNodes | GraphCommandGraphRemoveParameter |
                 GraphCommandGraphRemovePort | GraphCommandGraphSetComment | GraphCommandGraphSetGroup |
                 GraphCommandGraphSetParameter | GraphCommandGraphSetPort | GraphCommandGraphSetSetting |
-                GraphCommandGraphSetText | GraphCommandGraphSetValue]): What to do, in order.
+                GraphCommandGraphSetText | GraphCommandGraphSetValue | GraphCommandGraphWire]): What to do, in order.
             merge (bool): True to fold this batch into the last one when both change the same things, so that a whole drag
                 is one undo.
                 A client leaves it false on the first batch of a drag. Default: False.
             label (None | str | Unset): What the undo history calls it, or null for a name from the commands.
      """
 
-    commands: list[GraphCommandGraphAddComment | GraphCommandGraphAddGroup | GraphCommandGraphAddNode | GraphCommandGraphAddParameter | GraphCommandGraphAddPort | GraphCommandGraphConnect | GraphCommandGraphDisconnect | GraphCommandGraphMoveNodes | GraphCommandGraphRemoveComment | GraphCommandGraphRemoveGroup | GraphCommandGraphRemoveNodes | GraphCommandGraphRemoveParameter | GraphCommandGraphRemovePort | GraphCommandGraphSetComment | GraphCommandGraphSetGroup | GraphCommandGraphSetParameter | GraphCommandGraphSetPort | GraphCommandGraphSetSetting | GraphCommandGraphSetText | GraphCommandGraphSetValue]
+    commands: list[GraphCommandGraphAddComment | GraphCommandGraphAddGroup | GraphCommandGraphAddNode | GraphCommandGraphAddParameter | GraphCommandGraphAddPort | GraphCommandGraphConnect | GraphCommandGraphDisconnect | GraphCommandGraphMoveNodes | GraphCommandGraphRemoveComment | GraphCommandGraphRemoveGroup | GraphCommandGraphRemoveNodes | GraphCommandGraphRemoveParameter | GraphCommandGraphRemovePort | GraphCommandGraphSetComment | GraphCommandGraphSetGroup | GraphCommandGraphSetParameter | GraphCommandGraphSetPort | GraphCommandGraphSetSetting | GraphCommandGraphSetText | GraphCommandGraphSetValue | GraphCommandGraphWire]
     merge: bool = False
     label: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -89,6 +90,7 @@ class GraphCommandBatch:
         from ..models.graph_command_graph_set_setting import GraphCommandGraphSetSetting # noqa: PLC0415
         from ..models.graph_command_graph_set_text import GraphCommandGraphSetText # noqa: PLC0415
         from ..models.graph_command_graph_set_value import GraphCommandGraphSetValue # noqa: PLC0415
+        from ..models.graph_command_graph_wire import GraphCommandGraphWire # noqa: PLC0415
         commands = []
         for commands_item_data in self.commands:
             commands_item: dict[str, Any]
@@ -99,6 +101,8 @@ class GraphCommandBatch:
             elif isinstance(commands_item_data, GraphCommandGraphMoveNodes):
                 commands_item = commands_item_data.to_dict()
             elif isinstance(commands_item_data, GraphCommandGraphConnect):
+                commands_item = commands_item_data.to_dict()
+            elif isinstance(commands_item_data, GraphCommandGraphWire):
                 commands_item = commands_item_data.to_dict()
             elif isinstance(commands_item_data, GraphCommandGraphDisconnect):
                 commands_item = commands_item_data.to_dict()
@@ -181,11 +185,12 @@ class GraphCommandBatch:
         from ..models.graph_command_graph_set_setting import GraphCommandGraphSetSetting # noqa: PLC0415
         from ..models.graph_command_graph_set_text import GraphCommandGraphSetText # noqa: PLC0415
         from ..models.graph_command_graph_set_value import GraphCommandGraphSetValue # noqa: PLC0415
+        from ..models.graph_command_graph_wire import GraphCommandGraphWire # noqa: PLC0415
         d = dict(src_dict)
         commands = []
         _commands = d.pop("commands")
         for commands_item_data in (_commands):
-            def _parse_commands_item(data: object) -> GraphCommandGraphAddComment | GraphCommandGraphAddGroup | GraphCommandGraphAddNode | GraphCommandGraphAddParameter | GraphCommandGraphAddPort | GraphCommandGraphConnect | GraphCommandGraphDisconnect | GraphCommandGraphMoveNodes | GraphCommandGraphRemoveComment | GraphCommandGraphRemoveGroup | GraphCommandGraphRemoveNodes | GraphCommandGraphRemoveParameter | GraphCommandGraphRemovePort | GraphCommandGraphSetComment | GraphCommandGraphSetGroup | GraphCommandGraphSetParameter | GraphCommandGraphSetPort | GraphCommandGraphSetSetting | GraphCommandGraphSetText | GraphCommandGraphSetValue:
+            def _parse_commands_item(data: object) -> GraphCommandGraphAddComment | GraphCommandGraphAddGroup | GraphCommandGraphAddNode | GraphCommandGraphAddParameter | GraphCommandGraphAddPort | GraphCommandGraphConnect | GraphCommandGraphDisconnect | GraphCommandGraphMoveNodes | GraphCommandGraphRemoveComment | GraphCommandGraphRemoveGroup | GraphCommandGraphRemoveNodes | GraphCommandGraphRemoveParameter | GraphCommandGraphRemovePort | GraphCommandGraphSetComment | GraphCommandGraphSetGroup | GraphCommandGraphSetParameter | GraphCommandGraphSetPort | GraphCommandGraphSetSetting | GraphCommandGraphSetText | GraphCommandGraphSetValue | GraphCommandGraphWire:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
@@ -229,7 +234,7 @@ class GraphCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_graph_command_type_4 = GraphCommandGraphDisconnect.from_dict(data)
+                    componentsschemas_graph_command_type_4 = GraphCommandGraphWire.from_dict(data)
 
 
 
@@ -239,7 +244,7 @@ class GraphCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_graph_command_type_5 = GraphCommandGraphSetValue.from_dict(data)
+                    componentsschemas_graph_command_type_5 = GraphCommandGraphDisconnect.from_dict(data)
 
 
 
@@ -249,7 +254,7 @@ class GraphCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_graph_command_type_6 = GraphCommandGraphSetText.from_dict(data)
+                    componentsschemas_graph_command_type_6 = GraphCommandGraphSetValue.from_dict(data)
 
 
 
@@ -259,7 +264,7 @@ class GraphCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_graph_command_type_7 = GraphCommandGraphSetSetting.from_dict(data)
+                    componentsschemas_graph_command_type_7 = GraphCommandGraphSetText.from_dict(data)
 
 
 
@@ -269,7 +274,7 @@ class GraphCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_graph_command_type_8 = GraphCommandGraphAddParameter.from_dict(data)
+                    componentsschemas_graph_command_type_8 = GraphCommandGraphSetSetting.from_dict(data)
 
 
 
@@ -279,7 +284,7 @@ class GraphCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_graph_command_type_9 = GraphCommandGraphSetParameter.from_dict(data)
+                    componentsschemas_graph_command_type_9 = GraphCommandGraphAddParameter.from_dict(data)
 
 
 
@@ -289,7 +294,7 @@ class GraphCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_graph_command_type_10 = GraphCommandGraphRemoveParameter.from_dict(data)
+                    componentsschemas_graph_command_type_10 = GraphCommandGraphSetParameter.from_dict(data)
 
 
 
@@ -299,7 +304,7 @@ class GraphCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_graph_command_type_11 = GraphCommandGraphAddPort.from_dict(data)
+                    componentsschemas_graph_command_type_11 = GraphCommandGraphRemoveParameter.from_dict(data)
 
 
 
@@ -309,7 +314,7 @@ class GraphCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_graph_command_type_12 = GraphCommandGraphSetPort.from_dict(data)
+                    componentsschemas_graph_command_type_12 = GraphCommandGraphAddPort.from_dict(data)
 
 
 
@@ -319,7 +324,7 @@ class GraphCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_graph_command_type_13 = GraphCommandGraphRemovePort.from_dict(data)
+                    componentsschemas_graph_command_type_13 = GraphCommandGraphSetPort.from_dict(data)
 
 
 
@@ -329,7 +334,7 @@ class GraphCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_graph_command_type_14 = GraphCommandGraphAddGroup.from_dict(data)
+                    componentsschemas_graph_command_type_14 = GraphCommandGraphRemovePort.from_dict(data)
 
 
 
@@ -339,7 +344,7 @@ class GraphCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_graph_command_type_15 = GraphCommandGraphSetGroup.from_dict(data)
+                    componentsschemas_graph_command_type_15 = GraphCommandGraphAddGroup.from_dict(data)
 
 
 
@@ -349,7 +354,7 @@ class GraphCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_graph_command_type_16 = GraphCommandGraphRemoveGroup.from_dict(data)
+                    componentsschemas_graph_command_type_16 = GraphCommandGraphSetGroup.from_dict(data)
 
 
 
@@ -359,7 +364,7 @@ class GraphCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_graph_command_type_17 = GraphCommandGraphAddComment.from_dict(data)
+                    componentsschemas_graph_command_type_17 = GraphCommandGraphRemoveGroup.from_dict(data)
 
 
 
@@ -369,20 +374,30 @@ class GraphCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_graph_command_type_18 = GraphCommandGraphSetComment.from_dict(data)
+                    componentsschemas_graph_command_type_18 = GraphCommandGraphAddComment.from_dict(data)
 
 
 
                     return componentsschemas_graph_command_type_18
                 except (TypeError, ValueError, AttributeError, KeyError):
                     pass
+                try:
+                    if not isinstance(data, dict):
+                        raise TypeError()
+                    componentsschemas_graph_command_type_19 = GraphCommandGraphSetComment.from_dict(data)
+
+
+
+                    return componentsschemas_graph_command_type_19
+                except (TypeError, ValueError, AttributeError, KeyError):
+                    pass
                 if not isinstance(data, dict):
                     raise TypeError()
-                componentsschemas_graph_command_type_19 = GraphCommandGraphRemoveComment.from_dict(data)
+                componentsschemas_graph_command_type_20 = GraphCommandGraphRemoveComment.from_dict(data)
 
 
 
-                return componentsschemas_graph_command_type_19
+                return componentsschemas_graph_command_type_20
 
             commands_item = _parse_commands_item(commands_item_data)
 

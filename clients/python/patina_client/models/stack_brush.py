@@ -38,6 +38,9 @@ class StackBrush:
             size_jitter (float): How much of its radius a stamp can lose, 0 to 1. Default: 0.0.
             pressure_size (float): How much of the radius pressure takes off, 0 to 1. Default: 0.0.
             pressure_flow (float): How much of the flow pressure takes off, 0 to 1. Default: 0.0.
+            lazy (float): How far the brush trails the pointer, in the units of the radius: a lazy mouse. 0 follows it. A
+                line or a path
+                takes none, so that it reaches its last point. Default: 0.0.
             alpha (None | str | Unset): A named alpha (Round, Square, Chisel, Cross) or an image relative to the stack, or
                 null.
      """
@@ -54,6 +57,7 @@ class StackBrush:
     size_jitter: float = 0.0
     pressure_size: float = 0.0
     pressure_flow: float = 0.0
+    lazy: float = 0.0
     alpha: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -86,6 +90,8 @@ class StackBrush:
 
         pressure_flow = self.pressure_flow
 
+        lazy = self.lazy
+
         alpha: None | str | Unset
         if isinstance(self.alpha, Unset):
             alpha = UNSET
@@ -108,6 +114,7 @@ class StackBrush:
             "sizeJitter": size_jitter,
             "pressureSize": pressure_size,
             "pressureFlow": pressure_flow,
+            "lazy": lazy,
         })
         if alpha is not UNSET:
             field_dict["alpha"] = alpha
@@ -143,6 +150,8 @@ class StackBrush:
 
         pressure_flow = d.pop("pressureFlow")
 
+        lazy = d.pop("lazy")
+
         def _parse_alpha(data: object) -> None | str | Unset:
             if data is None:
                 return data
@@ -166,6 +175,7 @@ class StackBrush:
             size_jitter=size_jitter,
             pressure_size=pressure_size,
             pressure_flow=pressure_flow,
+            lazy=lazy,
             alpha=alpha,
         )
 

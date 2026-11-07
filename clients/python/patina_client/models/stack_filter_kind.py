@@ -12,6 +12,7 @@ from typing import cast
 
 if TYPE_CHECKING:
   from ..models.graph_port_definition import GraphPortDefinition
+  from ..models.graph_setting_definition import GraphSettingDefinition
 
 
 
@@ -23,16 +24,25 @@ T = TypeVar("T", bound="StackFilterKind")
 
 @_attrs_define
 class StackFilterKind:
-    """ A filter a layer can be, and the numbers it takes.
+    """ An adjustment a filter layer or a mask can run: any node or shipped compound with one image in and one image
+    out. A project's own compounds reach a stack from the shelf.
 
         Attributes:
-            kind (str): Levels, Hsl, Blur, Invert or Grayscale.
-            settings (list[GraphPortDefinition]): Its numbers, each saying what it is and what it starts as, in the order a
-                person reads them.
+            node (str): The node type or compound, as string StackLayer.FilterNode names it.
+            name (str): What a person calls it.
+            category (str): The heading it sits under.
+            summary (str): One line about it.
+            ports (list[GraphPortDefinition]): Its numbers, each saying what it is and what it starts as. Never the image it
+                reads.
+            settings (list[GraphSettingDefinition]): What it takes as text.
      """
 
-    kind: str
-    settings: list[GraphPortDefinition]
+    node: str
+    name: str
+    category: str
+    summary: str
+    ports: list[GraphPortDefinition]
+    settings: list[GraphSettingDefinition]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -41,7 +51,21 @@ class StackFilterKind:
 
     def to_dict(self) -> dict[str, Any]:
         from ..models.graph_port_definition import GraphPortDefinition # noqa: PLC0415
-        kind = self.kind
+        from ..models.graph_setting_definition import GraphSettingDefinition # noqa: PLC0415
+        node = self.node
+
+        name = self.name
+
+        category = self.category
+
+        summary = self.summary
+
+        ports = []
+        for ports_item_data in self.ports:
+            ports_item = ports_item_data.to_dict()
+            ports.append(ports_item)
+
+
 
         settings = []
         for settings_item_data in self.settings:
@@ -54,7 +78,11 @@ class StackFilterKind:
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update({
-            "kind": kind,
+            "node": node,
+            "name": name,
+            "category": category,
+            "summary": summary,
+            "ports": ports,
             "settings": settings,
         })
 
@@ -65,13 +93,30 @@ class StackFilterKind:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.graph_port_definition import GraphPortDefinition # noqa: PLC0415
+        from ..models.graph_setting_definition import GraphSettingDefinition # noqa: PLC0415
         d = dict(src_dict)
-        kind = d.pop("kind")
+        node = d.pop("node")
+
+        name = d.pop("name")
+
+        category = d.pop("category")
+
+        summary = d.pop("summary")
+
+        ports = []
+        _ports = d.pop("ports")
+        for ports_item_data in (_ports):
+            ports_item = GraphPortDefinition.from_dict(ports_item_data)
+
+
+
+            ports.append(ports_item)
+
 
         settings = []
         _settings = d.pop("settings")
         for settings_item_data in (_settings):
-            settings_item = GraphPortDefinition.from_dict(settings_item_data)
+            settings_item = GraphSettingDefinition.from_dict(settings_item_data)
 
 
 
@@ -79,7 +124,11 @@ class StackFilterKind:
 
 
         stack_filter_kind = cls(
-            kind=kind,
+            node=node,
+            name=name,
+            category=category,
+            summary=summary,
+            ports=ports,
             settings=settings,
         )
 

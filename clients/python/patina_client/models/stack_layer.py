@@ -46,11 +46,11 @@ class StackLayer:
             textures (StackLayerTextures): What a texture fill reads for each channel.
             graph (str): The graph a graph fill reads.
             projection (str): How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical.
-            filter_ (str): What a filter does: Levels, Hsl, Blur, Invert or Grayscale.
+            filter_ (str): The named filter a file holds: Levels, Hsl, Blur, Invert or Grayscale.
             settings (StackLayerSettings): A filter's numbers.
             mask (StackMask): What decides where a layer shows.
             planar_axis (str): The world axis a planar projection looks along or a cylinder wraps: X, Y or Z. Default: 'Y'.
-            filter_node (str): The compound a graph filter runs, or empty for one of the named filters. Default: ''.
+            filter_node (str): The node or compound a filter layer runs, whichever way the file names it. Default: ''.
             placement (None | StackPlacement | Unset):
             parameters (None | StackLayerParametersType1 | Unset): What a graph fill sets the graph's knobs to, as text.
      """

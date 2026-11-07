@@ -15,6 +15,7 @@ if TYPE_CHECKING:
   from ..models.project_document_info import ProjectDocumentInfo
   from ..models.project_file import ProjectFile
   from ..models.project_mesh_info import ProjectMeshInfo
+  from ..models.unwrap_options import UnwrapOptions
 
 
 
@@ -39,6 +40,7 @@ class ProjectContents:
             pictures (list[ProjectFile]): The pictures brought in for layers and masks.
             auto_unwrap (bool): Whether a mesh with no UV layout is given one when it is set.
             preserve_paint (bool): Whether paint moves to a new mesh's layout.
+            unwrap (UnwrapOptions): How Auto Unwrap lays out a mesh. Each texture set gets an atlas of its own.
      """
 
     id: UUID
@@ -51,6 +53,7 @@ class ProjectContents:
     pictures: list[ProjectFile]
     auto_unwrap: bool
     preserve_paint: bool
+    unwrap: UnwrapOptions
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -61,6 +64,7 @@ class ProjectContents:
         from ..models.project_document_info import ProjectDocumentInfo # noqa: PLC0415
         from ..models.project_file import ProjectFile # noqa: PLC0415
         from ..models.project_mesh_info import ProjectMeshInfo # noqa: PLC0415
+        from ..models.unwrap_options import UnwrapOptions # noqa: PLC0415
         id = str(self.id)
 
         name = self.name
@@ -101,6 +105,8 @@ class ProjectContents:
 
         preserve_paint = self.preserve_paint
 
+        unwrap = self.unwrap.to_dict()
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -115,6 +121,7 @@ class ProjectContents:
             "pictures": pictures,
             "autoUnwrap": auto_unwrap,
             "preservePaint": preserve_paint,
+            "unwrap": unwrap,
         })
 
         return field_dict
@@ -126,6 +133,7 @@ class ProjectContents:
         from ..models.project_document_info import ProjectDocumentInfo # noqa: PLC0415
         from ..models.project_file import ProjectFile # noqa: PLC0415
         from ..models.project_mesh_info import ProjectMeshInfo # noqa: PLC0415
+        from ..models.unwrap_options import UnwrapOptions # noqa: PLC0415
         d = dict(src_dict)
         id = UUID(d.pop("id"))
 
@@ -182,6 +190,11 @@ class ProjectContents:
 
         preserve_paint = d.pop("preservePaint")
 
+        unwrap = UnwrapOptions.from_dict(d.pop("unwrap"))
+
+
+
+
         project_contents = cls(
             id=id,
             name=name,
@@ -193,6 +206,7 @@ class ProjectContents:
             pictures=pictures,
             auto_unwrap=auto_unwrap,
             preserve_paint=preserve_paint,
+            unwrap=unwrap,
         )
 
 

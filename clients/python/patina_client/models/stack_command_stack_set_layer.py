@@ -48,16 +48,16 @@ class StackCommandStackSetLayer:
                 these channels held.
             graph (None | str | Unset): The graph a graph fill reads.
             projection (None | str | Unset): How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical.
-            filter_ (None | str | Unset): What a filter does.
+            filter_ (None | str | Unset): What a filter does, one of the five named filters.
             settings (None | StackCommandStackSetLayerSettingsType1 | Unset): A filter's numbers, replacing what these names
-                held.
+                held. Choosing another filter starts it from its own defaults.
             mask (None | StackMask | Unset):
             mesh_mask (None | StackMeshMask | Unset):
             planar_axis (None | str | Unset): The world axis a planar projection looks along or a cylinder wraps: X, Y or Z.
             placement (None | StackPlacement | Unset):
             parameters (None | StackCommandStackSetLayerParametersType1 | Unset): What a graph fill sets the graph's knobs
                 to, replacing what these names held.
-            filter_node (None | str | Unset): The compound a filter runs, or empty to go back to the named filter.
+            filter_node (None | str | Unset): The node or compound a filter runs, or empty to go back to the named filter.
      """
 
     op: StackCommandStackSetLayerOp

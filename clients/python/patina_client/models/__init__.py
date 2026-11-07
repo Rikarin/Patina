@@ -61,6 +61,8 @@ from .graph_command_graph_set_text import GraphCommandGraphSetText
 from .graph_command_graph_set_text_op import GraphCommandGraphSetTextOp
 from .graph_command_graph_set_value import GraphCommandGraphSetValue
 from .graph_command_graph_set_value_op import GraphCommandGraphSetValueOp
+from .graph_command_graph_wire import GraphCommandGraphWire
+from .graph_command_graph_wire_op import GraphCommandGraphWireOp
 from .graph_comment_state import GraphCommentState
 from .graph_compound import GraphCompound
 from .graph_compound_copy import GraphCompoundCopy
@@ -84,6 +86,7 @@ from .graph_image import GraphImage
 from .graph_image_request import GraphImageRequest
 from .graph_interface_port import GraphInterfacePort
 from .graph_mesh_maps_request import GraphMeshMapsRequest
+from .graph_node_matches import GraphNodeMatches
 from .graph_node_position import GraphNodePosition
 from .graph_node_state import GraphNodeState
 from .graph_node_state_texts import GraphNodeStateTexts
@@ -109,6 +112,9 @@ from .library_report import LibraryReport
 from .material_brush import MaterialBrush
 from .material_info import MaterialInfo
 from .material_list import MaterialList
+from .material_thumbnail import MaterialThumbnail
+from .material_thumbnail_request import MaterialThumbnailRequest
+from .material_thumbnails import MaterialThumbnails
 from .material_use import MaterialUse
 from .material_use_request import MaterialUseRequest
 from .output_report import OutputReport
@@ -136,18 +142,26 @@ from .project_settings_request import ProjectSettingsRequest
 from .project_summary import ProjectSummary
 from .stack_brush import StackBrush
 from .stack_channel import StackChannel
+from .stack_clip import StackClip
+from .stack_clip_request import StackClipRequest
 from .stack_command_batch import StackCommandBatch
 from .stack_command_stack_add_channel import StackCommandStackAddChannel
 from .stack_command_stack_add_channel_op import StackCommandStackAddChannelOp
 from .stack_command_stack_add_layer import StackCommandStackAddLayer
 from .stack_command_stack_add_layer_op import StackCommandStackAddLayerOp
 from .stack_command_stack_add_layer_values_type_1 import StackCommandStackAddLayerValuesType1
+from .stack_command_stack_duplicate_layers import StackCommandStackDuplicateLayers
+from .stack_command_stack_duplicate_layers_op import StackCommandStackDuplicateLayersOp
 from .stack_command_stack_move_layer import StackCommandStackMoveLayer
 from .stack_command_stack_move_layer_op import StackCommandStackMoveLayerOp
 from .stack_command_stack_nest_layer import StackCommandStackNestLayer
 from .stack_command_stack_nest_layer_op import StackCommandStackNestLayerOp
+from .stack_command_stack_paste_layers import StackCommandStackPasteLayers
+from .stack_command_stack_paste_layers_op import StackCommandStackPasteLayersOp
 from .stack_command_stack_remove_layer import StackCommandStackRemoveLayer
 from .stack_command_stack_remove_layer_op import StackCommandStackRemoveLayerOp
+from .stack_command_stack_set_height_normal import StackCommandStackSetHeightNormal
+from .stack_command_stack_set_height_normal_op import StackCommandStackSetHeightNormalOp
 from .stack_command_stack_set_layer import StackCommandStackSetLayer
 from .stack_command_stack_set_layer_op import StackCommandStackSetLayerOp
 from .stack_command_stack_set_layer_parameters_type_1 import StackCommandStackSetLayerParametersType1
@@ -163,8 +177,6 @@ from .stack_command_stack_stroke_op import StackCommandStackStrokeOp
 from .stack_create_request import StackCreateRequest
 from .stack_delta import StackDelta
 from .stack_edit_result import StackEditResult
-from .stack_effect_kind import StackEffectKind
-from .stack_effect_port import StackEffectPort
 from .stack_evaluation import StackEvaluation
 from .stack_event import StackEvent
 from .stack_event_page import StackEventPage
@@ -203,6 +215,9 @@ from .stack_vocabulary_generator_parameters import StackVocabularyGeneratorParam
 from .system_info import SystemInfo
 from .tag_count import TagCount
 from .tag_page import TagPage
+from .unwrap_options import UnwrapOptions
+from .unwrap_report import UnwrapReport
+from .unwrap_set import UnwrapSet
 from .viewport_bake_request import ViewportBakeRequest
 from .viewport_camera_state import ViewportCameraState
 from .viewport_environment_request import ViewportEnvironmentRequest
@@ -278,6 +293,8 @@ __all__ = (
     "GraphCommandGraphSetTextOp",
     "GraphCommandGraphSetValue",
     "GraphCommandGraphSetValueOp",
+    "GraphCommandGraphWire",
+    "GraphCommandGraphWireOp",
     "GraphCommentState",
     "GraphCompound",
     "GraphCompoundCopy",
@@ -301,6 +318,7 @@ __all__ = (
     "GraphImageRequest",
     "GraphInterfacePort",
     "GraphMeshMapsRequest",
+    "GraphNodeMatches",
     "GraphNodePosition",
     "GraphNodeState",
     "GraphNodeStateTexts",
@@ -326,6 +344,9 @@ __all__ = (
     "MaterialBrush",
     "MaterialInfo",
     "MaterialList",
+    "MaterialThumbnail",
+    "MaterialThumbnailRequest",
+    "MaterialThumbnails",
     "MaterialUse",
     "MaterialUseRequest",
     "OutputReport",
@@ -353,18 +374,26 @@ __all__ = (
     "ProjectSummary",
     "StackBrush",
     "StackChannel",
+    "StackClip",
+    "StackClipRequest",
     "StackCommandBatch",
     "StackCommandStackAddChannel",
     "StackCommandStackAddChannelOp",
     "StackCommandStackAddLayer",
     "StackCommandStackAddLayerOp",
     "StackCommandStackAddLayerValuesType1",
+    "StackCommandStackDuplicateLayers",
+    "StackCommandStackDuplicateLayersOp",
     "StackCommandStackMoveLayer",
     "StackCommandStackMoveLayerOp",
     "StackCommandStackNestLayer",
     "StackCommandStackNestLayerOp",
+    "StackCommandStackPasteLayers",
+    "StackCommandStackPasteLayersOp",
     "StackCommandStackRemoveLayer",
     "StackCommandStackRemoveLayerOp",
+    "StackCommandStackSetHeightNormal",
+    "StackCommandStackSetHeightNormalOp",
     "StackCommandStackSetLayer",
     "StackCommandStackSetLayerOp",
     "StackCommandStackSetLayerParametersType1",
@@ -380,8 +409,6 @@ __all__ = (
     "StackCreateRequest",
     "StackDelta",
     "StackEditResult",
-    "StackEffectKind",
-    "StackEffectPort",
     "StackEvaluation",
     "StackEvent",
     "StackEventPage",
@@ -420,6 +447,9 @@ __all__ = (
     "SystemInfo",
     "TagCount",
     "TagPage",
+    "UnwrapOptions",
+    "UnwrapReport",
+    "UnwrapSet",
     "ViewportBakeRequest",
     "ViewportCameraState",
     "ViewportEnvironmentRequest",
