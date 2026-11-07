@@ -51,6 +51,14 @@ async function shot(): Promise<string> {
   return (await canvas().screenshot()).toString('base64');
 }
 
+/** The picture inside the canvas's border, which lights up as the pane takes the pointer and is no part of it. */
+async function inner(): Promise<string> {
+  const area = await box();
+  const inset = 6;
+  const clip = { x: area.x + inset, y: area.y + inset, width: area.width - 2 * inset, height: area.height - 2 * inset };
+  return (await window.screenshot({ clip })).toString('base64');
+}
+
 async function changed(before: string, after: string): Promise<number> {
   return window.evaluate(
     async ({ first, second }) => {
@@ -115,24 +123,33 @@ test('height painted on the mesh lights it as a bump, sharp or smooth', async ()
   await window.getByTestId('paint-add-channel').selectOption('height');
   await expect(window.getByTestId('texture-set-height-normal')).toBeVisible({ timeout: 30_000 });
   await window.getByTestId('layers-channel').click();
-  await window.getByRole('option', { name: 'Height' }).click();
+  await window.getByRole('option', { name: 'Height' }).locator('visible=true').click();
   await window.getByTestId('paint-colour').locator('button').first().click();
   await window.getByRole('textbox', { name: 'Hex color' }).fill('#ffffff');
   await window.keyboard.press('Enter');
   await window.keyboard.press('Escape');
+  // ⚠ Every shot is inside the canvas's border, with the pointer off it. The brush ring and the border the pane
+  // lights each move more pixels than this counts, and a test that counted them passed on a build where height
+  // reached nothing.
+  const away = () => window.mouse.move(2, 2);
+  await away();
   await settled();
-  const before = await shot();
+  const before = await inner();
   await window.screenshot({ path: join(shots, 'paint-height-before.png') });
 
   await drag(0.3, 0.45, 0.72, 0.55);
+  await away();
+  // The stroke is in the 2D view once the stack has evaluated it, whatever the viewport makes of it.
+  await expect(window.getByTestId('layers-evaluation')).not.toContainText('Evaluating', { timeout: 30_000 });
   await settled();
   await window.screenshot({ path: join(shots, 'paint-height.png') });
   // Height has no colour of its own, so whatever changed on the picture is the surface's lighting.
-  await expect.poll(async () => changed(before, await shot()), { timeout: 30_000 }).toBeGreaterThan(300);
+  await expect.poll(async () => changed(before, await inner()), { timeout: 30_000 }).toBeGreaterThan(300);
 
-  const smooth = await shot();
+  const smooth = await inner();
   await window.getByTestId('texture-set-height-normal').getByText('Sharp').click();
-  await expect.poll(async () => changed(smooth, await shot()), { timeout: 30_000 }).toBeGreaterThan(0);
+  await away();
+  await expect.poll(async () => changed(smooth, await inner()), { timeout: 30_000 }).toBeGreaterThan(50);
   await settled();
   await window.screenshot({ path: join(shots, 'paint-height-sharp.png') });
 });
