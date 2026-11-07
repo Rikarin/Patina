@@ -7,17 +7,27 @@ const Channels: Readonly<Record<string, string>> = {
   height: 'Height',
   emissive: 'Emissive',
   opacity: 'Opacity',
-  ambientOcclusion: 'Ambient Occlusion'
+  occlusion: 'Ambient Occlusion',
+  mask: 'Mask'
 };
 
 const Blends: Readonly<Record<string, string>> = {
   Copy: 'Normal',
-  LinearDodge: 'Add',
+  Multiply: 'Multiply',
+  Screen: 'Screen',
+  Overlay: 'Overlay',
+  Add: 'Add',
+  Subtract: 'Subtract',
+  Darken: 'Darken',
+  Lighten: 'Lighten',
+  Divide: 'Divide',
   HardLight: 'Hard Light',
   SoftLight: 'Soft Light',
-  ColorDodge: 'Color Dodge',
-  ColorBurn: 'Color Burn',
-  LinearBurn: 'Linear Burn'
+  Difference: 'Difference',
+  Exclusion: 'Exclusion',
+  ColourDodge: 'Color Dodge',
+  ColourBurn: 'Color Burn',
+  SignedAdd: 'Signed Add'
 };
 
 const JobStates: Readonly<Record<string, string>> = {

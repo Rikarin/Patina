@@ -470,12 +470,14 @@ public sealed class StackEditor : ILayerStackDocument {
     }
 
     /// <summary>What a channel holds before anything paints it, which is what leaves its material alone.</summary>
-    static float[] DefaultOf(string usage) =>
+    /// <exception cref="StackEditRefusedException">It is not a channel a stack can have.</exception>
+    public static float[] DefaultOf(string usage) =>
         usage switch {
             "normal" => [0.5f, 0.5f, 1f, 1f],
-            "height" => [0.5f, 0.5f, 0.5f, 1f],
-            "opacity" or "ambientOcclusion" => [1f, 1f, 1f, 1f],
-            _ => [0f, 0f, 0f, 1f]
+            "baseColor" or "roughness" or "height" => [0.5f, 0.5f, 0.5f, 1f],
+            "opacity" or "occlusion" or "mask" => [1f, 1f, 1f, 1f],
+            "metalness" or "emissive" => [0f, 0f, 0f, 1f],
+            _ => throw new StackEditRefusedException($"'{usage}' is not a channel.")
         };
 
     SetDocumentCommand AddChannel(string usage) {

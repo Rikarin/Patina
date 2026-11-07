@@ -32,7 +32,14 @@ const Axes: readonly string[] = ['X', 'Y', 'Z'];
 
 /** Four numbers as a swatch's value. */
 /** Channels that hold one number, which a slider says better than a colour. */
-const ScalarChannels: ReadonlySet<string> = new Set(['roughness', 'metalness', 'height', 'occlusion', 'opacity']);
+const ScalarChannels: ReadonlySet<string> = new Set([
+  'roughness',
+  'metalness',
+  'height',
+  'occlusion',
+  'opacity',
+  'mask'
+]);
 
 export function hexOf(colour: readonly number[] | undefined): string {
   const [r = 0, g = 0, b = 0] = colour ?? [];
