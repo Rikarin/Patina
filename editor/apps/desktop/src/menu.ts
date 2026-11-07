@@ -54,9 +54,9 @@ function template(actions: MenuActions): MenuItemConstructorOptions[] {
         { id: 'edit-undo', label: 'Undo', accelerator: 'CmdOrCtrl+Z', click: () => actions.command('undo') },
         { id: 'edit-redo', label: 'Redo', accelerator: 'Shift+CmdOrCtrl+Z', click: () => actions.command('redo') },
         { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' },
+        { id: 'edit-cut', label: 'Cut', accelerator: 'CmdOrCtrl+X', click: () => actions.command('cut') },
+        { id: 'edit-copy', label: 'Copy', accelerator: 'CmdOrCtrl+C', click: () => actions.command('copy') },
+        { id: 'edit-paste', label: 'Paste', accelerator: 'CmdOrCtrl+V', click: () => actions.command('paste') },
         {
           id: 'edit-delete',
           label: 'Delete',

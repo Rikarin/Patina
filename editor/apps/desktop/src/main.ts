@@ -299,6 +299,12 @@ function handleIpc(): void {
       contents.delete();
     } else if (edit === 'selectAll') {
       contents.selectAll();
+    } else if (edit === 'cut') {
+      contents.cut();
+    } else if (edit === 'copy') {
+      contents.copy();
+    } else if (edit === 'paste') {
+      contents.paste();
     }
   });
   listen('patina:quit', () => {

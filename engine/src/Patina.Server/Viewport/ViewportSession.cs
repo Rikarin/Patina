@@ -256,7 +256,9 @@ public sealed class ViewportSession(
                 work.Camera.Distance,
                 work.Camera.PanX,
                 work.Camera.PanY,
-                work.Camera.PanZ
+                work.Camera.PanZ,
+                work.Camera.Exposure,
+                work.Camera.LightRotation
             );
             await connection.SendAsync(new() { Type = IpcTypes.ViewportCamera, Camera = camera }, cancellationToken);
             toldCamera = work.Camera;

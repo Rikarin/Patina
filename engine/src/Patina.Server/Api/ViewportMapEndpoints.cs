@@ -150,10 +150,11 @@ static class ViewportMapEndpoints {
                     files.GetValueOrDefault("occlusion"),
                     null,
                     files.GetValueOrDefault("emissive"),
-                    files.GetValueOrDefault("opacity"),
+                    files.GetValueOrDefault("opacity")
+                ) {
                     // A graph's Height to Normal points green down, and the shader reads green up (ADR 0011).
-                    true
-                )
+                    GreenDown = true
+                }
             );
             return TypedResults.Ok(session.State);
         } catch (IpcException e) {

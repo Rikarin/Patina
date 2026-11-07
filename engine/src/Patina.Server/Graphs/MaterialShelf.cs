@@ -63,7 +63,7 @@ public static class MaterialShelf {
         return found;
     }
 
-    /// <summary>The graphs that ship with Patina. Each is CC0, and using one puts a copy in the project to edit.</summary>
+    /// <summary>The graphs that ship with Patina. They are CC0, and using one puts a copy in the project.</summary>
     static IEnumerable<MaterialInfo> Starters() =>
         typeof(MaterialShelf).Assembly.GetManifestResourceNames()
             .Where(static resource => resource.StartsWith(StarterResource, StringComparison.Ordinal))

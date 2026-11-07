@@ -10,12 +10,13 @@ import {
   signal,
   viewChild
 } from '@angular/core';
+import type { ViewportCameraState } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { desktop } from '../core/desktop';
+import { ViewOptions } from '../core/view-options';
 import { GraphStore } from '../graph/graph-store';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore, pressureOf } from '../paint/paint-store';
-import { ViewOptions } from '../core/view-options';
 import { StrokeGesture } from '../paint/stroke-gesture';
 import { FramePainter } from './frame-painter';
 import type { ViewportFrame } from './frame-transport';
@@ -67,8 +68,41 @@ import { ViewportClient } from './viewport-client';
         </button>
       }
       <span class="flex-1"></span>
+      <label class="flex items-center gap-1 text-xs" title="How bright the picture is">
+        Exposure
+        <input
+          class="w-20"
+          type="range"
+          min="0.1"
+          max="4"
+          step="0.05"
+          aria-label="Exposure"
+          data-testid="viewport-exposure"
+          [value]="viewport.camera().exposure"
+          (input)="light({ exposure: +value($event) })"
+        />
+      </label>
+      <label class="flex items-center gap-1 text-xs" title="Turns the light around the model">
+        Light
+        <input
+          class="w-20"
+          type="range"
+          min="-3.14"
+          max="3.14"
+          step="0.02"
+          aria-label="Light rotation"
+          data-testid="viewport-light"
+          [value]="viewport.camera().lightRotation"
+          (input)="light({ lightRotation: +value($event) })"
+        />
+      </label>
       @if (stampMs() !== null) {
-        <span class="readout" [class.hidden]="!options.stats()" data-testid="viewport-stamp" [attr.data-stamp-ms]="stampTimes()">
+        <span
+          class="readout"
+          [class.hidden]="!options.stats()"
+          data-testid="viewport-stamp"
+          [attr.data-stamp-ms]="stampTimes()"
+        >
           stamp {{ stampMs() }} ms
         </span>
       }
@@ -202,15 +236,24 @@ export class ViewportPane implements AfterViewInit {
     }
   }
 
+  protected value(event: Event): string {
+    return (event.target as HTMLInputElement).value;
+  }
+
+  protected light(change: Partial<ViewportCameraState>): void {
+    this.viewport.moveCamera({ ...this.viewport.camera(), ...change }, false);
+  }
+
   /** F brings the whole model back, as it does in every 3D tool. */
   protected frame(event: Event): void {
     if (!(event.target as Element).closest('input, textarea, select, [contenteditable=true]')) {
-      this.viewport.moveCamera(framed(), false);
+      const { exposure, lightRotation } = this.viewport.camera();
+      this.viewport.moveCamera({ ...framed(), exposure, lightRotation }, false);
     }
   }
 
   protected press(event: PointerEvent): void {
-    if (this.paint.picking() !== null && event.button === 0) {
+    if ((this.paint.picking() !== null || this.paint.tool() === 'picker') && event.button === 0) {
       void this.paint.pickColourOnMesh(this.stamp(event), this.aim());
       return;
     }

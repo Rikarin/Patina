@@ -3743,6 +3743,18 @@ export interface components {
        * @default 0
        */
       panZ: number;
+      /**
+       * Format: double
+       * @description How bright the picture is, where one is as it comes.
+       * @default 1
+       */
+      exposure: number;
+      /**
+       * Format: double
+       * @description How far the light has turned around the model, in radians.
+       * @default 0
+       */
+      lightRotation: number;
     };
     /** @description Asks the viewport to lay a graph's Output nodes over the mesh it is showing, as they stand now. */
     ViewportGraphRequest: {

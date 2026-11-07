@@ -7,7 +7,16 @@ const MinDistance = 0.05;
 const PanPerPixel = 0.0012;
 const MaxDistance = 12;
 
-export const DefaultCamera: ViewportCameraState = { yaw: 0.6, pitch: 0.35, distance: 2.2, panX: 0, panY: 0, panZ: 0 };
+export const DefaultCamera: ViewportCameraState = {
+  yaw: 0.6,
+  pitch: 0.35,
+  distance: 2.2,
+  panX: 0,
+  panY: 0,
+  panZ: 0,
+  exposure: 1,
+  lightRotation: 0
+};
 
 /** A drag turns the model under the pointer: right spins it right, down tips it towards the viewer. */
 export function orbit(camera: ViewportCameraState, dx: number, dy: number): ViewportCameraState {

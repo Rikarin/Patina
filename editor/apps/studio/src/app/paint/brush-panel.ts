@@ -7,6 +7,8 @@ import { type BrushSettings, type Mirror, PaintStore, type PaintTool } from './p
 
 const Tools: readonly { id: PaintTool; label: string }[] = [
   { id: 'brush', label: 'Brush' },
+  { id: 'eraser', label: 'Eraser' },
+  { id: 'picker', label: 'Picker' },
   { id: 'line', label: 'Line' },
   { id: 'path', label: 'Path' }
 ];
@@ -62,7 +64,9 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number }[] = [
       }
     </div>
     <div class="flex items-center gap-2">
-      <span class="text-foreground-muted w-16 shrink-0 text-xs">Mirror</span>
+      <span class="text-foreground-muted w-16 shrink-0 text-xs" title="Mirrors strokes on the mesh, not on the flat map"
+        >Mirror</span
+      >
       <select
         class="well h-7 min-w-0 flex-1 px-1 text-sm"
         aria-label="Mirror"

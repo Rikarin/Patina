@@ -46,7 +46,9 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
             (float)camera.Yaw,
             (float)camera.Pitch,
             (float)camera.Distance,
-            new((float)camera.PanX, (float)camera.PanY, (float)camera.PanZ)
+            new((float)camera.PanX, (float)camera.PanY, (float)camera.PanZ),
+            (float)camera.Exposure,
+            (float)camera.LightRotation
         );
 
     public IpcMessage Pick(IpcMessage request) {

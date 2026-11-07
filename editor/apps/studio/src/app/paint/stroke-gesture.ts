@@ -22,6 +22,7 @@ export class StrokeGesture {
     this.pressed = true;
     switch (this.store.tool()) {
       case 'brush':
+      case 'eraser':
         this.store.begin(stamp, this.aim());
         break;
       case 'line':
@@ -29,6 +30,8 @@ export class StrokeGesture {
         break;
       case 'path':
         this.points.update(points => [...points, stamp]);
+        break;
+      case 'picker':
         break;
     }
   }
@@ -40,12 +43,14 @@ export class StrokeGesture {
 
     switch (this.store.tool()) {
       case 'brush':
+      case 'eraser':
         this.store.move(stamp);
         break;
       case 'line':
         this.points.update(([start]) => (start ? [start, stamp] : []));
         break;
       case 'path':
+      case 'picker':
         break;
     }
   }
@@ -56,7 +61,7 @@ export class StrokeGesture {
     }
 
     this.pressed = false;
-    if (this.store.tool() === 'brush') {
+    if (this.store.tool() === 'brush' || this.store.tool() === 'eraser') {
       this.store.end();
     } else if (this.store.tool() === 'line') {
       this.commit('line');

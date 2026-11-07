@@ -39,6 +39,7 @@ public sealed class ViewportRenderer : IDisposable {
     readonly BufferHandle skyConstants;
     readonly BufferHandle tonemapConstants;
     readonly BufferHandle meteredExposure;
+    readonly ConstantBlock toneBlock;
     readonly DescriptorSetHandle frameSet;
     readonly DescriptorSetHandle skySet;
     readonly ConstantBlock frameBlock;
@@ -82,9 +83,9 @@ public sealed class ViewportRenderer : IDisposable {
         frameSet = BindEnvironment(forward, DescriptorSetSlot.PerFrame, frameConstants);
         skySet = BindEnvironment(sky, DescriptorSetSlot.PerMaterial, skyConstants);
 
-        var tone = new ConstantBlock(tonemap.Effect.BlockOf(DescriptorSetSlot.PerMaterial));
+        toneBlock = new ConstantBlock(tonemap.Effect.BlockOf(DescriptorSetSlot.PerMaterial));
         var neutral = new Vector3(1f, 1f, 1f);
-        tone.Set("exposure", Exposure)
+        toneBlock.Set("exposure", Exposure)
             .Set("whitePoint", 4f)
             .Set("contrast", 1f)
             .Set("saturation", 1f)
@@ -92,8 +93,8 @@ public sealed class ViewportRenderer : IDisposable {
             .Set("colorFilter", neutral)
             .Set("shadowTint", neutral)
             .Set("highlightTint", neutral);
-        tonemapConstants = Constants(tone.Bytes.Length, "viewport tonemap");
-        device.Write(tonemapConstants, 0, tone.Bytes);
+        tonemapConstants = Constants(toneBlock.Bytes.Length, "viewport tonemap");
+        device.Write(tonemapConstants, 0, toneBlock.Bytes);
 
         // Raven keeps the auto-exposure binding in this variant although the permutation that reads it is off.
         meteredExposure = device.CreateBuffer(
@@ -347,15 +348,22 @@ public sealed class ViewportRenderer : IDisposable {
         }
     }
 
+    static Vector3 LightFrom(float rotation) {
+        var (sin, cos) = MathF.SinCos(rotation);
+        return new((0.6f * cos) + (0.5f * sin), 0.7f, (0.5f * cos) - (0.6f * sin));
+    }
+
     void WriteFrame(OrbitCamera camera, BoundingBox bounds, float aspectRatio) {
         var viewProjection = camera.ViewProjection(bounds, aspectRatio);
         frameBlock.Set("viewProjection", viewProjection)
             .Set("cameraPosition", camera.Eye(bounds))
-            .Set("lightDirection", Vector3.Normalize(new(0.6f, 0.7f, 0.5f)))
+            .Set("lightDirection", Vector3.Normalize(LightFrom(camera.LightRotation)))
             .Set("lightColor", new Vector3(1.2f, 1.15f, 1.1f))
             .Set("environmentMipCount", (float)environment.Prefiltered.LevelCount);
         WriteIrradiance();
         device.Write(frameConstants, 0, frameBlock.Bytes);
+        toneBlock.Set("exposure", Exposure * camera.Exposure);
+        device.Write(tonemapConstants, 0, toneBlock.Bytes);
 
         Matrix4x4.Invert(viewProjection, out var inverse);
         skyBlock.Set("inverseViewProjection", inverse)

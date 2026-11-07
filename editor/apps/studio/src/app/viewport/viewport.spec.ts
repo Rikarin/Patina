@@ -15,7 +15,14 @@ function header(width: number, height: number, magic = 0x464e5450): ArrayBuffer 
 
 describe('parseHeader', () => {
   it('reads the header the Server writes', () => {
-    expect(parseHeader(header(2, 4))).toEqual({ sequence: 7, width: 2, height: 4, input: 3, renderMs: 2.5, painted: 0 });
+    expect(parseHeader(header(2, 4))).toEqual({
+      sequence: 7,
+      width: 2,
+      height: 4,
+      input: 3,
+      renderMs: 2.5,
+      painted: 0
+    });
   });
 
   it('refuses bytes that are not a frame header', () => {

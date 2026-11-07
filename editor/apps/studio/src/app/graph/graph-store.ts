@@ -56,6 +56,7 @@ export const GRAPH_SOCKET = new InjectionToken<(url: string) => GraphSocket>('GR
   factory: () => url => new WebSocket(url)
 });
 
+const PasteOffset = 40;
 const FirstRetryMs = 250;
 const LastRetryMs = 4_000;
 
@@ -574,6 +575,72 @@ export class GraphStore {
     }
   }
 
+  /** What Copy took: nodes as they were, and the wires between them. It survives closing the graph. */
+  private clipboard: Pick<GraphState, 'nodes' | 'edges'> | null = null;
+
+  /** Remembers the selected nodes, and the wires that stay inside them. */
+  copySelection(): void {
+    const document = this.mutableDocument();
+    const chosen = this.selection();
+    if (document && chosen.size > 0) {
+      this.clipboard = {
+        nodes: [...document.nodes.values()].filter(node => chosen.has(node.id)),
+        edges: [...document.edges.values()].filter(edge => chosen.has(edge.fromNode) && chosen.has(edge.toNode))
+      };
+    }
+  }
+
+  /** Puts a copy of what Copy took beside the original, with its numbers, settings and inner wires. */
+  async paste(): Promise<void> {
+    const held = this.clipboard;
+    if (!held || !this.editable()) {
+      return;
+    }
+
+    const refs = new Map(held.nodes.map((node, index) => [node.id, -1 - index]));
+    const reference = (id: number): number => refs.get(id) ?? id;
+    const commands: GraphCommand[] = held.nodes.flatMap((node): GraphCommand[] => [
+      { op: 'addNode', type: node.type, x: node.x + PasteOffset, y: node.y + PasteOffset, ref: reference(node.id) },
+      ...Object.entries(node.values).map(([port, value]): GraphCommand => ({
+        op: 'setValue',
+        node: reference(node.id),
+        port,
+        value
+      })),
+      ...Object.entries(node.texts).map(([port, value]): GraphCommand => ({
+        op: 'setText',
+        node: reference(node.id),
+        port,
+        value
+      }))
+    ]);
+    for (const edge of held.edges) {
+      commands.push({
+        op: 'connect',
+        fromNode: reference(edge.fromNode),
+        fromPort: edge.fromPort,
+        toNode: reference(edge.toNode),
+        toPort: edge.toPort
+      });
+    }
+
+    const result = await this.apply(commands, 'Paste');
+    if (result) {
+      this.selectOnceHeld(
+        result.created.map(item => item.node),
+        result.revision
+      );
+    }
+  }
+
+  /** Copy and Paste in one go, leaving what was copied before alone. */
+  async duplicate(): Promise<void> {
+    const before = this.clipboard;
+    this.copySelection();
+    await this.paste();
+    this.clipboard = before;
+  }
+
   remove(nodes: readonly number[], edges: readonly string[]): void {
     const document = this.mutableDocument();
     const commands: GraphCommand[] = [];
@@ -677,6 +744,12 @@ export class GraphStore {
     if (key === 's') {
       event.preventDefault();
       void this.save();
+      return true;
+    }
+
+    if (key === 'd') {
+      event.preventDefault();
+      void this.duplicate();
       return true;
     }
 

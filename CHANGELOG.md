@@ -25,6 +25,15 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- A brush can paint several channels at once, one undo step, and a stack can add height, normal, emissive and the rest. There is an
+  Eraser and a colour Picker, and painting has rebindable keys, with `[` and `]` for size and Esc to end a path.
+- The viewport paints as soon as a stack is on the mesh: Alt or right turns, middle or Shift pans, F frames, and the camera comes as
+  close as a detail needs. It shows emissive and cut-out opacity, has exposure and light rotation, and statistics are off by default.
+- The 2D view zooms and pans, and looking at a channel no longer changes what a stroke writes.
+- Graphs copy, paste and duplicate, and the node search reads names and summaries.
+- `.ptlib` opens the app, work is autosaved and offered back after a crash, Save As copies a document with its paint, Export Maps writes
+  the open stack, files import from the File menu or by dropping them, and View has Diagnostics and Reset Layout.
+- Four CC0 starter materials are on the shelf.
 - There is no `shared/` folder any more: anything in any project can be used in any other. Pins, the impact preview and batch rebuilds
   work on project documents, the Library's second view lists Materials, and export presets live in `export-presets/`. A library that
   has `shared/` turns it into a Shared Assets project when it opens, and every reference still resolves.

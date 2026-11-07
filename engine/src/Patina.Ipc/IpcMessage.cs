@@ -272,9 +272,11 @@ public sealed record ViewportMapSet(
     ViewportMapFile? Occlusion = null,
     ViewportMapFile? Look = null,
     ViewportMapFile? Emissive = null,
-    ViewportMapFile? Opacity = null,
-    bool GreenDown = false
-);
+    ViewportMapFile? Opacity = null
+) {
+    /// <summary>Whether normals here point green down, as a graph's do.</summary>
+    public bool GreenDown { get; init; }
+}
 
 /// <summary>An orbit around the model: radians, and a distance in bounding radii.</summary>
 public sealed record ViewportCamera(
@@ -283,7 +285,9 @@ public sealed record ViewportCamera(
     double Distance,
     double PanX = 0,
     double PanY = 0,
-    double PanZ = 0
+    double PanZ = 0,
+    double Exposure = 1,
+    double LightRotation = 0
 );
 
 /// <summary>

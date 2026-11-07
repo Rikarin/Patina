@@ -8,8 +8,8 @@ import { XuiSelectImports } from '@xui/select';
 import { XuiSwitchImports } from '@xui/switch';
 import { desktop } from '../core/desktop';
 import { SystemStatus } from '../core/system-status';
-import { ProjectStore } from '../library/project-store';
 import { GraphStore } from '../graph/graph-store';
+import { ProjectStore } from '../library/project-store';
 import { BakeStore } from './bake-store';
 
 /** The sides the panel offers. The API takes any; these are the ones an atlas is. */
@@ -117,6 +117,30 @@ type PathField = 'high' | 'low' | 'cage' | 'skewMap' | 'output';
             [stepSize]="1"
             [value]="samples()"
             (valueChange)="samples.set($event ?? 1)"
+          />
+        </div>
+        <div class="flex min-w-0 flex-col gap-1">
+          <span class="text-foreground-muted text-xs">Gutter</span>
+          <xui-numeric-input
+            size="sm"
+            ariaLabel="Gutter in texels"
+            [max]="64"
+            [min]="0"
+            [stepSize]="1"
+            [value]="gutter()"
+            (valueChange)="gutter.set($event ?? 4)"
+          />
+        </div>
+        <div class="flex min-w-0 flex-col gap-1">
+          <span class="text-foreground-muted text-xs">Occlusion radius</span>
+          <xui-numeric-input
+            size="sm"
+            ariaLabel="Occlusion radius"
+            [max]="16"
+            [min]="0"
+            [stepSize]="0.1"
+            [value]="occlusionRadius()"
+            (valueChange)="occlusionRadius.set($event ?? 0.5)"
           />
         </div>
         <div class="flex min-w-0 flex-col gap-1">
@@ -313,6 +337,8 @@ export class BakePane {
   protected readonly format = signal('png16');
   protected readonly samples = signal(1);
   protected readonly rays = signal(64);
+  protected readonly gutter = signal(4);
+  protected readonly occlusionRadius = signal(0.5);
   protected readonly search = signal(0.05);
   protected readonly skew = signal(0);
   protected readonly match = signal(false);
@@ -406,11 +432,11 @@ export class BakePane {
       supersampling: this.samples(),
       occlusionRays: this.rays(),
       searchRadius: this.search(),
-      occlusionRadius: 0.5,
+      occlusionRadius: this.occlusionRadius(),
       skew: this.skew(),
       skewMap: skewMap.trim() || null,
       matchByName: this.match(),
-      gutter: 4,
+      gutter: this.gutter(),
       space: 'tangent',
       name: null
     };

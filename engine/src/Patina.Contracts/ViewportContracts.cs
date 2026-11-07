@@ -7,13 +7,17 @@ namespace Patina.Contracts;
 /// <param name="PanX">How far that point is off the model's centre along x, in bounding radii.</param>
 /// <param name="PanY">The same along y.</param>
 /// <param name="PanZ">The same along z.</param>
+/// <param name="Exposure">How bright the picture is, where one is as it comes.</param>
+/// <param name="LightRotation">How far the light has turned around the model, in radians.</param>
 public sealed record ViewportCameraState(
     double Yaw,
     double Pitch,
     double Distance,
     double PanX = 0,
     double PanY = 0,
-    double PanZ = 0
+    double PanZ = 0,
+    double Exposure = 1,
+    double LightRotation = 0
 );
 
 /// <summary>Asks what is under a position in the viewport.</summary>

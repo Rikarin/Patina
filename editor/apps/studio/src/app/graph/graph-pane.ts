@@ -433,7 +433,7 @@ export class GraphCanvas {
   protected readonly categoryOf = (type: GraphNodeType): string => type.category || 'Compounds';
   protected readonly titleOf = (type: GraphNodeType): string => type.title;
   protected readonly matches = (query: string, type: GraphNodeType): boolean =>
-    type.path.toLowerCase().includes(query.trim().toLowerCase());
+    `${type.path} ${type.title} ${type.summary}`.toLowerCase().includes(query.trim().toLowerCase());
 
   protected readonly paletteTypes = computed(() => {
     const filter = this.paletteFilter();

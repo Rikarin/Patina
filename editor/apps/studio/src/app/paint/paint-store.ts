@@ -29,7 +29,7 @@ const StampTimes = 2048;
 /** What a stroke draws with, beyond its radius. */
 export type BrushSettings = Omit<StackBrush, 'radius'>;
 
-export type PaintTool = 'brush' | 'line' | 'path';
+export type PaintTool = 'brush' | 'eraser' | 'line' | 'path' | 'picker';
 export type Mirror = 'none' | 'x' | 'y' | 'z';
 
 /** Where a stroke on the mesh is aimed: a picture of this size through this camera. */
@@ -229,6 +229,25 @@ export class PaintStore {
     }
   }
 
+  /** Takes the brush's colour from the map on screen, and goes back to the brush. */
+  async pickBrushColour(u: number, v: number): Promise<void> {
+    const url = this.picture();
+    if (!url) {
+      return;
+    }
+
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+    const canvas = globalThis.document.createElement('canvas');
+    [canvas.width, canvas.height] = [1, 1];
+    const context = canvas.getContext('2d');
+    context?.drawImage(image, u * image.width, v * image.height, 1, 1, 0, 0, 1, 1);
+    const [r = 0, g = 0, b = 0] = context?.getImageData(0, 0, 1, 1).data ?? [];
+    this.colour.set(`#${[r, g, b].map(value => value.toString(16).padStart(2, '0')).join('')}`);
+    this.tool.set('brush');
+  }
+
   /** Takes the colour under a place on the mesh in the viewport. */
   async pickColourOnMesh(stamp: StackStamp, aim: Aim): Promise<void> {
     const client = await this.api();
@@ -238,7 +257,9 @@ export class PaintStore {
         body: { x: stamp.x / width, y: stamp.y / height, camera, width, height }
       })
     );
-    if (hit.found) {
+    if (hit.found && this.tool() === 'picker') {
+      await this.pickBrushColour(hit.u, hit.v);
+    } else if (hit.found) {
       await this.pickColourAt(hit.u, hit.v);
     } else {
       this.picking.set(null);
@@ -510,7 +531,8 @@ export class PaintStore {
         layer,
         channel,
         brush: { ...this.brush(), radius: this.radius() },
-        colour: colourOf(colour),
+        // A stamp mixes towards its colour, so towards nothing at all takes paint away.
+        colour: this.tool() === 'eraser' ? [0, 0, 0, 0] : colourOf(colour),
         stamps,
         open,
         mask: this.masking(),

@@ -11,7 +11,10 @@ const TextCommands: Readonly<Record<string, TextEdit>> = {
   undo: 'undo',
   redo: 'redo',
   delete: 'delete',
-  selectAll: 'selectAll'
+  selectAll: 'selectAll',
+  cut: 'cut',
+  copy: 'copy',
+  paste: 'paste'
 };
 
 /** The keys a pane already answers, so that a menu item and its key cannot come to mean different things. */
@@ -42,12 +45,28 @@ export class EditCommands {
       desktop()?.editText(text);
     } else if (command === 'undo' || command === 'redo') {
       this.walk(command);
+    } else if (command === 'copy' || command === 'cut' || command === 'paste') {
+      this.clip(command);
     } else {
       const init = PaneKeys[command];
       (focus ?? globalThis.document.body).dispatchEvent(new KeyboardEvent('keydown', { ...init, bubbles: true }));
     }
 
     return true;
+  }
+
+  /** Cut, copy and paste work on nodes in a graph, and text in anything that has some selected. */
+  private clip(command: 'copy' | 'cut' | 'paste'): void {
+    if (this.project.active()?.kind !== 'graph') {
+      desktop()?.editText(command);
+    } else if (command === 'paste') {
+      void this.graph.paste();
+    } else {
+      this.graph.copySelection();
+      if (command === 'cut') {
+        this.graph.remove([...this.graph.selection()], []);
+      }
+    }
   }
 
   private walk(command: 'undo' | 'redo'): void {

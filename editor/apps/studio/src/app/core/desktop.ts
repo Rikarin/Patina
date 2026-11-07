@@ -1,5 +1,5 @@
 /** What a text field can be told to do. */
-export type TextEdit = 'undo' | 'redo' | 'delete' | 'selectAll';
+export type TextEdit = 'undo' | 'redo' | 'delete' | 'selectAll' | 'cut' | 'copy' | 'paste';
 
 import type { Connection } from '@patina/api-client';
 

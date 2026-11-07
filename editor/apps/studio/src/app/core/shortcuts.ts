@@ -15,12 +15,20 @@ const Defaults: readonly Shortcut[] = [
   { id: 'smaller', label: 'Smaller brush', key: '[' },
   { id: 'larger', label: 'Larger brush', key: ']' },
   { id: 'tool-brush', label: 'Brush tool', key: 'b' },
+  { id: 'tool-eraser', label: 'Eraser', key: 'e' },
+  { id: 'tool-picker', label: 'Colour picker', key: 'c' },
   { id: 'tool-line', label: 'Line tool', key: 'l' },
   { id: 'tool-path', label: 'Path tool', key: 'p' },
   { id: 'colour-pick', label: 'Pick a colour from the id map', key: 'i' }
 ];
 
-const Tools: Readonly<Record<string, PaintTool>> = { 'tool-brush': 'brush', 'tool-line': 'line', 'tool-path': 'path' };
+const Tools: Readonly<Record<string, PaintTool>> = {
+  'tool-brush': 'brush',
+  'tool-eraser': 'eraser',
+  'tool-picker': 'picker',
+  'tool-line': 'line',
+  'tool-path': 'path'
+};
 
 function typing(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest('input, textarea, select, [contenteditable=true]') !== null;

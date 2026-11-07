@@ -12,7 +12,16 @@ namespace Patina.Viewport;
 /// <param name="Pitch">Radians above the horizon.</param>
 /// <param name="Distance">From the model's centre, in bounding radii.</param>
 /// <param name="Pan">How far the point it circles has moved off the model's centre, in bounding radii.</param>
-public readonly record struct OrbitCamera(float Yaw, float Pitch, float Distance, Vector3 Pan = default) {
+/// <param name="Exposure">How bright the picture is, where one is as it comes.</param>
+/// <param name="LightRotation">How far the light has turned around the model, in radians.</param>
+public readonly record struct OrbitCamera(
+    float Yaw,
+    float Pitch,
+    float Distance,
+    Vector3 Pan = default,
+    float Exposure = 1f,
+    float LightRotation = 0f
+) {
     /// <summary>The vertical field of view, in radians.</summary>
     public const float FieldOfView = 0.7f;
 

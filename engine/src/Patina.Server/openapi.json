@@ -9926,7 +9926,9 @@
           "distance",
           "panX",
           "panY",
-          "panZ"
+          "panZ",
+          "exposure",
+          "lightRotation"
         ],
         "type": "object",
         "properties": {
@@ -9960,6 +9962,18 @@
           "panZ": {
             "type": "number",
             "description": "The same along z.",
+            "format": "double",
+            "default": 0
+          },
+          "exposure": {
+            "type": "number",
+            "description": "How bright the picture is, where one is as it comes.",
+            "format": "double",
+            "default": 1
+          },
+          "lightRotation": {
+            "type": "number",
+            "description": "How far the light has turned around the model, in radians.",
             "format": "double",
             "default": 0
           }

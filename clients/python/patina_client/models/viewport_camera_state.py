@@ -29,6 +29,8 @@ class ViewportCameraState:
             pan_x (float): How far that point is off the model's centre along x, in bounding radii. Default: 0.0.
             pan_y (float): The same along y. Default: 0.0.
             pan_z (float): The same along z. Default: 0.0.
+            exposure (float): How bright the picture is, where one is as it comes. Default: 1.0.
+            light_rotation (float): How far the light has turned around the model, in radians. Default: 0.0.
      """
 
     yaw: float
@@ -37,6 +39,8 @@ class ViewportCameraState:
     pan_x: float = 0.0
     pan_y: float = 0.0
     pan_z: float = 0.0
+    exposure: float = 1.0
+    light_rotation: float = 0.0
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -56,6 +60,10 @@ class ViewportCameraState:
 
         pan_z = self.pan_z
 
+        exposure = self.exposure
+
+        light_rotation = self.light_rotation
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -66,6 +74,8 @@ class ViewportCameraState:
             "panX": pan_x,
             "panY": pan_y,
             "panZ": pan_z,
+            "exposure": exposure,
+            "lightRotation": light_rotation,
         })
 
         return field_dict
@@ -87,6 +97,10 @@ class ViewportCameraState:
 
         pan_z = d.pop("panZ")
 
+        exposure = d.pop("exposure")
+
+        light_rotation = d.pop("lightRotation")
+
         viewport_camera_state = cls(
             yaw=yaw,
             pitch=pitch,
@@ -94,6 +108,8 @@ class ViewportCameraState:
             pan_x=pan_x,
             pan_y=pan_y,
             pan_z=pan_z,
+            exposure=exposure,
+            light_rotation=light_rotation,
         )
 
 
