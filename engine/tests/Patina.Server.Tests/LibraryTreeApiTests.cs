@@ -357,7 +357,7 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
 
         Assert.Contains(withMesh!.Meshes, static mesh => mesh.Path == "projects/crate/Spare.glb");
         Assert.Equal(
-            new ProjectFile("picture", "Rust.png", "projects/crate/pictures/Rust.png"),
+            new("picture", "Rust.png", "projects/crate/pictures/Rust.png"),
             Assert.Single(withPicture!.Pictures)
         );
         Assert.True(File.Exists(Path.Combine(server.Library, "projects/crate/pictures/Rust.png")));

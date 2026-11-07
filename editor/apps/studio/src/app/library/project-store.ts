@@ -274,6 +274,7 @@ export class ProjectStore {
 
   /** Closes a tab, asking first if it has edits that are not saved. */
   async closeTab(path: string): Promise<void> {
+    this.startAction();
     const tab = this.mutableTabs().find(held => held.path === path);
     if (tab?.dirty) {
       this.mutableClosing.set(path);
@@ -338,6 +339,7 @@ export class ProjectStore {
 
   /** Saves what is in front. False if it did not happen, and its store has said why. */
   async saveActive(): Promise<boolean> {
+    this.startAction();
     return isGraph(this.active()) ? this.graph.save() : this.paint.act('save');
   }
 

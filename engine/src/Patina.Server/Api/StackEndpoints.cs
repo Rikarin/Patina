@@ -380,7 +380,11 @@ static class StackEndpoints {
                 Encoding.UTF8.GetBytes($"{side}\n{string.Join('\n', request.Parts.Order(StringComparer.Ordinal))}")
             )
         )[..16];
-        var file = Path.Combine(Path.GetDirectoryName(session.Path)!, "pictures", $"{LibraryLayout.MeshMaskPrefix}{name}.png");
+        var file = Path.Combine(
+            Path.GetDirectoryName(session.Path)!,
+            "pictures",
+            $"{LibraryLayout.MeshMaskPrefix}{name}.png"
+        );
         try {
             var connection = await worker.ConnectionAsync(cancellationToken);
             await connection.SendAsync(

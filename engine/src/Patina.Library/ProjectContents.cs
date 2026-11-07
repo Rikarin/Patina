@@ -401,7 +401,9 @@ static class ProjectFiles {
     /// <exception cref="ProjectRefusedException">It is not a mesh.</exception>
     public static void Require(string mesh) {
         if (!IsMesh(mesh)) {
-            throw new ProjectRefusedException($"'{Path.GetFileName(mesh)}' is not a mesh: use {Known(MeshExtensions)}.");
+            throw new ProjectRefusedException(
+                $"'{Path.GetFileName(mesh)}' is not a mesh: use {Known(MeshExtensions)}."
+            );
         }
 
         if (!File.Exists(mesh)) {
@@ -493,8 +495,7 @@ static class ProjectFiles {
         PictureExtensions.Contains(Path.GetExtension(file))
         && !Path.GetFileName(file).StartsWith(LibraryLayout.MeshMaskPrefix, StringComparison.Ordinal);
 
-    static string Known(IEnumerable<string> extensions) =>
-        string.Join(", ", extensions.Order(StringComparer.Ordinal));
+    static string Known(IEnumerable<string> extensions) => string.Join(", ", extensions.Order(StringComparer.Ordinal));
 
     /// <summary>The kind a file not yet listed is taken for. A stack that names no mesh still opens as one.</summary>
     static string? Unlisted(string file) {

@@ -298,6 +298,18 @@ describe('ProjectStore', () => {
     });
   });
 
+  it('clears what went wrong before when a tab closes or a graph saves', async () => {
+    const { store } = harness();
+    await store.importFiles(['/x.png']);
+    expect(store.failure()).not.toBeNull();
+    await store.closeTab('nothing open');
+    expect(store.failure()).toBeNull();
+
+    await store.importFiles(['/x.png']);
+    await store.saveActive();
+    expect(store.failure()).toBeNull();
+  });
+
   it('keeps the tab of a session that would not close, so its edits stay in reach', async () => {
     const { store, client } = harness();
     await store.open('a');
