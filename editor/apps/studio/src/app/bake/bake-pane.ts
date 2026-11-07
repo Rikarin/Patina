@@ -7,6 +7,7 @@ import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSwitchImports } from '@xui/switch';
 import { desktop } from '../core/desktop';
+import { imageFormatName, jobStateName } from '../core/labels';
 import { SystemStatus } from '../core/system-status';
 import { GraphStore } from '../graph/graph-store';
 import { ProjectStore } from '../library/project-store';
@@ -102,6 +103,7 @@ type PathField = 'high' | 'low' | 'cage' | 'skewMap' | 'output';
             class="w-full"
             ariaLabel="Format"
             data-testid="bake-format"
+            [itemText]="formatName"
             [items]="formats"
             [value]="format()"
             (valueChange)="format.set($event ?? format())"
@@ -209,7 +211,7 @@ type PathField = 'high' | 'low' | 'cage' | 'skewMap' | 'output';
       @if (store.current(); as job) {
         <div class="well flex flex-col gap-1.5 p-2" data-testid="bake-job">
           <div class="flex items-center gap-2">
-            <span class="readout" data-testid="bake-state">{{ job.state }}</span>
+            <span class="readout" data-testid="bake-state">{{ stateName(job.state) }}</span>
             <span class="readout ms-auto" data-testid="bake-percent">{{ percent() }}%</span>
           </div>
           <div
@@ -227,7 +229,7 @@ type PathField = 'high' | 'low' | 'cage' | 'skewMap' | 'output';
           }
           @if (job.result; as result) {
             @if (result.cached) {
-              <span class="text-foreground-muted text-xs" data-testid="bake-cached">From the cache: nothing ran.</span>
+              <span class="text-foreground-muted text-xs" data-testid="bake-cached">Already baked: nothing has changed.</span>
             }
             @if (result.missed > 0) {
               <span class="text-foreground-muted text-xs">
@@ -316,6 +318,8 @@ export class BakePane {
   protected readonly graph = inject(GraphStore);
   protected readonly sides = Sides;
   protected readonly formats = Formats;
+  protected readonly formatName = imageFormatName;
+  protected readonly stateName = jobStateName;
   protected readonly extraMaps = ExtraMaps;
   protected readonly canPick = desktop() !== undefined;
   protected readonly pathFields: readonly { key: PathField; label: string; placeholder: string }[] = [

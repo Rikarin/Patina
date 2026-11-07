@@ -99,6 +99,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
             class="min-w-0 flex-1"
             aria-label="Blend mode"
             data-testid="paint-layer-blend"
+            [itemText]="blendName"
             [items]="blends()"
             [value]="layer.blend"
             (valueChange)="store.edit({ op: 'setLayer', layer: layer.id, blend: $event })"

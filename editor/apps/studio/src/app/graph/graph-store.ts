@@ -824,7 +824,7 @@ export class GraphStore {
 
   private api(): PatinaClient {
     if (!this.client) {
-      throw new Error('The Server has not been reached yet.');
+      throw new Error('Patina is still starting.');
     }
 
     return this.client;
@@ -1138,7 +1138,7 @@ export class GraphStore {
     try {
       const state = unwrap(await this.api().POST('/api/v1/graphs', { body: { path: document.path } }));
       if (document.history.dirty) {
-        this.mutableNotice.set('The Server restarted. Edits since the last save are gone.');
+        this.mutableNotice.set('Patina restarted its engine. Edits since the last save are gone.');
       }
 
       this.edits.clear(new Error('The session ended.'));

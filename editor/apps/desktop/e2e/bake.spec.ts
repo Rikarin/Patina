@@ -51,7 +51,7 @@ test('a bake runs from the panel and its maps show in the Texture pane', async (
   await choose('output', output);
   await window.getByTestId('bake-start').click();
 
-  await expect(window.getByTestId('bake-state')).toHaveText('done', { timeout: 240_000 });
+  await expect(window.getByTestId('bake-state')).toHaveText('Done', { timeout: 240_000 });
   await expect(window.getByTestId('bake-percent')).toHaveText('100%');
 
   // The results are files where they were asked for, whatever the panel shows of them.
@@ -95,7 +95,7 @@ test('a bake can be judged on its low mesh in the viewport, with a cage and a sk
   await choose('skewMap', skew);
   await choose('output', output);
   await window.getByTestId('bake-start').click();
-  await expect(window.getByTestId('bake-state')).toHaveText('done', { timeout: 120_000 });
+  await expect(window.getByTestId('bake-state')).toHaveText('Done', { timeout: 120_000 });
 
   const frames = () =>
     window

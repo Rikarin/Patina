@@ -20,10 +20,33 @@ const Blends: Readonly<Record<string, string>> = {
   LinearBurn: 'Linear Burn'
 };
 
+const JobStates: Readonly<Record<string, string>> = {
+  queued: 'Waiting',
+  running: 'Working',
+  done: 'Done',
+  failed: 'Failed',
+  cancelled: 'Cancelled'
+};
+
+const ImageFormats: Readonly<Record<string, string>> = {
+  png8: 'PNG 8-bit',
+  png16: 'PNG 16-bit',
+  exr16: 'EXR 16-bit float',
+  exr32: 'EXR 32-bit float'
+};
+
 export function channelName(usage: string): string {
   return Channels[usage] ?? usage;
 }
 
 export function blendName(blend: string): string {
   return Blends[blend] ?? blend;
+}
+
+export function jobStateName(state: string): string {
+  return JobStates[state] ?? state;
+}
+
+export function imageFormatName(format: string): string {
+  return ImageFormats[format] ?? format;
 }

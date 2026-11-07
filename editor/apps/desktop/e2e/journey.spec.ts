@@ -190,7 +190,7 @@ test('a material with wear masks shows at once, and a bake sharpens it', async (
   await window.getByTestId('layers-bake').click();
   await expect(window.getByTestId('bake-low')).toHaveValue(/housing_low\.glb$/);
   await window.getByTestId('bake-start').click();
-  await expect(window.getByTestId('bake-state')).toHaveText('done', { timeout: 120_000 });
+  await expect(window.getByTestId('bake-state')).toHaveText('Done', { timeout: 120_000 });
   await window.keyboard.press('Escape');
 
   await expect(window.getByTestId('layers-need-bake')).toHaveCount(0, { timeout: 30_000 });

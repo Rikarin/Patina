@@ -38,7 +38,7 @@ test('a preset is chosen, its impact shown, and the report names what was writte
   await expect(window.getByTestId('export-impact-exports')).toHaveText('1');
 
   await window.getByTestId('export-start').click();
-  await expect(window.getByTestId('export-state')).toHaveText('done', { timeout: 120_000 });
+  await expect(window.getByTestId('export-state')).toHaveText('Done', { timeout: 120_000 });
   await expect(window.getByTestId('export-report-built')).toHaveText('1');
   await expect(window.getByTestId('export-report-failed')).toHaveText('0');
   await expect(window.getByTestId('export-report-project')).toContainText('godot');

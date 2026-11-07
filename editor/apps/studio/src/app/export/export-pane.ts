@@ -4,6 +4,7 @@ import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiSelectImports } from '@xui/select';
 import { desktop } from '../core/desktop';
+import { jobStateName } from '../core/labels';
 import { LibrarySelection } from '../library/library-selection';
 import { PaintStore } from '../paint/paint-store';
 import { ExportStore } from './export-store';
@@ -25,6 +26,7 @@ import { ExportStore } from './export-store';
           class="w-full"
           ariaLabel="Preset"
           data-testid="export-preset"
+          [itemText]="presetName"
           [items]="presetIds()"
           [value]="preset()"
           (valueChange)="choose($event)"
@@ -109,7 +111,7 @@ import { ExportStore } from './export-store';
 
       @if (store.build(); as build) {
         <div class="flex items-center justify-between text-xs">
-          <span class="readout" data-testid="export-state">{{ build.state }}</span>
+          <span class="readout" data-testid="export-state">{{ stateName(build.state) }}</span>
           <span class="readout" data-testid="export-percent">{{ percent() }}%</span>
         </div>
         @if (build.error) {
@@ -160,6 +162,9 @@ export class ExportPane implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly presetIds = computed(() => this.store.presets().map(preset => preset.id));
   protected readonly chosen = computed(() => this.store.presets().find(preset => preset.id === this.preset()) ?? null);
+  protected readonly presetName = (id: string): string =>
+    this.store.presets().find(preset => preset.id === id)?.name ?? id;
+  protected readonly stateName = jobStateName;
   protected readonly running = computed(() => ['queued', 'running'].includes(this.store.build()?.state ?? ''));
   protected readonly percent = computed(() => Math.round((this.store.build()?.progress ?? 0) * 100));
 

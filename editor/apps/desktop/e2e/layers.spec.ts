@@ -144,7 +144,7 @@ test('colours painted in Blender bake to an id map, and a mask selects one', asy
 
   await window.getByTestId('open-bake').click();
   await window.getByTestId('bake-start').click();
-  await expect(window.getByTestId('bake-state')).toHaveText('done', { timeout: 120_000 });
+  await expect(window.getByTestId('bake-state')).toHaveText('Done', { timeout: 120_000 });
   await window.keyboard.press('Escape');
 
   // Both colours came through the file, as they were painted.
@@ -175,10 +175,14 @@ test('colours painted in Blender bake to an id map, and a mask selects one', asy
     throw new Error('The viewport is not on screen.');
   }
 
+  // The last try wins, so it stops at the first that lands on red rather than going on to the other side.
   for (const across of [0.42, 0.58]) {
     await window.getByTestId('paint-eyedropper').click();
     await window.mouse.click(canvas.x + canvas.width * across, canvas.y + canvas.height / 2);
     await window.waitForTimeout(500);
+    if ((await greenAt(0.25)) > 200) {
+      break;
+    }
   }
 
   await expect.poll(() => greenAt(0.25), { timeout: 30_000 }).toBeGreaterThan(200);
