@@ -169,7 +169,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
             }
             @case ('switch') {
               <xui-switch
-                [attr.aria-label]="parameter.name + ' default'"
+                [ariaLabel]="parameter.name + ' default'"
                 [checked]="store.parameterDefault(parameter) === 'true'"
                 [disabled]="!store.editable()"
                 (checkedChange)="setDefault(parameter, $event ? 'true' : 'false')"

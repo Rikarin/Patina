@@ -156,7 +156,7 @@ const SliderSteps = 1000;
               }
               @case ('switch') {
                 <xui-switch
-                  [attr.aria-label]="field.name"
+                  [ariaLabel]="field.name"
                   [checked]="isOn(field)"
                   [disabled]="!store.editable()"
                   (checkedChange)="setOn(field, $event)"
