@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal } from '@angular/core';
 import type { GraphInterfacePort, GraphSettingDefinition } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiInputImports } from '@xui/input';
@@ -6,6 +6,8 @@ import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
+import { SystemStatus } from '../core/system-status';
+import { ProjectStore } from '../library/project-store';
 import { GraphStore } from './graph-store';
 
 const Sides = ['256', '512', '1024', '2048', '4096'];
@@ -13,6 +15,7 @@ const Kinds = ['Float', 'Int', 'Bool', 'Text'];
 const BitDepths = ['16', '32'];
 const PortKinds = ['Image', 'Float', 'Int', 'Bool', 'Float2', 'Float3', 'Float4'];
 const DefaultBitDepth = '16';
+const NoBake = '';
 const SliderSteps = 1000;
 
 /** What a kind's default starts as, which the Server has to accept. */
@@ -103,6 +106,19 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
           (valueChange)="setBitDepth($event)"
         />
       </div>
+      @if (bakes().length > 0) {
+        <div class="flex flex-col gap-1" data-testid="setting-bake">
+          <span class="text-foreground-muted text-xs">Bake</span>
+          <xui-select
+            ariaLabel="Bake"
+            [disabled]="!store.editable()"
+            [itemText]="bakeName"
+            [items]="bakes()"
+            [value]="bake()"
+            (valueChange)="chooseBake($event)"
+          />
+        </div>
+      }
       <div class="flex flex-col gap-1" data-testid="setting-seed">
         <span class="text-foreground-muted text-xs">Seed</span>
         <xui-numeric-input
@@ -325,6 +341,8 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
 })
 export class GraphSettings {
   protected readonly store = inject(GraphStore);
+  private readonly project = inject(ProjectStore);
+  private readonly status = inject(SystemStatus);
   protected readonly kinds = Kinds;
   protected readonly bitDepths = BitDepths;
   protected readonly portKinds = PortKinds;
@@ -335,6 +353,31 @@ export class GraphSettings {
 
   /** The Server offers boundary nodes to a graph that can have an interface, and to no other. */
   protected readonly isCompound = computed(() => this.store.types().has('Sub-graph/Input'));
+
+  /** The project's bakes, by path below the library, and no bake at all. */
+  protected readonly bakes = computed(() => {
+    const held = this.project.current()?.bakes ?? [];
+    return held.length > 0 ? [NoBake, ...held.map(bake => bake.path)] : [];
+  });
+
+  protected readonly bake = linkedSignal(() => {
+    const path = this.store.document()?.path;
+    return this.project.current()?.documents.find(document => document.path === path)?.bake ?? NoBake;
+  });
+
+  protected readonly bakeName = (path: string): string =>
+    path === NoBake ? 'None' : (this.project.current()?.bakes.find(bake => bake.path === path)?.name ?? path);
+
+  /** What a graph's Mesh Map nodes read. A project's stacks find their bake; this says it for a graph. */
+  protected chooseBake(path: string | null): void {
+    const status = this.status.state();
+    if (path === null || path === this.bake() || status.kind !== 'online') {
+      return;
+    }
+
+    this.bake.set(path);
+    void this.store.useMeshMaps(path === NoBake ? null : `${status.system.library ?? ''}/${path}`);
+  }
 
   protected settingOf(key: string): string {
     return this.store.document()?.settings[key] ?? '';

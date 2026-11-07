@@ -43,6 +43,42 @@ public static class DocumentBakes {
         return Holds(own) ? own : null;
     }
 
+    /// <summary>
+    ///     The bake of the document at a file, by the same rule, which is what opening one reconnects it to. A file no
+    ///     project lists has only what was chosen for it.
+    /// </summary>
+    public static string? OfFile(string file) {
+        var full = Path.GetFullPath(file);
+        for (var at = Path.GetDirectoryName(full); at is not null; at = Path.GetDirectoryName(at)) {
+            var listing = Path.Combine(at, LibraryLayout.ProjectFile);
+            if (File.Exists(listing)) {
+                return Listed(at, full, listing) is { } item ? FolderOf(at, item) : GraphMeshMaps.Read(full);
+            }
+        }
+
+        return GraphMeshMaps.Read(full);
+    }
+
+    static ProjectItem? Listed(string project, string file, string listing) {
+        try {
+            return DocumentCodec.ReadProject(File.ReadAllText(listing), listing)
+                .Document.Documents.FirstOrDefault(item => Path.GetFullPath(item.File, project) == file);
+        } catch (Exception e) when (e is IOException or LibraryFormatException) {
+            return null; // changing as it is read: what was chosen still stands
+        }
+    }
+
+    /// <summary>Every finished bake below a folder.</summary>
+    public static IReadOnlyList<string> Below(string folder) =>
+        Directory.Exists(folder)
+            ? [
+                ..Directory.EnumerateDirectories(folder, "*", SearchOption.AllDirectories)
+                    .Prepend(folder)
+                    .Where(Holds)
+                    .Order(StringComparer.Ordinal)
+            ]
+            : [];
+
     /// <summary>What a bake is made of: everything in its folder but the pictures made to look at it by.</summary>
     public static IReadOnlyList<string> FilesIn(string folder) => [
         ..Directory.EnumerateFiles(folder)

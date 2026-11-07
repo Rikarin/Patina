@@ -232,6 +232,15 @@ export class GraphStore {
   }
 
   /** Closes the session on the Server, which ends it for every client that joined. Unsaved edits ask first. */
+  /** Chooses the bake this graph's Mesh Map nodes read. The Server remembers it beside the graph's file. */
+  async useMeshMaps(folder: string | null): Promise<void> {
+    const id = this.mutableDocument()?.id;
+    if (id) {
+      const client = await this.reconnect();
+      unwrap(await client.PUT('/api/v1/graphs/{id}/mesh-maps', { params: { path: { id } }, body: { folder } }));
+    }
+  }
+
   async close(): Promise<void> {
     if (this.unsaved()) {
       this.mutableLeaving.set({ kind: 'close' });

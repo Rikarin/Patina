@@ -34,6 +34,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- One rule says which bake a document reads: the one chosen for it, then the folder a bake of it goes to. Stacks and graphs reconnect on opening, a set with no bake no longer takes a neighbour's, and baking again into the same folder reaches what is open.
+- Graph settings has a Bake picker, so a graph can read any bake in its project.
+- Baking a texture set whose material has gone from the mesh is refused by name. It baked the whole model into the set's atlas.
 - Normals from a graph fill are lit from the right side on the mesh, and export with the right green for every engine. A stack's normal was treated as Y+ though its fills are Y-.
 - Every place that takes a picture reads the same formats, and file dialogs offer that list: PNG, JPEG, TGA, BMP, PSD, GIF, EXR and HDR. An `.exr` in a layer and a `.tga` skew map no longer fail after they are chosen.
 - Layers and image materials keep a picture's depth: 16-bit PNGs, EXR and HDR were narrowed to 8 bits, or refused.

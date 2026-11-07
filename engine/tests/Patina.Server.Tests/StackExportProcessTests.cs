@@ -107,6 +107,61 @@ public sealed partial class StackProcessTests {
     }
 
     /// <summary>
+    ///     Baking into the same folder again reaches an open stack, whose masks read the bake. The folder has not
+    ///     changed, so nothing told the Worker to read it.
+    /// </summary>
+    [Fact]
+    public async Task A_second_bake_into_the_same_folder_reaches_an_open_stack() {
+        using var deadline = Deadline(240);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        var meshes = Path.Combine(folder.FullName, "meshes");
+        BakeFixture.Write(meshes, 0.05f);
+        await StartAsync("Unused.vxlayers", deadline.Token);
+        var project = await MakeTexturingProjectAsync(Path.Combine(meshes, BakeFixture.LowFile), deadline.Token);
+        var low = Path.Combine(Library, "projects", project, BakeFixture.LowFile);
+        var bakes = Path.Combine(Library, "projects", project, "bakes", "maps");
+
+        BakeRequest Baking(double reach) =>
+            new() {
+                High = Path.Combine(meshes, BakeFixture.HighFile),
+                Low = low,
+                Output = bakes,
+                Resolution = ExportSide,
+                Maps = ["ao"],
+                Format = "png16",
+                OcclusionRays = 16,
+                OcclusionRadius = reach
+            };
+
+        await BakeAsync(Baking(2), deadline.Token);
+
+        // Opening reconnects it, with no client saying which bake.
+        var state = await OpenAsync($"projects/{project}/housing.vxlayers", deadline.Token);
+        Assert.Equal(Path.GetFullPath(bakes), state.MeshMaps);
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(
+                "base",
+                Values: new Dictionary<string, IReadOnlyList<float>> { ["baseColor"] = Rust },
+                Mask: new("Bake", Map: "ao")
+            )
+        );
+        var first = Digest(await PixelsAsync(state.Id, true, deadline.Token), "baseColor");
+
+        await BakeAsync(Baking(0.01), deadline.Token);
+        using (var again = await http.PutAsJsonAsync(
+                   $"/api/v1/stacks/{state.Id}/mesh-maps",
+                   new { folder = bakes },
+                   deadline.Token
+               )) {
+            Assert.True(again.IsSuccessStatusCode, await again.Content.ReadAsStringAsync(deadline.Token));
+        }
+
+        Assert.NotEqual(first, Digest(await PixelsAsync(state.Id, true, deadline.Token), "baseColor"));
+    }
+
+    /// <summary>
     ///     A graph's normal and the same normal through a stack export as one map, on both sides of green. A stack's
     ///     output was declared green up, though what fills it runs down, so it reached one kind of engine turned over.
     /// </summary>

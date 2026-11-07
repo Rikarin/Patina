@@ -76,8 +76,14 @@ public static class MeshMapBakeRun {
     /// <exception cref="ModelFormatException">It is not a readable model.</exception>
     public static FlatModel Read(string path) => Read(path, null);
 
-    /// <summary>Reads a mesh file, keeping only one material's parts if it has that material.</summary>
+    /// <summary>Reads a mesh file, keeping only one material's parts.</summary>
+    /// <param name="path">The file.</param>
+    /// <param name="material">The material, or null for the whole mesh.</param>
     /// <exception cref="ModelFormatException">It is not a readable model.</exception>
+    /// <exception cref="InvalidDataException">
+    ///     It has no such material. A texture set whose material was renamed asks for this, and the whole mesh in its
+    ///     place would bake every part into one atlas, overlaps included.
+    /// </exception>
     public static FlatModel Read(string path, string? material) {
         var options = new ModelReadOptions {
             GenerateTangents = false, ImportAnimations = false, ImportBlendShapes = false, ImportVertexColours = true
@@ -89,8 +95,15 @@ public static class MeshMapBakeRun {
             options
         );
         var names = MaterialNames.Unique(read.Model.Materials);
-        var index = Array.IndexOf(names, material);
-        if (index >= 0) {
+        if (material is not null) {
+            var index = Array.IndexOf(names, material);
+            if (index < 0) {
+                throw new InvalidDataException(
+                    $"'{Path.GetFileName(path)}' has no material '{material}'. Its materials are "
+                    + $"{string.Join(", ", names)}. Rename the material back, or reload the mesh."
+                );
+            }
+
             read.Model.Parts = [..read.Model.Parts.Where(part => part.Material == index)];
         }
 

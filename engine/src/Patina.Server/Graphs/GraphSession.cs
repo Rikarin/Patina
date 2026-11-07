@@ -252,7 +252,7 @@ public sealed class GraphSession : FollowedSession<GraphEvent>, IFileSession {
     }
 
     /// <summary>The bake a graph file reads, or null.</summary>
-    public static string? ReadMeshMaps(string path) => GraphMeshMaps.Read(path);
+    public static string? ReadMeshMaps(string path) => DocumentBakes.OfFile(path);
 
     /// <summary>
     ///     Chooses the bake this graph's Mesh Map nodes read. The Worker takes the document again, since the same

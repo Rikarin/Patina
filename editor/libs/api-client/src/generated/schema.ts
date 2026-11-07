@@ -2820,6 +2820,8 @@ export interface components {
       role?: null | string;
       /** @description The material of the mesh it paints, as one of the project's texture sets. */
       material?: null | string;
+      /** @description The folder of the bake it reads, below the library, or null. */
+      bake?: null | string;
     };
     /** @description The body of `PATCH /api/v1/library/project/document`. */
     ProjectDocumentMeshRequest: {

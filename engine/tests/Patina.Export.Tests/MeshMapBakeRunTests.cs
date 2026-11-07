@@ -74,6 +74,18 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
         Assert.Contains(manifest.Result.Maps, static baked => baked.Map == "normal");
     }
 
+    /// <summary>A set whose material has gone baked the whole model into its atlas, overlaps and all.</summary>
+    [Fact]
+    public void A_texture_set_whose_material_has_gone_is_refused_by_name() {
+        var low = Into("low.obj");
+        BakeFixture.WriteTwoMaterials(low);
+
+        var refused = Assert.Throws<InvalidDataException>(() => MeshMapBakeRun.Read(low, "Renamed"));
+
+        Assert.Contains("Renamed", refused.Message, StringComparison.Ordinal);
+        Assert.Contains("Strap", refused.Message, StringComparison.Ordinal);
+    }
+
     /// <summary>The low was cut to its set and the cage was not, so their layouts could never agree.</summary>
     [Fact]
     public void A_cage_is_cut_to_the_same_set_as_the_low_mesh() {

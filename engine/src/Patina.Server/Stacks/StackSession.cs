@@ -48,7 +48,7 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         fileHash = Hash(text);
         editor = new(path, StackDocuments.Parse(text));
         this.wake = wake;
-        MeshMaps = GraphMeshMaps.Read(path);
+        MeshMaps = DocumentBakes.OfFile(path);
         foreach (var paint in PaintFiles.Where(paint => File.Exists(System.IO.Path.GetFullPath(paint, Folder!)))) {
             found.Add(paint);
         }
@@ -91,10 +91,14 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         Evaluate();
     }
 
+    /// <summary>Counts how often a bake was chosen, for one baked again into the same folder to be read again.</summary>
+    public int BakeEdits { get; private set; }
+
     /// <summary>Chooses a bake: a new Worker copy loads it, since the images are external to the plan.</summary>
     public void UseMeshMaps(string? folder) {
         lock (Changing) {
             MeshMaps = folder;
+            BakeEdits++;
             var file = GraphMeshMaps.FileOf(Path);
             if (folder is null) {
                 File.Delete(file);

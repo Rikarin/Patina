@@ -8135,6 +8135,13 @@
               "string"
             ],
             "description": "The material of the mesh it paints, as one of the project\u0027s texture sets."
+          },
+          "bake": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The folder of the bake it reads, below the library, or null."
           }
         },
         "description": "Something in a project that can be opened and edited (ADR 0012)."

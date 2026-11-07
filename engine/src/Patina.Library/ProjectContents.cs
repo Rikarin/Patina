@@ -26,7 +26,7 @@ static class ProjectFiles {
             files.Where(f => IsMesh(f) && !document.Meshes.Any(m => m.File == f || m.High == f))
                 .Select(f => new ProjectMeshInfo(null, Below(path, f), null))
         );
-        var documents = document.Documents.Select(item => Listed(path, item)).ToList();
+        var documents = document.Documents.Select(item => Listed(full, path, item)).ToList();
         documents.AddRange(
             files.Where(f => Unlisted(f) is not null && document.Documents.All(d => d.File != f))
                 .Select(f => new ProjectDocumentInfo(
@@ -361,20 +361,26 @@ static class ProjectFiles {
 
     static List<ProjectFile> Bakes(string full, string path) {
         var bakes = Path.Combine(full, BakeFolder);
-        return Directory.Exists(bakes)
-            ? [
-                ..LibraryScanner.VisibleFolders(bakes)
-                    .Select(static bake => Path.GetFileName(bake))
-                    .Select(bake => new ProjectFile("bake", bake, Below(path, $"{BakeFolder}/{bake}")))
-            ]
-            : [];
+        return [
+            ..DocumentBakes.Below(bakes)
+                .Select(bake => Path.GetRelativePath(bakes, bake).Replace('\\', '/'))
+                .Select(bake => new ProjectFile("bake", bake, Below(path, $"{BakeFolder}/{bake}")))
+        ];
     }
+
+    /// <summary>A document's bake below the library, if it has one and it is there.</summary>
+    static string? BakeOf(string full, string path, ProjectItem item) =>
+        DocumentBakes.FolderOf(full, item) is { } bake
+            ? Below(path, Path.GetRelativePath(full, bake).Replace('\\', '/'))
+            : null;
 
     static ProjectMeshInfo Listed(string path, ProjectMesh mesh) =>
         new(mesh.Id.Value, Below(path, mesh.File), mesh.High is { } high ? Below(path, high) : null, mesh.Source);
 
-    static ProjectDocumentInfo Listed(string path, ProjectItem item) =>
-        new(item.Id.Value, item.Kind, item.Name, Below(path, item.File), item.Mesh?.Value, item.Role, item.Material);
+    static ProjectDocumentInfo Listed(string full, string path, ProjectItem item) =>
+        new(item.Id.Value, item.Kind, item.Name, Below(path, item.File), item.Mesh?.Value, item.Role, item.Material) {
+            Bake = BakeOf(full, path, item)
+        };
 
     static bool IsMesh(string file) => MeshExtensions.Contains(Path.GetExtension(file));
 

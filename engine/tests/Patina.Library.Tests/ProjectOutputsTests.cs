@@ -82,6 +82,37 @@ public sealed class ProjectOutputsTests : IDisposable {
         Assert.Equal(Path.Combine(folder.FullName, "bakes/maps"), DocumentBakes.FolderOf(folder.FullName, item));
     }
 
+    /// <summary>Stacks and graphs open on one rule, and neither needs a client to remember for it.</summary>
+    [Fact]
+    public void A_document_finds_its_bake_from_its_file_alone() {
+        Bake("bakes/maps/Body");
+        var mesh = AssetId.New();
+        var body = Item(DocumentKinds.Texturing, "body.vxlayers", "Body") with { Mesh = mesh };
+        var strap = Item(DocumentKinds.Texturing, "strap.vxlayers", "Strap") with { Mesh = mesh };
+        File.WriteAllText(
+            Path.Combine(folder.FullName, LibraryLayout.ProjectFile),
+            DocumentCodec.Write(Project(body, strap) with { Meshes = [new(mesh, "low.glb")] })
+        );
+
+        Assert.Equal(
+            Path.Combine(folder.FullName, "bakes/maps/Body"),
+            DocumentBakes.OfFile(Path.Combine(folder.FullName, "body.vxlayers"))
+        );
+        Assert.Null(DocumentBakes.OfFile(Path.Combine(folder.FullName, "strap.vxlayers")));
+    }
+
+    [Fact]
+    public void A_project_lists_each_finished_bake_however_deep() {
+        Bake("bakes/maps/Body");
+        Bake("bakes/maps/Strap");
+        Directory.CreateDirectory(Path.Combine(folder.FullName, "bakes", "empty"));
+
+        Assert.Equal(
+            [Path.Combine(folder.FullName, "bakes/maps/Body"), Path.Combine(folder.FullName, "bakes/maps/Strap")],
+            DocumentBakes.Below(Path.Combine(folder.FullName, "bakes"))
+        );
+    }
+
     [Fact]
     public void A_material_project_exports_its_materials_and_not_its_masks() {
         var project = Project(
