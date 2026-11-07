@@ -20,6 +20,8 @@ import {
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
 
+const RecentColours = 8;
+
 const ReconnectMs = 1_000;
 const ThumbnailQuiet = 400;
 
@@ -117,6 +119,8 @@ export class PaintStore {
   /** What else a stroke paints beside {@link channel}: each channel, and the colour it gets. */
   readonly alsoPaints = signal<ReadonlyMap<string, string>>(new Map());
   readonly colour = signal('#d9401a');
+  /** The colours strokes last used, newest first, offered beside the picker. */
+  readonly recentColours = signal<string[]>([]);
   readonly picture = signal<string | null>(null);
   readonly tool = signal<PaintTool>('brush');
   readonly mirror = signal<Mirror>('none');
@@ -411,11 +415,19 @@ export class PaintStore {
     this.strokes += 1;
     this.stroke = `drag-${Date.now()}-${this.strokes}`;
     this.view = null;
+    if (this.tool() !== 'eraser') {
+      this.remember(this.colour());
+    }
+
     if (aim) {
       void this.aimAt(stamp, aim);
     }
 
     this.move(stamp);
+  }
+
+  private remember(colour: string): void {
+    this.recentColours.update(colours => [colour, ...colours.filter(other => other !== colour)].slice(0, RecentColours));
   }
 
   move(stamp: StackStamp): void {

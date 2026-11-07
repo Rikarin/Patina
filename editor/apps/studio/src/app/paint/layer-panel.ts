@@ -30,6 +30,9 @@ const Projections: readonly { value: string; label: string }[] = [
 const Axes: readonly string[] = ['X', 'Y', 'Z'];
 
 /** Four numbers as a swatch's value. */
+/** Channels that hold one number, which a slider says better than a colour. */
+const ScalarChannels: ReadonlySet<string> = new Set(['roughness', 'metalness', 'height', 'occlusion', 'opacity']);
+
 export function hexOf(colour: readonly number[] | undefined): string {
   const [r = 0, g = 0, b = 0] = colour ?? [];
   const lane = (value: number) =>
@@ -225,13 +228,31 @@ export function hexOf(colour: readonly number[] | undefined): string {
                 }}</span>
                 @switch (layer.fill) {
                   @case ('Constant') {
-                    <input
-                      type="color"
-                      [attr.aria-label]="channel.usage + ' value'"
-                      [attr.data-testid]="'paint-fill-' + channel.usage"
-                      [value]="hex(layer, channel.usage, channel.default)"
-                      (change)="setValue(layer, channel.usage, text($event))"
-                    />
+                    @if (isScalar(channel.usage)) {
+                      <xui-slider
+                        class="min-w-0 flex-1"
+                        labelStepSize="0"
+                        [attr.aria-label]="channelName(channel.usage)"
+                        [attr.data-testid]="'paint-fill-' + channel.usage"
+                        [max]="1"
+                        [min]="0"
+                        [stepSize]="0.01"
+                        [value]="scalar(layer, channel.usage, channel.default)"
+                        (valueChange)="setScalar(layer, channel.usage, $event)"
+                        (pointerup)="scalarDraft.set(null)"
+                      />
+                      <span class="readout w-8 shrink-0 text-end text-xs">{{
+                        scalar(layer, channel.usage, channel.default).toFixed(2)
+                      }}</span>
+                    } @else {
+                      <input
+                        type="color"
+                        [attr.aria-label]="channelName(channel.usage)"
+                        [attr.data-testid]="'paint-fill-' + channel.usage"
+                        [value]="hex(layer, channel.usage, channel.default)"
+                        (change)="setValue(layer, channel.usage, text($event))"
+                      />
+                    }
                   }
                   @case ('Texture') {
                     <span class="min-w-0 flex-1 truncate text-xs" [title]="layer.textures[channel.usage] ?? ''">
@@ -539,6 +560,7 @@ export class LayerPanel {
   protected readonly meshMaps = computed(() => this.store.vocabulary()?.meshMaps ?? []);
   protected readonly name = new LiveValue<string>(() => this.store.chosen()?.name ?? '');
   protected readonly opacity = new LiveValue<number>(() => this.store.chosen()?.opacity ?? 1);
+  protected readonly scalarDraft = signal<{ usage: string; value: number } | null>(null);
   private readonly sending = signal(false);
   private latest: { layer: string; opacity: number } | null = null;
 
@@ -626,6 +648,21 @@ export class LayerPanel {
 
   protected setValue(layer: StackLayer, usage: string, hex: string): void {
     void this.store.edit({ op: 'setLayer', layer: layer.id, values: { [usage]: colourOf(hex) } });
+  }
+
+  protected isScalar(usage: string): boolean {
+    return ScalarChannels.has(usage);
+  }
+
+  /** A grey channel's value, or what the hand says while it is on the slider. */
+  protected scalar(layer: StackLayer, usage: string, fallback: readonly number[]): number {
+    const draft = this.scalarDraft();
+    return draft?.usage === usage ? draft.value : ((layer.values[usage] ?? fallback)[0] ?? 0);
+  }
+
+  protected setScalar(layer: StackLayer, usage: string, value: number): void {
+    this.scalarDraft.set({ usage, value });
+    void this.store.edit({ op: 'setLayer', layer: layer.id, values: { [usage]: [value, value, value, 1] } });
   }
 
   protected setTexture(layer: StackLayer, usage: string, path: string): void {

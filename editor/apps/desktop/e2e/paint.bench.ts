@@ -66,7 +66,7 @@ test('a stamp reaches the screen through the real window', async () => {
   await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 120_000 });
   console.log(`opened and evaluated in ${Date.now() - opened} ms`);
   await window.getByTestId('paint-layer-layer1').click();
-  await window.getByTestId('paint-size').fill(Radius);
+  await window.getByTestId('paint-size').locator('input').fill(Radius);
   await window.waitForTimeout(1_000);
 
   const box = await window.getByRole('img', { name: 'Viewport' }).boundingBox();

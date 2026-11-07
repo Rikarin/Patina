@@ -181,6 +181,11 @@ public sealed record ProjectDocumentMeshRequest(string Project, Guid Document, G
 /// <param name="Name">Its new display name. Its folder stays.</param>
 public sealed record ProjectRenameRequest(string Path, string Name);
 
+/// <summary>The body of <c>POST /api/v1/library/project/duplicate</c>.</summary>
+/// <param name="Path">The project, below <c>projects/</c>.</param>
+/// <param name="Name">The copy's display name.</param>
+public sealed record ProjectDuplicateRequest(string Path, string Name);
+
 /// <summary>Something a layer can be filled with (ADR 0012).</summary>
 /// <param name="Name">What it is called.</param>
 /// <param name="Kind"><c>graph</c>, which a fill reads, or <c>layered-material</c>, which unfolds into layers.</param>

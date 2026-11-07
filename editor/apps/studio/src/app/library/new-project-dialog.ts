@@ -65,7 +65,7 @@ import { ProjectStore } from './project-store';
                   class="w-full"
                   xuiInput
                   autocomplete="off"
-                  aria-label="Mesh file on the Server"
+                  aria-label="Mesh file"
                   data-testid="new-project-mesh-path"
                   [value]="mesh()"
                   (input)="mesh.set(text($event))"

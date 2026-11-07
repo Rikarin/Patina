@@ -13,6 +13,7 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(ProjectDocumentRequest))]
 [JsonSerializable(typeof(ProjectDocumentMeshRequest), TypeInfoPropertyName = nameof(ProjectDocumentMeshRequest))]
 [JsonSerializable(typeof(ProjectRenameRequest))]
+[JsonSerializable(typeof(ProjectDuplicateRequest))]
 [JsonSerializable(typeof(FolderList))]
 [JsonSerializable(typeof(FolderSummary))]
 [JsonSerializable(typeof(FolderCreateRequest), TypeInfoPropertyName = nameof(FolderCreateRequest))]

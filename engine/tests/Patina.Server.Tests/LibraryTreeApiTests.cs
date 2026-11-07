@@ -78,6 +78,42 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
     }
 
     [Fact]
+    public async Task A_duplicated_project_has_its_own_identity_and_a_deleted_one_can_be_got_back() {
+        var made = await client.PostAsJsonAsync("/api/v1/library/projects", new ProjectCreateRequest("Crate"), Token);
+        Assert.Equal(HttpStatusCode.Created, made.StatusCode);
+        var added = await client.PostAsJsonAsync(
+            "/api/v1/library/project/documents",
+            new ProjectDocumentRequest("crate", "graph", "Wood"),
+            Token
+        );
+        added.EnsureSuccessStatusCode();
+        var original = await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=crate", Token);
+
+        var duplicated = await client.PostAsJsonAsync(
+            "/api/v1/library/project/duplicate",
+            new ProjectDuplicateRequest("crate", "Crate Two"),
+            Token
+        );
+        duplicated.EnsureSuccessStatusCode();
+        var copy = await duplicated.Content.ReadFromJsonAsync<ProjectContents>(Token);
+        Assert.Equal("Crate Two", copy!.Name);
+        Assert.Equal(original!.Documents.Count, copy.Documents.Count);
+        Assert.Empty(copy.Documents.Select(static d => d.Id).Intersect(original.Documents.Select(static d => d.Id)));
+
+        var taken = await client.PostAsJsonAsync(
+            "/api/v1/library/project/duplicate",
+            new ProjectDuplicateRequest("crate", "Crate"),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.BadRequest, taken.StatusCode);
+
+        var deleted = await client.DeleteAsync("/api/v1/library/project?path=crate", Token);
+        Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+        Assert.False(Directory.Exists(Path.Combine(server.Library, "projects", "crate")));
+        Assert.Single(Directory.GetDirectories(Path.Combine(server.Library, ".trash")));
+    }
+
+    [Fact]
     public async Task A_texturing_project_needs_a_mesh() {
         var created = await client.PostAsJsonAsync(
             "/api/v1/library/projects",

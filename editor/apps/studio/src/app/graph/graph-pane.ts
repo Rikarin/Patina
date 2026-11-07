@@ -12,6 +12,8 @@ import {
   viewChild
 } from '@angular/core';
 import type { GraphDiagnostic, GraphEdgeState, GraphNodeState, GraphNodeType } from '@patina/api-client';
+import { provideIcons } from '@ng-icons/core';
+import { matAdd, matClose, matDashboard, matNoteAdd, matRedo, matSave, matStickyNote2, matTune, matUndo, matWidgets } from '@ng-icons/material-icons/baseline';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiDialogImports } from '@xui/dialog';
@@ -29,6 +31,7 @@ import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiOmnibarImports } from '@xui/omnibar';
 import { XuiSpinnerImports } from '@xui/spinner';
 import { XuiTagImports } from '@xui/tag';
+import { IconImports } from '../core/icons';
 import { SystemStatus } from '../core/system-status';
 import { isWireable } from './graph-fields';
 import { diagnosticsOf, edgeKey, evaluationSummary } from './graph-model';
@@ -121,7 +124,8 @@ export class GraphThumbnail {
 /** The toolbar, the canvas and what the Server has to say about the open graph. */
 @Component({
   selector: 'ptn-graph-canvas',
-  imports: [
+  viewProviders: [provideIcons({ matAdd, matClose, matDashboard, matNoteAdd, matRedo, matSave, matStickyNote2, matTune, matUndo, matWidgets })],
+  imports: [IconImports, 
     GraphThumbnail,
     NewGraphDialog,
     SaveCompoundDialog,
@@ -175,97 +179,111 @@ export class GraphThumbnail {
       <button
         type="button"
         xuiButton
+        aria-label="Graph settings"
+        title="Graph settings"
         size="sm"
         variant="ghost"
         data-testid="graph-settings"
         [active]="store.graphInspected()"
         (click)="store.inspectGraph()"
       >
-        Graph
+        <ng-icon xui size="sm" name="matTune" />
       </button>
       <button
         type="button"
         xuiButton
+        aria-label="Add a note"
+        title="Add a note"
         size="sm"
         variant="ghost"
         data-testid="graph-note"
         [disabled]="!store.editable()"
         (click)="addNote()"
       >
-        Note
+        <ng-icon xui size="sm" name="matStickyNote2" />
       </button>
       <button
         type="button"
         xuiButton
+        aria-label="Group the selection"
+        title="Group the selection"
         size="sm"
         variant="ghost"
         data-testid="graph-group"
         [disabled]="!store.editable() || store.selection().size === 0"
         (click)="store.groupSelection()"
       >
-        Group
+        <ng-icon xui size="sm" name="matDashboard" />
       </button>
       <button
         type="button"
         xuiButton
+        aria-label="Save the selection as a compound"
+        title="Save the selection as a compound"
         size="sm"
         variant="ghost"
         data-testid="graph-save-compound"
         [disabled]="!store.editable() || store.selection().size === 0"
         (click)="savingCompound.set(true)"
       >
-        Compound
+        <ng-icon xui size="sm" name="matWidgets" />
       </button>
       <button
         type="button"
         xuiButton
+        aria-label="Add a node"
+        title="Add a node"
         size="sm"
         variant="ghost"
         data-testid="graph-add"
         [disabled]="!store.editable()"
         (click)="openPalette(null)"
       >
-        Add node
+        <ng-icon xui size="sm" name="matAdd" />
       </button>
-      <button type="button" xuiButton size="sm" variant="ghost" data-testid="graph-new" (click)="creating.set(true)">
-        New
+      <button type="button" xuiButton size="sm" variant="ghost" aria-label="New graph" title="New graph" data-testid="graph-new" (click)="creating.set(true)">
+        <ng-icon xui size="sm" name="matNoteAdd" />
       </button>
       <button
         type="button"
         xuiButton
+        aria-label="Undo"
         size="sm"
         variant="ghost"
         data-testid="graph-undo"
         [disabled]="!store.editable() || !current?.history?.canUndo"
-        [title]="current?.history?.undoLabel ?? ''"
+        [title]="current?.history?.undoLabel ?? 'Undo'"
         (click)="store.undo()"
       >
-        Undo
+        <ng-icon xui size="sm" name="matUndo" />
       </button>
       <button
         type="button"
         xuiButton
+        aria-label="Redo"
         size="sm"
         variant="ghost"
         data-testid="graph-redo"
         [disabled]="!store.editable() || !current?.history?.canRedo"
-        [title]="current?.history?.redoLabel ?? ''"
+        [title]="current?.history?.redoLabel ?? 'Redo'"
         (click)="store.redo()"
       >
-        Redo
+        <ng-icon xui size="sm" name="matRedo" />
       </button>
       <button
         type="button"
         xuiButton
+        aria-label="Save"
+        title="Save"
         size="sm"
         data-testid="graph-save"
         [disabled]="!store.editable() || !current?.history?.dirty"
         (click)="store.save()"
       >
-        Save
+        <ng-icon xui size="sm" name="matSave" />
       </button>
       <button type="button" xuiButton size="sm" variant="ghost" data-testid="graph-close" (click)="store.close()">
-        Close
+        <ng-icon xui size="sm" name="matClose" />
       </button>
     </div>
 
@@ -275,7 +293,7 @@ export class GraphThumbnail {
       </xui-callout>
     } @else if (workerMissing()) {
       <xui-callout class="shrink-0" color="warning" compact data-testid="graph-no-worker">
-        No Worker is connected. Edits are kept, and thumbnails catch up when one is.
+        The renderer is not running. Edits are kept, and thumbnails catch up when it is back.
       </xui-callout>
     }
     @if (current?.evaluation?.error; as reason) {

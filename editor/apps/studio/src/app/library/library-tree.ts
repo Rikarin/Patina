@@ -207,6 +207,15 @@ interface MenuAt {
             </button>
           }
         }
+        @if (at.row?.kind === 'project') {
+          <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="menu-duplicate" (click)="act(duplicate)">
+            Duplicate
+          </button>
+          <div class="border-hairline my-1 border-t"></div>
+          <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="menu-delete-project" (click)="act(askDelete)">
+            Delete Project…
+          </button>
+        }
         @if (at.row?.kind === 'folder') {
           <div class="border-hairline my-1 border-t"></div>
           <div class="flex items-center gap-1 px-3 py-1" role="group" aria-label="Folder colour">
@@ -236,6 +245,19 @@ interface MenuAt {
         }
       </div>
     }
+
+    <xui-dialog size="sm" title="Delete project" [open]="deletingProject() !== null" (openChange)="$event || deletingProject.set(null)">
+      <xui-dialog-body data-testid="tree-delete-project">
+        Delete {{ projectName(deletingProject()) }}? Its folder moves to the library's hidden .trash folder, and can be moved back
+        from there by hand.
+      </xui-dialog-body>
+      <xui-dialog-footer>
+        <button type="button" xuiButton variant="ghost" (click)="deletingProject.set(null)">Cancel</button>
+        <button type="button" xuiButton color="primary" data-testid="tree-delete-project-confirm" (click)="confirmDeleteProject()">
+          Delete Project
+        </button>
+      </xui-dialog-footer>
+    </xui-dialog>
 
     <xui-dialog size="sm" title="Delete folder" [open]="deleting() !== null" (openChange)="$event || deleting.set(null)">
       <xui-dialog-body data-testid="tree-delete">
@@ -274,6 +296,7 @@ export class LibraryTree {
   protected readonly renaming = signal<string | null>(null);
   protected readonly dropInto = signal<string | null>(null);
   protected readonly deleting = signal<Extract<TreeRow, { kind: 'folder' }> | null>(null);
+  protected readonly deletingProject = signal<TreeRow | null>(null);
   protected readonly canReveal = computed(() => desktop() !== undefined);
   private dragged: readonly string[] = [];
 
@@ -434,6 +457,14 @@ export class LibraryTree {
   protected readonly askDelete = (row: TreeRow | null): void => {
     if (row?.kind === 'folder') {
       this.deleting.set(row);
+    } else if (row?.kind === 'project') {
+      this.deletingProject.set(row);
+    }
+  };
+
+  protected readonly duplicate = (row: TreeRow | null): void => {
+    if (row?.kind === 'project') {
+      void this.tree.duplicateProject(row.path, `${row.project.name} Copy`);
     }
   };
 
@@ -452,6 +483,18 @@ export class LibraryTree {
       if (await this.project.release([row.path])) {
         await this.tree.deleteFolder(row.path, true);
       }
+    }
+  }
+
+  protected projectName(row: TreeRow | null): string {
+    return row?.kind === 'project' ? row.project.name : '';
+  }
+
+  protected async confirmDeleteProject(): Promise<void> {
+    const row = this.deletingProject();
+    this.deletingProject.set(null);
+    if (row && (await this.project.release([row.path]))) {
+      await this.tree.deleteProject(row.path);
     }
   }
 

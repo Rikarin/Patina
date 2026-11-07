@@ -210,6 +210,59 @@ static class ProjectFiles {
         LibraryFiles.WriteProject(root, path, document with { Name = trimmed });
     }
 
+    /// <summary>Moves a project out of the library, into its hidden trash, from where it can be moved back by hand.</summary>
+    /// <exception cref="FileNotFoundException">It is not there.</exception>
+    public static void Trash(string root, string path) {
+        var (full, _) = Project(root, path);
+        var trash = Path.Combine(root, LibraryLayout.TrashFolder);
+        _ = Directory.CreateDirectory(trash);
+        Directory.Move(full, Path.Combine(trash, $"{Path.GetFileName(full)}-{Guid.CreateVersion7():N}"));
+    }
+
+    /// <summary>
+    ///     Copies a project beside itself. Everything it names of its own gets a new identity, so that the copy is an asset
+    ///     apart. What it refers to in other projects stays referred to.
+    /// </summary>
+    /// <returns>The copy's path, below <c>projects/</c>.</returns>
+    /// <exception cref="FileNotFoundException">The project is not there.</exception>
+    /// <exception cref="ProjectRefusedException">The name cannot be used, or is taken.</exception>
+    public static string Duplicate(string root, string path, string name) {
+        var (full, document) = Project(root, path);
+        var slug = NewProjects.Slug(name);
+        var copy = Path.Combine(Path.GetDirectoryName(full)!, slug);
+        if (slug.Length == 0 || Directory.Exists(copy)) {
+            throw new ProjectRefusedException($"'{name}' cannot be used here.");
+        }
+
+        CopyFolder(full, copy);
+        var file = Path.Combine(copy, LibraryLayout.ProjectFile);
+        var text = File.ReadAllText(file);
+        List<Guid> ids = [
+            document.Id.Value,
+            ..document.Meshes.Select(static mesh => mesh.Id.Value),
+            ..document.Documents.Select(static item => item.Id.Value)
+        ];
+        foreach (var id in ids.Where(static id => id != Guid.Empty)) {
+            text = text.Replace(id.ToString(), Guid.CreateVersion7().ToString(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        LibraryFiles.Replace(file, text);
+        var parent = path.Contains('/') ? path[..path.LastIndexOf('/')] + "/" : "";
+        Rename(root, parent + slug, name);
+        return parent + slug;
+    }
+
+    static void CopyFolder(string from, string to) {
+        _ = Directory.CreateDirectory(to);
+        foreach (var file in Directory.EnumerateFiles(from)) {
+            File.Copy(file, Path.Combine(to, Path.GetFileName(file)));
+        }
+
+        foreach (var folder in Directory.EnumerateDirectories(from)) {
+            CopyFolder(folder, Path.Combine(to, Path.GetFileName(folder)));
+        }
+    }
+
     /// <summary>Checks a file can be a mesh, before anything is written.</summary>
     /// <exception cref="FileNotFoundException">It is not there.</exception>
     /// <exception cref="ProjectRefusedException">It is not a mesh.</exception>

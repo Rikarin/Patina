@@ -1,16 +1,20 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { provideIcons } from '@ng-icons/core';
+import { matAutoFixOff, matBrush, matColorize, matHorizontalRule, matPolyline } from '@ng-icons/material-icons/baseline';
 import { XuiButtonImports } from '@xui/button';
+import { XuiColorPickerImports } from '@xui/color-picker';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
+import { IconImports } from '../core/icons';
 import { channelName } from '../core/labels';
 import { type BrushSettings, type Mirror, PaintStore, type PaintTool } from './paint-store';
 
-const Tools: readonly { id: PaintTool; label: string }[] = [
-  { id: 'brush', label: 'Brush' },
-  { id: 'eraser', label: 'Eraser' },
-  { id: 'picker', label: 'Picker' },
-  { id: 'line', label: 'Line' },
-  { id: 'path', label: 'Path' }
+const Tools: readonly { id: PaintTool; label: string; icon: string }[] = [
+  { id: 'brush', label: 'Brush (B)', icon: 'matBrush' },
+  { id: 'eraser', label: 'Eraser (E)', icon: 'matAutoFixOff' },
+  { id: 'picker', label: 'Picker (I)', icon: 'matColorize' },
+  { id: 'line', label: 'Line (L)', icon: 'matHorizontalRule' },
+  { id: 'path', label: 'Path (P)', icon: 'matPolyline' }
 ];
 const Mirrors: readonly { value: string; label: string }[] = [
   { value: 'none', label: 'Off' },
@@ -45,7 +49,8 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number }[] = [
 /** The brush: everything a stroke carries. A setting is read when a stroke starts, and nothing is sent until then. */
 @Component({
   selector: 'ptn-brush-panel',
-  imports: [XuiButtonImports, XuiSelectImports, XuiSliderImports],
+  viewProviders: [provideIcons({ matAutoFixOff, matBrush, matColorize, matHorizontalRule, matPolyline })],
+  imports: [IconImports, XuiButtonImports, XuiColorPickerImports, XuiSelectImports, XuiSliderImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex flex-col gap-1.5' },
   template: `
@@ -56,10 +61,12 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number }[] = [
           xuiButton
           size="sm"
           [attr.data-testid]="'paint-tool-' + tool.id"
+          [attr.aria-label]="tool.label"
+          [title]="tool.label"
           [variant]="store.tool() === tool.id ? 'default' : 'ghost'"
           (click)="store.tool.set(tool.id)"
         >
-          {{ tool.label }}
+          <ng-icon xui size="sm" [name]="tool.icon" />
         </button>
       }
     </div>
@@ -80,22 +87,24 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number }[] = [
     </div>
     <div class="flex items-center gap-2">
       <span class="text-foreground-muted w-16 shrink-0 text-xs">Size</span>
-      <input
+      <xui-slider
         class="min-w-0 flex-1"
-        type="range"
-        min="1"
-        max="256"
+        labelStepSize="0"
         aria-label="Brush size"
         data-testid="paint-size"
+        [max]="256"
+        [min]="1"
+        [stepSize]="1"
         [value]="store.radius()"
-        (input)="store.radius.set(number($event))"
+        (valueChange)="store.radius.set($event)"
       />
-      <input
-        type="color"
+      <span class="readout w-10 shrink-0 text-end text-xs">{{ store.radius() }} px</span>
+      <xui-color-picker
         aria-label="Brush colour"
         data-testid="paint-colour"
+        [presets]="store.recentColours()"
         [value]="store.colour()"
-        (input)="store.colour.set(text($event))"
+        (valueChange)="store.colour.set($event)"
       />
     </div>
     <div class="flex items-center gap-1">
@@ -136,11 +145,10 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number }[] = [
             (change)="toggleChannel(channel.usage, $event)"
           />
           <span class="min-w-0 flex-1 truncate text-xs">{{ nameOf(channel.usage) }}</span>
-          <input
-            type="color"
+          <xui-color-picker
             [attr.aria-label]="nameOf(channel.usage) + ' colour'"
             [value]="store.alsoPaints().get(channel.usage) ?? '#808080'"
-            (input)="setChannel(channel.usage, text($event))"
+            (valueChange)="setChannel(channel.usage, $event)"
           />
         </div>
       }
@@ -242,7 +250,4 @@ export class BrushPanel {
     return (event.target as HTMLInputElement).value;
   }
 
-  protected number(event: Event): number {
-    return Number((event.target as HTMLInputElement).value);
-  }
 }

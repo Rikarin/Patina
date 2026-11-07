@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import type { ViewportCameraState } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
+import { XuiSliderImports } from '@xui/slider';
 import { desktop } from '../core/desktop';
 import { ViewOptions } from '../core/view-options';
 import { GraphStore } from '../graph/graph-store';
@@ -26,7 +27,7 @@ import { ViewportClient } from './viewport-client';
 /** The docked viewport: frames from the Worker on a canvas, and orbit input going the other way. */
 @Component({
   selector: 'ptn-viewport',
-  imports: [XuiButtonImports],
+  imports: [XuiSliderImports, XuiButtonImports],
   providers: [ViewportClient],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -70,30 +71,30 @@ import { ViewportClient } from './viewport-client';
       <span class="flex-1"></span>
       <label class="flex items-center gap-1 text-xs" title="How bright the picture is">
         Exposure
-        <input
+        <xui-slider
           class="w-20"
-          type="range"
-          min="0.1"
-          max="4"
-          step="0.05"
+          labelStepSize="0"
           aria-label="Exposure"
           data-testid="viewport-exposure"
+          [max]="4"
+          [min]="0.1"
+          [stepSize]="0.05"
           [value]="viewport.camera().exposure"
-          (input)="light({ exposure: +value($event) })"
+          (valueChange)="light({ exposure: $event })"
         />
       </label>
       <label class="flex items-center gap-1 text-xs" title="Turns the light around the model">
         Light
-        <input
+        <xui-slider
           class="w-20"
-          type="range"
-          min="-3.14"
-          max="3.14"
-          step="0.02"
+          labelStepSize="0"
           aria-label="Light rotation"
           data-testid="viewport-light"
+          [max]="3.14"
+          [min]="-3.14"
+          [stepSize]="0.02"
           [value]="viewport.camera().lightRotation"
-          (input)="light({ lightRotation: +value($event) })"
+          (valueChange)="light({ lightRotation: $event })"
         />
       </label>
       @if (stampMs() !== null) {

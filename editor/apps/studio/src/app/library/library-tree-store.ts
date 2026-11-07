@@ -249,6 +249,25 @@ export class LibraryTreeStore {
     });
   }
 
+  /** Copies a project beside itself. */
+  async duplicateProject(path: string, name: string): Promise<void> {
+    await this.attempt(async () => {
+      const client = await this.library.api();
+      unwrap(await client.POST('/api/v1/library/project/duplicate', { body: { path, name } }));
+      await this.afterMove();
+    });
+  }
+
+  /** Moves a project to the library's trash. */
+  async deleteProject(path: string): Promise<void> {
+    await this.attempt(async () => {
+      const client = await this.library.api();
+      unwrap(await client.DELETE('/api/v1/library/project', { params: { query: { path } } }));
+      this.clearChoice();
+      await this.afterMove();
+    });
+  }
+
   /** Deletes a folder. One with something in it moves that up a level first, so no project is ever deleted. */
   async deleteFolder(path: string, lift: boolean): Promise<void> {
     await this.attempt(async () => {

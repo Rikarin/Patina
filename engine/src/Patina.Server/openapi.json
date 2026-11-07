@@ -1506,6 +1506,58 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Moves a project to the library\u0027s hidden trash.",
+        "operationId": "TrashProject",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/library/project/meshes": {
@@ -1957,6 +2009,67 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DocumentRecovery"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project/duplicate": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Copies a project beside itself, with identities of its own.",
+        "operationId": "DuplicateProject",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectDuplicateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
                 }
               }
             }
@@ -7814,6 +7927,24 @@
           }
         },
         "description": "The body of \u0060PATCH /api/v1/library/project/document/role\u0060."
+      },
+      "ProjectDuplicateRequest": {
+        "required": [
+          "path",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "name": {
+            "type": "string",
+            "description": "The copy\u0027s display name."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/project/duplicate\u0060."
       },
       "ProjectFile": {
         "required": [

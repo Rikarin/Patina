@@ -253,6 +253,27 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
+    /// <summary>Moves a project to the library's trash. <see cref="Rescan" /> is the caller's to run.</summary>
+    /// <param name="path">The project, below <c>projects/</c>.</param>
+    public void TrashProject(string path) {
+        lock (createGate) {
+            ProjectFiles.Trash(RootPath, path);
+            Interlocked.Increment(ref unscannedWrites);
+        }
+    }
+
+    /// <summary>Copies a project beside itself. <see cref="Rescan" /> is the caller's to run.</summary>
+    /// <param name="path">The project, below <c>projects/</c>.</param>
+    /// <param name="name">The copy's display name.</param>
+    /// <returns>The copy's path, below <c>projects/</c>.</returns>
+    public string DuplicateProject(string path, string name) {
+        lock (createGate) {
+            var copy = ProjectFiles.Duplicate(RootPath, path, name);
+            Interlocked.Increment(ref unscannedWrites);
+            return copy;
+        }
+    }
+
     public ProjectPage Projects(LibraryQuery query) => queries.Projects(query);
 
     public AssetPage Assets(LibraryQuery query) => queries.Assets(query);

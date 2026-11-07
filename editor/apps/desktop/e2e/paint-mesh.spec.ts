@@ -112,7 +112,10 @@ async function drag(fromX: number, fromY: number, toX: number, toY: number): Pro
 
 test('a brush on the mesh shows on it in the viewport, across its flats, and undo takes it back', async () => {
   await openOnMesh();
-  await window.getByTestId('paint-colour').fill('#e01810');
+  await window.getByTestId('paint-colour').locator('button').first().click();
+  await window.getByRole('textbox', { name: 'Hex color' }).fill('#e01810');
+  await window.keyboard.press('Enter');
+  await window.keyboard.press('Escape');
   const before = await shot();
 
   await drag(0.3, 0.45, 0.72, 0.55);

@@ -85,6 +85,12 @@ static class LibraryTreeEndpoints {
 
         library.MapPatch("/project", RenameProject)
             .Described("RenameProject", "Gives a project a new display name. Its folder stays.");
+
+        library.MapPost("/project/duplicate", DuplicateProject)
+            .Described("DuplicateProject", "Copies a project beside itself, with identities of its own.");
+
+        library.MapDelete("/project", TrashProject)
+            .Described("TrashProject", "Moves a project to the library's hidden trash.");
     }
 
     static void MapMaterialRoutes(RouteGroupBuilder library) {
@@ -473,6 +479,34 @@ static class LibraryTreeEndpoints {
                 return TypedResults.Ok(library.Contents(request.Path));
             }
         );
+
+    static Results<Ok<ProjectContents>, ProblemHttpResult> DuplicateProject(
+        LibraryHost host,
+        ProjectDuplicateRequest request
+    ) =>
+        Guarded(
+            host,
+            library => {
+                var copy = library.DuplicateProject(request.Path, request.Name);
+                host.RequestRescan();
+                return TypedResults.Ok(library.Contents(copy));
+            }
+        );
+
+    static Results<NoContent, ProblemHttpResult> TrashProject(LibraryHost host, Holders holders, string path) {
+        if (host.Library is not { } library) {
+            return NoLibrary();
+        }
+
+        try {
+            holders.Refuse(library, [path]);
+            library.TrashProject(path);
+            host.RequestRescan();
+            return TypedResults.NoContent();
+        } catch (Exception e) when (Refusal(e) is { } problem) {
+            return problem;
+        }
+    }
 
     static Results<Ok<T>, ProblemHttpResult> Guarded<T>(LibraryHost host, Func<OpenLibrary, Ok<T>> act) {
         if (host.Library is not { } library) {

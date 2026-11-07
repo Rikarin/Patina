@@ -394,7 +394,8 @@ export interface paths {
     get: operations['GetProjectContents'];
     put?: never;
     post?: never;
-    delete?: never;
+    /** Moves a project to the library's hidden trash. */
+    delete: operations['TrashProject'];
     options?: never;
     head?: never;
     /** Gives a project a new display name. Its folder stays. */
@@ -515,6 +516,23 @@ export interface paths {
     put?: never;
     /** Restores or forgets autosaved work. The document has to be closed. */
     post: operations['RecoverDocument'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/project/duplicate': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Copies a project beside itself, with identities of its own. */
+    post: operations['DuplicateProject'];
     delete?: never;
     options?: never;
     head?: never;
@@ -2763,6 +2781,13 @@ export interface components {
       document: string;
       /** @description `material`, `mask`, `brush` or `filter`. */
       role: string;
+    };
+    /** @description The body of `POST /api/v1/library/project/duplicate`. */
+    ProjectDuplicateRequest: {
+      /** @description The project, below `projects/`. */
+      path: string;
+      /** @description The copy's display name. */
+      name: string;
     };
     /** @description A result of a bake in a project's folder. */
     ProjectFile: {
@@ -5042,6 +5067,53 @@ export interface operations {
       };
     };
   };
+  TrashProject: {
+    parameters: {
+      query: {
+        path: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   RenameProject: {
     parameters: {
       query?: never;
@@ -5468,6 +5540,57 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['DocumentRecovery'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  DuplicateProject: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectDuplicateRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
         };
       };
       /** @description Bad Request */
