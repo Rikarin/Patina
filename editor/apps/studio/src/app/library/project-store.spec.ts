@@ -32,8 +32,12 @@ function memoryStorage(): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> {
   };
 }
 
+/** A fresh store for each test, since some Node versions have a real one that would carry from test to test. */
+let storage = memoryStorage;
+
 /** A ProjectStore over stores that only do what the tabs ask of them. */
 function harness() {
+  vi.stubGlobal('localStorage', storage());
   const paintState = signal<{ id: string; history: { dirty: boolean } } | null>(null);
   const graphDocument = signal<{ id: string; path: string; name: string } | null>(null);
   const graphDirty = signal(false);
@@ -92,6 +96,7 @@ function harness() {
 describe('ProjectStore', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    storage = memoryStorage;
   });
 
   it('stays open when Save All cannot save', async () => {
@@ -111,8 +116,9 @@ describe('ProjectStore', () => {
   });
 
   it('reopens on what was last in front', async () => {
-    vi.stubGlobal('localStorage', memoryStorage());
-    globalThis.localStorage.setItem('patina.library.last.lib', JSON.stringify({ project: 'a', path: paths.graph }));
+    const held = memoryStorage();
+    storage = () => held;
+    held.setItem('patina.library.last.lib', JSON.stringify({ project: 'a', path: paths.graph }));
     const { store } = harness();
 
     await vi.waitFor(() => {
@@ -122,7 +128,6 @@ describe('ProjectStore', () => {
   });
 
   it('remembers the document in front, and nothing once all are closed', async () => {
-    vi.stubGlobal('localStorage', memoryStorage());
     const { store } = harness();
     TestBed.tick();
 

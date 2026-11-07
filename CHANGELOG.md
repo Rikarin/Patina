@@ -20,6 +20,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Save All on the quit dialog stays open and says why if a document could not be saved, instead of doing nothing or quitting without it.
+- Quitting cannot be held up by a process that will not stop.
 - Process tests skip only for a missing Vulkan device, and fail if Vulkan is required. The packaged app ignores development
   environment variables, its IPC answers only the studio, its fuses are set, and the frames file is private and swept after a kill.
 - A stack cannot name a paint file outside its own folder, and a Server with no token only answers to a loopback `Host` (ADR 0013).
