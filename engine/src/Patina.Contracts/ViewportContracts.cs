@@ -85,8 +85,7 @@ public sealed record ViewportMapPaths(
 
 /// <summary>Chooses what lights the model.</summary>
 /// <param name="Source">
-///     A built-in room (studio, overcast or sunset), or the path of a panorama:
-///     <see cref="PictureFormats.Environments" />.
+///     A built-in room (studio, overcast or sunset), or the path of an <c>.hdr</c> or <c>.exr</c> panorama.
 /// </param>
 public sealed record ViewportEnvironmentRequest(string Source);
 

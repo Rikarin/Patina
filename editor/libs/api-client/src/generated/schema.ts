@@ -3925,7 +3925,7 @@ export interface components {
     };
     /** @description Chooses what lights the model. */
     ViewportEnvironmentRequest: {
-      /** @description A built-in room (studio, overcast or sunset), or the path of a panorama: IReadOnlyList&lt;string&gt; PictureFormats.Environments. */
+      /** @description A built-in room (studio, overcast or sunset), or the path of an `.hdr` or `.exr` panorama. */
       source: string;
     };
     /** @description Asks the viewport to lay a graph's Output nodes over the mesh it is showing, as they stand now. */
