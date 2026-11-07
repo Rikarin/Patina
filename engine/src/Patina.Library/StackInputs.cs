@@ -48,7 +48,8 @@ public static class StackInputs {
     /// <summary>Refuses a stack whose paint would be read from outside its folder.</summary>
     /// <exception cref="InvalidDataException">One is.</exception>
     public static void CheckPaint(string stack, string text) {
-        foreach (var input in Of(stack, text)
+        // By the file's name alone, or every name comes back rooted, and a rooted name is what this refuses.
+        foreach (var input in Of(Path.GetFileName(stack), text)
                      .Where(static name => name.EndsWith(PaintExtension, StringComparison.Ordinal))) {
             LibraryLayout.Beside(Path.GetDirectoryName(stack) ?? string.Empty, input);
         }

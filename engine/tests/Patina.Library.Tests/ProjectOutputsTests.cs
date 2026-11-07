@@ -157,6 +157,15 @@ public sealed class ProjectOutputsTests : IDisposable {
     }
 
     [Fact]
+    public void A_stacks_own_paint_passes_by_its_full_path_and_paint_outside_does_not() {
+        var stack = Path.Combine(folder.FullName, "crate.vxlayers");
+
+        StackInputs.CheckPaint(stack, "paint: crate.paint.vxpaint\n");
+
+        Assert.Throws<InvalidDataException>(() => StackInputs.CheckPaint(stack, "paint: ../other.vxpaint\n"));
+    }
+
+    [Fact]
     public void An_empty_project_builds_nothing() =>
         Assert.Empty(ProjectOutputs.Of(TestLibrary.Project("P"), folder.FullName));
 }

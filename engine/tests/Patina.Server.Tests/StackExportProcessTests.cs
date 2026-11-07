@@ -386,6 +386,7 @@ public sealed partial class StackProcessTests {
             deadline.Token,
             new StackSetLayer("base", Values: new Dictionary<string, IReadOnlyList<float>> { ["baseColor"] = Rust })
         );
+        await PaintAsync(state.Id, "stroke", Line(40, 40, 6), false, deadline.Token);
         using (var saved = await http.PostAsync($"/api/v1/stacks/{state.Id}/save", null, deadline.Token)) {
             Assert.True(saved.IsSuccessStatusCode, await saved.Content.ReadAsStringAsync(deadline.Token));
         }
@@ -399,13 +400,18 @@ public sealed partial class StackProcessTests {
         var report = await ReportedAsync(job.Id, deadline.Token);
         SkipWithoutDevice(report);
         Assert.Equal(JobStates.Done, job.State);
-        Assert.Equal(0, job.Report!.Failed);
+        Assert.True(
+            job.Report!.Failed == 0,
+            string.Join(' ', report.Outputs.Select(static o => o.Error).OfType<string>())
+        );
 
         var exported = Path.Combine(Library, "exports", "unreal", project);
         var colour = Texel(Path.Combine(exported, "T_Housing_D.png"), 0.5f, 0.5f);
         Assert.Equal(Rust[0], colour[0], 0.01f);
         Assert.Equal(Rust[1], colour[1], 0.01f);
         Assert.Equal(Rust[2], colour[2], 0.01f);
+        var stroke = Texel(Path.Combine(exported, "T_Housing_D.png"), 55f / ExportSide, 41f / ExportSide);
+        Assert.Equal(Red[1], stroke[1], 0.03f);
         var orm = Texel(Path.Combine(exported, "T_Housing_ORM.png"), 0.5f, 0.5f);
         Assert.Equal(1f, orm[0], 0.01f);
         Assert.Equal(0.5f, orm[1], 0.01f);

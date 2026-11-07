@@ -181,7 +181,10 @@ opened per line, which is the first thing to change past this scale.
   `LayerStackEvaluator` resolves, so a stack could already point at a shared file with `..`. That breaks "references are GUIDs", and
   the fix touches Vixen's stack format, the Server's stack sessions and the Worker. So this stopped at the finding.
 - **Graph resolution per project.** A graph's size is its own setting; a project cannot ask for 2K of a 4K graph.
-- **A `layer-stack` output with paint layers** is exercised by nothing here but the code path; the device tests are graphs and bakes.
+- **A bake does not mix with a stack.** A map a stack makes replaces the bake's whole: a stack's `occlusion` channel is not multiplied
+  over the baked one, and its `normal` is not combined with the baked normal. Mixing belongs in the plan, as a slot under the stack,
+  so that the mesh and the export are one picture (#86). The viewport shows a bake under a stack only through Show on Low Mesh.
+- **Mesh LODs** still take an output written by hand: no default says how many levels a project wants.
 
 ## Not verified
 
