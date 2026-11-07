@@ -370,6 +370,35 @@ public sealed partial class StackProcessTests {
     }
 
     /// <summary>
+    ///     A draft leaves a half set layer out so that painting goes on. A build has no draft: maps short of a layer would
+    ///     ship without a word, so the export fails and says why.
+    /// </summary>
+    [Fact]
+    public async Task A_half_set_layer_stops_an_export_and_says_why() {
+        using var deadline = Deadline(240);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        var meshes = Path.Combine(folder.FullName, "meshes");
+        BakeFixture.Write(meshes, 0.05f);
+        await StartAsync("Unused.vxlayers", deadline.Token);
+        var project = await MakeTexturingProjectAsync(Path.Combine(meshes, BakeFixture.LowFile), deadline.Token);
+
+        var state = await OpenAsync($"projects/{project}/housing.vxlayers", deadline.Token);
+        await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Rough"));
+        var fill = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
+        await EditAsync(state.Id, deadline.Token, new StackSetLayer(fill, Mask: new("Generator", Anchor: "")));
+        using (var saved = await http.PostAsync($"/api/v1/stacks/{state.Id}/save", null, deadline.Token)) {
+            Assert.True(saved.IsSuccessStatusCode, await saved.Content.ReadAsStringAsync(deadline.Token));
+        }
+
+        var job = await BuildAsync("unreal", deadline.Token);
+        var report = await ReportedAsync(job.Id, deadline.Token);
+        SkipWithoutDevice(report);
+
+        Assert.True(job.Report!.Failed > 0, "A stack short of a layer exported as if it were whole.");
+        Assert.Contains(report.Outputs, static o => !string.IsNullOrWhiteSpace(o.Error));
+    }
+
+    /// <summary>
     ///     The blocker in #71. Make a project in the app, change it, save, and export: the files appear and hold what
     ///     was on the layer, with no output declared by anyone.
     /// </summary>

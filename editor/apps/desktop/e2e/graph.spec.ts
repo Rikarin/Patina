@@ -130,10 +130,12 @@ test('opens a graph from the Library, edits it, and sees live thumbnails', async
   const changed = await hashOf(thumbnail(2));
 
   // The slider: a drag across it is one undo step, however many batches it sent.
+  // A tiling noise's Scale moves in whole cells, so it takes enough steps to reach the next one.
   await window.getByTestId('field-Scale').getByRole('slider').focus();
-  await window.keyboard.press('ArrowRight');
-  await window.keyboard.press('ArrowRight');
-  await window.keyboard.press('ArrowRight');
+  for (let step = 0; step < 24; step++) {
+    await window.keyboard.press('ArrowRight');
+  }
+
   await expect(thumbnail(2)).not.toHaveAttribute('data-hash', changed);
   await window.getByTestId('field-Scale').getByRole('slider').blur();
 
@@ -268,8 +270,11 @@ test('builds a tiling material from a new graph, down to its channels and full s
   await window.getByTestId('setting-seed').getByRole('spinbutton').press('Enter');
   await expect(window.getByTestId('graph-unsaved')).toBeVisible();
 
+  // Tiling is the graph's now, and a new one tiles.
+  await expect(window.getByTestId('setting-tilingX').getByRole('switch')).toBeChecked();
+  await expect(window.getByTestId('setting-tilingY').getByRole('switch')).toBeChecked();
+
   await addNodeAt('Source/Noise', 20, 20);
-  await window.getByTestId('field-Tiling').getByRole('switch').click();
   await addNodeAt('Colour/Curve', 220, 20);
   await addNodeAt('Colour/Gradient Map', 420, 20);
   await addNodeAt('Output/Output', 620, 20);
@@ -463,8 +468,8 @@ test('the minimap leaves a small canvas, and steps aside for a wire on a large o
   }
 
   // A node's input sits below where it was asked for, which puts this one's under the minimap's corner.
-  await addNodeAt('Source/Noise', box.width - 500, box.height - 306);
-  await addNodeAt('Output/Output', box.width - 100, box.height - 306);
+  await addNodeAt('Source/Noise', box.width - 500, box.height - 150);
+  await addNodeAt('Output/Output', box.width - 100, box.height - 150);
   await expect(nodes()).toHaveCount(2);
   const target = await centre(connector(2, 'Input'));
 
@@ -482,7 +487,7 @@ test('the minimap leaves a small canvas, and steps aside for a wire on a large o
 
 test('saves a selection as a compound, opens it, authors its ports, and undoes the save', async () => {
   await openGraph();
-  const output = await hashOf(thumbnail(Nodes));
+  const after = await hashOf(thumbnail(Nodes - 1));
   await inspect(2);
   await node(3)
     .locator('xui-graph-node-preview')
@@ -500,7 +505,7 @@ test('saves a selection as a compound, opens it, authors its ports, and undoes t
   await expect(nodes()).toHaveCount(Nodes - 1);
   const held = window.locator('[data-testid=graph-node][data-compound="Wear/Tinted"]');
   await expect(held).toHaveCount(1);
-  await expect(thumbnail(Nodes)).toHaveAttribute('data-hash', output);
+  await expect(thumbnail(Nodes - 1)).toHaveAttribute('data-hash', after);
   const file = join(library, 'projects', 'graphs', 'Compounds', 'Wear', 'Tinted.vxtexgraph');
   expect(readFileSync(file, 'utf8')).toContain('Sub-graph/Input');
 
@@ -524,7 +529,7 @@ test('saves a selection as a compound, opens it, authors its ports, and undoes t
   await expect(window.getByTestId('graph-name')).toHaveText(Name);
   await window.getByTestId('graph-undo').click();
   await expect(nodes()).toHaveCount(Nodes);
-  await expect(thumbnail(Nodes)).toHaveAttribute('data-hash', output);
+  await expect(thumbnail(Nodes - 1)).toHaveAttribute('data-hash', after);
   expect(existsSync(file)).toBe(true);
 });
 
