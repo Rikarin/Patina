@@ -110,20 +110,16 @@ public static class GraphDocuments {
             type.Summary,
             type.Preview,
             [
-                ..type.Ports.Select(static port => new GraphPortDefinition(
-                        port.Name,
-                        port.Direction.ToString(),
-                        port.Kind.ToString(),
-                        port.Default,
-                        port.Summary,
-                        RangeOf(port)
-                    )
-                )
+                ..type.Ports.Select(Definition)
             ],
             [
                 ..type.Settings.Select(Definition)
             ]
         );
+
+    /// <summary>What a client is told about a port of a node.</summary>
+    public static GraphPortDefinition Definition(PortDefinition port) =>
+        new(port.Name, port.Direction.ToString(), port.Kind.ToString(), port.Default, port.Summary, RangeOf(port));
 
     /// <summary>What a client is told about a setting of a node, a compound or a generator.</summary>
     public static GraphSettingDefinition Definition(SettingDefinition setting) =>

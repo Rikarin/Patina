@@ -32,11 +32,14 @@ type NumberSetting = {
   [K in keyof BrushSettings]-?: NonNullable<BrushSettings[K]> extends number ? K : never;
 }[keyof BrushSettings];
 
-/** The sliders of a brush, which all run from nothing to all of it but the angle's. */
-const Sliders: readonly { key: NumberSetting; label: string; max: number }[] = [
+/**
+ * The sliders of a brush, which all run from nothing to all of it but the angle's. Spacing is a share of the radius, so
+ * stamps touch at 200%, and past that it is a pattern. Nothing is never a spacing: stamps have to move.
+ */
+const Sliders: readonly { key: NumberSetting; label: string; max: number; min?: number }[] = [
   { key: 'flow', label: 'Flow', max: 1 },
   { key: 'opacity', label: 'Opacity', max: 1 },
-  { key: 'spacing', label: 'Spacing', max: 2 },
+  { key: 'spacing', label: 'Spacing', max: 4, min: 0.01 },
   { key: 'falloff', label: 'Softness', max: 1 },
   { key: 'angle', label: 'Angle', max: 6.28 },
   { key: 'positionJitter', label: 'Scatter', max: 1 },
@@ -196,8 +199,8 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number }[] = [
           [attr.aria-label]="slider.label"
           [attr.data-testid]="'paint-' + slider.key"
           [max]="slider.max"
-          [min]="0"
-          [stepSize]="slider.max / 100"
+          [min]="slider.min ?? 0"
+          [stepSize]="slider.min ?? slider.max / 100"
           [value]="store.brush()[slider.key]"
           (valueChange)="set(slider.key, $event)"
         />

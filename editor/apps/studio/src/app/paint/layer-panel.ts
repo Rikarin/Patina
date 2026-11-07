@@ -15,6 +15,7 @@ import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { blendName, channelName } from '../core/labels';
+import { type GraphField, fieldOfPort, sliderRange } from '../graph/graph-fields';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { LiveValue } from './live-value';
@@ -276,17 +277,41 @@ export function hexOf(colour: readonly number[] | undefined): string {
                 (valueChange)="store.edit({ op: 'setLayer', layer: layer.id, filter: $event })"
               />
             </div>
-            @for (setting of settings(layer); track setting) {
-              <div class="flex items-center gap-2">
-                <span class="text-foreground-muted w-24 shrink-0 truncate text-xs">{{ setting }}</span>
-                <xui-numeric-input
-                  class="min-w-0 flex-1"
-                  size="sm"
-                  [ariaLabel]="setting"
-                  [stepSize]="0.05"
-                  [value]="layer.settings[setting]?.[0] ?? 0"
-                  (valueChange)="setSetting(layer, setting, $event ?? 0)"
-                />
+            @for (field of settings(layer); track field.name) {
+              <div class="flex items-center gap-2" [attr.data-testid]="'paint-setting-' + field.name" [title]="field.summary">
+                <span class="text-foreground-muted w-24 shrink-0 truncate text-xs">{{ field.name }}</span>
+                @switch (field.control) {
+                  @case ('switch') {
+                    <xui-switch
+                      [ariaLabel]="field.name"
+                      [checked]="settingOf(layer, field) !== 0"
+                      (checkedChange)="setSetting(layer, field.name, $event ? 1 : 0)"
+                    />
+                  }
+                  @case ('number') {
+                    @if (field.source === 'value' && !field.whole) {
+                      @let range = rangeOf(layer, field);
+                      <xui-slider
+                        class="min-w-0 flex-1"
+                        labelStepSize="0"
+                        [attr.aria-label]="field.name + ' slider'"
+                        [max]="range.max"
+                        [min]="range.min"
+                        [stepSize]="(range.max - range.min) / 100"
+                        [value]="settingOf(layer, field)"
+                        (valueChange)="setSetting(layer, field.name, $event)"
+                      />
+                    }
+                    <xui-numeric-input
+                      class="w-20 shrink-0"
+                      size="sm"
+                      [ariaLabel]="field.name"
+                      [stepSize]="field.source === 'value' && field.whole ? 1 : 0.05"
+                      [value]="settingOf(layer, field)"
+                      (valueChange)="setSetting(layer, field.name, $event ?? settingOf(layer, field))"
+                    />
+                  }
+                }
               </div>
             }
           }
@@ -663,8 +688,19 @@ export class LayerPanel {
     void this.store.edit({ op: 'setLayer', layer: layer.id, textures: { [usage]: path } });
   }
 
-  protected settings(layer: StackLayer): readonly string[] {
-    return this.store.vocabulary()?.filters.find(filter => filter.kind === layer.filter)?.settings ?? [];
+  /** A filter's numbers as the Inspector shows a node's. */
+  protected settings(layer: StackLayer): readonly GraphField[] {
+    const ports = this.store.vocabulary()?.filters.find(filter => filter.kind === layer.filter)?.settings ?? [];
+    return ports.map(fieldOfPort).filter(field => field !== null);
+  }
+
+  /** What a number stands at, which until it is set is what the node starts it as. */
+  protected settingOf(layer: StackLayer, field: GraphField): number {
+    return layer.settings[field.name]?.[0] ?? (field.source === 'value' ? (field.fallback[0] ?? 0) : 0);
+  }
+
+  protected rangeOf(layer: StackLayer, field: Extract<GraphField, { control: 'number'; source: 'value' }>) {
+    return sliderRange(this.settingOf(layer, field), field.fallback[0] ?? 0, field);
   }
 
   protected place(layer: StackLayer, change: Partial<NonNullable<StackLayer['placement']>>): void {

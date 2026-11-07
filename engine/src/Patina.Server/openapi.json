@@ -8569,7 +8569,7 @@
           },
           "spacing": {
             "type": "number",
-            "description": "How far apart stamps are, as a share of the radius.",
+            "description": "How far apart stamps are, as a share of the radius: above zero, and above 2 leaves gaps.",
             "format": "float",
             "default": 0.15
           },
@@ -9461,9 +9461,9 @@
           "settings": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/GraphPortDefinition"
             },
-            "description": "Its numbers\u0027 names."
+            "description": "Its numbers, each saying what it is and what it starts as, in the order a person reads them."
           }
         },
         "description": "A filter a layer can be, and the numbers it takes."

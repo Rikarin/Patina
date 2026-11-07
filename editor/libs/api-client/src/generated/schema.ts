@@ -3031,7 +3031,7 @@ export interface components {
       opacity: number;
       /**
        * Format: float
-       * @description How far apart stamps are, as a share of the radius.
+       * @description How far apart stamps are, as a share of the radius: above zero, and above 2 leaves gaps.
        * @default 0.15
        */
       spacing: number;
@@ -3407,8 +3407,8 @@ export interface components {
     StackFilterKind: {
       /** @description Levels, Hsl, Blur, Invert or Grayscale. */
       kind: string;
-      /** @description Its numbers' names. */
-      settings: string[];
+      /** @description Its numbers, each saying what it is and what it starts as, in the order a person reads them. */
+      settings: components['schemas']['GraphPortDefinition'][];
     };
     /** @description One colour of a stack's id map. */
     StackIdColour: {

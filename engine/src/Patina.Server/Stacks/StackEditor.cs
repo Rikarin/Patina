@@ -528,6 +528,10 @@ public sealed class StackEditor : ILayerStackDocument {
             throw new StackEditRefusedException("A brush has a radius.");
         }
 
+        if (stroke.Brush.Spacing <= 0f) {
+            throw new StackEditRefusedException("A brush's stamps are some distance apart.");
+        }
+
         Aimed(stroke);
 
         if (!stroke.Mask && Set.Channels.TrueForAll(channel => channel.Usage != stroke.Channel)) {

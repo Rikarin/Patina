@@ -31,6 +31,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A filter shows the numbers it really runs with, as sliders and switches like the graph Inspector's, rather than 0 until set. Brush spacing goes past where stamps touch, so a brush can lay a spaced pattern.
 - A new occlusion channel starts white, so the model no longer goes dark, and channels and blend modes that showed internal words have plain names.
 - A drag on the mesh or the map turns the model or does nothing when no stroke can land, instead of raising a refusal, and the cursor shows which it will do.
 - A layer that is half set up no longer stops the whole stack updating: an empty texture channel, graph, generator, bitmap, mesh map or anchor leaves that part out. Layers lists what the compile said, marks the layer at fault on its row, and shows Evaluating… as the graph does.

@@ -605,6 +605,38 @@ public sealed partial class StackProcessTests : IDisposable {
         Assert.Contains("Nonsense", problems[0].Message, StringComparison.Ordinal);
     }
 
+    /// <summary>Spacing means what it says: far enough apart, stamps stop touching and a row of them is a pattern.</summary>
+    [Fact]
+    public async Task A_brush_spaced_past_its_size_leaves_gaps() {
+        using var deadline = Deadline(120);
+        var (_, state) = await StartAsync("Spaced.vxlayers", deadline.Token);
+        var clean = await TexelsAsync(state.Id, "clean", deadline.Token);
+
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackStroke(
+                "dots",
+                "paint",
+                "baseColor",
+                new(12f, Spacing: 4f, Falloff: 0f),
+                Red,
+                [new(100f, 500f), new(700f, 500f)]
+            )
+        );
+
+        var painted = await TexelsAsync(state.Id, "dots", deadline.Token);
+        var runs = 0;
+        var inside = false;
+        for (var x = 100; x < 700; x++) {
+            var touched = !Texel(clean, x, 500).SequenceEqual(Texel(painted, x, 500));
+            runs += touched && !inside ? 1 : 0;
+            inside = touched;
+        }
+
+        Assert.True(runs > 5, $"{runs} separate marks along the row.");
+    }
+
     async Task<string> MaskedFillAsync(string id, StackMask mask, CancellationToken token) {
         await EditAsync(id, token, new StackAddLayer("fill", "Tint", Tint));
         var fill = (await StateAsync(id, token)).Layers[^1].Id;
