@@ -14,6 +14,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Folders take masks from the layer menu.
 - Texture sets: each material of a mesh gets its own layers, maps, bake and export, and the whole model shows together while one is painted.
 - Paint follows a new mesh or a repacked layout by where it sits on the surface, with a copy of the old paint kept in the project.
+- Patina libraries have their own icon in Finder.
 - The macOS app carries MoltenVK, so it needs no Vulkan SDK or Homebrew.
 - A library reopens on the document that was last in front.
 - Mask generators have settings: how far Metal Edge Wear reaches, how much Dust settles, and the rest of what each one exposes.

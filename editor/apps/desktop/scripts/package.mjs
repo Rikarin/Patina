@@ -87,7 +87,15 @@ await build({
       { from: join(workspace, '../THIRD-PARTY-NOTICES.md'), to: 'THIRD-PARTY-NOTICES.md' }
     ],
     npmRebuild: false,
-    fileAssociations: [{ ext: 'ptlib', name: 'Patina Library', role: 'Editor', isPackage: true }],
+    fileAssociations: [
+      {
+        ext: 'ptlib',
+        name: 'Patina Library',
+        role: 'Editor',
+        isPackage: true,
+        icon: join(workspace, 'apps/desktop/assets/library') // .icns on macOS, .ico on Windows
+      }
+    ],
     // The packaged binary stays an app: it does not turn into a Node runtime that environment variables can steer.
     electronFuses: {
       runAsNode: false,
