@@ -110,7 +110,9 @@ public sealed class ChannelPackerTests {
         Assert.Equal(1f, packed.Samples[1]);
     }
 
-    /// <summary>All five factory presets end their base colour in <c>opacity.r</c>, which is lane 0 of its map.</summary>
+    /// <summary>
+    ///     All five factory presets end their base colour in <c>opacity.r</c>, which is lane 0 of its map.
+    /// </summary>
     [Theory]
     [InlineData(0.5f)]
     [InlineData(0.25f)]

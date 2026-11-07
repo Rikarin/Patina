@@ -5,7 +5,9 @@ namespace Patina.Export.Presets;
 /// <summary>What a file's name can be built from.</summary>
 /// <param name="Project">The project's name.</param>
 /// <param name="Preset">The preset's id.</param>
-/// <param name="Set">The texture set, or nothing for a project with none named. <c>{set}</c> is then the project.</param>
+/// <param name="Set">
+///     The texture set, or nothing for a project with none named. <c>{set}</c> is then the project.
+/// </param>
 public sealed record NamingValues(string Project, string Preset, string Set = "");
 
 /// <summary>

@@ -215,7 +215,7 @@ public sealed class OutputBuildersTests : IDisposable {
                      """;
         var made = Path.Combine(folder.FullName, "export");
 
-        OutputBuilders.Export(new(preset, [low, high], made), Token);
+        ExportSteps.Run(new(preset, [low, high], made), Token);
 
         Assert.Equal(
             191,
@@ -246,7 +246,7 @@ public sealed class OutputBuildersTests : IDisposable {
                      """;
         var made = Path.Combine(folder.FullName, "export");
 
-        var manifest = OutputBuilders.Export(new(preset, [shared, body, strap], made), Token);
+        var manifest = ExportSteps.Run(new(preset, [shared, body, strap], made), Token);
         var target = Path.Combine(folder.FullName, "delivered");
         ExportRun.Deliver("key", made, manifest, target, new("Crate", "p"));
 
@@ -274,7 +274,7 @@ public sealed class OutputBuildersTests : IDisposable {
                      """;
         var made = Path.Combine(folder.FullName, "export");
 
-        var manifest = OutputBuilders.Export(new(preset, [body], made), Token);
+        var manifest = ExportSteps.Run(new(preset, [body], made), Token);
         var delivered = ExportRun.Deliver("key", made, manifest, Path.Combine(folder.FullName, "t"), new("Crate", "p"));
 
         Assert.Equal("T_Crate_R.png", Path.GetFileName(Assert.Single(delivered)));

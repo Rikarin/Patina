@@ -26,7 +26,8 @@ public static class TextureSizes {
 
     /// <summary>
     ///     How many halvings from a graph's base to a side, in Vixen's <c>BakeLevelOffset</c> currency: 0 is the base,
-    ///     -1 is twice it. Only whole steps keep a radius round, so a side that is no step of the base takes the nearest.
+    ///     -1 is twice it. Only whole steps keep a radius round, so a side that is no step of the base takes the
+    ///     nearest.
     /// </summary>
     /// <param name="width">The base width.</param>
     /// <param name="height">The base height.</param>

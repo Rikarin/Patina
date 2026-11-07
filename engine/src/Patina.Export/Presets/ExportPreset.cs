@@ -111,17 +111,21 @@ public static class ExportMaps {
     public const string Emissive = "emissive";
     public const string Opacity = "opacity";
     public const string Mask = "mask";
+
+    // Between the two groups, as in ExportCompressions: SK7020 honours no suppression, and reads fifteen constants in a
+    // row as a clone of IpcTypes.
+    public static IReadOnlyList<string> All { get; } = [
+        BaseColor, Normal, Roughness, Metalness, Occlusion, Height, Emissive, Opacity, Mask, Curvature, Thickness, Id,
+        Position, WorldNormal, BentNormal
+    ];
+
+    // The maps only a bake makes, under the names the bake gives them.
     public const string Curvature = "curvature";
     public const string Thickness = "thickness";
     public const string Id = "id";
     public const string Position = "position";
     public const string WorldNormal = "world";
     public const string BentNormal = "bent";
-
-    public static IReadOnlyList<string> All { get; } = [
-        BaseColor, Normal, Roughness, Metalness, Occlusion, Height, Emissive, Opacity, Mask, Curvature, Thickness, Id,
-        Position, WorldNormal, BentNormal
-    ];
 
     /// <summary>
     ///     A lane's value where a project has no such map: what a surface without that map would be. A texture that

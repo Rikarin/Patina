@@ -47,8 +47,8 @@ class StackState:
             model (str): The mesh it is painted on, as the document names it, or empty.
             seed (int): The number every procedural step derives from. Default: 0.
             height_normal (str): How a height channel becomes the set's normal: `Sharp` or `Smooth`. Read only when the set
-                has a height
-                channel, and then it writes a normal whether or not it declares one. Default: 'Smooth'.
+                has a
+                height channel, and then it writes a normal whether or not it declares one. Default: 'Smooth'.
             evaluation (None | StackEvaluation | Unset):
             mesh_maps (None | str | Unset): The bake its generators read, or null.
      """

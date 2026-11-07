@@ -20,6 +20,8 @@ public sealed record BuildManifest(
     IReadOnlyList<string> Warnings
 );
 
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field, so fewer parameters means a new API.
+#pragma warning disable SK7005
 /// <summary>One file a preset made, before a project's name is put on it.</summary>
 /// <param name="Template">The naming template.</param>
 /// <param name="File">Its name in the object's folder.</param>
@@ -41,6 +43,7 @@ public sealed record ExportedFile(
     long Bytes,
     string Set = ""
 );
+#pragma warning restore SK7005
 
 /// <summary>What a preset made from one project's maps.</summary>
 /// <param name="Preset">The preset's id.</param>

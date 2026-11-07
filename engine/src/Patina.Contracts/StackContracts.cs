@@ -240,8 +240,8 @@ public sealed record StackEvaluation(
 /// <param name="MeshMaps">The bake its generators read, or null.</param>
 /// <param name="Seed">The number every procedural step derives from.</param>
 /// <param name="HeightNormal">
-///     How a height channel becomes the set's normal: <c>Sharp</c> or <c>Smooth</c>. Read only when the set has a height
-///     channel, and then it writes a normal whether or not it declares one.
+///     How a height channel becomes the set's normal: <c>Sharp</c> or <c>Smooth</c>. Read only when the set has a
+///     height channel, and then it writes a normal whether or not it declares one.
 /// </param>
 public sealed record StackState(
     string Id,
@@ -274,18 +274,14 @@ public sealed record StackState(
 public sealed record StackSummary(string Id, string Path, string Name, long Revision, bool Dirty);
 
 /// <summary>One edit of a stack. A batch of these is one undo step.</summary>
-[JsonDerivedType(typeof(StackAddLayer), "addLayer")]
-[JsonDerivedType(typeof(StackRemoveLayer), "removeLayer")]
-[JsonDerivedType(typeof(StackMoveLayer), "moveLayer")]
-[JsonDerivedType(typeof(StackSetLayer), "setLayer")]
-[JsonDerivedType(typeof(StackStroke), "stroke")]
-// In the middle of the list, for the reason GraphContracts gives: SK7020 honours no suppression.
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "op")]
-[JsonDerivedType(typeof(StackSetModel), "setModel")]
-[JsonDerivedType(typeof(StackAddChannel), "addChannel")]
-[JsonDerivedType(typeof(StackNestLayer), "nestLayer")]
-[JsonDerivedType(typeof(StackSetSeed), "setSeed")]
-[JsonDerivedType(typeof(StackDuplicateLayers), "duplicateLayers")]
+// Two to a section. SK7020 honours no suppression, and one attribute to a line here and on GraphCommand is a clone to
+// it whatever order they take, once there are nine of them.
+[JsonDerivedType(typeof(StackAddLayer), "addLayer"), JsonDerivedType(typeof(StackRemoveLayer), "removeLayer")]
+[JsonDerivedType(typeof(StackMoveLayer), "moveLayer"), JsonDerivedType(typeof(StackSetLayer), "setLayer")]
+[JsonDerivedType(typeof(StackStroke), "stroke"), JsonDerivedType(typeof(StackSetModel), "setModel")]
+[JsonDerivedType(typeof(StackAddChannel), "addChannel"), JsonDerivedType(typeof(StackNestLayer), "nestLayer")]
+[JsonDerivedType(typeof(StackSetSeed), "setSeed"), JsonDerivedType(typeof(StackDuplicateLayers), "duplicateLayers")]
 [JsonDerivedType(typeof(StackPasteLayers), "pasteLayers")]
 [JsonDerivedType(typeof(StackSetHeightNormal), "setHeightNormal")]
 public abstract record StackCommand;
@@ -294,7 +290,8 @@ public abstract record StackCommand;
 /// <param name="Kind">fill, paint, filter or group.</param>
 /// <param name="Name">What it is called, with a number after it when a layer has that name already.</param>
 /// <param name="Values">
-///     What a fill writes to each channel, as four numbers, or null for the default of each one. Ignored for other kinds.
+///     What a fill writes to each channel, as four numbers, or null for the default of each one.
+///     Ignored for other kinds.
 /// </param>
 /// <param name="Parent">The group it goes at the top of, or null for the stack itself.</param>
 /// <param name="Filter">What a filter layer does: Levels, Hsl, Blur, Invert or Grayscale.</param>
@@ -469,7 +466,9 @@ public sealed record StackView(
 /// <param name="Radius">In texels, or in the units of the picture for a stroke with a view.</param>
 /// <param name="Flow">How much one stamp lays down, 0 to 1.</param>
 /// <param name="Opacity">How much a whole stroke can lay down, 0 to 1.</param>
-/// <param name="Spacing">How far apart stamps are, as a share of the radius: above zero, and above 2 leaves gaps.</param>
+/// <param name="Spacing">
+///     How far apart stamps are, as a share of the radius: above zero, and above 2 leaves gaps.
+/// </param>
 /// <param name="Falloff">How soft its edge is, 0 to 1.</param>
 /// <param name="Alpha">A named alpha (Round, Square, Chisel, Cross) or an image relative to the stack, or null.</param>
 /// <param name="Angle">Its fixed rotation, in radians.</param>

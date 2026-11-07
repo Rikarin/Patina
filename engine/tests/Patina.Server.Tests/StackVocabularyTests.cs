@@ -96,7 +96,9 @@ public sealed partial class StackVocabularyTests {
         );
     }
 
-    /// <summary>The list comes from the registry, so a node with one image in and out cannot be missing from it.</summary>
+    /// <summary>
+    ///     The list comes from the registry, so a node with one image in and out cannot be missing from it.
+    /// </summary>
     [Fact]
     public void Every_adjustment_the_compile_takes_is_offered() {
         var library = LayerStackCompiler.Library(out _);
@@ -127,7 +129,9 @@ public sealed partial class StackVocabularyTests {
         );
     }
 
-    /// <summary>A mask's colour selection has its own fields, and the same node in the list would be taken for it.</summary>
+    /// <summary>
+    ///     A mask's colour selection has its own fields, and the same node in the list would be taken for it.
+    /// </summary>
     [Fact]
     public void A_mask_runs_every_filter_but_its_own_colour_selection() {
         var vocabulary = StackDocuments.Vocabulary;
@@ -136,7 +140,9 @@ public sealed partial class StackVocabularyTests {
         Assert.Equal(vocabulary.Filters.Count - 1, vocabulary.MaskEffects.Count);
     }
 
-    /// <summary>Another filter has other numbers: what was set for the last one would only be refused by name.</summary>
+    /// <summary>
+    ///     Another filter has other numbers: what was set for the last one would only be refused by name.
+    /// </summary>
     [Fact]
     public void A_new_filter_starts_from_its_own_defaults() {
         var editor = new StackEditor(
@@ -179,7 +185,9 @@ public sealed partial class StackVocabularyTests {
         Assert.Equal(["Colour/HSL", "Space/Mirror", string.Empty], layers.Select(static layer => layer.FilterNode));
     }
 
-    /// <summary>Nothing moves on a spacing of nothing, and the Worker's fallback must not turn it into something else.</summary>
+    /// <summary>
+    ///     Nothing moves on a spacing of nothing, and the Worker's fallback must not turn it into something else.
+    /// </summary>
     [Fact]
     public void A_brush_with_no_spacing_is_refused() {
         var editor = new StackEditor(

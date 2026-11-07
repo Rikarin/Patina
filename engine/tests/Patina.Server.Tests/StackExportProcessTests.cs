@@ -92,10 +92,11 @@ public sealed partial class StackProcessTests {
     }
 
     static void SkipWithoutDevice(ProjectReport report) {
-        foreach (var error in report.Outputs.Select(static o => o.Error).OfType<string>()) {
-            if (error.Contains("no vulkan", StringComparison.OrdinalIgnoreCase)) {
-                Gpu.Skip(error);
-            }
+        var missing = report.Outputs.Select(static o => o.Error)
+            .OfType<string>()
+            .FirstOrDefault(static error => error.Contains("no vulkan", StringComparison.OrdinalIgnoreCase));
+        if (missing is not null) {
+            Gpu.Skip(missing);
         }
     }
 
@@ -203,9 +204,7 @@ public sealed partial class StackProcessTests {
         await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Slope"));
         var layer = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
         await EditAsync(state.Id, deadline.Token, new StackSetLayer(layer, Fill: "Graph", Graph: graph));
-        using (var saved = await http.PostAsync($"/api/v1/stacks/{state.Id}/save", null, deadline.Token)) {
-            Assert.True(saved.IsSuccessStatusCode, await saved.Content.ReadAsStringAsync(deadline.Token));
-        }
+        await SaveAsync(state.Id, deadline.Token);
 
         var job = await BuildAsync(preset, deadline.Token);
         var report = await ReportedAsync(job.Id, deadline.Token);
@@ -334,8 +333,7 @@ public sealed partial class StackProcessTests {
                     Values: new Dictionary<string, IReadOnlyList<float>> { ["baseColor"] = Colour(material) }
                 )
             );
-            using var saved = await http.PostAsync($"/api/v1/stacks/{state.Id}/save", null, deadline.Token);
-            Assert.True(saved.IsSuccessStatusCode, await saved.Content.ReadAsStringAsync(deadline.Token));
+            await SaveAsync(state.Id, deadline.Token);
         }
 
         var low = Path.Combine(Library, "projects", project, "two.obj");
@@ -370,8 +368,8 @@ public sealed partial class StackProcessTests {
     }
 
     /// <summary>
-    ///     A draft leaves a half set layer out so that painting goes on. A build has no draft: maps short of a layer would
-    ///     ship without a word, so the export fails and says why.
+    ///     A draft leaves a half set layer out so that painting goes on. A build has no draft: maps short of a layer
+    ///     would ship without a word, so the export fails and says why.
     /// </summary>
     [Fact]
     public async Task A_half_set_layer_stops_an_export_and_says_why() {
@@ -390,9 +388,7 @@ public sealed partial class StackProcessTests {
             deadline.Token,
             new StackSetLayer(fill, Mask: new("Generator", Anchor: string.Empty))
         );
-        using (var saved = await http.PostAsync($"/api/v1/stacks/{state.Id}/save", null, deadline.Token)) {
-            Assert.True(saved.IsSuccessStatusCode, await saved.Content.ReadAsStringAsync(deadline.Token));
-        }
+        await SaveAsync(state.Id, deadline.Token);
 
         var job = await BuildAsync("unreal", deadline.Token);
         var report = await ReportedAsync(job.Id, deadline.Token);
@@ -422,9 +418,7 @@ public sealed partial class StackProcessTests {
             new StackSetLayer("base", Values: new Dictionary<string, IReadOnlyList<float>> { ["baseColor"] = Rust })
         );
         await PaintAsync(state.Id, "stroke", Line(40, 40, 6), false, deadline.Token);
-        using (var saved = await http.PostAsync($"/api/v1/stacks/{state.Id}/save", null, deadline.Token)) {
-            Assert.True(saved.IsSuccessStatusCode, await saved.Content.ReadAsStringAsync(deadline.Token));
-        }
+        await SaveAsync(state.Id, deadline.Token);
 
         var preview = await PreviewAsync("unreal", deadline.Token);
         Assert.Equal(1, preview.Projects);

@@ -1,3 +1,4 @@
+using Patina.Export.Builds;
 using Patina.Graphs;
 using Patina.Ipc;
 
@@ -41,7 +42,7 @@ sealed class BuildHost : OneAtATime {
             var threads = Math.Max(1, Environment.ProcessorCount - ReservedCores);
             ending = ask switch {
                 { Output: { } output } => new(ask.Ticket, builders.Build(output, threads, stop.Token), null, null),
-                { Export: { } export } => new(ask.Ticket, null, OutputBuilders.Export(export, stop.Token), null),
+                { Export: { } export } => new(ask.Ticket, null, ExportSteps.Run(export, stop.Token), null),
                 _ => new(ask.Ticket, null, null, "build.start says nothing to do.")
             };
         } catch (OperationCanceledException) {

@@ -46,9 +46,12 @@ async function box() {
   return found;
 }
 
-/** How many pixels of the canvas differ from a shot taken earlier, read off the window's own screenshot. */
+/**
+ * The canvas as the window shows it, one pixel per CSS pixel. Every count below is in those, so a threshold means the
+ * same on a Retina display, where a device-pixel shot holds four times as many, and on CI's Xvfb, where it does not.
+ */
 async function shot(): Promise<string> {
-  return (await canvas().screenshot()).toString('base64');
+  return (await canvas().screenshot({ scale: 'css' })).toString('base64');
 }
 
 /** The picture inside the canvas's border, which lights up as the pane takes the pointer and is no part of it. */
@@ -189,8 +192,9 @@ test('a fill takes a painted mask, stroked on the mesh', async () => {
 
   await drag(0.3, 0.45, 0.72, 0.55);
 
-  // More than the first dab: the whole stroke, and the settled picture.
-  await expect.poll(async () => changed(before, await shot()), { timeout: 30_000 }).toBeGreaterThan(20_000);
+  // More than the first dab: the whole stroke, and the settled picture. A dab alone changes about 2,200 pixels and the
+  // stroke about 11,000.
+  await expect.poll(async () => changed(before, await shot()), { timeout: 30_000 }).toBeGreaterThan(5000);
   await settled();
   await expect(window.getByTestId('app-failure')).toHaveCount(0);
   await expect(window.getByTestId('layers-evaluation')).toBeVisible();

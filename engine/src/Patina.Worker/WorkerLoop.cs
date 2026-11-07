@@ -166,8 +166,8 @@ sealed class WorkerLoop(
     }
 
     /// <summary>
-    ///     Uses no device either, and each file is replaced only when its new paint is whole. A layout that did not change
-    ///     leaves the paint alone, since every move resamples it and costs a little sharpness.
+    ///     Uses no device either, and each file is replaced only when its new paint is whole. A layout that did not
+    ///     change leaves the paint alone, since every move resamples it and costs a little sharpness.
     /// </summary>
     IpcMessage MovePaint(IpcMessage request) {
         var ask = request.MeshMovePaint ?? throw new IpcException("mesh.move-paint moves nothing.");
