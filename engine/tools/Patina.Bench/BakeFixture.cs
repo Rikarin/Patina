@@ -48,6 +48,48 @@ public static class BakeFixture {
         return 0;
     }
 
+    /// <summary>
+    ///     Two quads side by side, with the materials Body and Strap, each with half of the atlas. An OBJ, because
+    ///     that is a format that says a mesh's materials without a writer here having to know them.
+    /// </summary>
+    /// <param name="path">The file to write. Its materials go beside it.</param>
+    /// <param name="lift">How far along its normal the whole mesh sits, which makes a cage of it.</param>
+    public static void WriteTwoMaterials(string path, float lift = 0) {
+        var library = Path.ChangeExtension(path, ".mtl");
+        File.WriteAllText(library, "newmtl Body\nKd 1 0 0\nnewmtl Strap\nKd 0 0 1\n");
+        var z = lift.ToString(CultureInfo.InvariantCulture);
+        File.WriteAllText(
+            path,
+            $"""
+             mtllib {Path.GetFileName(library)}
+             v -1 -1 {z}
+             v 0 -1 {z}
+             v 0 1 {z}
+             v -1 1 {z}
+             v 0 -1 {z}
+             v 1 -1 {z}
+             v 1 1 {z}
+             v 0 1 {z}
+             vt 0 0
+             vt 0.5 0
+             vt 0.5 1
+             vt 0 1
+             vt 0.5 0
+             vt 1 0
+             vt 1 1
+             vt 0.5 1
+             vn 0 0 1
+             usemtl Body
+             f 1/1/1 2/2/1 3/3/1
+             f 1/1/1 3/3/1 4/4/1
+             usemtl Strap
+             f 5/5/1 6/6/1 7/7/1
+             f 5/5/1 7/7/1 8/8/1
+
+             """
+        );
+    }
+
     /// <summary>A point on the outline's flats: the n-th of eight corners of the chamfered square.</summary>
     static Vector2 Corner(int index) {
         var inner = Half - 2f * Bevel;

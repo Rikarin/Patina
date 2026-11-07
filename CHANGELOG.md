@@ -34,6 +34,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A cage bake works on a mesh with several materials. It was refused, because the cage was read whole and the low mesh was not.
 - The Export panel reports every way a build can end: failed steps with their reasons, files a preset left out, and what a stopped or failed build finished. Preview numbers and the Export Maps count clear when the question changes.
 - Export Maps writes the open document's maps wherever the viewport is looking. It used to write every set of the model if the viewport wore them, and only one otherwise.
 - `mips: True` in a preset is refused. It used to mean no mips.

@@ -3,6 +3,7 @@ using Patina.Contracts;
 using Patina.Library;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Vixen.Core.Imaging;
 
 namespace Patina.Server.Tests;
@@ -102,6 +103,83 @@ public sealed partial class StackProcessTests {
         var (width, height, channels, samples) = PngCodec.Decode16(File.ReadAllBytes(path));
         var at = ((int)(v * height) * width + (int)(u * width)) * channels;
         return [..samples.AsSpan(at, channels).ToArray().Select(static sample => sample / (float)ushort.MaxValue)];
+    }
+
+    /// <summary>
+    ///     A model of two materials is two texture sets. Later outputs once replaced earlier ones, because maps were
+    ///     kept by name alone, so the second set's file went out under the project's one name.
+    /// </summary>
+    [Fact]
+    public async Task Each_set_of_a_model_exports_its_own_maps_and_its_own_bake() {
+        using var deadline = Deadline(240);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        var mesh = Path.Combine(folder.FullName, "two.obj");
+        BakeFixture.WriteTwoMaterials(mesh);
+        await StartAsync("Unused.vxlayers", deadline.Token);
+        var project = await MakeTexturingProjectAsync(mesh, deadline.Token);
+        using (var set = await http.PatchAsJsonAsync(
+                   "/api/v1/library/project/settings",
+                   new { project, mesh },
+                   deadline.Token
+               )) {
+            Assert.True(set.IsSuccessStatusCode, await set.Content.ReadAsStringAsync(deadline.Token));
+        }
+
+        using var contents = JsonDocument.Parse(
+            await http.GetStringAsync($"/api/v1/library/project?path={project}", deadline.Token)
+        );
+        (string Path, string Material)[] documents = [
+            ..contents.RootElement.GetProperty("documents")
+                .EnumerateArray()
+                .Select(static d => (d.GetProperty("path").GetString()!, d.GetProperty("material").GetString()!))
+        ];
+        Assert.Equal(["Body", "Strap"], documents.Select(static d => d.Material).Order());
+
+        IReadOnlyList<float> Colour(string material) => material == "Body" ? Rust : [0.1f, 0.3f, 0.9f, 1f];
+
+        foreach (var (path, material) in documents) {
+            var state = await OpenAsync(path, deadline.Token);
+            await EditAsync(
+                state.Id,
+                deadline.Token,
+                new StackSetLayer(
+                    "base",
+                    Values: new Dictionary<string, IReadOnlyList<float>> { ["baseColor"] = Colour(material) }
+                )
+            );
+            using var saved = await http.PostAsync($"/api/v1/stacks/{state.Id}/save", null, deadline.Token);
+            Assert.True(saved.IsSuccessStatusCode, await saved.Content.ReadAsStringAsync(deadline.Token));
+        }
+
+        var low = Path.Combine(Library, "projects", project, "two.obj");
+        await BakeAsync(
+            new() {
+                High = low,
+                Low = low,
+                Material = "Body",
+                Output = Path.Combine(Library, "projects", project, "bakes", "maps", "Body"),
+                Resolution = ExportSide,
+                Maps = ["ao"],
+                OcclusionRays = 4
+            },
+            deadline.Token
+        );
+
+        var job = await BuildAsync("unreal", deadline.Token);
+        var report = await ReportedAsync(job.Id, deadline.Token);
+        SkipWithoutDevice(report);
+        Assert.Equal(0, job.Report!.Failed);
+
+        var exported = Path.Combine(Library, "exports", "unreal", project);
+        foreach (var set in new[] { "Body", "Strap" }) {
+            var texel = Texel(Path.Combine(exported, $"T_Housing_{set}_D.png"), 0.25f, 0.5f);
+            Assert.Equal(Colour(set)[2], texel[2], 0.01f);
+        }
+
+        Assert.True(File.Exists(Path.Combine(exported, "T_Housing_Body_N.png")));
+        Assert.False(File.Exists(Path.Combine(exported, "T_Housing_Strap_N.png")), "Strap took Body's bake.");
+        Assert.False(File.Exists(Path.Combine(exported, "T_Housing_D.png")));
+        Assert.Contains(report.Exports[0].Skipped, static file => file.StartsWith("Strap: ", StringComparison.Ordinal));
     }
 
     /// <summary>

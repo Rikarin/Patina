@@ -46,7 +46,7 @@ public static class MeshMapBakeRun {
             );
         }
 
-        var cage = request.Cage is { } path ? Read(path).Mesh : null;
+        var cage = request.Cage is { } path ? Read(path, request.Material).Mesh : null;
         progress?.Invoke(ReadingShare);
 
         var maps = MapBaker.Bake(

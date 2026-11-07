@@ -46,6 +46,27 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
             OcclusionRays = 8
         };
 
+    /// <summary>The low was cut to its set and the cage was not, so their layouts could never agree.</summary>
+    [Fact]
+    public void A_cage_is_cut_to_the_same_set_as_the_low_mesh() {
+        var low = Into("low.obj");
+        BakeFixture.WriteTwoMaterials(low, 0);
+        var cage = Into("cage.obj");
+        BakeFixture.WriteTwoMaterials(cage, 0.1f);
+        Assert.Equal(12, MeshMapBakeRun.Read(low).Mesh.CornerCount);
+        Assert.Equal(6, MeshMapBakeRun.Read(low, "Strap").Mesh.CornerCount);
+
+        var manifest = MeshMapBakeRun.Run(
+            Request() with { High = low, Low = low, Cage = cage, Material = "Strap" },
+            Into("baked"),
+            0,
+            null,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Contains(manifest.Result.Maps, static map => map.Map == "normal");
+    }
+
     [Fact]
     public void A_bake_leaves_a_manifest_and_a_file_for_each_map() {
         var manifest = MeshMapBakeRun.Run(Request(), Into("bake"), 0, null, TestContext.Current.CancellationToken);
