@@ -7,6 +7,7 @@ import { XuiColorPicker } from '@xui/color-picker';
 import { XuiNumericInput } from '@xui/numeric-input';
 import { XuiSelect } from '@xui/select';
 import { SystemStatus } from '../core/system-status';
+import { ProjectStore } from '../library/project-store';
 import { GraphInspector, Inspector, keptLanes } from './graph-inspector';
 import { GraphSelection, GraphSettings, freeParameterName } from './graph-settings';
 import { GraphStore } from './graph-store';
@@ -143,6 +144,7 @@ describe('the graph settings', () => {
       ...fakeStore(),
       document: signal({
         name: 'Rust',
+        nodes: new Map(),
         settings,
         parameters: [],
         interface: [],
@@ -154,7 +156,8 @@ describe('the graph settings', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: GraphStore, useValue: store },
-        { provide: SystemStatus, useValue: { textureSides: signal([512, 1024, 2048]) } }
+        { provide: SystemStatus, useValue: { textureSides: signal([512, 1024, 2048]) } },
+        { provide: ProjectStore, useValue: { current: signal(null) } }
       ]
     });
     const fixture = TestBed.createComponent(GraphSettings);

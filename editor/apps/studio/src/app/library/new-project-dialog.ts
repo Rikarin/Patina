@@ -136,7 +136,6 @@ export class NewProjectDialog {
   private readonly store = inject(LibraryStore);
   private readonly tree = inject(LibraryTreeStore);
   private readonly project = inject(ProjectStore);
-  private readonly status = inject(SystemStatus);
 
   readonly open = model(false);
   /** The folder it goes in, where empty is the top of the library. */
