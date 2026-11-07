@@ -36,14 +36,18 @@ public sealed record UnwrapOptions {
     public string Overflow { get; init; } = "shrink";
 
     /// <summary>What is wrong with these options, or null when they can be used.</summary>
-    public string? Problem() =>
-        Resolution is < 64 or > 16384 ? $"An unwrap's resolution is 64 to 16384 texels, not {Resolution}."
-        : Margin is < 0 or > 64 ? $"An unwrap's margin is 0 to 64 texels, not {Margin}."
-        : !Qualities.Contains(Quality) ? $"'{Quality}' is no way to pack. Use {string.Join(", ", Qualities)}."
-        : !TurnCounts.Contains(Rotations) ? $"Islands turn 1, 2 or 4 ways, not {Rotations}."
-        : !double.IsFinite(TexelDensity) || TexelDensity < 0 ? "A texel density is zero or more."
-        : !Overflows.Contains(Overflow) ? $"'{Overflow}' is nothing an unwrap does. Use {string.Join(", ", Overflows)}."
-        : null;
+    public string? Problem() {
+        (bool Wrong, string Why)[] checks = [
+            (Resolution is < 64 or > 16384, $"An unwrap's resolution is 64 to 16384 texels, not {Resolution}."),
+            (Margin is < 0 or > 64, $"An unwrap's margin is 0 to 64 texels, not {Margin}."),
+            (!Qualities.Contains(Quality), $"'{Quality}' is no way to pack. Use {string.Join(", ", Qualities)}."),
+            (!TurnCounts.Contains(Rotations), $"Islands turn 1, 2 or 4 ways, not {Rotations}."),
+            (!(TexelDensity >= 0 && double.IsFinite(TexelDensity)), "A texel density is zero or more."),
+            (!Overflows.Contains(Overflow),
+                $"'{Overflow}' is nothing an unwrap does. Use {string.Join(", ", Overflows)}.")
+        ];
+        return checks.FirstOrDefault(static check => check.Wrong).Why;
+    }
 }
 
 /// <summary>What one texture set's unwrap came to.</summary>

@@ -531,15 +531,20 @@ public sealed partial class StackProcessTests {
         Assert.Equal("box.obj", held.Unwrapped!.From);
         Assert.Equal(["lid", "walls"], held.Unwrapped.Sets.Select(static s => s.Material).Order());
         Assert.All(held.Unwrapped.Sets, static s => Assert.True(s.Charts > 0 && s.Packed > 0));
-        Assert.Equal(["lid", "walls"], unwrapped.Documents.Select(static d => d.Material ?? "").Order());
+        Assert.Equal(["lid", "walls"], unwrapped.Documents.Select(static d => d.Material ?? string.Empty).Order());
 
         var file = Path.Combine(Library, held.Path);
         var first = await File.ReadAllBytesAsync(file, deadline.Token);
         var again = await SetAsync(
-            new { project, unwrap = new UnwrapOptions { Resolution = 512, Margin = 16, Quality = "boxes", Rotations = 1 } }
+            new {
+                project, unwrap = new UnwrapOptions { Resolution = 512, Margin = 16, Quality = "boxes", Rotations = 1 }
+            }
         );
 
-        Assert.Equal(new UnwrapOptions { Resolution = 512, Margin = 16, Quality = "boxes", Rotations = 1 }, again.Unwrap);
+        Assert.Equal(
+            new() { Resolution = 512, Margin = 16, Quality = "boxes", Rotations = 1 },
+            again.Unwrap
+        );
         Assert.NotEqual(first, await File.ReadAllBytesAsync(file, deadline.Token));
         Assert.Equal("box.obj", Assert.Single(again.Meshes, static m => m.Unwrapped is not null).Unwrapped!.From);
         Assert.Equal(2, again.Documents.Count);

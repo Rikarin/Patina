@@ -57,7 +57,8 @@ public sealed class MeshUnwrapRunTests : IDisposable {
             for (var side = 0; side < Sides; side++) {
                 var polar = MathF.PI * ring / Rings;
                 var around = MathF.Tau * side / Sides;
-                var (x, y, z) = (MathF.Sin(polar) * MathF.Cos(around), MathF.Cos(polar), MathF.Sin(polar) * MathF.Sin(around));
+                var (x, y, z) = (MathF.Sin(polar) * MathF.Cos(around), MathF.Cos(polar),
+                    MathF.Sin(polar) * MathF.Sin(around));
                 var colour = y >= 0 ? "1 0 0" : "0 0 1";
                 text.AppendLine(CultureInfo.InvariantCulture, $"v {x:R} {y:R} {z:R} {colour}");
                 text.AppendLine(CultureInfo.InvariantCulture, $"vn {x:R} {y:R} {z:R}");
@@ -69,8 +70,8 @@ public sealed class MeshUnwrapRunTests : IDisposable {
             text.AppendLine(CultureInfo.InvariantCulture, $"usemtl {material}");
             for (var ring = from; ring < to; ring++) {
                 for (var side = 0; side < Sides; side++) {
-                    var a = (ring * Sides) + side + 1;
-                    var b = (ring * Sides) + ((side + 1) % Sides) + 1;
+                    var a = ring * Sides + side + 1;
+                    var b = ring * Sides + (side + 1) % Sides + 1;
                     var (c, d) = (a + Sides, b + Sides);
                     text.AppendLine(CultureInfo.InvariantCulture, $"f {a}//{a} {b}//{b} {d}//{d} {c}//{c}");
                 }
@@ -96,7 +97,10 @@ public sealed class MeshUnwrapRunTests : IDisposable {
             Path.GetExtension(path),
             "unwrapped",
             new ModelReadOptions {
-                GenerateTangents = false, ImportAnimations = false, ImportBlendShapes = false, ImportVertexColours = true
+                GenerateTangents = false,
+                ImportAnimations = false,
+                ImportBlendShapes = false,
+                ImportVertexColours = true
             }
         );
 
@@ -120,7 +124,10 @@ public sealed class MeshUnwrapRunTests : IDisposable {
         var output = Unwrapped(Ball());
         var read = Model(output);
 
-        Assert.Equal(["blue", "red"], read.Model.Parts.Select(part => read.Model.Materials[part.Material]).Distinct().Order());
+        Assert.Equal(
+            ["blue", "red"],
+            read.Model.Parts.Select(part => read.Model.Materials[part.Material]).Distinct().Order()
+        );
         foreach (var material in new[] { "red", "blue" }) {
             var mesh = MeshMapBakeRun.Read(output, material).Mesh;
             var coordinates = mesh.TexCoords.ToArray();

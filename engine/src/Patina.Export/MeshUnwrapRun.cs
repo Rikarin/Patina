@@ -1,5 +1,4 @@
 using Patina.Contracts;
-using Vixen.Core.Mathematics;
 using Vixen.Geometry;
 using Vixen.Geometry.Uv;
 using Vixen.Interchange;
@@ -36,6 +35,7 @@ public static class MeshUnwrapRun {
         var meshes = read.Meshes.ToDictionary(static mesh => mesh.Name, StringComparer.Ordinal);
         var names = MaterialNames.Unique(read.Model.Materials);
         int[] used = [..read.Model.Parts.Select(static part => part.Material).Distinct().Order()];
+
         bool Bare(int material) =>
             read.Model.Parts.Where(part => part.Material == material)
                 .Any(part => meshes[part.Mesh] is var mesh && mesh.TexCoords.Length != mesh.Positions.Length);

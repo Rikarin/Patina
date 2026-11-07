@@ -119,10 +119,14 @@ sealed class WorkerLoop(
         var ask = request.MeshUnwrap ?? throw new IpcException("mesh.unwrap names no mesh.");
         try {
             return new() {
-                Type = IpcTypes.Ok, Id = request.Id, MeshUnwrapped = MeshUnwrapRun.Run(ask.Source, ask.Output, ask.Options)
+                Type = IpcTypes.Ok,
+                Id = request.Id,
+                MeshUnwrapped = MeshUnwrapRun.Run(ask.Source, ask.Output, ask.Options)
             };
-        } catch (Exception e) when (e is ModelFormatException or IOException or InvalidOperationException
-                                       or ArgumentException) {
+        } catch (Exception e) when (e is ModelFormatException
+                                        or IOException
+                                        or InvalidOperationException
+                                        or ArgumentException) {
             throw new IpcException($"'{Path.GetFileName(ask.Source)}' could not be unwrapped: {e.Message}");
         }
     }

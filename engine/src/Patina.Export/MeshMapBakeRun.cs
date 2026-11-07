@@ -119,7 +119,10 @@ public static class MeshMapBakeRun {
             Path.GetExtension(path),
             Path.GetFileNameWithoutExtension(path),
             new ModelReadOptions {
-                GenerateTangents = false, ImportAnimations = false, ImportBlendShapes = false, ImportVertexColours = true
+                GenerateTangents = false,
+                ImportAnimations = false,
+                ImportBlendShapes = false,
+                ImportVertexColours = true
             }
         );
 

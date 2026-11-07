@@ -35,18 +35,9 @@ static class ProjectSettingsEndpoint {
             string? Held(string? below) =>
                 below is null ? null : library.ProjectFile(project, LibraryTreeEndpoints.Relative(project, below));
 
-            // New options lay out again what Auto Unwrap wrote, from the file it came from.
-            var again = before.AutoUnwrap && request.Mesh is null && before.Unwrap != options
-                ? current?.Unwrapped?.From
-                : null;
+            var again = Again(request, before, options, current);
             var mesh = request.Mesh ?? (again is null ? Held(current?.Path) : library.ProjectFile(project, again));
-            if (mesh is null
-                || (request.Mesh is null && request.High is null && request.AutoUnwrap is null && again is null)) {
-                return TypedResults.Ok(before);
-            }
-
-            // ⚠ Nothing below can improve on the same file, and all of it costs: the paint would be resampled.
-            if (request.High is null && request.AutoUnwrap is null && again is null && !library.MeshChanged(project, mesh)) {
+            if (mesh is null || Idle(library, request, again, mesh)) {
                 return TypedResults.Ok(before);
             }
 
@@ -67,6 +58,27 @@ static class ProjectSettingsEndpoint {
         } catch (Exception e) when (LibraryTreeEndpoints.Refusal(e) is { } problem) {
             return problem;
         }
+    }
+
+    /// <summary>
+    ///     The file Auto Unwrap laid the current mesh out from, when new options mean laying it out again, or null.
+    /// </summary>
+    static string? Again(
+        ProjectSettingsRequest request,
+        ProjectContents before,
+        UnwrapOptions options,
+        ProjectMeshInfo? current
+    ) =>
+        before.AutoUnwrap && request.Mesh is null && before.Unwrap != options ? current?.Unwrapped?.From : null;
+
+    /// <summary>Whether a request has nothing to do to the mesh.</summary>
+    /// <remarks>⚠ Nothing can improve on the same file, and all of it costs: the paint would be resampled.</remarks>
+    static bool Idle(OpenLibrary library, ProjectSettingsRequest request, string? again, string mesh) {
+        if (request.High is not null || request.AutoUnwrap is not null || again is not null) {
+            return false;
+        }
+
+        return request.Mesh is null || !library.MeshChanged(request.Project, mesh);
     }
 
     /// <summary>Puts every texturing document on a mesh, makes its texture sets and moves the paint across.</summary>

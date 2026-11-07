@@ -114,6 +114,7 @@ public static class DocumentCodec {
 
     static UnwrapOptions ReadUnwrap(IReadOnlyDictionary<string, string> map, YamlFields fields) {
         var defaults = new UnwrapOptions();
+
         int Whole(string key, int fallback) =>
             !map.TryGetValue(key, out var text) ? fallback
             : int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value
