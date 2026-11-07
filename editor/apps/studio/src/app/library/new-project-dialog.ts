@@ -7,6 +7,7 @@ import { XuiInputImports } from '@xui/input';
 import { XuiSwitchImports } from '@xui/switch';
 import { XuiTagInputImports } from '@xui/tag-input';
 import { desktop } from '../core/desktop';
+import { SystemStatus } from '../core/system-status';
 import { LibraryStore } from './library-store';
 import { LibraryTreeStore } from './library-tree-store';
 import { ProjectStore } from './project-store';
@@ -121,7 +122,7 @@ export class NewProjectDialog {
   }
 
   protected async pickImage(): Promise<void> {
-    const image = await desktop()?.openImage();
+    const image = await desktop()?.openImage(this.status.pictures());
     if (image) {
       this.image.set(image);
     }
@@ -131,6 +132,7 @@ export class NewProjectDialog {
     return Number((event.target as HTMLSelectElement).value);
   }
 
+  private readonly status = inject(SystemStatus);
   private readonly store = inject(LibraryStore);
   private readonly tree = inject(LibraryTreeStore);
   private readonly project = inject(ProjectStore);

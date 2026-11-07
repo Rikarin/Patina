@@ -17,6 +17,8 @@ public sealed record PackedPicture(int Width, int Height, int Lanes, float[] Sam
 ///     over: row zero is v = 0 in every map, and every engine here reads a picture's top row as the same.
 /// </summary>
 public static class ChannelPacker {
+    const int AlphaLane = 3;
+
     /// <summary>Whether a project has anything this texture reads.</summary>
     public static bool Applies(ExportTexture texture, IReadOnlyDictionary<string, MapPicture> maps) {
         ArgumentNullException.ThrowIfNull(texture);
@@ -73,15 +75,15 @@ public static class ChannelPacker {
             return;
         }
 
+        var transfer = Transfer(name, source.Lane, lane, texture.Space);
         if (!maps.TryGetValue(name, out var picture)) {
             var value = ExportMaps.Default(name, source.Lane);
-            value = source.Inverted ? 1f - value : value;
+            value = transfer(source.Inverted ? 1f - value : value);
             ForEach(width, height, (x, y) => samples[(y * width + x) * lanes + lane] = value);
             return;
         }
 
         var turn = name == ExportMaps.Normal && source.Lane == 1 && picture.Green != green;
-        var transfer = Transfer(name, source.Lane, texture.Space);
         var image = picture.Image;
         var scaled = image.Width != width || image.Height != height;
         ForEach(
@@ -89,24 +91,25 @@ public static class ChannelPacker {
             height,
             (x, y) => {
                 var value = scaled ? Bilinear(image, source.Lane, x, y, width, height) : Lane(image, x, y, source.Lane);
-                value = transfer(turn ? 1f - value : value);
-                samples[(y * width + x) * lanes + lane] = source.Inverted ? 1f - value : value;
+                value = turn ? 1f - value : value;
+                value = source.Inverted ? 1f - value : value;
+                samples[(y * width + x) * lanes + lane] = transfer(value);
             }
         );
     }
 
-    /// <summary>What moves a lane's numbers into the file's space. Alpha is never encoded.</summary>
-    static Func<float, float> Transfer(string map, int lane, string space) {
-        if (lane == 3) {
-            return static value => value;
-        }
-
-        return (ExportMaps.IsColour(map), space == "srgb") switch {
+    /// <summary>
+    ///     What moves a number into a lane of the file. A file's alpha holds linear numbers in any space, and so does a
+    ///     map's, so only the colour lanes of a colour map start out sRGB, and only the colour lanes of an sRGB file end
+    ///     up that way. It is the lane being written that decides the second, and not the one being read:
+    ///     <c>opacity.r</c> reads lane 0 and writes alpha.
+    /// </summary>
+    static Func<float, float> Transfer(string map, int sourceLane, int fileLane, string space) =>
+        (ExportMaps.IsColour(map) && sourceLane != AlphaLane, space == "srgb" && fileLane != AlphaLane) switch {
             (true, false) => MipChain.ToLinear,
             (false, true) => MipChain.ToSrgb,
             _ => static value => value
         };
-    }
 
     static void ForEach(int width, int height, Action<int, int> set) =>
         Parallel.For(

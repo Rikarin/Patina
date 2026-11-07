@@ -103,7 +103,9 @@ public static class ExportPresetReader {
         Require(quality is "fast" or "balanced" or "best", $"{where}: '{quality}' is not a quality.");
         var space = Field(node, "space", where);
         Require(space is "srgb" or "linear", $"{where}: space '{space}' is neither srgb nor linear.");
-        var mips = Optional(node, "mips") is "true";
+        var mipsText = Optional(node, "mips") ?? "false";
+        Require(mipsText is "true" or "false", $"{where}: mips is true or false, not '{mipsText}'.");
+        var mips = mipsText == "true";
         Require(!mips || container, $"{where}: only ktx2 and dds carry mips.");
 
         var lanes = Child(node, "channels") as YamlSequenceNode;

@@ -5,6 +5,18 @@ namespace Patina.Viewport.Tests;
 
 /// <summary>What the numbers in an image become, with no device: formats, colour spaces and mips.</summary>
 public sealed class ViewportImageTests {
+    /// <summary>The bytes of a one-texel Radiance file.</summary>
+    static byte[] Radiance() => [
+        ..System.Text.Encoding.ASCII.GetBytes("#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 1 +X 1\n"), 128, 64, 32, 129
+    ];
+
+    [Fact]
+    public void A_radiance_file_reads_at_its_own_depth() {
+        var texture = ViewportImage.Decode(Radiance(), ".hdr", MapMeaning.Measurement);
+
+        Assert.Equal(PixelFormat.Rgba16Float, texture.Format);
+    }
+
     static byte[] Checker(byte dark, byte light) {
         var pixels = new byte[2 * 2 * 4];
         for (var at = 0; at < 4; at++) {

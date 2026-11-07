@@ -82,6 +82,9 @@ import { ExportStore } from './export-store';
             <span class="readout">{{ preview.unresolved }}</span>
           }
         </div>
+        @if (preview.nothing; as nothing) {
+          <xui-callout color="warning" data-testid="export-nothing">{{ nothing }}</xui-callout>
+        }
       }
 
       <div class="flex gap-1">
@@ -115,7 +118,7 @@ import { ExportStore } from './export-store';
           <span class="readout" data-testid="export-percent">{{ percent() }}%</span>
         </div>
         @if (build.error) {
-          <xui-callout color="warning">{{ build.error }}</xui-callout>
+          <xui-callout color="error" data-testid="export-build-error">{{ build.error }}</xui-callout>
         }
       }
 
@@ -132,13 +135,33 @@ import { ExportStore } from './export-store';
           <span>Failed</span>
           <span class="readout" data-testid="export-report-failed">{{ report.failed }}</span>
         </div>
+        @if (report.nothing; as nothing) {
+          <xui-callout color="warning" data-testid="export-report-nothing">{{ nothing }}</xui-callout>
+        }
         @for (project of store.projects(); track project.id) {
-          <div class="flex flex-col text-xs" data-testid="export-report-project">
+          <div class="flex flex-col gap-1 text-xs" data-testid="export-report-project">
             <span class="font-semibold">{{ project.name }}</span>
+            @for (output of project.outputs; track output.name) {
+              @if (output.error; as why) {
+                <xui-callout color="error" compact data-testid="export-report-error">
+                  {{ output.name }}: {{ why }}
+                </xui-callout>
+              }
+            }
             @for (done of project.exports; track done.preset) {
               <span class="text-foreground-muted truncate" [title]="done.folder ?? ''">
                 {{ done.preset }}: {{ done.files.length }} files, {{ done.status }}
               </span>
+              @if (done.error; as why) {
+                <xui-callout color="error" compact data-testid="export-report-error">
+                  {{ done.preset }}: {{ why }}
+                </xui-callout>
+              }
+              @for (file of done.skipped; track file) {
+                <span class="text-foreground-muted truncate" data-testid="export-report-skipped" [title]="file">
+                  Left out, no map for it: {{ file }}
+                </span>
+              }
               @for (warning of done.warnings; track warning) {
                 <span class="text-foreground-muted truncate" [title]="warning">{{ warning }}</span>
               }
@@ -174,16 +197,31 @@ export class ExportPane implements OnInit {
     return item?.kind === 'asset' ? item.asset : null;
   });
 
+  private readonly stack = computed(() => this.paint.state()?.id ?? null);
+
   /** A build that has stopped is read once, whichever way it stopped. */
   private read = '';
 
   constructor() {
     effect(() => {
       const build = this.store.build();
-      if (build?.state === 'done' && this.read !== build.id) {
+      if (build && ['done', 'failed', 'cancelled'].includes(build.state) && this.read !== build.id) {
         this.read = build.id;
-        void this.attempt(() => this.store.read(build.id));
+        // A build refused before it began has no report, and its own error says why.
+        void (build.state === 'done'
+          ? this.attempt(() => this.store.read(build.id))
+          : this.store.read(build.id).catch(() => undefined));
       }
+    });
+
+    // Numbers that answered another question say nothing about this one.
+    effect(() => {
+      this.asset();
+      this.store.preview.set(null);
+    });
+    effect(() => {
+      this.stack();
+      this.store.exported.set([]);
     });
   }
 

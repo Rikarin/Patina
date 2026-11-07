@@ -281,7 +281,7 @@
         "tags": [
           "ViewportMapEndpoints"
         ],
-        "summary": "Chooses what lights the model: a built-in room, or an .hdr panorama.",
+        "summary": "Chooses what lights the model: a built-in room, or an .hdr or .exr panorama.",
         "operationId": "SetViewportEnvironment",
         "requestBody": {
           "content": {
@@ -5167,6 +5167,13 @@
             "description": "Outputs that cannot be built: a missing input, an unreadable reference.",
             "format": "int32"
           },
+          "nothing": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why a build would write nothing, or null when it would write something."
+          },
           "items": {
             "type": "array",
             "items": {
@@ -5455,6 +5462,30 @@
           }
         },
         "description": "One preset in a project\u0027s report."
+      },
+      "FileFormats": {
+        "required": [
+          "pictures",
+          "environments"
+        ],
+        "type": "object",
+        "properties": {
+          "pictures": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What a layer, a mask, an image material and a skew map read."
+          },
+          "environments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What lights the viewport."
+          }
+        },
+        "description": "What a client may offer, with the dot."
       },
       "FolderCreateRequest": {
         "required": [
@@ -7824,6 +7855,13 @@
           "folder": {
             "type": "string",
             "description": "The folder holding this report and one file per project."
+          },
+          "nothing": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why a finished build wrote nothing, or null when it wrote something or something failed."
           }
         },
         "description": "What a whole build did."
@@ -8235,6 +8273,13 @@
               "string"
             ],
             "description": "The material of the mesh it paints, as one of the project\u0027s texture sets."
+          },
+          "bake": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The folder of the bake it reads, below the library, or null."
           }
         },
         "description": "Something in a project that can be opened and edited (ADR 0012)."
@@ -10614,6 +10659,7 @@
         "required": [
           "version",
           "apiVersion",
+          "formats",
           "host",
           "worker"
         ],
@@ -10642,6 +10688,10 @@
           "worker": {
             "description": "The Worker process as the Server sees it.",
             "$ref": "#/components/schemas/WorkerStatus"
+          },
+          "formats": {
+            "description": "What can be read, for a client\u0027s file dialogs.",
+            "$ref": "#/components/schemas/FileFormats"
           }
         },
         "description": "The reply to \u0060GET /api/v1/system\u0060."
@@ -10781,7 +10831,7 @@
         "properties": {
           "source": {
             "type": "string",
-            "description": "A built-in room (studio, overcast or sunset), or the path of an \u0060.hdr\u0060 panorama."
+            "description": "A built-in room (studio, overcast or sunset), or the path of an \u0060.hdr\u0060 or \u0060.exr\u0060 panorama."
           }
         },
         "description": "Chooses what lights the model."

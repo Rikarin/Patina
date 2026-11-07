@@ -110,12 +110,72 @@ public sealed class ChannelPackerTests {
         Assert.Equal(1f, packed.Samples[1]);
     }
 
+    /// <summary>All five factory presets end their base colour in <c>opacity.r</c>, which is lane 0 of its map.</summary>
+    [Theory]
+    [InlineData(0.5f)]
+    [InlineData(0.25f)]
+    public void Fractional_opacity_in_a_files_alpha_is_never_encoded(float opacity) {
+        var packed = ChannelPacker.Pack(
+            Texture(
+                "png8",
+                "srgb",
+                "none",
+                false,
+                Lane("baseColor"),
+                Lane("baseColor", 1),
+                Lane("baseColor", 2),
+                Lane("opacity")
+            ),
+            Maps(Colour("baseColor", 0.5f, 0.25f, 0f), Grey("opacity", opacity)),
+            GreenAxis.Up
+        );
+
+        Assert.Equal(opacity, packed.Samples[3]);
+    }
+
+    [Fact]
+    public void A_factory_preset_keeps_fractional_opacity() {
+        var preset = ExportPresetCatalog.Read(null).Find("unreal")!;
+        var texture = preset.Textures.First(static t => t.Maps.Contains("opacity"));
+
+        var packed = ChannelPacker.Pack(
+            texture,
+            Maps(Colour("baseColor", 0.5f, 0.5f, 0.5f), Grey("opacity", 0.5f)),
+            preset.Normal
+        );
+
+        Assert.Equal(0.5f, packed.Samples[3]);
+    }
+
+    /// <summary>An inversion means the value, so it comes before the file's encoding and not after.</summary>
+    [Fact]
+    public void One_minus_a_map_is_taken_before_the_file_encodes_it() {
+        var packed = ChannelPacker.Pack(
+            Texture("png8", "srgb", "none", false, Lane("roughness", 0, true)),
+            Maps(Grey("roughness", 0.25f)),
+            GreenAxis.Up
+        );
+
+        Assert.Equal(MipChain.ToSrgb(0.75f), packed.Samples[0], 5);
+    }
+
+    [Fact]
+    public void A_default_goes_through_the_files_encoding_like_a_map() {
+        var packed = ChannelPacker.Pack(
+            Texture("png8", "srgb", "none", false, Lane("baseColor"), Lane("roughness")),
+            Maps(Grey("baseColor", 0.5f)),
+            GreenAxis.Up
+        );
+
+        Assert.Equal(MipChain.ToSrgb(ExportMaps.Default("roughness", 0)), packed.Samples[1], 5);
+    }
+
     [Fact]
     public void A_missing_map_fills_its_lane_and_says_so_and_a_texture_of_nothing_is_left_out() {
         var texture = Texture("png8", "srgb", "none", false, Lane("baseColor"), Lane("opacity"));
         var packed = ChannelPacker.Pack(texture, Maps(Grey("baseColor", 0.5f)), GreenAxis.Up);
 
-        Assert.Equal(1f, packed.Samples[1]);
+        Assert.Equal(1f, packed.Samples[1], 5);
         Assert.Contains("no opacity map", Assert.Single(packed.Warnings), StringComparison.Ordinal);
         Assert.False(
             ChannelPacker.Applies(

@@ -118,7 +118,10 @@ sealed class LibraryOutputs(string root, IndexDatabase database, LibraryQueries 
             project.Id,
             project.Name,
             path,
-            [..project.Outputs.Select(output => Scan(output, project, location, asset, graph, paths, hashes))]
+            [
+                ..ProjectOutputs.Of(project, LibraryLayout.Full(root, location))
+                    .Select(output => Scan(output, project, location, asset, graph, paths, hashes))
+            ]
         );
     }
 

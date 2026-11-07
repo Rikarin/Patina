@@ -9,6 +9,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Layers and Project Settings say when the mesh has changed since the last bake, and Reload Mesh says what it will cost before it closes anything.
 - Project Settings lists a project's meshes, pictures and bakes under Files, and the status bar says what an import brought in.
+- A preset can read every baked map: curvature, thickness, ID, position, world normal and bent normal, not only normal, height and occlusion.
+- Export works on a project made in the app: every texture set of a texturing project goes through the preset with its bake, and a material project exports its materials. Nothing has to be declared. Files of a project with several sets carry the set's name, and presets can place it with `{set}`.
+- Preview and the report say so when a build would write nothing, and why, instead of Done with no files.
 - Project Settings holds the project's mesh, Auto Unwrap and Preserve Paint. A mesh with no UVs gets a layout in a new file beside it, when it is set or from the error's Unwrap Mesh button.
 - A layer can be kept to named meshes, from the square on the right of its row. It combines with any mask the layer has.
 - Effects inside layers: a layer can hold paint, fills and filters, each with its own blend, opacity and eye, over its content and under its mask.
@@ -35,7 +38,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - `project.yaml` no longer records the absolute path a mesh came from. A source inside the library is stored relative to it, one outside stays on this machine, and a fresh clone asks for the file once on Reload Mesh.
 - Reload Mesh with an unchanged file does nothing and says so, and a changed file on the same UV layout keeps its paint as it is. Paint is only resampled, and copied to `.paint-backup`, when the layout really moved.
-- Importing a file nothing can read, such as a `.dae`, `.usd` or `.txt`, is refused and says why, instead of being copied into the project as a picture. EXR is refused as a layer picture too, because layers read 8-bit pictures only.
+- Importing a file nothing can read, such as a `.dae`, `.usd` or `.txt`, is refused and says why, instead of being copied into the project as a picture.
 - A layered document that cannot save says why, and one whose file changed on disk asks whether to overwrite it, as a graph does. Closing or quitting stays put when the save did not happen.
 - Don't Save on a layered document throws the edits away. They used to stay open on the Server and come back on the next open, and autosaved copies of refused edits are no longer offered back.
 - Discard in the recovery dialog works, and closing that dialog keeps the autosaved work and asks again next time. Work still open in a session is no longer offered back as if it had been lost.
@@ -48,6 +51,19 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A layer that is half set up no longer stops the whole stack updating: an empty texture channel, graph, generator, bitmap, mesh map or anchor leaves that part out. Layers lists what the compile said, marks the layer at fault on its row, and shows Evaluating… as the graph does.
 - A mask on a fill, filter or folder can be painted, not only one on a paint layer.
 - Painting a white or grey mask changes only what the brush touches, instead of hiding the rest of the layer, and a new paint mask starts by showing the whole layer. The brush paints a mask in grey. A mask that is a picture refuses the brush and says why, rather than being replaced. Remove Mask takes all of the mask away, and Invert Mask turns off again.
+- One rule says which bake a document reads: the one chosen for it, then the folder a bake of it goes to. Stacks and graphs reconnect on opening, a set with no bake no longer takes a neighbour's, and baking again into the same folder reaches what is open.
+- Graph settings has a Bake picker, so a graph can read any bake in its project.
+- Baking a texture set whose material has gone from the mesh is refused by name. It baked the whole model into the set's atlas.
+- Normals from a graph fill are lit from the right side on the mesh, and export with the right green for every engine. A stack's normal was treated as Y+ though its fills are Y-.
+- Every place that takes a picture reads the same formats, and file dialogs offer that list: PNG, JPEG, TGA, BMP, PSD, GIF, EXR and HDR. An `.exr` in a layer and a `.tga` skew map no longer fail after they are chosen.
+- Layers and image materials keep a picture's depth: 16-bit PNGs, EXR and HDR were narrowed to 8 bits, or refused.
+- The viewport's environment takes `.exr` panoramas as well as `.hdr`.
+- A cage bake works on a mesh with several materials. It was refused, because the cage was read whole and the low mesh was not.
+- The Export panel reports every way a build can end: failed steps with their reasons, files a preset left out, and what a stopped or failed build finished. Preview numbers and the Export Maps count clear when the question changes.
+- Export Maps writes the open document's maps wherever the viewport is looking. It used to write every set of the model if the viewport wore them, and only one otherwise.
+- `mips: True` in a preset is refused. It used to mean no mips.
+- Fractional opacity exports as it is. All five presets wrote it through sRGB, so 0.5 came out as 0.735.
+- `1-map` lanes in an sRGB file invert the value and not its encoded number, and a lane with no map goes through the file's encoding like any other.
 - Bake formats, export presets, job states and layer blend modes show plain names instead of internal ids.
 - The first stroke after opening a 4K stack no longer waits seconds for the maps to reach the mesh.
 - Save All on the quit dialog stays open and says why if a document could not be saved, instead of doing nothing or quitting without it.

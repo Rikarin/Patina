@@ -20,6 +20,9 @@ public sealed class BuildJournal {
     const string LibraryFile = "library.json";
     const string ProjectsFolder = "projects";
 
+    /// <summary>What a build that ran says when it wrote no file.</summary>
+    public const string NoFiles = "The preset reads no map these projects make, so no file was written.";
+
     readonly string build;
     readonly string log;
     readonly Dictionary<string, int> starts = new(StringComparer.Ordinal);
@@ -96,7 +99,11 @@ public sealed class BuildJournal {
     }
 
     /// <summary>Writes the reports, which are the log's contents arranged for reading.</summary>
-    public LibraryReport Finish(int fresh, int exportsFresh, DateTimeOffset finished) {
+    /// <param name="fresh">Outputs nothing touched.</param>
+    /// <param name="exportsFresh">Exports nothing touched.</param>
+    /// <param name="nothing">What to say if this wrote no file. Null for a build that was stopped.</param>
+    /// <param name="finished">When it finished.</param>
+    public LibraryReport Finish(int fresh, int exportsFresh, string? nothing, DateTimeOffset finished) {
         var folder = Path.Combine(Folder, ProjectsFolder);
         Directory.CreateDirectory(folder);
         Parallel.ForEach(
@@ -114,6 +121,10 @@ public sealed class BuildJournal {
         );
 
         var report = Totals(fresh, exportsFresh, finished);
+        if (report is { Failed: 0, Files: 0 }) {
+            report = report with { Nothing = nothing };
+        }
+
         LibraryFiles.Replace(
             Path.Combine(Folder, LibraryFile),
             JsonSerializer.SerializeToUtf8Bytes(report, ContractsJsonContext.Default.LibraryReport)

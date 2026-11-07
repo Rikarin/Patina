@@ -9,11 +9,36 @@ has been opened in Unreal, Unity or Godot; that is the largest gap, and it is li
 Factory presets are in `content/export-presets` and are embedded. A library adds one, or replaces one of the same `id`, by putting
 a file in `export-presets`; it needs no sidecar, because its `id` says what it is. A preset lists files, and each file lists
 one to four lanes from a map (`roughness.r`), one minus a map (`1-roughness.r`) or a number. A map is one of a graph's Output
-usages; a bake's `ao` arrives as `occlusion`. A texture none of whose maps a project has is left out, and a lane whose map is
-missing takes what a surface without it would be, with a warning in the report. Unknown fields and lane counts a block cannot hold
+usages or a bake's map under its own name, so `curvature`, `thickness`, `id`, `position`, `world` and `bent` can be packed; a bake's
+`ao` arrives as `occlusion`. A texture none of whose maps a project has is left out, and a lane whose map is
+missing takes what a surface without it would be, with a warning in the report. Unknown fields, values the reader cannot read (`mips: True`) and lane counts a block cannot hold
 are refused: the alternative is an uncompressed texture in a shipped game. An export's key holds the bytes of the preset's file.
 
-`{project}` and `{preset}` are the whole naming language. A value cannot make a folder.
+`{project}`, `{preset}` and `{set}` are the whole naming language. A value cannot make a folder. In a project of several texture
+sets every file has to say which it is, so a template with no `{set}` gets the set's name after `{project}`, or at its end when it
+has neither. A project of one set keeps the name its preset gives, and `{set}` is then the project's name if the set has none.
+
+## What a project builds
+
+A project made in the app writes no outputs. `ProjectOutputs` works them out from its documents on every read, and writes nothing
+back, because an output in a file would have to follow every change to the documents:
+
+- Each texturing document is a texture set: one `layer-stack` output and, if it has a bake, one `baked-maps` output.
+- A project with no texturing document is a material, and each of its layered materials, image materials and material graphs is a
+  set in the same way. Mask, brush and filter graphs are not. Nor are the graphs in a texturing project, which are what its layers
+  read and not what it ships.
+- `outputs` in `project.yaml` replace all of this, for a project that wants something else, such as mesh LODs.
+
+**An export never bakes.** It takes the bake that is there (`DocumentBakes`: the one chosen for the document, then the folder a bake
+of it goes to by default), so a project that has not baked exports what its layers make, and a preset's normal file is reported
+as skipped. A bake started by Export would run for minutes on settings nobody chose. `library check` counts declared outputs only:
+a project nobody has exported is not unhealthy.
+
+An output's key holds its set's name, through its settings, so two sets that swap their content do not share an export's key.
+Outputs are merged per set when an export reads them, and an output with no set is every set's. A document's key covers what it can
+read in its project: other documents, `pictures/`, compounds and every file of its bake, which is more than it does read. An edit
+to one of those rebuilds a little too much, and never too little. What it reads in other projects is covered by the project's
+`references`.
 
 ## Green, and why it is not a constant of a preset
 
@@ -24,14 +49,15 @@ the picture, and each converts a mesh's `v` to fit on import. Green is another m
 |---|---|---|
 | A bake | **up the image (Y+)** | `MikkTSpace.Generate` turns `v` over before it runs, so the bitangent runs up the picture (ADR 0008) |
 | A graph's `Height to Normal` | **down the image (Y-)** | Vixen's frame takes the bitangent along `v`, which runs down. `Vixen.TextureGraph`'s README derives it, and a ramp test holds it |
+| A layer stack | **down the image (Y-)** | What fills its normal channel is a graph, and the compositor leaves the numbers as they are |
 
 So a normal map carries the way it runs, in its output's manifest, and `ChannelPacker` turns green over only when source and target
-disagree. A graph output that composes a baked normal says `green: up` in its settings; nothing can work that out. The stored
-number is the same one the viewport's shader reads, so this is a one-minus in unit space and not a sign flip of the byte.
+disagree. An output that composes a baked normal says `green: up` in its settings; nothing can work that out. The stored number is
+the same one the viewport's shader reads, so this is a one-minus in unit space and not a sign flip of the byte. `Export Maps` writes
+a stack's numbers as they are, so its normal is Y-.
 
-⚠ This turned up a defect that is not fixed here. Patina's viewport shader treats every normal as Y+ (`ViewportForward.rvn`), so a
-graph's `Height to Normal` laid over a mesh with `PUT /viewport/graph` is lit from the wrong side. It looks plausible, which is the
-trouble with a flipped green. Export is right; the viewport is not, and fixing it means the viewport knowing where a map came from.
+The viewport's shader reads Y+ and takes a sign: `-1` for a graph's maps (`PUT /viewport/graph`) and for a stack on the mesh, and `+1`
+for a bake. A stack's green was once declared Y+ and shown Y+, so the two agreed with each other and both disagreed with its fills.
 
 ## What each engine reads
 
@@ -71,8 +97,8 @@ Epic's [naming conventions](https://dev.epicgames.com/documentation/unreal-engin
 
 Plan images have no transfer function. Vixen's material bake puts a graph's bytes straight into an sRGB texture and Patina's viewport
 reads them so, whatever `TexturePixels` says of linear. So **base colour is sRGB numbers at any depth**, and an sRGB file holds them
-unchanged, which is what the viewport showed. Everything else is linear, emissive included, because it goes past one; no viewport
-shows emissive yet, so nothing contradicts that. A linear file of base colour decodes it. A float file holds linear numbers.
+unchanged, which is what the viewport showed. Everything else is linear, emissive included, because it goes past one, and the
+viewport's emissive slot reads it so. A linear file of base colour decodes it. A float file holds linear numbers.
 
 `PUT /viewport/look` views frames through a `.cube` table in the Worker, on the tonemapped, sRGB-encoded frame, after read-back. It
 is a viewing aid and no export sees it. A table is taken to expect those numbers, which the format does not state. OCIO stays out.
@@ -155,7 +181,10 @@ opened per line, which is the first thing to change past this scale.
   `LayerStackEvaluator` resolves, so a stack could already point at a shared file with `..`. That breaks "references are GUIDs", and
   the fix touches Vixen's stack format, the Server's stack sessions and the Worker. So this stopped at the finding.
 - **Graph resolution per project.** A graph's size is its own setting; a project cannot ask for 2K of a 4K graph.
-- **A `layer-stack` output with paint layers** is exercised by nothing here but the code path; the device tests are graphs and bakes.
+- **A bake does not mix with a stack.** A map a stack makes replaces the bake's whole: a stack's `occlusion` channel is not multiplied
+  over the baked one, and its `normal` is not combined with the baked normal. Mixing belongs in the plan, as a slot under the stack,
+  so that the mesh and the export are one picture (#86). The viewport shows a bake under a stack only through Show on Low Mesh.
+- **Mesh LODs** still take an output written by hand: no default says how many levels a project wants.
 
 ## Not verified
 

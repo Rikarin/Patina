@@ -46,6 +46,67 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
             OcclusionRays = 8
         };
 
+    /// <summary>A skew map took a PNG only, and the dialog offered more, so the rest failed after queueing.</summary>
+    [Theory]
+    [InlineData(".tga")]
+    [InlineData(".exr")]
+    [InlineData(".png")]
+    public void A_skew_map_can_be_any_picture_the_dialog_offers(string extension) {
+        var map = Into($"skew{extension}");
+        byte[] tga = [0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 0, 8, 0x20, 128, 128, 128, 128];
+        File.WriteAllBytes(
+            map,
+            extension switch {
+                ".tga" => tga,
+                ".exr" => ExrCodec.Encode(new(2, 2, 1, [0.5f, 0.5f, 0.5f, 0.5f])),
+                _ => PngCodec.Encode16(2, 2, 1, new ushort[] { 0x8000, 0x8000, 0x8000, 0x8000 })
+            }
+        );
+
+        var manifest = MeshMapBakeRun.Run(
+            Request() with { Skew = 0.5, SkewMap = map },
+            Into("baked"),
+            0,
+            null,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Contains(manifest.Result.Maps, static baked => baked.Map == "normal");
+    }
+
+    /// <summary>A set whose material has gone baked the whole model into its atlas, overlaps and all.</summary>
+    [Fact]
+    public void A_texture_set_whose_material_has_gone_is_refused_by_name() {
+        var low = Into("low.obj");
+        BakeFixture.WriteTwoMaterials(low);
+
+        var refused = Assert.Throws<InvalidDataException>(() => MeshMapBakeRun.Read(low, "Renamed"));
+
+        Assert.Contains("Renamed", refused.Message, StringComparison.Ordinal);
+        Assert.Contains("Strap", refused.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>The low was cut to its set and the cage was not, so their layouts could never agree.</summary>
+    [Fact]
+    public void A_cage_is_cut_to_the_same_set_as_the_low_mesh() {
+        var low = Into("low.obj");
+        BakeFixture.WriteTwoMaterials(low);
+        var cage = Into("cage.obj");
+        BakeFixture.WriteTwoMaterials(cage, 0.1f);
+        Assert.Equal(12, MeshMapBakeRun.Read(low).Mesh.CornerCount);
+        Assert.Equal(6, MeshMapBakeRun.Read(low, "Strap").Mesh.CornerCount);
+
+        var manifest = MeshMapBakeRun.Run(
+            Request() with { High = low, Low = low, Cage = cage, Material = "Strap" },
+            Into("baked"),
+            0,
+            null,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Contains(manifest.Result.Maps, static map => map.Map == "normal");
+    }
+
     [Fact]
     public void A_bake_leaves_a_manifest_and_a_file_for_each_map() {
         var manifest = MeshMapBakeRun.Run(Request(), Into("bake"), 0, null, TestContext.Current.CancellationToken);

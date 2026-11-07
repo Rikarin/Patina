@@ -6,7 +6,36 @@ namespace Patina.Contracts;
 /// <param name="Library">The library this Server owns, or null when it was started without one.</param>
 /// <param name="Host">The machine and runtime the Server runs on.</param>
 /// <param name="Worker">The Worker process as the Server sees it.</param>
-public sealed record SystemInfo(string Version, int ApiVersion, string? Library, HostInfo Host, WorkerStatus Worker);
+public sealed record SystemInfo(string Version, int ApiVersion, string? Library, HostInfo Host, WorkerStatus Worker) {
+    /// <summary>What can be read, for a client's file dialogs.</summary>
+    public FileFormats Formats { get; init; } = new(PictureFormats.Pictures, PictureFormats.Environments);
+}
+
+/// <summary>What a client may offer, with the dot.</summary>
+/// <param name="Pictures">What a layer, a mask, an image material and a skew map read.</param>
+/// <param name="Environments">What lights the viewport.</param>
+public sealed record FileFormats(IReadOnlyList<string> Pictures, IReadOnlyList<string> Environments);
+
+/// <summary>
+///     The one list of the pictures Patina reads. Every path that takes a person's picture reads all of these, and a
+///     file dialog offers them from here, so nothing is offered that fails later. KTX2 and DDS have decoders and are not
+///     here: they arrive block-compressed, which nothing after them can read.
+/// </summary>
+public static class PictureFormats {
+    public static IReadOnlyList<string> Pictures { get; } =
+        [".png", ".jpg", ".jpeg", ".tga", ".bmp", ".psd", ".gif", ".exr", ".hdr"];
+
+    public static IReadOnlyList<string> Environments { get; } = [".hdr", ".exr"];
+
+    /// <summary>Whether a file is a picture Patina reads, by its name.</summary>
+    public static bool IsPicture(string path) => Is(path, Pictures);
+
+    /// <summary>Whether a file is a panorama Patina reads, by its name.</summary>
+    public static bool IsEnvironment(string path) => Is(path, Environments);
+
+    static bool Is(string path, IReadOnlyList<string> formats) =>
+        formats.Contains(Path.GetExtension(path).ToLowerInvariant(), StringComparer.Ordinal);
+}
 
 /// <summary>The machine and runtime a process runs on.</summary>
 /// <param name="Os">The operating system's description.</param>

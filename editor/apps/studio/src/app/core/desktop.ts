@@ -33,10 +33,10 @@ export interface DesktopBridge {
   setTitle(title: string): void;
   /** Shows a file in the system's file browser. */
   reveal(path: string): Promise<void>;
-  /** Asks for a mesh or a picture: its path, or null if they cancelled. */
-  openFile(): Promise<string | null>;
-  /** Asks for an `.hdr` panorama. */
-  openEnvironment(): Promise<string | null>;
+  /** Asks for a mesh or a picture of these formats: its path, or null if they cancelled. */
+  openFile(pictures?: readonly string[]): Promise<string | null>;
+  /** Asks for a panorama of these formats. */
+  openEnvironment(formats?: readonly string[]): Promise<string | null>;
   /** Where a file dropped on the window is. */
   pathOf(file: File): string;
 
@@ -47,8 +47,8 @@ export interface DesktopBridge {
   onCommand(listener: (command: string) => void): void;
   /** Asks the user for a mesh file: its path, or null if they cancelled. */
   openMesh(): Promise<string | null>;
-  /** Asks the user for a picture: its path, or null if they cancelled. */
-  openImage(): Promise<string | null>;
+  /** Asks the user for a picture of these formats: its path, or null if they cancelled. */
+  openImage(formats?: readonly string[]): Promise<string | null>;
   /** Asks the user for a folder: its path, or null if they cancelled. */
   openFolder(): Promise<string | null>;
   /** Tells the app whether quitting would lose anything, which is what decides whether it asks. */

@@ -160,13 +160,13 @@ export class ProjectStore {
       }
     });
 
-    // A bake of the open project is what its layers were waiting for.
+    // A bake of what is open is what its layers were waiting for, the same folder again included.
     effect(() => {
       const job = this.bakes.current();
       const folder = job?.bake?.output;
-      if (job?.state === 'done' && folder && folder !== this.linkedBake) {
-        this.linkedBake = folder;
-        untracked(() => void this.linkBake(folder));
+      if (job?.state === 'done' && folder && job.id !== this.linkedBake) {
+        this.linkedBake = job.id;
+        untracked(() => void this.linkBake(folder, job.bake?.material ?? null));
       }
     });
 
@@ -259,7 +259,6 @@ export class ProjectStore {
         await this.refreshMaterials(tab.project);
         await this.paint.open(path, false);
         this.update(path, { session: this.paint.state()?.id ?? null });
-        await this.reconnectBake(tab);
         if (tab.kind === 'layered-material') {
           await this.paint.wear();
           this.bakes.viewportChanged.update(count => count + 1);
@@ -610,7 +609,7 @@ export class ProjectStore {
   /** Asks the user for a picture and brings it into the project, for a layer or a mask to read. */
   async pickPicture(): Promise<string | null> {
     const project = this.current();
-    const picture = await desktop()?.openImage();
+    const picture = await desktop()?.openImage(this.status.pictures());
     if (!project || !picture) {
       return null;
     }
@@ -765,18 +764,8 @@ export class ProjectStore {
     return contents;
   }
 
-  /** A stack reads its project's bake with nothing to choose. */
-  private async reconnectBake(tab: DocumentTab): Promise<void> {
-    const contents = tab.project ? this.mutableContents().get(tab.project) : null;
-    const bake = contents?.bakes.at(-1);
-    const library = this.status.state();
-    if (bake && library.kind === 'online' && library.system.library && this.paint.state()?.meshMaps == null) {
-      await this.paint.useMeshMaps(`${library.system.library}/${bake.path}`);
-    }
-  }
-
-  private async linkBake(folder: string): Promise<void> {
-    if (this.paint.state()) {
+  private async linkBake(folder: string, material: string | null): Promise<void> {
+    if (this.paint.state() && (this.document()?.material ?? null) === material) {
       await this.paint.useMeshMaps(folder);
     }
 

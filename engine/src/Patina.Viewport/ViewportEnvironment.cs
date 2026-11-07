@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-using System.Buffers.Binary;
+using System.Runtime.InteropServices;
 using Vixen.Core.Imaging;
 using Vixen.Core.Mathematics;
 using Vixen.Graphics;
@@ -33,7 +33,7 @@ sealed class ViewportEnvironment {
 
     public SphericalHarmonicsL2 Irradiance { get; }
 
-    /// <summary>A built-in room by name, or the equirectangular <c>.hdr</c> at a path.</summary>
+    /// <summary>A built-in room by name, or the equirectangular panorama at a path.</summary>
     /// <exception cref="InvalidDataException">The file cannot be read as a picture.</exception>
     public static ViewportEnvironment Load(string source) =>
         source switch {
@@ -58,22 +58,40 @@ sealed class ViewportEnvironment {
 
     /// <summary>Reads a panorama: its left edge is behind the model and its middle row the horizon.</summary>
     static Func<Vector3, Vector3> Panorama(string path) {
-        using var file = File.OpenRead(path);
-        var picture = new StbImageDecoder().Decode(file, StbImageDecoder.HighDynamicRangeExtension);
-        var pixels = picture.PixelSpan().ToArray();
-        var (width, height) = (picture.Width, picture.Height);
+        var (pixels, width, height) = Radiance(path);
         return direction => {
             var across = MathF.Atan2(direction.X, -direction.Z) / MathF.Tau + 0.5f;
             var down = MathF.Acos(Math.Clamp(direction.Y, -1f, 1f)) / MathF.PI;
             var column = Math.Clamp((int)(across * width), 0, width - 1);
             var row = Math.Clamp((int)(down * height), 0, height - 1);
-            var at = (row * width + column) * 4 * sizeof(float);
+            var at = (row * width + column) * 4;
             return new(
-                MathF.Min(BinaryPrimitives.ReadSingleLittleEndian(pixels.AsSpan(at)), BrightestTexel),
-                MathF.Min(BinaryPrimitives.ReadSingleLittleEndian(pixels.AsSpan(at + 4)), BrightestTexel),
-                MathF.Min(BinaryPrimitives.ReadSingleLittleEndian(pixels.AsSpan(at + 8)), BrightestTexel)
+                MathF.Min(pixels[at], BrightestTexel),
+                MathF.Min(pixels[at + 1], BrightestTexel),
+                MathF.Min(pixels[at + 2], BrightestTexel)
             );
         };
+    }
+
+    /// <summary>A panorama's numbers, four to a texel.</summary>
+    static (float[] Pixels, int Width, int Height) Radiance(string path) {
+        var kind = Path.GetExtension(path).ToLowerInvariant();
+        if (kind == ".exr") {
+            var image = ExrCodec.Decode(File.ReadAllBytes(path));
+            var lanes = image.Channels;
+            var pixels = new float[image.Width * image.Height * 4];
+            for (var at = 0; at < image.Width * image.Height; at++) {
+                for (var lane = 0; lane < 3; lane++) {
+                    pixels[at * 4 + lane] = image.Samples[at * lanes + (lanes >= 3 ? lane : 0)];
+                }
+            }
+
+            return (pixels, image.Width, image.Height);
+        }
+
+        using var file = File.OpenRead(path);
+        var picture = new StbImageDecoder().Decode(file, StbImageDecoder.HighDynamicRangeExtension);
+        return (MemoryMarshal.Cast<byte, float>(picture.PixelSpan()).ToArray(), picture.Width, picture.Height);
     }
 
     static Vector3 Studio(Vector3 direction) {

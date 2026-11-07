@@ -56,6 +56,10 @@ public static class BakeInputs {
         Require(request.Format is Png8 or Png16 or Exr16 or Exr32, $"'{request.Format}' is not a format.");
         Require(request.Space is "tangent" or "object", $"'{request.Space}' is not a space.");
         Require(request.Output.Length > 0, "A bake needs an output folder.");
+        Require(
+            request.SkewMap is not { } skew || PictureFormats.IsPicture(skew),
+            $"'{Path.GetFileName(request.SkewMap)}' is not a picture this reads."
+        );
 
         foreach (var map in request.Maps ?? []) {
             Require(

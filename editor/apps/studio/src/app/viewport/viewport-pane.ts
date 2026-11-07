@@ -15,6 +15,7 @@ import type { ViewportCameraState } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiSliderImports } from '@xui/slider';
 import { desktop } from '../core/desktop';
+import { SystemStatus } from '../core/system-status';
 import { ViewOptions } from '../core/view-options';
 import { GraphStore } from '../graph/graph-store';
 import { ProjectStore } from '../library/project-store';
@@ -183,6 +184,7 @@ const Rooms: readonly { value: string; label: string }[] = [
   `
 })
 export class ViewportPane implements AfterViewInit {
+  private readonly status = inject(SystemStatus);
   protected readonly viewport = inject(ViewportClient);
   protected readonly graph = inject(GraphStore);
   protected readonly paint = inject(PaintStore);
@@ -301,7 +303,7 @@ export class ViewportPane implements AfterViewInit {
 
   protected async chooseEnvironment(event: Event): Promise<void> {
     const select = event.target as HTMLSelectElement;
-    const source = select.value || (await desktop()?.openEnvironment());
+    const source = select.value || (await desktop()?.openEnvironment(this.status.environments()));
     if (source) {
       await this.viewport.setEnvironment(source);
     } else {

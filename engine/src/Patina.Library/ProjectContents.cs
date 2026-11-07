@@ -11,17 +11,14 @@ namespace Patina.Library;
 /// </summary>
 static class ProjectFiles {
     const int MaxFiles = 2000;
-    const string BakeFolder = "bakes";
-    const string PictureFolder = "pictures";
+    internal const string BakeFolder = "bakes";
+    internal const string PictureFolder = "pictures";
     const string StackExtension = ".vxlayers";
 
     static readonly FrozenSet<string> MeshExtensions =
         new[] { ".glb", ".gltf", ".fbx", ".obj" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>What a layer or a mask can read, which is 8-bit pictures: an EXR is for the viewport and bakes.</summary>
-    static readonly FrozenSet<string> PictureExtensions =
-        new[] { ".png", ".jpg", ".jpeg", ".tga", ".bmp", ".gif" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
-
     /// <summary>Everything in a project, with paths below the library.</summary>
     public static ProjectContents Read(string root, string path) {
         var (full, document) = Project(root, path);
@@ -31,7 +28,7 @@ static class ProjectFiles {
             files.Where(f => IsMesh(f) && !document.Meshes.Any(m => m.File == f || m.High == f))
                 .Select(f => new ProjectMeshInfo(null, Below(path, f), null))
         );
-        var documents = document.Documents.Select(item => Listed(path, item)).ToList();
+        var documents = document.Documents.Select(item => Listed(full, path, item)).ToList();
         documents.AddRange(
             files.Where(f => Unlisted(f) is not null && document.Documents.All(d => d.File != f))
                 .Select(f => new ProjectDocumentInfo(
@@ -147,11 +144,11 @@ static class ProjectFiles {
     public static void Import(string root, string path, string file) {
         if (IsMesh(file)) {
             AddMesh(root, path, file, null);
-        } else if (PictureExtensions.Contains(Path.GetExtension(file))) {
+        } else if (PictureFormats.IsPicture(file)) {
             AddPicture(root, path, file);
         } else {
             throw new ProjectRefusedException(
-                $"Nothing in Patina reads '{Path.GetFileName(file)}'. A project takes meshes ({Known(MeshExtensions)}) and pictures ({Known(PictureExtensions)})."
+                $"Nothing in Patina reads '{Path.GetFileName(file)}'. A project takes meshes ({Known(MeshExtensions)}) and pictures ({Known(PictureFormats.Pictures)})."
             );
         }
     }
@@ -161,9 +158,9 @@ static class ProjectFiles {
     /// <exception cref="ProjectRefusedException">A layer could not read it.</exception>
     public static string AddPicture(string root, string path, string picture) {
         var (full, _) = Project(root, path);
-        if (!PictureExtensions.Contains(Path.GetExtension(picture))) {
+        if (!PictureFormats.IsPicture(picture)) {
             throw new ProjectRefusedException(
-                $"'{Path.GetFileName(picture)}' is not a picture a layer can read: use {Known(PictureExtensions)}."
+                $"'{Path.GetFileName(picture)}' is not a picture a layer can read: use {Known(PictureFormats.Pictures)}."
             );
         }
 
@@ -444,19 +441,16 @@ static class ProjectFiles {
 
     static List<ProjectFile> Bakes(string full, string path, IReadOnlyList<ProjectMesh> meshes) {
         var bakes = Path.Combine(full, BakeFolder);
-        return Directory.Exists(bakes)
-            ? [
-                ..LibraryScanner.VisibleFolders(bakes)
-                    .Select(static bake => Path.GetFileName(bake))
-                    .Select(bake => new ProjectFile(
-                            "bake",
-                            bake,
-                            Below(path, $"{BakeFolder}/{bake}"),
-                            OutOfDate(Path.Combine(bakes, bake), meshes)
-                        )
+        return [
+            ..DocumentBakes.Below(bakes)
+                .Select(bake => new ProjectFile(
+                        "bake",
+                        Path.GetRelativePath(bakes, bake).Replace('\\', '/'),
+                        Below(path, Path.GetRelativePath(full, bake).Replace('\\', '/')),
+                        OutOfDate(bake, meshes)
                     )
-            ]
-            : [];
+                )
+        ];
     }
 
     /// <summary>Whether a bake was made on a mesh the project no longer has. One that does not say is left alone.</summary>
@@ -477,6 +471,12 @@ static class ProjectFiles {
         }
     }
 
+    /// <summary>A document's bake below the library, if it has one and it is there.</summary>
+    static string? BakeOf(string full, string path, ProjectItem item) =>
+        DocumentBakes.FolderOf(full, item) is { } bake
+            ? Below(path, Path.GetRelativePath(full, bake).Replace('\\', '/'))
+            : null;
+
     static ProjectMeshInfo Listed(string root, string path, ProjectMesh mesh) =>
         new(
             mesh.Id.Value,
@@ -485,14 +485,16 @@ static class ProjectFiles {
             SourceOf(root, mesh)
         );
 
-    static ProjectDocumentInfo Listed(string path, ProjectItem item) =>
-        new(item.Id.Value, item.Kind, item.Name, Below(path, item.File), item.Mesh?.Value, item.Role, item.Material);
+    static ProjectDocumentInfo Listed(string full, string path, ProjectItem item) =>
+        new(item.Id.Value, item.Kind, item.Name, Below(path, item.File), item.Mesh?.Value, item.Role, item.Material) {
+            Bake = BakeOf(full, path, item)
+        };
 
     static bool IsMesh(string file) => MeshExtensions.Contains(Path.GetExtension(file));
 
     /// <summary>A picture of the user's: what the Server drew for a mesh mask is not one.</summary>
     static bool IsPicture(string file) =>
-        PictureExtensions.Contains(Path.GetExtension(file))
+        PictureFormats.IsPicture(file)
         && !Path.GetFileName(file).StartsWith(LibraryLayout.MeshMaskPrefix, StringComparison.Ordinal);
 
     static string Known(IEnumerable<string> extensions) => string.Join(", ", extensions.Order(StringComparer.Ordinal));

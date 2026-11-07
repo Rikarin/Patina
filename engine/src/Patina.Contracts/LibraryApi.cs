@@ -98,7 +98,10 @@ public sealed record ProjectDocumentInfo(
     string Path,
     Guid? Mesh,
     string? Role = null,
-    string? Material = null);
+    string? Material = null) {
+    /// <summary>The folder of the bake it reads, below the library, or null.</summary>
+    public string? Bake { get; init; }
+}
 
 /// <summary>A project as it opens.</summary>
 /// <param name="Id">The project's GUID.</param>

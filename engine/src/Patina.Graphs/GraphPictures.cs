@@ -1,5 +1,7 @@
 using Patina.Export;
 using System.Collections.Immutable;
+using System.Runtime.InteropServices;
+using Vixen.Core.Imaging;
 using Vixen.Graphics;
 using Vixen.Interchange;
 using Vixen.NodeGraph;
@@ -24,6 +26,7 @@ public sealed class GraphPictures {
     /// <summary>What a graph hears when a picture it reads cannot be read.</summary>
     public const string Problem = "PT0001";
 
+    const TextureFormat Deep = TextureFormat.Rgba16Float;
     const string MeshMapScheme = "meshmap:";
     const long Budget = 512L * 1024 * 1024;
 
@@ -81,7 +84,11 @@ public sealed class GraphPictures {
                 }
 
                 stamps.Add(stamp);
-                uploads.Add(plan, external.Image, picture.Width, picture.Height, picture.Texels);
+                if (picture.Deep) {
+                    uploads.AddPicture(plan, external.Image, picture.Width, picture.Height, picture.Texels, Deep);
+                } else {
+                    uploads.Add(plan, external.Image, picture.Width, picture.Height, picture.Texels);
+                }
             } catch (Exception e) when (e is IOException
                                             or InvalidDataException
                                             or UnauthorizedAccessException
@@ -145,6 +152,10 @@ public sealed class GraphPictures {
             return known;
         }
 
+        if (MapPictures.IsDeep(stamp.Path)) {
+            return Keep(stamp, Widened(MapPictures.ReadFile(stamp.Path)));
+        }
+
         using var stream = File.OpenRead(stamp.Path);
         var data = decoder.Decode(stream, Path.GetExtension(stamp.Path));
         if (data.Format != PixelFormat.Rgba8UNorm) {
@@ -152,6 +163,26 @@ public sealed class GraphPictures {
         }
 
         return Keep(stamp, new(data.Width, data.Height, [..data.Pixels]));
+    }
+
+    /// <summary>
+    ///     A deep picture as half-floats, whatever its lanes. A plan is compiled before a file is opened, so a graph
+    ///     declares every bitmap eight-bit, and a texture can be wider than that (Vixen's <c>TextureUploads</c>).
+    ///     Half-floats and not floats, because a bitmap filters and not every device filters a float.
+    /// </summary>
+    static Decoded Widened(FloatImage image) {
+        var lanes = image.Channels;
+        var texels = new Half[image.Width * image.Height * 4];
+        for (var at = 0; at < image.Width * image.Height; at++) {
+            var from = at * lanes;
+            for (var lane = 0; lane < 3; lane++) {
+                texels[at * 4 + lane] = (Half)image.Samples[from + (lanes >= 3 ? lane : 0)];
+            }
+
+            texels[at * 4 + 3] = lanes is 4 or 2 ? (Half)image.Samples[from + lanes - 1] : (Half)1f;
+        }
+
+        return new(image.Width, image.Height, [..MemoryMarshal.AsBytes(texels.AsSpan())], true);
     }
 
     Decoded Keep(PictureStamp stamp, Decoded picture) {
@@ -165,5 +196,5 @@ public sealed class GraphPictures {
         return picture;
     }
 
-    sealed record Decoded(int Width, int Height, byte[] Texels);
+    sealed record Decoded(int Width, int Height, byte[] Texels, bool Deep = false);
 }

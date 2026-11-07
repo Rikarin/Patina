@@ -44,6 +44,12 @@ const studioRoot = resolve(
 const devServer = app.isPackaged ? undefined : process.env['PATINA_STUDIO_URL']; // `nx serve studio` during development
 
 /** Whether a page is the studio itself, compared by origin: a prefix would also pass `http://localhost:42000.evil`. */
+/** What the Server says it reads, as a file dialog's filter. With no Server to ask, anything can be chosen and it says no. */
+function extensionsOf(formats: unknown): string[] {
+  const named = Array.isArray(formats) ? formats.filter(format => typeof format === 'string') : [];
+  return named.length > 0 ? named.map(format => format.replace(/^\./u, '')) : ['*'];
+}
+
 function isStudio(url: string): boolean {
   if (url.startsWith(`${Scheme}://`)) {
     return true;
@@ -341,33 +347,28 @@ function handleIpc(): void {
     const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
     return picked.canceled ? null : (picked.filePaths[0] ?? null);
   });
-  handle('patina:openFile', async () => {
+  handle('patina:openFile', async (_event, pictures: unknown) => {
     const options: OpenDialogOptions = {
       title: 'Import',
-      filters: [
-        {
-          name: 'Meshes and pictures',
-          extensions: ['glb', 'gltf', 'fbx', 'obj', 'png', 'jpg', 'jpeg', 'tga', 'bmp', 'gif']
-        }
-      ],
+      filters: [{ name: 'Meshes and pictures', extensions: ['glb', 'gltf', 'fbx', 'obj', ...extensionsOf(pictures)] }],
       properties: ['openFile']
     };
     const picked = window ? await dialog.showOpenDialog(window, options) : await dialog.showOpenDialog(options);
     return picked.canceled ? null : (picked.filePaths[0] ?? null);
   });
-  handle('patina:openEnvironment', async () => {
+  handle('patina:openEnvironment', async (_event, formats: unknown) => {
     const options: OpenDialogOptions = {
       title: 'Choose an Environment',
       properties: ['openFile'],
-      filters: [{ name: 'Radiance panoramas', extensions: ['hdr'] }]
+      filters: [{ name: 'Panoramas', extensions: extensionsOf(formats) }]
     };
     const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
     return picked.canceled ? null : (picked.filePaths[0] ?? null);
   });
-  handle('patina:openImage', async () => {
+  handle('patina:openImage', async (_event, formats: unknown) => {
     const options: OpenDialogOptions = {
       properties: ['openFile'],
-      filters: [{ name: 'Pictures', extensions: ['png', 'jpg', 'jpeg', 'exr', 'tga'] }]
+      filters: [{ name: 'Pictures', extensions: extensionsOf(formats) }]
     };
     const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
     return picked.canceled ? null : (picked.filePaths[0] ?? null);

@@ -367,7 +367,7 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
     [InlineData("model.dae")]
     [InlineData("scene.usd")]
     [InlineData("notes.txt")]
-    [InlineData("height.exr")]
+    [InlineData("height.tif")]
     public async Task An_import_nothing_can_read_is_refused_and_copies_nothing(string name) {
         await MakeCrateAsync();
         var file = Path.Combine(files.FullName, name);
@@ -389,6 +389,32 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
         Assert.Contains(".glb", await refused.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.BadRequest, picture.StatusCode);
         Assert.False(Directory.Exists(Path.Combine(server.Library, "projects/crate/pictures")));
+    }
+
+    [Theory]
+    [InlineData("height.exr")]
+    [InlineData("sky.hdr")]
+    [InlineData("paint.psd")]
+    public async Task A_deep_picture_is_a_picture_on_every_route(string name) {
+        await MakeCrateAsync();
+        var file = Path.Combine(files.FullName, name);
+        File.WriteAllText(file, "not much");
+
+        using var imported = await client.PostAsJsonAsync(
+            "/api/v1/library/project/files",
+            new ProjectFileRequest("crate", file),
+            Token
+        );
+        using var added = await client.PostAsJsonAsync(
+            "/api/v1/library/project/pictures",
+            new ProjectPictureRequest("crate", file),
+            Token
+        );
+
+        Assert.Equal(HttpStatusCode.OK, imported.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, added.StatusCode);
+        var contents = await imported.Content.ReadFromJsonAsync<ProjectContents>(Token);
+        Assert.Equal(new("picture", name, $"projects/crate/pictures/{name}"), Assert.Single(contents!.Pictures));
     }
 
     [Fact]

@@ -47,7 +47,7 @@ public static class MeshMapBakeRun {
             );
         }
 
-        var cage = request.Cage is { } path ? Read(path).Mesh : null;
+        var cage = request.Cage is { } path ? Read(path, request.Material).Mesh : null;
         progress?.Invoke(ReadingShare);
 
         var maps = MapBaker.Bake(
@@ -77,8 +77,14 @@ public static class MeshMapBakeRun {
     /// <exception cref="ModelFormatException">It is not a readable model.</exception>
     public static FlatModel Read(string path) => Read(path, null);
 
-    /// <summary>Reads a mesh file, keeping only one material's parts if it has that material.</summary>
+    /// <summary>Reads a mesh file, keeping only one material's parts.</summary>
+    /// <param name="path">The file.</param>
+    /// <param name="material">The material, or null for the whole mesh.</param>
     /// <exception cref="ModelFormatException">It is not a readable model.</exception>
+    /// <exception cref="InvalidDataException">
+    ///     It has no such material. A texture set whose material was renamed asks for this, and the whole mesh in its
+    ///     place would bake every part into one atlas, overlaps included.
+    /// </exception>
     public static FlatModel Read(string path, string? material) {
         var options = new ModelReadOptions {
             GenerateTangents = false, ImportAnimations = false, ImportBlendShapes = false, ImportVertexColours = true
@@ -90,8 +96,15 @@ public static class MeshMapBakeRun {
             options
         );
         var names = MaterialNames.Unique(read.Model.Materials);
-        var index = Array.IndexOf(names, material);
-        if (index >= 0) {
+        if (material is not null) {
+            var index = Array.IndexOf(names, material);
+            if (index < 0) {
+                throw new InvalidDataException(
+                    $"'{Path.GetFileName(path)}' has no material '{material}'. Its materials are "
+                    + $"{string.Join(", ", names)}. Rename the material back, or reload the mesh."
+                );
+            }
+
             read.Model.Parts = [..read.Model.Parts.Where(part => part.Material == index)];
         }
 
@@ -136,17 +149,19 @@ public static class MeshMapBakeRun {
 
     /// <summary>A grey image as a mask, its rows the atlas's rows: the first is v = 0, as in every baked map.</summary>
     static BakeMask SkewMask(string path) {
-        var (width, height, channels, samples) = PngCodec.Decode16(File.ReadAllBytes(path));
-        if (width != height) {
-            throw new InvalidDataException($"The skew map '{path}' is {width} × {height}, and the atlas is square.");
+        var picture = MapPictures.ReadFile(path);
+        if (picture.Width != picture.Height) {
+            throw new InvalidDataException(
+                $"The skew map '{path}' is {picture.Width} × {picture.Height}, and the atlas is square."
+            );
         }
 
-        var values = new float[width * height];
+        var values = new float[picture.Width * picture.Height];
         for (var at = 0; at < values.Length; at++) {
-            values[at] = samples[at * channels] / (float)ushort.MaxValue;
+            values[at] = picture.Samples[at * picture.Channels];
         }
 
-        return new(width, values);
+        return new(picture.Width, values);
     }
 
     static BakeManifest Write(BakedMaps maps, BakeRequest request, string folder, string name) {

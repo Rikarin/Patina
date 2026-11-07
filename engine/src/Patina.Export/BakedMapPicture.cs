@@ -29,6 +29,9 @@ public static class BakedMapPicture {
         return null;
     }
 
+    /// <summary>Whether a float file holds this map's measurement from below zero, which a picture centres.</summary>
+    public static bool IsSigned(string map) => map is "normal" or "height" or "bent" or "curvature" or "world";
+
     /// <summary>
     ///     The picture. A float file holds the measurement, so a signed map is centred on one half here, exactly as an
     ///     integer file was when it was written: a graph sees the same picture whichever way a bake was stored.
@@ -57,7 +60,7 @@ public static class BakedMapPicture {
 
     static Bitmap FromFloat(FloatImage image, BakedMapFile map) {
         var pixels = new byte[image.Width * image.Height * 4];
-        var signed = map.Map is "normal" or "height" or "bent" or "curvature" or "world";
+        var signed = IsSigned(map.Map);
         var scale = map.Scale > 0 ? (float)map.Scale : 1f;
 
         for (var at = 0; at < image.Width * image.Height; at++) {

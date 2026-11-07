@@ -1,4 +1,6 @@
+using Patina.Contracts;
 using Patina.Export.Presets;
+using Vixen.Interchange;
 
 namespace Patina.Export.Tests;
 
@@ -131,5 +133,76 @@ public sealed class ExportPresetTests : IDisposable {
         var path = NamingTemplate.Resolve(template, new(project, "unreal"), ".png");
 
         Assert.Equal(expected.Replace('/', Path.DirectorySeparatorChar), path);
+    }
+
+    /// <summary>YAML's other spelling once meant no mips, with no error.</summary>
+    [Theory]
+    [InlineData("True")]
+    [InlineData("yes")]
+    public void A_mips_value_it_cannot_read_is_refused(string value) {
+        var text = """
+                   version: 1
+                   id: p
+                   name: P
+                   normal: y-up
+                   textures:
+                     - file: x
+                       format: ktx2
+                       compression: bc7
+                       space: srgb
+                       mips: VALUE
+                       channels: [baseColor.r, baseColor.g, baseColor.b]
+                   """.Replace("VALUE", value, StringComparison.Ordinal);
+
+        var refused = Assert.Throws<ExportPresetException>(() => ExportPresetReader.Read(text, "test"));
+
+        Assert.Contains(value, refused.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("curvature", 1)]
+    [InlineData("thickness", 1)]
+    [InlineData("id", 3)]
+    [InlineData("position", 3)]
+    [InlineData("world", 3)]
+    [InlineData("bent", 3)]
+    public void Every_baked_map_is_one_a_preset_can_read(string map, int lanes) {
+        var text = $$"""
+                     version: 1
+                     id: p
+                     name: P
+                     normal: y-up
+                     textures:
+                       - file: x
+                         format: png8
+                         space: linear
+                         channels: [{{string.Join(", ", "rgb"[..lanes].Select(lane => $"{map}.{lane}"))}}]
+                     """;
+
+        Assert.Equal(map, Assert.Single(Assert.Single(ExportPresetReader.Read(text, "test").Textures).Maps));
+        Assert.Equal(map, MapPictures.ExportNameOf(map));
+    }
+
+    [Fact]
+    public void Every_picture_format_is_one_a_decoder_can_take() {
+        var decoded = ImageDecoders.BuiltIn.SelectMany(static d => d.Extensions).Append(".exr").ToHashSet();
+
+        Assert.Subset(decoded, PictureFormats.Pictures.ToHashSet());
+        Assert.Subset(PictureFormats.Pictures.ToHashSet(), PictureFormats.Environments.ToHashSet());
+    }
+
+    [Theory]
+    [InlineData("T_{project}_D", "T_{project}_{set}_D")]
+    [InlineData("T_{set}_D", "T_{set}_D")]
+    [InlineData("albedo", "albedo_{set}")]
+    public void A_file_of_several_sets_always_says_which(string template, string expected) =>
+        Assert.Equal(expected, NamingTemplate.PerSet(template));
+
+    [Fact]
+    public void A_set_is_a_name_and_a_project_with_none_is_its_own() {
+        NamingTemplate.Check("{project}_{set}", "test");
+
+        Assert.Equal("Crate_a_b.png", NamingTemplate.Resolve("{project}_{set}", new("Crate", "p", "a/b"), ".png"));
+        Assert.Equal("Crate.png", NamingTemplate.Resolve("{set}", new("Crate", "p"), ".png"));
     }
 }

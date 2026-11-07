@@ -441,7 +441,7 @@ export class App {
       } else if (command === 'saveAs') {
         this.project.savingAs.set(true);
       } else if (command === 'import') {
-        void bridge.openFile().then(path => (path ? this.project.importFiles([path]) : undefined));
+        void bridge.openFile(this.status.pictures()).then(path => (path ? this.project.importFiles([path]) : undefined));
       } else if (command === 'reloadMesh') {
         void this.project.reloadMesh();
       } else if (command === 'projectSettings') {

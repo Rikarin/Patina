@@ -434,43 +434,15 @@ static class StackEndpoints {
         StackExportRequest request,
         StackSessions sessions,
         StackEvaluator evaluator,
-        ViewportSession viewport,
         CancellationToken cancellationToken
     ) {
         try {
-            if (viewport.Wears(id) && viewport.Also.Count > 0) {
-                return await ExportSetsAsync(id, request, sessions, evaluator, viewport, cancellationToken);
-            }
-
             return await ReadAsync(id, sessions, evaluator, true, sessions.Resolve(request.Folder), cancellationToken);
         } catch (StackEditRefusedException e) {
             return TypedResults.Problem(e.Message, statusCode: Refused);
         } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
             return TypedResults.Problem(e.Message, statusCode: Unavailable);
         }
-    }
-
-    /// <summary>Every texture set of the model, each in a folder of its own name.</summary>
-    static async Task<Results<Ok<IReadOnlyList<StackPixels>>, ProblemHttpResult>> ExportSetsAsync(
-        string id,
-        StackExportRequest request,
-        StackSessions sessions,
-        StackEvaluator evaluator,
-        ViewportSession viewport,
-        CancellationToken cancellationToken
-    ) {
-        List<StackPixels> written = [];
-        foreach (var set in new[] { id }.Concat(viewport.Also).Select(sessions.Find).OfType<StackSession>()) {
-            var folder = Path.Combine(sessions.Resolve(request.Folder), set.Set);
-            var result = await ReadAsync(set.Id, sessions, evaluator, true, folder, cancellationToken);
-            if (result.Result is not Ok<IReadOnlyList<StackPixels>> { Value: { } maps }) {
-                return result;
-            }
-
-            written.AddRange(maps);
-        }
-
-        return TypedResults.Ok<IReadOnlyList<StackPixels>>(written);
     }
 
     static async Task<Results<Ok<IReadOnlyList<StackPixels>>, ProblemHttpResult>> ReadAsync(

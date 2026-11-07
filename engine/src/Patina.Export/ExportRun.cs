@@ -6,6 +6,11 @@ using System.Text.Json;
 
 namespace Patina.Export;
 
+/// <summary>The maps of one texture set.</summary>
+/// <param name="Name">Its name, or nothing for a project with no named sets.</param>
+/// <param name="Maps">The maps, by name.</param>
+public sealed record ExportSet(string Name, IReadOnlyDictionary<string, MapPicture> Maps);
+
 /// <summary>
 ///     A preset from maps to files. The object under an export key holds the files under names of its own, and a
 ///     project's name goes on when they are delivered, so that two projects with one key share one encode.
@@ -34,41 +39,63 @@ public static class ExportRun {
         string folder,
         Action<double>? progress,
         CancellationToken cancellationToken
+    ) =>
+        Run(preset, [new(string.Empty, maps)], folder, progress, cancellationToken);
+
+    /// <summary>Encodes every texture set of a project. The folder appears only when it is whole.</summary>
+    /// <param name="preset">The preset.</param>
+    /// <param name="sets">The sets, each of which makes the preset's files.</param>
+    /// <param name="folder">Where the object goes.</param>
+    /// <param name="progress">Told how far through it is.</param>
+    /// <param name="cancellationToken">Stops it between blocks.</param>
+    public static ExportManifest Run(
+        ExportPreset preset,
+        IReadOnlyList<ExportSet> sets,
+        string folder,
+        Action<double>? progress,
+        CancellationToken cancellationToken
     ) {
         ArgumentNullException.ThrowIfNull(preset);
+        ArgumentNullException.ThrowIfNull(sets);
         var part = $"{folder}.{Guid.NewGuid():N}.part";
         Directory.CreateDirectory(part);
 
         List<ExportedFile> files = [];
         List<string> skipped = [];
         List<string> warnings = [];
-        for (var index = 0; index < preset.Textures.Count; index++) {
-            cancellationToken.ThrowIfCancellationRequested();
-            var texture = preset.Textures[index];
-            if (!ChannelPacker.Applies(texture, maps)) {
-                skipped.Add(texture.File);
-                continue;
-            }
+        var steps = preset.Textures.Count * sets.Count;
+        for (var at = 0; at < sets.Count; at++) {
+            var (set, maps) = (sets[at].Name, sets[at].Maps);
+            var named = sets.Count > 1 ? $"{set}: " : string.Empty;
+            for (var index = 0; index < preset.Textures.Count; index++) {
+                cancellationToken.ThrowIfCancellationRequested();
+                var texture = preset.Textures[index];
+                if (!ChannelPacker.Applies(texture, maps)) {
+                    skipped.Add(named + texture.File);
+                    continue;
+                }
 
-            var picture = ChannelPacker.Pack(texture, maps, preset.Normal);
-            warnings.AddRange(picture.Warnings);
-            var (bytes, levels) = ExportEncoder.Encode(picture, texture, cancellationToken);
-            var extension = ExportFormats.ExtensionOf(texture.Format);
-            var name = $"t{index}{extension}";
-            File.WriteAllBytes(Path.Combine(part, name), bytes);
-            files.Add(
-                new(
-                    texture.File,
-                    name,
-                    texture.Format,
-                    texture.Compression,
-                    picture.Width,
-                    picture.Height,
-                    levels,
-                    bytes.LongLength
-                )
-            );
-            progress?.Invoke((index + 1.0) / preset.Textures.Count);
+                var picture = ChannelPacker.Pack(texture, maps, preset.Normal);
+                warnings.AddRange(picture.Warnings.Select(warning => named + warning));
+                var (bytes, levels) = ExportEncoder.Encode(picture, texture, cancellationToken);
+                var extension = ExportFormats.ExtensionOf(texture.Format);
+                var name = $"s{at}t{index}{extension}";
+                File.WriteAllBytes(Path.Combine(part, name), bytes);
+                files.Add(
+                    new(
+                        texture.File,
+                        name,
+                        texture.Format,
+                        texture.Compression,
+                        picture.Width,
+                        picture.Height,
+                        levels,
+                        bytes.LongLength,
+                        set
+                    )
+                );
+                progress?.Invoke((at * preset.Textures.Count + index + 1.0) / steps);
+            }
         }
 
         var manifest = new ExportManifest(preset.Id, files, skipped, warnings);
@@ -106,9 +133,14 @@ public static class ExportRun {
         Directory.CreateDirectory(target);
         var before = BuildObjects.Delivered(target);
 
+        var several = manifest.Files.Select(static file => file.Set).Distinct(StringComparer.Ordinal).Count() > 1;
         List<string> delivered = [];
         foreach (var file in manifest.Files) {
-            var name = NamingTemplate.Resolve(file.Template, values, Path.GetExtension(file.File));
+            var name = NamingTemplate.Resolve(
+                several ? NamingTemplate.PerSet(file.Template) : file.Template,
+                values with { Set = file.Set },
+                Path.GetExtension(file.File)
+            );
             var path = Path.Combine(target, name);
             Copy(Path.Combine(folder, file.File), path);
             delivered.Add(path);

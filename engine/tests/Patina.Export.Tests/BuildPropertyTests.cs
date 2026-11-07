@@ -34,11 +34,12 @@ public sealed class BuildPropertyTests {
             for (var a = 0; a < 4; a++) {
                 var id = AssetId.From(Guid.NewGuid());
                 Assets.Add((id, $"graphs/a{a}.vxtexgraph"));
-                LibraryFiles.WriteAsset(
+                // Masks, which their project reads and does not ship: its own exports are not what these tests count.
+                LibraryFiles.WriteDocument(
                     Root,
-                    Assets[a].Path,
+                    "graphs",
                     Encoding.UTF8.GetBytes($"asset {a}"),
-                    new(id, "graph", $"a{a}", [], [])
+                    new(id, DocumentKinds.Graph, $"a{a}.vxtexgraph", $"a{a}", Role: GraphRoles.Mask)
                 );
             }
 
@@ -275,6 +276,49 @@ public sealed class BuildPropertyTests {
         Assert.Equal(BuildJournal.MaxStarts, lost);
         Assert.Equal(1, report.Failed - 1); // The output, and the export that cannot run without it.
         Assert.Equal(5, report.Built);
+    }
+
+    /// <summary>However a build stopped, what it finished is reported, and a person reads why.</summary>
+    [Fact]
+    public async Task A_stopped_build_reports_what_it_finished() {
+        using var fixture = new Fixture([0, 1, 2, 3, 0, 1]);
+        using var library = OpenLibrary.Open(fixture.Root);
+        using var stop = new CancellationTokenSource();
+        var folder = Path.Combine(LibraryLayout.ReportsPath(library.RootPath), "stopped");
+        var executor = new StoppingExecutor(new FakeExecutor(), stop);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            new BuildPipeline(library, executor, ToolCatalog.Default).RunAsync(
+                new(folder, "stopped", DateTimeOffset.UnixEpoch),
+                new(),
+                null,
+                null,
+                TimeProvider.System,
+                stop.Token
+            )
+        );
+
+        var report = BuildJournal.ReadLibrary(folder);
+        Assert.NotNull(report);
+        Assert.Null(report.Nothing);
+        Assert.Equal(2, report.Built);
+        Assert.Equal(2, BuildJournal.ReadProjects(folder, 0, 100).Total);
+    }
+
+    sealed class StoppingExecutor(IBuildExecutor inner, CancellationTokenSource stop) : IBuildExecutor {
+        int outputs;
+
+        public async Task<BuildManifest> OutputAsync(OutputStep work, CancellationToken cancellationToken) {
+            var built = await inner.OutputAsync(work, cancellationToken);
+            if (++outputs == 2) {
+                await stop.CancelAsync();
+            }
+
+            return built;
+        }
+
+        public Task<ExportManifest> ExportAsync(ExportStep work, CancellationToken cancellationToken) =>
+            inner.ExportAsync(work, cancellationToken);
     }
 
     /// <summary>Loses the Worker whenever one key comes round, however often it is tried.</summary>

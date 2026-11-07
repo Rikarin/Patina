@@ -46,6 +46,7 @@ public sealed class OutputBuilders(
                 BuildTools.LayerStack => Stack(step, part),
                 BakeKeys.Tool => Bake(step, part, threads, cancellationToken),
                 BuildTools.MeshLod => MeshLods.Build(step, part, cancellationToken),
+                BuildTools.BakedMaps => Baked(step, part),
                 _ => throw new BuildStepFailedException($"Nothing builds the tool '{step.Tool}'.")
             };
             BuildObjects.Publish(part, step.Folder);
@@ -65,21 +66,44 @@ public sealed class OutputBuilders(
         ArgumentNullException.ThrowIfNull(step);
         try {
             var preset = ExportPresetReader.Read(step.Preset, "the preset");
-            Dictionary<string, MapPicture> maps = new(StringComparer.Ordinal);
-            foreach (var source in step.Sources) {
-                foreach (var map in MapPictures.Read(source.Folder, source.Manifest)) {
-                    maps[map.Name] = map;
-                }
-            }
-
-            return ExportRun.Run(preset, maps, step.Folder, null, cancellationToken);
+            return ExportRun.Run(preset, SetsOf(step.Sources), step.Folder, null, cancellationToken);
         } catch (Exception e) when (e is InvalidDataException or ExportPresetException or ArgumentException) {
             throw new BuildStepFailedException(e.Message, e);
         }
     }
 
+    /// <summary>
+    ///     Each texture set's maps, merged by set so that one set's maps cannot replace another's. A source with no
+    ///     set is every set's, under what each makes for itself.
+    /// </summary>
+    static List<ExportSet> SetsOf(IReadOnlyList<ExportSource> sources) {
+        var named = sources.Select(static s => s.Set).Where(static s => s.Length > 0).Distinct(StringComparer.Ordinal);
+        List<string> sets = [..named.DefaultIfEmpty(string.Empty)];
+        return [
+            ..sets.Select(set => {
+                    Dictionary<string, MapPicture> maps = new(StringComparer.Ordinal);
+                    foreach (var source in sources.Where(s => s.Set.Length == 0 || s.Set == set)) {
+                        foreach (var map in MapPictures.Read(source.Folder, source.Manifest)) {
+                            maps[map.Name] = map;
+                        }
+                    }
+
+                    return new ExportSet(set, maps);
+                }
+            )
+        ];
+    }
+
+    /// <summary>The bake a document's own output names, or the one chosen for its file.</summary>
+    static string? BakeOf(OutputStep step, string file) =>
+        step.Settings.GetValueOrDefault(ProjectOutputs.BakeSetting) is { } bake
+            ? Path.GetFullPath(bake, Path.GetDirectoryName(file)!)
+            : GraphMeshMaps.Read(file);
+
     BuildManifest Graph(OutputStep step, string folder) {
-        var graph = step.Assets.Concat(step.Files).FirstOrDefault()
+        var graph = step.Settings.ContainsKey(ProjectOutputs.GraphSetting)
+            ? MeshMapSettings.Role(step, ProjectOutputs.GraphSetting)
+            : step.Assets.Concat(step.Files).FirstOrDefault()
             ?? throw new InvalidDataException("A texture-graph output names no graph.");
         var model = NodeGraphDocument.Load(
             CompoundShelf.WithoutBoundaries(YamlSerializer.Parse<NodeGraphAsset>(File.ReadAllText(graph))),
@@ -102,7 +126,7 @@ public sealed class OutputBuilders(
                 using var uploads = new TextureUploads(runner.Device);
                 var owed = TextureGraphExternals.Upload(uploads, plan, compiler.Externals);
                 var roots = CompoundFolders.PictureRoots(graph, step.Library);
-                var filled = pictures.Fill(uploads, plan, owed, roots, GraphMeshMaps.Read(graph));
+                var filled = pictures.Fill(uploads, plan, owed, roots, BakeOf(step, graph));
                 if (filled.Refusals.Count > 0) {
                     throw new InvalidDataException(string.Join(' ', filled.Refusals.Select(static r => r.Message)));
                 }
@@ -122,7 +146,7 @@ public sealed class OutputBuilders(
                 )
             )
             ?? throw new InvalidDataException("A layer-stack output names no stack.");
-        var meshMaps = GraphMeshMaps.Read(file);
+        var meshMaps = BakeOf(step, file);
         var text = File.ReadAllText(file);
         StackInputs.CheckPaint(file, text);
         var document = LayerStackYaml.Read(text);
@@ -152,18 +176,34 @@ public sealed class OutputBuilders(
             }
         );
 
-        return Pictures(step, folder, usages, raw, GreenOf(step, GreenAxis.Up));
+        return Pictures(step, folder, usages, raw, GreenOf(step, GreenAxis.Down));
     }
 
     static BuildManifest Bake(OutputStep step, string folder, int threads, CancellationToken cancellationToken) {
         var inner = Path.Combine(folder, "bake");
         var request = MeshMapSettings.Request(step, folder);
         var manifest = MeshMapBakeRun.Run(request, inner, threads, null, cancellationToken);
+        return new(step.Tool, Written(inner, manifest, folder), [], manifest.Result.Warnings);
+    }
+
+    /// <summary>The maps of a bake that was made before this build, which is read and not made again.</summary>
+    static BuildManifest Baked(OutputStep step, string folder) {
+        var file = step.Files.Where(static f => f.EndsWith($".{BakeCache.ManifestFile}", StringComparison.Ordinal))
+                .Order(StringComparer.Ordinal)
+                .FirstOrDefault()
+            ?? throw new InvalidDataException("A baked-maps output names no bake.");
+        var manifest = BakeCache.ReadManifestFile(file)
+            ?? throw new InvalidDataException($"'{Path.GetFileName(file)}' is not a finished bake.");
+        return new(step.Tool, Written(Path.GetDirectoryName(file)!, manifest, folder), [], manifest.Result.Warnings);
+    }
+
+    /// <summary>A bake's maps in an object's folder, under the names a preset reads.</summary>
+    static List<BuiltMap> Written(string bake, BakeManifest manifest, string folder) {
         var maps = Path.Combine(folder, "maps");
         Directory.CreateDirectory(maps);
 
         List<BuiltMap> built = [];
-        foreach (var map in MapPictures.OfBake(inner, manifest)) {
+        foreach (var map in MapPictures.OfBake(bake, manifest)) {
             var written = MapPictures.Write(
                 maps,
                 map.Name,
@@ -174,12 +214,13 @@ public sealed class OutputBuilders(
             built.Add(written with { File = $"maps/{written.File}" });
         }
 
-        return new(step.Tool, built, [], manifest.Result.Warnings);
+        return built;
     }
 
     /// <summary>
     ///     The way a map's green runs. A bake's runs up. A graph's <c>Height to Normal</c> runs down (Vixen's README,
-    ///     and a test there), so that is a graph's default, and an output that composes a baked normal says
+    ///     and a test there), and a stack carries what its graph fills make without touching it, so that is the
+    ///     default of both. An output that composes a baked normal says
     ///     <c>
     ///         green:
     ///         up
@@ -251,7 +292,7 @@ static class MeshMapSettings {
     ///     A file by its part in the bake. A project's lists are sorted, so a position would mean
     ///     nothing.
     /// </summary>
-    static string Role(OutputStep step, string role) {
+    public static string Role(OutputStep step, string role) {
         if (step.Settings.GetValueOrDefault(role) is not { } named) {
             throw new InvalidDataException($"A mesh-maps output says which of its files is the {role} mesh.");
         }

@@ -132,7 +132,7 @@ export interface paths {
       cookie?: never;
     };
     get?: never;
-    /** Chooses what lights the model: a built-in room, or an .hdr panorama. */
+    /** Chooses what lights the model: a built-in room, or an .hdr or .exr panorama. */
     put: operations['SetViewportEnvironment'];
     post?: never;
     delete?: never;
@@ -1572,6 +1572,8 @@ export interface components {
        * @description Outputs that cannot be built: a missing input, an unreadable reference.
        */
       unresolved: number;
+      /** @description Why a build would write nothing, or null when it would write something. */
+      nothing?: null | string;
       /** @description One page of the projects, by name. */
       items: components['schemas']['BuildPreviewProject'][];
       /**
@@ -1686,6 +1688,13 @@ export interface components {
       warnings: string[];
       /** @description Why it failed. */
       error?: null | string;
+    };
+    /** @description What a client may offer, with the dot. */
+    FileFormats: {
+      /** @description What a layer, a mask, an image material and a skew map read. */
+      pictures: string[];
+      /** @description What lights the viewport. */
+      environments: string[];
     };
     /** @description The body of `POST /api/v1/library/folders`. */
     FolderCreateRequest: {
@@ -2689,6 +2698,8 @@ export interface components {
       files: number;
       /** @description The folder holding this report and one file per project. */
       folder: string;
+      /** @description Why a finished build wrote nothing, or null when it wrote something or something failed. */
+      nothing?: null | string;
     };
     /** @description A graph rendered to a picture a brush stamps. */
     MaterialBrush: {
@@ -2845,6 +2856,8 @@ export interface components {
       role?: null | string;
       /** @description The material of the mesh it paints, as one of the project's texture sets. */
       material?: null | string;
+      /** @description The folder of the bake it reads, below the library, or null. */
+      bake?: null | string;
     };
     /** @description The body of `PATCH /api/v1/library/project/document`. */
     ProjectDocumentMeshRequest: {
@@ -3908,6 +3921,8 @@ export interface components {
       host: components['schemas']['HostInfo'];
       /** @description The Worker process as the Server sees it. */
       worker: components['schemas']['WorkerStatus'];
+      /** @description What can be read, for a client's file dialogs. */
+      formats: components['schemas']['FileFormats'];
     };
     /** @description A tag, and how many items carry it. */
     TagCount: {
@@ -3994,7 +4009,7 @@ export interface components {
     };
     /** @description Chooses what lights the model. */
     ViewportEnvironmentRequest: {
-      /** @description A built-in room (studio, overcast or sunset), or the path of an `.hdr` panorama. */
+      /** @description A built-in room (studio, overcast or sunset), or the path of an `.hdr` or `.exr` panorama. */
       source: string;
     };
     /** @description Asks the viewport to lay a graph's Output nodes over the mesh it is showing, as they stand now. */

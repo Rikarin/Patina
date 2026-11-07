@@ -1,8 +1,11 @@
 using Patina.Bench;
 using Patina.Contracts;
 using Patina.Export.Builds;
+using Patina.Export.Presets;
 using Patina.Graphs;
 using Patina.Jobs;
+using Patina.Library;
+using Vixen.Core.Imaging;
 using Vixen.Core.Mathematics;
 using Vixen.Geometry;
 using Vixen.Interchange;
@@ -181,13 +184,99 @@ public sealed class OutputBuildersTests : IDisposable {
 
         Assert.Equal(
             191,
-            Vixen.Core.Imaging.PngCodec.Decode16(File.ReadAllBytes(Path.Combine(made, "t0.png"))).Samples[0] >> 8
+            PngCodec.Decode16(File.ReadAllBytes(Path.Combine(made, "s0t0.png"))).Samples[0] >> 8
         );
     }
 
-    ExportSource Source(string name, float value) {
+    /// <summary>Two sets once replaced each other, because maps were kept by name alone.</summary>
+    [Fact]
+    public void Each_set_makes_its_own_files_and_keeps_its_own_maps() {
+        var shared = Source("shared", 0.5f, "occlusion");
+        var body = Source("body", 0.25f) with { Set = "Body" };
+        var strap = Source("strap", 0.75f) with { Set = "Strap" };
+        var preset = """
+                     version: 1
+                     id: p
+                     name: P
+                     normal: y-up
+                     textures:
+                       - file: T_{project}_R
+                         format: png8
+                         space: linear
+                         channels: [roughness]
+                       - file: "{set}/O"
+                         format: png8
+                         space: linear
+                         channels: [occlusion]
+                     """;
+        var made = Path.Combine(folder.FullName, "export");
+
+        var manifest = OutputBuilders.Export(new(preset, [shared, body, strap], made), Token);
+        var target = Path.Combine(folder.FullName, "delivered");
+        ExportRun.Deliver("key", made, manifest, target, new("Crate", "p"));
+
+        int First(string file) => PngCodec.Decode16(File.ReadAllBytes(Path.Combine(target, file))).Samples[0] >> 8;
+
+        Assert.Equal(64, First("T_Crate_Body_R.png"));
+        Assert.Equal(191, First("T_Crate_Strap_R.png"));
+        Assert.Equal(128, First(Path.Combine("Body", "O.png")));
+        Assert.Equal(128, First(Path.Combine("Strap", "O.png")));
+    }
+
+    [Fact]
+    public void One_set_keeps_the_name_its_preset_gives() {
+        var body = Source("body", 0.25f) with { Set = "Body" };
+        var preset = """
+                     version: 1
+                     id: p
+                     name: P
+                     normal: y-up
+                     textures:
+                       - file: T_{project}_R
+                         format: png8
+                         space: linear
+                         channels: [roughness]
+                     """;
+        var made = Path.Combine(folder.FullName, "export");
+
+        var manifest = OutputBuilders.Export(new(preset, [body], made), Token);
+        var delivered = ExportRun.Deliver("key", made, manifest, Path.Combine(folder.FullName, "t"), new("Crate", "p"));
+
+        Assert.Equal("T_Crate_R.png", Path.GetFileName(Assert.Single(delivered)));
+    }
+
+    /// <summary>A bake made in the app is delivered to a folder, and its maps come out as a build's do.</summary>
+    [Fact]
+    public void A_bake_in_a_project_folder_is_read_and_not_made_again() {
+        var bake = Directory.CreateDirectory(Path.Combine(folder.FullName, "bakes")).FullName;
+        File.WriteAllBytes(Path.Combine(bake, "low_ao.png"), PngCodec.Encode16(1, 1, 1, new ushort[] { 0x8000 }));
+        var manifest = new BakeManifest(
+            "low",
+            BakeInputs.Png16,
+            new([new("ao", "low_ao.png", 1, 1.0)], 1, 0, [], false)
+        );
+        var file = Path.Combine(bake, "low.bake.json");
+        File.WriteAllBytes(
+            file,
+            System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(manifest, ContractsJsonContext.Default.BakeManifest)
+        );
+        var made = Path.Combine(folder.FullName, "made");
+
+        var built = NoGpu()
+            .Build(
+                new(BuildTools.BakedMaps, [file], [], new Dictionary<string, string>(), made, null),
+                1,
+                Token
+            );
+
+        var map = Assert.Single(built.Maps);
+        Assert.Equal(ExportMaps.Occlusion, map.Map);
+        Assert.Equal(0.5f, MapPictures.ReadFile(Path.Combine(made, map.File)).Samples[0], 0.001f);
+    }
+
+    ExportSource Source(string name, float value, string usage = "roughness") {
         var path = Directory.CreateDirectory(Path.Combine(folder.FullName, name)).FullName;
-        var map = MapPictures.Write(path, "roughness", new(1, 1, 1, [value]), true, null);
+        var map = MapPictures.Write(path, usage, new(1, 1, 1, [value]), true, null);
         return new(path, new("texture-graph", [map], [], []));
     }
 }

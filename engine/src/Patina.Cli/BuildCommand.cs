@@ -69,6 +69,10 @@ static class BuildCommand {
                 + FormattableString.Invariant($"{report.Exported} exported, {report.ExportsFresh} exports fresh, ")
                 + FormattableString.Invariant($"{report.Failed} failed.")
             );
+            if (report.Nothing is { } nothing) {
+                Console.WriteLine(nothing);
+            }
+
             Console.WriteLine(report.Folder);
             return report.Failed > 0 ? 1 : 0;
         } catch (BuildRefusedException e) {

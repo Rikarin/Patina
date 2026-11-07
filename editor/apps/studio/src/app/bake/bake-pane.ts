@@ -432,7 +432,7 @@ export class BakePane {
     const path = await (field === 'output'
       ? bridge?.openFolder()
       : field === 'skewMap'
-        ? bridge?.openImage()
+        ? bridge?.openImage(this.status.pictures())
         : bridge?.openMesh());
     if (path && field === 'high') {
       await this.project.applySettings({ high: path }); // the project remembers it, as it does its mesh

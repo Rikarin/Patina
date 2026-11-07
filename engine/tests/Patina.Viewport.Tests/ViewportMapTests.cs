@@ -122,6 +122,36 @@ public sealed class ViewportMapTests : IDisposable {
         Assert.InRange(Largest(eight, floating), 0, 2);
     }
 
+    /// <summary>
+    ///     A stack's normal channel holds what its graph fills make, and those run green down (ADR 0011), so on the
+    ///     mesh it has to turn the surface as those normals would. A picture of this is what proves the sign.
+    /// </summary>
+    [Fact]
+    public void A_stacks_normal_runs_green_down_as_a_graphs_does() {
+        var tilted = Vector3.Normalize(new(0.35f, 0.25f, 0.9f));
+        using var renderer = Open();
+
+        renderer.OpenMesh(Square("tilted.glb", tilted));
+        var geometry = Render(renderer);
+
+        renderer.OpenMesh(Square("flat.glb"));
+        var plain = Render(renderer);
+        const int Side = 16;
+        var texels = new byte[Side * Side * 4];
+        for (var at = 0; at < texels.Length; at += 4) {
+            texels[at] = (byte)MathF.Round((tilted.X * 0.5f + 0.5f) * byte.MaxValue);
+            texels[at + 1] = (byte)MathF.Round((-tilted.Y * 0.5f + 0.5f) * byte.MaxValue);
+            texels[at + 2] = (byte)MathF.Round((tilted.Z * 0.5f + 0.5f) * byte.MaxValue);
+            texels[at + 3] = byte.MaxValue;
+        }
+
+        renderer.SetLive(ViewportSlot.Normal, Side, Side, texels);
+        var worn = Render(renderer);
+
+        Assert.InRange(Largest(geometry, worn), 0, 3);
+        Assert.InRange(Largest(plain, worn), 8, 255);
+    }
+
     [Fact]
     public void A_normal_map_turns_the_surface_as_the_same_normals_would() {
         var tilted = Vector3.Normalize(new(0.35f, 0.25f, 0.9f));
