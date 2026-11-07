@@ -4,8 +4,8 @@ using Patina.Export.Presets;
 namespace Patina.Export.Builds;
 
 /// <summary>
-///     A build's export step, in a Worker or in <c>patina build</c>: a preset over the objects a project's outputs made.
-///     It reads files and needs no device.
+///     A build's export step, in a Worker or in <c>patina build</c>: a preset over the objects a project's outputs
+///     made. It reads files and needs no device.
 /// </summary>
 public static class ExportSteps {
     /// <summary>Runs a preset over a project's maps.</summary>

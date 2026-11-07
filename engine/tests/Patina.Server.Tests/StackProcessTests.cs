@@ -830,8 +830,8 @@ public sealed partial class StackProcessTests : IDisposable {
     }
 
     /// <summary>
-    ///     Pixels, an export and a save each evaluate the stack, and each is refused where the Worker has no device. Only
-    ///     that is a reason to skip: every other refusal fails, with the reason the Server gave.
+    ///     Pixels, an export and a save each evaluate the stack, and each is refused where the Worker has no device.
+    ///     Only that is a reason to skip: every other refusal fails, with the reason the Server gave.
     /// </summary>
     static async Task SucceededAsync(HttpResponseMessage response, CancellationToken token) {
         if (!response.IsSuccessStatusCode) {
