@@ -81,9 +81,7 @@ interface MenuAt {
         [value]="store.channel()"
         (valueChange)="store.showChannel($event ?? store.channel())"
       />
-      <span class="readout text-foreground-muted min-w-0 flex-1 truncate px-1 text-xs" data-testid="layers-evaluation">{{
-        store.evaluated()
-      }}</span>
+      <span class="flex-1"></span>
       <button
         type="button"
         xuiButton
@@ -201,6 +199,12 @@ interface MenuAt {
       <div class="bg-warning-subtle flex shrink-0 items-center gap-2 px-2 py-1 text-xs" data-testid="layers-need-bake">
         <span class="min-w-0 flex-1" [title]="maps">Some masks need baked maps, and show grey until then.</span>
         <button type="button" xuiButton size="sm" data-testid="layers-bake" (click)="project.askToBake()">Bake…</button>
+      </div>
+    }
+
+    @if (store.evaluated(); as evaluated) {
+      <div class="readout text-foreground-muted shrink-0 truncate px-2 text-xs" data-testid="layers-evaluation">
+        {{ evaluated }}
       </div>
     }
 

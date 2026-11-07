@@ -145,8 +145,11 @@ test('a fill takes a painted mask, stroked on the mesh', async () => {
 
   await drag(0.3, 0.45, 0.72, 0.55);
 
-  await expect.poll(async () => changed(before, await shot()), { timeout: 30_000 }).toBeGreaterThan(1500);
+  // More than the first dab: the whole stroke, and the settled picture.
+  await expect.poll(async () => changed(before, await shot()), { timeout: 30_000 }).toBeGreaterThan(20_000);
+  await settled();
   await expect(window.getByTestId('paint-failure')).toHaveCount(0);
+  await expect(window.getByTestId('layers-evaluation')).toBeVisible();
   await window.screenshot({ path: join(shots, 'paint-mask-on-fill.png') });
 });
 
