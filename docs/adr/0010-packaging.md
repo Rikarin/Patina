@@ -1,9 +1,29 @@
 # ADR 0010: Native libraries in a package (spike S8)
 
-**Status:** S8 **failed**, 2026-11-05, measured on the macOS package: Vulkan is not in it. Assimp has one mechanism on every
+**Status:** S8 **failed**, 2026-11-05, measured on the macOS package: Vulkan is not in it. **Fixed 2026-11-07 for an unsigned
+build**: see "MoltenVK: the package carries it" below; a signed `.dmg` on a clean Mac has still not been tried. Assimp has one mechanism on every
 platform, but no Linux or Windows machine has run it yet: that proof is CI's first run. **Pass criteria (plan §6):** the
 Vulkan loader, MoltenVK and ICD inside a signed `.dmg`, the Worker finding them with no Homebrew or SDK, launching on a clean Mac.
 If not, change the bundling layout in Vixen's `VulkanLoader` upstream.
+
+## MoltenVK: the package carries it, with no loader
+
+A package holds `libMoltenVK.dylib` beside `patina-worker`, and Vixen's `VulkanLoader` tries that exact path first on macOS. There
+is no Vulkan loader and no ICD file: MoltenVK exports the Vulkan entry points itself, so one library replaces three, and the cost is
+validation layers, which a package does not want. A development build has no such file and finds Homebrew's as before.
+
+`publish-engine.mjs` fetches `MoltenVK-macos.tar` 1.4.1, the version Vixen pins for iOS, refuses it unless its SHA-256 matches, and
+copies the dylib and its Apache-2.0 licence. `--check-natives --packaged` fails on macOS unless Vulkan loaded from the application's
+own folder, and runs after publishing and on the finished package, so `pnpm dist`, and with it a release, cannot produce a package
+that lacks it. A device is not required, because a build machine may have no GPU.
+
+| Check | Result |
+|---|---|
+| `--check-natives --packaged` with `/opt/homebrew` and `/usr/local` denied by `sandbox-exec` | M1 Max found through the package's copy |
+| The same, with the dylib removed | Exit 1 |
+| The Viewport tests' render cases on the bundled dylib | 35 pass |
+
+Not shown: a signed and notarised `.dmg`, which needs the owner's Apple Developer certificate, and a real clean Mac.
 
 ## Assimp: the application carries it, and one search finds it
 

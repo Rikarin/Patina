@@ -16,6 +16,10 @@ if (args is ["--check-natives"]) {
     return NativeCheck.Run(Console.Out);
 }
 
+if (args is ["--check-natives", "--packaged"]) {
+    return NativeCheck.RunPackaged(Console.Out);
+}
+
 string? socketPath = null;
 string? shaderCache = null;
 var watchStdin = false;
@@ -39,7 +43,7 @@ for (var i = 0; i < args.Length; i++) {
 
 if (socketPath is null) {
     await Console.Error.WriteLineAsync(
-        "Usage: patina-worker --socket <path> [--shader-cache <folder>] [--watch-stdin] | --check-natives | --version"
+        "Usage: patina-worker --socket <path> [--shader-cache <folder>] [--watch-stdin] | --check-natives [--packaged] | --version"
     );
     return 2;
 }

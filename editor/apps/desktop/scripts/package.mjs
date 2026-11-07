@@ -132,4 +132,4 @@ const unpacked = () => {
   execFileSync(join(release, image), ['--appimage-extract'], { cwd: release, stdio: 'ignore' });
   return join(release, 'squashfs-root/resources/engine/patina-worker');
 };
-execFileSync(unpacked(), ['--check-natives'], { stdio: 'inherit' });
+execFileSync(unpacked(), ['--check-natives', '--packaged'], { stdio: 'inherit' });

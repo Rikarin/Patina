@@ -19,4 +19,13 @@ public sealed class NativeCheckTests {
         Assert.Equal(1, NativeCheck.Run(report, Path.Combine(AppContext.BaseDirectory, "elsewhere")));
         Assert.Contains("not the application's own copy", report.ToString(), StringComparison.Ordinal);
     }
+
+    /// <summary>A machine's Vulkan would pass on the build Mac and be missing on the next one.</summary>
+    [Theory]
+    [InlineData("/app/libMoltenVK.dylib", true, true)]
+    [InlineData("/opt/homebrew/lib/libvulkan.dylib", true, false)]
+    [InlineData(null, true, false)]
+    [InlineData(null, false, true)]
+    public void A_package_that_carries_vulkan_needs_its_own_copy(string? library, bool carries, bool passes) =>
+        Assert.Equal(passes, NativeCheck.HasItsVulkan(library, "/app/", carries));
 }
