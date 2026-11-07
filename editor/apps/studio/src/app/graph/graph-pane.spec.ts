@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { type GraphState, createPatinaClient } from '@patina/api-client';
+import { type GraphNodeType, type GraphState, createPatinaClient } from '@patina/api-client';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION, type ServerState, SystemStatus } from '../core/system-status';
 import { GraphPane } from './graph-pane';
 import { GRAPH_SOCKET, GraphStore } from './graph-store';
@@ -33,20 +33,47 @@ const online = (connected: boolean): ServerState => ({
   }
 });
 
+/** The Server's ranking, for these tests: a title that starts with what was typed first, then one that contains it. */
+function ranked(types: readonly GraphNodeType[], query: string): string[] {
+  const typed = query.toLowerCase();
+  const starts = types.filter(type => type.title.toLowerCase().startsWith(typed));
+  const contains = types.filter(type => !starts.includes(type) && type.title.toLowerCase().includes(typed));
+  return [...starts, ...contains].map(type => type.path);
+}
+
+/** The rows of the open palette, which sits in an overlay outside the fixture. */
+function paletteRows(): string[] {
+  const list = document.querySelector('[role=dialog] [role=listbox]');
+  return [...(list?.querySelectorAll('[role=option]') ?? [])].map(option => option.textContent.trim());
+}
+
+const typeCalled = (path: string, title: string): GraphNodeType => ({ ...noiseType, path, title, category: 'Filters' });
+
 async function render(status: ServerState = online(true), graph: () => GraphState = state, types = [noiseType]) {
   const sockets: FakeSocket[] = [];
-  const answer = (input: RequestInfo | URL): Promise<Response> => {
-    const { method, url } = input as Request;
+  const sent: unknown[] = [];
+  const answer = async (input: RequestInfo | URL): Promise<Response> => {
+    const request = input as Request;
+    const { method, url } = request;
     const path = new URL(url).pathname.replace('/api/v1/', '');
     if (path === 'graphs' && method === 'POST') {
-      return Promise.resolve(Response.json(graph()));
+      return Response.json(graph());
+    }
+
+    if (path.endsWith('node-types/search')) {
+      return Response.json({ paths: ranked(types, new URL(url).searchParams.get('query') ?? '') });
+    }
+
+    if (path.endsWith('/commands')) {
+      sent.push(await request.json());
+      return Response.json({ revision: 2, sequence: 1, history: state().history, created: [] });
     }
 
     if (path.endsWith('compounds')) {
       return Promise.resolve(Response.json([]));
     }
 
-    return Promise.resolve(Response.json(path.endsWith('node-types') ? types : graph()));
+    return Response.json(path.endsWith('node-types') ? types : graph());
   };
   TestBed.configureTestingModule({
     providers: [
@@ -79,7 +106,7 @@ async function render(status: ServerState = online(true), graph: () => GraphStat
     sockets.at(-1)?.opened();
     await fixture.whenStable();
   };
-  return { fixture, store, sockets, element, found, open };
+  return { fixture, store, sockets, element, found, open, sent };
 }
 
 describe('GraphPane', () => {
@@ -105,6 +132,76 @@ describe('GraphPane', () => {
     store.togglePort(1, 'Scale');
     await fixture.whenStable();
     expect(portsOn(element, 1)).toHaveLength(1);
+  });
+
+  it('adds what was typed when Enter comes before the ranking does', async () => {
+    const types = [typeCalled('Filters/Auto Levels', 'Auto Levels'), typeCalled('Filters/Levels', 'Levels')];
+    const { open, found, fixture, sent } = await render(online(true), state, types);
+    await open();
+
+    (found('graph-add') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    const search = document.querySelector<HTMLInputElement>('input[role=combobox]');
+    if (!search) {
+      throw new Error('The palette did not open.');
+    }
+
+    // Everything is on screen, Auto Levels first, as it is when somebody starts typing.
+    await vi.waitFor(() => {
+      expect(paletteRows()[0]).toBe('Auto Levels');
+    });
+    search.value = 'Levels';
+    search.dispatchEvent(new Event('input'));
+    search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await vi.waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+
+    expect(sent[0]).toMatchObject({ commands: [{ op: 'addNode', type: 'Filters/Levels' }] });
+  });
+
+  it('adds what was typed when Enter comes before any list at all', async () => {
+    const types = [typeCalled('Filters/Auto Levels', 'Auto Levels'), typeCalled('Filters/Levels', 'Levels')];
+    const { open, found, fixture, sent } = await render(online(true), state, types);
+    await open();
+
+    (found('graph-add') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    const search = document.querySelector<HTMLInputElement>('input[role=combobox]');
+    if (!search) {
+      throw new Error('The palette did not open.');
+    }
+
+    search.focus();
+    search.value = 'Levels';
+    search.dispatchEvent(new Event('input'));
+    search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await vi.waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+
+    expect(sent[0]).toMatchObject({ commands: [{ op: 'addNode', type: 'Filters/Levels' }] });
+  });
+
+  it('shows the ranking as the Server gave it, not regrouped by category', async () => {
+    const types = [
+      { ...typeCalled('Adjust/Auto Levels', 'Auto Levels'), category: 'Adjust' },
+      typeCalled('Filters/Levels', 'Levels')
+    ];
+    const { open, found, fixture } = await render(online(true), state, types);
+    await open();
+
+    (found('graph-add') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    const search = document.querySelector<HTMLInputElement>('input[role=combobox]');
+    if (search) {
+      search.value = 'levels';
+      search.dispatchEvent(new Event('input'));
+    }
+
+    await vi.waitFor(() => {
+      expect(paletteRows()).toEqual(['Levels', 'Auto Levels']);
+    });
   });
 
   it('says when no graph is open', async () => {

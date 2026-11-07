@@ -7,6 +7,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- The node palette and the Nodes list rank what was typed, best first and in the same order: Levels comes before Auto Levels, and Enter adds it. A new node wires itself to the selected node, or goes into the selected wire, and lands beside what it joins. Space adds at the pointer whenever the pointer is over the canvas.
 - Layers and Project Settings say when the mesh has changed since the last bake, and Reload Mesh says what it will cost before it closes anything.
 - Project Settings lists a project's meshes, pictures and bakes under Files, and the status bar says what an import brought in.
 - A preset can read every baked map: curvature, thickness, ID, position, world normal and bent normal, not only normal, height and occlusion.

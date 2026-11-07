@@ -112,6 +112,26 @@ static class GraphTesting {
             token
         ))!;
 
+    /// <summary>What a palette finds, by title, best first.</summary>
+    public static async Task<IReadOnlyList<string>> SearchAsync(
+        this HttpClient client,
+        string id,
+        string arguments,
+        CancellationToken token
+    ) {
+        var found = await client.GetFromJsonAsync(
+            $"/api/v1/graphs/{id}/node-types/search?{arguments}",
+            ContractsJsonContext.Default.GraphNodeMatches,
+            token
+        );
+        var types = await client.GetFromJsonAsync(
+            $"/api/v1/graphs/{id}/node-types",
+            ContractsJsonContext.Default.IReadOnlyListGraphNodeType,
+            token
+        );
+        return [..found!.Paths.Select(path => types!.Single(type => type.Path == path).Title)];
+    }
+
     /// <summary>What a client holds, kept current by nothing but deltas.</summary>
     public static async Task<IReadOnlyList<GraphCompound>> CompoundsAsync(
         this HttpClient client,

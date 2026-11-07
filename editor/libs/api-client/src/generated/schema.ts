@@ -728,6 +728,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/graphs/{id}/node-types/search': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The nodes this graph can use, best match first. takes and gives keep those a wire of that kind can use. */
+    get: operations['SearchGraphNodeTypes'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/graphs/{id}/compounds': {
     parameters: {
       query?: never;
@@ -1739,6 +1756,7 @@ export interface components {
       | components['schemas']['GraphCommandGraphRemoveNodes']
       | components['schemas']['GraphCommandGraphMoveNodes']
       | components['schemas']['GraphCommandGraphConnect']
+      | components['schemas']['GraphCommandGraphWire']
       | components['schemas']['GraphCommandGraphDisconnect']
       | components['schemas']['GraphCommandGraphSetValue']
       | components['schemas']['GraphCommandGraphSetText']
@@ -2002,6 +2020,28 @@ export interface components {
       port: string;
       /** @description One number per lane of the port. */
       value: number[];
+    };
+    /**
+     * @description Wires two nodes through the first ports that fit, for a node just made from a selection or a dropped wire, whose
+     *     client cannot know its kinds. Nothing happens when none fit: a generator takes no input, and it is still wanted.
+     */
+    GraphCommandGraphWire: {
+      /** @enum {string} */
+      op: 'wire';
+      /**
+       * Format: int32
+       * @description The node the wire leaves.
+       */
+      fromNode: number;
+      /**
+       * Format: int32
+       * @description The node the wire reaches.
+       */
+      toNode: number;
+      /** @description The output, or null for the first that fits. */
+      fromPort?: null | string;
+      /** @description The input, or null for the first that fits. */
+      toPort?: null | string;
     };
     /** @description A note on the canvas. */
     GraphCommentState: {
@@ -2318,6 +2358,11 @@ export interface components {
     GraphMeshMapsRequest: {
       /** @description A folder holding a bake's files, or null to read none. */
       folder?: null | string;
+    };
+    /** @description The nodes a search found. */
+    GraphNodeMatches: {
+      /** @description Their paths, best first. */
+      paths: string[];
     };
     /** @description Where one node goes. */
     GraphNodePosition: {
@@ -6420,6 +6465,50 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SearchGraphNodeTypes: {
+    parameters: {
+      query?: {
+        query?: string;
+        takes?: string;
+        gives?: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphNodeMatches'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
         headers: {
           [name: string]: unknown;
         };

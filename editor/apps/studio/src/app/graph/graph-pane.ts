@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   afterNextRender,
   computed,
@@ -37,7 +38,7 @@ import { NodeDragType } from './node-library';
 import { SystemStatus } from '../core/system-status';
 import { isWireable, wireFamily } from './graph-fields';
 import { diagnosticsOf, edgeKey, evaluationSummary } from './graph-model';
-import { GraphStore } from './graph-store';
+import { GraphStore, type NodeLink, type NodeWire } from './graph-store';
 import { NewGraphDialog } from './new-graph-dialog';
 import { SaveCompoundDialog } from './save-compound-dialog';
 
@@ -47,6 +48,10 @@ const FitPadding = 48;
 const NotePrefix = 'note-';
 const GroupPrefix = 'group-';
 const NoteOffset = 40;
+/** How far to the right of the node it follows a new node lands, past the node's own width. */
+const FollowingGap = 64;
+/** How tall a node with a preview stands, near enough for keeping a new one off it. */
+const NodeClearance = 260;
 /** The canvas height a 128-pixel minimap may sit in: below this it covers more than it shows. */
 const MinimapRoom = 480;
 const portTypes = xuiGraphChartPortTypes(['Image', 'Float', 'Int', 'Bool']);
@@ -423,13 +428,13 @@ export class GraphThumbnail {
 
     <xui-omnibar
       ariaLabel="Add a node"
+      debounce="0"
       noResultsText="No node by that name"
       placeholder="Search nodes"
       [hotkey]="null"
-      [itemGroup]="categoryOf"
-      [itemPredicate]="matches"
+      [itemGroup]="paletteRanked() ? null : categoryOf"
       [itemText]="titleOf"
-      [items]="paletteTypes()"
+      [itemsProvider]="searchPalette"
       [open]="paletteOpen()"
       (itemSelected)="add($event)"
       (openChange)="paletteOpen.set($event)"
@@ -439,6 +444,7 @@ export class GraphThumbnail {
 export class GraphCanvas {
   protected readonly store = inject(GraphStore);
   private readonly status = inject(SystemStatus);
+  private readonly destroyed = inject(DestroyRef);
   private readonly graph = viewChild.required(XuiNodeGraph);
   private readonly graphElement = viewChild.required(XuiNodeGraph, { read: ElementRef<HTMLElement> });
   private nodeViews = new WeakMap<GraphNodeState, NodeView>();
@@ -446,7 +452,13 @@ export class GraphCanvas {
   private readonly portViews = new Map<string, readonly PortView[]>();
   private viewedTypes: ReadonlyMap<string, GraphNodeType> | null = null;
   private addAt: XuiGraphPoint | null = null;
-  private addFrom: { node: number; port: string; incoming: boolean; family: string } | null = null;
+  private addLink: NodeLink | null = null;
+  /** The kinds of wire the open palette has to suit. */
+  private addWire: NodeWire = {};
+  /** The last query the Server has answered, for telling a list on screen from one on its way. */
+  private answered: string | null = null;
+  /** The pointer, in the window's coordinates, while it is over the canvas. */
+  private pointer: { x: number; y: number } | null = null;
   private fitted: string | null = null;
 
   protected readonly document = this.store.document;
@@ -456,23 +468,19 @@ export class GraphCanvas {
   protected readonly paletteOpen = signal(false);
   protected readonly creating = signal(false);
   protected readonly savingCompound = signal(false);
-  /** The port kind a dropped wire needs, while the palette is open for one. */
-  private readonly paletteFilter = signal<{ direction: 'Input' | 'Output'; family: string } | null>(null);
+  /** Whether the palette shows a ranking, which grouping by category would shuffle. */
+  protected readonly paletteRanked = signal(false);
 
   protected readonly categoryOf = (type: GraphNodeType): string => type.category || 'Compounds';
   protected readonly titleOf = (type: GraphNodeType): string => type.title;
-  protected readonly matches = (query: string, type: GraphNodeType): boolean =>
-    `${type.path} ${type.title} ${type.summary}`.toLowerCase().includes(query.trim().toLowerCase());
-
-  protected readonly paletteTypes = computed(() => {
-    const filter = this.paletteFilter();
-    const types = [...this.store.types().values()];
-    return filter === null
-      ? types
-      : types.filter(type =>
-          type.ports.some(port => port.direction === filter.direction && wireFamily(port.kind) === filter.family)
-        );
-  });
+  protected readonly searchPalette = (query: string): Promise<readonly GraphNodeType[]> => {
+    const wire = this.addWire;
+    return this.store.findNodes(query, wire).then(types => {
+      this.answered = query;
+      this.paletteRanked.set(query.trim() !== '');
+      return types;
+    });
+  };
 
   /** The inputs each node has to draw beyond its type's: every wire's, and the ones someone asked for. */
   private readonly wantedPorts = computed(() => {
@@ -589,7 +597,7 @@ export class GraphCanvas {
       const type = this.store.adding();
       if (type) {
         this.store.adding.set(null);
-        void this.store.addNode(type, this.viewCentre());
+        untracked(() => void this.place(type, null, this.selectionLink()));
       }
     });
     // xUI gap: a press on a node stops at the node, so the canvas never takes focus from it, and Delete, the arrows and
@@ -603,6 +611,26 @@ export class GraphCanvas {
         },
         { capture: true }
       );
+      // Not through the template: a move is not a reason to run change detection.
+      element.addEventListener('pointermove', event => {
+        this.pointer = { x: event.clientX, y: event.clientY };
+      });
+      element.addEventListener('pointerleave', () => {
+        this.pointer = null;
+      });
+      const space = (event: KeyboardEvent): void => {
+        this.openOnSpace(event, element);
+      };
+      const enter = (event: KeyboardEvent): void => {
+        this.enterEarly(event);
+      };
+      document.addEventListener('keydown', space);
+      // Capturing, so that it is ahead of the omnibar's own listener.
+      document.addEventListener('keydown', enter, { capture: true });
+      this.destroyed.onDestroy(() => {
+        document.removeEventListener('keydown', space);
+        document.removeEventListener('keydown', enter, { capture: true });
+      });
     });
 
     // The canvas selects what the store says, whichever side changed it.
@@ -642,11 +670,10 @@ export class GraphCanvas {
     });
   }
 
+  /** Opens the palette to add at a place, or wherever suits what is selected. */
   protected openPalette(position: XuiGraphPoint | null): void {
-    this.addAt = position;
-    this.addFrom = null;
-    this.paletteFilter.set(null);
-    this.paletteOpen.set(true);
+    const link = this.selectionLink();
+    this.showPalette(position, link, link?.kind === 'wire' ? this.wireOf(link) : {});
   }
 
   protected openContextPalette(event: MouseEvent, position: XuiGraphPoint): void {
@@ -659,12 +686,13 @@ export class GraphCanvas {
       return;
     }
 
-    const incoming = drop.port.direction === 'input';
-    this.addAt = drop.position;
-    const family = drop.port.dataType ?? 'Image';
-    this.addFrom = { node: Number(drop.source.nodeId), port: drop.source.portId, incoming, family };
-    this.paletteFilter.set({ direction: incoming ? 'Output' : 'Input', family });
-    this.paletteOpen.set(true);
+    const node = Number(drop.source.nodeId);
+    const port = drop.source.portId;
+    if (drop.port.direction === 'input') {
+      this.showPalette(drop.position, { kind: 'to', node, port }, { gives: this.kindOf(node, port, 'Input') });
+    } else {
+      this.showPalette(drop.position, { kind: 'from', node, port }, { takes: this.kindOf(node, port, 'Output') });
+    }
   }
 
   /** Only a node from the library may land here, and only on a graph that can change. */
@@ -679,15 +707,16 @@ export class GraphCanvas {
     const type = this.store.types().get(event.dataTransfer?.getData(NodeDragType) ?? '');
     if (type) {
       event.preventDefault();
-      void this.store.addNode(type, this.graph().store.toGraphPoint(event.clientX, event.clientY));
+      const at = this.graph().store.toGraphPoint(event.clientX, event.clientY);
+      void this.place(type, at, this.selectionLink());
     }
   }
 
   protected add(type: GraphNodeType): void {
-    const from = this.addFrom;
-    void this.store.addNode(type, this.addAt ?? this.viewCentre(), from ?? undefined);
+    const [at, link] = [this.addAt, this.addLink];
     this.addAt = null;
-    this.addFrom = null;
+    this.addLink = null;
+    void this.place(type, at, link);
   }
 
   protected connect(connection: XuiGraphConnection): void {
@@ -765,10 +794,120 @@ export class GraphCanvas {
     if (command && event.key.toLowerCase() === 'g') {
       event.preventDefault();
       this.store.groupSelection();
-    } else if (event.key === ' ' && this.store.editable() && !target.closest('button, [role=button]')) {
-      event.preventDefault();
-      this.openPalette(null);
     }
+  }
+
+  /** Space adds at the pointer, from anywhere the pointer is over the canvas, and not only once it has focus. */
+  private openOnSpace(event: KeyboardEvent, canvas: HTMLElement): void {
+    const target = event.target as HTMLElement;
+    const here = this.pointer !== null || canvas.contains(target);
+    if (
+      event.key === ' ' &&
+      here &&
+      this.store.editable() &&
+      !this.paletteOpen() &&
+      !target.closest('input, textarea, select, button, [contenteditable], [role=button], [role=dialog]')
+    ) {
+      event.preventDefault();
+      const { x, y } = this.pointer ?? { x: null, y: null };
+      this.openPalette(x === null ? null : this.graph().store.toGraphPoint(x, y));
+    }
+  }
+
+  private showPalette(at: XuiGraphPoint | null, link: NodeLink | null, wire: NodeWire): void {
+    this.addAt = at;
+    this.addLink = link;
+    this.addWire = wire;
+    this.answered = null;
+    this.paletteOpen.set(true);
+  }
+
+  /**
+   * xUI gap: the omnibar acts on the list it holds, and a provider's list arrives a moment after the keys. Enter
+   * straight after typing would add the first match of an earlier query, or nothing while the list is still empty. So
+   * an Enter that comes before the answer to what the box holds is taken here, before the omnibar sees it, and adds the
+   * best match of what was typed. Once the answer is on screen, Enter, a click and the arrows are the omnibar's.
+   */
+  private enterEarly(event: KeyboardEvent): void {
+    const active = document.activeElement;
+    if (event.key !== 'Enter' || !this.paletteOpen() || !(active instanceof HTMLInputElement)) {
+      return;
+    }
+
+    const typed = active.value;
+    if (typed === this.answered) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    const [at, link, wire] = [this.addAt, this.addLink, this.addWire];
+    this.paletteOpen.set(false);
+    void this.store.findNodes(typed, wire).then(([best]) => (best ? this.place(best, at, link) : undefined));
+  }
+
+  /**
+   * Adds a node where it was asked for, or else beside what it joins. A wire only takes a node that fits both of its
+   * ends, since the other half of the job would leave the graph with one end cut: a palette offered only those, and a
+   * node from the library is checked.
+   */
+  private async place(type: GraphNodeType, at: XuiGraphPoint | null, link: NodeLink | null): Promise<void> {
+    const fits =
+      link?.kind !== 'wire' ||
+      (await this.store.findNodes(type.title, this.wireOf(link))).some(found => found.path === type.path);
+    await this.store.addNode(type, at ?? this.spotFor(link), (fits ? link : null) ?? undefined);
+  }
+
+  /** What a new node joins: the selected wire, or the one selected node that has an output. */
+  private selectionLink(): NodeLink | null {
+    const edges = [...this.graph().store.selectedEdges()];
+    const [onlyEdge] = edges;
+    const edge = edges.length === 1 && onlyEdge !== undefined ? this.document()?.edges.get(onlyEdge) : undefined;
+    if (edge) {
+      const { fromNode, fromPort, toNode, toPort } = edge;
+      return { kind: 'wire', node: fromNode, port: fromPort, toNode, toPort };
+    }
+
+    const nodes = [...this.store.selection()];
+    const [only] = nodes;
+    return nodes.length === 1 && only !== undefined ? { kind: 'from', node: only } : null;
+  }
+
+  private wireOf(link: Extract<NodeLink, { kind: 'wire' }>): NodeWire {
+    return {
+      takes: this.kindOf(link.node, link.port, 'Output'),
+      gives: this.kindOf(link.toNode, link.toPort, 'Input')
+    };
+  }
+
+  private kindOf(node: number, port: string, direction: 'Input' | 'Output'): string | undefined {
+    const type = this.store.types().get(this.document()?.nodes.get(node)?.type ?? '');
+    return type?.ports.find(held => held.name === port && held.direction === direction)?.kind;
+  }
+
+  /** Where a node goes when nothing said: after what it follows, between the ends of its wire, or in the view. */
+  private spotFor(link: NodeLink | null): XuiGraphPoint {
+    const nodes = this.document()?.nodes;
+    const from = link === null ? undefined : nodes?.get(link.node);
+    const to = link?.kind === 'wire' ? nodes?.get(link.toNode) : undefined;
+    if (from && to) {
+      return this.clearOf({ x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 });
+    }
+
+    return from && link?.kind !== 'to'
+      ? this.clearOf({ x: from.x + NodeWidth + FollowingGap, y: from.y })
+      : this.viewCentre();
+  }
+
+  /** The first place at or below a spot that no node covers, so that a new node does not hide the one there. */
+  private clearOf(spot: XuiGraphPoint): XuiGraphPoint {
+    const nodes = [...(this.document()?.nodes.values() ?? [])];
+    let { y } = spot;
+    while (nodes.some(node => Math.abs(node.x - spot.x) < NodeWidth && Math.abs(node.y - y) < NodeClearance)) {
+      y += NodeClearance;
+    }
+
+    return { x: spot.x, y };
   }
 
   private viewCentre(): XuiGraphPoint {

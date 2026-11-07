@@ -280,17 +280,10 @@ test('builds a tiling material from a new graph, down to its channels and full s
   await addNodeAt('Output/Output', 620, 20);
   await expect(nodes()).toHaveCount(4);
 
-  // Each wire answers one diagnostic, and the list changing size is not something to drag through.
+  // Each node lands selected, so the next one takes it: the chain is wired as it is made, and nothing is left unwired.
   const unwired = window.getByTestId('graph-diagnostics').getByRole('listitem').filter({ hasText: 'TG0002' });
-  await expect(unwired).toHaveCount(3);
-  for (const [from, left] of [
-    [1, 2],
-    [2, 1],
-    [3, 0]
-  ] as const) {
-    await dragBetween(await centre(connector(from, 'Out')), await centre(connector(from + 1, 'Input')));
-    await expect(unwired).toHaveCount(left);
-  }
+  await expect.poll(wiresNow).toEqual(['1>2', '2>3', '3>4']);
+  await expect(unwired).toHaveCount(0);
 
   const plain = await hashOf(thumbnail(3));
 
@@ -368,6 +361,71 @@ test('exposes a parameter, drives a number from it and edits its default', async
 
   await window.getByTestId('graph-undo').click();
   await expect(thumbnail(1)).toHaveAttribute('data-hash', driven);
+});
+
+/** The wires the Server holds, as `from>to`. */
+async function wiresNow(): Promise<string[]> {
+  const { baseUrl, token } = await server();
+  const headers = { Authorization: `Bearer ${token}` };
+  const open = (await (await fetch(`${baseUrl}/api/v1/graphs`, { headers })).json()) as { id: string }[];
+  const reply = await fetch(`${baseUrl}/api/v1/graphs/${open[0]?.id ?? ''}`, { headers });
+  const state = (await reply.json()) as { edges: { fromNode: number; toNode: number }[] };
+  return state.edges.map(edge => `${String(edge.fromNode)}>${String(edge.toNode)}`).sort();
+}
+
+test('the palette adds what was typed, wired to the selection, into a wire, or from a dropped wire', async () => {
+  await openGraph();
+
+  // Enter straight after typing adds Levels, not Auto Levels, and it takes the selected Noise.
+  await node(1).locator('xui-graph-node-preview').click();
+  await window.getByTestId('graph-add').click();
+  await window.locator('input[role=combobox]').fill('Levels');
+  await window.keyboard.press('Enter');
+  await expect(nodes()).toHaveCount(Nodes + 1);
+  await expect(window.getByTestId('inspector-title')).toHaveText('Levels');
+  await expect.poll(wiresNow).toContain(`1>${String(Nodes + 1)}`);
+  // Beside the Noise, and off the HSL that already sits there.
+  const levels = (await node(Nodes + 1).boundingBox()) ?? { x: 0, y: 0, height: 0 };
+  const hsl = (await node(2).boundingBox()) ?? { x: 0, y: 0, height: 0 };
+  expect(levels.y >= hsl.y + hsl.height || levels.y + levels.height <= hsl.y).toBe(true);
+
+  // A selected wire takes a node into its middle, and Space opens the palette at the pointer without the canvas
+  // having focus.
+  const wire = {
+    x: ((await centre(connector(2, 'Out'))).x + (await centre(connector(3, 'Input'))).x) / 2,
+    y: ((await centre(connector(2, 'Out'))).y + (await centre(connector(3, 'Input'))).y) / 2
+  };
+  await window.mouse.click(wire.x, wire.y);
+  await window.getByTestId('graph-name').click();
+  await window.mouse.move(wire.x, wire.y + 40);
+  await window.keyboard.press(' ');
+  await window.locator('input[role=combobox]').fill('Invert');
+  await window.keyboard.press('Enter');
+  await expect(nodes()).toHaveCount(Nodes + 2);
+  const inserted = String(Nodes + 2);
+  await expect.poll(wiresNow).toEqual(expect.arrayContaining([`2>${inserted}`, `${inserted}>3`]));
+  expect(await wiresNow()).not.toContain('2>3');
+  const landed = await centre(node(Nodes + 2));
+  expect(Math.abs(landed.y - (wire.y + 40))).toBeLessThan(120);
+
+  // A wire dropped on nothing offers what can take it, and is wired to what is chosen.
+  const out = await centre(connector(5, 'Out'));
+  await dragBetween(out, { x: out.x + 40, y: out.y + 200 });
+  await window.locator('input[role=combobox]').fill('Grayscale');
+  await window.keyboard.press('Enter');
+  await expect(nodes()).toHaveCount(Nodes + 3);
+  await expect.poll(wiresNow).toContain(`5>${String(Nodes + 3)}`);
+  await window.screenshot({ path: join(shots, 'graph-palette-wired.png') });
+});
+
+test('the node library ranks what was typed, as the palette does', async () => {
+  await openGraph();
+
+  await window.getByRole('tab', { name: 'Nodes' }).click();
+  await window.getByTestId('node-library-search').fill('Levels');
+  await expect(window.getByTestId('node-library-item').first()).toHaveText('Levels');
+  await window.getByTestId('node-library-search').fill('Output');
+  await expect(window.getByTestId('node-library-item').first()).toHaveText('Output');
 });
 
 test('the node library adds a node, and a number becomes a parameter in one step', async () => {

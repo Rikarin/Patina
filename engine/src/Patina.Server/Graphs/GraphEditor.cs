@@ -77,7 +77,10 @@ public sealed class GraphEditor {
         List<(int Ref, GraphGroup? Group, GraphComment? Note)> furniture = [];
         try {
             foreach (var command in batch.Commands) {
-                var built = Build(command, refs);
+                if (Build(command, refs) is not { } built) {
+                    continue;
+                }
+
                 built.Do(Context);
                 applied.Add(built);
                 switch (command, built) {
@@ -98,6 +101,10 @@ public sealed class GraphEditor {
             }
 
             throw e as GraphEditRefusedException ?? new GraphEditRefusedException(e.Message, e);
+        }
+
+        if (applied.Count == 0) {
+            return [];
         }
 
         Remember(batch, applied);
@@ -216,12 +223,13 @@ public sealed class GraphEditor {
         return true;
     }
 
-    IAuthoringCommand Build(GraphCommand command, Dictionary<int, int> refs) =>
+    IAuthoringCommand? Build(GraphCommand command, Dictionary<int, int> refs) =>
         command switch {
             GraphAddNode add => BuildAdd(add, refs),
             GraphRemoveNodes remove => BuildRemove(remove, refs),
             GraphMoveNodes move => BuildMove(move, refs),
             GraphConnect connect => BuildConnect(connect, refs),
+            GraphWire wire => BuildWire(wire, refs),
             GraphDisconnect disconnect => BuildDisconnect(disconnect, refs),
             GraphSetValue value => BuildValue(value, refs),
             GraphSetText text => BuildText(text, refs),
@@ -287,6 +295,27 @@ public sealed class GraphEditor {
         }
 
         return new(graph, new(from.Id, connect.FromPort), new(to.Id, connect.ToPort));
+    }
+
+    /// <summary>The first output, in the order a node draws them, with an input that takes it.</summary>
+    ConnectCommand? BuildWire(GraphWire wire, Dictionary<int, int> refs) {
+        var from = Find(wire.FromNode, refs);
+        var to = Find(wire.ToNode, refs);
+        IEnumerable<PortDefinition> outputs = wire.FromPort is { } named
+            ? [PortOf(from, named, PortDirection.Output)]
+            : TypeOf(from).Ports.Where(static port => port.Direction == PortDirection.Output);
+        foreach (var output in outputs) {
+            var filter = new PortFilter(output.Kind, PortDirection.Input);
+            if (wire.ToPort is { } input) {
+                if (filter.Accepts(PortOf(to, input, PortDirection.Input))) {
+                    return new(graph, new(from.Id, output.Name), new(to.Id, input));
+                }
+            } else if (NodeSearch.Landing(TypeOf(to), filter) is { } landing) {
+                return new(graph, new(from.Id, output.Name), new(to.Id, landing));
+            }
+        }
+
+        return null;
     }
 
     DisconnectCommand BuildDisconnect(GraphDisconnect disconnect, Dictionary<int, int> refs) {
