@@ -5,7 +5,6 @@ using Patina.Server.Stacks;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
-using Vixen.NodeGraph;
 
 namespace Patina.Server.Graphs;
 
@@ -130,8 +129,12 @@ public sealed class ShelfThumbnails(WorkerLink worker, PreviewStore store) : IDi
     (string Key, MaterialThumbnailAsk Ask)? Readable(OpenLibrary library, string source) {
         try {
             return Ask(library, source);
-        } catch (Exception e) when (e is IOException or UnauthorizedAccessException or StackEditRefusedException
-                                        or ProjectRefusedException or FormatException or ArgumentException
+        } catch (Exception e) when (e is IOException
+                                        or UnauthorizedAccessException
+                                        or StackEditRefusedException
+                                        or ProjectRefusedException
+                                        or FormatException
+                                        or ArgumentException
                                         or InvalidOperationException) {
             return null;
         }
@@ -245,11 +248,14 @@ public sealed class ShelfThumbnails(WorkerLink worker, PreviewStore store) : IDi
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text.ToString())));
     }
 
-    static IEnumerable<string> Files(string folder, bool below) =>
-        Directory.Exists(folder)
-            ? Directory.EnumerateFiles(folder, "*", below ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly)
-                .Order(StringComparer.Ordinal)
-            : [];
+    static IEnumerable<string> Files(string folder, bool below) {
+        if (!Directory.Exists(folder)) {
+            return [];
+        }
+
+        var depth = below ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
+        return Directory.EnumerateFiles(folder, "*", depth).Order(StringComparer.Ordinal);
+    }
 
     /// <summary>When and how large each file is, which is what changes when it is saved.</summary>
     static IEnumerable<string> Stamps(IEnumerable<string> files) =>

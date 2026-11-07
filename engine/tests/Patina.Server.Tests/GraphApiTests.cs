@@ -62,7 +62,7 @@ public sealed class GraphApiTests : IDisposable {
         using (client) {
             Assert.Equal("Levels", (await client.SearchAsync(state.Id, "query=levels", Token))[0]);
             Assert.Equal("Noise", (await client.SearchAsync(state.Id, "query=Source/Noise", Token))[0]);
-            Assert.True((await client.SearchAsync(state.Id, "", Token)).Count > 50);
+            Assert.True((await client.SearchAsync(state.Id, string.Empty, Token)).Count > 50);
             Assert.Empty(await client.SearchAsync(state.Id, "query=zzzzzz", Token));
         }
     }

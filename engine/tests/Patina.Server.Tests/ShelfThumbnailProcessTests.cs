@@ -28,9 +28,21 @@ public sealed partial class StackProcessTests {
         );
         var items = listed.GetProperty("items").EnumerateArray().ToList();
         string SourceOf(Func<JsonElement, bool> wanted) => items.First(wanted).GetProperty("source").GetString()!;
-        var graph = SourceOf(static item => item.GetProperty("source").GetString()!.EndsWith("cells.vxtexgraph", StringComparison.Ordinal));
-        var starter = SourceOf(static item => item.GetProperty("source").GetString()!.StartsWith("starter:", StringComparison.Ordinal));
-        var shipped = SourceOf(static item => item.GetProperty("source").GetString()!.StartsWith("smart:", StringComparison.Ordinal));
+        var graph = SourceOf(static item => item.GetProperty("source").GetString()!.EndsWith(
+                "cells.vxtexgraph",
+                StringComparison.Ordinal
+            )
+        );
+        var starter = SourceOf(static item => item.GetProperty("source").GetString()!.StartsWith(
+                "starter:",
+                StringComparison.Ordinal
+            )
+        );
+        var shipped = SourceOf(static item => item.GetProperty("source").GetString()!.StartsWith(
+                "smart:",
+                StringComparison.Ordinal
+            )
+        );
         string[] sources = [graph, starter, shipped, "projects/crate/missing.vxtexgraph"];
 
         var first = await ThumbnailsAsync(sources, deadline.Token);
@@ -76,6 +88,7 @@ public sealed partial class StackProcessTests {
         using var reply = await http.GetAsync($"/api/v1/previews/{hash}", token);
         Assert.Equal(HttpStatusCode.OK, reply.StatusCode);
         var png = await reply.Content.ReadAsByteArrayAsync(token);
-        return (BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(16)), BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(20)));
+        return (BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(16)),
+            BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(20)));
     }
 }

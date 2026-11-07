@@ -301,9 +301,14 @@ public sealed class GraphEditor {
     ConnectCommand? BuildWire(GraphWire wire, Dictionary<int, int> refs) {
         var from = Find(wire.FromNode, refs);
         var to = Find(wire.ToNode, refs);
-        IEnumerable<PortDefinition> outputs = wire.FromPort is { } named
-            ? [PortOf(from, named, PortDirection.Output)]
-            : TypeOf(from).Ports.Where(static port => port.Direction == PortDirection.Output);
+        if (wire.FromPort is { } named) {
+            PortOf(from, named, PortDirection.Output); // a port that is not there is refused, not skipped
+        }
+
+        var outputs = TypeOf(from)
+            .Ports.Where(port => port.Direction == PortDirection.Output
+                && (wire.FromPort is null || port.Name == wire.FromPort)
+            );
         foreach (var output in outputs) {
             var filter = new PortFilter(output.Kind, PortDirection.Input);
             if (wire.ToPort is { } input) {
