@@ -346,6 +346,11 @@ export function hexOf(colour: readonly number[] | undefined): string {
             (valueChange)="setMask(layer, { source: $event ?? 'None' })"
           />
         </div>
+        @if (store.masking() && !store.canPaint()) {
+          <p class="text-foreground-muted text-xs" data-testid="paint-mask-no-brush">
+            A brush would replace this mask. Set Mask to Paint to paint it.
+          </p>
+        }
         @switch (layer.mask.source) {
           @case ('Constant') {
             <xui-slider

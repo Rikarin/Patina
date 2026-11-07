@@ -185,6 +185,35 @@ describe('PaintStore', () => {
     expect(store.maskGrey()).toBe(0);
   });
 
+  it('offers a stroke only where the Server would take it', async () => {
+    const { store } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    expect(store.layer()).toBe('paint');
+    expect(store.canPaint()).toBe(true);
+    expect(store.canPaintMesh()).toBe(false);
+
+    store.layer.set('base');
+    expect(store.canPaint()).toBe(false);
+    store.masking.set(true);
+    expect(store.canPaint()).toBe(true);
+
+    const base = store.state()?.layers[0];
+    const masked = (source: string) => ({ ...(base as StackLayer), mask: { ...(base as StackLayer).mask, source } });
+    store.state.update(state => (state ? { ...state, model: 'crate.glb' } : state));
+    expect(store.canPaintMesh()).toBe(true);
+    for (const [source, paintable] of [
+      ['Constant', true],
+      ['Paint', true],
+      ['Generator', false],
+      ['Texture', false],
+      ['Bake', false],
+      ['Anchor', false]
+    ] as const) {
+      store.state.update(state => (state ? { ...state, layers: [masked(source)] } : state));
+      expect(store.canPaint()).toBe(paintable);
+    }
+  });
+
   it('says what the stack is doing, as a graph does', () => {
     const evaluation = {
       revision: 2,

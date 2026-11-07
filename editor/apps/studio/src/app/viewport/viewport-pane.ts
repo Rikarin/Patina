@@ -146,8 +146,8 @@ const Rooms: readonly { value: string; label: string }[] = [
         tabindex="0"
         [attr.data-frames]="viewport.frames()"
         [class.cursor-grabbing]="dragging()"
-        [class.cursor-grab]="!dragging() && !painting()"
-        [class.cursor-crosshair]="painting() || paint.picking() !== null"
+        [class.cursor-grab]="!dragging() && !aiming()"
+        [class.cursor-crosshair]="!dragging() && aiming()"
         (contextmenu)="$event.preventDefault()"
         (pointerdown)="press($event)"
         (pointermove)="drag($event)"
@@ -158,7 +158,7 @@ const Rooms: readonly { value: string; label: string }[] = [
         (wheel)="wheel($event)"
         (keydown)="key($event)"
       ></canvas>
-      @if (painting()) {
+      @if (paints()) {
         @if (brushAt(); as at) {
           <div
             class="pointer-events-none absolute rounded-full border border-white/70 mix-blend-difference"
@@ -196,8 +196,16 @@ export class ViewportPane implements AfterViewInit {
   private stroking = false;
 
   /** Whether a left drag paints rather than orbits. */
-  /** Left paints as soon as a stack is on the mesh. Alt-left and right turn the model, middle or Shift moves it. */
+  /**
+   * Left paints as soon as a stack is on the mesh, if a stroke can land. Otherwise it turns the model, as Alt-left and
+   * right do, and middle or Shift moves it.
+   */
   protected readonly painting = signal(true);
+  protected readonly paints = computed(() => this.paint.worn() && this.painting() && this.paint.canPaintMesh());
+  /** Whether a press does something at the point under it, which is what the cursor says. */
+  protected readonly aiming = computed(
+    () => this.paints() || this.paint.picking() !== null || (this.paint.worn() && this.paint.tool() === 'picker')
+  );
   private panning = false;
   /** Where the brush is over the canvas, in the units of a stroke. */
   protected readonly brushAt = signal<{ x: number; y: number } | null>(null);
@@ -319,7 +327,7 @@ export class ViewportPane implements AfterViewInit {
     }
 
     this.canvas().nativeElement.setPointerCapture(event.pointerId);
-    if (this.paint.worn() && this.painting() && event.button === 0 && !event.altKey && !event.shiftKey) {
+    if (this.paints() && event.button === 0 && !event.altKey && !event.shiftKey) {
       this.stroking = true;
       this.gesture.press(this.stamp(event));
       return;

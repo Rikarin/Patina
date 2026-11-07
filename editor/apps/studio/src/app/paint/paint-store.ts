@@ -47,6 +47,9 @@ export interface Aim {
 /** How the Worker says a stack read mesh maps with no bake, before their names. */
 const NeedsBake = 'Needs a bake: ';
 
+/** The masks a brush can paint: a picture has to stay itself, and these are one number or a canvas already. */
+const FlatMasks: ReadonlySet<string> = new Set(['None', 'Constant', 'Paint']);
+
 export interface LayerRow {
   layer: StackLayer;
   depth: number;
@@ -177,6 +180,15 @@ export class PaintStore {
   });
 
   readonly chosen = computed(() => this.layers().find(row => row.layer.id === this.layer())?.layer ?? null);
+
+  /** Whether a stroke would land on what is chosen, which is the Server's rule so that a drag is never refused. */
+  readonly canPaint = computed(() => {
+    const layer = this.chosen();
+    return this.masking() ? FlatMasks.has(layer?.mask.source ?? '') : layer?.kind === 'paint';
+  });
+
+  /** Whether one would land on the mesh, which also takes a mesh: a layered material's sphere is only a preview. */
+  readonly canPaintMesh = computed(() => this.canPaint() && !!this.state()?.model.trim());
 
   /** What the stack's compile had to say, and why an evaluation failed. */
   readonly problems = computed<readonly StackProblem[]>(() => {

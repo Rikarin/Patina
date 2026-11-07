@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiInputImports } from '@xui/input';
@@ -86,6 +86,6 @@ export class PaintPane {
   protected readonly store = inject(PaintStore);
   protected readonly project = inject(ProjectStore);
   protected readonly canPick = desktop() !== undefined;
-  /** A brush matters while something can be painted: a paint layer, or any layer's mask. */
-  protected readonly brushes = computed(() => this.store.chosen()?.kind === 'paint' || this.store.masking());
+  /** A brush matters while something can be painted. */
+  protected readonly brushes = this.store.canPaint;
 }

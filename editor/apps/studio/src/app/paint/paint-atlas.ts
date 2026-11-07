@@ -61,7 +61,7 @@ import { StrokeGesture } from './stroke-gesture';
         >
           <img
             class="size-full select-none"
-            [class.cursor-crosshair]="store.picking() !== null"
+            [class.cursor-crosshair]="store.canPaint() || store.picking() !== null"
             alt="The composited map"
             draggable="false"
             data-testid="paint-picture"
@@ -134,6 +134,10 @@ export class PaintAtlas {
     if (this.store.picking() !== null) {
       const box = (event.target as HTMLElement).getBoundingClientRect();
       void this.store.pickColourAt((event.clientX - box.left) / box.width, (event.clientY - box.top) / box.height);
+      return;
+    }
+
+    if (!this.store.canPaint()) {
       return;
     }
 

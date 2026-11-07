@@ -150,6 +150,21 @@ test('a fill takes a painted mask, stroked on the mesh', async () => {
   await window.screenshot({ path: join(shots, 'paint-mask-on-fill.png') });
 });
 
+test('a drag turns the model when nothing chosen can be painted', async () => {
+  await openOnMesh();
+  await expect(canvas()).toHaveClass(/cursor-crosshair/);
+  await window.getByTestId('paint-add-fill').click();
+  await expect(canvas()).toHaveClass(/cursor-grab/);
+  await settled();
+  const before = await shot();
+
+  await drag(0.3, 0.45, 0.72, 0.55);
+
+  await expect.poll(async () => changed(before, await shot()), { timeout: 30_000 }).toBeGreaterThan(1500);
+  await expect(window.getByTestId('paint-failure')).toHaveCount(0);
+  await expect(window.getByTestId('viewport-brush')).toHaveCount(0);
+});
+
 test('a mesh with no UVs is unwrapped when a project is made, and the setting stays on the project', async () => {
   await newLibrary(app, window, join(scratch, 'Unwrap.ptlib'));
   const mesh = join(scratch, 'plain.obj');

@@ -31,6 +31,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A drag on the mesh or the map turns the model or does nothing when no stroke can land, instead of raising a refusal, and the cursor shows which it will do.
 - A layer that is half set up no longer stops the whole stack updating: an empty texture channel, graph, generator, bitmap, mesh map or anchor leaves that part out. Layers lists what the compile said, marks the layer at fault on its row, and shows Evaluating… as the graph does.
 - A mask on a fill, filter or folder can be painted, not only one on a paint layer.
 - Painting a white or grey mask changes only what the brush touches, instead of hiding the rest of the layer, and a new paint mask starts by showing the whole layer. The brush paints a mask in grey. A mask that is a picture refuses the brush and says why, rather than being replaced. Remove Mask takes all of the mask away, and Invert Mask turns off again.
