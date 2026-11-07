@@ -1,3 +1,4 @@
+using Patina.Export;
 using Patina.Ipc;
 using Patina.Viewport;
 using Vixen.Interchange;
@@ -31,7 +32,11 @@ sealed class MeshShelf {
 
             var mesh = new Mesh(
                 geometry,
-                PaintProjection.Over(geometry.Positions, geometry.Coordinates, geometry.Indices)
+                PaintProjection.Over(geometry.Positions, geometry.Coordinates, geometry.Indices),
+                OneTile.Problem(
+                    [..geometry.Indices.Select(index => geometry.Coordinates[index])],
+                    set.Length == 0 ? $"'{Path.GetFileName(path)}'" : $"Texture set '{set}'"
+                )
             );
             held[(path, set)] = (written, mesh);
             return mesh;
@@ -43,5 +48,6 @@ sealed class MeshShelf {
     /// <summary>One model.</summary>
     /// <param name="Geometry">Its triangles.</param>
     /// <param name="Projection">What a ray or a brush reaches them through.</param>
-    internal sealed record Mesh(ViewportGeometry Geometry, PaintProjection Projection);
+    /// <param name="Tiles">Why its layout reaches past UDIM tile 1001, which Patina cannot paint, or null.</param>
+    internal sealed record Mesh(ViewportGeometry Geometry, PaintProjection Projection, string? Tiles);
 }

@@ -551,4 +551,52 @@ public sealed partial class StackProcessTests {
         );
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
     }
+
+    /// <summary>
+    ///     A set laid out past UDIM tile 1001 says so in its problems as soon as it is open, because a stroke there
+    ///     paints nothing and the viewport shows 1001's maps on it. It once said nothing until the export.
+    /// </summary>
+    [Fact]
+    public async Task A_set_on_a_second_udim_tile_says_so_when_it_opens() {
+        using var deadline = Deadline(180);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        var mesh = Path.Combine(folder.FullName, "tiles.obj");
+        File.WriteAllText(
+            mesh,
+            """
+            v 0 0 0
+            v 1 0 0
+            v 1 1 0
+            v 0 1 0
+            v 2 0 0
+            v 3 0 0
+            v 3 1 0
+            v 2 1 0
+            vt 0.1 0.1
+            vt 0.9 0.1
+            vt 0.9 0.9
+            vt 0.1 0.9
+            vt 1.1 0.1
+            vt 1.9 0.1
+            vt 1.9 0.9
+            vt 1.1 0.9
+            f 1/1 2/2 3/3 4/4
+            f 5/5 6/6 7/7 8/8
+            """
+        );
+        var (instance, _) = await StartAsync("Unused.vxlayers", deadline.Token);
+        var project = await MakeTexturingProjectAsync(mesh, deadline.Token);
+        using var contents = JsonDocument.Parse(
+            await http.GetStringAsync($"/api/v1/library/project?path={project}", deadline.Token)
+        );
+        var document = contents.RootElement.GetProperty("documents")[0].GetProperty("path").GetString()!;
+
+        var state = await OpenAsync(document, deadline.Token);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        var evaluation = await EvaluatedAsync(socket, state.Revision, deadline.Token);
+
+        var said = Assert.Single(evaluation.Problems, static p => p.Message.Contains("UDIM", StringComparison.Ordinal));
+        Assert.Equal("Warning", said.Severity);
+        Assert.Contains("1001, 1002", said.Message, StringComparison.Ordinal);
+    }
 }

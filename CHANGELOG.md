@@ -39,6 +39,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A mesh laid out past UDIM tile 1001 is no longer taken in silence. Layers says which tiles a texture set reaches as soon as it opens, and a bake refuses it by name instead of filling 1001 and leaving the rest empty. Patina still paints, bakes and exports one tile.
 - Auto Unwrap keeps what it did not lay out: smooth normals, every material (each its own texture set with an atlas of its own), vertex colours and part names. A material that already has UVs keeps them. Project Settings sets its atlas size, margin, packing, island turns, texel density and what happens when islands do not fit, lays the mesh out again when they change, and shows what each set's layout came to: islands, stretch, how much of the atlas is used, and any turned-over triangles.
 - Flood Fill goes round the wrap: on a graph that tiles, an island over the seam is one island, with its true size and a UV that runs across the seam. Its box can pass 1, by as much as it runs past the image.
 - `project.yaml` no longer records the absolute path a mesh came from. A source inside the library is stored relative to it, one outside stays on this machine, and a fresh clone asks for the file once on Reload Mesh.

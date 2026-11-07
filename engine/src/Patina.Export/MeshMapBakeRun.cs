@@ -47,6 +47,14 @@ public static class MeshMapBakeRun {
             );
         }
 
+        // ⚠ A bake fills the first tile and leaves the rest empty without a word, so a layout past it is refused.
+        var named = request.Material is { } set
+            ? $"Texture set '{set}' of '{Path.GetFileName(request.Low)}'"
+            : $"'{Path.GetFileName(request.Low)}'";
+        if (OneTile.Problem(low.Mesh.TexCoords, named) is { } tiles) {
+            throw new InvalidDataException(tiles);
+        }
+
         var cage = request.Cage is { } path ? Read(path, request.Material).Mesh : null;
         progress?.Invoke(ReadingShare);
 

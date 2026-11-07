@@ -431,7 +431,27 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
                 refused.Where(reason => !found.Exists(problem => problem.Message == reason))
                     .Select(static reason => new StackProblem(string.Empty, nameof(NodeSeverity.Error), reason))
             );
+            if (Tiles() is { } tiles) {
+                found.Add(new(string.Empty, nameof(NodeSeverity.Warning), tiles));
+            }
+
             return [..found.Distinct()];
+        }
+
+        /// <summary>
+        ///     Why this set's layout reaches past the one UV tile Patina paints, or null. The mesh is read once for
+        ///     strokes too, and a mesh that does not read is said elsewhere.
+        /// </summary>
+        string? Tiles() {
+            if (document.Model.Trim().Length == 0) {
+                return null;
+            }
+
+            try {
+                return meshes.Of(Path.GetFullPath(document.Model, folder), set).Tiles;
+            } catch (IpcException) {
+                return null;
+            }
         }
 
         /// <summary>
