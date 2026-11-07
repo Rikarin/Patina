@@ -284,6 +284,61 @@ test('a mask runs effects, and they stay in order', async () => {
   await expect(window.getByTestId('paint-mask-effect-1')).toHaveCount(0);
 });
 
+test('a layer duplicates, copies, cuts and pastes, and each undoes as one step', async () => {
+  const undo = () =>
+    app.evaluate(({ Menu }) => {
+      Menu.getApplicationMenu()?.getMenuItemById('edit-undo')?.click();
+    });
+  const rows = names();
+  const count = await rows.count();
+  const paint = window.getByTestId('paint-layer-paint');
+
+  await paint.click({ button: 'right' });
+  await window.getByTestId('layer-menu-duplicate').click();
+  await expect(rows).toHaveCount(count + 1);
+  await expect(window.getByTestId('paint-layer-paint-2')).toBeVisible();
+  await undo();
+  await expect(rows).toHaveCount(count);
+
+  await paint.click({ button: 'right' });
+  await window.getByTestId('layer-menu-cut').click();
+  await expect(rows).toHaveCount(count - 1);
+  await expect(paint).toHaveCount(0);
+
+  await rows.first().click({ button: 'right' });
+  await window.getByTestId('layer-menu-paste').click();
+  await expect(rows).toHaveCount(count);
+  await expect(window.getByTestId('paint-layer-paint')).toBeVisible();
+
+  // Edit > Paste reaches the stack as well, and a paste is new layers every time.
+  await app.evaluate(({ Menu }) => {
+    Menu.getApplicationMenu()?.getMenuItemById('edit-paste')?.click();
+  });
+  await expect(rows).toHaveCount(count + 1);
+  await undo();
+  await expect(rows).toHaveCount(count);
+});
+
+test('a filter layer runs any filter, with the fields its node declares', async () => {
+  await window.getByTestId('paint-add-filter').click();
+  const filter = window.getByTestId('paint-filter');
+  await expect(filter).toBeVisible();
+  await expect(window.getByTestId('paint-setting-Gamma')).toBeVisible();
+
+  await filter.click();
+  await window.getByRole('option', { name: /^Gradient Map/ }).click();
+  await expect(window.getByTestId('paint-setting-Ramp').locator('ptn-gradient-ramp')).toBeVisible();
+  await expect(window.getByTestId('paint-setting-Gamma')).toHaveCount(0);
+
+  // A filter that reads one channel takes the grey of what is beneath it, rather than being refused.
+  await expect(window.getByTestId('layers-evaluation')).toHaveText(/ran|Up to date/, { timeout: 30_000 });
+  await expect(window.locator('[data-testid^=paint-layer-filter] [data-testid=layer-fault]')).toHaveCount(0);
+
+  await filter.click();
+  await window.getByRole('option', { name: /^Mirror/ }).click();
+  await expect(window.getByTestId('paint-setting-Axis')).toBeVisible();
+});
+
 /** How green the map is at a place across it. */
 const greenAt = (across: number) =>
   window.getByTestId('paint-picture').evaluate((image, x) => {

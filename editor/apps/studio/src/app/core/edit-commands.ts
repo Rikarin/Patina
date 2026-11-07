@@ -55,10 +55,18 @@ export class EditCommands {
     return true;
   }
 
-  /** Cut, copy and paste work on nodes in a graph, and text in anything that has some selected. */
+  /** Cut, copy and paste work on nodes in a graph, layers in a stack, and text in anything that has some selected. */
   private clip(command: 'copy' | 'cut' | 'paste'): void {
     if (this.project.active()?.kind !== 'graph') {
-      desktop()?.editText(command);
+      if (!this.paint.state()) {
+        desktop()?.editText(command);
+      } else if (command === 'paste') {
+        void this.paint.pasteLayers();
+      } else if (command === 'copy') {
+        void this.paint.copyLayers();
+      } else {
+        void this.paint.cutLayers();
+      }
     } else if (command === 'paste') {
       void this.graph.paste();
     } else {

@@ -311,6 +311,96 @@ public sealed class StackEditorPropertyTests {
         };
     }
 
+    /// <summary>
+    ///     A duplicate takes everything inside it, and every canvas it names is one nothing else names: a stroke on the
+    ///     copy must leave the original alone. An anchor onto a layer that came along reads the copy of it.
+    /// </summary>
+    [Fact]
+    public void A_duplicate_shares_no_canvas_and_anchors_within_itself() {
+        var editor = new StackEditor("/tmp/Twice.vxlayers", Sample());
+        editor.Apply(new([new StackStroke("a", "paint", "baseColor", new(4f), White, [new(1f, 1f)])]));
+        editor.Apply(new([new StackStroke("m", "paint", "baseColor", new(4f), White, [new(1f, 1f)], Mask: true)]));
+        editor.Apply(new([new StackAddLayer("group", "Folder"), new StackAddLayer("fill", "Inner")]));
+        var folder = editor.Set.Layers[^2].Id;
+        var inner = editor.Set.Layers[^1].Id;
+        editor.Apply(new([new StackNestLayer(inner, folder), new StackNestLayer("paint", folder)]));
+        editor.Apply(new([new StackSetLayer(inner, Mask: new("Anchor", Anchor: "paint"))]));
+
+        editor.Apply(new([new StackDuplicateLayers([folder, "paint"])]));
+
+        var copy = editor.Set.Layers[^1];
+        Assert.NotEqual(folder, copy.Id);
+        Assert.Equal(2, copy.Children.Count);
+        var (copiedInner, copiedPaint) = (copy.Children[0], copy.Children[1]);
+        var original = editor.Set.Layers[^2].Children[1];
+        Assert.NotEqual(original.Paint, copiedPaint.Paint);
+        Assert.NotEqual(original.Mask.Paint, copiedPaint.Mask.Paint);
+        Assert.Equal(copiedPaint.Id, copiedInner.Mask.Anchor);
+        Assert.Equal(
+            [(original.Mask.Paint, copiedPaint.Mask.Paint), (original.Paint, copiedPaint.Paint)],
+            editor.Standing.Where(static entry => entry.From is not null)
+                .Select(static entry => (entry.From!, entry.Paint))
+                .Order()
+        );
+
+        // One step, and nothing of it left behind.
+        editor.Undo();
+        Assert.Equal(folder, editor.Set.Layers[^1].Id);
+        Assert.DoesNotContain(editor.Standing, static entry => entry.From is not null);
+    }
+
+    /// <summary>
+    ///     A layer removed and saved leaves its pixels under its id, and a new layer can be given that id. Its first
+    ///     stroke must start a canvas of its own rather than open the old one.
+    /// </summary>
+    [Fact]
+    public void A_first_stroke_never_opens_a_canvas_another_layer_left() {
+        var folder = Directory.CreateTempSubdirectory("patina-canvas-");
+        try {
+            var left = LayerPaint.NameFor("Crate", "Body", "paint");
+            File.WriteAllText(Path.Combine(folder.FullName, left), "pixels a removed layer kept");
+            var editor = new StackEditor(Path.Combine(folder.FullName, "Crate.vxlayers"), Sample());
+
+            editor.Apply(new([new StackStroke("a", "paint", "baseColor", new(4f), White, [new(1f, 1f)])]));
+
+            Assert.NotEqual(left, editor.Set.Layers[^1].Paint);
+        } finally {
+            folder.Delete(true);
+        }
+    }
+
+    /// <summary>A copy is held by the Server that made it, and a paste naming one that is gone is refused.</summary>
+    [Fact]
+    public void A_paste_of_a_copy_nothing_holds_is_refused() {
+        var editor = new StackEditor("/tmp/Paste.vxlayers", Sample());
+
+        Assert.Throws<StackEditRefusedException>(() => editor.Apply(new([new StackPasteLayers("gone")])));
+    }
+
+    /// <summary>A paste into another stack is new layers, with the copy's canvases and none of its mesh limits.</summary>
+    [Fact]
+    public void A_paste_into_another_stack_reads_the_copy_and_leaves_its_meshes() {
+        var source = new StackEditor("/tmp/Source.vxlayers", Sample());
+        source.Apply(new([new StackStroke("a", "paint", "baseColor", new(4f), White, [new(1f, 1f)])]));
+        source.Apply(new([new StackSetLayer("paint", MeshMask: new(["Lid"], "lid.png"))]));
+        var (text, count, canvases) = source.Copied(["paint"]);
+        Assert.Equal(1, count);
+        Assert.Equal([source.Set.Layers[^1].Paint], canvases);
+
+        var clips = Path.Combine(Path.GetTempPath(), "clips", "one");
+        var target = new StackEditor("/tmp/Target.vxlayers", Sample()) {
+            Clip = id => id == "clip" ? new("clip", text, clips, "/tmp/Source.vxlayers", 64, 64) : null
+        };
+        target.Apply(new([new StackPasteLayers("clip", "base")]));
+
+        var pasted = target.Set.Layers[1];
+        var copied = target.Standing.Single(static entry => entry.From is not null);
+        Assert.Equal("paint-2", pasted.Id);
+        Assert.Null(StackDocuments.Layers([pasted])[0].Mask.MeshParts);
+        Assert.Equal(Path.Combine(clips, canvases[0]), copied.From);
+        Assert.Equal(pasted.Paint, copied.Paint);
+    }
+
     static LayerStackAsset Sample() =>
         new() {
             Name = "Crate",

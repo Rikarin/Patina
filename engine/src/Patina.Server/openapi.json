@@ -3638,6 +3638,77 @@
         }
       }
     },
+    "/api/v1/stacks/{id}/clip": {
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Copies layers with their pixels as they stand, for a pasteLayers command in this stack or another.",
+        "operationId": "CopyStackLayers",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StackClipRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackClip"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stacks/{id}/undo": {
       "post": {
         "tags": [
@@ -8774,7 +8845,8 @@
           "angleJitter",
           "sizeJitter",
           "pressureSize",
-          "pressureFlow"
+          "pressureFlow",
+          "lazy"
         ],
         "type": "object",
         "properties": {
@@ -8854,6 +8926,12 @@
             "description": "How much of the flow pressure takes off, 0 to 1.",
             "format": "float",
             "default": 0
+          },
+          "lazy": {
+            "type": "number",
+            "description": "How far the brush trails the pointer, in the units of the radius: a lazy mouse. 0 follows it. A line or a path\ntakes none, so that it reaches its last point.",
+            "format": "float",
+            "default": 0
           }
         },
         "description": "A brush. Everything but the radius has the value a new brush has."
@@ -8879,6 +8957,46 @@
           }
         },
         "description": "A channel a stack writes."
+      },
+      "StackClip": {
+        "required": [
+          "id",
+          "layers",
+          "stack"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "What a paste names it by. A Server that restarts has none."
+          },
+          "layers": {
+            "type": "integer",
+            "description": "How many layers it holds at the top.",
+            "format": "int32"
+          },
+          "stack": {
+            "type": "string",
+            "description": "The stack they came from."
+          }
+        },
+        "description": "Layers copied out of a stack, which a StackPasteLayers names."
+      },
+      "StackClipRequest": {
+        "required": [
+          "layers"
+        ],
+        "type": "object",
+        "properties": {
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Which. A layer inside another of them goes with that one."
+          }
+        },
+        "description": "Copies layers out of a stack, with their pixels as they stand now."
       },
       "StackCommand": {
         "required": [
@@ -8912,6 +9030,12 @@
           },
           {
             "$ref": "#/components/schemas/StackCommandStackSetSeed"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackDuplicateLayers"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackPasteLayers"
           }
         ],
         "description": "One edit of a stack. A batch of these is one undo step.",
@@ -8926,7 +9050,9 @@
             "setModel": "#/components/schemas/StackCommandStackSetModel",
             "addChannel": "#/components/schemas/StackCommandStackAddChannel",
             "nestLayer": "#/components/schemas/StackCommandStackNestLayer",
-            "setSeed": "#/components/schemas/StackCommandStackSetSeed"
+            "setSeed": "#/components/schemas/StackCommandStackSetSeed",
+            "duplicateLayers": "#/components/schemas/StackCommandStackDuplicateLayers",
+            "pasteLayers": "#/components/schemas/StackCommandStackPasteLayers"
           }
         }
       },
@@ -9033,10 +9159,32 @@
               "null",
               "string"
             ],
-            "description": "The compound a filter layer runs, instead of a named filter."
+            "description": "The node or compound a filter layer runs, instead of a named filter."
           }
         },
         "description": "Adds a layer at the top of the stack."
+      },
+      "StackCommandStackDuplicateLayers": {
+        "required": [
+          "layers",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "duplicateLayers"
+            ],
+            "type": "string"
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Which. A layer inside another of them goes with that one."
+          }
+        },
+        "description": "Duplicates layers, each just above itself, with everything inside it. A painted canvas is copied, never shared:\na stroke on the copy leaves the original alone."
       },
       "StackCommandStackMoveLayer": {
         "required": [
@@ -9088,6 +9236,32 @@
           }
         },
         "description": "Moves a layer to the top of a group, or of the stack."
+      },
+      "StackCommandStackPasteLayers": {
+        "required": [
+          "clip",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "pasteLayers"
+            ],
+            "type": "string"
+          },
+          "clip": {
+            "type": "string",
+            "description": "What \u0060POST /stacks/{id}/clip\u0060 answered."
+          },
+          "above": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The layer they go just above, or null for the top of the stack."
+          }
+        },
+        "description": "Pastes what a copy holds, as new layers with canvases of their own, in this stack or another. Limits to named\nmeshes stay only in the stack they were made for."
       },
       "StackCommandStackRemoveLayer": {
         "required": [
@@ -9207,7 +9381,7 @@
               "null",
               "string"
             ],
-            "description": "What a filter does."
+            "description": "What a filter does, one of the five named filters."
           },
           "settings": {
             "type": [
@@ -9215,7 +9389,7 @@
               "object"
             ],
             "additionalProperties": {},
-            "description": "A filter\u0027s numbers, replacing what these names held."
+            "description": "A filter\u0027s numbers, replacing what these names held. Choosing another filter starts it from its own defaults."
           },
           "mask": {
             "oneOf": [
@@ -9272,7 +9446,7 @@
               "null",
               "string"
             ],
-            "description": "The compound a filter runs, or empty to go back to the named filter."
+            "description": "The node or compound a filter runs, or empty to go back to the named filter."
           }
         },
         "description": "Changes what a layer\u0027s row shows. What is null stays."
@@ -9477,67 +9651,6 @@
         },
         "description": "Where an edit left the session."
       },
-      "StackEffectKind": {
-        "required": [
-          "node",
-          "name",
-          "ports"
-        ],
-        "type": "object",
-        "properties": {
-          "node": {
-            "type": "string",
-            "description": "The node type."
-          },
-          "name": {
-            "type": "string",
-            "description": "What a person calls it."
-          },
-          "ports": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/StackEffectPort"
-            },
-            "description": "The numbers it takes."
-          }
-        },
-        "description": "A step a mask can run."
-      },
-      "StackEffectPort": {
-        "required": [
-          "name",
-          "default"
-        ],
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Its port."
-          },
-          "default": {
-            "type": "number",
-            "description": "What it starts at.",
-            "format": "float"
-          },
-          "minimum": {
-            "type": [
-              "null",
-              "number"
-            ],
-            "description": "Its lower bound, or null for none.",
-            "format": "float"
-          },
-          "maximum": {
-            "type": [
-              "null",
-              "number"
-            ],
-            "description": "Its upper bound, or null for none.",
-            "format": "float"
-          }
-        },
-        "description": "A number a mask effect takes."
-      },
       "StackEvaluation": {
         "required": [
           "revision",
@@ -9708,24 +9821,47 @@
       },
       "StackFilterKind": {
         "required": [
-          "kind",
+          "node",
+          "name",
+          "category",
+          "summary",
+          "ports",
           "settings"
         ],
         "type": "object",
         "properties": {
-          "kind": {
+          "node": {
             "type": "string",
-            "description": "Levels, Hsl, Blur, Invert or Grayscale."
+            "description": "The node type or compound, as string StackLayer.FilterNode names it."
           },
-          "settings": {
+          "name": {
+            "type": "string",
+            "description": "What a person calls it."
+          },
+          "category": {
+            "type": "string",
+            "description": "The heading it sits under."
+          },
+          "summary": {
+            "type": "string",
+            "description": "One line about it."
+          },
+          "ports": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/GraphPortDefinition"
             },
-            "description": "Its numbers, each saying what it is and what it starts as, in the order a person reads them."
+            "description": "Its numbers, each saying what it is and what it starts as. Never the image it reads."
+          },
+          "settings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphSettingDefinition"
+            },
+            "description": "What it takes as text."
           }
         },
-        "description": "A filter a layer can be, and the numbers it takes."
+        "description": "An adjustment a filter layer or a mask can run: any node or shipped compound with one image in and one image\nout. A project\u0027s own compounds reach a stack from the shelf."
       },
       "StackIdColour": {
         "required": [
@@ -9876,7 +10012,7 @@
           },
           "filter": {
             "type": "string",
-            "description": "What a filter does: Levels, Hsl, Blur, Invert or Grayscale."
+            "description": "The named filter a file holds: Levels, Hsl, Blur, Invert or Grayscale."
           },
           "settings": {
             "type": "object",
@@ -9921,7 +10057,7 @@
           },
           "filterNode": {
             "type": "string",
-            "description": "The compound a graph filter runs, or empty for one of the named filters.",
+            "description": "The node or compound a filter layer runs, whichever way the file names it.",
             "default": ""
           }
         },
@@ -10606,7 +10742,7 @@
             "items": {
               "$ref": "#/components/schemas/StackFilterKind"
             },
-            "description": "The filters."
+            "description": "The filters a layer can be."
           },
           "masks": {
             "type": "array",
@@ -10639,7 +10775,7 @@
           "maskEffects": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/StackEffectKind"
+              "$ref": "#/components/schemas/StackFilterKind"
             },
             "description": "The steps a mask can run."
           },

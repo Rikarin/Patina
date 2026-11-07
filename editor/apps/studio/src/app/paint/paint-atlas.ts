@@ -148,7 +148,7 @@ export class PaintAtlas {
 
     (event.target as HTMLElement).setPointerCapture(event.pointerId);
     this.painting = true;
-    this.gesture.press(this.stamp(event));
+    this.gesture.press(this.stamp(event), { line: event.shiftKey, snap: event.ctrlKey || event.metaKey });
   }
 
   protected move(event: PointerEvent): void {

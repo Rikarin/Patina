@@ -146,6 +146,42 @@ public sealed class StackEvaluator(
         }
     }
 
+    /// <summary>
+    ///     Copies layers out of a stack with their canvases as the journal leaves them, which only a Worker holds, so
+    ///     that what is pasted is what stood at the copy whatever happens to these layers after.
+    /// </summary>
+    /// <exception cref="StackEditRefusedException">A layer is not in the stack.</exception>
+    /// <exception cref="TimeoutException">No Worker came.</exception>
+    /// <exception cref="IpcException">The stack would not evaluate, or the Worker would not write it.</exception>
+    public async Task<StackClip> CopyAsync(
+        StackSession session,
+        IReadOnlyList<string> layers,
+        StackClips clips,
+        CancellationToken cancellationToken
+    ) {
+        var (text, count, canvases, width, height) = session.Copied(layers);
+        var folder = clips.NewFolder();
+        if (canvases.Count > 0) {
+            await ReachedAsync(session, cancellationToken);
+            if (session.EvaluationError is { } failed) {
+                throw new IpcException(failed);
+            }
+
+            var connection = await ConnectionAsync(cancellationToken);
+            await connection.SendAsync(
+                new() { Type = IpcTypes.StackCopy, StackCopy = new(session.Id, canvases, folder) },
+                cancellationToken
+            );
+        }
+
+        var id = Guid.NewGuid().ToString("N");
+        clips.Add(
+            new(id, text, folder, session.Path, width, height),
+            held => sessions.All.Any(open => open.Reads(held))
+        );
+        return new(id, count, session.Path);
+    }
+
     /// <summary>Writes a stack's pixels to a folder of autosaved work, leaving its files as they are.</summary>
     public async Task KeepAsync(StackSession session, string folder, CancellationToken cancellationToken) {
         await ReachedAsync(session, cancellationToken);

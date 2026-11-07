@@ -33,8 +33,10 @@ type NumberSetting = {
 }[keyof BrushSettings];
 
 /**
- * The sliders of a brush, which all run from nothing to all of it but the angle's. Spacing is a share of the radius, so
- * stamps touch at 200%, and past that it is a pattern. Nothing is never a spacing: stamps have to move.
+ * The sliders of a brush, which all run from nothing to all of it but the angle's and the lazy mouse's. Spacing is a
+ * share of the radius, so stamps touch at 200%, and past that it is a pattern. Nothing is never a spacing: stamps have
+ * to move. The lazy mouse is how far the brush trails the pointer, in the units of the size; Shift-click draws a line on
+ * from where the last stroke ended, and Cmd or Ctrl snaps it to 5°.
  */
 const Sliders: readonly { key: NumberSetting; label: string; max: number; min?: number }[] = [
   { key: 'flow', label: 'Flow', max: 1 },
@@ -46,7 +48,8 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number; min?: 
   { key: 'angleJitter', label: 'Rotation jitter', max: 3.14 },
   { key: 'sizeJitter', label: 'Size jitter', max: 1 },
   { key: 'pressureSize', label: 'Pressure to size', max: 1 },
-  { key: 'pressureFlow', label: 'Pressure to flow', max: 1 }
+  { key: 'pressureFlow', label: 'Pressure to flow', max: 1 },
+  { key: 'lazy', label: 'Lazy mouse', max: 100 }
 ];
 
 /** The brush: everything a stroke carries. A setting is read when a stroke starts, and nothing is sent until then. */
@@ -252,6 +255,10 @@ export class BrushPanel {
   /** What a slider stands at: angles in degrees and the rest as a percentage of what it holds. */
   protected shown(key: NumberSetting): string {
     const value = this.store.brush()[key];
+    if (key === 'lazy') {
+      return `${Math.round(value)} px`;
+    }
+
     return key === 'angle' || key === 'angleJitter'
       ? `${Math.round((value * 180) / Math.PI)}°`
       : `${Math.round(value * 100)}%`;

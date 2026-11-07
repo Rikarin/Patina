@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, u
 import type {
   GraphSettingDefinition,
   MaterialInfo,
-  StackEffectPort,
+  StackFilterKind,
   StackLayer,
   StackMask,
   StackMaskEffect
@@ -15,9 +15,9 @@ import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { blendName, channelName } from '../core/labels';
-import { type GraphField, fieldOfPort, sliderRange } from '../graph/graph-fields';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
+import { FilterFields } from './filter-fields';
 import { LiveValue } from './live-value';
 import { MaterialUse } from './material-use';
 import { colourOf, PaintStore, writesChannel } from './paint-store';
@@ -67,6 +67,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
 @Component({
   selector: 'ptn-layer-panel',
   imports: [
+    FilterFields,
     XuiButtonImports,
     XuiColorPickerImports,
     XuiInputImports,
@@ -292,54 +293,29 @@ export function hexOf(colour: readonly number[] | undefined): string {
               <span class="text-foreground-muted w-16 shrink-0 text-xs">Filter</span>
               <xui-select
                 class="min-w-0 flex-1"
-                aria-label="Filter"
+                ariaLabel="Filter"
                 data-testid="paint-filter"
-                [items]="filters()"
-                [value]="layer.filterNode ? null : layer.filter"
-                (valueChange)="store.edit({ op: 'setLayer', layer: layer.id, filter: $event, filterNode: '' })"
+                [itemText]="filterName"
+                [items]="filtersWith(layer.filterNode)"
+                [matchTargetWidth]="false"
+                [value]="layer.filterNode"
+                (valueChange)="chooseFilter(layer, $event)"
               />
             </div>
-            @if (layer.filterNode) {
+            @if (filterOf(layer.filterNode); as kind) {
+              <p class="text-foreground-muted text-xs" data-testid="paint-filter-summary">{{ kind.summary }}</p>
+              <ptn-filter-fields
+                testId="paint-setting-"
+                [kind]="kind"
+                [numbers]="layer.settings"
+                [texts]="layer.parameters ?? {}"
+                (numberChange)="setSetting(layer, $event.name, $event.value)"
+                (textChange)="setKnob(layer, $event.name, $event.value)"
+              />
+            } @else if (layer.filterNode) {
               <p class="text-foreground-muted text-xs" data-testid="paint-filter-node">
                 From {{ layer.filterNode.split('/').pop() }}. Choosing a filter above replaces it.
               </p>
-            }
-            @for (field of settings(layer); track field.name) {
-              <div class="flex items-center gap-2" [attr.data-testid]="'paint-setting-' + field.name" [title]="field.summary">
-                <span class="text-foreground-muted w-24 shrink-0 truncate text-xs">{{ field.name }}</span>
-                @switch (field.control) {
-                  @case ('switch') {
-                    <xui-switch
-                      [ariaLabel]="field.name"
-                      [checked]="settingOf(layer, field) !== 0"
-                      (checkedChange)="setSetting(layer, field.name, $event ? 1 : 0)"
-                    />
-                  }
-                  @case ('number') {
-                    @if (field.source === 'value' && !field.whole) {
-                      @let range = rangeOf(layer, field);
-                      <xui-slider
-                        class="min-w-0 flex-1"
-                        labelStepSize="0"
-                        [attr.aria-label]="field.name + ' slider'"
-                        [max]="range.max"
-                        [min]="range.min"
-                        [stepSize]="(range.max - range.min) / 100"
-                        [value]="settingOf(layer, field)"
-                        (valueChange)="setSetting(layer, field.name, $event)"
-                      />
-                    }
-                    <xui-numeric-input
-                      class="w-20 shrink-0"
-                      size="sm"
-                      [ariaLabel]="field.name"
-                      [stepSize]="field.source === 'value' && field.whole ? 1 : 0.05"
-                      [value]="settingOf(layer, field)"
-                      (valueChange)="setSetting(layer, field.name, $event ?? settingOf(layer, field))"
-                    />
-                  }
-                }
-              </div>
             }
           }
         }
@@ -579,8 +555,12 @@ export function hexOf(colour: readonly number[] | undefined): string {
               (change)="addEffect(layer, $event)"
             >
               <option value="">Add…</option>
-              @for (effect of maskEffects(); track effect.node) {
-                <option [value]="effect.node">{{ effect.name }}</option>
+              @for (group of effectGroups(); track group.category) {
+                <optgroup [label]="group.category">
+                  @for (effect of group.effects; track effect.node) {
+                    <option [value]="effect.node">{{ effect.name }}</option>
+                  }
+                </optgroup>
               }
             </select>
           </div>
@@ -605,21 +585,15 @@ export function hexOf(colour: readonly number[] | undefined): string {
                   ✕
                 </button>
               </div>
-              @for (port of effectPorts(effect.node); track port.name) {
-                <div class="flex items-center gap-2">
-                  <span class="text-foreground-muted w-16 shrink-0 truncate text-xs">{{ port.name }}</span>
-                  <xui-numeric-input
-                    class="min-w-0 flex-1"
-                    size="sm"
-                    [ariaLabel]="port.name"
-                    [attr.data-testid]="'paint-effect-' + index + '-' + port.name"
-                    [stepSize]="0.05"
-                    [min]="port.minimum ?? undefined"
-                    [max]="port.maximum ?? undefined"
-                    [value]="effect.values?.[port.name]?.[0] ?? port.default"
-                    (valueChange)="setEffectValue(layer, index, port.name, $event ?? port.default)"
-                  />
-                </div>
+              @if (filterOf(effect.node); as kind) {
+                <ptn-filter-fields
+                  [kind]="kind"
+                  [numbers]="effect.values ?? {}"
+                  [testId]="'paint-effect-' + index + '-'"
+                  [texts]="effect.texts ?? {}"
+                  (numberChange)="setEffectValue(layer, index, $event.name, $event.value)"
+                  (textChange)="setEffectText(layer, index, $event.name, $event.value)"
+                />
               }
             </div>
           }
@@ -654,7 +628,10 @@ export class LayerPanel {
   protected readonly projections = Projections;
   protected readonly axes = Axes;
   protected readonly blends = computed(() => this.store.vocabulary()?.blends ?? []);
-  protected readonly filters = computed(() => this.store.vocabulary()?.filters.map(filter => filter.kind) ?? []);
+  /** Every filter, by the node it runs. */
+  private readonly filters = computed(
+    () => new Map((this.store.vocabulary()?.filters ?? []).map(filter => [filter.node, filter] as const))
+  );
   protected readonly masks = computed(() => this.store.vocabulary()?.masks ?? []);
   protected readonly generators = computed(() => this.store.vocabulary()?.generators ?? []);
   protected readonly meshMaps = computed(() => this.store.vocabulary()?.meshMaps ?? []);
@@ -741,23 +718,27 @@ export class LayerPanel {
     void this.store.edit({ op: 'setLayer', layer: layer.id, textures: { [usage]: path } });
   }
 
-  /** A filter's numbers as the Inspector shows a node's. */
-  protected settings(layer: StackLayer): readonly GraphField[] {
-    if (layer.filterNode) {
-      return [];
+  /** What a filter runs, or nothing for a compound of the project's own, whose knobs come from the shelf. */
+  protected filterOf(node: string): StackFilterKind | undefined {
+    return this.filters().get(node);
+  }
+
+  /** Every filter there is, and the one a layer runs even when it is the project's own. */
+  protected filtersWith(node: string): readonly string[] {
+    const all = [...this.filters().keys()];
+    return node && !this.filters().has(node) ? [...all, node] : all;
+  }
+
+  protected readonly filterName = (node: string): string => {
+    const kind = this.filters().get(node);
+    return kind ? `${kind.name} · ${kind.category}` : (node.split('/').pop() ?? node);
+  };
+
+  /** Another filter starts from its own defaults, which the Server sees to. */
+  protected chooseFilter(layer: StackLayer, node: string | null): void {
+    if (node && node !== layer.filterNode) {
+      void this.store.edit({ op: 'setLayer', layer: layer.id, filterNode: node });
     }
-
-    const ports = this.store.vocabulary()?.filters.find(filter => filter.kind === layer.filter)?.settings ?? [];
-    return ports.map(fieldOfPort).filter(field => field !== null);
-  }
-
-  /** What a number stands at, which until it is set is what the node starts it as. */
-  protected settingOf(layer: StackLayer, field: GraphField): number {
-    return layer.settings[field.name]?.[0] ?? (field.source === 'value' ? (field.fallback[0] ?? 0) : 0);
-  }
-
-  protected rangeOf(layer: StackLayer, field: Extract<GraphField, { control: 'number'; source: 'value' }>) {
-    return sliderRange(this.settingOf(layer, field), field.fallback[0] ?? 0, field);
   }
 
   protected place(layer: StackLayer, change: Partial<NonNullable<StackLayer['placement']>>): void {
@@ -773,8 +754,8 @@ export class LayerPanel {
     return ((degrees ?? 0) * Math.PI) / 180;
   }
 
-  protected setSetting(layer: StackLayer, setting: string, value: number): void {
-    void this.store.edit({ op: 'setLayer', layer: layer.id, settings: { [setting]: [value] } });
+  protected setSetting(layer: StackLayer, setting: string, value: readonly number[]): void {
+    void this.store.edit({ op: 'setLayer', layer: layer.id, settings: { [setting]: [...value] } });
   }
 
   protected anchors(layer: StackLayer): readonly string[] {
@@ -792,7 +773,9 @@ export class LayerPanel {
   private readonly shelf = signal<readonly MaterialInfo[]>([]);
   protected readonly knobs = computed(() => {
     const layer = this.store.chosen();
-    const graph = (layer?.kind === 'filter' ? layer.filterNode : layer?.fill === 'Graph' ? layer.graph : '')
+    // A filter from the vocabulary has its fields already; only a project's own compound has knobs on the shelf.
+    const filter = layer?.kind === 'filter' && !this.filters().has(layer.filterNode) ? layer.filterNode : '';
+    const graph = (layer?.kind === 'filter' ? filter : layer?.fill === 'Graph' ? layer.graph : '')
       .split('/')
       .pop();
     if (!graph) {
@@ -869,6 +852,16 @@ export class LayerPanel {
 
   protected readonly maskEffects = computed(() => this.store.vocabulary()?.maskEffects ?? []);
 
+  /** The steps a mask can run, under the headings the node menu uses. */
+  protected readonly effectGroups = computed(() => {
+    const groups = new Map<string, StackFilterKind[]>();
+    for (const effect of this.maskEffects()) {
+      groups.set(effect.category, [...(groups.get(effect.category) ?? []), effect]);
+    }
+
+    return [...groups].map(([category, effects]) => ({ category, effects }));
+  });
+
   protected generatorsWith(chosen: string): readonly string[] {
     const named = this.generators();
     return chosen && !named.includes(chosen) ? [...named, chosen] : named;
@@ -876,10 +869,6 @@ export class LayerPanel {
 
   protected effectName(node: string): string {
     return this.maskEffects().find(effect => effect.node === node)?.name ?? node.split('/').pop() ?? node;
-  }
-
-  protected effectPorts(node: string): readonly StackEffectPort[] {
-    return this.maskEffects().find(effect => effect.node === node)?.ports ?? [];
   }
 
   protected addEffect(layer: StackLayer, event: Event): void {
@@ -905,9 +894,14 @@ export class LayerPanel {
     );
   }
 
-  protected setEffectValue(layer: StackLayer, index: number, port: string, value: number): void {
-    const values = { ...layer.mask.effects?.[index]?.values, [port]: [value] };
+  protected setEffectValue(layer: StackLayer, index: number, port: string, value: readonly number[]): void {
+    const values = { ...layer.mask.effects?.[index]?.values, [port]: [...value] };
     this.setEffect(layer, index, { values });
+  }
+
+  protected setEffectText(layer: StackLayer, index: number, setting: string, value: string): void {
+    const texts = { ...layer.mask.effects?.[index]?.texts, [setting]: value };
+    this.setEffect(layer, index, { texts });
   }
 
   private setEffects(layer: StackLayer, effects: readonly StackMaskEffect[]): void {

@@ -33,6 +33,13 @@ interface LayerWork {
   effect: number | null;
 }
 
+/** The filters the menu offers in one click. The rest are in its list. */
+const QuickSteps: readonly { node: string; name: string }[] = [
+  { node: 'Colour/Levels', name: 'Levels' },
+  { node: 'Filters/Blur', name: 'Blur' },
+  { node: 'Colour/Invert', name: 'Invert' }
+];
+
 const KindMarks: Readonly<Record<string, string>> = { paint: 'P', fill: 'F', filter: 'Fx', group: '' };
 
 const MaskMarks: Readonly<Record<string, string>> = {
@@ -671,17 +678,31 @@ interface MenuAt {
             Add Fill
           </button>
         }
-        @for (kind of ['Levels', 'Blur', 'Invert']; track kind) {
+        @for (kind of quickSteps; track kind.node) {
           <button
             type="button"
             class="hover:bg-selection px-3 py-1 text-start"
             role="menuitem"
-            [attr.data-testid]="'layer-menu-effect-' + kind"
-            (click)="addStep(at.layer, kind)"
+            [attr.data-testid]="'layer-menu-effect-' + kind.name"
+            (click)="addStep(at.layer, kind.node)"
           >
-            Add {{ kind }}{{ store.masking() ? ' to Mask' : '' }}
+            Add {{ kind.name }}{{ store.masking() ? ' to Mask' : '' }}
           </button>
         }
+        <div class="px-3 py-1">
+          <xui-select
+            class="w-full [&_button]:text-xs"
+            data-testid="layer-menu-filter"
+            searchPlaceholder="Find a filter"
+            [ariaLabel]="store.masking() ? 'Add a filter to the mask' : 'Add a filter'"
+            [itemText]="stepName"
+            [items]="steps()"
+            [matchTargetWidth]="false"
+            [placeholder]="store.masking() ? 'Add Filter to Mask…' : 'Add Filter…'"
+            [value]="null"
+            (valueChange)="$event && addStep(at.layer, $event)"
+          />
+        </div>
         <div class="border-hairline my-1 border-t"></div>
         <button
           type="button"
@@ -691,6 +712,43 @@ interface MenuAt {
           (click)="groupSelected()"
         >
           Group Layers
+        </button>
+        <button
+          type="button"
+          class="hover:bg-selection flex justify-between gap-4 px-3 py-1 text-start"
+          role="menuitem"
+          data-testid="layer-menu-duplicate"
+          (click)="menu.set(null); store.duplicateLayers()"
+        >
+          Duplicate Layers <span class="text-foreground-muted">⌘D</span>
+        </button>
+        <button
+          type="button"
+          class="hover:bg-selection flex justify-between gap-4 px-3 py-1 text-start"
+          role="menuitem"
+          data-testid="layer-menu-copy"
+          (click)="menu.set(null); store.copyLayers()"
+        >
+          Copy <span class="text-foreground-muted">⌘C</span>
+        </button>
+        <button
+          type="button"
+          class="hover:bg-selection flex justify-between gap-4 px-3 py-1 text-start"
+          role="menuitem"
+          data-testid="layer-menu-cut"
+          (click)="menu.set(null); store.cutLayers()"
+        >
+          Cut <span class="text-foreground-muted">⌘X</span>
+        </button>
+        <button
+          type="button"
+          class="hover:bg-selection flex justify-between gap-4 px-3 py-1 text-start disabled:opacity-50"
+          role="menuitem"
+          data-testid="layer-menu-paste"
+          [disabled]="!store.clip()"
+          (click)="menu.set(null); store.pasteLayers()"
+        >
+          Paste <span class="text-foreground-muted">⌘V</span>
         </button>
         <div class="border-hairline my-1 border-t"></div>
         <button
@@ -793,6 +851,19 @@ export class LayerStack {
     }
   }
   protected readonly rowHeight = RowHeight;
+  protected readonly quickSteps = QuickSteps;
+
+  /** What the menu's list offers: every filter on a layer, and on a mask all but its own colour selection. */
+  protected readonly steps = computed(() =>
+    (this.store.masking() ? this.store.vocabulary()?.maskEffects : this.store.vocabulary()?.filters)?.map(
+      kind => kind.node
+    ) ?? []
+  );
+
+  protected readonly stepName = (node: string): string => {
+    const kind = this.store.vocabulary()?.filters.find(held => held.node === node);
+    return kind ? `${kind.name} · ${kind.category}` : node;
+  };
   protected readonly effectHeight = EffectHeight;
   protected readonly closed = signal<ReadonlySet<string>>(new Set());
   protected readonly menu = signal<MenuAt | null>(null);
@@ -909,6 +980,9 @@ export class LayerStack {
     } else if (event.key === 'a' && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       this.store.marked.set(new Set(this.rows().map(row => row.layer.id)));
+    } else if (event.key === 'd' && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      void this.store.duplicateLayers();
     }
   }
 
@@ -1057,17 +1131,14 @@ export class LayerStack {
   }
 
   /** Adds a step to the mask, which needs a mask to run on, so a layer with none gets a white one. */
-  protected async addWork(layer: StackLayer, kind: string): Promise<void> {
+  protected async addWork(layer: StackLayer, node: string): Promise<void> {
     this.menu.set(null);
-    const node = this.store.vocabulary()?.maskEffects.find(effect => effect.name === kind)?.node;
-    if (node) {
-      await this.store.setMask(layer, {
-        ...layer.mask,
-        source: layer.mask.source === 'None' ? 'Constant' : layer.mask.source,
-        value: layer.mask.source === 'None' ? 1 : layer.mask.value,
-        effects: [...(layer.mask.effects ?? []), { node, enabled: true }]
-      });
-    }
+    await this.store.setMask(layer, {
+      ...layer.mask,
+      source: layer.mask.source === 'None' ? 'Constant' : layer.mask.source,
+      value: layer.mask.source === 'None' ? 1 : layer.mask.value,
+      effects: [...(layer.mask.effects ?? []), { node, enabled: true }]
+    });
   }
 
   /** The layer an effect goes in: an effect has none of its own, so the next goes beside it. */
@@ -1076,14 +1147,15 @@ export class LayerStack {
     return row?.effect ? (this.store.layers().find(held => held.layer.id === row.parent)?.layer ?? layer) : layer;
   }
 
-  protected async addContent(layer: StackLayer, kind: string, name: string, filter?: string): Promise<void> {
+  protected async addContent(layer: StackLayer, kind: string, name: string, filterNode?: string): Promise<void> {
     this.menu.set(null);
-    await this.store.addEffect(this.ownerOf(layer), kind, name, filter);
+    await this.store.addEffect(this.ownerOf(layer), kind, name, filterNode);
   }
 
   /** With the mask in front a step runs on the mask, and otherwise on the layer's content. */
-  protected addStep(layer: StackLayer, kind: string): Promise<void> {
-    return this.store.masking() ? this.addWork(layer, kind) : this.addContent(layer, 'filter', kind, kind);
+  protected addStep(layer: StackLayer, node: string): Promise<void> {
+    const name = this.store.vocabulary()?.filters.find(kind => kind.node === node)?.name ?? node.split('/').pop() ?? node;
+    return this.store.masking() ? this.addWork(layer, node) : this.addContent(layer, 'filter', name, node);
   }
 
   protected async addValueMask(layer: StackLayer, value: number): Promise<void> {

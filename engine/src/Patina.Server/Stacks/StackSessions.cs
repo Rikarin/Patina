@@ -6,7 +6,7 @@ namespace Patina.Server.Stacks;
 ///     The open stacks. One file has one session, so two clients that open it share its edits and its
 ///     undo.
 /// </summary>
-public sealed class StackSessions(ServerIdentity identity) : IDisposable {
+public sealed class StackSessions(ServerIdentity identity, StackClips clips) : IDisposable {
     readonly SessionTable<StackSession> table = new();
 
     string[] LibraryRoot => identity.Library is { } library ? [library] : [];
@@ -37,7 +37,7 @@ public sealed class StackSessions(ServerIdentity identity) : IDisposable {
         return table.Open(
             full,
             () => File.Exists(full)
-                ? new StackSession(full, File.ReadAllText(full), table.Wake) { ImageRoots = LibraryRoot }
+                ? new StackSession(full, File.ReadAllText(full), table.Wake) { ImageRoots = LibraryRoot, Clips = clips }
                 : throw new FileNotFoundException($"There is no stack at '{full}'.", full)
         );
     }
