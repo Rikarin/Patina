@@ -20,6 +20,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The first stroke after opening a 4K stack no longer waits seconds for the maps to reach the mesh.
 - Save All on the quit dialog stays open and says why if a document could not be saved, instead of doing nothing or quitting without it.
 - Quitting cannot be held up by a process that will not stop.
 - Process tests skip only for a missing Vulkan device, and fail if Vulkan is required. The packaged app ignores development

@@ -80,7 +80,13 @@ test('a stamp reaches the screen through the real window', async () => {
     throw new Error('No canvas.');
   }
 
+  const stamps = async (): Promise<number[]> =>
+    ((await window.getByTestId('viewport-stamp').getAttribute('data-stamp-ms')) ?? '')
+      .split(',')
+      .map(Number)
+      .filter(Number.isFinite);
   const loads: number[] = [];
+  let first = 0;
   for (let stroke = 0; stroke < Strokes; stroke += 1) {
     const row = box.y + box.height * (0.42 + stroke * 0.03);
     await window.mouse.move(box.x + box.width * 0.34, row);
@@ -93,18 +99,21 @@ test('a stamp reaches the screen through the real window', async () => {
     await window.mouse.up();
     loads.push(loadavg()[0] ?? 0);
     await window.waitForTimeout(500);
+    if (stroke === 0) {
+      first = (await stamps()).length;
+    }
   }
 
-  const held = await window.getByTestId('viewport-stamp').getAttribute('data-stamp-ms');
-  const times = (held ?? '')
-    .split(',')
-    .map(Number)
-    .filter(Number.isFinite)
-    .sort((a, b) => a - b);
+  const held = await stamps();
+  const times = [...held].sort((a, b) => a - b);
+  // The first stroke on a layer builds what the rest reuse, so it is reported apart.
+  const later = held.slice(first).sort((a, b) => a - b);
   console.log(
     `${Size}², ${Layers} layers, radius ${Radius} px, ${times.length} parts: ` +
       `stamp to frame shown p50 ${percentile(times, 0.5).toFixed(1)} ms, ` +
       `p95 ${percentile(times, 0.95).toFixed(1)} ms, worst ${percentile(times, 1).toFixed(1)} ms; ` +
+      `after the first stroke p95 ${percentile(later, 0.95).toFixed(1)} ms, ` +
+      `worst ${percentile(later, 1).toFixed(1)} ms; ` +
       `load average ${Math.min(...loads).toFixed(0)} to ${Math.max(...loads).toFixed(0)}`
   );
   await window.screenshot({ path: join(shots, 'paint-bench.png') });
