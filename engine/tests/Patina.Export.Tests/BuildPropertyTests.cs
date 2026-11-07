@@ -34,11 +34,12 @@ public sealed class BuildPropertyTests {
             for (var a = 0; a < 4; a++) {
                 var id = AssetId.From(Guid.NewGuid());
                 Assets.Add((id, $"graphs/a{a}.vxtexgraph"));
-                LibraryFiles.WriteAsset(
+                // Masks, which their project reads and does not ship: its own exports are not what these tests count.
+                LibraryFiles.WriteDocument(
                     Root,
-                    Assets[a].Path,
+                    "graphs",
                     Encoding.UTF8.GetBytes($"asset {a}"),
-                    new(id, "graph", $"a{a}", [], [])
+                    new(id, DocumentKinds.Graph, $"a{a}.vxtexgraph", $"a{a}", Role: GraphRoles.Mask)
                 );
             }
 

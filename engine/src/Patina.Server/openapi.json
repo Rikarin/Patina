@@ -5037,6 +5037,13 @@
             "description": "Outputs that cannot be built: a missing input, an unreadable reference.",
             "format": "int32"
           },
+          "nothing": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why a build would write nothing, or null when it would write something."
+          },
           "items": {
             "type": "array",
             "items": {
@@ -7694,6 +7701,13 @@
           "folder": {
             "type": "string",
             "description": "The folder holding this report and one file per project."
+          },
+          "nothing": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why a finished build wrote nothing, or null when it wrote something or something failed."
           }
         },
         "description": "What a whole build did."

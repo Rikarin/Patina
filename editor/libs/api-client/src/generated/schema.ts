@@ -1538,6 +1538,8 @@ export interface components {
        * @description Outputs that cannot be built: a missing input, an unreadable reference.
        */
       unresolved: number;
+      /** @description Why a build would write nothing, or null when it would write something. */
+      nothing?: null | string;
       /** @description One page of the projects, by name. */
       items: components['schemas']['BuildPreviewProject'][];
       /**
@@ -2655,6 +2657,8 @@ export interface components {
       files: number;
       /** @description The folder holding this report and one file per project. */
       folder: string;
+      /** @description Why a finished build wrote nothing, or null when it wrote something or something failed. */
+      nothing?: null | string;
     };
     /** @description A graph rendered to a picture a brush stamps. */
     MaterialBrush: {

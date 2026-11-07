@@ -82,6 +82,9 @@ import { ExportStore } from './export-store';
             <span class="readout">{{ preview.unresolved }}</span>
           }
         </div>
+        @if (preview.nothing; as nothing) {
+          <xui-callout color="warning" data-testid="export-nothing">{{ nothing }}</xui-callout>
+        }
       }
 
       <div class="flex gap-1">
@@ -132,6 +135,9 @@ import { ExportStore } from './export-store';
           <span>Failed</span>
           <span class="readout" data-testid="export-report-failed">{{ report.failed }}</span>
         </div>
+        @if (report.nothing; as nothing) {
+          <xui-callout color="warning" data-testid="export-report-nothing">{{ nothing }}</xui-callout>
+        }
         @for (project of store.projects(); track project.id) {
           <div class="flex flex-col text-xs" data-testid="export-report-project">
             <span class="font-semibold">{{ project.name }}</span>

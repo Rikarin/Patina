@@ -44,7 +44,7 @@ public sealed class BuildPlan {
     ///     beside.
     /// </summary>
     static readonly HashSet<string> Exported = new(
-        [BuildTools.TextureGraph, BuildTools.LayerStack, BakeKeys.Tool, BuildTools.MeshLod],
+        [BuildTools.TextureGraph, BuildTools.LayerStack, BakeKeys.Tool, BuildTools.BakedMaps, BuildTools.MeshLod],
         StringComparer.Ordinal
     );
 
@@ -57,6 +57,13 @@ public sealed class BuildPlan {
 
     /// <summary>The projects a build would touch.</summary>
     public IEnumerable<PlannedProject> Work => Projects.Where(static p => p.HasWork);
+
+    /// <summary>Why a build would write nothing, in words for a person, or null when it would write something.</summary>
+    public string? Nothing =>
+        Projects.Count == 0 ? "No project here has anything to export: it needs a texturing document or a material."
+        : Work.Any() ? null
+        : Projects.Any(static p => p.Exports.Count > 0) ? "Nothing has changed since the last export."
+        : "There is nothing to do here: no preset is chosen, or nothing the selection reaches has changed.";
 
     /// <summary>How many steps a build would run, which is what progress counts.</summary>
     public int Steps => Work.Sum(static p => p.Stale.Count + p.Exports.Count(static e => !e.Fresh));
@@ -100,6 +107,7 @@ public sealed class BuildPlan {
             Exports = Projects.Sum(static p => p.Exports.Count(static e => !e.Fresh)),
             ExportsFresh = Projects.Sum(static p => p.Exports.Count(static e => e.Fresh)),
             Unresolved = Projects.Sum(static p => p.Unresolved.Count),
+            Nothing = Nothing,
             Items = [
                 ..work.Skip(offset)
                     .Take(limit)
@@ -149,21 +157,6 @@ public sealed class BuildPlan {
 
         return new(project, stale, fresh, planned, unresolved, pinned);
     }
-}
-
-/// <summary>The tools a project's outputs can name.</summary>
-public static class BuildTools {
-    /// <summary>
-    ///     A graph's Output nodes. It reads the shared graph first in <c>uses</c>, or the first of
-    ///     <c>files</c>.
-    /// </summary>
-    public const string TextureGraph = "texture-graph";
-
-    /// <summary>A layer stack's maps. It reads the first of <c>files</c>.</summary>
-    public const string LayerStack = "layer-stack";
-
-    /// <summary>A mesh at lower levels of detail. It reads the first of <c>files</c>.</summary>
-    public const string MeshLod = "mesh-lod";
 }
 
 /// <summary>Where a build's results live, and what says they are whole.</summary>

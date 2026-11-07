@@ -25,8 +25,10 @@ public sealed class BakeCache(string root) {
     }
 
     /// <summary>Reads the manifest in a folder, or null when the folder is not a finished bake.</summary>
-    public static BakeManifest? ReadManifest(string folder) {
-        var file = Path.Combine(folder, ManifestFile);
+    public static BakeManifest? ReadManifest(string folder) => ReadManifestFile(Path.Combine(folder, ManifestFile));
+
+    /// <summary>Reads a bake's manifest, or null when the file is not one.</summary>
+    public static BakeManifest? ReadManifestFile(string file) {
         if (!File.Exists(file)) {
             return null;
         }

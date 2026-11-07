@@ -140,7 +140,7 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
             }
         }
 
-        return journal.Finish(fresh, exportsFresh, clock.GetUtcNow());
+        return journal.Finish(fresh, exportsFresh, plan.Nothing, clock.GetUtcNow());
     }
 
     /// <summary>Every preset named, or the library's own targets.</summary>
@@ -322,7 +322,7 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
         foreach (var output in project.Project.Outputs
                      .Where(static o => o.Key is not null)
                      .OrderBy(static o => o.Output.Tool switch {
-                             BakeKeys.Tool => 0,
+                             BakeKeys.Tool or BuildTools.BakedMaps => 0,
                              BuildTools.TextureGraph => 1,
                              _ => 2
                          }
@@ -330,7 +330,8 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                      .ThenBy(static o => o.Output.Name, StringComparer.Ordinal)) {
             var key = output.Key!.Value;
             if (BuildObjects.Read(objects, key) is { Maps.Count: > 0 } manifest) {
-                sources.Add(new(objects.FolderOf(key), manifest));
+                var set = output.Output.Settings.GetValueOrDefault(ProjectOutputs.SetSetting, string.Empty);
+                sources.Add(new(objects.FolderOf(key), manifest, set));
             }
         }
 

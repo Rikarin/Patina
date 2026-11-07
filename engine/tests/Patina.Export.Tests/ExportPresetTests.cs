@@ -132,4 +132,19 @@ public sealed class ExportPresetTests : IDisposable {
 
         Assert.Equal(expected.Replace('/', Path.DirectorySeparatorChar), path);
     }
+
+    [Theory]
+    [InlineData("T_{project}_D", "T_{project}_{set}_D")]
+    [InlineData("T_{set}_D", "T_{set}_D")]
+    [InlineData("albedo", "albedo_{set}")]
+    public void A_file_of_several_sets_always_says_which(string template, string expected) =>
+        Assert.Equal(expected, NamingTemplate.PerSet(template));
+
+    [Fact]
+    public void A_set_is_a_name_and_a_project_with_none_is_its_own() {
+        NamingTemplate.Check("{project}_{set}", "test");
+
+        Assert.Equal("Crate_a_b.png", NamingTemplate.Resolve("{project}_{set}", new("Crate", "p", "a/b"), ".png"));
+        Assert.Equal("Crate.png", NamingTemplate.Resolve("{set}", new("Crate", "p"), ".png"));
+    }
 }

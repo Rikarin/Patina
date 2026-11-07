@@ -7,6 +7,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Export works on a project made in the app: every texture set of a texturing project goes through the preset with its bake, and a material project exports its materials. Nothing has to be declared. Files of a project with several sets carry the set's name, and presets can place it with `{set}`.
+- Preview and the report say so when a build would write nothing, and why, instead of Done with no files.
 - Project Settings holds the project's mesh, Auto Unwrap and Preserve Paint. A mesh with no UVs gets a layout in a new file beside it, when it is set or from the error's Unwrap Mesh button.
 - A layer can be kept to named meshes, from the square on the right of its row. It combines with any mask the layer has.
 - Effects inside layers: a layer can hold paint, fills and filters, each with its own blend, opacity and eye, over its content and under its mask.

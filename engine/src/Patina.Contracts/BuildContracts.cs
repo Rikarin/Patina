@@ -29,6 +29,7 @@ public sealed record BuildManifest(
 /// <param name="Height">Its height.</param>
 /// <param name="Levels">How many mip levels.</param>
 /// <param name="Bytes">Its size.</param>
+/// <param name="Set">The texture set it belongs to, or nothing for a project that has no named sets.</param>
 public sealed record ExportedFile(
     string Template,
     string File,
@@ -37,7 +38,8 @@ public sealed record ExportedFile(
     int Width,
     int Height,
     int Levels,
-    long Bytes
+    long Bytes,
+    string Set = ""
 );
 
 /// <summary>What a preset made from one project's maps.</summary>
@@ -138,6 +140,9 @@ public sealed record BuildPreview {
 
     /// <summary>Outputs that cannot be built: a missing input, an unreadable reference.</summary>
     public required int Unresolved { get; init; }
+
+    /// <summary>Why a build would write nothing, or null when it would write something.</summary>
+    public string? Nothing { get; init; }
 
     /// <summary>One page of the projects, by name.</summary>
     public required IReadOnlyList<BuildPreviewProject> Items { get; init; }
@@ -242,6 +247,9 @@ public sealed record LibraryReport {
 
     /// <summary>The folder holding this report and one file per project.</summary>
     public required string Folder { get; init; }
+
+    /// <summary>Why a finished build wrote nothing, or null when it wrote something or something failed.</summary>
+    public string? Nothing { get; init; }
 }
 
 /// <summary>A page of a build's per-project reports.</summary>
@@ -278,11 +286,12 @@ public sealed record OutputStep(
 /// <summary>One object a preset reads.</summary>
 /// <param name="Folder">Its folder.</param>
 /// <param name="Manifest">What it holds.</param>
-public sealed record ExportSource(string Folder, BuildManifest Manifest);
+/// <param name="Set">The texture set it belongs to. Nothing here means every set of its project.</param>
+public sealed record ExportSource(string Folder, BuildManifest Manifest, string Set = "");
 
 /// <summary>One preset over one project's outputs.</summary>
 /// <param name="Preset">The preset file's text, so that a Worker needs no library and reads no changed file.</param>
-/// <param name="Sources">The objects to read, later ones winning a map.</param>
+/// <param name="Sources">The objects to read, later ones winning a map within a set.</param>
 /// <param name="Folder">The folder to make, which appears only when it is whole.</param>
 public sealed record ExportStep(string Preset, IReadOnlyList<ExportSource> Sources, string Folder);
 

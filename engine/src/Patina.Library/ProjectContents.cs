@@ -10,8 +10,8 @@ namespace Patina.Library;
 /// </summary>
 static class ProjectFiles {
     const int MaxFiles = 2000;
-    const string BakeFolder = "bakes";
-    const string PictureFolder = "pictures";
+    internal const string BakeFolder = "bakes";
+    internal const string PictureFolder = "pictures";
     const string StackExtension = ".vxlayers";
 
     static readonly FrozenSet<string> MeshExtensions =

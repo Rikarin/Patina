@@ -13,7 +13,31 @@ usages; a bake's `ao` arrives as `occlusion`. A texture none of whose maps a pro
 missing takes what a surface without it would be, with a warning in the report. Unknown fields and lane counts a block cannot hold
 are refused: the alternative is an uncompressed texture in a shipped game. An export's key holds the bytes of the preset's file.
 
-`{project}` and `{preset}` are the whole naming language. A value cannot make a folder.
+`{project}`, `{preset}` and `{set}` are the whole naming language. A value cannot make a folder. In a project of several texture
+sets every file has to say which it is, so a template with no `{set}` gets the set's name after `{project}`, or at its end when it
+has neither. A project of one set keeps the name its preset gives, and `{set}` is then the project's name if the set has none.
+
+## What a project builds
+
+A project made in the app writes no outputs. `ProjectOutputs` works them out from its documents on every read, and writes nothing
+back, because an output in a file would have to follow every change to the documents:
+
+- Each texturing document is a texture set: one `layer-stack` output and, if it has a bake, one `baked-maps` output.
+- A project with no texturing document is a material, and each of its layered materials, image materials and material graphs is a
+  set in the same way. Mask, brush and filter graphs are not. Nor are the graphs in a texturing project, which are what its layers
+  read and not what it ships.
+- `outputs` in `project.yaml` replace all of this, for a project that wants something else, such as mesh LODs.
+
+**An export never bakes.** It takes the bake that is there (`DocumentBakes`: the one chosen for the document, then the folder a bake
+of it goes to by default), so a project that has not baked exports what its layers make, and a preset's normal file is reported
+as skipped. A bake started by Export would run for minutes on settings nobody chose. `library check` counts declared outputs only:
+a project nobody has exported is not unhealthy.
+
+An output's key holds its set's name, through its settings, so two sets that swap their content do not share an export's key.
+Outputs are merged per set when an export reads them, and an output with no set is every set's. A document's key covers what it can
+read in its project: other documents, `pictures/`, compounds and every file of its bake, which is more than it does read. An edit
+to one of those rebuilds a little too much, and never too little. What it reads in other projects is covered by the project's
+`references`.
 
 ## Green, and why it is not a constant of a preset
 

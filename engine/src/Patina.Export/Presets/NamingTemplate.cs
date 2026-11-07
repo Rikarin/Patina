@@ -5,14 +5,18 @@ namespace Patina.Export.Presets;
 /// <summary>What a file's name can be built from.</summary>
 /// <param name="Project">The project's name.</param>
 /// <param name="Preset">The preset's id.</param>
-public sealed record NamingValues(string Project, string Preset);
+/// <param name="Set">The texture set, or nothing for a project with none named. <c>{set}</c> is then the project.</param>
+public sealed record NamingValues(string Project, string Preset, string Set = "");
 
 /// <summary>
 ///     Turns <c>T_{project}_D</c> into a relative path. Forward slashes make folders on every platform, and a value can
 ///     neither make a folder nor climb out of where exports go, because it arrives from a project's name.
 /// </summary>
 public static class NamingTemplate {
-    static readonly HashSet<string> Known = new(["project", "preset"], StringComparer.Ordinal);
+    const string ProjectHole = "{project}";
+    const string SetHole = "{set}";
+
+    static readonly HashSet<string> Known = new(["project", "preset", "set"], StringComparer.Ordinal);
 
     /// <summary>Refuses a template that could not make a file name.</summary>
     /// <exception cref="ExportPresetException">It names something unknown or leaves the folder.</exception>
@@ -33,6 +37,19 @@ public static class NamingTemplate {
         }
     }
 
+    /// <summary>
+    ///     The template of a file in a project of several texture sets, which has to say which set it is. A template
+    ///     that does not gets the set's name after the project's, which is where a person would have written it.
+    /// </summary>
+    public static string PerSet(string template) {
+        ArgumentNullException.ThrowIfNull(template);
+        return template.Contains(SetHole, StringComparison.Ordinal)
+            ? template
+            : template.Contains(ProjectHole, StringComparison.Ordinal)
+                ? template.Replace(ProjectHole, $"{ProjectHole}_{SetHole}", StringComparison.Ordinal)
+                : $"{template}_{SetHole}";
+    }
+
     /// <summary>The path a template gives, relative to the export folder, in this platform's separators.</summary>
     public static string Resolve(string template, NamingValues values, string extension) {
         ArgumentNullException.ThrowIfNull(template);
@@ -41,7 +58,16 @@ public static class NamingTemplate {
         var from = 0;
         foreach (var (name, at) in Holes(template, template)) {
             text.Append(template, from, at - from);
-            text.Append(Clean(name == "project" ? values.Project : values.Preset));
+            text.Append(
+                Clean(
+                    name switch {
+                        "project" => values.Project,
+                        "set" when values.Set.Length > 0 => values.Set,
+                        "set" => values.Project,
+                        _ => values.Preset
+                    }
+                )
+            );
             from = at + name.Length + 2;
         }
 
