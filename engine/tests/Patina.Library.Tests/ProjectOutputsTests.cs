@@ -76,10 +76,10 @@ public sealed class ProjectOutputsTests : IDisposable {
         var pointer = GraphMeshMaps.FileOf(Path.Combine(folder.FullName, item.File));
 
         File.WriteAllText(pointer, "bakes/other");
-        Assert.Equal(Path.Combine(folder.FullName, "bakes/other"), DocumentBakes.FolderOf(folder.FullName, item));
+        Assert.Equal(Path.Combine(folder.FullName, "bakes", "other"), DocumentBakes.FolderOf(folder.FullName, item));
 
         File.WriteAllText(pointer, "bakes/deleted");
-        Assert.Equal(Path.Combine(folder.FullName, "bakes/maps"), DocumentBakes.FolderOf(folder.FullName, item));
+        Assert.Equal(Path.Combine(folder.FullName, "bakes", "maps"), DocumentBakes.FolderOf(folder.FullName, item));
     }
 
     /// <summary>Stacks and graphs open on one rule, and neither needs a client to remember for it.</summary>
@@ -95,7 +95,7 @@ public sealed class ProjectOutputsTests : IDisposable {
         );
 
         Assert.Equal(
-            Path.Combine(folder.FullName, "bakes/maps/Body"),
+            Path.Combine(folder.FullName, "bakes", "maps", "Body"),
             DocumentBakes.OfFile(Path.Combine(folder.FullName, "body.vxlayers"))
         );
         Assert.Null(DocumentBakes.OfFile(Path.Combine(folder.FullName, "strap.vxlayers")));
@@ -107,8 +107,9 @@ public sealed class ProjectOutputsTests : IDisposable {
         Bake("bakes/maps/Strap");
         Directory.CreateDirectory(Path.Combine(folder.FullName, "bakes", "empty"));
 
+        var maps = Path.Combine(folder.FullName, "bakes", "maps");
         Assert.Equal(
-            [Path.Combine(folder.FullName, "bakes/maps/Body"), Path.Combine(folder.FullName, "bakes/maps/Strap")],
+            [Path.Combine(maps, "Body"), Path.Combine(maps, "Strap")],
             DocumentBakes.Below(Path.Combine(folder.FullName, "bakes"))
         );
     }
