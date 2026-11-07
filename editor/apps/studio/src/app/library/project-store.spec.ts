@@ -23,6 +23,15 @@ const contents = {
   bakes: []
 };
 
+function memoryStorage(): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> {
+  const held = new Map<string, string>();
+  return {
+    getItem: key => held.get(key) ?? null,
+    setItem: (key, value) => held.set(key, value),
+    removeItem: key => held.delete(key)
+  };
+}
+
 /** A ProjectStore over stores that only do what the tabs ask of them. */
 function harness() {
   const paintState = signal<{ id: string; history: { dirty: boolean } } | null>(null);
@@ -68,7 +77,13 @@ function harness() {
       { provide: GraphStore, useValue: graph },
       { provide: BakeStore, useValue: { viewportChanged: signal(0), current: signal(null) } },
       { provide: SystemStatus, useValue: { state: signal({ kind: 'connecting' }) } },
-      { provide: LibraryStore, useValue: { api: () => Promise.resolve(client) } }
+      {
+        provide: LibraryStore,
+        useValue: {
+          api: () => Promise.resolve(client),
+          state: signal({ kind: 'ready', info: { id: 'lib', path: '/game.ptlib' } })
+        }
+      }
     ]
   });
   return { store: TestBed.inject(ProjectStore), paint, graph, paintState, graphDirty, removed };
@@ -77,6 +92,31 @@ function harness() {
 describe('ProjectStore', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it('reopens on what was last in front', async () => {
+    vi.stubGlobal('localStorage', memoryStorage());
+    globalThis.localStorage.setItem('patina.library.last.lib', JSON.stringify({ project: 'a', path: paths.graph }));
+    const { store } = harness();
+
+    await vi.waitFor(() => {
+      TestBed.tick();
+      expect(store.active()?.path).toBe(paths.graph);
+    });
+  });
+
+  it('remembers the document in front, and nothing once all are closed', async () => {
+    vi.stubGlobal('localStorage', memoryStorage());
+    const { store } = harness();
+    TestBed.tick();
+
+    await store.open('a');
+    TestBed.tick();
+    expect(globalThis.localStorage.getItem('patina.library.last.lib')).toContain(paths.texturing);
+
+    await store.closeTab(paths.texturing);
+    TestBed.tick();
+    expect(globalThis.localStorage.getItem('patina.library.last.lib')).toBeNull();
   });
 
   it('opens a project at its texturing, in that workspace', async () => {

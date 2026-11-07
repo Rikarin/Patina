@@ -40,6 +40,29 @@ function messageOf(failure: unknown): string {
  * tab is little more than a path: going to it joins its session again, and PaintStore and GraphStore show whichever
  * one is in front.
  */
+const LastDocumentKey = 'patina.library.last.';
+
+function remembered(key: string): { project: string; path: string } | null {
+  try {
+    const saved = globalThis.localStorage.getItem(key);
+    return saved ? (JSON.parse(saved) as { project: string; path: string }) : null;
+  } catch {
+    return null;
+  }
+}
+
+function remember(key: string, value: string | null): void {
+  try {
+    if (value === null) {
+      globalThis.localStorage.removeItem(key);
+    } else {
+      globalThis.localStorage.setItem(key, value);
+    }
+  } catch {
+    // A window with no storage just starts empty next time.
+  }
+}
+
 @Injectable({ providedIn: 'root' })
 export class ProjectStore {
   private readonly library = inject(LibraryStore);
@@ -58,6 +81,7 @@ export class ProjectStore {
   private readonly mutableBakeAsked = signal(0);
   private linkedBake: string | null = null;
   private switching = false;
+  private restored: string | null = null;
 
   readonly tabs = this.mutableTabs.asReadonly();
   /** Goes up each time something asks for the Bake dialog. */
@@ -129,9 +153,42 @@ export class ProjectStore {
       }
     });
 
+    // A library reopens on what was last in front, and closing everything starts it empty next time.
+    effect(() => {
+      const state = this.library.state();
+      const tab = this.active();
+      if (state.kind !== 'ready') {
+        return;
+      }
+
+      const key = LastDocumentKey + state.info.id;
+      if (this.restored !== key) {
+        this.restored = key;
+        untracked(() => void this.reopen(key));
+      } else if (tab) {
+        remember(key, JSON.stringify({ project: tab.project, path: tab.path }));
+      } else {
+        remember(key, null);
+      }
+    });
+
     desktop()?.onQuitRequested(() => {
       this.mutableQuitting.set(true);
     });
+  }
+
+  /** A project moved or deleted since is no failure of anything being done now, so it is forgotten quietly. */
+  private async reopen(key: string): Promise<void> {
+    const saved = remembered(key);
+    if (!saved) {
+      return;
+    }
+
+    await this.openDocument(saved.project, saved.path);
+    if (!this.active()) {
+      this.mutableFailure.set(null);
+      remember(key, null);
+    }
   }
 
   /** Opens a project at the document most likely wanted. */
