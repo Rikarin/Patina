@@ -624,6 +624,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/materials/thumbnails': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** The pictures of some materials, by hash under /previews, drawing those the cache lacks first. */
+    post: operations['GetMaterialThumbnails'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/materials/use': {
     parameters: {
       query?: never;
@@ -2782,6 +2799,23 @@ export interface components {
     MaterialList: {
       /** @description Them. */
       items: components['schemas']['MaterialInfo'][];
+    };
+    /** @description A material's picture in the preview cache. The pixels are at `/previews/{hash}`. */
+    MaterialThumbnail: {
+      /** @description The material. */
+      source: string;
+      /** @description The picture, or null when the material has nothing to show. */
+      hash?: null | string;
+    };
+    /** @description The body of `POST /api/v1/library/materials/thumbnails`. */
+    MaterialThumbnailRequest: {
+      /** @description The materials, as their list names them. */
+      sources: string[];
+    };
+    /** @description The pictures of some materials. */
+    MaterialThumbnails: {
+      /** @description Them, in the order they were asked for. */
+      items: components['schemas']['MaterialThumbnail'][];
     };
     /** @description A graph ready for a layer. */
     MaterialUse: {
@@ -6128,6 +6162,57 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['MaterialList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetMaterialThumbnails: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['MaterialThumbnailRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MaterialThumbnails'];
         };
       };
       /** @description Bad Request */

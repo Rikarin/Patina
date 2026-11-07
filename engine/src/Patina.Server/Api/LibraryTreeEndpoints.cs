@@ -110,6 +110,12 @@ static class LibraryTreeEndpoints {
         library.MapGet("/materials", GetMaterials)
             .Described("GetMaterials", "What a project's layers can be filled with.");
 
+        library.MapPost("/materials/thumbnails", DrawMaterials)
+            .Described(
+                "GetMaterialThumbnails",
+                "The pictures of some materials, by hash under /previews, drawing those the cache lacks first."
+            );
+
         library.MapPost("/materials/use", UseMaterial)
             .Described("UseMaterial", "Makes a material graph ready for a project's layers, and names it for them.");
 
@@ -335,6 +341,25 @@ static class LibraryTreeEndpoints {
         string? search
     ) =>
         Guarded(host, library => TypedResults.Ok(new MaterialList(MaterialShelf.List(library, project, search))));
+
+    static async Task<Results<Ok<MaterialThumbnails>, ProblemHttpResult>> DrawMaterials(
+        LibraryHost host,
+        ShelfThumbnails thumbnails,
+        MaterialThumbnailRequest request,
+        CancellationToken cancellationToken
+    ) {
+        if (host.Library is not { } library) {
+            return NoLibrary();
+        }
+
+        try {
+            return TypedResults.Ok(
+                new MaterialThumbnails(await thumbnails.DrawAsync(library, request.Sources, cancellationToken))
+            );
+        } catch (TimeoutException e) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+    }
 
     static Results<Ok<MaterialUse>, ProblemHttpResult> UseMaterial(
         LibraryHost host,

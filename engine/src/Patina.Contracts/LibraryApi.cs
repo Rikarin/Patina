@@ -261,6 +261,19 @@ public sealed record MaterialInfo(
 /// <param name="Items">Them.</param>
 public sealed record MaterialList(IReadOnlyList<MaterialInfo> Items);
 
+/// <summary>The body of <c>POST /api/v1/library/materials/thumbnails</c>.</summary>
+/// <param name="Sources">The materials, as their list names them.</param>
+public sealed record MaterialThumbnailRequest(IReadOnlyList<string> Sources);
+
+/// <summary>A material's picture in the preview cache. The pixels are at <c>/previews/{hash}</c>.</summary>
+/// <param name="Source">The material.</param>
+/// <param name="Hash">The picture, or null when the material has nothing to show.</param>
+public sealed record MaterialThumbnail(string Source, string? Hash);
+
+/// <summary>The pictures of some materials.</summary>
+/// <param name="Items">Them, in the order they were asked for.</param>
+public sealed record MaterialThumbnails(IReadOnlyList<MaterialThumbnail> Items);
+
 /// <summary>The body of <c>POST /api/v1/library/materials/use</c>.</summary>
 /// <param name="Project">The project using it.</param>
 /// <param name="Source">The graph, below the library.</param>

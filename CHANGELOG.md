@@ -7,6 +7,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- The material shelf shows each material as a picture, in a list or a grid of small or large tiles, and narrows by type (materials, masks, filters, brushes) and by where a material is from. Search finds a material by name, type, kind, project or path. The Worker draws each picture once into the preview cache, so a picture costs nothing the second time and a deleted cache only draws them again.
 - The node palette and the Nodes list rank what was typed, best first and in the same order: Levels comes before Auto Levels, and Enter adds it. A new node wires itself to the selected node, or goes into the selected wire, and lands beside what it joins. Space adds at the pointer whenever the pointer is over the canvas.
 - Layers and Project Settings say when the mesh has changed since the last bake, and Reload Mesh says what it will cost before it closes anything.
 - Project Settings lists a project's meshes, pictures and bakes under Files, and the status bar says what an import brought in.

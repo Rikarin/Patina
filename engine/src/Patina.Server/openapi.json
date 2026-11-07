@@ -2416,6 +2416,67 @@
         }
       }
     },
+    "/api/v1/library/materials/thumbnails": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "The pictures of some materials, by hash under /previews, drawing those the cache lacks first.",
+        "operationId": "GetMaterialThumbnails",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialThumbnailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialThumbnails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/materials/use": {
       "post": {
         "tags": [
@@ -8092,6 +8153,58 @@
           }
         },
         "description": "The materials a project can use."
+      },
+      "MaterialThumbnail": {
+        "required": [
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "The material."
+          },
+          "hash": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The picture, or null when the material has nothing to show."
+          }
+        },
+        "description": "A material\u0027s picture in the preview cache. The pixels are at \u0060/previews/{hash}\u0060."
+      },
+      "MaterialThumbnailRequest": {
+        "required": [
+          "sources"
+        ],
+        "type": "object",
+        "properties": {
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The materials, as their list names them."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/materials/thumbnails\u0060."
+      },
+      "MaterialThumbnails": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MaterialThumbnail"
+            },
+            "description": "Them, in the order they were asked for."
+          }
+        },
+        "description": "The pictures of some materials."
       },
       "MaterialUse": {
         "required": [

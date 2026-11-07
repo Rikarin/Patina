@@ -71,6 +71,39 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
         return new() { Type = IpcTypes.Ok, StackLayerThumbnails = Find(ask.Session).Thumbnails(previews, ask.Folder) };
     }
 
+    /// <summary>
+    ///     A layered material's first set, composited once for the shelf. Its paint is read from beside its file, as an
+    ///     open stack's is, and nothing is kept but the picture.
+    /// </summary>
+    public IpcMessage Thumbnail(MaterialThumbnailAsk ask) {
+        var document = LayerStackYaml.Read(ask.Document);
+        if (document.Sets.FirstOrDefault() is not { } set) {
+            return GraphHost.Drawn(null);
+        }
+
+        var shelf = compounds.Of(ask.Folder is null ? null : Path.Combine(ask.Folder, LibraryLayout.CompoundsFolder));
+        SortedSet<string> unbaked = new(StringComparer.Ordinal);
+        using LayerStackEvaluator run = new(
+            gpu.Evaluator,
+            new PaintCanvasStore(long.MaxValue),
+            ask.Path,
+            (uploads, plan, owed) => pictures.Fill(uploads, plan, [..owed], ask.ImageRoots, null, unbaked)
+                .Refusals.Select(static refusal => refusal.Message)
+                .ToArray()
+        ) { Draft = true };
+        if (run.Prepare(document with { Sets = [set] }, set, shelf.Registry, shelf.Source).Count > 0) {
+            return GraphHost.Drawn(null);
+        }
+
+        var output = run.Outputs.FirstOrDefault(output => output.Usage == ask.Usage);
+        if (output.Usage is null) {
+            return GraphHost.Drawn(null);
+        }
+
+        using var bake = run.Evaluate();
+        return GraphHost.Drawn(previews.Write(bake, [output.Image], ask.PreviewFolder)[0].Hash);
+    }
+
     public IpcMessage Sync(IpcMessage request) {
         var sync = request.StackSync ?? throw new IpcException("stack.sync says nothing.");
         Find(sync.Session).Sync(sync, watch);

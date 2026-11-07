@@ -95,6 +95,9 @@ public static class IpcTypes {
     /// <summary>Renders each fill of a stack alone, small.</summary>
     public const string StackThumbnails = "stack.thumbnails";
 
+    /// <summary>Draws a material small for the shelf, from a copy of its document that nothing keeps.</summary>
+    public const string MaterialThumbnail = "material.thumbnail";
+
     public const string BakeStart = "bake.start";
 
     /// <summary>
@@ -125,7 +128,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 7;
+    public const int ProtocolVersion = 8;
 
     public string Type { get; set; } = string.Empty;
 
@@ -226,6 +229,11 @@ public sealed class IpcMessage {
 
     /// <summary>The reply to stack.thumbnails.</summary>
     public IReadOnlyList<StackLayerThumbnail>? StackLayerThumbnails { get; set; }
+
+    public MaterialThumbnailAsk? MaterialThumbnail { get; set; }
+
+    /// <summary>The reply to material.thumbnail: the picture's hash, or null when the material draws nothing.</summary>
+    public string? ThumbnailHash { get; set; }
 
     public BakeStart? BakeStart { get; set; }
 
@@ -401,6 +409,32 @@ public sealed record GraphImageAsk(string Session, int Node, string Port, string
 
 /// <summary>A full-size picture that is now in the cache. The pixels are not in the message.</summary>
 public sealed record GraphFullImage(string Hash, int Width, int Height);
+
+/// <summary>What a <see cref="MaterialThumbnailAsk" /> holds.</summary>
+public static class MaterialThumbnailKinds {
+    public const string Graph = "graph";
+    public const string Stack = "stack";
+}
+
+/// <summary>A material to draw small, once, with nothing kept but the picture.</summary>
+/// <param name="Kind">What the document is: <c>graph</c> or <c>stack</c>.</param>
+/// <param name="Path">Its file, which paint and pictures are found beside. A shipped one names a place for it.</param>
+/// <param name="Document">The document, already at the size to draw.</param>
+/// <param name="Folder">Where its compounds come from, or null.</param>
+/// <param name="ImageRoots">The folders a relative picture is read from, in order.</param>
+/// <param name="Node">A graph's Output node to draw. A stack ignores it.</param>
+/// <param name="Usage">The map to draw: an Output's usage, or a stack's channel.</param>
+/// <param name="PreviewFolder">The content-addressed cache the PNG is written to.</param>
+public sealed record MaterialThumbnailAsk(
+    string Kind,
+    string Path,
+    string Document,
+    string? Folder,
+    IReadOnlyList<string> ImageRoots,
+    int Node,
+    string Usage,
+    string PreviewFolder
+);
 
 // SK7005: a message record's constructor is its wire shape, one parameter per field.
 #pragma warning disable SK7005

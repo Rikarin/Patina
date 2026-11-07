@@ -100,6 +100,7 @@ sealed class WorkerLoop(
                     or IpcTypes.StackCheckpoint
                     or IpcTypes.StackPixels
                     or IpcTypes.StackClose
+                    or IpcTypes.MaterialThumbnail
                     or IpcTypes.ViewportStack => OnDevice(request),
                 IpcTypes.MeshUnwrap => Unwrap(request),
                 IpcTypes.MeshMovePaint => MovePaint(request),
@@ -213,8 +214,14 @@ sealed class WorkerLoop(
             IpcTypes.StackEvaluate => stacks.Evaluate(request),
             IpcTypes.StackSave or IpcTypes.StackCheckpoint => stacks.Save(request),
             IpcTypes.StackPixels => stacks.Pixels(request),
+            IpcTypes.MaterialThumbnail => Thumbnail(request),
             _ => stacks.Close(request)
         };
+
+    IpcMessage Thumbnail(IpcMessage request) {
+        var ask = request.MaterialThumbnail ?? throw new IpcException("material.thumbnail says nothing to draw.");
+        return ask.Kind == MaterialThumbnailKinds.Stack ? stacks.Thumbnail(ask) : graphs.Thumbnail(ask);
+    }
 
     WorkerHealth Health() =>
         new(Stopwatch.GetElapsedTime(Started).TotalSeconds, Environment.WorkingSet, watch.Busy.TotalSeconds);

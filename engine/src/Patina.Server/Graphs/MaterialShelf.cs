@@ -81,7 +81,9 @@ public static class MaterialShelf {
                 }
             );
 
-    static string StarterText(string name) {
+    /// <summary>A starter material's document.</summary>
+    /// <exception cref="StackEditRefusedException">No starter has that name.</exception>
+    internal static string StarterText(string name) {
         using var stream = typeof(MaterialShelf).Assembly.GetManifestResourceStream(StarterResource + name)
             ?? throw new StackEditRefusedException($"There is no material '{name}'.");
         using StreamReader reader = new(stream);
@@ -95,14 +97,19 @@ public static class MaterialShelf {
         return held?.Path ?? library.CreateGraph(new(name, project), StarterText(name));
     }
 
+    /// <summary>Whether a document has every word of a search in its name, its path or its kind.</summary>
+    static bool Found(ProjectDocumentInfo document, string[] words) =>
+        words.All(word => document.Name.Contains(word, StringComparison.OrdinalIgnoreCase)
+            || document.Path.Contains(word, StringComparison.OrdinalIgnoreCase)
+            || document.Kind.Contains(word, StringComparison.OrdinalIgnoreCase)
+        );
+
     static IEnumerable<MaterialInfo> Elsewhere(OpenLibrary library, string? project, string? search) {
+        var words = search?.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
         for (var offset = 0;; offset += ProjectPage) {
             var page = library.Projects(new(Offset: offset, Limit: ProjectPage)).Items;
             foreach (var summary in page.Where(summary => summary.Path != project)) {
-                var wanted = DocumentsOf(library, summary.Path)
-                    .Where(document => search is not { Length: > 0 }
-                        || document.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
-                    );
+                var wanted = DocumentsOf(library, summary.Path).Where(document => Found(document, words));
                 foreach (var document in wanted) {
                     if (Readable(library, document) is { } material) {
                         yield return material with { Origin = ElsewhereOrigin, Project = summary.Name };
