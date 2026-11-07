@@ -10036,6 +10036,20 @@
               "string"
             ],
             "description": "The viewing table, which \u0060PUT /viewport/look\u0060 sets and pictures do not touch."
+          },
+          "emissive": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Light the surface gives off."
+          },
+          "opacity": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What the surface covers, read from red and shown as cut out or not."
           }
         },
         "description": "Pictures to lay over the mesh\u0027s own materials, on every part. Each is a path on the Server\u0027s machine, and a slot\nleft null keeps what the material asks for. A filled slot replaces the material\u0027s factor too, so what shows\nis the picture. Roughness is read from green, metallic from blue and occlusion from red, so one packed file or\nthree grey ones both work. PNG, JPEG and EXR are read, base colour as sRGB and the rest as linear."

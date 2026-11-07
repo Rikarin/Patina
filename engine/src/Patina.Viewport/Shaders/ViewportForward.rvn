@@ -24,11 +24,14 @@ shader ViewportForward {
     var roughness: float
     var normalScale: float
     var usesNormalMap: float
+    var normalGreen: float
     var baseColorMap: Texture2D
     var normalMap: Texture2D
     var roughnessMap: Texture2D
     var metallicMap: Texture2D
     var occlusionMap: Texture2D
+    var emissiveMap: Texture2D
+    var opacityMap: Texture2D
     var mapSampler: Sampler
 
     stream var worldPosition: float3
@@ -56,12 +59,17 @@ shader ViewportForward {
         val stored = normalMap.Sample(mapSampler, surfaceUv).rgb * 2f - float3(1f, 1f, 1f)
         val t = worldTangent.xyz
         val b = cross(worldNormal, t) * (worldTangent.w < 0f ? -1f : 1f)
-        return Math.SafeNormalize(t * (stored.x * normalScale) + b * (stored.y * normalScale) + worldNormal * stored.z)
+        return Math.SafeNormalize(t * (stored.x * normalScale) + b * (stored.y * normalScale * normalGreen) + worldNormal * stored.z)
     }
 
     [FragmentShader]
     [Semantic("SV_Target")]
     func Fragment(): float4 {
+        // Cut out rather than blended: a mesh draws in no depth order, and this shows where a surface stops.
+        if (opacityMap.Sample(mapSampler, surfaceUv).r < 0.5f) {
+            discard
+        }
+
         val n = ShadedNormal()
         val v = Math.SafeNormalize(cameraPosition - worldPosition)
         val albedo = baseColor * baseColorMap.Sample(mapSampler, surfaceUv).rgb
@@ -71,8 +79,10 @@ shader ViewportForward {
         val f0 = Brdf.F0FromMetalness(albedo, metal, 0.04f)
         val diffuseColor = albedo * (1f - metal)
 
+        val emitted = emissiveMap.Sample(mapSampler, surfaceUv).rgb
+
         return float4(
-            Direct(n, v, perceptual, f0, diffuseColor) + Ambient(n, v, perceptual, f0, diffuseColor) * occlusion,
+            Direct(n, v, perceptual, f0, diffuseColor) + Ambient(n, v, perceptual, f0, diffuseColor) * occlusion + emitted,
             1f
         )
     }

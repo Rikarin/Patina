@@ -17,7 +17,10 @@ public sealed record ViewportMaps(
     ViewportMapFile? Normal = null,
     ViewportMapFile? Roughness = null,
     ViewportMapFile? Metallic = null,
-    ViewportMapFile? Occlusion = null
+    ViewportMapFile? Occlusion = null,
+    ViewportMapFile? Emissive = null,
+    ViewportMapFile? Opacity = null,
+    bool GreenDown = false
 ) {
     /// <summary>Nothing replaced.</summary>
     public static ViewportMaps None { get; } = new();

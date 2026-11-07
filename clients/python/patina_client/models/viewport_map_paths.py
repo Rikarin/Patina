@@ -34,6 +34,8 @@ class ViewportMapPaths:
             metallic (None | str | Unset): How metallic it is.
             occlusion (None | str | Unset): Ambient occlusion.
             look (None | str | Unset): The viewing table, which `PUT /viewport/look` sets and pictures do not touch.
+            emissive (None | str | Unset): Light the surface gives off.
+            opacity (None | str | Unset): What the surface covers, read from red and shown as cut out or not.
      """
 
     base_color: None | str | Unset = UNSET
@@ -42,6 +44,8 @@ class ViewportMapPaths:
     metallic: None | str | Unset = UNSET
     occlusion: None | str | Unset = UNSET
     look: None | str | Unset = UNSET
+    emissive: None | str | Unset = UNSET
+    opacity: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -85,6 +89,18 @@ class ViewportMapPaths:
         else:
             look = self.look
 
+        emissive: None | str | Unset
+        if isinstance(self.emissive, Unset):
+            emissive = UNSET
+        else:
+            emissive = self.emissive
+
+        opacity: None | str | Unset
+        if isinstance(self.opacity, Unset):
+            opacity = UNSET
+        else:
+            opacity = self.opacity
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -102,6 +118,10 @@ class ViewportMapPaths:
             field_dict["occlusion"] = occlusion
         if look is not UNSET:
             field_dict["look"] = look
+        if emissive is not UNSET:
+            field_dict["emissive"] = emissive
+        if opacity is not UNSET:
+            field_dict["opacity"] = opacity
 
         return field_dict
 
@@ -170,6 +190,26 @@ class ViewportMapPaths:
         look = _parse_look(d.pop("look", UNSET))
 
 
+        def _parse_emissive(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        emissive = _parse_emissive(d.pop("emissive", UNSET))
+
+
+        def _parse_opacity(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        opacity = _parse_opacity(d.pop("opacity", UNSET))
+
+
         viewport_map_paths = cls(
             base_color=base_color,
             normal=normal,
@@ -177,6 +217,8 @@ class ViewportMapPaths:
             metallic=metallic,
             occlusion=occlusion,
             look=look,
+            emissive=emissive,
+            opacity=opacity,
         )
 
 

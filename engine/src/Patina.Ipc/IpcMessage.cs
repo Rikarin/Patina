@@ -270,7 +270,10 @@ public sealed record ViewportMapSet(
     ViewportMapFile? Roughness = null,
     ViewportMapFile? Metallic = null,
     ViewportMapFile? Occlusion = null,
-    ViewportMapFile? Look = null
+    ViewportMapFile? Look = null,
+    ViewportMapFile? Emissive = null,
+    ViewportMapFile? Opacity = null,
+    bool GreenDown = false
 );
 
 /// <summary>An orbit around the model: radians, and a distance in bounding radii.</summary>

@@ -41,7 +41,7 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
     public ViewportRenderer Live => Renderer();
 
     /// <summary>What is under a position on the picture, through the camera asked about. It opens no device.</summary>
-    static OrbitCamera Orbit(Ipc.ViewportCamera camera) =>
+    static OrbitCamera Orbit(ViewportCamera camera) =>
         new(
             (float)camera.Yaw,
             (float)camera.Pitch,
@@ -102,7 +102,10 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
                     File(maps.Normal),
                     File(maps.Roughness),
                     File(maps.Metallic),
-                    File(maps.Occlusion)
+                    File(maps.Occlusion),
+                    File(maps.Emissive),
+                    File(maps.Opacity),
+                    maps.GreenDown
                 )
             );
         try {

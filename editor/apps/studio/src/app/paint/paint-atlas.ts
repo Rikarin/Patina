@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
+import { channelName } from '../core/labels';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore, pressureOf, toTexels } from './paint-store';
 import { StrokeGesture } from './stroke-gesture';
@@ -15,6 +16,21 @@ import { StrokeGesture } from './stroke-gesture';
     '(document:keydown.escape)': 'gesture.cancel()'
   },
   template: `
+    @if (store.state(); as state) {
+      <select
+        class="well absolute top-3 left-3 z-10 h-7 px-1 text-sm"
+        aria-label="Channel to look at"
+        data-testid="paint-view-channel"
+        (change)="look($event)"
+      >
+        <option value="">Painting channel</option>
+        @for (channel of state.channels; track channel.usage) {
+          <option [value]="channel.usage" [selected]="store.viewed() === channel.usage">
+            {{ nameOf(channel.usage) }}
+          </option>
+        }
+      </select>
+    }
     @if (tiling()) {
       <button
         class="absolute top-3 right-3 z-10"
@@ -37,7 +53,12 @@ import { StrokeGesture } from './stroke-gesture';
           [style.background-size]="'33.3333% 33.3333%'"
         ></div>
       } @else {
-        <div class="well aspect-square max-h-full max-w-full touch-none overflow-hidden" data-testid="paint-canvas">
+        <div
+          class="well aspect-square max-h-full max-w-full touch-none overflow-hidden"
+          data-testid="paint-canvas"
+          [style.transform]="transform()"
+          (wheel)="wheel($event)"
+        >
           <img
             class="size-full select-none"
             [class.cursor-crosshair]="store.picking() !== null"
@@ -78,7 +99,32 @@ export class PaintAtlas {
 
   private painting = false;
 
+  /** The picture's own zoom and pan, which leave where a stamp lands alone: a stamp reads the box as drawn. */
+  private readonly scale = signal(1);
+  private readonly shift = signal<readonly [number, number]>([0, 0]);
+  private panning = false;
+  protected readonly nameOf = channelName;
+  protected readonly transform = computed(() => {
+    const [x, y] = this.shift();
+    return `translate(${x}px, ${y}px) scale(${this.scale()})`;
+  });
+
+  protected look(event: Event): void {
+    this.store.viewChannel((event.target as HTMLSelectElement).value || null);
+  }
+
+  protected wheel(event: WheelEvent): void {
+    event.preventDefault();
+    this.scale.update(scale => Math.max(0.25, Math.min(16, scale * Math.exp(-event.deltaY * 0.001))));
+  }
+
   protected down(event: PointerEvent): void {
+    if (event.button === 1 || event.altKey) {
+      (event.target as HTMLElement).setPointerCapture(event.pointerId);
+      this.panning = true;
+      return;
+    }
+
     if (this.store.picking() !== null) {
       const box = (event.target as HTMLElement).getBoundingClientRect();
       void this.store.pickColourAt((event.clientX - box.left) / box.width, (event.clientY - box.top) / box.height);
@@ -91,12 +137,15 @@ export class PaintAtlas {
   }
 
   protected move(event: PointerEvent): void {
-    if (this.painting) {
+    if (this.panning) {
+      this.shift.update(([x, y]) => [x + event.movementX, y + event.movementY]);
+    } else if (this.painting) {
       this.gesture.move(this.stamp(event));
     }
   }
 
   protected up(): void {
+    this.panning = false;
     if (this.painting) {
       this.painting = false;
       this.gesture.release();

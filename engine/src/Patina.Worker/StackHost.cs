@@ -184,6 +184,8 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
             "roughness" => ViewportSlot.Roughness,
             "metalness" => ViewportSlot.Metallic,
             "occlusion" => ViewportSlot.Occlusion,
+            "emissive" => ViewportSlot.Emissive,
+            "opacity" => ViewportSlot.Opacity,
             _ => null
         };
 

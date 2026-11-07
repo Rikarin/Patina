@@ -140,6 +140,17 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
             Token
         );
         Assert.True(elsewhere.IsSuccessStatusCode, await elsewhere.Content.ReadAsStringAsync(Token));
+        var shelf = await client.GetFromJsonAsync<MaterialList>("/api/v1/library/materials?project=barrel", Token);
+        var starter = Assert.Single(shelf!.Items, static material => material.Name == "Rough Stone");
+        Assert.Contains("normal", starter.Channels);
+        var brought = await client.PostAsJsonAsync(
+            "/api/v1/library/materials/use",
+            new MaterialUseRequest("barrel", starter.Source),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.OK, brought.StatusCode);
+        Assert.True(File.Exists(Path.Combine(server.Library, "projects", "barrel", "rough-stone.vxtexgraph")));
+
         var rust = Assert.Single(
             await ElsewhereAsync("barrel"),
             static material => material is { Name: "Rust", Project: "Crate" }

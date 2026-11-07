@@ -290,6 +290,36 @@ export class ProjectStore {
     }
   }
 
+  /** Brings files into the open project: meshes as meshes, pictures for layers and masks. */
+  async importFiles(paths: readonly string[]): Promise<void> {
+    const project = this.current();
+    if (!project) {
+      this.mutableFailure.set('Open a project to bring files into it.');
+      return;
+    }
+
+    try {
+      const client = await this.library.api();
+      for (const path of paths) {
+        const body = { project: project.path, picture: path };
+        if (/\.(?:glb|gltf|fbx|obj)$/iu.test(path)) {
+          unwrap(
+            await client.POST('/api/v1/library/project/meshes', {
+              body: { project: project.path, mesh: path, high: null }
+            })
+          );
+        } else {
+          unwrap(await client.POST('/api/v1/library/project/pictures', { body }));
+        }
+      }
+
+      await this.read(project.path);
+      this.library.refreshSoon();
+    } catch (failure) {
+      this.mutableFailure.set(messageOf(failure));
+    }
+  }
+
   /** A name for Save As is being asked for. */
   readonly savingAs = signal(false);
 

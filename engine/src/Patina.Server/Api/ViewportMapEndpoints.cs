@@ -22,7 +22,10 @@ static class ViewportMapEndpoints {
 
     /// <summary>An Output node's usages the viewport has a slot for.</summary>
     static readonly IReadOnlySet<string> Slots =
-        new HashSet<string>(["baseColor", "normal", "roughness", "metalness", "occlusion"], StringComparer.Ordinal);
+        new HashSet<string>(
+            ["baseColor", "normal", "roughness", "metalness", "occlusion", "emissive", "opacity"],
+            StringComparer.Ordinal
+        );
 
     public static void MapViewportMaps(this IEndpointRouteBuilder api) {
         api.MapPut("/viewport/maps", SetMapsAsync)
@@ -144,7 +147,12 @@ static class ViewportMapEndpoints {
                     files.GetValueOrDefault("normal"),
                     files.GetValueOrDefault("roughness"),
                     files.GetValueOrDefault("metalness"),
-                    files.GetValueOrDefault("occlusion")
+                    files.GetValueOrDefault("occlusion"),
+                    null,
+                    files.GetValueOrDefault("emissive"),
+                    files.GetValueOrDefault("opacity"),
+                    // A graph's Height to Normal points green down, and the shader reads green up (ADR 0011).
+                    true
                 )
             );
             return TypedResults.Ok(session.State);
@@ -161,7 +169,10 @@ static class ViewportMapEndpoints {
             Hash(paths.Normal),
             Hash(paths.Roughness),
             Hash(paths.Metallic),
-            Hash(paths.Occlusion)
+            Hash(paths.Occlusion),
+            null,
+            Hash(paths.Emissive),
+            Hash(paths.Opacity)
         );
 
     /// <exception cref="FileNotFoundException">The file is not there.</exception>

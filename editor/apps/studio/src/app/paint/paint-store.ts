@@ -111,6 +111,9 @@ export class PaintStore {
   readonly channel = signal('baseColor');
   readonly radius = signal(24);
 
+  /** The channel on screen when it is not the one being painted, so looking never changes what a stroke writes. */
+  readonly viewed = signal<string | null>(null);
+
   /** What else a stroke paints beside {@link channel}: each channel, and the colour it gets. */
   readonly alsoPaints = signal<ReadonlyMap<string, string>>(new Map());
   readonly colour = signal('#d9401a');
@@ -557,14 +560,21 @@ export class PaintStore {
     this.thumbnailsSoon(state.id);
   }
 
-  /** Shows a channel, whose picture may already be here. */
+  /** Looks at a channel, or goes back to the one being painted, without changing what a stroke writes. */
+  viewChannel(channel: string | null): void {
+    this.viewed.set(channel);
+    this.show(this.state()?.previews ?? []);
+  }
+
+  /** Paints a channel, and shows it. */
   showChannel(channel: string): void {
     this.channel.set(channel);
+    this.viewed.set(null);
     this.show(this.state()?.previews ?? []);
   }
 
   private show(previews: readonly StackPreview[]): void {
-    const preview = previews.find(p => p.usage === this.channel());
+    const preview = previews.find(p => p.usage === (this.viewed() ?? this.channel()));
     if (preview) {
       void this.load(preview.hash);
     }

@@ -40,6 +40,6 @@ jobs:
         env:
           CsCheck_Time: ${{ inputs.seconds || '60' }}
         run: |
-          for project in tests/Patina.Ipc.Tests tests/Patina.Jobs.Tests tests/Patina.Library.Tests; do
+          for project in tests/Patina.Ipc.Tests tests/Patina.Jobs.Tests tests/Patina.Library.Tests tests/Patina.Export.Tests tests/Patina.Server.Tests; do
             dotnet test --project "$project" -c Release --no-build --filter-trait "Category=Property"
           done

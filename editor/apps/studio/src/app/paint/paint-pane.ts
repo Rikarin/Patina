@@ -4,6 +4,7 @@ import { XuiCalloutImports } from '@xui/callout';
 import { XuiInputImports } from '@xui/input';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { desktop } from '../core/desktop';
+import { channelName } from '../core/labels';
 import { ProjectStore } from '../library/project-store';
 import { BrushPanel } from './brush-panel';
 import { LayerPanel } from './layer-panel';
@@ -59,7 +60,7 @@ import { PaintStore } from './paint-store';
               [attr.data-testid]="'paint-channel-' + channel.usage"
               (click)="store.showChannel(channel.usage)"
             >
-              {{ channel.usage }}
+              {{ nameOf(channel.usage) }}
             </button>
           }
         </div>
@@ -81,6 +82,7 @@ import { PaintStore } from './paint-store';
   `
 })
 export class PaintPane {
+  protected readonly nameOf = channelName;
   protected readonly store = inject(PaintStore);
   protected readonly project = inject(ProjectStore);
   protected readonly canPick = desktop() !== undefined;

@@ -238,12 +238,13 @@ public sealed record StackState(
 public sealed record StackSummary(string Id, string Path, string Name, long Revision, bool Dirty);
 
 /// <summary>One edit of a stack. A batch of these is one undo step.</summary>
-[JsonPolymorphic(TypeDiscriminatorPropertyName = "op")]
 [JsonDerivedType(typeof(StackAddLayer), "addLayer")]
 [JsonDerivedType(typeof(StackRemoveLayer), "removeLayer")]
 [JsonDerivedType(typeof(StackMoveLayer), "moveLayer")]
 [JsonDerivedType(typeof(StackSetLayer), "setLayer")]
 [JsonDerivedType(typeof(StackStroke), "stroke")]
+// In the middle of the list, for the reason GraphContracts gives: SK7020 honours no suppression.
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "op")]
 [JsonDerivedType(typeof(StackSetModel), "setModel")]
 [JsonDerivedType(typeof(StackAddChannel), "addChannel")]
 [JsonDerivedType(typeof(StackNestLayer), "nestLayer")]

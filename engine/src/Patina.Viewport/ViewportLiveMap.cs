@@ -20,7 +20,13 @@ public enum ViewportSlot {
     Metallic,
 
     /// <summary>Ambient occlusion.</summary>
-    Occlusion
+    Occlusion,
+
+    /// <summary>Light the surface gives off.</summary>
+    Emissive,
+
+    /// <summary>What the surface covers, shown as cut out or not.</summary>
+    Opacity
 }
 
 /// <summary>A rectangle of a picture.</summary>

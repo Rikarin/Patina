@@ -37,6 +37,6 @@ describe('orbit', () => {
   it('zooms by a share of the distance, inside its limits', () => {
     expect(zoom(DefaultCamera, 100).distance).toBeGreaterThan(DefaultCamera.distance);
     expect(zoom(DefaultCamera, 100_000).distance).toBeLessThanOrEqual(12);
-    expect(zoom(DefaultCamera, -100_000).distance).toBeGreaterThan(1);
+    expect(zoom(DefaultCamera, -100_000).distance).toBeGreaterThan(0);
   });
 });

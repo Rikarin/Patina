@@ -53,7 +53,12 @@ import { ViewportPane } from './viewport/viewport-pane';
     XuiDockManagerImports
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'flex h-full flex-col', '(document:keydown)': 'shortcuts.press($event)' },
+  host: {
+    class: 'flex h-full flex-col',
+    '(document:keydown)': 'shortcuts.press($event)',
+    '(document:dragover)': 'allowFiles($event)',
+    '(document:drop)': 'dropFiles($event)'
+  },
   template: `
     <header class="chrome-bar window-drag flex h-10 shrink-0 items-center gap-2 px-3" [class.pl-20]="traffic()">
       <span class="shrink-0 font-semibold" data-testid="app-title" [title]="title()">Patina</span>
@@ -372,6 +377,8 @@ export class App {
         void this.project.saveActive();
       } else if (command === 'saveAs') {
         this.project.savingAs.set(true);
+      } else if (command === 'import') {
+        void bridge.openFile().then(path => (path ? this.project.importFiles([path]) : undefined));
       } else if (command === 'toggleStats') {
         this.options.toggleStats();
       } else if (command === 'resetLayout') {
@@ -395,6 +402,22 @@ export class App {
       event.preventDefault();
       event.stopPropagation();
       this.shortcuts.rebind(id, event.key);
+    }
+  }
+
+  /** Files from outside the app can land anywhere on the window. */
+  protected allowFiles(event: DragEvent): void {
+    if (event.dataTransfer?.types.includes('Files')) {
+      event.preventDefault();
+    }
+  }
+
+  protected dropFiles(event: DragEvent): void {
+    const bridge = desktop();
+    const files = [...(event.dataTransfer?.files ?? [])];
+    if (bridge && files.length > 0) {
+      event.preventDefault();
+      void this.project.importFiles(files.map(file => bridge.pathOf(file)));
     }
   }
 

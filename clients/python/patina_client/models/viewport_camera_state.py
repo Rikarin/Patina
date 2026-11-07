@@ -25,12 +25,18 @@ class ViewportCameraState:
         Attributes:
             yaw (float): Radians around the up axis.
             pitch (float): Radians above the horizon.
-            distance (float): From the model's centre, in bounding radii.
+            distance (float): From the point it circles, in bounding radii.
+            pan_x (float): How far that point is off the model's centre along x, in bounding radii. Default: 0.0.
+            pan_y (float): The same along y. Default: 0.0.
+            pan_z (float): The same along z. Default: 0.0.
      """
 
     yaw: float
     pitch: float
     distance: float
+    pan_x: float = 0.0
+    pan_y: float = 0.0
+    pan_z: float = 0.0
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -44,6 +50,12 @@ class ViewportCameraState:
 
         distance = self.distance
 
+        pan_x = self.pan_x
+
+        pan_y = self.pan_y
+
+        pan_z = self.pan_z
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -51,6 +63,9 @@ class ViewportCameraState:
             "yaw": yaw,
             "pitch": pitch,
             "distance": distance,
+            "panX": pan_x,
+            "panY": pan_y,
+            "panZ": pan_z,
         })
 
         return field_dict
@@ -66,10 +81,19 @@ class ViewportCameraState:
 
         distance = d.pop("distance")
 
+        pan_x = d.pop("panX")
+
+        pan_y = d.pop("panY")
+
+        pan_z = d.pop("panZ")
+
         viewport_camera_state = cls(
             yaw=yaw,
             pitch=pitch,
             distance=distance,
+            pan_x=pan_x,
+            pan_y=pan_y,
+            pan_z=pan_z,
         )
 
 

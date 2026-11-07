@@ -3773,6 +3773,10 @@ export interface components {
       occlusion?: null | string;
       /** @description The viewing table, which `PUT /viewport/look` sets and pictures do not touch. */
       look?: null | string;
+      /** @description Light the surface gives off. */
+      emissive?: null | string;
+      /** @description What the surface covers, read from red and shown as cut out or not. */
+      opacity?: null | string;
     };
     /** @description Asks the viewport to show a mesh. */
     ViewportMeshRequest: {

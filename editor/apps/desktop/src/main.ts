@@ -334,6 +334,17 @@ function handleIpc(): void {
     const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
     return picked.canceled ? null : (picked.filePaths[0] ?? null);
   });
+  handle('patina:openFile', async () => {
+    const options: OpenDialogOptions = {
+      title: 'Import',
+      filters: [
+        { name: 'Meshes and pictures', extensions: ['glb', 'gltf', 'fbx', 'obj', 'png', 'jpg', 'jpeg', 'exr', 'tga'] }
+      ],
+      properties: ['openFile']
+    };
+    const picked = window ? await dialog.showOpenDialog(window, options) : await dialog.showOpenDialog(options);
+    return picked.canceled ? null : (picked.filePaths[0] ?? null);
+  });
   handle('patina:openImage', async () => {
     const options: OpenDialogOptions = {
       properties: ['openFile'],

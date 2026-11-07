@@ -25,6 +25,8 @@ public static class MaterialShelf {
     const int ElsewhereLimit = 300;
     const int ProjectPage = 200;
     const string ElsewhereOrigin = "library";
+    const string StarterPrefix = "starter:";
+    const string StarterResource = "Starter/";
 
     /// <summary>What each project lists, kept while its file stands, so a search does not read a library.</summary>
     static readonly ConcurrentDictionary<string, (DateTime Stamp, IReadOnlyList<ProjectDocumentInfo> Documents)>
@@ -48,6 +50,7 @@ public static class MaterialShelf {
                 )
             )
         ];
+        found.AddRange(Starters());
         if (project is not null) {
             found.AddRange(
                 library.Contents(project)
@@ -58,6 +61,38 @@ public static class MaterialShelf {
 
         found.AddRange(Elsewhere(library, project, search).Take(ElsewhereLimit));
         return found;
+    }
+
+    /// <summary>The graphs that ship with Patina. Each is CC0, and using one puts a copy in the project to edit.</summary>
+    static IEnumerable<MaterialInfo> Starters() =>
+        typeof(MaterialShelf).Assembly.GetManifestResourceNames()
+            .Where(static resource => resource.StartsWith(StarterResource, StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal)
+            .Select(static resource => {
+                    var name = resource[StarterResource.Length..];
+                    return new MaterialInfo(
+                        name,
+                        DocumentKinds.Graph,
+                        StarterPrefix + name,
+                        GraphRoles.Material,
+                        "shipped",
+                        Usages(GraphDocuments.Parse(StarterText(name)))
+                    );
+                }
+            );
+
+    static string StarterText(string name) {
+        using var stream = typeof(MaterialShelf).Assembly.GetManifestResourceStream(StarterResource + name)
+            ?? throw new StackEditRefusedException($"There is no material '{name}'.");
+        using StreamReader reader = new(stream);
+        return reader.ReadToEnd();
+    }
+
+    /// <summary>A starter material becomes a document of the project the first time it is used there.</summary>
+    static string Bring(OpenLibrary library, string project, string source) {
+        var name = source[StarterPrefix.Length..];
+        var held = library.Contents(project).Documents.FirstOrDefault(document => document.Name == name);
+        return held?.Path ?? library.CreateGraph(new(name, project), StarterText(name));
     }
 
     static IEnumerable<MaterialInfo> Elsewhere(OpenLibrary library, string? project, string? search) {
@@ -150,6 +185,7 @@ public static class MaterialShelf {
     /// <returns>The compound's node type.</returns>
     /// <exception cref="StackEditRefusedException">The graph has no output a layer could use.</exception>
     public static string Publish(OpenLibrary library, string project, string source) {
+        source = source.StartsWith(StarterPrefix, StringComparison.Ordinal) ? Bring(library, project, source) : source;
         var full = Path.GetFullPath(source, library.RootPath);
         var root = Path.GetFullPath(library.RootPath) + Path.DirectorySeparatorChar;
         if (!full.StartsWith(root, StringComparison.Ordinal) || !File.Exists(full)) {

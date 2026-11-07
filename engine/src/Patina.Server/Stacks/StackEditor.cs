@@ -1,6 +1,6 @@
-using System.Diagnostics.CodeAnalysis;
 using Patina.Contracts;
 using Patina.Server.Graphs;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Vixen.Authoring;
 using Vixen.Texturing.Layers;
@@ -471,7 +471,7 @@ public sealed class StackEditor : ILayerStackDocument {
         }
 
         var added = chosen with { Channels = [..chosen.Channels, new() { Usage = usage, Default = DefaultOf(usage) }] };
-        return new SetDocumentCommand(
+        return new(
             this,
             Document with { Sets = [..Document.Sets.Select(held => held == chosen ? added : held)] },
             $"Add {usage}"
@@ -479,7 +479,8 @@ public sealed class StackEditor : ILayerStackDocument {
     }
 
     /// <summary>A whole-document change, which is how a texture set's own fields are undone.</summary>
-    sealed class SetDocumentCommand(ILayerStackDocument document, LayerStackAsset after, string name) : IAuthoringCommand {
+    sealed class SetDocumentCommand(ILayerStackDocument document, LayerStackAsset after, string name)
+        : IAuthoringCommand {
         readonly LayerStackAsset before = document.Document;
 
         public string Name { get; } = name;

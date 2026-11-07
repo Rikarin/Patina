@@ -277,6 +277,7 @@ public sealed class ViewportRenderer : IDisposable {
             Covered(ViewportSlot.Roughness, maps.Roughness) ? 1f : factors.Roughness,
             laidOver ? 1f : own.NormalScale,
             hasNormal,
+            laidOver && maps.GreenDown ? -1f : 1f,
             new(
                 Slot(ViewportSlot.BaseColor, maps.BaseColor, own.BaseColor, MapMeaning.Colour, textures.White),
                 normal,
@@ -294,7 +295,9 @@ public sealed class ViewportRenderer : IDisposable {
                     MapMeaning.Measurement,
                     textures.Open
                 ),
-                Slot(ViewportSlot.Occlusion, maps.Occlusion, own.Occlusion, MapMeaning.Measurement, textures.Open)
+                Slot(ViewportSlot.Occlusion, maps.Occlusion, own.Occlusion, MapMeaning.Measurement, textures.Open),
+                Slot(ViewportSlot.Emissive, maps.Emissive, null, MapMeaning.Colour, textures.Black),
+                Slot(ViewportSlot.Opacity, maps.Opacity, null, MapMeaning.Measurement, textures.Open)
             ),
             mapSampler
         );
@@ -321,7 +324,7 @@ public sealed class ViewportRenderer : IDisposable {
 
     static MapMeaning Meaning(ViewportSlot slot) =>
         slot switch {
-            ViewportSlot.BaseColor => MapMeaning.Colour,
+            ViewportSlot.BaseColor or ViewportSlot.Emissive => MapMeaning.Colour,
             ViewportSlot.Normal => MapMeaning.Normal,
             _ => MapMeaning.Measurement
         };
@@ -509,17 +512,20 @@ public sealed class ViewportRenderer : IDisposable {
         float Roughness,
         float NormalScale,
         bool UsesNormalMap,
+        float NormalGreen,
         MaterialMaps Maps,
         SamplerHandle Sampler
     );
 
-    /// <summary>One material's five textures.</summary>
+    /// <summary>One material's textures.</summary>
     readonly record struct MaterialMaps(
         TextureViewHandle BaseColor,
         TextureViewHandle Normal,
         TextureViewHandle Roughness,
         TextureViewHandle Metallic,
-        TextureViewHandle Occlusion
+        TextureViewHandle Occlusion,
+        TextureViewHandle Emissive,
+        TextureViewHandle Opacity
     );
 
     /// <summary>The GPU's copy of a mesh, and one descriptor set per material in it.</summary>
@@ -587,7 +593,8 @@ public sealed class ViewportRenderer : IDisposable {
                 .Set("metallic", material.Metallic)
                 .Set("roughness", material.Roughness)
                 .Set("normalScale", material.NormalScale)
-                .Set("usesNormalMap", material.UsesNormalMap ? 1f : 0f);
+                .Set("usesNormalMap", material.UsesNormalMap ? 1f : 0f)
+                .Set("normalGreen", material.NormalGreen);
             var buffer = Upload(constants.Bytes, BufferUsage.Uniform, "viewport material");
             var set = device.CreateDescriptorSet(
                 forward.Effect.SetLayouts[(int)DescriptorSetSlot.PerMaterial],
@@ -603,6 +610,8 @@ public sealed class ViewportRenderer : IDisposable {
                     DescriptorWrite.Texture(Binding("roughnessMap"), material.Maps.Roughness),
                     DescriptorWrite.Texture(Binding("metallicMap"), material.Maps.Metallic),
                     DescriptorWrite.Texture(Binding("occlusionMap"), material.Maps.Occlusion),
+                    DescriptorWrite.Texture(Binding("emissiveMap"), material.Maps.Emissive),
+                    DescriptorWrite.Texture(Binding("opacityMap"), material.Maps.Opacity),
                     DescriptorWrite.SamplerAt(Binding("mapSampler"), material.Sampler)
                 ]
             );

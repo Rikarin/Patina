@@ -292,7 +292,14 @@ public sealed class ViewportSession(
         var reply = await connection.SendAsync(
             new() {
                 Type = IpcTypes.ViewportPick,
-                Pick = new(request.X, request.Y, new(look.Yaw, look.Pitch, look.Distance, look.PanX, look.PanY, look.PanZ), across, down, path)
+                Pick = new(
+                    request.X,
+                    request.Y,
+                    new(look.Yaw, look.Pitch, look.Distance, look.PanX, look.PanY, look.PanZ),
+                    across,
+                    down,
+                    path
+                )
             },
             cancellationToken
         );
@@ -429,7 +436,9 @@ public sealed class ViewportSession(
             set.Roughness?.Path,
             set.Metallic?.Path,
             set.Occlusion?.Path,
-            set.Look?.Path
+            set.Look?.Path,
+            set.Emissive?.Path,
+            set.Opacity?.Path
         );
 
     /// <summary>The stack the viewport wears, if any, and the newest revision of it the Worker has shown.</summary>

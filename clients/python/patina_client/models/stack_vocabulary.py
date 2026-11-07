@@ -34,6 +34,7 @@ class StackVocabulary:
             mesh_maps (list[str]): The maps a bake mask or a generator can read.
             alphas (list[str]): The named brush alphas.
             mask_effects (list[StackEffectKind]): The steps a mask can run.
+            usages (list[str]): The channels a stack can have.
      """
 
     blends: list[str]
@@ -43,6 +44,7 @@ class StackVocabulary:
     mesh_maps: list[str]
     alphas: list[str]
     mask_effects: list[StackEffectKind]
+    usages: list[str]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -86,6 +88,10 @@ class StackVocabulary:
 
 
 
+        usages = self.usages
+
+
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -97,6 +103,7 @@ class StackVocabulary:
             "meshMaps": mesh_maps,
             "alphas": alphas,
             "maskEffects": mask_effects,
+            "usages": usages,
         })
 
         return field_dict
@@ -143,6 +150,9 @@ class StackVocabulary:
             mask_effects.append(mask_effects_item)
 
 
+        usages = cast(list[str], d.pop("usages"))
+
+
         stack_vocabulary = cls(
             blends=blends,
             filters=filters,
@@ -151,6 +161,7 @@ class StackVocabulary:
             mesh_maps=mesh_maps,
             alphas=alphas,
             mask_effects=mask_effects,
+            usages=usages,
         )
 
 

@@ -21,10 +21,14 @@ sealed class ViewportTextures : IDisposable {
         this.device = device;
         White = Upload(ViewportImage.Solid(255, 255, 255, MapMeaning.Colour), "viewport white");
         Open = Upload(ViewportImage.Solid(255, 255, 255, MapMeaning.Measurement), "viewport open");
+        Black = Upload(ViewportImage.Solid(0, 0, 0, MapMeaning.Colour), "viewport black");
     }
 
     /// <summary>Base colour for a slot nothing fills: the factor stands alone.</summary>
     public TextureViewHandle White { get; }
+
+    /// <summary>Emissive for a slot nothing fills: no light.</summary>
+    public TextureViewHandle Black { get; }
 
     /// <summary>Roughness, metallic or occlusion for a slot nothing fills.</summary>
     public TextureViewHandle Open { get; }

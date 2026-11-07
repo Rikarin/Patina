@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 
 // The only surface the sandboxed renderer gets (typed in apps/studio/src/app/core/desktop.ts).
 contextBridge.exposeInMainWorld('patina', {
@@ -21,6 +21,8 @@ contextBridge.exposeInMainWorld('patina', {
     ipcRenderer.send('patina:title', title);
   },
   reveal: (path: string) => ipcRenderer.invoke('patina:reveal', path),
+  openFile: () => ipcRenderer.invoke('patina:openFile'),
+  pathOf: (file: File) => webUtils.getPathForFile(file),
   editText: (edit: string) => ipcRenderer.send('patina:editText', edit),
   onCommand: (listener: (command: string) => void) => {
     ipcRenderer.on('patina:command', (_event, command: string) => listener(command));

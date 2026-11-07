@@ -32,6 +32,12 @@ jobs:
   editor:
     uses: ./.github/workflows/editor.yml
 
+  python:
+    uses: ./.github/workflows/python.yml
+
+  skala:
+    uses: ./.github/workflows/skala.yml
+
   # A release comes from master: a tag on an unmerged branch (or on a commit master has since dropped) is refused.
   tag:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -134,7 +140,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [engine, editor, tag, desktop]
+    needs: [engine, editor, python, skala, tag, desktop]
     runs-on: ubuntu-24.04
     permissions:
       contents: write # creates the release

@@ -38,6 +38,8 @@ function template(actions: MenuActions): MenuItemConstructorOptions[] {
         { label: 'Open Library…', accelerator: 'CmdOrCtrl+O', click: () => void actions.openLibrary() },
         { label: 'Open Recent', submenu: recent },
         { type: 'separator' },
+        { label: 'Import…', accelerator: 'CmdOrCtrl+I', click: () => actions.command('import') },
+        { type: 'separator' },
         { label: 'Save', accelerator: 'CmdOrCtrl+S', click: () => actions.command('save') },
         { label: 'Save As…', accelerator: 'Shift+CmdOrCtrl+S', click: () => actions.command('saveAs') },
         { type: 'separator' },

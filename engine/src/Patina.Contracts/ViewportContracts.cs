@@ -65,6 +65,8 @@ public sealed record ViewportMeshRequest(string Path);
 /// <param name="Roughness">Perceptual roughness.</param>
 /// <param name="Metallic">How metallic it is.</param>
 /// <param name="Occlusion">Ambient occlusion.</param>
+/// <param name="Emissive">Light the surface gives off.</param>
+/// <param name="Opacity">What the surface covers, read from red and shown as cut out or not.</param>
 /// <param name="Look">The viewing table, which <c>PUT /viewport/look</c> sets and pictures do not touch.</param>
 public sealed record ViewportMapPaths(
     string? BaseColor = null,
@@ -72,7 +74,9 @@ public sealed record ViewportMapPaths(
     string? Roughness = null,
     string? Metallic = null,
     string? Occlusion = null,
-    string? Look = null
+    string? Look = null,
+    string? Emissive = null,
+    string? Opacity = null
 );
 
 /// <summary>Views the frame through a table, which changes what is shown and nothing that is exported.</summary>

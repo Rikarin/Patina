@@ -132,6 +132,8 @@ from .project_summary import ProjectSummary
 from .stack_brush import StackBrush
 from .stack_channel import StackChannel
 from .stack_command_batch import StackCommandBatch
+from .stack_command_stack_add_channel import StackCommandStackAddChannel
+from .stack_command_stack_add_channel_op import StackCommandStackAddChannelOp
 from .stack_command_stack_add_layer import StackCommandStackAddLayer
 from .stack_command_stack_add_layer_op import StackCommandStackAddLayerOp
 from .stack_command_stack_add_layer_values_type_1 import StackCommandStackAddLayerValuesType1
@@ -333,6 +335,8 @@ __all__ = (
     "StackBrush",
     "StackChannel",
     "StackCommandBatch",
+    "StackCommandStackAddChannel",
+    "StackCommandStackAddChannelOp",
     "StackCommandStackAddLayer",
     "StackCommandStackAddLayerOp",
     "StackCommandStackAddLayerValuesType1",

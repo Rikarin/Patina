@@ -21,4 +21,7 @@
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.NodeGraph/Vixen.NodeGraph.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Core/Vixen.Core.Yaml/Vixen.Core.Yaml.csproj"/>
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="../../../content/materials/*.vxtexgraph" LogicalName="Starter/%(Filename)"/>
+  </ItemGroup>
 </Project>
