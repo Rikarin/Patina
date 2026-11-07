@@ -7,6 +7,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Project Settings holds the project's mesh, its high poly mesh and Auto Unwrap. A mesh with no UVs gets a layout in a new file beside it, when it is set or from the error's Unwrap Mesh button.
 - The macOS app carries MoltenVK, so it needs no Vulkan SDK or Homebrew.
 - A library reopens on the document that was last in front.
 - Mask generators have settings: how far Metal Edge Wear reaches, how much Dust settles, and the rest of what each one exposes.

@@ -42,7 +42,7 @@ import { PaintStore } from './paint-store';
                 size="sm"
                 variant="ghost"
                 data-testid="paint-mesh"
-                (click)="project.pickMesh()"
+                (click)="project.settingsOpen.set(true)"
               >
                 {{ project.meshName() ? 'Change Mesh…' : 'Choose Mesh…' }}
               </button>

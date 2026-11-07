@@ -217,6 +217,24 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
+    /// <summary>Makes a mesh the only one a project has, with every texturing document on it.</summary>
+    /// <returns>The texturing documents.</returns>
+    public IReadOnlyList<ProjectItem> UseMesh(string path, AssetId mesh) {
+        lock (createGate) {
+            var documents = ProjectFiles.UseMesh(RootPath, path, mesh);
+            Interlocked.Increment(ref unscannedWrites);
+            return documents;
+        }
+    }
+
+    /// <summary>Says whether a project gives a mesh with no UV layout one.</summary>
+    public void SetAutoUnwrap(string path, bool automatic) {
+        lock (createGate) {
+            ProjectFiles.SetAutoUnwrap(RootPath, path, automatic);
+            Interlocked.Increment(ref unscannedWrites);
+        }
+    }
+
     /// <summary>A new document with another's content.</summary>
     public ProjectItem CopyDocument(string path, AssetId document, string name) {
         lock (createGate) {

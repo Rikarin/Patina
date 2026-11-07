@@ -78,6 +78,11 @@ export class ProjectStore {
   private readonly mutableClosing = signal<string | null>(null);
   private readonly mutableQuitting = signal(false);
   private readonly mutableNewKind = signal<{ kind: string } | null>(null);
+  /** The Project Settings dialog is up. */
+  readonly settingsOpen = signal(false);
+  private readonly mutableUnwrapping = signal(false);
+  /** A mesh is being given a UV layout, which can take a while on a large one. */
+  readonly unwrapping = this.mutableUnwrapping.asReadonly();
   private readonly mutableBakeAsked = signal(0);
   private linkedBake: string | null = null;
   private switching = false;
@@ -327,35 +332,54 @@ export class ProjectStore {
     this.mutableNewKind.set({ kind });
   }
 
-  /** Puts the texturing document in front on a mesh, from a file the Server can read. */
-  async chooseMesh(mesh: string): Promise<void> {
+  /**
+   * Sets what the whole project shares, and puts the document in front on the mesh that came of it. A mesh with no UVs
+   * can take a while, as the Worker unwraps it first.
+   */
+  async applySettings(settings: { mesh?: string | null; high?: string | null; autoUnwrap?: boolean }): Promise<boolean> {
     const project = this.current();
-    const document = this.document()?.id;
-    if (!project || !document) {
-      return;
+    if (!project) {
+      return false;
     }
 
     this.mutableFailure.set(null);
+    this.mutableUnwrapping.set(true);
     try {
       const client = await this.library.api();
-      const body = { project: project.path, mesh };
-      const added = unwrap(await client.POST('/api/v1/library/project/meshes', { body }));
-      const name = mesh.split(/[\\/]/u).pop() ?? mesh;
-      const id = added.meshes.find(held => held.path.endsWith(`/${name}`))?.id;
-      if (!id) {
-        return;
-      }
-
       const contents = unwrap(
-        await client.PATCH('/api/v1/library/project/document', {
-          body: { project: project.path, document, mesh: id }
+        await client.PATCH('/api/v1/library/project/settings', {
+          body: {
+            project: project.path,
+            mesh: settings.mesh ?? null,
+            high: settings.high ?? null,
+            autoUnwrap: settings.autoUnwrap ?? null
+          }
         })
       );
       this.mutableContents.update(all => new Map(all).set(project.path, contents));
-      await this.paint.bindMesh(name);
+      this.paint.failure.set(null);
+      const name = this.meshName();
+      if (name && this.paint.state()) {
+        await this.paint.bindMesh(name);
+      }
+
+      return true;
     } catch (failure) {
       this.mutableFailure.set(messageOf(failure));
+      return false;
+    } finally {
+      this.mutableUnwrapping.set(false);
     }
+  }
+
+  /** What a new project starts with, before anything opens it. */
+  async startSettings(path: string, autoUnwrap: boolean): Promise<void> {
+    const client = await this.library.api();
+    unwrap(
+      await client.PATCH('/api/v1/library/project/settings', {
+        body: { project: path, mesh: null, high: null, autoUnwrap }
+      })
+    );
   }
 
   /** Brings files into the open project: meshes as meshes, pictures for layers and masks. */
@@ -497,14 +521,6 @@ export class ProjectStore {
     } catch (failure) {
       this.mutableFailure.set(messageOf(failure));
       return null;
-    }
-  }
-
-  /** Asks the user for a mesh and uses it. */
-  async pickMesh(): Promise<void> {
-    const mesh = await desktop()?.openMesh();
-    if (mesh) {
-      await this.chooseMesh(mesh);
     }
   }
 

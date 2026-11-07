@@ -1672,6 +1672,67 @@
         }
       }
     },
+    "/api/v1/library/project/settings": {
+      "patch": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Sets a project\u0027s mesh, detailed mesh and auto unwrap. A mesh goes under all its texturing documents.",
+        "operationId": "SetProjectSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/project/documents": {
       "post": {
         "tags": [
@@ -7703,7 +7764,8 @@
           "meshes",
           "documents",
           "bakeFolder",
-          "bakes"
+          "bakes",
+          "autoUnwrap"
         ],
         "type": "object",
         "properties": {
@@ -7744,6 +7806,11 @@
               "$ref": "#/components/schemas/ProjectFile"
             },
             "description": "The bakes it has."
+          },
+          "autoUnwrap": {
+            "type": "boolean",
+            "description": "Whether a mesh with no UV layout is given one when it is set.",
+            "default": true
           }
         },
         "description": "A project as it opens."
@@ -8229,6 +8296,40 @@
           }
         },
         "description": "A page of a build\u0027s per-project reports."
+      },
+      "ProjectSettingsRequest": {
+        "required": [
+          "project"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "mesh": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A file the Server can read: the project\u0027s mesh from now on, under all its texturing documents."
+          },
+          "high": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A file the Server can read: the detailed mesh it bakes from."
+          },
+          "autoUnwrap": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether a mesh with no UV layout is given one, in a new file beside it. True also applies it to the mesh the\nproject has now."
+          }
+        },
+        "description": "The body of \u0060PATCH /api/v1/library/project/settings\u0060. Null leaves a setting as it is."
       },
       "ProjectSummary": {
         "required": [

@@ -61,6 +61,9 @@ public sealed record ProjectDocument(
 
     /// <summary>What can be opened and edited in the project (ADR 0012).</summary>
     public IReadOnlyList<ProjectItem> Documents { get; init; } = [];
+
+    /// <summary>Whether a mesh with no UV layout is given one when it is set.</summary>
+    public bool AutoUnwrap { get; init; } = true;
 }
 
 /// <summary>A mesh a project owns.</summary>

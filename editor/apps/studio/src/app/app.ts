@@ -21,6 +21,7 @@ import { ImageMaterialPane } from './graph/image-material-pane';
 import { NodeLibrary } from './graph/node-library';
 import { TextureView } from './graph/texture-view';
 import { LibraryPane } from './library/library-pane';
+import { ProjectSettingsDialog } from './library/project-settings-dialog';
 import { ProjectStore } from './library/project-store';
 import { LayerStack } from './paint/layer-stack';
 import { MaterialShelf } from './paint/material-shelf';
@@ -39,6 +40,7 @@ import { ViewportPane } from './viewport/viewport-pane';
     ImageMaterialPane,
     Inspector,
     NodeLibrary,
+    ProjectSettingsDialog,
     LayerStack,
     LibraryPane,
     DatePipe,
@@ -150,6 +152,8 @@ import { ViewportPane } from './viewport/viewport-pane';
       </ng-template>
     </xui-dock-manager>
 
+    <ptn-project-settings />
+
     @if (failure(); as reason) {
       <div
         class="bg-error-subtle flex shrink-0 items-center gap-2 px-3 py-1 text-sm"
@@ -157,6 +161,18 @@ import { ViewportPane } from './viewport/viewport-pane';
         data-testid="app-failure"
       >
         <span class="min-w-0 flex-1 truncate" [title]="reason">{{ reason }}</span>
+        @if (reason.includes('no texture coordinates')) {
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            data-testid="app-unwrap"
+            [disabled]="project.unwrapping()"
+            (click)="project.applySettings({ autoUnwrap: true })"
+          >
+            {{ project.unwrapping() ? 'Unwrapping…' : 'Unwrap Mesh' }}
+          </button>
+        }
         <button
           type="button"
           xuiButton
@@ -384,6 +400,8 @@ export class App {
         this.project.savingAs.set(true);
       } else if (command === 'import') {
         void bridge.openFile().then(path => (path ? this.project.importFiles([path]) : undefined));
+      } else if (command === 'projectSettings') {
+        this.project.settingsOpen.set(this.project.current() !== null);
       } else if (command === 'toggleStats') {
         this.options.toggleStats();
       } else if (command === 'resetLayout') {

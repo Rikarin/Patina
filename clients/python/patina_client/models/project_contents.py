@@ -36,6 +36,7 @@ class ProjectContents:
             documents (list[ProjectDocumentInfo]): What can be opened in it.
             bake_folder (str): Where its bakes go, below the library.
             bakes (list[ProjectFile]): The bakes it has.
+            auto_unwrap (bool): Whether a mesh with no UV layout is given one when it is set. Default: True.
      """
 
     id: UUID
@@ -45,6 +46,7 @@ class ProjectContents:
     documents: list[ProjectDocumentInfo]
     bake_folder: str
     bakes: list[ProjectFile]
+    auto_unwrap: bool = True
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -84,6 +86,8 @@ class ProjectContents:
 
 
 
+        auto_unwrap = self.auto_unwrap
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -95,6 +99,7 @@ class ProjectContents:
             "documents": documents,
             "bakeFolder": bake_folder,
             "bakes": bakes,
+            "autoUnwrap": auto_unwrap,
         })
 
         return field_dict
@@ -148,6 +153,8 @@ class ProjectContents:
             bakes.append(bakes_item)
 
 
+        auto_unwrap = d.pop("autoUnwrap")
+
         project_contents = cls(
             id=id,
             name=name,
@@ -156,6 +163,7 @@ class ProjectContents:
             documents=documents,
             bake_folder=bake_folder,
             bakes=bakes,
+            auto_unwrap=auto_unwrap,
         )
 
 

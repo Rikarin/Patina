@@ -62,6 +62,12 @@ static class LibraryTreeEndpoints {
         library.MapPost("/project/meshes", AddMesh)
             .Described("AddProjectMesh", "Brings a mesh into a project, and its detailed mesh if it has one.");
 
+        library.MapPatch("/project/settings", ProjectSettingsEndpoint.SetAsync)
+            .Described(
+                "SetProjectSettings",
+                "Sets a project's mesh, detailed mesh and auto unwrap. A mesh goes under all its texturing documents."
+            );
+
         library.MapPost("/project/documents", AddDocument)
             .Described("AddProjectDocument", "Makes a document of a kind in a project.");
 
@@ -141,7 +147,7 @@ static class LibraryTreeEndpoints {
         library.AddDocument(request.Project, request.Kind, file, request.Name, on);
     }
 
-    static string Relative(string project, string below) =>
+    internal static string Relative(string project, string below) =>
         below[$"{LibraryLayout.ProjectsFolder}/{project}/".Length..];
 
     /// <summary>What a request's resolution has to be, or the refusal.</summary>
@@ -520,7 +526,7 @@ static class LibraryTreeEndpoints {
         }
     }
 
-    static ProblemHttpResult? Refusal(Exception e) =>
+    internal static ProblemHttpResult? Refusal(Exception e) =>
         e switch {
             FileNotFoundException => Problem(e, StatusCodes.Status404NotFound),
             ProjectExistsException or LibraryItemOpenException => Problem(e, StatusCodes.Status409Conflict),
@@ -529,9 +535,10 @@ static class LibraryTreeEndpoints {
             _ => null
         };
 
-    static ProblemHttpResult Problem(Exception e, int status) => TypedResults.Problem(e.Message, statusCode: status);
+    internal static ProblemHttpResult Problem(Exception e, int status) =>
+        TypedResults.Problem(e.Message, statusCode: status);
 
-    static ProblemHttpResult NoLibrary() =>
+    internal static ProblemHttpResult NoLibrary() =>
         TypedResults.Problem("This Server has no library.", statusCode: StatusCodes.Status404NotFound);
 }
 

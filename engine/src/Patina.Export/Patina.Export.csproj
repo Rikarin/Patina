@@ -9,6 +9,7 @@
     <PackageReference Include="YamlDotNet"/>
     <ProjectReference Include="../Patina.Contracts/Patina.Contracts.csproj"/>
     <ProjectReference Include="../Patina.Jobs/Patina.Jobs.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Core/Vixen.Geometry.Uv/Vixen.Geometry.Uv.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.Interchange/Vixen.Interchange.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Core/Vixen.Geometry.Remeshing/Vixen.Geometry.Remeshing.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Core/Vixen.Core.Imaging/Vixen.Core.Imaging.csproj"/>

@@ -250,6 +250,30 @@ public sealed class LibraryFolderTests : IDisposable {
     }
 
     [Fact]
+    public void One_mesh_goes_under_every_texturing_document_and_auto_unwrap_is_remembered() {
+        var made = library.CreateProject(new("Crate"));
+        var folder = Directory.CreateTempSubdirectory("patina-mesh-");
+        var first = Path.Combine(folder.FullName, "first.glb");
+        var second = Path.Combine(folder.FullName, "second.glb");
+        File.WriteAllText(first, "mesh");
+        File.WriteAllText(second, "mesh");
+        var before = library.AddMesh(made.Path, first, null);
+        library.AddDocument(made.Path, DocumentKinds.Texturing, "a.vxlayers", "A", before.Id);
+        library.AddDocument(made.Path, DocumentKinds.Texturing, "b.vxlayers", "B", before.Id);
+        var after = library.AddMesh(made.Path, second, null);
+
+        var moved = library.UseMesh(made.Path, after.Id);
+        library.SetAutoUnwrap(made.Path, false);
+
+        Assert.Equal(2, moved.Count);
+        var contents = library.Contents(made.Path);
+        Assert.False(contents.AutoUnwrap);
+        Assert.All(contents.Documents, document => Assert.Equal(after.Id.Value, document.Mesh));
+        Assert.Equal(after.Id.Value, contents.Meshes.Single(static mesh => mesh.Id is not null).Id);
+        Assert.True(File.Exists(library.ProjectFile(made.Path, before.File)));
+    }
+
+    [Fact]
     public void A_project_remembers_its_meshes_and_documents_across_a_rewrite() {
         var made = library.CreateProject(new("Crate"));
         var low = Path.Combine(folder.FullName, "low.glb");

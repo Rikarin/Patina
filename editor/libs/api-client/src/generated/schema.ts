@@ -436,6 +436,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/project/settings': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Sets a project's mesh, detailed mesh and auto unwrap. A mesh goes under all its texturing documents. */
+    patch: operations['SetProjectSettings'];
+    trace?: never;
+  };
   '/api/v1/library/project/documents': {
     parameters: {
       query?: never;
@@ -2692,6 +2709,11 @@ export interface components {
       bakeFolder: string;
       /** @description The bakes it has. */
       bakes: components['schemas']['ProjectFile'][];
+      /**
+       * @description Whether a mesh with no UV layout is given one when it is set.
+       * @default true
+       */
+      autoUnwrap: boolean;
     };
     /** @description The body of `POST /api/v1/library/projects`. */
     ProjectCreateRequest: {
@@ -2910,6 +2932,20 @@ export interface components {
        * @description The most items a page holds.
        */
       limit: number;
+    };
+    /** @description The body of `PATCH /api/v1/library/project/settings`. Null leaves a setting as it is. */
+    ProjectSettingsRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /** @description A file the Server can read: the project's mesh from now on, under all its texturing documents. */
+      mesh?: null | string;
+      /** @description A file the Server can read: the detailed mesh it bakes from. */
+      high?: null | string;
+      /**
+       * @description Whether a mesh with no UV layout is given one, in a new file beside it. True also applies it to the mesh the
+       *     project has now.
+       */
+      autoUnwrap?: null | boolean;
     };
     /** @description One project as the browser shows it. The project itself loads on open. */
     ProjectSummary: {
@@ -5252,6 +5288,57 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': components['schemas']['ProjectMeshRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetProjectSettings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectSettingsRequest'];
       };
     };
     responses: {

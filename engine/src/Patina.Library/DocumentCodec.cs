@@ -15,6 +15,7 @@ public static class DocumentCodec {
     const string MeshKey = "mesh";
     const string RoleKey = "role";
     const string MeshesKey = "meshes";
+    const string AutoUnwrapKey = "autoUnwrap";
     const string DocumentsKey = "documents";
     const string FileKey = "file";
     const string HighKey = "high";
@@ -56,6 +57,7 @@ public static class DocumentCodec {
                     Pair(TagsKey, SortedTexts(document.Tags)),
                     ..Listed(MeshesKey, document.Meshes.Select(static m => Mesh(m))),
                     ..Listed(DocumentsKey, document.Documents.Select(static d => Item(d))),
+                    ..document.AutoUnwrap ? [] : new[] { Pair(AutoUnwrapKey, YamlText.Plain("false")) },
                     Pair(ReferencesKey, References(document.References)),
                     Pair(
                         OutputsKey,
@@ -151,7 +153,11 @@ public static class DocumentCodec {
                     fields.Texts(TagsKey),
                     references,
                     ReadOutputs(fields, [..references.Select(static r => r.Asset)])
-                ) { Meshes = ReadMeshes(fields), Documents = ReadItems(fields) };
+                ) {
+                    Meshes = ReadMeshes(fields),
+                    Documents = ReadItems(fields),
+                    AutoUnwrap = fields.Optional(AutoUnwrapKey) != "false"
+                };
             }
         );
 

@@ -1,6 +1,6 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { leave, newLibrary, newProject } from './projects';
@@ -127,6 +127,33 @@ test('a brush on the mesh shows on it in the viewport, across its flats, and und
   await expect.poll(async () => changed(before, await shot()), { timeout: 30_000 }).toBeLessThan(40);
   await window.getByTestId('paint-redo').click();
   await expect.poll(async () => changed(before, await shot()), { timeout: 30_000 }).toBeGreaterThan(1500);
+});
+
+test('a mesh with no UVs is unwrapped when a project is made, and the setting stays on the project', async () => {
+  await newLibrary(app, window, join(scratch, 'Unwrap.ptlib'));
+  const mesh = join(scratch, 'plain.obj');
+  writeFileSync(
+    mesh,
+    [
+      ...['-1 -1 -1', '1 -1 -1', '1 1 -1', '-1 1 -1', '-1 -1 1', '1 -1 1', '1 1 1', '-1 1 1'].map(v => `v ${v}`),
+      ...['5 6 7 8', '4 3 2 1', '2 3 7 6', '1 5 8 4', '4 8 7 3', '1 2 6 5'].map(f => `f ${f}`)
+    ].join('\n')
+  );
+  await newProject(app, window, 'Plain', mesh);
+  await expect(window.getByTestId('viewport-paint')).toBeVisible({ timeout: 60_000 });
+  await expect(window.getByTestId('app-failure')).toHaveCount(0);
+
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]?.webContents.send('patina:command', 'projectSettings');
+  });
+  await expect(window.getByTestId('project-settings-mesh-name')).toHaveText('plain_unwrapped.glb');
+  await window.getByTestId('project-settings-unwrap').click();
+  await window.getByTestId('project-settings-apply').click();
+  await expect(window.getByTestId('project-settings')).toHaveCount(0);
+  const yaml = readFileSync(join(scratch, 'Unwrap.ptlib', 'projects', 'plain', 'project.yaml'), 'utf8');
+  expect(yaml).toContain('autoUnwrap: false');
+  expect(yaml).toContain('plain_unwrapped.glb');
+  expect(yaml).not.toContain('file: plain.obj');
 });
 
 test('Save All on the quit dialog saves a painted stack and quits', async () => {

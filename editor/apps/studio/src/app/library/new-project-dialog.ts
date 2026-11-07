@@ -4,6 +4,7 @@ import { XuiCalloutImports } from '@xui/callout';
 import { XuiDialogImports } from '@xui/dialog';
 import { XuiFormFieldImports } from '@xui/form-field';
 import { XuiInputImports } from '@xui/input';
+import { XuiSwitchImports } from '@xui/switch';
 import { XuiTagInputImports } from '@xui/tag-input';
 import { desktop } from '../core/desktop';
 import { LibraryStore } from './library-store';
@@ -19,6 +20,7 @@ import { ProjectStore } from './project-store';
     XuiDialogImports,
     XuiFormFieldImports,
     XuiInputImports,
+    XuiSwitchImports,
     XuiTagInputImports
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -81,6 +83,12 @@ import { ProjectStore } from './project-store';
                 <button type="button" xuiButton size="sm" data-testid="new-project-high" (click)="pickHigh()">Choose…</button>
               </div>
             </div>
+          }
+          @if (kind() === 'texturing') {
+            <label class="flex items-center justify-between gap-2">
+              <span class="text-sm">Auto Unwrap</span>
+              <xui-switch ariaLabel="Auto Unwrap" data-testid="new-project-unwrap" [(checked)]="autoUnwrap" />
+            </label>
           }
           <label class="flex flex-col gap-1">
             <span class="section-label">Resolution</span>
@@ -167,6 +175,7 @@ export class NewProjectDialog {
   protected readonly resolution = signal(2048);
   protected readonly meshName = computed(() => this.mesh().split(/[\\/]/).pop() ?? '');
   protected readonly tags = signal<string[]>([]);
+  protected readonly autoUnwrap = signal(true);
   protected readonly refused = signal<string | null>(null);
   private readonly saving = signal(false);
   /** Texturing is painting on something, so it waits for a mesh. */
@@ -209,6 +218,10 @@ export class NewProjectDialog {
         image: this.image() || null,
         high: this.high() || null
       });
+      if (this.kind() === 'texturing') {
+        await this.project.startSettings(project.path, this.autoUnwrap());
+      }
+
       this.name.set('');
       this.mesh.set('');
       this.image.set('');

@@ -82,6 +82,8 @@ public static class IpcTypes {
 
     public const string StackClose = "stack.close";
 
+    public const string MeshUnwrap = "mesh.unwrap";
+
     /// <summary>Renders each fill of a stack alone, small.</summary>
     public const string StackThumbnails = "stack.thumbnails";
 
@@ -188,6 +190,10 @@ public sealed class IpcMessage {
     public GraphResult? GraphResult { get; set; }
 
     public string? StackClose { get; set; }
+
+    public MeshUnwrapAsk? MeshUnwrap { get; set; }
+
+    public bool? MeshUnwrapped { get; set; }
 
     public StackThumbnailAsk? StackThumbnails { get; set; }
 
@@ -472,6 +478,11 @@ public sealed record StackResult(
     IReadOnlyList<StackPreview> Previews,
     IReadOnlyList<string> Problems
 );
+
+/// <summary>Gives a mesh that has no UV layout one, in a new file.</summary>
+/// <param name="Source">The mesh file.</param>
+/// <param name="Output">Where the unwrapped mesh goes.</param>
+public sealed record MeshUnwrapAsk(string Source, string Output);
 
 /// <summary>Writes canvases to a folder: the stack's own for a save, the cache's for a checkpoint.</summary>
 /// <param name="Session">The session.</param>

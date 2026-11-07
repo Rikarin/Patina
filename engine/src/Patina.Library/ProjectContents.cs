@@ -45,7 +45,8 @@ static class ProjectFiles {
             meshes,
             documents,
             Below(path, BakeFolder),
-            Bakes(full, path)
+            Bakes(full, path),
+            document.AutoUnwrap
         );
     }
 
@@ -113,6 +114,28 @@ static class ProjectFiles {
         var added = new ProjectItem(AssetId.New(), kind, file, NewProjects.DisplayName(name), mesh);
         LibraryFiles.WriteProject(root, path, document with { Documents = [..document.Documents, added] });
         return added;
+    }
+
+    /// <summary>
+    ///     Makes a mesh the project's only one: every texturing document goes on it, and the file before stays.
+    /// </summary>
+    /// <returns>The texturing documents.</returns>
+    /// <exception cref="FileNotFoundException">The project or mesh is not there.</exception>
+    public static IReadOnlyList<ProjectItem> UseMesh(string root, string path, AssetId mesh) {
+        var (_, document) = Project(root, path);
+        var kept = document.Meshes.FirstOrDefault(m => m.Id == mesh)
+            ?? throw new FileNotFoundException($"This project has no mesh {mesh}.");
+        List<ProjectItem> documents = [
+            ..document.Documents.Select(d => d.Kind == DocumentKinds.Texturing ? d with { Mesh = mesh } : d)
+        ];
+        LibraryFiles.WriteProject(root, path, document with { Meshes = [kept], Documents = documents });
+        return [..documents.Where(static d => d.Kind == DocumentKinds.Texturing)];
+    }
+
+    /// <summary>Says whether a mesh with no UV layout is given one.</summary>
+    public static void SetAutoUnwrap(string root, string path, bool automatic) {
+        var (_, document) = Project(root, path);
+        LibraryFiles.WriteProject(root, path, document with { AutoUnwrap = automatic });
     }
 
     /// <summary>Puts a texturing document on another mesh.</summary>

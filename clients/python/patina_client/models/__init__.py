@@ -129,6 +129,7 @@ from .project_picture_request import ProjectPictureRequest
 from .project_rename_request import ProjectRenameRequest
 from .project_report import ProjectReport
 from .project_report_page import ProjectReportPage
+from .project_settings_request import ProjectSettingsRequest
 from .project_summary import ProjectSummary
 from .stack_brush import StackBrush
 from .stack_channel import StackChannel
@@ -336,6 +337,7 @@ __all__ = (
     "ProjectRenameRequest",
     "ProjectReport",
     "ProjectReportPage",
+    "ProjectSettingsRequest",
     "ProjectSummary",
     "StackBrush",
     "StackChannel",

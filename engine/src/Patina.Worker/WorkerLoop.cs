@@ -1,6 +1,8 @@
 using Patina.Contracts;
+using Patina.Export;
 using Patina.Ipc;
 using System.Diagnostics;
+using Vixen.Interchange;
 
 namespace Patina.Worker;
 
@@ -96,6 +98,7 @@ sealed class WorkerLoop(
                     or IpcTypes.StackPixels
                     or IpcTypes.StackClose
                     or IpcTypes.ViewportStack => OnDevice(request),
+                IpcTypes.MeshUnwrap => Unwrap(request),
                 IpcTypes.BakeStart => bakes.Start(request, link),
                 IpcTypes.BakeCancel => bakes.Cancel(request),
                 IpcTypes.BuildStart => builds.Start(request, link),
@@ -103,6 +106,18 @@ sealed class WorkerLoop(
                 _ => IpcMessage.Fail(request.Id, $"Unknown request '{request.Type}'.")
             }
         );
+
+    /// <summary>Uses no device, but this link waits for it: nothing else can be asked while a mesh is cut.</summary>
+    static IpcMessage Unwrap(IpcMessage request) {
+        var ask = request.MeshUnwrap ?? throw new IpcException("mesh.unwrap names no mesh.");
+        try {
+            return new() {
+                Type = IpcTypes.Ok, Id = request.Id, MeshUnwrapped = MeshUnwrapRun.Run(ask.Source, ask.Output)
+            };
+        } catch (Exception e) when (e is ModelFormatException or IOException or InvalidOperationException) {
+            throw new IpcException($"'{Path.GetFileName(ask.Source)}' could not be unwrapped: {e.Message}");
+        }
+    }
 
     /// <summary>What uses the device, in turn with a build's step. Health and bakes never wait for this.</summary>
     IpcMessage OnDevice(IpcMessage request) {
