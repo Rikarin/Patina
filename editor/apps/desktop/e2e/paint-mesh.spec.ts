@@ -342,6 +342,8 @@ test('a layer keeps to named meshes, a folder takes a mask, and the mesh reloads
   await window.locator('[data-testid^=paint-layer-paint]').first().click();
   await window.keyboard.press('ControlOrMeta+g');
   await expect(window.locator('[data-testid^=paint-layer-]', { hasText: 'Folder' })).toHaveCount(2);
+  // The folder arrives before the layer moves in it, and a save that overtakes that move rightly stays unsaved.
+  await expect(window.locator('[data-testid^=paint-layer-paint]').first()).toHaveAttribute('aria-level', '2');
 
   await app.evaluate(({ BrowserWindow }) => {
     BrowserWindow.getAllWindows()[0]?.webContents.send('patina:command', 'save');
