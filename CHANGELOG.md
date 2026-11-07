@@ -8,6 +8,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - A graph tiles across and down by default, with a switch for each in its settings, and every filter keeps a tiling picture tiling. A graph reading a mesh map holds at its edges instead, as a layer stack always does.
+- A Pixel Processor has a Format setting. It keeps all four lanes unless it is told to keep grey.
 - Project Settings holds the project's mesh, Auto Unwrap and Preserve Paint. A mesh with no UVs gets a layout in a new file beside it, when it is set or from the error's Unwrap Mesh button.
 - A layer can be kept to named meshes, from the square on the right of its row. It combines with any mask the layer has.
 - Effects inside layers: a layer can hold paint, fills and filters, each with its own blend, opacity and eye, over its content and under its mask.
