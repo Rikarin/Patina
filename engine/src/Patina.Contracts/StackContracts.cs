@@ -35,13 +35,13 @@ public sealed record StackChannel(string Usage, IReadOnlyList<float> Default);
 /// <param name="Textures">What a texture fill reads for each channel.</param>
 /// <param name="Graph">The graph a graph fill reads.</param>
 /// <param name="Projection">How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical.</param>
-/// <param name="Filter">What a filter does: Levels, Hsl, Blur, Invert or Grayscale.</param>
+/// <param name="Filter">The named filter a file holds: Levels, Hsl, Blur, Invert or Grayscale.</param>
 /// <param name="Settings">A filter's numbers.</param>
 /// <param name="Mask">Its mask.</param>
 /// <param name="PlanarAxis">The world axis a planar projection looks along or a cylinder wraps: X, Y or Z.</param>
 /// <param name="Placement">Where a fill sits on the surface.</param>
 /// <param name="Parameters">What a graph fill sets the graph's knobs to, as text.</param>
-/// <param name="FilterNode">The compound a graph filter runs, or empty for one of the named filters.</param>
+/// <param name="FilterNode">The node or compound a filter layer runs, whichever way the file names it.</param>
 public sealed record StackLayer(
     string Id,
     string Name,
@@ -120,19 +120,6 @@ public sealed record StackMaskEffect(
     IReadOnlyDictionary<string, string>? Texts = null
 );
 
-/// <summary>A number a mask effect takes.</summary>
-/// <param name="Name">Its port.</param>
-/// <param name="Default">What it starts at.</param>
-/// <param name="Minimum">Its lower bound, or null for none.</param>
-/// <param name="Maximum">Its upper bound, or null for none.</param>
-public sealed record StackEffectPort(string Name, float Default, float? Minimum, float? Maximum);
-
-/// <summary>A step a mask can run.</summary>
-/// <param name="Node">The node type.</param>
-/// <param name="Name">What a person calls it.</param>
-/// <param name="Ports">The numbers it takes.</param>
-public sealed record StackEffectKind(string Node, string Name, IReadOnlyList<StackEffectPort> Ports);
-
 /// <summary>One colour of a stack's id map.</summary>
 /// <param name="Colour">Red, green and blue, 0 to 1, as the map stores them.</param>
 /// <param name="Share">How much of the map's covered area it is, 0 to 1.</param>
@@ -143,14 +130,28 @@ public sealed record StackIdColour(IReadOnlyList<float> Colour, float Share);
 /// <param name="At">The colour at the place asked about, or null.</param>
 public sealed record StackIdColours(IReadOnlyList<StackIdColour> Colours, IReadOnlyList<float>? At = null);
 
-/// <summary>A filter a layer can be, and the numbers it takes.</summary>
-/// <param name="Kind">Levels, Hsl, Blur, Invert or Grayscale.</param>
-/// <param name="Settings">Its numbers, each saying what it is and what it starts as, in the order a person reads them.</param>
-public sealed record StackFilterKind(string Kind, IReadOnlyList<GraphPortDefinition> Settings);
+/// <summary>
+///     An adjustment a filter layer or a mask can run: any node or shipped compound with one image in and one image
+///     out. A project's own compounds reach a stack from the shelf.
+/// </summary>
+/// <param name="Node">The node type or compound, as <see cref="StackLayer.FilterNode" /> names it.</param>
+/// <param name="Name">What a person calls it.</param>
+/// <param name="Category">The heading it sits under.</param>
+/// <param name="Summary">One line about it.</param>
+/// <param name="Ports">Its numbers, each saying what it is and what it starts as. Never the image it reads.</param>
+/// <param name="Settings">What it takes as text.</param>
+public sealed record StackFilterKind(
+    string Node,
+    string Name,
+    string Category,
+    string Summary,
+    IReadOnlyList<GraphPortDefinition> Ports,
+    IReadOnlyList<GraphSettingDefinition> Settings
+);
 
 /// <summary>The words a stack's fields take, so that a client holds no list of its own.</summary>
 /// <param name="Blends">The sixteen blend modes.</param>
-/// <param name="Filters">The filters.</param>
+/// <param name="Filters">The filters a layer can be.</param>
 /// <param name="Masks">The mask sources.</param>
 /// <param name="Generators">The compounds that read a mesh's bakes.</param>
 /// <param name="MeshMaps">The maps a bake mask or a generator can read.</param>
@@ -165,7 +166,7 @@ public sealed record StackVocabulary(
     IReadOnlyList<string> Generators,
     IReadOnlyList<string> MeshMaps,
     IReadOnlyList<string> Alphas,
-    IReadOnlyList<StackEffectKind> MaskEffects,
+    IReadOnlyList<StackFilterKind> MaskEffects,
     IReadOnlyList<string> Usages,
     IReadOnlyDictionary<string, IReadOnlyList<GraphSettingDefinition>> GeneratorParameters
 );
@@ -293,7 +294,7 @@ public abstract record StackCommand;
 ///     A material to unfold into the stack as layers: a shipped one as <c>smart:Name</c>, or a stack below the library.
 ///     Then <paramref name="Kind" /> and <paramref name="Name" /> say nothing.
 /// </param>
-/// <param name="FilterNode">The compound a filter layer runs, instead of a named filter.</param>
+/// <param name="FilterNode">The node or compound a filter layer runs, instead of a named filter.</param>
 public sealed record StackAddLayer(
     string Kind,
     string Name,
@@ -333,8 +334,10 @@ public sealed record StackMoveLayer(string Layer, int Delta) : StackCommand;
 /// <param name="Textures">What a texture fill reads, replacing what these channels held.</param>
 /// <param name="Graph">The graph a graph fill reads.</param>
 /// <param name="Projection">How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical.</param>
-/// <param name="Filter">What a filter does.</param>
-/// <param name="Settings">A filter's numbers, replacing what these names held.</param>
+/// <param name="Filter">What a filter does, one of the five named filters.</param>
+/// <param name="Settings">
+///     A filter's numbers, replacing what these names held. Choosing another filter starts it from its own defaults.
+/// </param>
 /// <param name="Mask">
 ///     Its mask, which replaces the old one and keeps any painted canvas. A source of None takes the mask away, whole.
 /// </param>
@@ -342,7 +345,7 @@ public sealed record StackMoveLayer(string Layer, int Delta) : StackCommand;
 /// <param name="PlanarAxis">The world axis a planar projection looks along or a cylinder wraps: X, Y or Z.</param>
 /// <param name="Placement">Where a fill sits on the surface, which replaces where it sat.</param>
 /// <param name="Parameters">What a graph fill sets the graph's knobs to, replacing what these names held.</param>
-/// <param name="FilterNode">The compound a filter runs, or empty to go back to the named filter.</param>
+/// <param name="FilterNode">The node or compound a filter runs, or empty to go back to the named filter.</param>
 public sealed record StackSetLayer(
     string Layer,
     string? Name = null,

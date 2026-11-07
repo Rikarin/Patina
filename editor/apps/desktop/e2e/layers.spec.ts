@@ -284,6 +284,26 @@ test('a mask runs effects, and they stay in order', async () => {
   await expect(window.getByTestId('paint-mask-effect-1')).toHaveCount(0);
 });
 
+test('a filter layer runs any filter, with the fields its node declares', async () => {
+  await window.getByTestId('paint-add-filter').click();
+  const filter = window.getByTestId('paint-filter');
+  await expect(filter).toBeVisible();
+  await expect(window.getByTestId('paint-setting-Gamma')).toBeVisible();
+
+  await filter.click();
+  await window.getByRole('option', { name: /^Gradient Map/ }).click();
+  await expect(window.getByTestId('paint-setting-Ramp').locator('ptn-gradient-ramp')).toBeVisible();
+  await expect(window.getByTestId('paint-setting-Gamma')).toHaveCount(0);
+
+  // A filter that reads one channel takes the grey of what is beneath it, rather than being refused.
+  await expect(window.getByTestId('layers-evaluation')).toHaveText(/ran|Up to date/, { timeout: 30_000 });
+  await expect(window.locator('[data-testid^=paint-layer-filter] [data-testid=layer-fault]')).toHaveCount(0);
+
+  await filter.click();
+  await window.getByRole('option', { name: /^Mirror/ }).click();
+  await expect(window.getByTestId('paint-setting-Axis')).toBeVisible();
+});
+
 /** How green the map is at a place across it. */
 const greenAt = (across: number) =>
   window.getByTestId('paint-picture').evaluate((image, x) => {

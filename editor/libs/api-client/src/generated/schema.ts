@@ -3209,7 +3209,7 @@ export interface components {
        *     Then Kind and Name say nothing.
        */
       material?: null | string;
-      /** @description The compound a filter layer runs, instead of a named filter. */
+      /** @description The node or compound a filter layer runs, instead of a named filter. */
       filterNode?: null | string;
     };
     /** @description Moves a layer up or down its list. */
@@ -3273,9 +3273,9 @@ export interface components {
       graph?: null | string;
       /** @description How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical. */
       projection?: null | string;
-      /** @description What a filter does. */
+      /** @description What a filter does, one of the five named filters. */
       filter?: null | string;
-      /** @description A filter's numbers, replacing what these names held. */
+      /** @description A filter's numbers, replacing what these names held. Choosing another filter starts it from its own defaults. */
       settings?: null | {
         [key: string]: unknown;
       };
@@ -3288,7 +3288,7 @@ export interface components {
       parameters?: null | {
         [key: string]: string;
       };
-      /** @description The compound a filter runs, or empty to go back to the named filter. */
+      /** @description The node or compound a filter runs, or empty to go back to the named filter. */
       filterNode?: null | string;
     };
     /** @description Names the mesh a stack is painted on, which is undone like any other edit. */
@@ -3384,35 +3384,6 @@ export interface components {
       /** @description The undo history. */
       history: components['schemas']['GraphHistoryState'];
     };
-    /** @description A step a mask can run. */
-    StackEffectKind: {
-      /** @description The node type. */
-      node: string;
-      /** @description What a person calls it. */
-      name: string;
-      /** @description The numbers it takes. */
-      ports: components['schemas']['StackEffectPort'][];
-    };
-    /** @description A number a mask effect takes. */
-    StackEffectPort: {
-      /** @description Its port. */
-      name: string;
-      /**
-       * Format: float
-       * @description What it starts at.
-       */
-      default: number;
-      /**
-       * Format: float
-       * @description Its lower bound, or null for none.
-       */
-      minimum?: null | number;
-      /**
-       * Format: float
-       * @description Its upper bound, or null for none.
-       */
-      maximum?: null | number;
-    };
     /** @description How an evaluation went. */
     StackEvaluation: {
       /**
@@ -3487,12 +3458,23 @@ export interface components {
       /** @description Where, absolute or relative to the library. */
       folder: string;
     };
-    /** @description A filter a layer can be, and the numbers it takes. */
+    /**
+     * @description An adjustment a filter layer or a mask can run: any node or shipped compound with one image in and one image
+     *     out. A project's own compounds reach a stack from the shelf.
+     */
     StackFilterKind: {
-      /** @description Levels, Hsl, Blur, Invert or Grayscale. */
-      kind: string;
-      /** @description Its numbers, each saying what it is and what it starts as, in the order a person reads them. */
-      settings: components['schemas']['GraphPortDefinition'][];
+      /** @description The node type or compound, as string StackLayer.FilterNode names it. */
+      node: string;
+      /** @description What a person calls it. */
+      name: string;
+      /** @description The heading it sits under. */
+      category: string;
+      /** @description One line about it. */
+      summary: string;
+      /** @description Its numbers, each saying what it is and what it starts as. Never the image it reads. */
+      ports: components['schemas']['GraphPortDefinition'][];
+      /** @description What it takes as text. */
+      settings: components['schemas']['GraphSettingDefinition'][];
     };
     /** @description One colour of a stack's id map. */
     StackIdColour: {
@@ -3548,7 +3530,7 @@ export interface components {
       graph: string;
       /** @description How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical. */
       projection: string;
-      /** @description What a filter does: Levels, Hsl, Blur, Invert or Grayscale. */
+      /** @description The named filter a file holds: Levels, Hsl, Blur, Invert or Grayscale. */
       filter: string;
       /** @description A filter's numbers. */
       settings: {
@@ -3567,7 +3549,7 @@ export interface components {
         [key: string]: string;
       };
       /**
-       * @description The compound a graph filter runs, or empty for one of the named filters.
+       * @description The node or compound a filter layer runs, whichever way the file names it.
        * @default
        */
       filterNode: string;
@@ -3892,7 +3874,7 @@ export interface components {
     StackVocabulary: {
       /** @description The sixteen blend modes. */
       blends: string[];
-      /** @description The filters. */
+      /** @description The filters a layer can be. */
       filters: components['schemas']['StackFilterKind'][];
       /** @description The mask sources. */
       masks: string[];
@@ -3903,7 +3885,7 @@ export interface components {
       /** @description The named brush alphas. */
       alphas: string[];
       /** @description The steps a mask can run. */
-      maskEffects: components['schemas']['StackEffectKind'][];
+      maskEffects: components['schemas']['StackFilterKind'][];
       /** @description The channels a stack can have. */
       usages: string[];
       /** @description The knobs each generator has, by its path. */

@@ -105,7 +105,7 @@ function fieldOfSetting(setting: GraphSettingDefinition): GraphField {
 }
 
 /** What a node type shows in the Inspector, under its headings. Numbers come first, then settings. */
-export function fieldsOf(type: GraphNodeType): readonly GraphFieldGroup[] {
+export function fieldsOf(type: Pick<GraphNodeType, 'ports' | 'settings'>): readonly GraphFieldGroup[] {
   const ungrouped: GraphField[] = [];
   for (const port of type.ports) {
     const field = port.direction === 'Input' ? fieldOfPort(port) : null;

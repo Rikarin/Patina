@@ -130,47 +130,30 @@ public static class StackDocuments {
             Texts = effect.Texts?.ToDictionary(StringComparer.Ordinal) ?? []
         };
 
-    /// <summary>A step a mask can run, with the numbers its node takes.</summary>
-    static StackEffectKind EffectKind(NodeTypeRegistry registry, string node, string name) =>
-        new(
-            node,
-            name,
-            [
-                ..registry.Get(node)
-                    .Ports.Where(static port => port is {
-                            Direction: PortDirection.Input, Kind: not PortKind.Image, Default.Length: 1
-                        }
-                    )
-                    .Select(static port => new StackEffectPort(
-                            port.Name,
-                            port.Default[0],
-                            float.IsFinite(port.Minimum) ? port.Minimum : null,
-                            float.IsFinite(port.Maximum) ? port.Maximum : null
-                        )
-                    )
-            ]
-        );
-
-    /// <summary>The filters, each with the numbers its node declares, so that a client shows what will run.</summary>
+    /// <summary>
+    ///     Every adjustment a stack can run, read from the same registry and compounds its compile reads, each with what
+    ///     its node declares, so that a client shows what will run.
+    /// </summary>
     static IReadOnlyList<StackFilterKind> Filters() {
-        NodeTypeRegistry registry = new();
-        NodeTypes.Register(registry);
+        var library = LayerStackCompiler.Library(out _);
         return [
-            ..Enum.GetValues<LayerFilterKind>()
-                .Select(kind => {
-                        var (node, names) = LayerStackGraph.Filter(kind);
-                        var type = registry.Get(node);
-                        return new StackFilterKind(
-                            kind.ToString(),
-                            [
-                                ..names.Select(name => GraphDocuments.Definition(
-                                        type.Port(name, PortDirection.Input)
-                                        ?? throw new InvalidOperationException($"'{node}' has no number '{name}'.")
-                                    )
+            ..library.Types.Where(LayerStackGraph.IsAdjustment)
+                .OrderBy(static type => type.Path, StringComparer.Ordinal)
+                .Select(static type => new StackFilterKind(
+                        type.Path,
+                        type.Title,
+                        type.Category,
+                        type.Summary,
+                        [
+                            ..type.Ports
+                                .Where(static port => port is {
+                                        Direction: PortDirection.Input, Kind: not PortKind.Image
+                                    }
                                 )
-                            ]
-                        );
-                    }
+                                .Select(GraphDocuments.Definition)
+                        ],
+                        [..type.Settings.Select(GraphDocuments.Definition)]
+                    )
                 )
         ];
     }
@@ -196,17 +179,13 @@ public static class StackDocuments {
             );
     }
 
-    static IReadOnlyList<StackEffectKind> MaskEffects() {
-        NodeTypeRegistry registry = new();
-        NodeTypes.Register(registry);
-        return [
-            EffectKind(registry, "Colour/Levels", "Levels"),
-            EffectKind(registry, "Colour/Invert", "Invert"),
-            EffectKind(registry, "Colour/Auto Levels", "Auto Levels"),
-            EffectKind(registry, "Filters/Blur", "Blur"),
-            EffectKind(registry, "Filters/Sharpen", "Sharpen")
-        ];
-    }
+    /// <summary>
+    ///     The filters, less what a mask's colour selection is. That one has its own fields, and an entry of its node
+    ///     in a mask's list is that selection.
+    /// </summary>
+    static IReadOnlyList<StackFilterKind> MaskEffects() => [
+        ..Filters().Where(static filter => filter.Node != ColourSelect)
+    ];
 
     static MaskEffectAsset? Selection(MaskAsset mask) =>
         mask.Effects.Find(static effect => effect.Node == ColourSelect);
@@ -260,6 +239,12 @@ public static class StackDocuments {
             ?.GeneratorTexts[MeshParts]
             .Split('\n');
 
+    /// <summary>What a filter layer runs, which a file may name either way. Any other layer runs nothing.</summary>
+    public static string FilterNodeOf(LayerAsset layer) =>
+        layer.FilterNode.Trim() is { Length: > 0 } node ? node
+        : layer.Kind == LayerKind.Filter ? LayerStackGraph.Filter(layer.Filter).Type
+        : string.Empty;
+
     static StackLayer State(LayerAsset layer) =>
         new(
             layer.Id,
@@ -310,7 +295,7 @@ public static class StackDocuments {
                 layer.Placement.Sharpness
             ),
             layer.Texts,
-            layer.FilterNode
+            FilterNodeOf(layer)
         );
 
     static Dictionary<string, IReadOnlyList<float>> Numbers(Dictionary<string, float[]> numbers) =>

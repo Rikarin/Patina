@@ -455,6 +455,12 @@ public sealed class StackEditor : ILayerStackDocument {
             throw new StackEditRefusedException("An opacity is from 0 to 1.");
         }
 
+        var filter = Parsed(change.Filter, layer.Filter, "filter");
+        var filterNode = change.FilterNode ?? layer.FilterNode;
+
+        // Another filter has other numbers, so what was set for the last one does not follow. It would only be refused.
+        var sameFilter = StackDocuments.FilterNodeOf(layer)
+            == StackDocuments.FilterNodeOf(layer with { Filter = filter, FilterNode = filterNode });
         return new(
             this,
             new(set, change.Layer),
@@ -472,10 +478,10 @@ public sealed class StackEditor : ILayerStackDocument {
                 Projection = Parsed(change.Projection, layer.Projection, "projection"),
                 PlanarAxis = Parsed(change.PlanarAxis, layer.PlanarAxis, "axis"),
                 Placement = change.Placement is { } placement ? Placed(placement) : layer.Placement,
-                Filter = Parsed(change.Filter, layer.Filter, "filter"),
-                FilterNode = change.FilterNode ?? layer.FilterNode,
-                Settings = Merged(layer.Settings, Copied(change.Settings)),
-                Texts = Merged(layer.Texts, change.Parameters),
+                Filter = filter,
+                FilterNode = filterNode,
+                Settings = Merged(sameFilter ? layer.Settings : [], Copied(change.Settings)),
+                Texts = Merged(sameFilter ? layer.Texts : [], change.Parameters),
                 Mask = StackDocuments.MeshMasked(Masked(layer.Mask, change.Mask), change.MeshMask)
             },
             "Change layer"

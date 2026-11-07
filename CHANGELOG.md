@@ -7,6 +7,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Every filter Patina has can be a filter layer or a step on a mask, from the same list the node menu reads: 39 on a layer and 38 on a mask, where five of each were offered before. Height to Normal, Bevel, Gradient Map and the other filters that read one channel take the grey of what is beneath, or a mask's own value. Properties shows each filter's fields as the graph's Inspector does, ramp and curve editors included, and choosing another filter starts it from its own defaults.
 - Layers and Project Settings say when the mesh has changed since the last bake, and Reload Mesh says what it will cost before it closes anything.
 - Project Settings lists a project's meshes, pictures and bakes under Files, and the status bar says what an import brought in.
 - A preset can read every baked map: curvature, thickness, ID, position, world normal and bent normal, not only normal, height and occlusion.

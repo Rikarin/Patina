@@ -369,9 +369,11 @@ export class PaintStore {
 
   /** Adds a layer at the top of the stack, or of the chosen group, and chooses it. */
   /** Adds an effect inside a layer, over its content and under its mask, and chooses it. */
-  async addEffect(layer: StackLayer, kind: string, name: string, filter?: string): Promise<void> {
+  async addEffect(layer: StackLayer, kind: string, name: string, filterNode?: string): Promise<void> {
     const before = new Set(this.layers().map(row => row.layer.id));
-    await this.command({ commands: [{ op: 'addLayer', kind, name, parent: layer.id, filter: filter ?? null }] });
+    await this.command({
+      commands: [{ op: 'addLayer', kind, name, parent: layer.id, filterNode: filterNode ?? null }]
+    });
     await this.refresh();
     const added = this.layers().find(row => !before.has(row.layer.id));
     if (added) {

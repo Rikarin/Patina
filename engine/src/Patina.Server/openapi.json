@@ -9033,7 +9033,7 @@
               "null",
               "string"
             ],
-            "description": "The compound a filter layer runs, instead of a named filter."
+            "description": "The node or compound a filter layer runs, instead of a named filter."
           }
         },
         "description": "Adds a layer at the top of the stack."
@@ -9207,7 +9207,7 @@
               "null",
               "string"
             ],
-            "description": "What a filter does."
+            "description": "What a filter does, one of the five named filters."
           },
           "settings": {
             "type": [
@@ -9215,7 +9215,7 @@
               "object"
             ],
             "additionalProperties": {},
-            "description": "A filter\u0027s numbers, replacing what these names held."
+            "description": "A filter\u0027s numbers, replacing what these names held. Choosing another filter starts it from its own defaults."
           },
           "mask": {
             "oneOf": [
@@ -9272,7 +9272,7 @@
               "null",
               "string"
             ],
-            "description": "The compound a filter runs, or empty to go back to the named filter."
+            "description": "The node or compound a filter runs, or empty to go back to the named filter."
           }
         },
         "description": "Changes what a layer\u0027s row shows. What is null stays."
@@ -9477,67 +9477,6 @@
         },
         "description": "Where an edit left the session."
       },
-      "StackEffectKind": {
-        "required": [
-          "node",
-          "name",
-          "ports"
-        ],
-        "type": "object",
-        "properties": {
-          "node": {
-            "type": "string",
-            "description": "The node type."
-          },
-          "name": {
-            "type": "string",
-            "description": "What a person calls it."
-          },
-          "ports": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/StackEffectPort"
-            },
-            "description": "The numbers it takes."
-          }
-        },
-        "description": "A step a mask can run."
-      },
-      "StackEffectPort": {
-        "required": [
-          "name",
-          "default"
-        ],
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Its port."
-          },
-          "default": {
-            "type": "number",
-            "description": "What it starts at.",
-            "format": "float"
-          },
-          "minimum": {
-            "type": [
-              "null",
-              "number"
-            ],
-            "description": "Its lower bound, or null for none.",
-            "format": "float"
-          },
-          "maximum": {
-            "type": [
-              "null",
-              "number"
-            ],
-            "description": "Its upper bound, or null for none.",
-            "format": "float"
-          }
-        },
-        "description": "A number a mask effect takes."
-      },
       "StackEvaluation": {
         "required": [
           "revision",
@@ -9708,24 +9647,47 @@
       },
       "StackFilterKind": {
         "required": [
-          "kind",
+          "node",
+          "name",
+          "category",
+          "summary",
+          "ports",
           "settings"
         ],
         "type": "object",
         "properties": {
-          "kind": {
+          "node": {
             "type": "string",
-            "description": "Levels, Hsl, Blur, Invert or Grayscale."
+            "description": "The node type or compound, as string StackLayer.FilterNode names it."
           },
-          "settings": {
+          "name": {
+            "type": "string",
+            "description": "What a person calls it."
+          },
+          "category": {
+            "type": "string",
+            "description": "The heading it sits under."
+          },
+          "summary": {
+            "type": "string",
+            "description": "One line about it."
+          },
+          "ports": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/GraphPortDefinition"
             },
-            "description": "Its numbers, each saying what it is and what it starts as, in the order a person reads them."
+            "description": "Its numbers, each saying what it is and what it starts as. Never the image it reads."
+          },
+          "settings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphSettingDefinition"
+            },
+            "description": "What it takes as text."
           }
         },
-        "description": "A filter a layer can be, and the numbers it takes."
+        "description": "An adjustment a filter layer or a mask can run: any node or shipped compound with one image in and one image\nout. A project\u0027s own compounds reach a stack from the shelf."
       },
       "StackIdColour": {
         "required": [
@@ -9876,7 +9838,7 @@
           },
           "filter": {
             "type": "string",
-            "description": "What a filter does: Levels, Hsl, Blur, Invert or Grayscale."
+            "description": "The named filter a file holds: Levels, Hsl, Blur, Invert or Grayscale."
           },
           "settings": {
             "type": "object",
@@ -9921,7 +9883,7 @@
           },
           "filterNode": {
             "type": "string",
-            "description": "The compound a graph filter runs, or empty for one of the named filters.",
+            "description": "The node or compound a filter layer runs, whichever way the file names it.",
             "default": ""
           }
         },
@@ -10606,7 +10568,7 @@
             "items": {
               "$ref": "#/components/schemas/StackFilterKind"
             },
-            "description": "The filters."
+            "description": "The filters a layer can be."
           },
           "masks": {
             "type": "array",
@@ -10639,7 +10601,7 @@
           "maskEffects": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/StackEffectKind"
+              "$ref": "#/components/schemas/StackFilterKind"
             },
             "description": "The steps a mask can run."
           },
