@@ -249,7 +249,7 @@ test('the pane during a sustained orbit', async () => {
     BrowserWindow.getAllWindows()[0]?.setSize(2100, 1000);
   }, mesh);
   await window.getByRole('button', { name: 'Open mesh…' }).click();
-  const canvas = window.getByRole('img', { name: 'Viewport' });
+  const canvas = window.getByRole('application', { name: 'Viewport' });
   await canvas.waitFor();
   await window.waitForFunction(() => Number(document.querySelector('canvas')?.dataset['frames']) > 0);
   const box = (await canvas.boundingBox())!;

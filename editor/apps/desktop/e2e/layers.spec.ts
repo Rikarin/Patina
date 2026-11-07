@@ -168,7 +168,7 @@ test('colours painted in Blender bake to an id map, and a mask selects one', asy
   expect(await greenAt(0.25)).toBeLessThan(200);
 
   // It finds one on the mesh too. Which side faces the camera is the camera's business, so it tries both.
-  const canvas = await window.getByRole('img', { name: 'Viewport' }).boundingBox();
+  const canvas = await window.getByRole('application', { name: 'Viewport' }).boundingBox();
   if (!canvas) {
     throw new Error('The viewport is not on screen.');
   }

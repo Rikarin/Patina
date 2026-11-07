@@ -42,7 +42,7 @@ test.afterEach(async () => {
   rmSync(scratch, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
 });
 
-const canvas = () => window.getByRole('img', { name: 'Viewport' });
+const canvas = () => window.getByRole('application', { name: 'Viewport' });
 
 async function canvasBox(): Promise<{ x: number; y: number; width: number; height: number }> {
   const box = await canvas().boundingBox();
@@ -114,6 +114,19 @@ test('a glTF opened in the docked viewport shows up lit, and a drag orbits it', 
   await expect.poll(frames).toBeGreaterThan(resized);
   await expect.poll(async () => (await colours()).gold).toBeGreaterThan(100);
   await window.screenshot({ path: join(shots, 'viewport-resized.png') });
+});
+
+test('the viewport turns, pans and zooms from the keyboard', async () => {
+  await openMesh();
+  await expect.poll(frames, { timeout: 30_000 }).toBeGreaterThan(0);
+  await canvas().focus();
+  await expect(canvas()).toBeFocused();
+
+  for (const key of ['ArrowRight', 'Shift+ArrowUp', '+', '-', 'f']) {
+    const before = await frames();
+    await window.keyboard.press(key);
+    await expect.poll(frames, { message: key }).toBeGreaterThan(before);
+  }
 });
 
 test('killing the Worker keeps the view, and frames come back from its successor', async () => {

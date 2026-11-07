@@ -35,7 +35,7 @@ test.afterEach(async () => {
   rmSync(scratch, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
 });
 
-const canvas = () => window.getByRole('img', { name: 'Viewport' });
+const canvas = () => window.getByRole('application', { name: 'Viewport' });
 
 async function box() {
   const found = await canvas().boundingBox();

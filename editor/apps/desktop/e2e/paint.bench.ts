@@ -69,7 +69,7 @@ test('a stamp reaches the screen through the real window', async () => {
   await window.getByTestId('paint-size').locator('input').fill(Radius);
   await window.waitForTimeout(1_000);
 
-  const box = await window.getByRole('img', { name: 'Viewport' }).boundingBox();
+  const box = await window.getByRole('application', { name: 'Viewport' }).boundingBox();
   if (!box) {
     throw new Error('No canvas.');
   }

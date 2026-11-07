@@ -21,7 +21,7 @@ import { PaintStore, pressureOf } from '../paint/paint-store';
 import { StrokeGesture } from '../paint/stroke-gesture';
 import { FramePainter } from './frame-painter';
 import type { ViewportFrame } from './frame-transport';
-import { framed, orbit, pan, zoom } from './orbit';
+import { framed, nudge, orbit, pan, zoom } from './orbit';
 import { ViewportClient } from './viewport-client';
 
 const Rooms: readonly { value: string; label: string }[] = [
@@ -141,7 +141,9 @@ const Rooms: readonly { value: string; label: string }[] = [
         #canvas
         class="absolute inset-0 size-full touch-none"
         aria-label="Viewport"
-        role="img"
+        aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Shift+ArrowLeft Shift+ArrowRight Shift+ArrowUp Shift+ArrowDown + - F"
+        role="application"
+        tabindex="0"
         [attr.data-frames]="viewport.frames()"
         [class.cursor-grabbing]="dragging()"
         [class.cursor-grab]="!dragging() && !painting()"
@@ -154,6 +156,7 @@ const Rooms: readonly { value: string; label: string }[] = [
         (pointerleave)="brushAt.set(null)"
         (dblclick)="gesture.finish()"
         (wheel)="wheel($event)"
+        (keydown)="key($event)"
       ></canvas>
       @if (painting()) {
         @if (brushAt(); as at) {
@@ -356,6 +359,15 @@ export class ViewportPane implements AfterViewInit {
   protected wheel(event: WheelEvent): void {
     event.preventDefault();
     this.viewport.moveCamera(zoom(this.viewport.camera(), event.deltaY), false);
+  }
+
+  /** The keyboard does what the pointer does, so the view needs no mouse. */
+  protected key(event: KeyboardEvent): void {
+    const moved = nudge(this.viewport.camera(), event.key, event.shiftKey);
+    if (moved) {
+      event.preventDefault();
+      this.viewport.moveCamera(moved, false);
+    }
   }
 
   private spot(event: PointerEvent): { x: number; y: number } {

@@ -7,6 +7,15 @@ const MinDistance = 0.05;
 const PanPerPixel = 0.0012;
 const MaxDistance = 12;
 
+const PixelsPerKey = 24;
+const WheelPixelsPerKey = 120;
+const ArrowSteps: Readonly<Record<string, readonly [number, number]>> = {
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+  ArrowUp: [0, -1],
+  ArrowDown: [0, 1]
+};
+
 export const DefaultCamera: ViewportCameraState = {
   yaw: 0.6,
   pitch: 0.35,
@@ -45,6 +54,24 @@ export function pan(camera: ViewportCameraState, dx: number, dy: number): Viewpo
     panY: camera.panY + step * dy * cosPitch,
     panZ: camera.panZ + step * (dx * sinYaw + dy * sinPitch * cosYaw)
   };
+}
+
+/** What one press of a key does to the camera, or nothing for a key that does not move it. Shift pans the arrows. */
+export function nudge(camera: ViewportCameraState, key: string, shift: boolean): ViewportCameraState | undefined {
+  const arrow = ArrowSteps[key];
+  if (arrow) {
+    return (shift ? pan : orbit)(camera, arrow[0] * PixelsPerKey, arrow[1] * PixelsPerKey);
+  }
+
+  switch (key) {
+    case '+':
+    case '=':
+      return zoom(camera, -WheelPixelsPerKey);
+    case '-':
+      return zoom(camera, WheelPixelsPerKey);
+    default:
+      return undefined;
+  }
 }
 
 /** Back to the whole model, where the view started. */

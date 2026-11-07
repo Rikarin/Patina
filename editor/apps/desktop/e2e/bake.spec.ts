@@ -99,7 +99,7 @@ test('a bake can be judged on its low mesh in the viewport, with a cage and a sk
 
   const frames = () =>
     window
-      .getByRole('img', { name: 'Viewport' })
+      .getByRole('application', { name: 'Viewport' })
       .getAttribute('data-frames')
       .then(count => Number(count));
   const before = await frames();
