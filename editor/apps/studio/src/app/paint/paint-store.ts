@@ -116,6 +116,10 @@ export class PaintStore {
 
   readonly state = signal<StackState | null>(null);
   readonly failure = signal<string | null>(null);
+
+  /** Told as something new starts, for whoever keeps a failure of its own. */
+  onAction: () => void = () => undefined;
+
   readonly layer = signal<string | null>(null);
 
   /** What is selected with the layer: more than one, with Cmd or Shift held. Properties follows {@link layer}. */
@@ -371,6 +375,7 @@ export class PaintStore {
 
   /** One edit of the document, whose result the stack's events and this read bring back. */
   async edit(...commands: StackCommand[]): Promise<void> {
+    this.startAction();
     await this.command({ commands });
     await this.refresh();
   }
@@ -446,6 +451,7 @@ export class PaintStore {
       return;
     }
 
+    this.startAction();
     // An undo that overtook the end of a drag would take back the part before it and leave the rest standing.
     await this.drained();
     const client = await this.api();
@@ -460,6 +466,12 @@ export class PaintStore {
     await this.refresh();
   }
 
+  /** What went wrong before has nothing to do with what is starting now. */
+  private startAction(): void {
+    this.failure.set(null);
+    this.onAction();
+  }
+
   /** Waits until every stamp the pointer made has reached the Server. */
   private async drained(): Promise<void> {
     while (this.sending || this.aiming || this.ending || this.pending.length > 0) {
@@ -469,6 +481,7 @@ export class PaintStore {
 
   /** The brush came down on the layer chosen: on the atlas, or on the mesh when it is aimed. */
   begin(stamp: StackStamp, aim?: Aim): void {
+    this.startAction();
     this.strokes += 1;
     this.stroke = `drag-${Date.now()}-${this.strokes}`;
     this.view = null;

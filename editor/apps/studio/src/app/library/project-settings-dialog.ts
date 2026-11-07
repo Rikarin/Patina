@@ -65,7 +65,7 @@ function fileName(path: string | null | undefined): string {
             </span>
             <xui-switch ariaLabel="Preserve Paint" data-testid="project-settings-preserve" [(checked)]="preservePaint" />
           </label>
-          @if (project.failure(); as failure) {
+          @if (project.settingsFailure(); as failure) {
             <xui-callout color="error" data-testid="project-settings-failure">{{ failure }}</xui-callout>
           }
         </xui-dialog-body>
@@ -102,6 +102,7 @@ export class ProjectSettingsDialog {
   constructor() {
     effect(() => {
       if (this.project.settingsOpen()) {
+        this.project.settingsFailure.set(null);
         this.mesh.set('');
         this.autoUnwrap.set(this.project.current()?.autoUnwrap ?? true);
         this.preservePaint.set(this.project.current()?.preservePaint ?? true);

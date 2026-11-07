@@ -441,12 +441,24 @@ static class LibraryTreeEndpoints {
             }
         );
 
-    static Results<Ok<DocumentRecovery>, ProblemHttpResult> GetRecovery(LibraryHost host, string path) =>
+    /// <summary>
+    ///     Nothing while a session holds unsaved edits: autosave is only a copy of those, and answering an offer of it would
+    ///     close the session that has the real thing.
+    /// </summary>
+    static Results<Ok<DocumentRecovery>, ProblemHttpResult> GetRecovery(
+        LibraryHost host,
+        StackSessions stacks,
+        GraphSessions graphs,
+        string path
+    ) =>
         Guarded(
             host,
-            library => TypedResults.Ok(
-                new DocumentRecovery(Recovery.Newer(library.RootPath, Path.GetFullPath(path, library.RootPath)))
-            )
+            library => {
+                var file = Path.GetFullPath(path, library.RootPath);
+                var editing = stacks.All.Any(open => open.Path == file && open.Summary.Dirty)
+                    || graphs.All.Any(open => open.Path == file && open.Summary.Dirty);
+                return TypedResults.Ok(new DocumentRecovery(editing ? null : Recovery.Newer(library.RootPath, file)));
+            }
         );
 
     static Results<Ok<DocumentRecovery>, ProblemHttpResult> Recover(

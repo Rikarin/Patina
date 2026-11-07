@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Library;
 using System.Net;
 using System.Net.Http.Json;
 
@@ -266,6 +267,78 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
 
         Assert.Equal(HttpStatusCode.Conflict, moved.StatusCode);
         Assert.True(Directory.Exists(Path.Combine(server.Library, "projects", "crate")));
+    }
+
+    [Fact]
+    public async Task Autosaved_work_is_offered_only_while_nothing_newer_is_open() {
+        var (document, file, stack) = await OpenStackAsync();
+        LeaveAutosave(file);
+        Assert.NotNull(await RecoveryOfAsync(document));
+
+        await EditAsync(stack);
+
+        Assert.Null(await RecoveryOfAsync(document));
+    }
+
+    [Fact]
+    public async Task Autosaved_work_can_only_be_answered_with_the_document_closed() {
+        var (document, file, stack) = await OpenStackAsync();
+        LeaveAutosave(file);
+
+        using var refused = await client.PostAsJsonAsync(
+            "/api/v1/library/recovery",
+            new DocumentRecoveryRequest(document, false),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.NotNull(await RecoveryOfAsync(document));
+
+        using var closed = await client.DeleteAsync($"/api/v1/stacks/{stack}", Token);
+        Assert.Equal(HttpStatusCode.NoContent, closed.StatusCode);
+        using var answered = await client.PostAsJsonAsync(
+            "/api/v1/library/recovery",
+            new DocumentRecoveryRequest(document, false),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.OK, answered.StatusCode);
+        Assert.Null(await RecoveryOfAsync(document));
+    }
+
+    async Task<(string Document, string File, string Stack)> OpenStackAsync() {
+        await client.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new ProjectCreateRequest("Crate", Kind: "layered-material"),
+            Token
+        );
+        var contents = await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=crate", Token);
+        var document = contents!.Documents[0].Path;
+        using var opened = await client.PostAsJsonAsync("/api/v1/stacks", new { path = document }, Token);
+        var stack = await opened.Content.ReadFromJsonAsync(ContractsJsonContext.Default.StackState, Token);
+        return (document, Path.GetFullPath(document, server.Library), stack!.Id);
+    }
+
+    /// <summary>What autosave leaves, older than nothing: the file was last saved a while ago.</summary>
+    void LeaveAutosave(string file) {
+        Recovery.Keep(server.Library, file, "autosaved");
+        File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddHours(-1));
+    }
+
+    async Task EditAsync(string stack) {
+        using var edited = await client.PostAsJsonAsync(
+            $"/api/v1/stacks/{stack}/commands",
+            new([new StackAddChannel("height")]),
+            ContractsJsonContext.Default.StackCommandBatch,
+            Token
+        );
+        Assert.True(edited.IsSuccessStatusCode, await edited.Content.ReadAsStringAsync(Token));
+    }
+
+    async Task<DateTimeOffset?> RecoveryOfAsync(string document) {
+        var found = await client.GetFromJsonAsync<DocumentRecovery>(
+            $"/api/v1/library/recovery?path={Uri.EscapeDataString(document)}",
+            Token
+        );
+        return found!.Saved;
     }
 
     [Fact]

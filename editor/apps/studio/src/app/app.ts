@@ -298,10 +298,11 @@ import { ViewportPane } from './viewport/viewport-pane';
       size="sm"
       title="Recover unsaved work?"
       [open]="project.recoverable() !== null"
-      (openChange)="$event || project.resolveRecovery(false)"
+      (openChange)="$event || project.dismissRecovery()"
     >
       <xui-dialog-body data-testid="app-recovery">
         Patina kept work on this document that was never saved, from {{ project.recoverable()?.saved | date: 'short' }}.
+        Closing this keeps it, and asks again next time.
       </xui-dialog-body>
       <xui-dialog-footer>
         <button

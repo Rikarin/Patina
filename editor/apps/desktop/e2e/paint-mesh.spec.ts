@@ -382,5 +382,5 @@ test('layers of every kind compose on the mesh', async () => {
   await window.getByTestId('paint-add').click();
   await expect(window.getByTestId('paint-layers').getByText('Paint')).not.toHaveCount(0);
   await window.screenshot({ path: join(shots, 'paint-layers.png') });
-  await expect(window.getByTestId('paint-failure')).toHaveCount(0);
+  await expect(window.getByTestId('app-failure')).toHaveCount(0);
 });

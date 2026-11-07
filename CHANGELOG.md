@@ -31,6 +31,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Discard in the recovery dialog works, and closing that dialog keeps the autosaved work and asks again next time. Work still open in a session is no longer offered back as if it had been lost.
+- A failure shows once, in the bar above the status bar or in the dialog that caused it, and goes when the next action starts.
 - Bake formats, export presets, job states and layer blend modes show plain names instead of internal ids.
 - The first stroke after opening a 4K stack no longer waits seconds for the maps to reach the mesh.
 - Save All on the quit dialog stays open and says why if a document could not be saved, instead of doing nothing or quitting without it.
