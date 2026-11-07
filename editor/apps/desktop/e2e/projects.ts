@@ -54,13 +54,13 @@ export async function leave(app: ElectronApplication): Promise<void> {
  * A mesh as Blender exports one with colour attributes: two quads side by side, red and blue, in `COLOR_0` as
  * normalised 16-bit, each with its own half of the UV square. Written here so that nothing of ours has read it first.
  */
-export function colouredGlb(): Buffer {
+export function colouredGlb(height = 1, layoutTop = 0): Buffer {
   const corners = (x: number, u: number, colour: [number, number, number]) =>
     [
       [x, -1, 0, 0, 0, 1, u, 1],
       [x + 1, -1, 0, 0, 0, 1, u + 0.5, 1],
-      [x + 1, 1, 0, 0, 0, 1, u + 0.5, 0],
-      [x, 1, 0, 0, 0, 1, u, 0]
+      [x + 1, height, 0, 0, 0, 1, u + 0.5, layoutTop],
+      [x, height, 0, 0, 0, 1, u, layoutTop]
     ].map(vertex => ({ vertex, colour }));
   const vertices = [...corners(-1, 0, [1, 0, 0]), ...corners(0, 0.5, [0, 0, 1])];
   const floats = Buffer.alloc(vertices.length * 32);
@@ -81,7 +81,7 @@ export function colouredGlb(): Buffer {
     nodes: [{ mesh: 0 }],
     meshes: [{ primitives: [{ attributes: { POSITION: 0, NORMAL: 1, TEXCOORD_0: 2, COLOR_0: 3 }, indices: 4 }] }],
     accessors: [
-      { bufferView: 0, componentType: 5126, count: 8, type: 'VEC3', byteOffset: 0, min: [-1, -1, 0], max: [1, 1, 0] },
+      { bufferView: 0, componentType: 5126, count: 8, type: 'VEC3', byteOffset: 0, min: [-1, -1, 0], max: [1, height, 0] },
       { bufferView: 0, componentType: 5126, count: 8, type: 'VEC3', byteOffset: 12 },
       { bufferView: 0, componentType: 5126, count: 8, type: 'VEC2', byteOffset: 24 },
       { bufferView: 1, componentType: 5123, normalized: true, count: 8, type: 'VEC4' },

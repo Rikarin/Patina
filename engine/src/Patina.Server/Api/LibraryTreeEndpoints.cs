@@ -62,6 +62,12 @@ static class LibraryTreeEndpoints {
         library.MapPost("/project/meshes", AddMesh)
             .Described("AddProjectMesh", "Brings a mesh into a project, and its detailed mesh if it has one.");
 
+        library.MapGet("/project/mesh-change", GetMeshChange)
+            .Described(
+                "GetProjectMeshChange",
+                "Whether a mesh file differs from the one the project already has, so that reloading has work to do."
+            );
+
         library.MapPatch("/project/settings", ProjectSettingsEndpoint.SetAsync)
             .Described(
                 "SetProjectSettings",
@@ -252,6 +258,13 @@ static class LibraryTreeEndpoints {
 
     static Results<Ok<ProjectContents>, ProblemHttpResult> GetProject(LibraryHost host, string path) =>
         Guarded(host, library => TypedResults.Ok(library.Contents(path)));
+
+    static Results<Ok<ProjectMeshChange>, ProblemHttpResult> GetMeshChange(
+        LibraryHost host,
+        string project,
+        string mesh
+    ) =>
+        Guarded(host, library => TypedResults.Ok(new ProjectMeshChange(library.MeshChanged(project, mesh))));
 
     static Results<Ok<ProjectContents>, ProblemHttpResult> AddMesh(LibraryHost host, ProjectMeshRequest request) =>
         Guarded(

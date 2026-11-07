@@ -74,7 +74,14 @@ public sealed record ProjectDocument(
 /// <param name="File">Its file, relative to the project.</param>
 /// <param name="High">The detailed mesh it bakes from, relative to the project, or null.</param>
 /// <param name="Source">The file it was brought in from, which Reload Mesh reads again.</param>
-public sealed record ProjectMesh(AssetId Id, string File, string? High = null, string? Source = null);
+/// <param name="Hash">The digest of its file, which a bake records so that it can tell it is out of date.</param>
+public sealed record ProjectMesh(
+    AssetId Id,
+    string File,
+    string? High = null,
+    string? Source = null,
+    string? Hash = null
+);
 
 /// <summary>A document a project lists.</summary>
 /// <param name="Id">Its identity, which a reference to it survives a move by.</param>

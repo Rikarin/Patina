@@ -2,6 +2,7 @@ using Patina.Contracts;
 using Patina.Library;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace Patina.Server.Tests;
 
@@ -399,6 +400,85 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
         var contents = await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=crate", Token);
 
         Assert.Empty(contents!.Pictures);
+    }
+
+    [Fact]
+    public async Task Reloading_a_file_that_did_not_change_has_nothing_to_do() {
+        var (source, project) = await MakeProjectOnMeshAsync();
+        var yaml = await File.ReadAllTextAsync(Path.Combine(project, "project.yaml"), Token);
+
+        Assert.False(await MeshChangedAsync(source));
+        // There is no Worker here, so anything past the check would wait on one and fail.
+        using var reloaded = await client.PatchAsJsonAsync(
+            "/api/v1/library/project/settings",
+            new ProjectSettingsRequest("crate", source, null, null, null),
+            Token
+        );
+
+        Assert.Equal(HttpStatusCode.OK, reloaded.StatusCode);
+        Assert.Equal(yaml, await File.ReadAllTextAsync(Path.Combine(project, "project.yaml"), Token));
+        Assert.False(Directory.Exists(Path.Combine(project, LibraryLayout.PaintBackupFolder)));
+
+        await File.AppendAllTextAsync(source, "more", Token);
+        Assert.True(await MeshChangedAsync(source));
+    }
+
+    [Fact]
+    public async Task Another_file_of_a_different_name_is_a_change_even_with_the_same_bytes() {
+        var (source, _) = await MakeProjectOnMeshAsync();
+        var other = Path.Combine(files.FullName, "Other.glb");
+        File.Copy(source, other);
+
+        Assert.True(await MeshChangedAsync(other));
+    }
+
+    [Fact]
+    public async Task A_bake_goes_out_of_date_when_the_mesh_it_was_made_on_does() {
+        var (_, project) = await MakeProjectOnMeshAsync();
+        var bake = Directory.CreateDirectory(Path.Combine(project, "bakes", "first"));
+        var manifest = Path.Combine(bake.FullName, "crate.bake.json");
+
+        void Baked(string? mesh) =>
+            File.WriteAllBytes(
+                manifest,
+                JsonSerializer.SerializeToUtf8Bytes(
+                    new BakeManifest("crate", "png8", new([], 0, 0, [], false), mesh),
+                    ContractsJsonContext.Default.BakeManifest
+                )
+            );
+
+        async Task<bool> StaleAsync() {
+            var contents = await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=crate", Token);
+            return Assert.Single(contents!.Bakes).Stale;
+        }
+
+        Baked(LibraryFiles.Digest(Path.Combine(project, "Low Poly.glb")));
+        Assert.False(await StaleAsync());
+
+        Baked("some other mesh");
+        Assert.True(await StaleAsync());
+
+        Baked(null);
+        Assert.False(await StaleAsync());
+    }
+
+    async Task<(string Source, string Project)> MakeProjectOnMeshAsync() {
+        var source = Path.Combine(files.FullName, "Low Poly.glb");
+        File.WriteAllText(source, "mesh");
+        using var created = await client.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new ProjectCreateRequest("Crate", Mesh: source, Resolution: 1024),
+            Token
+        );
+        return (source, Path.Combine(server.Library, "projects", "crate"));
+    }
+
+    async Task<bool> MeshChangedAsync(string mesh) {
+        var change = await client.GetFromJsonAsync<ProjectMeshChange>(
+            $"/api/v1/library/project/mesh-change?project=crate&mesh={Uri.EscapeDataString(mesh)}",
+            Token
+        );
+        return change!.Changed;
     }
 
     Task<HttpResponseMessage> MakeCrateAsync() =>

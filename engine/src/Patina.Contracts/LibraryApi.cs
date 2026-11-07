@@ -73,7 +73,8 @@ public sealed record ProjectCreateRequest(
 /// <param name="Kind">What it is.</param>
 /// <param name="Name">Its name.</param>
 /// <param name="Path">Its path below the library.</param>
-public sealed record ProjectFile(string Kind, string Name, string Path);
+/// <param name="Stale">For a bake, whether the mesh has changed since it was made.</param>
+public sealed record ProjectFile(string Kind, string Name, string Path, bool Stale = false);
 
 /// <summary>A mesh in a project.</summary>
 /// <param name="Id">Its id. Null until the project lists it.</param>
@@ -130,6 +131,10 @@ public sealed record ProjectContents(
 /// <param name="Mesh">A mesh file on the Server's machine.</param>
 /// <param name="High">The detailed mesh it bakes from.</param>
 public sealed record ProjectMeshRequest(string Project, string Mesh, string? High = null);
+
+/// <summary>Whether reloading a mesh has work to do.</summary>
+/// <param name="Changed">The file differs from the one the project has.</param>
+public sealed record ProjectMeshChange(bool Changed);
 
 /// <summary>A file to bring into a project as whatever it is.</summary>
 /// <param name="Project">The project's path.</param>

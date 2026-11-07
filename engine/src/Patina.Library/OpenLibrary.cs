@@ -182,6 +182,10 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
+    /// <summary>Whether a mesh file differs from the one the project already has, by what is in it.</summary>
+    /// <exception cref="FileNotFoundException">The project or the file is not there.</exception>
+    public bool MeshChanged(string path, string mesh) => ProjectFiles.MeshChanged(RootPath, path, mesh);
+
     /// <summary>Brings a file into a project as the mesh or the picture it is.</summary>
     /// <exception cref="FileNotFoundException">The project or the file is not there.</exception>
     /// <exception cref="ProjectRefusedException">Nothing here reads it.</exception>

@@ -254,6 +254,30 @@ import { ViewportPane } from './viewport/viewport-pane';
       </xui-dialog-footer>
     </xui-dialog>
 
+    <xui-dialog
+      size="sm"
+      title="Reload Mesh"
+      [open]="project.reloading() !== null"
+      (openChange)="$event || project.resolveReloading(false)"
+    >
+      <xui-dialog-body data-testid="mesh-reload">
+        The mesh file changed. Open documents close and lose their undo history. Bakes made on the old mesh go out of
+        date.
+      </xui-dialog-body>
+      <xui-dialog-footer>
+        <button type="button" xuiButton variant="ghost" (click)="project.resolveReloading(false)">Cancel</button>
+        <button
+          type="button"
+          xuiButton
+          color="primary"
+          data-testid="mesh-reload-confirm"
+          (click)="project.resolveReloading(true)"
+        >
+          Reload
+        </button>
+      </xui-dialog-footer>
+    </xui-dialog>
+
     <ptn-file-conflict
       [name]="project.active()?.name ?? ''"
       [open]="paint.saveConflict()"

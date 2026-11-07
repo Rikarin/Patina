@@ -1,5 +1,6 @@
 using Patina.Contracts;
 using Patina.Jobs;
+using Patina.Library;
 using System.Text.Json;
 using Vixen.Core.Imaging;
 using Vixen.Geometry;
@@ -164,7 +165,8 @@ public static class MeshMapBakeRun {
         var manifest = new BakeManifest(
             name,
             request.Format,
-            new(files, maps.Covered, maps.Missed, maps.Warnings, false)
+            new(files, maps.Covered, maps.Missed, maps.Warnings, false),
+            LibraryFiles.Digest(request.Low)
         );
         File.WriteAllBytes(
             Path.Combine(folder, BakeCache.ManifestFile),

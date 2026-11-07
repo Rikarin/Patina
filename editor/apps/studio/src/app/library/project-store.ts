@@ -76,6 +76,7 @@ export class ProjectStore {
   private readonly mutableContents = signal<ReadonlyMap<string, ProjectContents>>(new Map());
   private readonly mutableFailure = signal<string | null>(null);
   private readonly mutableNotice = signal<string | null>(null);
+  private readonly mutableReloading = signal<string | null>(null);
   private readonly mutableClosing = signal<string | null>(null);
   private readonly mutableQuitting = signal(false);
   private readonly mutableNewKind = signal<{ kind: string } | null>(null);
@@ -95,6 +96,8 @@ export class ProjectStore {
   /** Goes up each time something asks for the Bake dialog. */
   readonly bakeAsked = this.mutableBakeAsked.asReadonly();
   readonly failure = this.mutableFailure.asReadonly();
+  /** The mesh file waiting on whether to reload it, which costs open documents their undo. */
+  readonly reloading = this.mutableReloading.asReadonly();
   /** What just worked, when nothing on screen would show it. */
   readonly notice = this.mutableNotice.asReadonly();
   /** The tab waiting on what to do with its unsaved edits. */
@@ -123,6 +126,8 @@ export class ProjectStore {
   });
   /** The model's texture sets, one document per material. A model with one material has none to choose. */
   readonly textureSets = computed(() => (this.current()?.documents ?? []).filter(document => document.material));
+  /** The bake layers read was made on a mesh the project no longer has. */
+  readonly bakeOutOfDate = computed(() => this.current()?.bakes.at(-1)?.stale === true);
   /** The mesh's file name. */
   readonly meshName = computed(() => this.mesh()?.path.split('/').pop() ?? null);
   /** The tabs with edits that are not saved. */
@@ -412,11 +417,34 @@ export class ProjectStore {
 
   /** Reads the mesh again from where it came from, as after an export from a modelling tool. */
   async reloadMesh(): Promise<void> {
+    const project = this.current();
     const source = this.mesh()?.source;
-    if (source) {
+    if (!source) {
+      this.settingsOpen.set(project !== null); // it came in before Patina kept this, so it needs choosing once
+      return;
+    }
+
+    this.startAction();
+    try {
+      const client = await this.library.api();
+      const query = { project: project?.path ?? '', mesh: source };
+      const { changed } = unwrap(await client.GET('/api/v1/library/project/mesh-change', { params: { query } }));
+      if (changed) {
+        this.mutableReloading.set(source);
+      } else {
+        this.mutableNotice.set('The mesh has not changed.');
+      }
+    } catch (failure) {
+      this.mutableFailure.set(messageOf(failure));
+    }
+  }
+
+  /** Carries out the answer to reloading a mesh that changed. */
+  async resolveReloading(reload: boolean): Promise<void> {
+    const source = this.mutableReloading();
+    this.mutableReloading.set(null);
+    if (reload && source !== null) {
       await this.applySettings({ mesh: source });
-    } else if (this.current()) {
-      this.settingsOpen.set(true); // it came in before Patina kept this, so it needs choosing once
     }
   }
 

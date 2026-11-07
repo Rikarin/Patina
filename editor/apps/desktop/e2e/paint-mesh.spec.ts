@@ -1,6 +1,6 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { answerOpen, leave, newLibrary, newProject } from './projects';
@@ -316,8 +316,10 @@ test('a layer keeps to named meshes, a folder takes a mask, and the mesh reloads
   await app.evaluate(({ BrowserWindow }) => {
     BrowserWindow.getAllWindows()[0]?.webContents.send('patina:command', 'reloadMesh');
   });
+  await expect(window.getByTestId('app-notice')).toHaveText('The mesh has not changed.');
   await expect(window.getByTestId('app-failure')).toHaveCount(0);
   await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 60_000 });
+  expect(existsSync(join(scratch, 'Parts.ptlib', 'projects', 'parts', '.paint-backup'))).toBe(false);
 
   await window.locator('[data-testid=tree-row][data-path="parts"]').click({ button: 'right' });
   await window.getByTestId('menu-project-settings').click();

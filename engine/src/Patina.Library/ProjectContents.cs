@@ -1,5 +1,6 @@
 using Patina.Contracts;
 using System.Collections.Frozen;
+using System.Text.Json;
 
 namespace Patina.Library;
 
@@ -49,7 +50,7 @@ static class ProjectFiles {
             meshes,
             documents,
             Below(path, BakeFolder),
-            Bakes(full, path),
+            Bakes(full, path, document.Meshes),
             [
                 ..files.Where(IsPicture)
                     .Select(f => new ProjectFile("picture", Path.GetFileName(f), Below(path, f)))
@@ -77,11 +78,31 @@ static class ProjectFiles {
             held?.Id ?? AssetId.New(),
             file,
             high is null ? held?.High : Bring(full, high),
-            source ?? outside ?? held?.Source
+            source ?? outside ?? held?.Source,
+            LibraryFiles.Digest(Path.Combine(full, file))
         );
         var others = document.Meshes.Where(m => m.File != file);
         LibraryFiles.WriteProject(root, path, document with { Meshes = [..others, added] });
         return added;
+    }
+
+    /// <summary>
+    ///     Whether a file differs from the mesh the project has. The copy brought in is what counts: an unwrapped mesh is
+    ///     a new file, and the one it came from stays beside it under its own name.
+    /// </summary>
+    /// <exception cref="FileNotFoundException">The project or the file is not there.</exception>
+    public static bool MeshChanged(string root, string path, string mesh) {
+        var (full, document) = Project(root, path);
+        if (!File.Exists(mesh)) {
+            throw new FileNotFoundException($"There is no file '{mesh}'.", mesh);
+        }
+
+        var name = Path.GetFileName(mesh);
+        var held = Path.Combine(full, name);
+        var same = File.Exists(held)
+            && document.Meshes.Any(m => m.File == name || Path.GetFileName(m.Source) == name)
+            && LibraryFiles.Digest(held) == LibraryFiles.Digest(mesh);
+        return !same;
     }
 
     /// <summary>Brings a file into a project as what it is, which only a mesh or a picture can be.</summary>
@@ -383,15 +404,39 @@ static class ProjectFiles {
             .Take(MaxFiles)
     ];
 
-    static List<ProjectFile> Bakes(string full, string path) {
+    static List<ProjectFile> Bakes(string full, string path, IReadOnlyList<ProjectMesh> meshes) {
         var bakes = Path.Combine(full, BakeFolder);
         return Directory.Exists(bakes)
             ? [
                 ..LibraryScanner.VisibleFolders(bakes)
                     .Select(static bake => Path.GetFileName(bake))
-                    .Select(bake => new ProjectFile("bake", bake, Below(path, $"{BakeFolder}/{bake}")))
+                    .Select(bake => new ProjectFile(
+                            "bake",
+                            bake,
+                            Below(path, $"{BakeFolder}/{bake}"),
+                            OutOfDate(Path.Combine(bakes, bake), meshes)
+                        )
+                    )
             ]
             : [];
+    }
+
+    /// <summary>Whether a bake was made on a mesh the project no longer has. One that does not say is left alone.</summary>
+    static bool OutOfDate(string bake, IReadOnlyList<ProjectMesh> meshes) {
+        HashSet<string?> current = [..meshes.Select(static mesh => mesh.Hash)];
+        current.Remove(null);
+        return current.Count > 0
+            && Directory.EnumerateFiles(bake, $"*{LibraryLayout.BakeManifestFile}")
+                .Select(ManifestMesh)
+                .Any(mesh => mesh is not null && !current.Contains(mesh));
+    }
+
+    static string? ManifestMesh(string file) {
+        try {
+            return JsonSerializer.Deserialize(File.ReadAllBytes(file), ContractsJsonContext.Default.BakeManifest)?.Mesh;
+        } catch (JsonException) {
+            return null; // something half written says nothing about the mesh
+        }
     }
 
     static ProjectMeshInfo Listed(string path, ProjectMesh mesh) =>

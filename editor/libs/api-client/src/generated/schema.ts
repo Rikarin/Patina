@@ -436,6 +436,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/project/mesh-change': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Whether a mesh file differs from the one the project already has, so that reloading has work to do. */
+    get: operations['GetProjectMeshChange'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/project/settings': {
     parameters: {
       query?: never;
@@ -2892,6 +2909,11 @@ export interface components {
       name: string;
       /** @description Its path below the library. */
       path: string;
+      /**
+       * @description For a bake, whether the mesh has changed since it was made.
+       * @default false
+       */
+      stale: boolean;
     };
     /** @description A file to bring into a project as whatever it is. */
     ProjectFileRequest: {
@@ -2899,6 +2921,11 @@ export interface components {
       project: string;
       /** @description The file, anywhere the Server can read. */
       file: string;
+    };
+    /** @description Whether reloading a mesh has work to do. */
+    ProjectMeshChange: {
+      /** @description The file differs from the one the project has. */
+      changed: boolean;
     };
     /** @description A mesh in a project. */
     ProjectMeshInfo: {
@@ -5390,6 +5417,56 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetProjectMeshChange: {
+    parameters: {
+      query: {
+        project: string;
+        mesh: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectMeshChange'];
         };
       };
       /** @description Bad Request */

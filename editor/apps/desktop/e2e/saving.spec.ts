@@ -2,7 +2,7 @@ import { _electron as electron, expect, test, type ElectronApplication, type Pag
 import { appendFileSync, existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { answerOpen, leave, newLibrary, newProject } from './projects';
+import { answerOpen, colouredGlb, leave, newLibrary, newProject } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const softwareWebGl = process.platform === 'linux' ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : [];
@@ -141,6 +141,46 @@ test('File > Import says what it did, lists the file, and refuses what nothing r
   await expect(window.getByTestId('app-failure')).toContainText("Nothing in Patina reads 'model.dae'");
   await expect(window.getByTestId('app-notice')).toHaveCount(0);
   expect(existsSync(join(library, 'projects', 'crate', 'pictures', 'model.dae'))).toBe(false);
+});
+
+test('Reloading a mesh asks first, keeps paint on the same layout and moves it on a new one', async () => {
+  const mesh = join(scratch, 'plate.glb');
+  writeFileSync(mesh, colouredGlb());
+  await launch();
+  await newLibrary(app, window, library);
+  await newProject(app, window, 'Plate', mesh);
+  await stroke();
+  await command('save');
+  await expect(window.getByTestId('paint-unsaved')).toHaveCount(0, { timeout: 30_000 });
+
+  await command('reloadMesh');
+  await expect(window.getByTestId('app-notice')).toHaveText('The mesh has not changed.');
+  await expect(window.getByTestId('document-tab')).toHaveCount(1);
+
+  const backup = join(library, 'projects', 'plate', '.paint-backup');
+
+  // A sculpt: the file changed and the islands did not.
+  writeFileSync(mesh, colouredGlb(1.5));
+  await command('reloadMesh');
+  await expect(window.getByTestId('mesh-reload')).toContainText('lose their undo');
+  await window.getByRole('button', { name: 'Cancel' }).click();
+  await expect(window.getByTestId('mesh-reload')).toHaveCount(0);
+  expect(existsSync(backup)).toBe(false);
+
+  await command('reloadMesh');
+  await window.getByTestId('mesh-reload-confirm').click();
+  await expect(window.getByTestId('mesh-reload')).toHaveCount(0);
+  await expect(window.getByTestId('document-tab')).toHaveCount(1, { timeout: 60_000 });
+  await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 60_000 });
+  await expect(window.getByTestId('app-failure')).toHaveCount(0);
+  expect(existsSync(backup)).toBe(false);
+
+  // A new layout moves the paint, and keeps what it was.
+  writeFileSync(mesh, colouredGlb(1.5, 0.25));
+  await command('reloadMesh');
+  await window.getByTestId('mesh-reload-confirm').click();
+  await expect.poll(() => existsSync(backup), { timeout: 60_000 }).toBe(true);
+  await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 60_000 });
 });
 
 test('Saving over a file that changed asks first, and Overwrite saves', async () => {

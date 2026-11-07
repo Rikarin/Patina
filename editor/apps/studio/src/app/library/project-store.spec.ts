@@ -513,6 +513,74 @@ describe('ProjectStore', () => {
     });
   });
 
+  describe('reloading the mesh', () => {
+    const onSource = {
+      ...contents,
+      meshes: [{ id: 'm', path: 'projects/a/low.glb', high: null, source: '/art/low.glb' }]
+    };
+
+    function reloadable(changed: boolean) {
+      const test = harness();
+      test.client.GET.mockImplementation(((route: string) =>
+        Promise.resolve({
+          data: route === '/api/v1/library/project/mesh-change' ? { changed } : onSource,
+          response: new Response()
+        })) as never);
+      const patch = vi.fn(() => Promise.resolve({ data: onSource, response: new Response() }));
+      (test.client as unknown as { PATCH: unknown }).PATCH = patch;
+      return { ...test, patch };
+    }
+
+    it('leaves everything open when the file has not changed, and says so', async () => {
+      const { store, patch, removed } = reloadable(false);
+      await store.open('a');
+
+      await store.reloadMesh();
+
+      expect(store.reloading()).toBeNull();
+      expect(store.notice()).toBe('The mesh has not changed.');
+      expect(patch).not.toHaveBeenCalled();
+      expect(removed.filter(id => id.startsWith('session'))).toEqual([]);
+      expect(store.tabs()).toHaveLength(1);
+    });
+
+    it('asks first when it has, and closes nothing until told', async () => {
+      const { store, patch, removed } = reloadable(true);
+      await store.open('a');
+
+      await store.reloadMesh();
+
+      expect(store.reloading()).toBe('/art/low.glb');
+      expect(patch).not.toHaveBeenCalled();
+      expect(removed.filter(id => id.startsWith('session'))).toEqual([]);
+
+      await store.resolveReloading(false);
+      expect(store.reloading()).toBeNull();
+      expect(patch).not.toHaveBeenCalled();
+    });
+
+    it('reloads on the answer', async () => {
+      const { store, patch } = reloadable(true);
+      await store.open('a');
+      await store.reloadMesh();
+
+      await store.resolveReloading(true);
+
+      expect(patch).toHaveBeenCalledTimes(1);
+      expect(store.active()?.path).toBe(paths.texturing);
+    });
+
+    it('says when the bake layers read is out of date', async () => {
+      const { store, client } = harness();
+      const stale = { ...contents, bakes: [{ kind: 'bake', name: 'a', path: 'p', stale: true }] };
+      client.GET.mockImplementation((() => Promise.resolve({ data: stale, response: new Response() })) as never);
+
+      await store.open('a');
+
+      expect(store.bakeOutOfDate()).toBe(true);
+    });
+  });
+
   it('starts an action with nothing left over from the last one', async () => {
     const { store, paint } = harness();
     paint.failure.set('The stroke failed.');

@@ -111,7 +111,11 @@ export class ProjectSettingsDialog {
     return [
       ...(contents?.meshes ?? []).map(mesh => ({ kind: 'Mesh', name: fileName(mesh.path), path: mesh.path })),
       ...(contents?.pictures ?? []).map(picture => ({ kind: 'Picture', name: picture.name, path: picture.path })),
-      ...(contents?.bakes ?? []).map(bake => ({ kind: 'Maps', name: bake.name, path: bake.path }))
+      ...(contents?.bakes ?? []).map(bake => ({
+        kind: bake.stale ? 'Maps, out of date' : 'Maps',
+        name: bake.name,
+        path: bake.path
+      }))
     ];
   });
 
