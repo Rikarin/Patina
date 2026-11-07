@@ -29,6 +29,7 @@ export type GraphNodeType = components['schemas']['GraphNodeType'];
 export type GraphPortDefinition = components['schemas']['GraphPortDefinition'];
 export type GraphSettingDefinition = components['schemas']['GraphSettingDefinition'];
 export type StackFilterKind = components['schemas']['StackFilterKind'];
+export type StackClip = components['schemas']['StackClip'];
 export type StackMaskEffect = components['schemas']['StackMaskEffect'];
 export type GraphGroupState = components['schemas']['GraphGroupState'];
 export type GraphCommentState = components['schemas']['GraphCommentState'];

@@ -56,6 +56,24 @@ public sealed class StackJournalEntry(
     public List<StackStamp> Stamps { get; } = [..first.Stamps];
 
     public bool Open { get; set; } = first.Open;
+
+    /// <summary>
+    ///     The canvas this entry makes <see cref="Paint" /> a copy of, relative to the stack or absolute, or null for a
+    ///     stroke. In the journal so that a Worker copies it after the strokes that made it and before any on the copy.
+    /// </summary>
+    public string? From { get; private init; }
+
+    /// <summary>A canvas that starts as a copy of another, which is how a duplicate or a paste gets pixels of its own.</summary>
+    public static StackJournalEntry Copy(long id, string paint, string from, string model) =>
+        new(
+            id,
+            new(string.Empty, string.Empty, string.Empty, new(1f), [0f, 0f, 0f, 0f], []),
+            paint,
+            string.Empty,
+            0u,
+            model,
+            null
+        ) { From = from };
 }
 
 /// <summary>
@@ -83,6 +101,9 @@ public sealed class StackEditor : ILayerStackDocument {
 
     /// <summary>The library layered materials are read from, or null with none.</summary>
     public string? Library { get; set; }
+
+    /// <summary>What a paste finds a copy by, or nothing when it has gone.</summary>
+    public Func<string, StackClipContents?> Clip { get; set; } = static _ => null;
 
     /// <summary>Whether a material brought compounds with it since this was last cleared.</summary>
     public bool CompoundsArrived { get; set; }
@@ -153,7 +174,10 @@ public sealed class StackEditor : ILayerStackDocument {
         undoable.Add(step);
         Forgotten.AddRange(redoable.SelectMany(static undone => undone.Strokes).Select(static entry => entry.Id));
         redoable.Clear();
-        return [..step.Strokes.Select(static stroke => new StackPainted(stroke.Layer, stroke.Usage))];
+        return [
+            ..step.Strokes.Where(static stroke => stroke.From is null)
+                .Select(static stroke => new StackPainted(stroke.Layer, stroke.Usage))
+        ];
     }
 
     /// <summary>Strokes taken out of history for good, for a Worker to let go of.</summary>
@@ -216,6 +240,8 @@ public sealed class StackEditor : ILayerStackDocument {
             StackAddChannel add => $"Add {add.Usage}",
             StackSetSeed => "Change seed",
             StackStroke => "Stroke",
+            StackDuplicateLayers => "Duplicate layers",
+            StackPasteLayers => "Paste layers",
             _ => "Edit"
         };
 
@@ -305,6 +331,12 @@ public sealed class StackEditor : ILayerStackDocument {
                 break;
             case StackStroke stroke:
                 Stroke(stroke, step, set, Do);
+                break;
+            case StackDuplicateLayers duplicate:
+                Duplicate(duplicate, step, set, Do);
+                break;
+            case StackPasteLayers paste:
+                Paste(paste, step, set, Do);
                 break;
             default:
                 throw new StackEditRefusedException($"Unknown command '{command.GetType().Name}'.");
@@ -597,11 +629,20 @@ public sealed class StackEditor : ILayerStackDocument {
         }
     }
 
-    /// <summary>The canvas of a paint layer. The first stroke names it, and undoing that takes the name back.</summary>
+    /// <summary>
+    ///     The canvas of a paint layer. The first stroke names it, and undoing that takes the name back. ⚠ Never a file
+    ///     that is there already: a layer removed and saved left its pixels under the id a new layer is given.
+    /// </summary>
     string LayerCanvas(LayerAsset layer, string set, Action<IAuthoringCommand> run) {
         var paint = layer.Paint.Trim();
         if (paint.Length == 0) {
-            paint = LayerPaint.NameFor(Path.GetFileNameWithoutExtension(AssetPath), set, layer.Id);
+            paint = FreeCanvas(
+                Path.GetFileNameWithoutExtension(AssetPath),
+                set,
+                layer.Id,
+                false,
+                new HashSet<string>()
+            );
             run(Named(layer, layer with { Paint = paint }, set));
         }
 
@@ -616,7 +657,7 @@ public sealed class StackEditor : ILayerStackDocument {
         }
 
         var showed = Showed(layer);
-        paint = FreeMaskCanvas(Path.GetFileNameWithoutExtension(AssetPath), set, layer.Id);
+        paint = FreeCanvas(Path.GetFileNameWithoutExtension(AssetPath), set, layer.Id, true, new HashSet<string>());
         var painted = layer.Mask with { Source = LayerMaskSource.Paint, Paint = paint };
         run(Named(layer, layer with { Mask = StackDocuments.MeshMasked(painted, null) }, set));
         return (paint, PaintImage.Pack(showed, showed, showed, 1f));
@@ -637,17 +678,240 @@ public sealed class StackEditor : ILayerStackDocument {
         };
 
     /// <summary>
-    ///     A file for a new mask canvas. ⚠ Never one anything can reach: a removed mask's strokes can still be undone
-    ///     back onto its canvas, and a file beside the stack holds what a save kept.
+    ///     A file for a new canvas. ⚠ Never one anything can reach: a removed layer's strokes can still be undone back
+    ///     onto its canvas, a file beside the stack holds what a save kept, and the document may name it already.
     /// </summary>
-    string FreeMaskCanvas(string stem, string set, string layer) {
+    /// <param name="stem">The stack's file name without its extension.</param>
+    /// <param name="set">The texture set.</param>
+    /// <param name="layer">The layer it is for.</param>
+    /// <param name="mask">Whether it is the layer's mask.</param>
+    /// <param name="alsoTaken">Names given out in this batch, which nothing holds yet.</param>
+    string FreeCanvas(string stem, string set, string layer, bool mask, IReadOnlySet<string> alsoTaken) {
         var folder = Path.GetDirectoryName(AssetPath)!;
-        HashSet<string> taken = [..Standing.Concat(Redoable).Select(static stroke => stroke.Paint)];
+        HashSet<string> taken = [
+            ..Standing.Concat(Redoable).Select(static stroke => stroke.Paint),
+            ..Canvases(Set.Layers),
+            ..alsoTaken
+        ];
         for (var count = 1;; count++) {
             var id = count == 1 ? layer : string.Create(CultureInfo.InvariantCulture, $"{layer}-{count}");
-            var name = LayerPaint.NameFor(stem, set, id, true);
+            var name = LayerPaint.NameFor(stem, set, id, mask);
             if (!taken.Contains(name) && !File.Exists(Path.Combine(folder, name))) {
                 return name;
+            }
+        }
+    }
+
+    /// <summary>Every canvas some layers name: their own, their mask's and those of their mask's entries.</summary>
+    static IEnumerable<string> Canvases(IEnumerable<LayerAsset> layers) =>
+        layers.SelectMany(static layer => Canvases(layer.Children)
+            .Concat(
+                [
+                    layer.Paint.Trim(), layer.Mask.Paint.Trim(),
+                    ..layer.Mask.Layers.Select(static entry => entry.Paint.Trim())
+                ]
+            )
+            .Where(static paint => paint.Length > 0)
+        );
+
+    /// <summary>Each chosen layer once, less any inside another that is chosen: that one takes it along.</summary>
+    List<string> Outermost(IReadOnlyList<string> layers, string set) {
+        if (layers.Count == 0) {
+            throw new StackEditRefusedException("Name at least one layer.");
+        }
+
+        HashSet<string> chosen = [..layers];
+        List<string> outermost = [];
+        foreach (var id in layers.Distinct(StringComparer.Ordinal)) {
+            Require(id);
+            var inside = false;
+            for (var parent = LayerStackEdit.SlotOf(Document, new(set, id))?.Parent;
+                 parent is not null;
+                 parent = LayerStackEdit.SlotOf(Document, new(set, parent))?.Parent) {
+                inside |= chosen.Contains(parent);
+            }
+
+            if (!inside) {
+                outermost.Add(id);
+            }
+        }
+
+        return outermost;
+    }
+
+    /// <summary>Layers as a file holds them, which is a deep copy: a record's lists are shared by a with.</summary>
+    public static List<LayerAsset> Written(IEnumerable<LayerAsset> layers) =>
+        LayerStackYaml.Read(
+                LayerStackYaml.Write(new() { Name = "clip", Sets = [new() { Name = "clip", Layers = [..layers] }] })
+            )
+            .Sets[0]
+            .Layers;
+
+    /// <summary>
+    ///     The layers a copy holds, read from text: the outermost of these, in the order they stand, bottom first. With
+    ///     the canvases they name, for the Worker to write.
+    /// </summary>
+    /// <exception cref="StackEditRefusedException">A layer is not in this stack.</exception>
+    public (string Text, int Count, IReadOnlyList<string> Canvases) Copied(IReadOnlyList<string> layers) {
+        var set = Set.Name;
+        var outermost = Outermost(layers, set);
+        List<LayerAsset> standing = [
+            ..Flattened(Set.Layers).Where(layer => outermost.Contains(layer.Id, StringComparer.Ordinal))
+        ];
+        var text = LayerStackYaml.Write(new() { Name = "clip", Sets = [new() { Name = "clip", Layers = standing }] });
+        return (text, standing.Count, [..Canvases(standing).Distinct(StringComparer.Ordinal)]);
+    }
+
+    static IEnumerable<LayerAsset> Flattened(IEnumerable<LayerAsset> layers) =>
+        layers.SelectMany(static layer => Flattened(layer.Children).Prepend(layer));
+
+    /// <summary>Each layer duplicated just above itself, with canvases of its own copied from its own.</summary>
+    void Duplicate(StackDuplicateLayers duplicate, Step step, string set, Action<IAuthoringCommand> run) {
+        var outermost = Outermost(duplicate.Layers, set);
+        Copies copies = new(this, set);
+        List<(string Source, LayerAsset Copy)> made = [
+            ..outermost.Select(id => (id, copies.Of(Written([Require(id)])[0], static paint => paint)))
+        ];
+        foreach (var (source, copy) in made.Select(pair => (pair.Source, copies.Reanchored(pair.Copy)))) {
+            var slot = LayerStackEdit.SlotOf(Document, new(set, source))!.Value;
+            run(new AddLayerCommand(this, slot with { Index = slot.Index + 1 }, copy, "Duplicate layers"));
+        }
+
+        Journal(copies, step);
+    }
+
+    /// <summary>
+    ///     A copy's layers, new each time, over the chosen layer or at the top. Their canvases are the copy's, so a
+    ///     cut layer and one painted since are what was copied. Limits to named meshes are another stack's meshes.
+    /// </summary>
+    void Paste(StackPasteLayers paste, Step step, string set, Action<IAuthoringCommand> run) {
+        var clip = Clip(paste.Clip)
+            ?? throw new StackEditRefusedException("That copy has gone, with the Server that held it. Copy again.");
+        var layers = LayerStackYaml.Read(clip.Text).Sets[0].Layers;
+        var same = string.Equals(clip.Stack, AssetPath, StringComparison.Ordinal);
+        if (Canvases(layers).Any() && (clip.Width, clip.Height) != (Document.BaseWidth, Document.BaseHeight)) {
+            throw new StackEditRefusedException(
+                $"These layers are painted at {clip.Width}×{clip.Height} and this stack at "
+                + $"{Document.BaseWidth}×{Document.BaseHeight}. Paint moves between stacks of one size."
+            );
+        }
+
+        Copies copies = new(this, set);
+        List<LayerAsset> made = [
+            ..layers.Select(layer => copies.Of(
+                    same ? layer : layer with { Mask = StackDocuments.MeshMasked(layer.Mask, new([], string.Empty)) },
+                    paint => Path.Combine(clip.Folder, Path.GetFileName(paint))
+                )
+            )
+        ];
+        var slot = Top(set, null);
+        if (paste.Above is { } above) {
+            Require(above);
+            var at = LayerStackEdit.SlotOf(Document, new(set, above))!.Value;
+            slot = at with { Index = at.Index + 1 };
+        }
+
+        foreach (var layer in made.Select(copies.Reanchored)) {
+            run(new AddLayerCommand(this, slot, layer, "Paste layers"));
+            slot = slot with { Index = slot.Index + 1 };
+        }
+
+        Journal(copies, step);
+    }
+
+    void Journal(Copies copies, Step step) {
+        foreach (var (from, to) in copies.Canvases) {
+            step.Strokes.Add(StackJournalEntry.Copy(nextEntry++, to, from, Document.Model));
+        }
+    }
+
+    /// <summary>Layers made again with ids, names and canvases nothing else has, and where each canvas comes from.</summary>
+    sealed class Copies(StackEditor editor, string set) {
+        readonly HashSet<string> ids = [..Flattened(editor.Set.Layers).Select(static layer => layer.Id)];
+        readonly HashSet<string> names = [..Flattened(editor.Set.Layers).Select(static layer => layer.Name)];
+        readonly HashSet<string> paints = new(StringComparer.Ordinal);
+        readonly Dictionary<string, string> renamed = new(StringComparer.Ordinal);
+
+        public List<(string From, string To)> Canvases { get; } = [];
+
+        /// <summary>A layer of a fresh document, with everything in it made new.</summary>
+        /// <param name="layer">It, which this changes nothing in.</param>
+        /// <param name="source">Where a canvas it names is read from.</param>
+        public LayerAsset Of(LayerAsset layer, Func<string, string> source) {
+            var id = Free(ids, Stem(layer.Id), static (stem, count) => $"{stem}-{count}");
+            renamed[layer.Id] = id;
+            var mask = layer.Mask with {
+                Paint = Canvas(layer.Mask.Paint, id, true, source),
+                Layers = [
+                    ..layer.Mask.Layers.Select((entry, index) => entry with {
+                            Paint = Canvas(
+                                entry.Paint,
+                                string.Create(CultureInfo.InvariantCulture, $"{id}-{index + 1}"),
+                                true,
+                                source
+                            )
+                        }
+                    )
+                ]
+            };
+            return layer with {
+                Id = id,
+                Name = Free(names, layer.Name, static (name, count) => $"{name} {count}"),
+                Paint = Canvas(layer.Paint, id, false, source),
+                Mask = mask,
+                Children = [..layer.Children.Select(child => Of(child, source))]
+            };
+        }
+
+        /// <summary>An anchor onto a layer that came along now reads the copy of it, and any other stays.</summary>
+        public LayerAsset Reanchored(LayerAsset layer) =>
+            layer with {
+                Mask = layer.Mask with {
+                    Anchor = renamed.GetValueOrDefault(layer.Mask.Anchor, layer.Mask.Anchor),
+                    Layers = [
+                        ..layer.Mask.Layers.Select(entry => entry with {
+                                Anchor = renamed.GetValueOrDefault(entry.Anchor, entry.Anchor)
+                            }
+                        )
+                    ]
+                },
+                Children = [..layer.Children.Select(Reanchored)]
+            };
+
+        string Canvas(string paint, string layer, bool mask, Func<string, string> source) {
+            var from = paint.Trim();
+            if (from.Length == 0) {
+                return paint;
+            }
+
+            var to = editor.FreeCanvas(
+                Path.GetFileNameWithoutExtension(editor.AssetPath),
+                set,
+                layer,
+                mask,
+                paints
+            );
+            paints.Add(to);
+            Canvases.Add((source(from), to));
+            return to;
+        }
+
+        /// <summary>An id with no copy number on it, so that a copy of a copy is not paint-1-1.</summary>
+        static string Stem(string id) {
+            var dash = id.LastIndexOf('-');
+            return dash > 0 && id[(dash + 1)..].All(char.IsAsciiDigit) ? id[..dash] : id.Length > 0 ? id : "layer";
+        }
+
+        static string Free(HashSet<string> taken, string wanted, Func<string, int, string> numbered) {
+            if (taken.Add(wanted)) {
+                return wanted;
+            }
+
+            for (var count = 2;; count++) {
+                var name = numbered(wanted, count);
+                if (taken.Add(name)) {
+                    return name;
+                }
             }
         }
     }

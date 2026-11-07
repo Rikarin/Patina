@@ -64,6 +64,15 @@ static class StackEndpoints {
             Refused
         );
         Post(
+            "/{id}/clip",
+            Clip,
+            "CopyStackLayers",
+            "Copies layers with their pixels as they stand, for a pasteLayers command in this stack or another.",
+            Missing,
+            Refused,
+            Unavailable
+        );
+        Post(
             "/{id}/undo",
             Undo,
             "UndoStack",
@@ -272,6 +281,27 @@ static class StackEndpoints {
         } catch (GraphFileChangedException e) {
             return TypedResults.Problem(e.Message, statusCode: Conflict);
         } catch (IpcException e) {
+            return TypedResults.Problem(e.Message, statusCode: Refused);
+        } catch (Exception e) when (e is TimeoutException or IOException) {
+            return TypedResults.Problem(e.Message, statusCode: Unavailable);
+        }
+    }
+
+    static async Task<Results<Ok<StackClip>, ProblemHttpResult>> Clip(
+        string id,
+        StackClipRequest request,
+        StackSessions sessions,
+        StackEvaluator evaluator,
+        StackClips clips,
+        CancellationToken cancellationToken
+    ) {
+        if (sessions.Find(id) is not { } session) {
+            return NoSession(id);
+        }
+
+        try {
+            return TypedResults.Ok(await evaluator.CopyAsync(session, request.Layers, clips, cancellationToken));
+        } catch (Exception e) when (e is StackEditRefusedException or IpcException) {
             return TypedResults.Problem(e.Message, statusCode: Refused);
         } catch (Exception e) when (e is TimeoutException or IOException) {
             return TypedResults.Problem(e.Message, statusCode: Unavailable);

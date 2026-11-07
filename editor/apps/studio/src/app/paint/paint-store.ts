@@ -4,6 +4,7 @@ import {
   type Connection,
   type PatinaClient,
   type StackBrush,
+  type StackClip,
   type StackCommand,
   type StackCommandBatch,
   type StackEvent,
@@ -166,6 +167,8 @@ export class PaintStore {
     pressureFlow: 0
   });
   readonly vocabulary = signal<StackVocabulary | null>(null);
+  /** The layers last copied, from this stack or another. The Server holds them, pixels and all. */
+  readonly clip = signal<StackClip | null>(null);
   /** The colours of the id map this stack reads, once asked for, or null with no such map. */
   readonly idColours = signal<readonly StackIdColour[] | null>(null);
   /** The layer whose mask is taking its colour from the next click on the mesh or the map. */
@@ -426,6 +429,76 @@ export class PaintStore {
     const added = this.layers().find(row => !before.has(row.layer.id));
     if (added) {
       this.layer.set(added.layer.id);
+    }
+  }
+
+  /** The selected layers that are not inside another selected one, top first: what a copy or a cut takes. */
+  private outermost(): string[] {
+    const selected = this.selection();
+    return this.layers()
+      .filter(row => selected.has(row.layer.id) && (row.parent === null || !selected.has(row.parent)))
+      .map(row => row.layer.id);
+  }
+
+  /** Copies the selected layers with their pixels as they stand, for a paste here or in another stack. */
+  async copyLayers(): Promise<boolean> {
+    const id = this.state()?.id;
+    const layers = this.outermost();
+    if (!id || layers.length === 0) {
+      return false;
+    }
+
+    this.startAction();
+    try {
+      // A copy holds what the strokes left, so the last of a drag has to have arrived.
+      await this.drained();
+      const client = await this.api();
+      this.clip.set(
+        unwrap(await client.POST('/api/v1/stacks/{id}/clip', { params: { path: { id } }, body: { layers } }))
+      );
+      return true;
+    } catch (failure) {
+      this.failure.set(failure instanceof Error ? failure.message : String(failure));
+      return false;
+    }
+  }
+
+  /** Copies the selected layers and takes them away, which undoes like a delete. */
+  async cutLayers(): Promise<void> {
+    const layers = this.outermost();
+    if (await this.copyLayers()) {
+      await this.edit(...layers.map(layer => ({ op: 'removeLayer' as const, layer })));
+      this.marked.set(new Set());
+    }
+  }
+
+  /** Pastes the last copy above the chosen layer, or at the top, and chooses what came in. */
+  async pasteLayers(): Promise<void> {
+    const clip = this.clip();
+    if (!clip) {
+      return;
+    }
+
+    await this.added({ op: 'pasteLayers', clip: clip.id, above: this.layer() });
+  }
+
+  /** Duplicates the selected layers, each just above itself, with pixels of its own, and chooses the copies. */
+  async duplicateLayers(): Promise<void> {
+    const layers = this.outermost();
+    if (layers.length > 0) {
+      await this.added({ op: 'duplicateLayers', layers });
+    }
+  }
+
+  /** One edit that makes layers, which are then what is selected. */
+  private async added(command: StackCommand): Promise<void> {
+    const before = new Set(this.layers().map(row => row.layer.id));
+    await this.edit(command);
+    const made = this.layers().filter(row => !before.has(row.layer.id) && (row.parent === null || before.has(row.parent)));
+    if (made.length > 0) {
+      this.layer.set(made[0]?.layer.id ?? null);
+      this.marked.set(new Set(made.map(row => row.layer.id)));
+      this.masking.set(false);
     }
   }
 

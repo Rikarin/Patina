@@ -70,6 +70,37 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         }
     } = [];
 
+    /// <summary>The copies a paste reads from.</summary>
+    public StackClips? Clips {
+        get;
+        init {
+            field = value;
+            editor.Clip = id => value?.Find(id);
+        }
+    }
+
+    /// <summary>Whether this history copies a canvas out of a folder, which then has to stay.</summary>
+    public bool Reads(string folder) {
+        lock (Changing) {
+            return editor.Standing.Concat(editor.Redoable)
+                .Any(entry => entry.From is { } from
+                    && System.IO.Path.IsPathRooted(from)
+                    && from.StartsWith(folder, StringComparison.Ordinal)
+                );
+        }
+    }
+
+    /// <summary>Some layers as a copy holds them, and the canvases the Worker writes for it, read under the lock.</summary>
+    /// <exception cref="StackEditRefusedException">A layer is not in this stack.</exception>
+    public (string Text, int Count, IReadOnlyList<string> Canvases, int Width, int Height) Copied(
+        IReadOnlyList<string> layers
+    ) {
+        lock (Changing) {
+            var (text, count, canvases) = editor.Copied(layers);
+            return (text, count, canvases, editor.Document.BaseWidth, editor.Document.BaseHeight);
+        }
+    }
+
     /// <summary>The texture set this session paints.</summary>
     public string Set {
         get {
@@ -333,7 +364,8 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                         entry.View,
                         entry.Curve,
                         entry.Mirror,
-                        entry.Start
+                        entry.Start,
+                        entry.From
                     )
                 );
                 sent[entry.Id] = (entry.Stamps.Count, entry.Open);

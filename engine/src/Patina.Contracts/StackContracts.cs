@@ -280,6 +280,8 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackAddChannel), "addChannel")]
 [JsonDerivedType(typeof(StackNestLayer), "nestLayer")]
 [JsonDerivedType(typeof(StackSetSeed), "setSeed")]
+[JsonDerivedType(typeof(StackDuplicateLayers), "duplicateLayers")]
+[JsonDerivedType(typeof(StackPasteLayers), "pasteLayers")]
 public abstract record StackCommand;
 
 /// <summary>Adds a layer at the top of the stack.</summary>
@@ -390,6 +392,31 @@ public sealed record StackSetModel(string Model) : StackCommand;
 /// <summary>Adds a channel to the stack, so that layers can write it and a preset can export it.</summary>
 /// <param name="Usage">Which, one of the vocabulary's usages.</param>
 public sealed record StackAddChannel(string Usage) : StackCommand;
+
+/// <summary>
+///     Duplicates layers, each just above itself, with everything inside it. A painted canvas is copied, never shared:
+///     a stroke on the copy leaves the original alone.
+/// </summary>
+/// <param name="Layers">Which. A layer inside another of them goes with that one.</param>
+public sealed record StackDuplicateLayers(IReadOnlyList<string> Layers) : StackCommand;
+
+/// <summary>
+///     Pastes what a copy holds, as new layers with canvases of their own, in this stack or another. Limits to named
+///     meshes stay only in the stack they were made for.
+/// </summary>
+/// <param name="Clip">What <c>POST /stacks/{id}/clip</c> answered.</param>
+/// <param name="Above">The layer they go just above, or null for the top of the stack.</param>
+public sealed record StackPasteLayers(string Clip, string? Above = null) : StackCommand;
+
+/// <summary>Copies layers out of a stack, with their pixels as they stand now.</summary>
+/// <param name="Layers">Which. A layer inside another of them goes with that one.</param>
+public sealed record StackClipRequest(IReadOnlyList<string> Layers);
+
+/// <summary>Layers copied out of a stack, which a <see cref="StackPasteLayers" /> names.</summary>
+/// <param name="Id">What a paste names it by. A Server that restarts has none.</param>
+/// <param name="Layers">How many layers it holds at the top.</param>
+/// <param name="Stack">The stack they came from.</param>
+public sealed record StackClip(string Id, int Layers, string Stack);
 
 /// <summary>Sets the number every procedural step of the stack derives from.</summary>
 /// <param name="Seed">It.</param>

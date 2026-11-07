@@ -215,6 +215,13 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
         return IpcMessage.Ok(request.Id);
     }
 
+    /// <summary>Writes canvases as the journal has left them, for a paste to start from.</summary>
+    public IpcMessage Copy(IpcMessage request) {
+        var copy = request.StackCopy ?? throw new IpcException("stack.copy says nothing.");
+        Find(copy.Session).Copy(copy.Paints, copy.Folder);
+        return IpcMessage.Ok(request.Id);
+    }
+
     /// <summary>
     ///     What each map holds, read from the strokes' repairs or evaluated from nothing, in the bytes an export
     ///     writes:
@@ -276,16 +283,19 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
 
     static double Milliseconds(long start) => Stopwatch.GetElapsedTime(start).TotalMilliseconds;
 
-    /// <summary>One stroke as this Worker holds it: under way, or a command that can undo it.</summary>
-    sealed class Applied(long id, PaintStroke stroke, PaintPath? curve) {
+    /// <summary>One stroke as this Worker holds it: under way, or a command that can undo it. A copy has no stroke.</summary>
+    sealed class Applied(long id, PaintStroke? stroke, PaintPath? curve) {
         public long Id { get; } = id;
 
-        public PaintStroke Stroke { get; } = stroke;
+        public PaintStroke? Stroke { get; } = stroke;
 
         /// <summary>The control points of a line or a path, which paints when it ends.</summary>
         public PaintPath? Curve { get; } = curve;
 
         public IAuthoringCommand? Command { get; set; }
+
+        /// <summary>What a copy of a canvas does, which is not a stroke.</summary>
+        public IAuthoringCommand? Copy { get; init; }
 
         public bool Done { get; set; }
     }
@@ -561,6 +571,19 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
             }
         }
 
+        public void Copy(IReadOnlyList<string> paints, string to) {
+            Directory.CreateDirectory(to);
+            foreach (var paint in paints) {
+                if (canvases.Open(LibraryLayout.Beside(folder, paint)) is not { } canvas) {
+                    continue;
+                }
+
+                var target = Path.Combine(to, Path.GetFileName(paint));
+                using var stream = File.Create(target);
+                canvas.Write(stream);
+            }
+        }
+
         void Restore(string checkpoint) {
             foreach (var file in Directory.EnumerateFiles(checkpoint, $"*{LayerPaint.Extension}")) {
                 using var stream = File.OpenRead(file);
@@ -572,6 +595,18 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
 
         Applied Begin(StackPaintPart part) {
             var file = LibraryLayout.Beside(folder, part.Paint);
+            if (part.From is { } from) {
+                touched.Add(part.Paint);
+                CanvasCopy copy = new(
+                    canvases,
+                    file,
+                    Path.GetFullPath(from, folder),
+                    document.BaseWidth,
+                    document.BaseHeight
+                );
+                return known[part.Id] = new(part.Id, null, null) { Copy = copy };
+            }
+
             var canvas = canvases.Open(file);
             if (canvas is null) {
                 canvas = new(document.BaseWidth, document.BaseHeight);
@@ -692,7 +727,31 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
             }
         }
 
+        /// <summary>
+        ///     Makes a copy the journal holds. ⚠ As its turn comes and not as it begins: a replay begins every stroke
+        ///     before it stamps any, and a copy made then would be of a canvas the strokes before it have not reached yet.
+        /// </summary>
+        void Copy(Applied copy, IAuthoringCommand command) {
+            if (copy.Done) {
+                return;
+            }
+
+            command.Do(Context);
+            copy.Command = command;
+            copy.Done = true;
+            unknown = true;
+        }
+
         void Extend(Applied stroke, StackPaintPart part) {
+            if (stroke.Copy is { } copy) {
+                Copy(stroke, copy);
+                return;
+            }
+
+            if (stroke.Stroke is null) {
+                return;
+            }
+
             if (stroke.Curve is { } curve) {
                 foreach (var stamp in part.Stamps) {
                     curve.Add(new(stamp.X, stamp.Y), stamp.Pressure);
@@ -720,9 +779,10 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
         static IAuthoringCommand Close(Applied stroke) {
             if (!stroke.Done) {
                 stroke.Done = true;
-                stroke.Command = stroke.Stroke.IsEmpty
-                    ? new Nothing()
-                    : new PaintStrokeCommand([stroke.Stroke], "Stroke");
+                stroke.Command = stroke.Copy
+                    ?? (stroke.Stroke is not { IsEmpty: false } painted
+                        ? new Nothing()
+                        : new PaintStrokeCommand([painted], "Stroke"));
             }
 
             return stroke.Command!;
@@ -730,6 +790,61 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
 
         sealed class NoContext : ICommandContext {
             public void Touch(IAuthoredDocument document) { }
+        }
+
+        /// <summary>
+        ///     A canvas made a copy of another, in place. ⚠ Into the canvas object that is there and never a new one: a
+        ///     replay begins every stroke before it stamps any, so a stroke on the copy is bound to its pixels before the
+        ///     copy is made. Done again, the source is as it was the first time, since the journal undid what came after.
+        /// </summary>
+        sealed class CanvasCopy(PaintCanvasStore canvases, string target, string source, int width, int height)
+            : IAuthoringCommand {
+            public string Name => "Copy";
+
+            public void Do(ICommandContext context) {
+                var into = Target();
+                var from = canvases.Open(source);
+                if (from is not null && (from.Width != width || from.Height != height)) {
+                    throw new IpcException(
+                        $"'{Path.GetFileName(source)}' is {from.Width}×{from.Height} and this stack paints at "
+                        + $"{width}×{height}."
+                    );
+                }
+
+                foreach (var usage in into.Channels.Where(usage => from?.Has(usage) != true)) {
+                    into.Channel(usage).Fill(0u);
+                }
+
+                foreach (var usage in from?.Channels ?? []) {
+                    into.Channel(usage).CopyFrom(from!.Channel(usage));
+                }
+            }
+
+            /// <summary>Back to what a new canvas holds, which nothing reads once the layer naming it has gone.</summary>
+            public void Undo(ICommandContext context) {
+                var into = Target();
+                foreach (var usage in into.Channels) {
+                    into.Channel(usage).Fill(0u);
+                }
+            }
+
+            PaintCanvas Target() {
+                if (canvases.Open(target) is { } held) {
+                    return held;
+                }
+
+                PaintCanvas made = new(width, height);
+                canvases.Adopt(target, made);
+                return made;
+            }
+
+            public bool TryMergeWith(
+                IAuthoringCommand previous,
+                [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out IAuthoringCommand? merged
+            ) {
+                merged = null;
+                return false;
+            }
         }
 
         /// <summary>A stroke that stamped nothing, which still stands in the journal.</summary>

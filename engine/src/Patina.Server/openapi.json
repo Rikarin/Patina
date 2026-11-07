@@ -3638,6 +3638,77 @@
         }
       }
     },
+    "/api/v1/stacks/{id}/clip": {
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Copies layers with their pixels as they stand, for a pasteLayers command in this stack or another.",
+        "operationId": "CopyStackLayers",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StackClipRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackClip"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stacks/{id}/undo": {
       "post": {
         "tags": [
@@ -8880,6 +8951,46 @@
         },
         "description": "A channel a stack writes."
       },
+      "StackClip": {
+        "required": [
+          "id",
+          "layers",
+          "stack"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "What a paste names it by. A Server that restarts has none."
+          },
+          "layers": {
+            "type": "integer",
+            "description": "How many layers it holds at the top.",
+            "format": "int32"
+          },
+          "stack": {
+            "type": "string",
+            "description": "The stack they came from."
+          }
+        },
+        "description": "Layers copied out of a stack, which a StackPasteLayers names."
+      },
+      "StackClipRequest": {
+        "required": [
+          "layers"
+        ],
+        "type": "object",
+        "properties": {
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Which. A layer inside another of them goes with that one."
+          }
+        },
+        "description": "Copies layers out of a stack, with their pixels as they stand now."
+      },
       "StackCommand": {
         "required": [
           "op"
@@ -8912,6 +9023,12 @@
           },
           {
             "$ref": "#/components/schemas/StackCommandStackSetSeed"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackDuplicateLayers"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackPasteLayers"
           }
         ],
         "description": "One edit of a stack. A batch of these is one undo step.",
@@ -8926,7 +9043,9 @@
             "setModel": "#/components/schemas/StackCommandStackSetModel",
             "addChannel": "#/components/schemas/StackCommandStackAddChannel",
             "nestLayer": "#/components/schemas/StackCommandStackNestLayer",
-            "setSeed": "#/components/schemas/StackCommandStackSetSeed"
+            "setSeed": "#/components/schemas/StackCommandStackSetSeed",
+            "duplicateLayers": "#/components/schemas/StackCommandStackDuplicateLayers",
+            "pasteLayers": "#/components/schemas/StackCommandStackPasteLayers"
           }
         }
       },
@@ -9038,6 +9157,28 @@
         },
         "description": "Adds a layer at the top of the stack."
       },
+      "StackCommandStackDuplicateLayers": {
+        "required": [
+          "layers",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "duplicateLayers"
+            ],
+            "type": "string"
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Which. A layer inside another of them goes with that one."
+          }
+        },
+        "description": "Duplicates layers, each just above itself, with everything inside it. A painted canvas is copied, never shared:\na stroke on the copy leaves the original alone."
+      },
       "StackCommandStackMoveLayer": {
         "required": [
           "layer",
@@ -9088,6 +9229,32 @@
           }
         },
         "description": "Moves a layer to the top of a group, or of the stack."
+      },
+      "StackCommandStackPasteLayers": {
+        "required": [
+          "clip",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "pasteLayers"
+            ],
+            "type": "string"
+          },
+          "clip": {
+            "type": "string",
+            "description": "What \u0060POST /stacks/{id}/clip\u0060 answered."
+          },
+          "above": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The layer they go just above, or null for the top of the stack."
+          }
+        },
+        "description": "Pastes what a copy holds, as new layers with canvases of their own, in this stack or another. Limits to named\nmeshes stay only in the stack they were made for."
       },
       "StackCommandStackRemoveLayer": {
         "required": [

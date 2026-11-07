@@ -76,6 +76,9 @@ public static class IpcTypes {
 
     public const string StackSave = "stack.save";
 
+    /// <summary>Writes some canvases of a stack, as they stand, to a folder a paste reads them from.</summary>
+    public const string StackCopy = "stack.copy";
+
     public const string StackCheckpoint = "stack.checkpoint";
 
     public const string StackPixels = "stack.pixels";
@@ -151,6 +154,8 @@ public sealed class IpcMessage {
     public StackSave? StackSave { get; set; }
 
     public StackPixelsAsk? StackPixels { get; set; }
+
+    public StackCopyAsk? StackCopy { get; set; }
 
     public IReadOnlyList<StackPixels>? StackPicture { get; set; }
 
@@ -448,6 +453,10 @@ public sealed record StackLoad(
 /// <param name="Curve">free, line or path.</param>
 /// <param name="Mirror">x, y, z or null.</param>
 /// <param name="Start">What a canvas this stroke is the first on starts as, packed like the colour, or null.</param>
+/// <param name="From">
+///     For no stroke at all: the canvas, relative to the stack or absolute, that <paramref name="Paint" /> becomes a
+///     copy of, every channel of it. Undone, the copy goes.
+/// </param>
 public sealed record StackPaintPart(
     long Id,
     string Paint,
@@ -460,7 +469,8 @@ public sealed record StackPaintPart(
     StackView? View,
     string Curve,
     string? Mirror,
-    uint? Start = null
+    uint? Start = null,
+    string? From = null
 );
 
 #pragma warning restore SK7005
@@ -529,6 +539,12 @@ public sealed record MeshMovePaintAsk(string From, string To, IReadOnlyList<stri
 /// <param name="Side">The picture's width and height.</param>
 /// <param name="Output">The picture.</param>
 public sealed record MeshPartMaskAsk(string Mesh, IReadOnlyList<string> Parts, int Side, string Output);
+
+/// <summary>Writes some canvases of a stack as they stand, under their own names, to a folder.</summary>
+/// <param name="Session">The session.</param>
+/// <param name="Paints">The paint files, relative to the stack. One that holds nothing is not written.</param>
+/// <param name="Folder">Where to.</param>
+public sealed record StackCopyAsk(string Session, IReadOnlyList<string> Paints, string Folder);
 
 /// <summary>Writes canvases to a folder: the stack's own for a save, the cache's for a checkpoint.</summary>
 /// <param name="Session">The session.</param>

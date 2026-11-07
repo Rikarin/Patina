@@ -713,6 +713,43 @@ interface MenuAt {
         >
           Group Layers
         </button>
+        <button
+          type="button"
+          class="hover:bg-selection flex justify-between gap-4 px-3 py-1 text-start"
+          role="menuitem"
+          data-testid="layer-menu-duplicate"
+          (click)="menu.set(null); store.duplicateLayers()"
+        >
+          Duplicate Layers <span class="text-foreground-muted">⌘D</span>
+        </button>
+        <button
+          type="button"
+          class="hover:bg-selection flex justify-between gap-4 px-3 py-1 text-start"
+          role="menuitem"
+          data-testid="layer-menu-copy"
+          (click)="menu.set(null); store.copyLayers()"
+        >
+          Copy <span class="text-foreground-muted">⌘C</span>
+        </button>
+        <button
+          type="button"
+          class="hover:bg-selection flex justify-between gap-4 px-3 py-1 text-start"
+          role="menuitem"
+          data-testid="layer-menu-cut"
+          (click)="menu.set(null); store.cutLayers()"
+        >
+          Cut <span class="text-foreground-muted">⌘X</span>
+        </button>
+        <button
+          type="button"
+          class="hover:bg-selection flex justify-between gap-4 px-3 py-1 text-start disabled:opacity-50"
+          role="menuitem"
+          data-testid="layer-menu-paste"
+          [disabled]="!store.clip()"
+          (click)="menu.set(null); store.pasteLayers()"
+        >
+          Paste <span class="text-foreground-muted">⌘V</span>
+        </button>
         <div class="border-hairline my-1 border-t"></div>
         <button
           type="button"
@@ -943,6 +980,9 @@ export class LayerStack {
     } else if (event.key === 'a' && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       this.store.marked.set(new Set(this.rows().map(row => row.layer.id)));
+    } else if (event.key === 'd' && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      void this.store.duplicateLayers();
     }
   }
 

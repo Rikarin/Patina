@@ -7,6 +7,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Layers duplicate (Cmd+D), copy, cut and paste, from the layer menu and from Edit. A copy is the layers and their paint as they stood, so a cut layer still pastes, and it pastes into another texture set or stack of the same size. A duplicated or pasted paint layer and its mask have pixels of their own, never the original's. Each is one undo step.
+- A new paint layer's first stroke no longer shows paint a removed layer of the same name left in its file.
 - Every filter Patina has can be a filter layer or a step on a mask, from the same list the node menu reads: 39 on a layer and 38 on a mask, where five of each were offered before. Height to Normal, Bevel, Gradient Map and the other filters that read one channel take the grey of what is beneath, or a mask's own value. Properties shows each filter's fields as the graph's Inspector does, ramp and curve editors included, and choosing another filter starts it from its own defaults.
 - Layers and Project Settings say when the mesh has changed since the last bake, and Reload Mesh says what it will cost before it closes anything.
 - Project Settings lists a project's meshes, pictures and bakes under Files, and the status bar says what an import brought in.

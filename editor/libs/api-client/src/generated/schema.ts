@@ -969,6 +969,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/stacks/{id}/clip': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Copies layers with their pixels as they stand, for a pasteLayers command in this stack or another. */
+    post: operations['CopyStackLayers'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/stacks/{id}/undo': {
     parameters: {
       query?: never;
@@ -3163,6 +3180,23 @@ export interface components {
       /** @description What it starts as. */
       default: number[];
     };
+    /** @description Layers copied out of a stack, which a StackPasteLayers names. */
+    StackClip: {
+      /** @description What a paste names it by. A Server that restarts has none. */
+      id: string;
+      /**
+       * Format: int32
+       * @description How many layers it holds at the top.
+       */
+      layers: number;
+      /** @description The stack they came from. */
+      stack: string;
+    };
+    /** @description Copies layers out of a stack, with their pixels as they stand now. */
+    StackClipRequest: {
+      /** @description Which. A layer inside another of them goes with that one. */
+      layers: string[];
+    };
     /** @description One edit of a stack. A batch of these is one undo step. */
     StackCommand:
       | components['schemas']['StackCommandStackAddLayer']
@@ -3173,7 +3207,9 @@ export interface components {
       | components['schemas']['StackCommandStackSetModel']
       | components['schemas']['StackCommandStackAddChannel']
       | components['schemas']['StackCommandStackNestLayer']
-      | components['schemas']['StackCommandStackSetSeed'];
+      | components['schemas']['StackCommandStackSetSeed']
+      | components['schemas']['StackCommandStackDuplicateLayers']
+      | components['schemas']['StackCommandStackPasteLayers'];
     /** @description Edits applied whole or not at all, as one undo step. */
     StackCommandBatch: {
       /** @description The edits, in order. */
@@ -3212,6 +3248,16 @@ export interface components {
       /** @description The node or compound a filter layer runs, instead of a named filter. */
       filterNode?: null | string;
     };
+    /**
+     * @description Duplicates layers, each just above itself, with everything inside it. A painted canvas is copied, never shared:
+     *     a stroke on the copy leaves the original alone.
+     */
+    StackCommandStackDuplicateLayers: {
+      /** @enum {string} */
+      op: 'duplicateLayers';
+      /** @description Which. A layer inside another of them goes with that one. */
+      layers: string[];
+    };
     /** @description Moves a layer up or down its list. */
     StackCommandStackMoveLayer: {
       /** @enum {string} */
@@ -3232,6 +3278,18 @@ export interface components {
       layer: string;
       /** @description The group, or null for the stack itself. */
       parent?: null | string;
+    };
+    /**
+     * @description Pastes what a copy holds, as new layers with canvases of their own, in this stack or another. Limits to named
+     *     meshes stay only in the stack they were made for.
+     */
+    StackCommandStackPasteLayers: {
+      /** @enum {string} */
+      op: 'pasteLayers';
+      /** @description What `POST /stacks/{id}/clip` answered. */
+      clip: string;
+      /** @description The layer they go just above, or null for the top of the stack. */
+      above?: null | string;
     };
     /** @description Removes a layer. */
     StackCommandStackRemoveLayer: {
@@ -7039,6 +7097,59 @@ export interface operations {
       };
       /** @description Unprocessable Entity */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  CopyStackLayers: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StackClipRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackClip'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
         headers: {
           [name: string]: unknown;
         };

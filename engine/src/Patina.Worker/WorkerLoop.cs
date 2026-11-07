@@ -97,6 +97,7 @@ sealed class WorkerLoop(
                     or IpcTypes.StackThumbnails
                     or IpcTypes.StackEvaluate
                     or IpcTypes.StackSave
+                    or IpcTypes.StackCopy
                     or IpcTypes.StackCheckpoint
                     or IpcTypes.StackPixels
                     or IpcTypes.StackClose
@@ -213,6 +214,7 @@ sealed class WorkerLoop(
             IpcTypes.StackEvaluate => stacks.Evaluate(request),
             IpcTypes.StackSave or IpcTypes.StackCheckpoint => stacks.Save(request),
             IpcTypes.StackPixels => stacks.Pixels(request),
+            IpcTypes.StackCopy => stacks.Copy(request),
             _ => stacks.Close(request)
         };
 

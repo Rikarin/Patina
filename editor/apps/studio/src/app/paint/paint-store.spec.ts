@@ -100,6 +100,11 @@ function setup() {
       return Response.json({ found: true, view: PickedView });
     }
 
+    if (path.endsWith('/clip')) {
+      bodies.push(await input.json());
+      return Response.json({ id: 'c1', layers: 1, stack: '/a/Crate.vxlayers' });
+    }
+
     if (path.endsWith('/stacks/vocabulary')) {
       return Response.json({ blends: [], filters: [], masks: [], generators: [], meshMaps: [], alphas: ['Round'] });
     }
@@ -196,6 +201,45 @@ describe('PaintStore saving', () => {
     await store.act('save');
 
     expect(store.failure()).toBeNull();
+  });
+});
+
+describe('PaintStore copies', () => {
+  it('copies the outermost of what is selected, and a cut removes them after', async () => {
+    const { store, bodies } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    store.state.set(stack({ layers: [layer('base', 'fill'), layer('folder', 'group', [layer('inner', 'paint')])] }));
+    store.layer.set('folder');
+    store.marked.set(new Set(['inner']));
+
+    await store.cutLayers();
+
+    expect(bodies).toEqual([{ layers: ['folder'] }, { commands: [{ op: 'removeLayer', layer: 'folder' }] }]);
+    expect(store.clip()?.id).toBe('c1');
+  });
+
+  it('pastes the last copy above the chosen layer, and duplicates what is selected', async () => {
+    const { store, bodies } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    store.layer.set('paint');
+    await store.copyLayers();
+
+    await store.pasteLayers();
+    await store.duplicateLayers();
+
+    expect(bodies.slice(1)).toEqual([
+      { commands: [{ op: 'pasteLayers', clip: 'c1', above: 'paint' }] },
+      { commands: [{ op: 'duplicateLayers', layers: ['paint'] }] }
+    ]);
+  });
+
+  it('pastes nothing before anything is copied', async () => {
+    const { store, bodies } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+
+    await store.pasteLayers();
+
+    expect(bodies).toEqual([]);
   });
 });
 
