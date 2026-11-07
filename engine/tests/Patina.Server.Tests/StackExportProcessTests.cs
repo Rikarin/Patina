@@ -304,7 +304,9 @@ public sealed partial class StackProcessTests {
         var project = await MakeTexturingProjectAsync(mesh, deadline.Token);
         using (var set = await http.PatchAsJsonAsync(
                    "/api/v1/library/project/settings",
-                   new { project, autoUnwrap = false }, // what a new project sends, and a same file alone changes nothing
+                   new {
+                       project, autoUnwrap = false
+                   }, // what a new project sends, and a same file alone changes nothing
                    deadline.Token
                )) {
             Assert.True(set.IsSuccessStatusCode, await set.Content.ReadAsStringAsync(deadline.Token));
