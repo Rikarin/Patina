@@ -129,6 +129,27 @@ test('a brush on the mesh shows on it in the viewport, across its flats, and und
   await expect.poll(async () => changed(before, await shot()), { timeout: 30_000 }).toBeGreaterThan(1500);
 });
 
+test('a fill takes a painted mask, stroked on the mesh', async () => {
+  await openOnMesh();
+  await window.getByTestId('paint-add-fill').click();
+  await window.getByTestId('paint-fill-baseColor').locator('button').first().click();
+  await window.getByRole('textbox', { name: 'Hex color' }).fill('#00ff00');
+  await window.getByRole('textbox', { name: 'Hex color' }).press('Enter');
+  await window.keyboard.press('Escape');
+  const fill = window.locator('[data-testid^=paint-layer-fill]').first();
+  await fill.click({ button: 'right' });
+  await window.getByTestId('layer-menu-mask-paint').click();
+  await expect(window.getByTestId('paint-size')).toBeVisible();
+  await settled();
+  const before = await shot();
+
+  await drag(0.3, 0.45, 0.72, 0.55);
+
+  await expect.poll(async () => changed(before, await shot()), { timeout: 30_000 }).toBeGreaterThan(1500);
+  await expect(window.getByTestId('paint-failure')).toHaveCount(0);
+  await window.screenshot({ path: join(shots, 'paint-mask-on-fill.png') });
+});
+
 test('a mesh with no UVs is unwrapped when a project is made, and the setting stays on the project', async () => {
   await newLibrary(app, window, join(scratch, 'Unwrap.ptlib'));
   const mesh = join(scratch, 'plain.obj');

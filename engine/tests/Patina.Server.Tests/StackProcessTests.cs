@@ -338,7 +338,7 @@ public sealed partial class StackProcessTests : IDisposable {
         await EvaluatedAsync(socket, painted.Revision, deadline.Token);
         await SameAsExportAsync(state, "stack", deadline.Token);
 
-        // A brush on a fill is refused, and on the paint layer's mask it names a canvas of its own.
+        // A brush on the paint layer's mask names a canvas of its own.
         var masked = await EditAsync(
             state.Id,
             deadline.Token,
@@ -347,6 +347,57 @@ public sealed partial class StackProcessTests : IDisposable {
         await EvaluatedAsync(socket, masked.Revision, deadline.Token);
         await EditAsync(state.Id, deadline.Token, new StackSetLayer("paint", Blend: "ColourDodge"));
         await SameAsExportAsync(state, "masked", deadline.Token);
+    }
+
+    /// <summary>
+    ///     A mask belongs to any layer, so a fill, a filter and a folder each take a brush on it, while their own content
+    ///     still refuses one: only a paint layer has pixels of its own.
+    /// </summary>
+    [Fact]
+    public async Task A_mask_on_any_kind_of_layer_takes_a_brush() {
+        using var deadline = Deadline(180);
+        var (_, state) = await StartAsync("Masks.vxlayers", deadline.Token);
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackAddLayer("fill", "Tint", Tint),
+            new StackAddLayer("filter", "Flip", Filter: "Invert"),
+            new StackAddLayer("group", "Folder")
+        );
+        var layers = (await StateAsync(state.Id, deadline.Token)).Layers;
+        var (fill, filter, group) = (layers[^3].Id, layers[^2].Id, layers[^1].Id);
+        await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Inside", Tint, group));
+
+        // Top down, or the layers over a mask would hide what it did.
+        foreach (var layer in new[] { group, filter, fill }) {
+            var before = await PixelsAsync(state.Id, true, deadline.Token);
+            await EditAsync(state.Id, deadline.Token, MaskStroke($"on-{layer}", layer, 300f, 300f, [0f, 0f, 0f, 1f]));
+            Assert.NotEqual(
+                Digest(before, "baseColor"),
+                Digest(await PixelsAsync(state.Id, true, deadline.Token), "baseColor")
+            );
+        }
+
+        foreach (var layer in new[] { fill, filter, group }) {
+            await RefusedAsync(
+                state.Id,
+                deadline.Token,
+                new StackStroke("content", layer, "baseColor", new(30f), Red, Line(60, 60, 20))
+            );
+        }
+    }
+
+    static StackStroke MaskStroke(string stroke, string layer, float x, float y, IReadOnlyList<float> colour) =>
+        new(stroke, layer, "baseColor", new(30f, Falloff: 0f), colour, Line(x, y, 20), Mask: true);
+
+    async Task RefusedAsync(string id, CancellationToken token, params StackCommand[] commands) {
+        using var response = await http.PostAsJsonAsync(
+            $"/api/v1/stacks/{id}/commands",
+            new(commands),
+            ContractsJsonContext.Default.StackCommandBatch,
+            token
+        );
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
     }
 
     /// <summary>A stroke on a mesh is positions and a camera, so a new Worker lands it in the same texels.</summary>

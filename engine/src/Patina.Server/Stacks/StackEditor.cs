@@ -502,7 +502,8 @@ public sealed class StackEditor : ILayerStackDocument {
 
     void Stroke(StackStroke stroke, Step step, string set, Action<IAuthoringCommand> run) {
         var layer = Require(stroke.Layer);
-        if (layer.Kind != LayerKind.Paint) {
+        // A mask is any layer's, and only a paint layer has pixels of its own besides.
+        if (!stroke.Mask && layer.Kind != LayerKind.Paint) {
             throw new StackEditRefusedException(
                 $"'{layer.Name}' is a {layer.Kind} layer, and only a paint layer takes a brush."
             );

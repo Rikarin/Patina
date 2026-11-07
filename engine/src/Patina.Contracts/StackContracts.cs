@@ -440,7 +440,7 @@ public sealed record StackBrush(
 ///     <paramref name="Stroke" /> and they make one undo step, ended by one with <paramref name="Open" /> false.
 /// </summary>
 /// <param name="Stroke">A name the client chose for this drag.</param>
-/// <param name="Layer">The paint layer.</param>
+/// <param name="Layer">The paint layer, or for a mask any layer.</param>
 /// <param name="Channel">Which of its channels. Ignored for a mask.</param>
 /// <param name="Brush">The brush, which the first part decides.</param>
 /// <param name="Colour">Red, green, blue and alpha, 0 to 1, which the first part decides.</param>
