@@ -57,8 +57,16 @@ static class GraphPreviews {
         return [..images.Select(static image => new GraphPreviewSource(image.Key.Node, image.Key.Port, image.Value))];
     }
 
-    /// <summary>Adds a reduction of every written image to a plan, leaving the ops before them as they were.</summary>
-    public static GraphPreviewPlan Extend(TexturePlan plan, IReadOnlyList<GraphPreviewSource> sources, int side) {
+    /// <summary>
+    ///     Adds a reduction of every written image to a plan, leaving the ops before them as they were. What a check
+    ///     reads stays an output too, or nothing would run it.
+    /// </summary>
+    public static GraphPreviewPlan Extend(
+        TexturePlan plan,
+        IReadOnlyList<GraphPreviewSource> sources,
+        int side,
+        IReadOnlyList<TextureGraphCheck> checks
+    ) {
         HashSet<int> written = [..plan.Ops.Select(static op => op.Output)];
         var images = plan.Images.ToBuilder();
         var ops = plan.Ops.ToBuilder();
@@ -84,7 +92,7 @@ static class GraphPreviews {
             BakeLevelOffset = plan.BakeLevelOffset,
             Images = images.ToImmutable(),
             Ops = ops.ToImmutable(),
-            Outputs = [..reduced.Values.Distinct()],
+            Outputs = [..reduced.Values.Distinct(), ..checks.Select(static check => check.Image)],
             Seed = plan.Seed,
             Kernels = plan.Kernels
         };

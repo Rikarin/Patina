@@ -42,9 +42,12 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
             return Reply(new(compiled, false, 0, 0, Milliseconds(start), [], problems));
         }
 
-        var extended = GraphPreviews.Extend(plan, graph.Images, evaluate.PreviewSide);
+        var extended = GraphPreviews.Extend(plan, graph.Images, evaluate.PreviewSide, graph.Checks);
         using var bake = runner.EvaluateIncremental(extended.Plan, graph.Uploads!.Externals);
         var stored = Write(bake, extended.Images, evaluate.PreviewFolder);
+        problems = [
+            ..problems, ..graph.Checks.Where(check => check.Failed(bake)).Select(static check => Problem(check.Problem))
+        ];
         return Reply(new(compiled, true, bake.Ran.Length, bake.Reused, Milliseconds(start), stored, problems));
     }
 
@@ -71,6 +74,9 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
     }
 
     static IpcMessage Reply(GraphResult result) => new() { Type = IpcTypes.Ok, GraphResult = result };
+
+    static GraphResultProblem Problem(NodeDiagnostic problem) =>
+        new(problem.Id, problem.Message, problem.Severity.ToString(), problem.Node.Value, problem.Port);
 
     static double Milliseconds(long start) => Stopwatch.GetElapsedTime(start).TotalMilliseconds;
 
@@ -122,6 +128,8 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
         public TextureUploads? Uploads { get; private set; }
 
         public IReadOnlyList<GraphPreviewSource> Images { get; private set; } = [];
+
+        public IReadOnlyList<TextureGraphCheck> Checks => compiler.Checks;
 
         public void Dispose() => Uploads?.Dispose();
 
@@ -176,14 +184,7 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
         }
 
         GraphResultProblem[] Problems() => [
-            ..diagnostics.Select(static d => new GraphResultProblem(
-                    d.Id,
-                    d.Message,
-                    d.Severity.ToString(),
-                    d.Node.Value,
-                    d.Port
-                )
-            ),
+            ..diagnostics.Select(Problem),
             ..badSize is { } problem
                 ? [new GraphResultProblem(GraphSize.ProblemId, problem, "Warning", 0, string.Empty)]
                 : Array.Empty<GraphResultProblem>()

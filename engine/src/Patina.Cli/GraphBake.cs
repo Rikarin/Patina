@@ -110,6 +110,10 @@ internal static class GraphBake {
             using TexturePlanEvaluator evaluator = new(device);
             using var bake = evaluator.Evaluate(plan, uploads.Externals);
 
+            foreach (var check in compiler.Checks.Where(check => check.Failed(bake))) {
+                Console.Error.WriteLine($"{check.Problem.Id}: {check.Problem.Message}");
+            }
+
             Directory.CreateDirectory(folder);
 
             foreach (var written in compiler.Outputs) {

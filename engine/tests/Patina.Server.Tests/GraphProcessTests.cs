@@ -250,6 +250,40 @@ public sealed class GraphProcessTests : IDisposable {
         Assert.False((await EvaluatedAsync(socket, slid.Revision, deadline.Token)).Compiled);
     }
 
+    /// <summary>
+    ///     Issue 98: whether a flood settled depends on the mask, so only an evaluation can say, and it says so against
+    ///     the node. Both budgets, because a warning that cannot be absent proves nothing.
+    /// </summary>
+    [Theory]
+    [InlineData(4, true)]
+    [InlineData(256, false)]
+    public async Task A_flood_fill_that_ran_out_says_so_against_the_node(int iterations, bool warned) {
+        using var deadline = Deadline(120);
+        var (_, _, socket, first) = await OpenSampleAsync(Flooded(iterations), deadline.Token);
+        using (socket) {
+            var warnings = first.Diagnostics.Where(static d => d is { Severity: "Warning", Node: 2 }).ToList();
+            Assert.Equal(warned, warnings.Count == 1);
+            Assert.All(warnings, static warning => Assert.Equal("Iterations", warning.Port));
+        }
+    }
+
+    static NodeGraphAsset Flooded(int iterations) =>
+        new() {
+            Name = "Flooded",
+            Nodes = [
+                new() { Id = 1, Type = "Source/Noise", Values = new() { ["Scale"] = [48f] } },
+                new() {
+                    Id = 2, Type = "Analysis/Flood Fill", X = 300, Values = new() { ["Iterations"] = [iterations] }
+                },
+                new() { Id = 3, Type = "Output/Output", X = 600, Texts = new() { ["Usage"] = "baseColor" } }
+            ],
+            Edges = [
+                new() { FromNode = 1, FromPort = "Out", ToNode = 2, ToPort = "Mask" },
+                new() { FromNode = 2, FromPort = "Out", ToNode = 3, ToPort = "Input" }
+            ],
+            Settings = new() { ["seed"] = "7", ["baseWidth"] = "256", ["baseHeight"] = "256" }
+        };
+
     /// <summary>A hard-edged picture and a blur wide enough for its radius to show in the result.</summary>
     static NodeGraphAsset Blurred(int side) =>
         new() {
