@@ -8,6 +8,7 @@ using System.Security.Cryptography;
 using Vixen.Authoring;
 using Vixen.Core.Imaging;
 using Vixen.Core.Mathematics;
+using Vixen.NodeGraph;
 using Vixen.Terrain;
 using Vixen.TextureGraph;
 using Vixen.Texturing.Layers;
@@ -82,7 +83,9 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
         var stack = Find(ask.Session);
         var problems = stack.Prepare();
         if (problems.Count > 0 || stack.Run.Plan is not { } plan) {
-            return Reply(new(stack.Run.Compiled, false, 0, 0, 0, Milliseconds(start), [], problems));
+            return Reply(
+                new(stack.Run.Compiled, false, 0, 0, 0, Milliseconds(start), [], problems, stack.Found(problems))
+            );
         }
 
         var (ran, repaired, reused) = (0, 0, 0);
@@ -96,7 +99,9 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
         }
 
         if (ask.PreviewSide <= 0) {
-            return Reply(new(stack.Run.Compiled, true, ran, repaired, reused, Milliseconds(start), [], stack.Notes));
+            return Reply(
+                new(stack.Run.Compiled, true, ran, repaired, reused, Milliseconds(start), [], stack.Notes, stack.Found([]))
+            );
         }
 
         var outputs = stack.Run.Outputs;
@@ -130,7 +135,8 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
                 reused + thumbnails.Reused,
                 Milliseconds(start),
                 written,
-                stack.Notes
+                stack.Notes,
+                stack.Found([])
             )
         );
     }
@@ -321,7 +327,7 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
                 )
                 .Refusals.Select(static refusal => refusal.Message)
                 .ToArray();
-            Run = new(evaluator, canvases, load.Path, fill);
+            Run = new(evaluator, canvases, load.Path, fill) { Draft = true };
             if (load.Checkpoint is { } checkpoint) {
                 Restore(checkpoint);
             }
@@ -362,7 +368,7 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
         }
 
         string? Draw(LayerStackAsset small, TextureSetAsset alone, PreviewWriter writer, string folder) {
-            using LayerStackEvaluator run = new(evaluator, canvases, path, fill);
+            using LayerStackEvaluator run = new(evaluator, canvases, path, fill) { Draft = true };
             if (run.Prepare(small, alone, compounds.Registry, compounds.Source).Count > 0) {
                 return null;
             }
@@ -389,6 +395,33 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
 
         /// <summary>What a client is told after an evaluation that went ahead.</summary>
         public IReadOnlyList<string> Notes => Unbaked.Count == 0 ? [] : [$"{NeedsBake}{string.Join(", ", Unbaked)}"];
+
+        /// <summary>
+        ///     What the last compile said, against the layer it is about. A layer has one note per channel it reaches,
+        ///     and says the same thing in each.
+        /// </summary>
+        /// <param name="refused">Why this evaluation could not go ahead, some of which may be about no layer.</param>
+        public IReadOnlyList<StackProblem> Found(IReadOnlyList<string> refused) {
+            List<StackProblem> found = [
+                ..Run.Problems.Select(static problem => new StackProblem(
+                        problem.Layer,
+                        problem.Severity.ToString(),
+                        problem.Message
+                    )
+                ),
+                ..Run.Diagnostics.Select(diagnostic => new StackProblem(
+                        Run.Layers.GetValueOrDefault(diagnostic.Node, string.Empty),
+                        diagnostic.Severity.ToString(),
+                        diagnostic.Message
+                    )
+                )
+            ];
+            found.AddRange(
+                refused.Where(reason => !found.Exists(problem => problem.Message == reason))
+                    .Select(static reason => new StackProblem(string.Empty, nameof(NodeSeverity.Error), reason))
+            );
+            return [..found.Distinct()];
+        }
 
         /// <summary>
         ///     Which version of each map the viewport holds, by slot. ⚠ Not by image: an undone first stroke takes the

@@ -5,7 +5,16 @@ import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
 import { hexOf } from './layer-panel';
 import { LiveValue } from './live-value';
-import { PaintStore, colourOf, pressureOf, rowsOf, stackSocketUrl, toTexels, toggledEffect } from './paint-store';
+import {
+  PaintStore,
+  colourOf,
+  pressureOf,
+  rowsOf,
+  stackSocketUrl,
+  stackSummary,
+  toTexels,
+  toggledEffect
+} from './paint-store';
 import { StrokeGesture } from './stroke-gesture';
 
 const PickedView = {
@@ -174,6 +183,54 @@ describe('PaintStore', () => {
     expect(store.masking()).toBe(true);
     store.chooseMask(masked(1));
     expect(store.maskGrey()).toBe(0);
+  });
+
+  it('says what the stack is doing, as a graph does', () => {
+    const evaluation = {
+      revision: 2,
+      compiled: false,
+      ran: 3,
+      repaired: 0,
+      reused: 0,
+      milliseconds: 12.4,
+      previews: [],
+      diagnostics: [],
+      error: null,
+      problems: []
+    };
+    expect(stackSummary({ revision: 3, settled: 2, evaluation })).toBe('Evaluating…');
+    expect(stackSummary({ revision: 2, settled: 2, evaluation })).toBe('3 ran, 12 ms');
+    expect(stackSummary({ revision: 2, settled: 2, evaluation: { ...evaluation, ran: 0 } })).toBe('Up to date');
+    const stopped = { ...evaluation, problems: [{ layer: 'a', severity: 'Error', message: 'No.' }] };
+    expect(stackSummary({ revision: 2, settled: 2, evaluation: stopped })).toBe('Not evaluated');
+  });
+
+  it('hears what a compile said, and keeps the worst for each row', async () => {
+    const { store, sockets } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    const hear = sockets[0]?.onmessage as unknown as (event: MessageEvent) => void;
+    hear({
+      data: JSON.stringify({
+        sequence: 5,
+        kind: 'evaluated',
+        revision: 2,
+        history: { canUndo: false, canRedo: false, dirty: true },
+        evaluation: {
+          revision: 2,
+          previews: [],
+          diagnostics: [],
+          error: null,
+          problems: [
+            { layer: 'base', severity: 'Warning', message: 'Half set.' },
+            { layer: 'base', severity: 'Error', message: 'A loop.' },
+            { layer: '', severity: 'Error', message: 'Of the stack.' }
+          ]
+        }
+      })
+    } as MessageEvent);
+    expect(store.problems()).toHaveLength(3);
+    expect(store.faults().get('base')?.message).toBe('A loop.');
+    expect(store.faults().size).toBe(1);
   });
 
   it('turns an effect on, and off again rather than twice', () => {

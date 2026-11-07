@@ -8991,7 +8991,7 @@
                 "type": "null"
               },
               {
-                "description": "Its mask, which replaces the old one and keeps any painted canvas.",
+                "description": "Its mask, which replaces the old one and keeps any painted canvas. A source of None takes the mask away, whole.",
                 "$ref": "#/components/schemas/StackMask"
               }
             ]
@@ -9083,7 +9083,7 @@
           },
           "layer": {
             "type": "string",
-            "description": "The paint layer."
+            "description": "The paint layer, or for a mask any layer."
           },
           "channel": {
             "type": "string",
@@ -9099,7 +9099,7 @@
               "type": "number",
               "format": "float"
             },
-            "description": "Red, green, blue and alpha, 0 to 1, which the first part decides."
+            "description": "Red, green, blue and alpha, 0 to 1, which the first part decides. A mask reads the red."
           },
           "stamps": {
             "type": "array",
@@ -9115,7 +9115,7 @@
           },
           "mask": {
             "type": "boolean",
-            "description": "Whether this paints the layer\u0027s mask.",
+            "description": "Whether this paints the layer\u0027s mask. A flat mask becomes a canvas of what it showed; a mask that is a picture\nrefuses, since nothing yet keeps that picture under paint.",
             "default": false
           },
           "view": {
@@ -9288,7 +9288,8 @@
           "reused",
           "milliseconds",
           "previews",
-          "diagnostics"
+          "diagnostics",
+          "problems"
         ],
         "type": "object",
         "properties": {
@@ -9341,6 +9342,13 @@
               "string"
             ],
             "description": "Why the evaluation failed, or null."
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackProblem"
+            },
+            "description": "What the compile said, by layer."
           }
         },
         "description": "How an evaluation went."
@@ -10015,6 +10023,29 @@
           }
         },
         "description": "A map as a small picture, by the hash an event carries."
+      },
+      "StackProblem": {
+        "required": [
+          "layer",
+          "severity",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "layer": {
+            "type": "string",
+            "description": "The layer it is about, or empty when it is about the stack."
+          },
+          "severity": {
+            "type": "string",
+            "description": "Warning, or Error when nothing could evaluate."
+          },
+          "message": {
+            "type": "string",
+            "description": "What is wrong."
+          }
+        },
+        "description": "Something a stack\u0027s compile had to say."
       },
       "StackStamp": {
         "required": [

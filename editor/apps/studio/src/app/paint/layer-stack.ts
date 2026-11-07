@@ -81,7 +81,9 @@ interface MenuAt {
         [value]="store.channel()"
         (valueChange)="store.channel.set($event ?? store.channel())"
       />
-      <span class="flex-1"></span>
+      <span class="readout text-foreground-muted min-w-0 flex-1 truncate px-1 text-xs" data-testid="layers-evaluation">{{
+        store.evaluated()
+      }}</span>
       <button
         type="button"
         xuiButton
@@ -200,6 +202,24 @@ interface MenuAt {
         <span class="min-w-0 flex-1" [title]="maps">Some masks need baked maps, and show grey until then.</span>
         <button type="button" xuiButton size="sm" data-testid="layers-bake" (click)="project.askToBake()">Bake…</button>
       </div>
+    }
+
+    @if (store.problems().length > 0) {
+      <ul class="well max-h-24 shrink-0 overflow-auto text-xs" aria-label="Problems" data-testid="layers-problems">
+        @for (item of store.problems(); track $index) {
+          <li>
+            <button
+              type="button"
+              class="hover:bg-surface-hover flex w-full items-baseline gap-2 px-2 py-0.5 text-start"
+              [disabled]="!item.layer"
+              (click)="reveal(item.layer)"
+            >
+              <span class="readout shrink-0" [class.text-error]="item.severity === 'Error'">{{ item.severity }}</span>
+              <span class="truncate" [title]="item.message">{{ item.message }}</span>
+            </button>
+          </li>
+        }
+      </ul>
     }
 
     <div
@@ -337,6 +357,19 @@ interface MenuAt {
                 [class.bg-warning]="hasMaskWork(row.layer)"
               ></span>
             </span>
+          }
+
+          @if (store.faults().get(row.layer.id); as fault) {
+            <span
+              class="shrink-0 text-xs font-semibold"
+              data-testid="layer-fault"
+              role="img"
+              [attr.aria-label]="fault.message"
+              [class.text-error]="fault.severity === 'Error'"
+              [class.text-warning]="fault.severity !== 'Error'"
+              [title]="fault.message"
+              >!</span
+            >
           }
 
           <span class="min-w-0 flex-1 leading-tight">
@@ -791,6 +824,23 @@ export class LayerStack {
     } else {
       this.store.layer.set(layer.id);
       this.store.masking.set(false);
+    }
+  }
+
+  /** Goes to the layer a problem is about, opening the folders it is in. */
+  protected reveal(id: string): void {
+    const rows = this.store.layers();
+    const closed = new Set(this.closed());
+    for (let at = rows.find(row => row.layer.id === id); at?.parent; ) {
+      closed.delete(at.parent);
+      const parent = at.parent;
+      at = rows.find(row => row.layer.id === parent);
+    }
+
+    this.closed.set(closed);
+    const row = rows.find(held => held.layer.id === id);
+    if (row) {
+      this.choose(row.layer, false);
     }
   }
 

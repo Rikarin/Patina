@@ -3233,13 +3233,13 @@ export interface components {
       op: 'stroke';
       /** @description A name the client chose for this drag. */
       stroke: string;
-      /** @description The paint layer. */
+      /** @description The paint layer, or for a mask any layer. */
       layer: string;
       /** @description Which of its channels. Ignored for a mask. */
       channel: string;
       /** @description The brush, which the first part decides. */
       brush: components['schemas']['StackBrush'];
-      /** @description Red, green, blue and alpha, 0 to 1, which the first part decides. */
+      /** @description Red, green, blue and alpha, 0 to 1, which the first part decides. A mask reads the red. */
       colour: number[];
       /** @description Where the brush went since the last part. */
       stamps: components['schemas']['StackStamp'][];
@@ -3249,7 +3249,8 @@ export interface components {
        */
       open: boolean;
       /**
-       * @description Whether this paints the layer's mask.
+       * @description Whether this paints the layer's mask. A flat mask becomes a canvas of what it showed; a mask that is a picture
+       *     refuses, since nothing yet keeps that picture under paint.
        * @default false
        */
       mask: boolean;
@@ -3363,6 +3364,8 @@ export interface components {
       diagnostics: string[];
       /** @description Why the evaluation failed, or null. */
       error?: null | string;
+      /** @description What the compile said, by layer. */
+      problems: components['schemas']['StackProblem'][];
     };
     /** @description Something that happened to a stack, with the same kinds and numbering as a graph's events. */
     StackEvent: {
@@ -3660,6 +3663,15 @@ export interface components {
        * @description Its height in pixels.
        */
       height: number;
+    };
+    /** @description Something a stack's compile had to say. */
+    StackProblem: {
+      /** @description The layer it is about, or empty when it is about the stack. */
+      layer: string;
+      /** @description Warning, or Error when nothing could evaluate. */
+      severity: string;
+      /** @description What is wrong. */
+      message: string;
     };
     /** @description Where the brush goes: in texels of the image, or on the picture of a stroke with a view. */
     StackStamp: {

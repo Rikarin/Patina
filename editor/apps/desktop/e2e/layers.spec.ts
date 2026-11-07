@@ -91,6 +91,21 @@ test('a mask has its own thumbnail, and choosing it is what the brush paints', a
   await expect(paint.getByTestId('layer-mask')).toHaveCount(0);
 });
 
+test('a half set layer says so on its row, and leaves the stack working', async () => {
+  await window.getByTestId('paint-add-fill').click();
+  const fill = window.locator('[data-testid^=paint-layer-fill]').first();
+  await fill.click({ button: 'right' });
+  await window.getByTestId('layer-menu-mask-generator').click();
+
+  await expect(fill.getByTestId('layer-fault')).toBeVisible({ timeout: 30_000 });
+  await expect(window.getByTestId('layers-problems')).toContainText('generator');
+  await expect(window.getByTestId('layers-evaluation')).not.toHaveText('Not evaluated');
+
+  await window.getByTestId('paint-mask-source').click();
+  await window.getByRole('option', { name: 'None' }).click();
+  await expect(fill.getByTestId('layer-fault')).toHaveCount(0, { timeout: 30_000 });
+});
+
 test('the eye hides a layer, and Properties follows what is chosen', async () => {
   const base = window.getByTestId('paint-layer-base');
   await base.click();

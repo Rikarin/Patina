@@ -360,7 +360,8 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                     result.Milliseconds,
                     changed,
                     result.Problems,
-                    null
+                    null,
+                    result.Found
                 )
             );
         }
@@ -370,7 +371,7 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     public void Fail(StackWork work, string reason) {
         lock (Changing) {
             Finish(work);
-            Report(new(work.Revision, false, 0, 0, 0, 0, [], [], reason));
+            Report(new(work.Revision, false, 0, 0, 0, 0, [], [], reason, []));
         }
     }
 

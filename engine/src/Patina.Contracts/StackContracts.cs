@@ -190,6 +190,12 @@ public sealed record StackMeshMapsRequest(string? Folder);
 /// <param name="Height">Its height in pixels.</param>
 public sealed record StackPreview(string Usage, string Hash, int Width, int Height);
 
+/// <summary>Something a stack's compile had to say.</summary>
+/// <param name="Layer">The layer it is about, or empty when it is about the stack.</param>
+/// <param name="Severity">Warning, or Error when nothing could evaluate.</param>
+/// <param name="Message">What is wrong.</param>
+public sealed record StackProblem(string Layer, string Severity, string Message);
+
 /// <summary>How an evaluation went.</summary>
 /// <param name="Revision">The revision it was of.</param>
 /// <param name="Compiled">Whether the plan had to compile.</param>
@@ -200,6 +206,7 @@ public sealed record StackPreview(string Usage, string Hash, int Width, int Heig
 /// <param name="Previews">The maps that changed.</param>
 /// <param name="Diagnostics">Why it could not evaluate, or what it warned about.</param>
 /// <param name="Error">Why the evaluation failed, or null.</param>
+/// <param name="Problems">What the compile said, by layer.</param>
 public sealed record StackEvaluation(
     long Revision,
     bool Compiled,
@@ -209,7 +216,8 @@ public sealed record StackEvaluation(
     double Milliseconds,
     IReadOnlyList<StackPreview> Previews,
     IReadOnlyList<string> Diagnostics,
-    string? Error
+    string? Error,
+    IReadOnlyList<StackProblem> Problems
 );
 
 /// <summary>A whole stack: everything a client needs to draw it, and no pixels.</summary>

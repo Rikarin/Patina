@@ -11,6 +11,7 @@ import {
   type StackMask,
   type StackMaskEffect,
   type StackPreview,
+  type StackProblem,
   type StackStamp,
   type StackState,
   type StackView,
@@ -176,6 +177,33 @@ export class PaintStore {
   });
 
   readonly chosen = computed(() => this.layers().find(row => row.layer.id === this.layer())?.layer ?? null);
+
+  /** What the stack's compile had to say, and why an evaluation failed. */
+  readonly problems = computed<readonly StackProblem[]>(() => {
+    const evaluation = this.state()?.evaluation;
+    return [
+      ...(evaluation?.error ? [{ layer: '', severity: 'Error', message: evaluation.error }] : []),
+      ...(evaluation?.problems ?? [])
+    ];
+  });
+
+  /** The worst thing said about each layer, for its row. */
+  readonly faults = computed<ReadonlyMap<string, StackProblem>>(() => {
+    const worst = new Map<string, StackProblem>();
+    for (const problem of this.problems()) {
+      if (problem.layer && (problem.severity === 'Error' || !worst.has(problem.layer))) {
+        worst.set(problem.layer, problem);
+      }
+    }
+
+    return worst;
+  });
+
+  /** What the toolbar says about the last evaluation. */
+  readonly evaluated = computed(() => {
+    const state = this.state();
+    return state ? stackSummary(state) : '';
+  });
 
   constructor() {
     inject(DestroyRef).onDestroy(() => {
@@ -669,6 +697,10 @@ export class PaintStore {
       this.layer.set(rows.find(row => row.layer.kind === 'paint')?.layer.id ?? null);
     }
 
+    if (state.evaluation) {
+      this.heardNotes(state.evaluation.diagnostics);
+    }
+
     this.show(state.previews);
     this.thumbnailsSoon(state.id);
   }
@@ -776,7 +808,16 @@ export class PaintStore {
 
   private hear(event: StackEvent): void {
     this.sequence = event.sequence;
-    this.state.update(state => (state ? { ...state, history: event.history, revision: event.revision } : state));
+    this.state.update(state =>
+      state
+        ? {
+            ...state,
+            history: event.history,
+            revision: event.revision,
+            ...(event.evaluation ? { evaluation: event.evaluation, settled: event.evaluation.revision } : {})
+          }
+        : state
+    );
     if (event.evaluation) {
       this.heardNotes(event.evaluation.diagnostics);
     }
@@ -815,6 +856,26 @@ export class PaintStore {
 /** How hard a pointer is pressing: a mouse says 0.5 for a button held, and means nothing by it. */
 export function pressureOf(event: PointerEvent): number {
   return event.pointerType === 'pen' ? event.pressure : 1;
+}
+
+/** What a stack's toolbar says about its last evaluation, in the graph's words. */
+export function stackSummary(state: Pick<StackState, 'revision' | 'settled' | 'evaluation'>): string {
+  if (state.settled < state.revision) {
+    return 'Evaluating…';
+  }
+
+  const evaluation = state.evaluation;
+  if (!evaluation || evaluation.error) {
+    return '';
+  }
+
+  if (evaluation.problems.some(problem => problem.severity === 'Error')) {
+    return 'Not evaluated';
+  }
+
+  return evaluation.ran === 0
+    ? 'Up to date'
+    : `${String(evaluation.ran)} ran, ${evaluation.milliseconds.toFixed(0)} ms`;
 }
 
 /** A mask's effects with one more of a node, or none of it if it had one: what a toggle such as Invert sends. */

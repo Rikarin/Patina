@@ -496,7 +496,8 @@ public sealed record StackEvaluate(string Session, int PreviewSide, string Previ
 /// <param name="Reused">How many came from the cache.</param>
 /// <param name="Milliseconds">How long it took here.</param>
 /// <param name="Previews">The maps, by hash.</param>
-/// <param name="Problems">Why it could not evaluate.</param>
+/// <param name="Problems">Why it could not evaluate, or what a client should be told.</param>
+/// <param name="Found">What the compile said, by layer.</param>
 public sealed record StackResult(
     bool Compiled,
     bool Evaluated,
@@ -505,7 +506,8 @@ public sealed record StackResult(
     int Reused,
     double Milliseconds,
     IReadOnlyList<StackPreview> Previews,
-    IReadOnlyList<string> Problems
+    IReadOnlyList<string> Problems,
+    IReadOnlyList<StackProblem> Found
 );
 
 /// <summary>Gives a mesh that has no UV layout one, in a new file.</summary>

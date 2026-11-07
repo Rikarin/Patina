@@ -515,6 +515,96 @@ public sealed partial class StackProcessTests : IDisposable {
         Assert.Equal(source, Layer(await StateAsync(state.Id, deadline.Token), fill).Mask.Source);
     }
 
+    /// <summary>
+    ///     A slot nobody has filled yet leaves the layer out and says so against it. Everything else keeps working,
+    ///     which is the point: a stroke made while one layer is half set up still reaches the picture.
+    /// </summary>
+    [Theory]
+    [InlineData("Generator", "")]
+    [InlineData("Texture", "")]
+    [InlineData("Anchor", "")]
+    [InlineData("Bake", "")]
+    [InlineData("Anchor", "paint")]
+    public async Task A_half_set_mask_leaves_the_stack_working_and_names_the_layer(string source, string anchor) {
+        using var deadline = Deadline(180);
+        var (instance, state) = await StartAsync("Half.vxlayers", deadline.Token);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Rough", new Dictionary<string, IReadOnlyList<float>> { ["roughness"] = [0.8f, 0.8f, 0.8f, 1f] }));
+        var fill = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
+        var before = await PixelsAsync(state.Id, true, deadline.Token);
+
+        // "paint" is unpainted, so an anchor onto it has nothing to read.
+        var set = await EditAsync(state.Id, deadline.Token, new StackSetLayer(fill, Mask: new(source, Anchor: anchor)));
+
+        var evaluation = await EvaluatedAsync(socket, set.Revision, deadline.Token);
+        var problem = Assert.Single(evaluation.Problems, problem => problem.Layer == fill);
+        Assert.Equal("Warning", problem.Severity);
+        Assert.Equal(Digest(before, "roughness"), Digest(await PixelsAsync(state.Id, true, deadline.Token), "roughness"));
+
+        var painted = await PaintAsync(state.Id, "still", Line(100, 100, 12), false, deadline.Token);
+        Assert.NotEmpty((await EvaluatedAsync(socket, painted.Revision, deadline.Token)).Previews);
+        Assert.NotEqual(Digest(before, "baseColor"), Digest(await PixelsAsync(state.Id, true, deadline.Token), "baseColor"));
+    }
+
+    /// <summary>A texture fill with no pictures yet writes nothing, channel by channel, and says which.</summary>
+    [Fact]
+    public async Task A_texture_fill_with_an_empty_channel_passes_that_channel_through() {
+        using var deadline = Deadline(180);
+        var (instance, state) = await StartAsync("Half.vxlayers", deadline.Token);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Pictures"));
+        var fill = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
+        var before = await PixelsAsync(state.Id, true, deadline.Token);
+
+        var set = await EditAsync(state.Id, deadline.Token, new StackSetLayer(fill, Fill: "Texture"));
+
+        var evaluation = await EvaluatedAsync(socket, set.Revision, deadline.Token);
+        Assert.Equal(state.Channels.Count, evaluation.Problems.Count(problem => problem.Layer == fill));
+        Assert.Equal(Digest(before, "baseColor"), Digest(await PixelsAsync(state.Id, true, deadline.Token), "baseColor"));
+    }
+
+    /// <summary>What is wrong rather than unfinished still stops the stack, and now says so against its layer.</summary>
+    [Fact]
+    public async Task A_stack_that_cannot_compile_says_which_layer_stopped_it() {
+        using var deadline = Deadline(120);
+        var (instance, state) = await StartAsync("Loop.vxlayers", deadline.Token);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+
+        await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Top", Tint));
+        var top = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
+
+        // Under the layer it reads, so its own result is part of what it masks by.
+        var set = await EditAsync(state.Id, deadline.Token, new StackSetLayer("base", Mask: new("Anchor", Anchor: top)));
+
+        var evaluation = await EvaluatedAsync(socket, set.Revision, deadline.Token);
+        Assert.Contains(evaluation.Problems, static problem => problem is { Layer: "base", Severity: "Error" });
+        Assert.Contains(
+            (await StateAsync(state.Id, deadline.Token)).Evaluation!.Problems,
+            static problem => problem is { Layer: "base", Severity: "Error" }
+        );
+    }
+
+    /// <summary>A warning leaves the Worker: this filter has no such number, and the value goes nowhere.</summary>
+    [Fact]
+    public async Task A_value_a_filter_drops_is_reported() {
+        using var deadline = Deadline(120);
+        var (instance, state) = await StartAsync("Dropped.vxlayers", deadline.Token);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        await EditAsync(state.Id, deadline.Token, new StackAddLayer("filter", "Soft", Filter: "Blur"));
+        var filter = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
+
+        var set = await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(filter, Settings: new Dictionary<string, IReadOnlyList<float>> { ["Nonsense"] = [1f] })
+        );
+
+        var problems = (await EvaluatedAsync(socket, set.Revision, deadline.Token)).Problems;
+        Assert.True(problems.Count == 1, string.Join(" | ", problems));
+        Assert.Equal(filter, problems[0].Layer);
+        Assert.Contains("Nonsense", problems[0].Message, StringComparison.Ordinal);
+    }
+
     async Task<string> MaskedFillAsync(string id, StackMask mask, CancellationToken token) {
         await EditAsync(id, token, new StackAddLayer("fill", "Tint", Tint));
         var fill = (await StateAsync(id, token)).Layers[^1].Id;

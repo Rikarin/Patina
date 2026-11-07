@@ -70,6 +70,7 @@ export type StackPreview = components['schemas']['StackPreview'];
 export type StackEvent = components['schemas']['StackEvent'];
 export type StackCommandBatch = components['schemas']['StackCommandBatch'];
 export type StackStamp = components['schemas']['StackStamp'];
+export type StackProblem = components['schemas']['StackProblem'];
 export type StackView = components['schemas']['StackView'];
 export type StackBrush = components['schemas']['StackBrush'];
 export type StackMask = components['schemas']['StackMask'];
