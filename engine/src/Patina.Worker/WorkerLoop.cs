@@ -1,8 +1,8 @@
 using Patina.Contracts;
 using Patina.Export;
 using Patina.Ipc;
-using System.Diagnostics;
 using Patina.Viewport;
+using System.Diagnostics;
 using Vixen.Interchange;
 using Vixen.Texturing.Painting;
 

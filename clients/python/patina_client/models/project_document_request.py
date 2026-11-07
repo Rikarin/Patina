@@ -30,7 +30,8 @@ class ProjectDocumentRequest:
             kind (str): `texturing`, `layered-material` or `graph`.
             name (str): Its display name. Its file is made from it.
             mesh (None | Unset | UUID): The mesh a `texturing` document is on.
-            resolution (int | None | Unset): The width and height of a stack. Null is 2048.
+            resolution (int | None | Unset): The width and height of a stack, or the side a graph evaluates at. Null is
+                2048.
             image (None | str | Unset): The picture an `image-material` starts from, on the Server's machine.
      """
 

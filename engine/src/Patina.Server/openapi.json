@@ -6267,6 +6267,14 @@
               "string"
             ],
             "description": "A project\u0027s path below \u0060projects/\u0060 to put it in, or null for a new project of its own."
+          },
+          "resolution": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The side it evaluates at. Null is 2048. Its authoring base does not depend on this.",
+            "format": "int32"
           }
         },
         "description": "The body of \u0060POST /api/v1/library/graphs\u0060."
@@ -7997,7 +8005,7 @@
               "null",
               "integer"
             ],
-            "description": "The width and height of a stack it starts with. Null is 2048.",
+            "description": "The width and height of a stack it starts with, or the side a graph it starts with evaluates at. Null is 2048.",
             "format": "int32"
           },
           "kind": {
@@ -8159,7 +8167,7 @@
               "null",
               "integer"
             ],
-            "description": "The width and height of a stack. Null is 2048.",
+            "description": "The width and height of a stack, or the side a graph evaluates at. Null is 2048.",
             "format": "int32"
           },
           "image": {
@@ -10371,7 +10379,9 @@
           "version",
           "apiVersion",
           "host",
-          "worker"
+          "worker",
+          "textureSides",
+          "defaultTextureSide"
         ],
         "type": "object",
         "properties": {
@@ -10398,6 +10408,19 @@
           "worker": {
             "description": "The Worker process as the Server sees it.",
             "$ref": "#/components/schemas/WorkerStatus"
+          },
+          "textureSides": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "The texture sides a client offers, smallest first."
+          },
+          "defaultTextureSide": {
+            "type": "integer",
+            "description": "The side a new document gets when nobody says.",
+            "format": "int32"
           }
         },
         "description": "The reply to \u0060GET /api/v1/system\u0060."

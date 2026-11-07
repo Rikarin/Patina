@@ -1,5 +1,6 @@
 using Patina.Contracts;
 using Patina.Ipc;
+using System.Globalization;
 using Vixen.Core.Yaml;
 using Vixen.NodeGraph;
 using Vixen.TextureGraph;
@@ -8,7 +9,11 @@ namespace Patina.Server.Graphs;
 
 /// <summary>Between Vixen's document, the file and the contract, and what differs between two documents.</summary>
 public static class GraphDocuments {
-    const string NewGraphSide = "1024";
+    /// <summary>
+    ///     What every new graph is authored at, whatever size it starts at, so that a radius means one thing across a
+    ///     library and in every compound.
+    /// </summary>
+    const string NewGraphBase = "1024";
 
     /// <summary>Reads a document from file text.</summary>
     /// <exception cref="GraphEditRefusedException">The text is not a graph.</exception>
@@ -21,13 +26,16 @@ public static class GraphDocuments {
     }
 
     /// <summary>A new, empty graph, its settings written down so that it means the same on every machine.</summary>
-    public static NodeGraphAsset New(string name) =>
+    /// <param name="name">Its name.</param>
+    /// <param name="side">The side it evaluates at, or null for the usual one.</param>
+    public static NodeGraphAsset New(string name, int? side = null) =>
         new() {
             Name = name.Trim(),
             Settings = new(StringComparer.Ordinal) {
-                [TextureGraphSettings.BaseHeight] = NewGraphSide,
-                [TextureGraphSettings.BaseWidth] = NewGraphSide,
-                [TextureGraphSettings.Seed] = "0"
+                [TextureGraphSettings.BaseHeight] = NewGraphBase,
+                [TextureGraphSettings.BaseWidth] = NewGraphBase,
+                [TextureGraphSettings.Seed] = "0",
+                [TextureSizes.GraphSetting] = (side ?? TextureSizes.Default).ToString(CultureInfo.InvariantCulture)
             }
         };
 

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal, untracked } from '@angular/core';
 import type { BakeRequest, JobState } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
@@ -13,8 +13,6 @@ import { GraphStore } from '../graph/graph-store';
 import { ProjectStore } from '../library/project-store';
 import { BakeStore } from './bake-store';
 
-/** The sides the panel offers. The API takes any; these are the ones an atlas is. */
-const Sides = ['512', '1024', '2048', '4096', '8192'];
 const Formats = ['png8', 'png16', 'exr16', 'exr32'];
 
 /** The maps beyond the normal and the height, which every bake makes. */
@@ -92,7 +90,7 @@ type PathField = 'high' | 'cage' | 'skewMap' | 'output';
             class="w-full"
             ariaLabel="Resolution"
             data-testid="bake-resolution"
-            [items]="sides"
+            [items]="sides()"
             [value]="side()"
             (valueChange)="side.set($event ?? side())"
           />
@@ -316,7 +314,7 @@ export class BakePane {
   /** The project the fields were filled from, which a user's edits outrank from then on. */
   private filledFor: string | null = null;
   protected readonly graph = inject(GraphStore);
-  protected readonly sides = Sides;
+  protected readonly sides = computed(() => this.status.textureSides().map(String));
   protected readonly formats = Formats;
   protected readonly formatName = imageFormatName;
   protected readonly stateName = jobStateName;
@@ -335,7 +333,7 @@ export class BakePane {
     skewMap: '',
     output: ''
   });
-  protected readonly side = signal('2048');
+  protected readonly side = linkedSignal(() => String(this.status.defaultTextureSide() ?? ''));
   protected readonly format = signal('png16');
   protected readonly samples = signal(1);
   protected readonly rays = signal(64);

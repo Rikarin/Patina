@@ -89,6 +89,11 @@ public sealed class OutputBuilders(
 
         var shelf = compounds.Of(CompoundFolders.Of(graph));
         var compiler = new TextureGraphCompiler(shelf.Registry) { SubGraphSource = shelf.Source };
+        var size = step.Settings.GetValueOrDefault(TextureSizes.OutputSetting);
+        if (GraphSize.Apply(compiler, model, size) is { } badSize) {
+            throw new InvalidDataException(badSize);
+        }
+
         var compilation = compiler.Compile(model);
         if (!compilation.Succeeded || compiler.Outputs.Length == 0) {
             var problems = string.Join(' ', compilation.Diagnostics.Select(static d => $"{d.Id}: {d.Message}"));

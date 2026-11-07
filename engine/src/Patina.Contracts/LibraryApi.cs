@@ -51,7 +51,9 @@ public sealed record ProjectPage(IReadOnlyList<ProjectSummary> Items, int Total,
 /// </param>
 /// <param name="Tags">The project's tags.</param>
 /// <param name="Mesh">A mesh file on the Server's machine to copy in. Null leaves the project to get one later.</param>
-/// <param name="Resolution">The width and height of a stack it starts with. Null is 2048.</param>
+/// <param name="Resolution">
+///     The width and height of a stack it starts with, or the side a graph it starts with evaluates at. Null is 2048.
+/// </param>
 /// <param name="Kind">
 ///     The document it starts with: <c>texturing</c>, <c>layered-material</c>, <c>image-material</c> or <c>graph</c>.
 ///     Null is <c>texturing</c> with a mesh and nothing without one.
@@ -156,7 +158,7 @@ public sealed record ProjectSettingsRequest(
 /// <param name="Kind"><c>texturing</c>, <c>layered-material</c> or <c>graph</c>.</param>
 /// <param name="Name">Its display name. Its file is made from it.</param>
 /// <param name="Mesh">The mesh a <c>texturing</c> document is on.</param>
-/// <param name="Resolution">The width and height of a stack. Null is 2048.</param>
+/// <param name="Resolution">The width and height of a stack, or the side a graph evaluates at. Null is 2048.</param>
 /// <param name="Image">The picture an <c>image-material</c> starts from, on the Server's machine.</param>
 public sealed record ProjectDocumentRequest(
     string Project,

@@ -478,10 +478,11 @@ describe('what a graph holds besides its nodes', () => {
     const test = harness();
     test.routes['POST library/graphs'] = () =>
       Response.json({ path: 'shared/graphs/rust.vxtexgraph' }, { status: 201 });
-    await test.store.create('Rust', null);
+    await test.store.create('Rust', null, 4096);
     expect(test.requests.find(request => request.key === 'POST library/graphs')?.body).toEqual({
       name: 'Rust',
-      project: null
+      project: null,
+      resolution: 4096
     });
     expect(test.requests.find(request => request.key === 'POST graphs')?.body).toEqual({
       path: 'shared/graphs/rust.vxtexgraph'

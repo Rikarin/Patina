@@ -225,9 +225,9 @@ export class GraphStore {
   }
 
   /** Writes a new graph into the library and opens it. The Server's refusal is what the caller shows. */
-  async create(name: string, project: string | null): Promise<void> {
+  async create(name: string, project: string | null, resolution: number | null = null): Promise<void> {
     const client = await this.reconnect();
-    const { path } = unwrap(await client.POST('/api/v1/library/graphs', { body: { name, project } }));
+    const { path } = unwrap(await client.POST('/api/v1/library/graphs', { body: { name, project, resolution } }));
     await this.open(path);
   }
 

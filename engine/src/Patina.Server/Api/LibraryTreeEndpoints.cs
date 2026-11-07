@@ -14,9 +14,7 @@ namespace Patina.Server.Api;
 /// </summary>
 static class LibraryTreeEndpoints {
     const string Tag = "Library";
-    const int DefaultResolution = 2048;
     const int MinResolution = 16;
-    const int MaxResolution = 8192;
     const string BrushFolder = "brushes";
     static readonly TimeSpan BrushPatience = TimeSpan.FromSeconds(60);
     static readonly TimeSpan BrushRetry = TimeSpan.FromMilliseconds(100);
@@ -116,10 +114,10 @@ static class LibraryTreeEndpoints {
     /// <summary>Makes a document and its file.</summary>
     /// <exception cref="ProjectRefusedException">The kind cannot be made, or the mesh is missing.</exception>
     public static void MakeDocument(OpenLibrary library, ProjectDocumentRequest request) {
-        var side = request.Resolution ?? DefaultResolution;
+        var side = request.Resolution ?? TextureSizes.Default;
         switch (request.Kind) {
             case DocumentKinds.Graph:
-                var text = GraphDocuments.Text(GraphDocuments.New(request.Name));
+                var text = GraphDocuments.Text(GraphDocuments.New(request.Name, side));
                 library.CreateGraph(new(request.Name, request.Project), text);
                 break;
             case DocumentKinds.LayeredMaterial:
@@ -152,10 +150,10 @@ static class LibraryTreeEndpoints {
 
     /// <summary>What a request's resolution has to be, or the refusal.</summary>
     public static ProblemHttpResult? BadResolution(int? resolution) =>
-        resolution is null or (>= MinResolution and <= MaxResolution)
+        resolution is null or (>= MinResolution and <= TextureSizes.Largest)
             ? null
             : TypedResults.Problem(
-                $"A resolution is {MinResolution} to {MaxResolution}.",
+                $"A resolution is {MinResolution} to {TextureSizes.Largest}.",
                 statusCode: StatusCodes.Status400BadRequest
             );
 

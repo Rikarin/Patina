@@ -36,7 +36,7 @@ static class MeshPartMask {
         }
 
         Directory.CreateDirectory(Path.GetDirectoryName(ask.Output)!);
-        PngCodec.Save(ask.Output, new Bitmap(side, side, pixels));
+        PngCodec.Save(ask.Output, new(side, side, pixels));
     }
 
     /// <summary>One texel further, stopping at the parts left out, or the gutter would colour their edges.</summary>

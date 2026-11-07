@@ -4,6 +4,8 @@ import { By } from '@angular/platform-browser';
 import type { GraphNodeType } from '@patina/api-client';
 import { CurveEditor, type Curves, GradientRamp, type RampStop, blackToWhite, straightCurves } from '@patina/studio-ui';
 import { XuiColorPicker } from '@xui/color-picker';
+import { XuiSelect } from '@xui/select';
+import { SystemStatus } from '../core/system-status';
 import { GraphInspector, Inspector } from './graph-inspector';
 import { GraphSelection, GraphSettings, freeParameterName } from './graph-settings';
 import { GraphStore } from './graph-store';
@@ -65,6 +67,55 @@ describe('the colour control', () => {
     const { store, picker } = render();
     picker.value.set('#00F');
     expect(store.setValue).not.toHaveBeenCalled();
+  });
+});
+
+describe('the graph settings', () => {
+  function render(settings: Record<string, string>) {
+    const store = {
+      ...fakeStore(),
+      document: signal({
+        name: 'Rust',
+        settings,
+        parameters: [],
+        interface: [],
+        groups: [],
+        comments: []
+      }),
+      setSetting: vi.fn()
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: GraphStore, useValue: store },
+        { provide: SystemStatus, useValue: { textureSides: signal([512, 1024, 2048]) } }
+      ]
+    });
+    const fixture = TestBed.createComponent(GraphSettings);
+    fixture.detectChanges();
+    const select = (key: string) =>
+      fixture.debugElement.query(By.css(`[data-testid=setting-${key}]`)).query(By.directive(XuiSelect))
+        .componentInstance as XuiSelect<string>;
+    return { store, select };
+  }
+
+  it('offers the sizes the Server lists, keeping one that is not among them', () => {
+    const { select } = render({ baseWidth: '1024', baseHeight: '1024', size: '300' });
+
+    expect(select('size').items()).toEqual(['512', '1024', '2048', '300']);
+  });
+
+  it('shows the longer side of the base for a graph that names no size', () => {
+    const { select } = render({ baseWidth: '512', baseHeight: '1024' });
+
+    expect(select('size').value()).toBe('1024');
+  });
+
+  it('changes the size without touching the base', () => {
+    const { store, select } = render({ baseWidth: '1024', baseHeight: '1024', size: '1024' });
+
+    select('size').value.set('2048');
+
+    expect(store.setSetting.mock.calls).toEqual([['size', '2048']]);
   });
 });
 

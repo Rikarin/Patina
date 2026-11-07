@@ -150,8 +150,12 @@ static class LibraryEndpoints {
             return NoLibrary();
         }
 
+        if (LibraryTreeEndpoints.BadResolution(request.Resolution) is { } bad) {
+            return bad;
+        }
+
         try {
-            var text = GraphDocuments.Text(GraphDocuments.New(request.Name));
+            var text = GraphDocuments.Text(GraphDocuments.New(request.Name, request.Resolution));
             // A graph belongs to a project, so one made with none gets one of its own.
             var project = request.Project ?? library.CreateProject(new(request.Name)).Path;
             var path = library.CreateGraph(new(request.Name, project), text);

@@ -7,7 +7,9 @@ const system = {
   apiVersion: 1,
   library: '/games/Ember.ptlib',
   host: { os: 'macOS', architecture: 'Arm64', runtime: '.NET 10' },
-  worker: { connected: true, version: '1.2.3' }
+  worker: { connected: true, version: '1.2.3' },
+  textureSides: [256, 512, 1024, 2048],
+  defaultTextureSide: 2048
 };
 
 function statusWith(answer: () => Promise<Response>): SystemStatus {
@@ -28,6 +30,18 @@ describe('SystemStatus', () => {
     const status = statusWith(() => new Promise(() => undefined));
 
     expect(status.state()).toEqual({ kind: 'connecting' });
+  });
+
+  it('offers no sizes until the Server lists them, then the ones it lists', async () => {
+    const status = statusWith(() => Promise.resolve(Response.json(system)));
+
+    expect(status.textureSides()).toEqual([]);
+    expect(status.defaultTextureSide()).toBeNull();
+
+    await vi.waitFor(() => expect(status.state().kind).toBe('online'));
+
+    expect(status.textureSides()).toEqual([256, 512, 1024, 2048]);
+    expect(status.defaultTextureSide()).toBe(2048);
   });
 
   it('reports what the Server says', async () => {

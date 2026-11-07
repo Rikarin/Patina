@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, InjectionToken, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, InjectionToken, computed, inject, signal } from '@angular/core';
 import { type Connection, type PatinaClient, type SystemInfo, createPatinaClient, unwrap } from '@patina/api-client';
 import { desktop } from './desktop';
 
@@ -30,6 +30,21 @@ export class SystemStatus {
   private stopped = false;
 
   readonly state = this.mutableState.asReadonly();
+
+  /** The texture sides the Server offers, so that every panel offers the same ones. Empty until it answers. */
+  readonly textureSides = computed<readonly number[]>(
+    () => {
+      const state = this.state();
+      return state.kind === 'online' ? state.system.textureSides : [];
+    },
+    { equal: (a, b) => a.join() === b.join() }
+  );
+
+  /** The side a new document starts at, or null until the Server answers. */
+  readonly defaultTextureSide = computed(() => {
+    const state = this.state();
+    return state.kind === 'online' ? state.system.defaultTextureSide : null;
+  });
 
   constructor() {
     inject(DestroyRef).onDestroy(() => {

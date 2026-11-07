@@ -31,6 +31,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Changing a graph's size no longer changes its picture. Graph settings has a Size, up to 8192, and Width and Height move under Authored At, where they keep their old meaning. New Graph and New Project start a graph at the chosen size, `patina bake` takes `--size`, and a `texture-graph` output takes a `size` setting.
+- Graph settings, New Graph, New Project and Bake offer the same sizes, 256 to 8192, from the Server.
 - Bake formats, export presets, job states and layer blend modes show plain names instead of internal ids.
 - The first stroke after opening a 4K stack no longer waits seconds for the maps to reach the mesh.
 - Save All on the quit dialog stays open and says why if a document could not be saved, instead of doing nothing or quitting without it.

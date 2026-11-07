@@ -6,9 +6,9 @@ import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
+import { SystemStatus } from '../core/system-status';
 import { GraphStore } from './graph-store';
 
-const Sides = ['256', '512', '1024', '2048', '4096'];
 const Kinds = ['Float', 'Int', 'Bool', 'Text'];
 const BitDepths = ['16', '32'];
 const PortKinds = ['Image', 'Float', 'Int', 'Bool', 'Float2', 'Float3', 'Float4'];
@@ -73,24 +73,14 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
     <p class="section-label mb-3">Graph</p>
 
     <div class="flex flex-col gap-2.5">
-      <div class="flex flex-col gap-1" data-testid="setting-baseWidth">
-        <span class="text-foreground-muted text-xs">Width</span>
+      <div class="flex flex-col gap-1" data-testid="setting-size">
+        <span class="text-foreground-muted text-xs">Size</span>
         <xui-select
-          ariaLabel="Width"
+          ariaLabel="Size"
           [disabled]="!store.editable()"
-          [items]="sidesOf('baseWidth')"
-          [value]="settingOf('baseWidth')"
-          (valueChange)="setSide('baseWidth', $event)"
-        />
-      </div>
-      <div class="flex flex-col gap-1" data-testid="setting-baseHeight">
-        <span class="text-foreground-muted text-xs">Height</span>
-        <xui-select
-          ariaLabel="Height"
-          [disabled]="!store.editable()"
-          [items]="sidesOf('baseHeight')"
-          [value]="settingOf('baseHeight')"
-          (valueChange)="setSide('baseHeight', $event)"
+          [items]="sidesHolding(size())"
+          [value]="size()"
+          (valueChange)="setSide('size', $event)"
         />
       </div>
       <div class="flex flex-col gap-1" data-testid="setting-bitDepth">
@@ -115,6 +105,34 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
           (valueChange)="setSeed($event)"
         />
       </div>
+    </div>
+
+    <p class="section-label mt-4 mb-1">Authored at</p>
+    <div class="flex flex-col gap-2.5">
+      <div class="flex flex-col gap-1" data-testid="setting-baseWidth">
+        <span class="text-foreground-muted text-xs">Width</span>
+        <xui-select
+          ariaLabel="Width"
+          [disabled]="!store.editable()"
+          [items]="sidesHolding(settingOf('baseWidth'))"
+          [value]="settingOf('baseWidth')"
+          (valueChange)="setSide('baseWidth', $event)"
+        />
+      </div>
+      <div class="flex flex-col gap-1" data-testid="setting-baseHeight">
+        <span class="text-foreground-muted text-xs">Height</span>
+        <xui-select
+          ariaLabel="Height"
+          [disabled]="!store.editable()"
+          [items]="sidesHolding(settingOf('baseHeight'))"
+          [value]="settingOf('baseHeight')"
+          (valueChange)="setSide('baseHeight', $event)"
+        />
+      </div>
+      <p class="text-foreground-muted text-xs">
+        Radii are counted in these texels and the shape of the image comes from them, so changing them changes the
+        picture. Size does not.
+      </p>
     </div>
 
     <p class="section-label mt-4 mb-1">Parameters</p>
@@ -325,6 +343,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
 })
 export class GraphSettings {
   protected readonly store = inject(GraphStore);
+  private readonly status = inject(SystemStatus);
   protected readonly kinds = Kinds;
   protected readonly bitDepths = BitDepths;
   protected readonly portKinds = PortKinds;
@@ -341,9 +360,15 @@ export class GraphSettings {
   }
 
   /** The usual sizes, and the one this graph has if it is something else. */
-  protected sidesOf(key: string): readonly string[] {
-    const held = this.settingOf(key);
-    return held === '' || Sides.includes(held) ? Sides : [...Sides, held];
+  /** What the graph evaluates at: its size, or its longer base side when it names none. */
+  protected size(): string {
+    const longest = Math.max(Number(this.settingOf('baseWidth')), Number(this.settingOf('baseHeight')));
+    return this.settingOf('size') || (longest > 0 ? String(longest) : '');
+  }
+
+  protected sidesHolding(held: string): readonly string[] {
+    const sides = this.status.textureSides().map(String);
+    return held === '' || sides.includes(held) ? sides : [...sides, held];
   }
 
   protected setSide(key: string, value: string | null): void {

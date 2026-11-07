@@ -26,7 +26,9 @@ const online = (connected: boolean): ServerState => ({
     apiVersion: 1,
     library: null,
     host: { os: 'macOS', architecture: 'Arm64', runtime: '.NET 10' },
-    worker: { connected }
+    worker: { connected },
+    textureSides: [256, 512, 1024, 2048],
+    defaultTextureSide: 2048
   }
 });
 
@@ -47,7 +49,10 @@ async function render(status: ServerState = online(true)) {
   };
   TestBed.configureTestingModule({
     providers: [
-      { provide: SystemStatus, useValue: { state: signal(status) } },
+      {
+        provide: SystemStatus,
+        useValue: { state: signal(status), textureSides: signal([256, 512, 1024, 2048]), defaultTextureSide: signal(2048) }
+      },
       { provide: SERVER_CONNECTION, useValue: () => Promise.resolve({ baseUrl: 'http://server:1', token: null }) },
       {
         provide: API_CLIENT_FACTORY,

@@ -101,6 +101,7 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
         readonly GraphPictures pictures;
         readonly IReadOnlyList<string> imageRoots;
         readonly string? meshMaps;
+        readonly string? badSize;
         ImmutableArray<NodeDiagnostic> diagnostics = [];
         IReadOnlyList<PictureStamp> stamps = [];
 
@@ -110,6 +111,7 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
                 out _
             );
             compiler = new(compounds.Registry) { SubGraphSource = compounds.Source, PreviewEveryNode = true };
+            badSize = GraphSize.Apply(compiler, graph);
             this.pictures = pictures;
             imageRoots = load.ImageRoots;
             meshMaps = load.MeshMaps;
@@ -181,7 +183,10 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
                     d.Node.Value,
                     d.Port
                 )
-            )
+            ),
+            ..badSize is { } problem
+                ? [new GraphResultProblem(GraphSize.ProblemId, problem, "Warning", 0, string.Empty)]
+                : Array.Empty<GraphResultProblem>()
         ];
     }
 }

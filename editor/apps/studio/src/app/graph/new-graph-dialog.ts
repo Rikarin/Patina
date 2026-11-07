@@ -1,9 +1,20 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, model, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  linkedSignal,
+  model,
+  signal
+} from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiDialogImports } from '@xui/dialog';
 import { XuiFormFieldImports } from '@xui/form-field';
 import { XuiInputImports } from '@xui/input';
+import { XuiSelectImports } from '@xui/select';
+import { SystemStatus } from '../core/system-status';
 import { LibrarySelection } from '../library/library-selection';
 import { GraphStore } from './graph-store';
 
@@ -13,7 +24,14 @@ import { GraphStore } from './graph-store';
  */
 @Component({
   selector: 'ptn-new-graph',
-  imports: [XuiButtonImports, XuiCalloutImports, XuiDialogImports, XuiFormFieldImports, XuiInputImports],
+  imports: [
+    XuiButtonImports,
+    XuiCalloutImports,
+    XuiDialogImports,
+    XuiFormFieldImports,
+    XuiInputImports,
+    XuiSelectImports
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <xui-dialog title="New graph" size="sm" [(open)]="open">
@@ -28,6 +46,15 @@ import { GraphStore } from './graph-store';
               autocomplete="off"
               [value]="name()"
               (input)="name.set(text($event))"
+            />
+          </xui-form-field>
+          <xui-form-field label="Size" helperText="You can change it later without changing the picture.">
+            <xui-select
+              ariaLabel="Size"
+              data-testid="new-graph-size"
+              [items]="sides()"
+              [value]="side()"
+              (valueChange)="side.set($event ?? side())"
             />
           </xui-form-field>
           @if (refused(); as reason) {
@@ -47,11 +74,14 @@ import { GraphStore } from './graph-store';
 export class NewGraphDialog {
   private readonly store = inject(GraphStore);
   private readonly selection = inject(LibrarySelection);
+  private readonly status = inject(SystemStatus);
   private readonly saving = signal(false);
 
   readonly open = model(false);
 
   protected readonly name = signal('');
+  protected readonly sides = computed(() => this.status.textureSides().map(String));
+  protected readonly side = linkedSignal(() => String(this.status.defaultTextureSide() ?? ''));
   protected readonly refused = signal<string | null>(null);
   protected readonly canCreate = computed(() => this.name().trim() !== '' && !this.saving());
   private readonly project = computed(() => {
@@ -85,7 +115,7 @@ export class NewGraphDialog {
     this.saving.set(true);
     this.refused.set(null);
     try {
-      await this.store.create(this.name().trim(), this.project());
+      await this.store.create(this.name().trim(), this.project(), Number(this.side()) || null);
       this.name.set('');
       this.open.set(false);
     } catch (error) {

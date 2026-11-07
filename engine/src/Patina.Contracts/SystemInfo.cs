@@ -6,7 +6,17 @@ namespace Patina.Contracts;
 /// <param name="Library">The library this Server owns, or null when it was started without one.</param>
 /// <param name="Host">The machine and runtime the Server runs on.</param>
 /// <param name="Worker">The Worker process as the Server sees it.</param>
-public sealed record SystemInfo(string Version, int ApiVersion, string? Library, HostInfo Host, WorkerStatus Worker);
+/// <param name="TextureSides">The texture sides a client offers, smallest first.</param>
+/// <param name="DefaultTextureSide">The side a new document gets when nobody says.</param>
+public sealed record SystemInfo(
+    string Version,
+    int ApiVersion,
+    string? Library,
+    HostInfo Host,
+    WorkerStatus Worker,
+    IReadOnlyList<int> TextureSides,
+    int DefaultTextureSide
+);
 
 /// <summary>The machine and runtime a process runs on.</summary>
 /// <param name="Os">The operating system's description.</param>

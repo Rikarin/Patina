@@ -32,6 +32,8 @@ class SystemInfo:
             api_version (int): The major version of the REST API; it is the `v1` in the URL.
             host (HostInfo): The machine and runtime a process runs on.
             worker (WorkerStatus): The Worker as the Server sees it. All but `Connected` are null while there is none.
+            texture_sides (list[int]): The texture sides a client offers, smallest first.
+            default_texture_side (int): The side a new document gets when nobody says.
             library (None | str | Unset): The library this Server owns, or null when it was started without one.
      """
 
@@ -39,6 +41,8 @@ class SystemInfo:
     api_version: int
     host: HostInfo
     worker: WorkerStatus
+    texture_sides: list[int]
+    default_texture_side: int
     library: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -57,6 +61,12 @@ class SystemInfo:
 
         worker = self.worker.to_dict()
 
+        texture_sides = self.texture_sides
+
+
+
+        default_texture_side = self.default_texture_side
+
         library: None | str | Unset
         if isinstance(self.library, Unset):
             library = UNSET
@@ -71,6 +81,8 @@ class SystemInfo:
             "apiVersion": api_version,
             "host": host,
             "worker": worker,
+            "textureSides": texture_sides,
+            "defaultTextureSide": default_texture_side,
         })
         if library is not UNSET:
             field_dict["library"] = library
@@ -98,6 +110,11 @@ class SystemInfo:
 
 
 
+        texture_sides = cast(list[int], d.pop("textureSides"))
+
+
+        default_texture_side = d.pop("defaultTextureSide")
+
         def _parse_library(data: object) -> None | str | Unset:
             if data is None:
                 return data
@@ -113,6 +130,8 @@ class SystemInfo:
             api_version=api_version,
             host=host,
             worker=worker,
+            texture_sides=texture_sides,
+            default_texture_side=default_texture_side,
             library=library,
         )
 

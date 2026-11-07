@@ -20,7 +20,10 @@ vi.stubGlobal(
 async function render(state: ServerState): Promise<HTMLElement> {
   TestBed.configureTestingModule({
     providers: [
-      { provide: SystemStatus, useValue: { state: signal(state) } },
+      {
+        provide: SystemStatus,
+        useValue: { state: signal(state), textureSides: signal([256, 512, 1024, 2048]), defaultTextureSide: signal(2048) }
+      },
       { provide: SERVER_CONNECTION, useValue: () => Promise.reject(new Error('no server in this test')) },
       { provide: API_CLIENT_FACTORY, useValue: () => null }
     ]
@@ -35,7 +38,9 @@ const system = {
   apiVersion: 1,
   library: '/games/Ember.ptlib' as string | null,
   host: { os: 'macOS', architecture: 'Arm64', runtime: '.NET 10' },
-  worker: { connected: false }
+  worker: { connected: false },
+  textureSides: [256, 512, 1024, 2048],
+  defaultTextureSide: 2048
 };
 
 describe('App', () => {
