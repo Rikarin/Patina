@@ -24,6 +24,12 @@ import type { ViewportFrame } from './frame-transport';
 import { framed, orbit, pan, zoom } from './orbit';
 import { ViewportClient } from './viewport-client';
 
+const Rooms: readonly { value: string; label: string }[] = [
+  { value: 'studio', label: 'Studio' },
+  { value: 'overcast', label: 'Overcast' },
+  { value: 'sunset', label: 'Sunset' }
+];
+
 /** The docked viewport: frames from the Worker on a canvas, and orbit input going the other way. */
 @Component({
   selector: 'ptn-viewport',
@@ -69,6 +75,23 @@ import { ViewportClient } from './viewport-client';
         </button>
       }
       <span class="flex-1"></span>
+      <select
+        class="well h-6 max-w-28 px-1 text-xs"
+        aria-label="Environment"
+        title="What lights the model"
+        data-testid="viewport-environment"
+        (change)="chooseEnvironment($event)"
+      >
+        @for (room of rooms; track room.value) {
+          <option [value]="room.value" [selected]="room.value === viewport.environment()">{{ room.label }}</option>
+        }
+        @if (panorama(); as file) {
+          <option [value]="viewport.environment()" selected>{{ file }}</option>
+        }
+        @if (canPick) {
+          <option value="">From a file…</option>
+        }
+      </select>
       <label class="flex items-center gap-1 text-xs" title="How bright the picture is">
         Exposure
         <xui-slider
@@ -228,6 +251,24 @@ export class ViewportPane implements AfterViewInit {
       this.viewport.onFrame = null;
     });
     this.fit();
+  }
+
+  protected readonly rooms = Rooms;
+  protected readonly canPick = desktop() !== undefined;
+  /** The file lighting the model, when it is not a built-in room. */
+  protected readonly panorama = computed(() => {
+    const source = this.viewport.environment();
+    return Rooms.some(room => room.value === source) ? null : source.split(/[/\\]/u).pop();
+  });
+
+  protected async chooseEnvironment(event: Event): Promise<void> {
+    const select = event.target as HTMLSelectElement;
+    const source = select.value || (await desktop()?.openEnvironment());
+    if (source) {
+      await this.viewport.setEnvironment(source);
+    } else {
+      select.value = this.viewport.environment();
+    }
   }
 
   protected async open(): Promise<void> {

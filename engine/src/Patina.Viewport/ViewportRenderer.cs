@@ -26,7 +26,7 @@ public sealed class ViewportRenderer : IDisposable {
 
     readonly VulkanDevice device;
     readonly EffectLoader loader;
-    readonly ViewportEnvironment environment = ViewportEnvironment.Studio();
+    ViewportEnvironment environment = ViewportEnvironment.Load(ViewportEnvironment.Default);
     readonly List<Action> cleanup = [];
     readonly Pass forward;
     readonly Pass sky;
@@ -34,7 +34,8 @@ public sealed class ViewportRenderer : IDisposable {
     readonly SamplerHandle sampler;
     readonly SamplerHandle mapSampler;
     readonly ViewportTextures textures;
-    readonly TextureViewHandle environmentView;
+    TextureViewHandle environmentView;
+    readonly ViewportShadows shadows;
     readonly BufferHandle frameConstants;
     readonly BufferHandle skyConstants;
     readonly BufferHandle tonemapConstants;
@@ -64,6 +65,16 @@ public sealed class ViewportRenderer : IDisposable {
         cleanup.Add(textures.Dispose);
         environmentView = textures.UploadCube(environment.Prefiltered, cleanup);
 
+        var shadowEffect = loader.Load(shaders.Shadow());
+        shadows = new(
+            device,
+            shadowEffect,
+            Module(shadowEffect, ShaderStage.Vertex),
+            Module(shadowEffect, ShaderStage.Fragment),
+            DepthFormat
+        );
+        cleanup.Add(shadows.Dispose);
+
         var hdr = new[] { new ColourTargetState(HdrFormat, BlendState.Opaque) };
         forward = Pipeline(shaders.Forward(), hdr, Samples, DepthStencilState.Default, DepthFormat, true);
         sky = Pipeline(shaders.Sky(), hdr, Samples, DepthStencilState.Disabled, DepthFormat, false);
@@ -81,9 +92,16 @@ public sealed class ViewportRenderer : IDisposable {
         frameConstants = Constants(frameBlock.Bytes.Length, "viewport frame");
         skyConstants = Constants(skyBlock.Bytes.Length, "viewport sky");
         frameSet = BindEnvironment(forward, DescriptorSetSlot.PerFrame, frameConstants);
+        device.UpdateDescriptorSet(
+            frameSet,
+            [
+                DescriptorWrite.Texture(forward.Effect.BindingOf("shadowMap")!.Value.Binding, shadows.MapView),
+                DescriptorWrite.SamplerAt(forward.Effect.BindingOf("shadowSampler")!.Value.Binding, shadows.Sampler)
+            ]
+        );
         skySet = BindEnvironment(sky, DescriptorSetSlot.PerMaterial, skyConstants);
 
-        toneBlock = new ConstantBlock(tonemap.Effect.BlockOf(DescriptorSetSlot.PerMaterial));
+        toneBlock = new(tonemap.Effect.BlockOf(DescriptorSetSlot.PerMaterial));
         var neutral = new Vector3(1f, 1f, 1f);
         toneBlock.Set("exposure", Exposure)
             .Set("whitePoint", 4f)
@@ -202,6 +220,26 @@ public sealed class ViewportRenderer : IDisposable {
     ///     is the one that can equal an exported file.
     /// </summary>
     public byte[]? Sampled(ViewportSlot slot) => live[(int)slot]?.ReadBack();
+
+    /// <summary>How dark a shadow is, from none at zero to no direct light at one.</summary>
+    public float ShadowStrength { get; set; } = 1f;
+
+    /// <summary>Lights the model with a built-in room by name, or the <c>.hdr</c> at a path.</summary>
+    /// <exception cref="InvalidDataException">The file cannot be read as a picture.</exception>
+    public void SetEnvironment(string source) {
+        var next = ViewportEnvironment.Load(source);
+        device.WaitIdle();
+        environment = next;
+        environmentView = textures.UploadCube(next.Prefiltered, cleanup);
+        Rebind(forward, frameSet);
+        Rebind(sky, skySet);
+    }
+
+    void Rebind(Pass pass, DescriptorSetHandle set) =>
+        device.UpdateDescriptorSet(
+            set,
+            [DescriptorWrite.Texture(pass.Effect.BindingOf("environment")!.Value.Binding, environmentView)]
+        );
 
     /// <summary>Renders one frame and copies it into <paramref name="destination" />.</summary>
     public void Render(OrbitCamera camera, int width, int height, Span<byte> destination) {
@@ -350,22 +388,30 @@ public sealed class ViewportRenderer : IDisposable {
 
     static Vector3 LightFrom(float rotation) {
         var (sin, cos) = MathF.SinCos(rotation);
-        return new((0.6f * cos) + (0.5f * sin), 0.7f, (0.5f * cos) - (0.6f * sin));
+        return new(0.6f * cos + 0.5f * sin, 0.7f, 0.5f * cos - 0.6f * sin);
     }
 
     void WriteFrame(OrbitCamera camera, BoundingBox bounds, float aspectRatio) {
         var viewProjection = camera.ViewProjection(bounds, aspectRatio);
+        var light = Vector3.Normalize(LightFrom(camera.LightRotation));
+        var lightView = ViewportShadows.LightViewProjection(bounds, light);
+        shadows.Write(lightView);
         frameBlock.Set("viewProjection", viewProjection)
             .Set("cameraPosition", camera.Eye(bounds))
-            .Set("lightDirection", Vector3.Normalize(LightFrom(camera.LightRotation)))
+            .Set("lightDirection", light)
+            .Set("lightViewProjection", lightView)
+            .Set("shadowTexel", 1f / ViewportShadows.Size)
+            .Set("shadowOffset", Math.Max(bounds.Extent.Length(), 1e-4f) * 0.006f)
+            .Set("shadowStrength", ShadowStrength)
             .Set("lightColor", new Vector3(1.2f, 1.15f, 1.1f))
+            .Set("environmentYaw", camera.LightRotation)
             .Set("environmentMipCount", (float)environment.Prefiltered.LevelCount);
         WriteIrradiance();
         device.Write(frameConstants, 0, frameBlock.Bytes);
         toneBlock.Set("exposure", Exposure * camera.Exposure);
         device.Write(tonemapConstants, 0, toneBlock.Bytes);
 
-        Matrix4x4.Invert(viewProjection, out var inverse);
+        Matrix4x4.Invert(camera.SkyViewProjection(bounds, aspectRatio), out var inverse);
         skyBlock.Set("inverseViewProjection", inverse)
             .Set("environmentMipCount", (float)environment.Prefiltered.LevelCount)
             .Set("intensity", 0.55f);
@@ -382,6 +428,7 @@ public sealed class ViewportRenderer : IDisposable {
     }
 
     void Record(ICommandList commands, Targets target, Geometry scene) {
+        shadows.Record(commands, scene.Vertices, scene.Indices, scene.Mesh.Parts);
         commands.Barrier(
             new BarrierGroup(
                 [],
@@ -392,8 +439,6 @@ public sealed class ViewportRenderer : IDisposable {
                 ]
             )
         );
-        var viewport = new Vixen.Core.Mathematics.Viewport(0f, 0f, target.Width, target.Height);
-        var scissor = new ScissorRect(0, 0, target.Width, target.Height);
         commands.BeginRenderPass(
             new(
                 [new(target.HdrSamplesView, LoadAction.Clear, StoreAction.Resolve, default, target.HdrView)],
@@ -401,8 +446,7 @@ public sealed class ViewportRenderer : IDisposable {
                 "viewport forward"
             )
         );
-        commands.SetViewport(viewport);
-        commands.SetScissor(scissor);
+        ViewportShadows.Cover(commands, target.Width, target.Height);
         commands.BindPipeline(sky.Pipeline);
         commands.BindDescriptorSet(DescriptorSetSlot.PerMaterial, skySet);
         commands.Draw(3);
@@ -427,8 +471,7 @@ public sealed class ViewportRenderer : IDisposable {
             )
         );
         commands.BeginRenderPass(new([new(target.OutputView, LoadAction.DontCare)], name: "viewport tonemap"));
-        commands.SetViewport(viewport);
-        commands.SetScissor(scissor);
+        ViewportShadows.Cover(commands, target.Width, target.Height);
         commands.BindPipeline(tonemap.Pipeline);
         commands.BindDescriptorSet(DescriptorSetSlot.PerMaterial, target.ToneSet);
         commands.Draw(3);

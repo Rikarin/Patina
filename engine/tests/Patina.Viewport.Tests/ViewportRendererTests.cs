@@ -49,6 +49,68 @@ public sealed class ViewportRendererTests : IDisposable {
     }
 
     [Fact]
+    public void The_model_casts_a_shadow_on_itself_that_moves_with_the_light() {
+        using var renderer = Open();
+        renderer.OpenMesh(Fixture);
+
+        var camera = OrbitCamera.Default;
+        renderer.ShadowStrength = 0f;
+        var unshadowed = Render(renderer, camera);
+        renderer.ShadowStrength = 1f;
+        var shadowed = Render(renderer, camera);
+        var turned = Render(renderer, camera with { LightRotation = 2f });
+
+        // A shadow only ever takes light away, and turning the light moves it. The model is metal, which takes little
+        // of its light from the sun, so a shadow is a small change on few pixels.
+        var darker = Enumerable.Range(0, Width * Height).Count(i => shadowed[i * 4] + 2 < unshadowed[i * 4]);
+        var brighter = Enumerable.Range(0, Width * Height).Count(i => shadowed[i * 4] > unshadowed[i * 4] + 2);
+        Assert.InRange(darker, 20, Width * Height / 3);
+        Assert.Equal(0, brighter);
+        Assert.NotEqual(shadowed, turned);
+    }
+
+    [Fact]
+    public void The_environment_turns_with_the_light() {
+        using var renderer = Open();
+        renderer.OpenMesh(Fixture);
+
+        var still = At(Render(renderer, OrbitCamera.Default with { Yaw = 0f }), 2, 2);
+        var turned = At(Render(renderer, OrbitCamera.Default with { Yaw = 1.2f, LightRotation = 1.2f }), 2, 2);
+        var apart = At(Render(renderer, OrbitCamera.Default with { Yaw = 1.2f }), 2, 2);
+
+        // Going round with the environment sees the same sky; going round without it sees another.
+        Assert.InRange(turned.R - still.R, -3, 3);
+        Assert.InRange(turned.B - still.B, -3, 3);
+        Assert.NotEqual(still, apart);
+    }
+
+    [Fact]
+    public void A_room_or_a_panorama_changes_what_lights_the_model() {
+        using var renderer = Open();
+        renderer.OpenMesh(Fixture);
+        var studio = Render(renderer, OrbitCamera.Default);
+
+        renderer.SetEnvironment("sunset");
+        var sunset = Render(renderer, OrbitCamera.Default);
+        Assert.NotEqual(studio, sunset);
+
+        var panorama = Path.Combine(cache.FullName, "red.hdr");
+        File.WriteAllBytes(panorama, RedPanorama());
+        renderer.SetEnvironment(panorama);
+        var red = At(Render(renderer, OrbitCamera.Default), 2, 2);
+        Assert.True(red.R > red.B + 40, $"A red panorama made {red}.");
+
+        Assert.ThrowsAny<Exception>(() => renderer.SetEnvironment(Path.Combine(cache.FullName, "none.hdr")));
+    }
+
+    /// <summary>An 8 by 4 Radiance picture of plain red, with no run-length coding.</summary>
+    static byte[] RedPanorama() {
+        var header = "#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 4 +X 8\n"u8.ToArray();
+        byte[] red = [160, 0, 0, 129];
+        return [..header, ..Enumerable.Repeat(red, 32).SelectMany(static pixel => pixel)];
+    }
+
+    [Fact]
     public void The_fixture_comes_out_lit_over_the_sky() {
         using var renderer = Open();
         renderer.OpenMesh(Fixture);

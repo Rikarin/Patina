@@ -137,7 +137,7 @@ export class PaintStore {
     positionJitter: 0,
     angleJitter: 0,
     sizeJitter: 0,
-    pressureSize: 0,
+    pressureSize: 1,
     pressureFlow: 0
   });
   readonly vocabulary = signal<StackVocabulary | null>(null);

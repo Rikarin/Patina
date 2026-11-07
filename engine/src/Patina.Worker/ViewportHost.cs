@@ -95,6 +95,8 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
         Following = session;
     }
 
+    string environment = "studio";
+
     public IpcMessage SetMaps(IpcMessage request) {
         var maps = request.Maps ?? throw new IpcException("viewport.maps names no maps.");
         Renderer()
@@ -110,6 +112,7 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
                     maps.GreenDown
                 )
             );
+        SetEnvironment(maps.Environment);
         try {
             SetLook(maps.Look?.Path, maps.Look?.Hash);
         } catch (FormatException e) {
@@ -120,6 +123,19 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
 
         static Viewport.ViewportMapFile? File(Ipc.ViewportMapFile? file) =>
             file is null ? null : new(file.Path, file.Hash);
+    }
+
+    void SetEnvironment(string? source) {
+        if (source is null || source == environment) {
+            return;
+        }
+
+        try {
+            Renderer().SetEnvironment(source);
+            environment = source;
+        } catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException) {
+            throw new IpcException($"'{source}' cannot light the viewport: {e.Message}");
+        }
     }
 
     /// <summary>Views frames through the <c>.cube</c> at a path, or without one.</summary>

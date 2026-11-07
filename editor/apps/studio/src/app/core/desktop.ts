@@ -35,6 +35,8 @@ export interface DesktopBridge {
   reveal(path: string): Promise<void>;
   /** Asks for a mesh or a picture: its path, or null if they cancelled. */
   openFile(): Promise<string | null>;
+  /** Asks for an `.hdr` panorama. */
+  openEnvironment(): Promise<string | null>;
   /** Where a file dropped on the window is. */
   pathOf(file: File): string;
 

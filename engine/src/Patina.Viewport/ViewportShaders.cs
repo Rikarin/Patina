@@ -6,7 +6,7 @@ using Vixen.Shaders;
 namespace Patina.Viewport;
 
 /// <summary>
-///     The viewport's three shaders, through the disk cache. Patina's forward pass is compiled beside the Vixen library
+///     The viewport's four shaders, through the disk cache. Patina's forward pass is compiled beside the Vixen library
 ///     files it imports; the sky and the tonemap are the library's own. A compilation binds every file it is given, so
 ///     each set holds only what its shader's imports reach.
 /// </summary>
@@ -29,7 +29,13 @@ sealed class ViewportShaders(ShaderCache cache) {
     public EffectData Forward() =>
         cache.Get(
             EffectKey.Of("ViewportForward"),
-            [..Shading, ..Read(static name => name.StartsWith(ShaderPrefix, StringComparison.Ordinal))]
+            [..Shading, ..Read(static name => name.EndsWith("Shaders.ViewportForward.rvn", StringComparison.Ordinal))]
+        );
+
+    public EffectData Shadow() =>
+        cache.Get(
+            EffectKey.Of("ViewportShadow"),
+            [..Read(static name => name.EndsWith("Shaders.ViewportShadow.rvn", StringComparison.Ordinal))]
         );
 
     public EffectData Sky() =>

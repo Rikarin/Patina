@@ -46,7 +46,7 @@ public static class LibraryLayout {
     /// </summary>
     public const string RevisionsFolder = ".revisions";
 
-    /// <summary>Where a deleted project goes, so that a slip costs nothing. Hidden, so the scan does not take them.</summary>
+    /// <summary>Where a deleted project goes, so that a slip costs nothing. Hidden from the scan.</summary>
     public const string TrashFolder = ".trash";
 
     public static string IndexPath(string root) => Path.Combine(root, CacheFolder, "index.sqlite");

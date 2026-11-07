@@ -276,6 +276,9 @@ public sealed record ViewportMapSet(
 ) {
     /// <summary>Whether normals here point green down, as a graph's do.</summary>
     public bool GreenDown { get; init; }
+
+    /// <summary>What lights the model: a built-in room by name or an <c>.hdr</c> at a path. Null keeps it.</summary>
+    public string? Environment { get; init; }
 }
 
 /// <summary>An orbit around the model: radians, and a distance in bounding radii.</summary>

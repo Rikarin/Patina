@@ -83,6 +83,10 @@ public sealed record ViewportMapPaths(
     string? Opacity = null
 );
 
+/// <summary>Chooses what lights the model.</summary>
+/// <param name="Source">A built-in room (studio, overcast or sunset), or the path of an <c>.hdr</c> panorama.</param>
+public sealed record ViewportEnvironmentRequest(string Source);
+
 /// <summary>Views the frame through a table, which changes what is shown and nothing that is exported.</summary>
 /// <param name="Path">A <c>.cube</c> file, or null to view without one.</param>
 public sealed record ViewportLookRequest(string? Path);
@@ -107,6 +111,7 @@ public sealed record ViewportGraphRequest(string Graph);
 ///     The share of that size frames are rendered at, which drops while a client cannot keep up.
 /// </param>
 /// <param name="Stack">The stack session it is wearing, or null.</param>
+/// <param name="Environment">What lights the model: a built-in room, or the path of a panorama.</param>
 /// <param name="Frames">How many frames this Server has published.</param>
 /// <param name="Error">Why the last command failed, or null.</param>
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field.
@@ -120,7 +125,8 @@ public sealed record ViewportState(
     double RenderScale,
     long Frames,
     string? Error,
-    string? Stack = null
+    string? Stack = null,
+    string Environment = "studio"
 );
 #pragma warning restore SK7005
 

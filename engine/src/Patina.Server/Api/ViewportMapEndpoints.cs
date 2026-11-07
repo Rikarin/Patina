@@ -5,6 +5,7 @@ using Patina.Jobs;
 using Patina.Library;
 using Patina.Server.Graphs;
 using Patina.Server.Viewport;
+using System.Collections.Frozen;
 
 namespace Patina.Server.Api;
 
@@ -16,6 +17,10 @@ namespace Patina.Server.Api;
 static class ViewportMapEndpoints {
     const string Tag = "Viewport";
     const int Missing = StatusCodes.Status404NotFound;
+
+    static readonly FrozenSet<string> Rooms =
+        new[] { "studio", "overcast", "sunset" }.ToFrozenSet(StringComparer.Ordinal);
+
     const int Refused = StatusCodes.Status422UnprocessableEntity;
     const int Conflict = StatusCodes.Status409Conflict;
     const int Unavailable = StatusCodes.Status503ServiceUnavailable;
@@ -33,6 +38,12 @@ static class ViewportMapEndpoints {
             .WithTags(Tag)
             .WithSummary("Lays pictures over the mesh's own materials. An empty body takes them off.")
             .ProducesProblem(Missing);
+        api.MapPut("/viewport/environment", SetEnvironment)
+            .WithName("SetViewportEnvironment")
+            .WithSummary("Chooses what lights the model: a built-in room, or an .hdr panorama.")
+            .ProducesProblem(Missing)
+            .ProducesProblem(Refused);
+
         api.MapPut("/viewport/look", SetLook)
             .WithName("SetViewportLook")
             .WithTags(Tag)
@@ -65,6 +76,24 @@ static class ViewportMapEndpoints {
         } catch (FileNotFoundException e) {
             return TypedResults.Problem(e.Message, statusCode: Missing);
         }
+    }
+
+    static Results<Ok<ViewportState>, ProblemHttpResult> SetEnvironment(
+        ViewportEnvironmentRequest request,
+        ViewportSession session
+    ) {
+        if (!Rooms.Contains(request.Source)) {
+            if (!request.Source.EndsWith(".hdr", StringComparison.OrdinalIgnoreCase)) {
+                return TypedResults.Problem($"'{request.Source}' is no room and no .hdr file.", statusCode: Refused);
+            }
+
+            if (!File.Exists(request.Source)) {
+                return TypedResults.Problem($"There is no file '{request.Source}'.", statusCode: Missing);
+            }
+        }
+
+        session.SetEnvironment(request.Source);
+        return TypedResults.Ok(session.State);
     }
 
     static Results<Ok<ViewportState>, ProblemHttpResult> SetLook(ViewportLookRequest request, ViewportSession session) {

@@ -351,6 +351,15 @@ function handleIpc(): void {
     const picked = window ? await dialog.showOpenDialog(window, options) : await dialog.showOpenDialog(options);
     return picked.canceled ? null : (picked.filePaths[0] ?? null);
   });
+  handle('patina:openEnvironment', async () => {
+    const options: OpenDialogOptions = {
+      title: 'Choose an Environment',
+      properties: ['openFile'],
+      filters: [{ name: 'Radiance panoramas', extensions: ['hdr'] }]
+    };
+    const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
+    return picked.canceled ? null : (picked.filePaths[0] ?? null);
+  });
   handle('patina:openImage', async () => {
     const options: OpenDialogOptions = {
       properties: ['openFile'],

@@ -54,5 +54,19 @@ public readonly record struct OrbitCamera(
         return view * Matrix4x4.PerspectiveFieldOfView(FieldOfView, aspectRatio, near, far);
     }
 
+    /// <summary>
+    ///     The same picture with the world turned back by the light's rotation, for the sky: the cube it samples
+    ///     turns with the light, and the sky pass takes nothing but this matrix.
+    /// </summary>
+    public Matrix4x4 SkyViewProjection(BoundingBox bounds, float aspectRatio) {
+        var view = Matrix4x4.LookAt(TurnedBack(Eye(bounds)), TurnedBack(Target(bounds)), new(0f, 1f, 0f));
+        return view * Matrix4x4.PerspectiveFieldOfView(FieldOfView, aspectRatio, 0.1f, 10f);
+    }
+
+    Vector3 TurnedBack(Vector3 point) {
+        var (sin, cos) = MathF.SinCos(LightRotation);
+        return new(point.X * cos - point.Z * sin, point.Y, point.Z * cos + point.X * sin);
+    }
+
     static float Radius(BoundingBox bounds) => Math.Max(bounds.Extent.Length(), 1e-4f);
 }

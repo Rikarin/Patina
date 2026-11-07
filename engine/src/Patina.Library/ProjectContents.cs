@@ -210,7 +210,7 @@ static class ProjectFiles {
         LibraryFiles.WriteProject(root, path, document with { Name = trimmed });
     }
 
-    /// <summary>Moves a project out of the library, into its hidden trash, from where it can be moved back by hand.</summary>
+    /// <summary>Moves a project into the library's hidden trash, from where it can be moved back by hand.</summary>
     /// <exception cref="FileNotFoundException">It is not there.</exception>
     public static void Trash(string root, string path) {
         var (full, _) = Project(root, path);
@@ -220,7 +220,7 @@ static class ProjectFiles {
     }
 
     /// <summary>
-    ///     Copies a project beside itself. Everything it names of its own gets a new identity, so that the copy is an asset
+    ///     Copies a project beside itself. What it names of its own gets a new identity, so that the copy is an asset
     ///     apart. What it refers to in other projects stays referred to.
     /// </summary>
     /// <returns>The copy's path, below <c>projects/</c>.</returns>
@@ -247,7 +247,7 @@ static class ProjectFiles {
         }
 
         LibraryFiles.Replace(file, text);
-        var parent = path.Contains('/') ? path[..path.LastIndexOf('/')] + "/" : "";
+        var parent = path.Contains('/') ? path[..path.LastIndexOf('/')] + "/" : string.Empty;
         Rename(root, parent + slug, name);
         return parent + slug;
     }

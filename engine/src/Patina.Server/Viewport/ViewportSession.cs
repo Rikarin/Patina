@@ -70,12 +70,24 @@ public sealed class ViewportSession(
     IpcConnection? told;
     string? toldMesh;
     ViewportMapSet? toldMaps;
+    string environment = "studio";
     ViewportCameraState? toldCamera;
 
     public ViewportState State {
         get {
             lock (changing) {
-                return new(mesh, Paths(maps), camera, width, height, scale.Value, frames, error ?? mapsError, stack);
+                return new(
+                    mesh,
+                    Paths(maps),
+                    camera,
+                    width,
+                    height,
+                    scale.Value,
+                    frames,
+                    error ?? mapsError,
+                    stack,
+                    environment
+                );
             }
         }
     }
@@ -151,6 +163,17 @@ public sealed class ViewportSession(
         lock (changing) {
             stack = null;
             maps = pictures with { Look = maps.Look };
+            mapsError = null;
+            revision++;
+        }
+
+        Wake();
+    }
+
+    /// <summary>Lights the model with a built-in room or a panorama, for a new Worker as well as this one.</summary>
+    public void SetEnvironment(string source) {
+        lock (changing) {
+            environment = source;
             mapsError = null;
             revision++;
         }
@@ -330,7 +353,16 @@ public sealed class ViewportSession(
         lock (changing) {
             return subscribers.Count == 0
                 ? (null, revision)
-                : (new(mesh, new(stack, painted), maps, camera, (width, height), scale.Value, interacting, lastInput),
+                : (new(
+                    mesh,
+                    new(stack, painted),
+                    maps with { Environment = environment },
+                    camera,
+                    (width, height),
+                    scale.Value,
+                    interacting,
+                    lastInput
+                ),
                     revision);
         }
     }

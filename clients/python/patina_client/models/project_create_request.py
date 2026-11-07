@@ -1,0 +1,241 @@
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import Any, TypeVar, BinaryIO, TextIO, TYPE_CHECKING, Generator
+
+from attrs import define as _attrs_define
+from attrs import field as _attrs_field
+
+from ..types import UNSET, Unset
+
+from ..types import UNSET, Unset
+from typing import cast
+
+
+
+
+
+
+T = TypeVar("T", bound="ProjectCreateRequest")
+
+
+
+@_attrs_define
+class ProjectCreateRequest:
+    """ The body of `POST /api/v1/library/projects`.
+
+        Attributes:
+            name (str): The project's display name. The Server makes its folder from it.
+            folder (None | str | Unset): Folders below `projects/` to put it in, with forward slashes, such as `props`.
+            tags (list[str] | None | Unset): The project's tags.
+            mesh (None | str | Unset): A mesh file on the Server's machine to copy in. Null leaves the project to get one
+                later.
+            resolution (int | None | Unset): The width and height of a stack it starts with. Null is 2048.
+            kind (None | str | Unset): The document it starts with: `texturing`, `layered-material`, `image-material` or
+                `graph`.
+                Null is `texturing` with a mesh and nothing without one.
+            image (None | str | Unset): The picture an `image-material` starts from, on the Server\\'s machine.
+            high (None | str | Unset): The detailed mesh it bakes from, on the Server's machine.
+     """
+
+    name: str
+    folder: None | str | Unset = UNSET
+    tags: list[str] | None | Unset = UNSET
+    mesh: None | str | Unset = UNSET
+    resolution: int | None | Unset = UNSET
+    kind: None | str | Unset = UNSET
+    image: None | str | Unset = UNSET
+    high: None | str | Unset = UNSET
+    additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
+
+
+
+
+
+    def to_dict(self) -> dict[str, Any]:
+        name = self.name
+
+        folder: None | str | Unset
+        if isinstance(self.folder, Unset):
+            folder = UNSET
+        else:
+            folder = self.folder
+
+        tags: list[str] | None | Unset
+        if isinstance(self.tags, Unset):
+            tags = UNSET
+        elif isinstance(self.tags, list):
+            tags = self.tags
+
+
+        else:
+            tags = self.tags
+
+        mesh: None | str | Unset
+        if isinstance(self.mesh, Unset):
+            mesh = UNSET
+        else:
+            mesh = self.mesh
+
+        resolution: int | None | Unset
+        if isinstance(self.resolution, Unset):
+            resolution = UNSET
+        else:
+            resolution = self.resolution
+
+        kind: None | str | Unset
+        if isinstance(self.kind, Unset):
+            kind = UNSET
+        else:
+            kind = self.kind
+
+        image: None | str | Unset
+        if isinstance(self.image, Unset):
+            image = UNSET
+        else:
+            image = self.image
+
+        high: None | str | Unset
+        if isinstance(self.high, Unset):
+            high = UNSET
+        else:
+            high = self.high
+
+
+        field_dict: dict[str, Any] = {}
+        field_dict.update(self.additional_properties)
+        field_dict.update({
+            "name": name,
+        })
+        if folder is not UNSET:
+            field_dict["folder"] = folder
+        if tags is not UNSET:
+            field_dict["tags"] = tags
+        if mesh is not UNSET:
+            field_dict["mesh"] = mesh
+        if resolution is not UNSET:
+            field_dict["resolution"] = resolution
+        if kind is not UNSET:
+            field_dict["kind"] = kind
+        if image is not UNSET:
+            field_dict["image"] = image
+        if high is not UNSET:
+            field_dict["high"] = high
+
+        return field_dict
+
+
+
+    @classmethod
+    def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        d = dict(src_dict)
+        name = d.pop("name")
+
+        def _parse_folder(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        folder = _parse_folder(d.pop("folder", UNSET))
+
+
+        def _parse_tags(data: object) -> list[str] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                tags_type_1 = cast(list[str], data)
+
+                return tags_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[str] | None | Unset, data)
+
+        tags = _parse_tags(d.pop("tags", UNSET))
+
+
+        def _parse_mesh(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        mesh = _parse_mesh(d.pop("mesh", UNSET))
+
+
+        def _parse_resolution(data: object) -> int | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(int | None | Unset, data)
+
+        resolution = _parse_resolution(d.pop("resolution", UNSET))
+
+
+        def _parse_kind(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        kind = _parse_kind(d.pop("kind", UNSET))
+
+
+        def _parse_image(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        image = _parse_image(d.pop("image", UNSET))
+
+
+        def _parse_high(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        high = _parse_high(d.pop("high", UNSET))
+
+
+        project_create_request = cls(
+            name=name,
+            folder=folder,
+            tags=tags,
+            mesh=mesh,
+            resolution=resolution,
+            kind=kind,
+            image=image,
+            high=high,
+        )
+
+
+        project_create_request.additional_properties = d
+        return project_create_request
+
+    @property
+    def additional_keys(self) -> list[str]:
+        return list(self.additional_properties.keys())
+
+    def __getitem__(self, key: str) -> Any:
+        return self.additional_properties[key]
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        self.additional_properties[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        del self.additional_properties[key]
+
+    def __contains__(self, key: str) -> bool:
+        return key in self.additional_properties

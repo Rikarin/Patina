@@ -45,6 +45,8 @@ export class ViewportClient {
   private size: { width: number; height: number } | null = null;
 
   readonly mesh = signal<string | null>(null);
+  /** What lights the model, as the Server has it. */
+  readonly environment = signal('studio');
   readonly error = signal<string | null>(null);
   readonly stats = signal<ViewportStats | null>(null);
   readonly camera = signal<ViewportCameraState>(DefaultCamera);
@@ -77,6 +79,18 @@ export class ViewportClient {
       const client = this.createClient(await this.connection());
       const state = unwrap(await client.PUT('/api/v1/viewport/mesh', { body: { path } }));
       this.mesh.set(state.mesh ?? null);
+      this.error.set(null);
+    } catch (error) {
+      this.error.set(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  /** Lights the model with a built-in room, or a panorama at a path. */
+  async setEnvironment(source: string): Promise<void> {
+    try {
+      const client = this.createClient(await this.connection());
+      const state = unwrap(await client.PUT('/api/v1/viewport/environment', { body: { source } }));
+      this.environment.set(state.environment);
       this.error.set(null);
     } catch (error) {
       this.error.set(error instanceof Error ? error.message : String(error));
@@ -127,6 +141,7 @@ export class ViewportClient {
   private async refresh(): Promise<void> {
     const state = unwrap(await this.createClient(await this.connection()).GET('/api/v1/viewport'));
     this.mesh.set(state.mesh ?? null);
+    this.environment.set(state.environment);
     this.error.set(state.error ?? null);
   }
 

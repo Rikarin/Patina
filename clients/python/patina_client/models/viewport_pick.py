@@ -1,0 +1,153 @@
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import Any, TypeVar, BinaryIO, TextIO, TYPE_CHECKING, Generator
+
+from attrs import define as _attrs_define
+from attrs import field as _attrs_field
+
+from ..types import UNSET, Unset
+
+from ..types import UNSET, Unset
+from typing import cast
+
+if TYPE_CHECKING:
+  from ..models.stack_view import StackView
+
+
+
+
+
+T = TypeVar("T", bound="ViewportPick")
+
+
+
+@_attrs_define
+class ViewportPick:
+    """ What a position in the viewport landed on.
+
+        Attributes:
+            found (bool): Whether it met the mesh.
+            view (StackView): A camera in the mesh's own space, which a stroke keeps because a position on a picture means
+                nothing without
+                it. Any client with a camera can fill this in; `POST /viewport/pick` gives the viewport's.
+            triangle (int): The triangle. Default: -1.
+            u (float): The texture coordinate across. Default: 0.0.
+            v (float): The texture coordinate down. Default: 0.0.
+            position (list[float] | None | Unset): Where on the mesh, in its own space: three numbers.
+     """
+
+    found: bool
+    view: StackView
+    triangle: int = -1
+    u: float = 0.0
+    v: float = 0.0
+    position: list[float] | None | Unset = UNSET
+    additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
+
+
+
+
+
+    def to_dict(self) -> dict[str, Any]:
+        from ..models.stack_view import StackView # noqa: PLC0415
+        found = self.found
+
+        view = self.view.to_dict()
+
+        triangle = self.triangle
+
+        u = self.u
+
+        v = self.v
+
+        position: list[float] | None | Unset
+        if isinstance(self.position, Unset):
+            position = UNSET
+        elif isinstance(self.position, list):
+            position = self.position
+
+
+        else:
+            position = self.position
+
+
+        field_dict: dict[str, Any] = {}
+        field_dict.update(self.additional_properties)
+        field_dict.update({
+            "found": found,
+            "view": view,
+            "triangle": triangle,
+            "u": u,
+            "v": v,
+        })
+        if position is not UNSET:
+            field_dict["position"] = position
+
+        return field_dict
+
+
+
+    @classmethod
+    def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.stack_view import StackView # noqa: PLC0415
+        d = dict(src_dict)
+        found = d.pop("found")
+
+        view = StackView.from_dict(d.pop("view"))
+
+
+
+
+        triangle = d.pop("triangle")
+
+        u = d.pop("u")
+
+        v = d.pop("v")
+
+        def _parse_position(data: object) -> list[float] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                position_type_1 = cast(list[float], data)
+
+                return position_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[float] | None | Unset, data)
+
+        position = _parse_position(d.pop("position", UNSET))
+
+
+        viewport_pick = cls(
+            found=found,
+            view=view,
+            triangle=triangle,
+            u=u,
+            v=v,
+            position=position,
+        )
+
+
+        viewport_pick.additional_properties = d
+        return viewport_pick
+
+    @property
+    def additional_keys(self) -> list[str]:
+        return list(self.additional_properties.keys())
+
+    def __getitem__(self, key: str) -> Any:
+        return self.additional_properties[key]
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        self.additional_properties[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        del self.additional_properties[key]
+
+    def __contains__(self, key: str) -> bool:
+        return key in self.additional_properties

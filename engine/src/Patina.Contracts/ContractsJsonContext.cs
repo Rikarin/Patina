@@ -22,6 +22,7 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(ViewportMapPaths))]
 [JsonSerializable(typeof(ViewportBakeRequest))]
 [JsonSerializable(typeof(ViewportLookRequest))]
+[JsonSerializable(typeof(ViewportEnvironmentRequest))]
 [JsonSerializable(typeof(ViewportGraphRequest))]
 [JsonSerializable(typeof(ViewportCameraState))]
 [JsonSerializable(typeof(ViewportInput))]

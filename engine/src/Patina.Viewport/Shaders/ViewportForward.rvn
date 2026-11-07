@@ -14,7 +14,14 @@ shader ViewportForward {
     [PerFrame] var cameraPosition: float3
     [PerFrame] var lightDirection: float3
     [PerFrame] var lightColor: float3
+    [PerFrame] var lightViewProjection: mat4
+    [PerFrame] var shadowTexel: float
+    [PerFrame] var shadowOffset: float
+    [PerFrame] var shadowStrength: float
+    [PerFrame] var shadowMap: Texture2D
+    [PerFrame] var shadowSampler: Sampler
     [PerFrame] var environmentMipCount: float
+    [PerFrame] var environmentYaw: float
     [PerFrame] var environmentSh: ShCoefficients
     [PerFrame] var environment: TextureCube
     [PerFrame] var environmentSampler: Sampler
@@ -82,7 +89,7 @@ shader ViewportForward {
         val emitted = emissiveMap.Sample(mapSampler, surfaceUv).rgb
 
         return float4(
-            Direct(n, v, perceptual, f0, diffuseColor) + Ambient(n, v, perceptual, f0, diffuseColor) * occlusion + emitted,
+            Direct(n, v, perceptual, f0, diffuseColor) * Sunlit(Math.SafeNormalize(worldNormal)) + Ambient(n, v, perceptual, f0, diffuseColor) * occlusion + emitted,
             1f
         )
     }
@@ -101,11 +108,36 @@ shader ViewportForward {
         return (diffuse + specular) * lightColor * angles.NdotL
     }
 
+    // The environment turns with the light, so a world direction reads the cube turned back.
+    func Turned(direction: float3): float3 {
+        val s = sin(environmentYaw)
+        val c = cos(environmentYaw)
+        return float3(direction.x * c - direction.z * s, direction.y, direction.z * c + direction.x * s)
+    }
+
+    func Lit(uv: float2, depth: float): float {
+        // Reversed depth: what is nearer the light has the larger number.
+        return shadowMap.SampleLevel(shadowSampler, uv, 0f).r > depth + 0.001f ? 0f : 1f
+    }
+
+    // How much of the light reaches here, from four taps of the light's depth. A point pushed out along its normal
+    // stops a surface shadowing itself.
+    func Sunlit(n: float3): float {
+        val clip = lightViewProjection * float4(worldPosition + n * shadowOffset, 1f)
+        val uv = float2(clip.x, -clip.y) * 0.5f + float2(0.5f, 0.5f)
+        val step = shadowTexel * 0.75f
+        var lit = Lit(uv + float2(-step, -step), clip.z)
+        lit += Lit(uv + float2(step, -step), clip.z)
+        lit += Lit(uv + float2(-step, step), clip.z)
+        lit += Lit(uv + float2(step, step), clip.z)
+        return 1f - (1f - lit * 0.25f) * shadowStrength
+    }
+
     func Ambient(n: float3, v: float3, perceptual: float, f0: float3, diffuseColor: float3): float3 {
         val dfg = Ibl.EnvironmentDfg(saturate(dot(n, v)), perceptual)
         val lod = Ibl.SpecularLod(perceptual, environmentMipCount)
-        val prefiltered = environment.SampleLevel(environmentSampler, reflect(-v, n), lod).rgb
-        val irradiance = Ibl.IrradianceSh9(n, environmentSh)
+        val prefiltered = environment.SampleLevel(environmentSampler, Turned(reflect(-v, n)), lod).rgb
+        val irradiance = Ibl.IrradianceSh9(Turned(n), environmentSh)
 
         return Ibl.Specular(prefiltered, f0, dfg, 1f) + Ibl.Diffuse(irradiance, diffuseColor, 1f)
     }

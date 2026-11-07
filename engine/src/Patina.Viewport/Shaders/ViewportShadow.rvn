@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package Patina.Viewport
+
+// What the light can see, as depth in a colour target: the forward pass reads it as a plain texture, and compares for
+// itself, which asks for no comparison sampler and no sampled depth format of the device.
+
+shader ViewportShadow {
+    [PerFrame] var lightViewProjection: mat4
+
+    stream var lightDepth: float
+
+    [VertexShader]
+    [Semantic("SV_Position")]
+    func Vertex(position: float3): float4 {
+        val clip = lightViewProjection * float4(position, 1f)
+        lightDepth = clip.z
+        return clip
+    }
+
+    [FragmentShader]
+    [Semantic("SV_Target")]
+    func Fragment(): float4 {
+        return float4(lightDepth, 0f, 0f, 1f)
+    }
+}

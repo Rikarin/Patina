@@ -151,6 +151,7 @@ public sealed class ViewportLiveMapTests : IDisposable {
     [Fact]
     public void The_axes_of_the_camera_put_a_point_where_the_picture_shows_it() {
         using var renderer = Open();
+        renderer.ShadowStrength = 0f; // the speck's shadow would pull the centroid away from the speck
         var centre = new Vector3(0.7f, 0.45f, 0.2f);
         var bounds = new BoundingBox(new(-1f, -1f, 0f), new(1f, 1f, 0f));
 

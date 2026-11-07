@@ -124,6 +124,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/viewport/environment': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Chooses what lights the model: a built-in room, or an .hdr panorama. */
+    put: operations['SetViewportEnvironment'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/viewport/look': {
     parameters: {
       query?: never;
@@ -3781,6 +3798,11 @@ export interface components {
        */
       lightRotation: number;
     };
+    /** @description Chooses what lights the model. */
+    ViewportEnvironmentRequest: {
+      /** @description A built-in room (studio, overcast or sunset), or the path of an `.hdr` panorama. */
+      source: string;
+    };
     /** @description Asks the viewport to lay a graph's Output nodes over the mesh it is showing, as they stand now. */
     ViewportGraphRequest: {
       /** @description The graph's session. */
@@ -3908,6 +3930,11 @@ export interface components {
       error?: null | string;
       /** @description The stack session it is wearing, or null. */
       stack?: null | string;
+      /**
+       * @description What lights the model: a built-in room, or the path of a panorama.
+       * @default studio
+       */
+      environment: string;
     };
     /** @description The Worker as the Server sees it. All but `Connected` are null while there is none. */
     WorkerStatus: {
@@ -4161,6 +4188,48 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetViewportEnvironment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportEnvironmentRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportState'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
         headers: {
           [name: string]: unknown;
         };
