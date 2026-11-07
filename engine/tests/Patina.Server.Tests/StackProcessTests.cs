@@ -412,7 +412,10 @@ public sealed partial class StackProcessTests : IDisposable {
         await ActAsync(state.Id, "undo", deadline.Token);
         var undone = await StateAsync(state.Id, deadline.Token);
         Assert.Equal("Constant", Layer(undone, fill).Mask.Source);
-        Assert.Equal(Digest(before.Maps, "baseColor"), Digest(await PixelsAsync(state.Id, true, deadline.Token), "baseColor"));
+        Assert.Equal(
+            Digest(before.Maps, "baseColor"),
+            Digest(await PixelsAsync(state.Id, true, deadline.Token), "baseColor")
+        );
     }
 
     /// <summary>A paint mask nothing has painted yet hides nothing, so its canvas starts as all of it.</summary>
@@ -445,7 +448,10 @@ public sealed partial class StackProcessTests : IDisposable {
         await worker.WaitForExitAsync(deadline.Token);
         StartWorker();
 
-        Assert.Equal(Digest(painted, "baseColor"), Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor"));
+        Assert.Equal(
+            Digest(painted, "baseColor"),
+            Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor")
+        );
     }
 
     /// <summary>
@@ -471,7 +477,11 @@ public sealed partial class StackProcessTests : IDisposable {
         await EditAsync(state.Id, deadline.Token, new StackSetLayer(fill, Mask: new("Paint")));
         var first = await TexelsAsync(state.Id, "first", deadline.Token);
 
-        await EditAsync(state.Id, deadline.Token, new StackSetLayer(fill, Mask: new("None", Effects: [new("Colour/Invert")])));
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(fill, Mask: new("None", Effects: [new("Colour/Invert")]))
+        );
         var removed = Layer(await StateAsync(state.Id, deadline.Token), fill).Mask;
         Assert.Equal("None", removed.Source);
         Assert.Empty(removed.Effects!);
@@ -529,7 +539,15 @@ public sealed partial class StackProcessTests : IDisposable {
         using var deadline = Deadline(180);
         var (instance, state) = await StartAsync("Half.vxlayers", deadline.Token);
         using var socket = await FollowAsync(instance, state, deadline.Token);
-        await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Rough", new Dictionary<string, IReadOnlyList<float>> { ["roughness"] = [0.8f, 0.8f, 0.8f, 1f] }));
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackAddLayer(
+                "fill",
+                "Rough",
+                new Dictionary<string, IReadOnlyList<float>> { ["roughness"] = [0.8f, 0.8f, 0.8f, 1f] }
+            )
+        );
         var fill = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
         var before = await PixelsAsync(state.Id, true, deadline.Token);
 
@@ -539,11 +557,17 @@ public sealed partial class StackProcessTests : IDisposable {
         var evaluation = await EvaluatedAsync(socket, set.Revision, deadline.Token);
         var problem = Assert.Single(evaluation.Problems, problem => problem.Layer == fill);
         Assert.Equal("Warning", problem.Severity);
-        Assert.Equal(Digest(before, "roughness"), Digest(await PixelsAsync(state.Id, true, deadline.Token), "roughness"));
+        Assert.Equal(
+            Digest(before, "roughness"),
+            Digest(await PixelsAsync(state.Id, true, deadline.Token), "roughness")
+        );
 
         var painted = await PaintAsync(state.Id, "still", Line(100, 100, 12), false, deadline.Token);
         Assert.NotEmpty((await EvaluatedAsync(socket, painted.Revision, deadline.Token)).Previews);
-        Assert.NotEqual(Digest(before, "baseColor"), Digest(await PixelsAsync(state.Id, true, deadline.Token), "baseColor"));
+        Assert.NotEqual(
+            Digest(before, "baseColor"),
+            Digest(await PixelsAsync(state.Id, true, deadline.Token), "baseColor")
+        );
     }
 
     /// <summary>A texture fill with no pictures yet writes nothing, channel by channel, and says which.</summary>
@@ -560,7 +584,10 @@ public sealed partial class StackProcessTests : IDisposable {
 
         var evaluation = await EvaluatedAsync(socket, set.Revision, deadline.Token);
         Assert.Equal(state.Channels.Count, evaluation.Problems.Count(problem => problem.Layer == fill));
-        Assert.Equal(Digest(before, "baseColor"), Digest(await PixelsAsync(state.Id, true, deadline.Token), "baseColor"));
+        Assert.Equal(
+            Digest(before, "baseColor"),
+            Digest(await PixelsAsync(state.Id, true, deadline.Token), "baseColor")
+        );
     }
 
     /// <summary>What is wrong rather than unfinished still stops the stack, and now says so against its layer.</summary>
@@ -574,7 +601,11 @@ public sealed partial class StackProcessTests : IDisposable {
         var top = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
 
         // Under the layer it reads, so its own result is part of what it masks by.
-        var set = await EditAsync(state.Id, deadline.Token, new StackSetLayer("base", Mask: new("Anchor", Anchor: top)));
+        var set = await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer("base", Mask: new("Anchor", Anchor: top))
+        );
 
         var evaluation = await EvaluatedAsync(socket, set.Revision, deadline.Token);
         Assert.Contains(evaluation.Problems, static problem => problem is { Layer: "base", Severity: "Error" });
@@ -648,8 +679,24 @@ public sealed partial class StackProcessTests : IDisposable {
         await EditAsync(
             state.Id,
             deadline.Token,
-            new StackStroke("hard", "paint", "baseColor", brush, Red, [new(100f, 200f, 1f), new(700f, 200f, 1f)], Curve: curve),
-            new StackStroke("light", "paint", "roughness", brush, Red, [new(100f, 200f, 0.1f), new(700f, 200f, 0.1f)], Curve: curve)
+            new StackStroke(
+                "hard",
+                "paint",
+                "baseColor",
+                brush,
+                Red,
+                [new(100f, 200f, 1f), new(700f, 200f, 1f)],
+                Curve: curve
+            ),
+            new StackStroke(
+                "light",
+                "paint",
+                "roughness",
+                brush,
+                Red,
+                [new(100f, 200f, 0.1f), new(700f, 200f, 0.1f)],
+                Curve: curve
+            )
         );
         var maps = await ExportAsync(state.Id, Path.Combine(folder.FullName, "pressed"), deadline.Token);
 
@@ -675,13 +722,17 @@ public sealed partial class StackProcessTests : IDisposable {
     static StackLayer Layer(StackState state, string id) => state.Layers.Single(layer => layer.Id == id);
 
     /// <summary>What each map holds, as digests and as the base colour's texels, from a clean evaluation.</summary>
-    async Task<(IReadOnlyList<StackPixels> Maps, Bitmap BaseColor)> TexelsAsync(string id, string name, CancellationToken token) {
+    async Task<(IReadOnlyList<StackPixels> Maps, Bitmap BaseColor)> TexelsAsync(
+        string id,
+        string name,
+        CancellationToken token
+    ) {
         var maps = await ExportAsync(id, Path.Combine(folder.FullName, $"{id}-{name}"), token);
         return (maps, PngCodec.Decode(File.ReadAllBytes(maps.Single(static map => map.Usage == "baseColor").File!)));
     }
 
     static byte[] Texel((IReadOnlyList<StackPixels> Maps, Bitmap BaseColor) picture, int x, int y) =>
-        picture.BaseColor.Pixels.AsSpan((y * picture.BaseColor.Width + x) * 4, 4).ToArray();
+        [..picture.BaseColor.Pixels.AsSpan((y * picture.BaseColor.Width + x) * 4, 4)];
 
     /// <summary>Equal to the rounding of one 8-bit canvas read through a mask.</summary>
     static void Near(byte[] expected, byte[] actual) {

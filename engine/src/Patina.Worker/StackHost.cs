@@ -100,7 +100,17 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
 
         if (ask.PreviewSide <= 0) {
             return Reply(
-                new(stack.Run.Compiled, true, ran, repaired, reused, Milliseconds(start), [], stack.Notes, stack.Found([]))
+                new(
+                    stack.Run.Compiled,
+                    true,
+                    ran,
+                    repaired,
+                    reused,
+                    Milliseconds(start),
+                    [],
+                    stack.Notes,
+                    stack.Found([])
+                )
             );
         }
 

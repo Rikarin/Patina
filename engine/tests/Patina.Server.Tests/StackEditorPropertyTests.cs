@@ -20,9 +20,7 @@ public sealed class StackEditorPropertyTests {
         editor.Apply(new([new StackSetLayer("paint", MeshMask: new(["Lid"], "lid.png"))]));
         Assert.Equal(LayerBlendMode.Copy, Mask(editor).Layers[0].Blend);
 
-        editor.Apply(
-            new([new StackStroke("mask", "paint", "baseColor", new(4f), White, [new(1f, 1f)], Mask: true)])
-        );
+        editor.Apply(new([new StackStroke("mask", "paint", "baseColor", new(4f), White, [new(1f, 1f)], Mask: true)]));
 
         Assert.Equal(LayerMaskSource.Paint, Mask(editor).Source);
         Assert.Equal(LayerBlendMode.Multiply, Mask(editor).Layers[0].Blend);
@@ -44,7 +42,15 @@ public sealed class StackEditorPropertyTests {
         var editor = new StackEditor("/tmp/Fill.vxlayers", Sample());
 
         editor.Apply(
-            new([new StackAddLayer("fill", "Fill", new Dictionary<string, IReadOnlyList<float>> { ["roughness"] = White })])
+            new(
+                [
+                    new StackAddLayer(
+                        "fill",
+                        "Fill",
+                        new Dictionary<string, IReadOnlyList<float>> { ["roughness"] = White }
+                    )
+                ]
+            )
         );
 
         Assert.Equal(["roughness"], editor.Set.Layers[^1].Values.Keys);
@@ -73,9 +79,7 @@ public sealed class StackEditorPropertyTests {
         Assert.Throws<StackEditRefusedException>(() =>
             editor.Apply(new([new StackStroke("off", "paint", "baseColor", new(4f), White, [new(1f, 1f)])]))
         );
-        Assert.Single(
-            editor.Apply(new([new StackStroke("on", "paint", "roughness", new(4f), White, [new(1f, 1f)])]))
-        );
+        Assert.Single(editor.Apply(new([new StackStroke("on", "paint", "roughness", new(4f), White, [new(1f, 1f)])])));
     }
 
     /// <summary>A filter a graph brought can go back to being a named one, which is its only way out.</summary>
@@ -93,7 +97,11 @@ public sealed class StackEditorPropertyTests {
 
     [Fact]
     public void A_seed_is_in_the_state_and_undoes_like_any_edit() {
-        var session = new StackSession("/tmp/Seed.vxlayers", StackDocuments.Text(Sample() with { Seed = 7 }), static () => { });
+        var session = new StackSession(
+            "/tmp/Seed.vxlayers",
+            StackDocuments.Text(Sample() with { Seed = 7 }),
+            static () => { }
+        );
         Assert.Equal(7u, session.State.Seed);
 
         session.Apply(new([new StackSetSeed(9)]));

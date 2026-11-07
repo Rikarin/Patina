@@ -544,13 +544,6 @@ public sealed class StackEditor : ILayerStackDocument {
 
     void Stroke(StackStroke stroke, Step step, string set, Action<IAuthoringCommand> run) {
         var layer = Require(stroke.Layer);
-        // A mask is any layer's, and only a paint layer has pixels of its own besides.
-        if (!stroke.Mask && layer.Kind != LayerKind.Paint) {
-            throw new StackEditRefusedException(
-                $"'{layer.Name}' is a {layer.Kind} layer, and only a paint layer takes a brush."
-            );
-        }
-
         if (stroke.Brush.Radius <= 0f) {
             throw new StackEditRefusedException("A brush has a radius.");
         }
@@ -559,38 +552,13 @@ public sealed class StackEditor : ILayerStackDocument {
             throw new StackEditRefusedException("A brush's stamps are some distance apart.");
         }
 
+        if (!stroke.Mask) {
+            Writable(stroke, layer);
+        }
+
         Aimed(stroke);
 
-        if (!stroke.Mask && Set.Channels.TrueForAll(channel => channel.Usage != stroke.Channel)) {
-            throw new StackEditRefusedException($"This stack has no channel '{stroke.Channel}'.");
-        }
-
-        if (!stroke.Mask && !layer.Writes(stroke.Channel)) {
-            throw new StackEditRefusedException(
-                $"'{layer.Name}' does not write '{stroke.Channel}', so a stroke there would never show."
-            );
-        }
-
-        var stem = Path.GetFileNameWithoutExtension(AssetPath);
-        string paint;
-        uint? start = null;
-        if (stroke.Mask) {
-            paint = layer.Mask.Paint.Trim();
-            if (layer.Mask.Source != LayerMaskSource.Paint || paint.Length == 0) {
-                var showed = Showed(layer);
-                start = PaintImage.Pack(showed, showed, showed, 1f);
-                paint = FreeMaskCanvas(stem, set, layer.Id);
-                var painted = layer.Mask with { Source = LayerMaskSource.Paint, Paint = paint };
-                run(Named(layer, layer with { Mask = StackDocuments.MeshMasked(painted, null) }, set));
-            }
-        } else {
-            paint = layer.Paint.Trim();
-            if (paint.Length == 0) {
-                // The first stroke writes the name down, and undoing it takes the name back with the pixels.
-                paint = LayerPaint.NameFor(stem, set, layer.Id);
-                run(Named(layer, layer with { Paint = paint }, set));
-            }
-        }
+        var (paint, start) = stroke.Mask ? MaskCanvas(layer, set, run) : (LayerCanvas(layer, set, run), null);
 
         // ⚠ Live, two strokes of one batch take turns; replayed, they run one after the other. Where they meet in one
         // channel that is two pictures, and a journal has to be one.
@@ -598,7 +566,54 @@ public sealed class StackEditor : ILayerStackDocument {
             throw new StackEditRefusedException("One batch paints one channel of a layer once.");
         }
 
-        step.Strokes.Add(new(nextEntry++, stroke, paint, Channel(stroke), Packed(stroke.Colour), Document.Model, start));
+        step.Strokes.Add(
+            new(nextEntry++, stroke, paint, Channel(stroke), Packed(stroke.Colour), Document.Model, start)
+        );
+    }
+
+    /// <summary>Refuses a stroke on a layer's own pixels that would land nowhere, or nowhere that shows.</summary>
+    void Writable(StackStroke stroke, LayerAsset layer) {
+        // A mask is any layer's, and only a paint layer has pixels of its own besides.
+        if (layer.Kind != LayerKind.Paint) {
+            throw new StackEditRefusedException(
+                $"'{layer.Name}' is a {layer.Kind} layer, and only a paint layer takes a brush."
+            );
+        }
+
+        if (Set.Channels.TrueForAll(channel => channel.Usage != stroke.Channel)) {
+            throw new StackEditRefusedException($"This stack has no channel '{stroke.Channel}'.");
+        }
+
+        if (!layer.Writes(stroke.Channel)) {
+            throw new StackEditRefusedException(
+                $"'{layer.Name}' does not write '{stroke.Channel}', so a stroke there would never show."
+            );
+        }
+    }
+
+    /// <summary>The canvas of a paint layer. The first stroke names it, and undoing that takes the name back.</summary>
+    string LayerCanvas(LayerAsset layer, string set, Action<IAuthoringCommand> run) {
+        var paint = layer.Paint.Trim();
+        if (paint.Length == 0) {
+            paint = LayerPaint.NameFor(Path.GetFileNameWithoutExtension(AssetPath), set, layer.Id);
+            run(Named(layer, layer with { Paint = paint }, set));
+        }
+
+        return paint;
+    }
+
+    /// <summary>The canvas of a mask, and what it starts as if this is the stroke that makes one.</summary>
+    (string Paint, uint? Start) MaskCanvas(LayerAsset layer, string set, Action<IAuthoringCommand> run) {
+        var paint = layer.Mask.Paint.Trim();
+        if (layer.Mask.Source == LayerMaskSource.Paint && paint.Length > 0) {
+            return (paint, null);
+        }
+
+        var showed = Showed(layer);
+        paint = FreeMaskCanvas(Path.GetFileNameWithoutExtension(AssetPath), set, layer.Id);
+        var painted = layer.Mask with { Source = LayerMaskSource.Paint, Paint = paint };
+        run(Named(layer, layer with { Mask = StackDocuments.MeshMasked(painted, null) }, set));
+        return (paint, PaintImage.Pack(showed, showed, showed, 1f));
     }
 
     /// <summary>
