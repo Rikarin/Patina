@@ -39,6 +39,7 @@ function template(actions: MenuActions): MenuItemConstructorOptions[] {
         { label: 'Open Recent', submenu: recent },
         { type: 'separator' },
         { label: 'Save', accelerator: 'CmdOrCtrl+S', click: () => actions.command('save') },
+        { label: 'Save As…', accelerator: 'Shift+CmdOrCtrl+S', click: () => actions.command('saveAs') },
         { type: 'separator' },
         mac ? { role: 'close' } : { role: 'quit' }
       ]
@@ -76,6 +77,10 @@ function template(actions: MenuActions): MenuItemConstructorOptions[] {
         ...(actions.development
           ? ([{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }] as MenuItemConstructorOptions[])
           : []),
+        { label: 'Show Statistics', click: () => actions.command('toggleStats') },
+        { label: 'Reset Layout', click: () => actions.command('resetLayout') },
+        { label: 'Keyboard Shortcuts…', click: () => actions.command('shortcuts') },
+        { type: 'separator' },
         { role: 'togglefullscreen' }
       ]
     },

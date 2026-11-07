@@ -19,7 +19,7 @@ export async function newLibrary(app: ElectronApplication, window: Page, path: s
   await expect(window.getByRole('status', { name: 'Server status' })).toContainText(path.split('/').pop() ?? path, {
     timeout: 30_000
   });
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('Worker connected');
+  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('GPU ready');
 }
 
 /** Makes a project the way a person does, which also opens it. */

@@ -217,6 +217,15 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
+    /// <summary>A new document with another's content.</summary>
+    public ProjectItem CopyDocument(string path, AssetId document, string name) {
+        lock (createGate) {
+            var copy = ProjectFiles.Copy(RootPath, path, document, name);
+            Interlocked.Increment(ref unscannedWrites);
+            return copy;
+        }
+    }
+
     /// <summary>Records that a project reads a document of another one.</summary>
     public void AddReference(string path, AssetId asset) {
         lock (createGate) {

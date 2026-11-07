@@ -17,7 +17,12 @@ const pane = (contentId: string, header: string, size = 1): XuiDockContentPane =
   size
 });
 
-const across = (size: number, ...panes: Part[]): Part => ({ type: 'splitPane', orientation: 'horizontal', size, panes });
+const across = (size: number, ...panes: Part[]): Part => ({
+  type: 'splitPane',
+  orientation: 'horizontal',
+  size,
+  panes
+});
 
 const down = (size: number, ...panes: Part[]): Part => ({ type: 'splitPane', orientation: 'vertical', size, panes });
 
@@ -47,11 +52,7 @@ const Layouts: Readonly<Record<WorkspaceName, XuiDockManagerLayout>> = {
     stack
   ),
   // There is no mesh, so the map leads and a shape only previews it.
-  'layered-material': root(
-    sources,
-    across(4, pane('atlas', '2D View', 3), pane('viewport', 'Preview', 2)),
-    stack
-  ),
+  'layered-material': root(sources, across(4, pane('atlas', '2D View', 3), pane('viewport', 'Preview', 2)), stack),
   'image-material': root(library, pane('image', 'Maps', 1), pane('texture', 'Result', 3), inspector),
   // The canvas is the work; pictures of it are at the side.
   graph: root(

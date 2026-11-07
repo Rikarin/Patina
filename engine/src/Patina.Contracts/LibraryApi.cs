@@ -142,6 +142,21 @@ public sealed record ProjectDocumentRequest(
 /// <param name="Role"><c>material</c>, <c>mask</c>, <c>brush</c> or <c>filter</c>.</param>
 public sealed record ProjectDocumentRoleRequest(string Project, Guid Document, string Role);
 
+/// <summary>The body of <c>POST /api/v1/library/project/document/copy</c>.</summary>
+/// <param name="Project">The project, below <c>projects/</c>.</param>
+/// <param name="Document">The document.</param>
+/// <param name="Name">What the copy is called.</param>
+public sealed record ProjectDocumentCopyRequest(string Project, Guid Document, string Name);
+
+/// <summary>Whether a document has work autosaved after its last save.</summary>
+/// <param name="Saved">When it was kept, or null when there is nothing to recover.</param>
+public sealed record DocumentRecovery(DateTimeOffset? Saved);
+
+/// <summary>What to do with autosaved work, with the document closed.</summary>
+/// <param name="Path">The document, below the library.</param>
+/// <param name="Restore">True puts it in place of the file, and false forgets it.</param>
+public sealed record DocumentRecoveryRequest(string Path, bool Restore);
+
 /// <summary>A graph rendered to a picture a brush stamps.</summary>
 /// <param name="Alpha">The picture, relative to the project's stacks, as a brush names it.</param>
 public sealed record MaterialBrush(string Alpha);

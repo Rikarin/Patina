@@ -54,7 +54,12 @@ public sealed class StackEvaluator(
             new() { Type = IpcTypes.StackSave, StackSave = new(session.Id, null) },
             cancellationToken
         );
-        return session.FinishSave(text, revision);
+        var saved = session.FinishSave(text, revision);
+        if (identity.Library is { } library) {
+            Recovery.Clear(library, session.Path);
+        }
+
+        return saved;
     }
 
     /// <summary>
@@ -139,6 +144,16 @@ public sealed class StackEvaluator(
         } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
             throw new TimeoutException("No Worker reached this stack.");
         }
+    }
+
+    /// <summary>Writes a stack's pixels to a folder of autosaved work, leaving its files as they are.</summary>
+    public async Task KeepAsync(StackSession session, string folder, CancellationToken cancellationToken) {
+        await ReachedAsync(session, cancellationToken);
+        var connection = await ConnectionAsync(cancellationToken);
+        await connection.SendAsync(
+            new() { Type = IpcTypes.StackCheckpoint, StackSave = new(session.Id, folder) },
+            cancellationToken
+        );
     }
 
     /// <summary>Each fill of a stack alone, which the Worker keeps until the layer changes.</summary>

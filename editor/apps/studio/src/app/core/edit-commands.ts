@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
-import { desktop, type TextEdit } from './desktop';
 import { GraphStore } from '../graph/graph-store';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore } from '../paint/paint-store';
+import { desktop, type TextEdit } from './desktop';
 
 const TextFields = 'input, textarea, select, [contenteditable=true]';
 

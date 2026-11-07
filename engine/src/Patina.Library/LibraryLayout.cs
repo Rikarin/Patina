@@ -73,6 +73,8 @@ public static class LibraryLayout {
         Path.Combine(root, RevisionsFolder, revision.Hex[..2], revision.Hex);
 
     /// <summary>Node previews, content-addressed and rebuilt by evaluating (ADR 0005).</summary>
+    public static string AutosavePath(string root) => Path.Combine(root, CacheFolder, "autosave");
+
     public static string PaintPath(string root) => Path.Combine(root, CacheFolder, "paint");
 
     public static string PreviewsPath(string root) => Path.Combine(root, CacheFolder, "previews");

@@ -107,6 +107,44 @@ public sealed class LibraryFolderTests : IDisposable {
     }
 
     [Fact]
+    public void A_copy_of_a_stack_paints_on_its_own_file() {
+        var made = library.CreateProject(new("Crate"));
+        var folder = Path.Combine(root, "projects", made.Path);
+        var stack = new ProjectItem(AssetId.New(), DocumentKinds.LayeredMaterial, "crate.vxlayers", "Crate");
+        LibraryFiles.WriteDocument(root, made.Path, "sets:\n  - layers:\n    - paint: crate.a.vxpaint\n"u8, stack);
+        File.WriteAllText(Path.Combine(folder, "crate.a.vxpaint"), "paint");
+
+        var copy = library.CopyDocument(made.Path, stack.Id, "Crate Worn");
+
+        Assert.Equal("crate-worn.vxlayers", copy.File);
+        Assert.Contains(
+            "crate-worn.a.vxpaint",
+            File.ReadAllText(Path.Combine(folder, copy.File)),
+            StringComparison.Ordinal
+        );
+        Assert.Equal("paint", File.ReadAllText(Path.Combine(folder, "crate-worn.a.vxpaint")));
+        Assert.Contains(library.Contents(made.Path).Documents, static d => d.Name == "Crate Worn");
+    }
+
+    [Fact]
+    public void Autosaved_work_is_offered_until_it_is_restored_or_saved_over() {
+        var file = Path.Combine(root, "crate.vxlayers");
+        File.WriteAllText(file, "saved");
+        File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddMinutes(-5));
+        Assert.Null(Recovery.Newer(root, file));
+
+        File.WriteAllText(Directory.CreateDirectory(Recovery.Folder(root, file)).FullName + "/a.vxpaint", "pixels");
+        Recovery.Keep(root, file, "newer");
+        Assert.NotNull(Recovery.Newer(root, file));
+
+        Recovery.Restore(root, file);
+
+        Assert.Equal("newer", File.ReadAllText(file));
+        Assert.Equal("pixels", File.ReadAllText(Path.Combine(root, "a.vxpaint")));
+        Assert.Null(Recovery.Newer(root, file));
+    }
+
+    [Fact]
     public void A_colour_has_to_be_one() =>
         Assert.Throws<ProjectRefusedException>(() => library.CreateFolder(string.Empty, "Red", "red"));
 

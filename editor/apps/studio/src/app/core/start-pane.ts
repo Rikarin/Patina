@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
-import { ProjectStore } from '../library/project-store';
 import { LibraryStore } from '../library/library-store';
+import { ProjectStore } from '../library/project-store';
 import { desktop } from './desktop';
 
 const Kinds = [
@@ -44,11 +44,19 @@ const Kinds = [
           <button type="button" xuiButton color="primary" data-testid="start-new-library" (click)="newLibrary()">
             New Library…
           </button>
-          <button type="button" xuiButton data-testid="start-open-library" (click)="openLibrary()">Open Library…</button>
+          <button type="button" xuiButton data-testid="start-open-library" (click)="openLibrary()">
+            Open Library…
+          </button>
         </div>
       }
       @for (path of recent(); track path) {
-        <button type="button" class="hover:bg-selection px-3 py-1 text-sm" data-testid="start-recent" [title]="path" (click)="openRecent(path)">
+        <button
+          type="button"
+          class="hover:bg-selection px-3 py-1 text-sm"
+          data-testid="start-recent"
+          [title]="path"
+          (click)="openRecent(path)"
+        >
           {{ path }}
         </button>
       }

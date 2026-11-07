@@ -11,6 +11,9 @@ static partial class ServerLog {
     [LoggerMessage(Level = LogLevel.Error, Message = "Job {Job} failed: {Reason}")]
     public static partial void JobFailed(ILogger logger, string job, string reason);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not autosave {Path}: {Reason}")]
+    public static partial void AutosaveFailed(ILogger logger, string path, string reason);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Worker link lost: {Reason}")]
     public static partial void WorkerLost(ILogger logger, string reason);
 

@@ -155,6 +155,7 @@ export class ProjectStore {
       }
 
       await this.activate(document.path);
+      await this.offerRecovery(document.path);
     } catch (failure) {
       this.mutableFailure.set(messageOf(failure));
     }
@@ -284,6 +285,79 @@ export class ProjectStore {
       );
       this.mutableContents.update(all => new Map(all).set(project.path, contents));
       await this.paint.bindMesh(name);
+    } catch (failure) {
+      this.mutableFailure.set(messageOf(failure));
+    }
+  }
+
+  /** A name for Save As is being asked for. */
+  readonly savingAs = signal(false);
+
+  /** Autosaved work for the document in front, which is offered until it is taken or refused. */
+  readonly recoverable = signal<{ path: string; saved: string } | null>(null);
+
+  /** Saves what is in front, then carries on in a copy under a new name. */
+  async saveAs(name: string): Promise<void> {
+    const tab = this.active();
+    const project = tab?.project;
+    const document = this.documentOf(tab);
+    if (!project || !document?.id) {
+      return;
+    }
+
+    try {
+      await this.saveActive();
+      const client = await this.library.api();
+      const body = { project, document: document.id, name };
+      const contents = unwrap(await client.POST('/api/v1/library/project/document/copy', { body }));
+      this.mutableContents.update(all => new Map(all).set(project, contents));
+      const copy = contents.documents.at(-1);
+      this.library.refreshSoon();
+      if (copy) {
+        await this.openDocument(project, copy.path);
+      }
+    } catch (failure) {
+      this.mutableFailure.set(messageOf(failure));
+    }
+  }
+
+  private documentOf(tab: DocumentTab | undefined | null): ProjectDocumentInfo | undefined {
+    return tab?.project
+      ? this.mutableContents()
+          .get(tab.project)
+          ?.documents.find(held => held.path === tab.path)
+      : undefined;
+  }
+
+  /** Whether the document in front has work a crash left behind. */
+  private async offerRecovery(path: string): Promise<void> {
+    const client = await this.library.api();
+    const { data } = await client.GET('/api/v1/library/recovery', { params: { query: { path } } });
+    if (data?.saved) {
+      this.recoverable.set({ path, saved: data.saved });
+    }
+  }
+
+  /** Puts autosaved work back, or lets it go. The document closes for it and opens again. */
+  async resolveRecovery(restore: boolean): Promise<void> {
+    const offer = this.recoverable();
+    const project = this.active()?.project;
+    this.recoverable.set(null);
+    if (!offer) {
+      return;
+    }
+
+    try {
+      const client = await this.library.api();
+      const body = { path: offer.path, restore };
+      if (restore) {
+        await this.remove(offer.path, true);
+      }
+
+      unwrap(await client.POST('/api/v1/library/recovery', { body }));
+      if (restore && project) {
+        await this.openDocument(project, offer.path);
+      }
     } catch (failure) {
       this.mutableFailure.set(messageOf(failure));
     }

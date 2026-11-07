@@ -13,6 +13,7 @@ import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
+import { blendName, channelName } from '../core/labels';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { LiveValue } from './live-value';
@@ -108,7 +109,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
               [variant]="writes(layer, channel.usage) ? 'default' : 'ghost'"
               (click)="toggleChannel(layer, channel.usage)"
             >
-              {{ channel.usage }}
+              {{ channelName(channel.usage) }}
             </button>
           }
         </div>
@@ -219,7 +220,9 @@ export function hexOf(colour: readonly number[] | undefined): string {
             }
             @for (channel of store.state()?.channels ?? []; track channel.usage) {
               <div class="flex items-center gap-2">
-                <span class="text-foreground-muted w-20 shrink-0 truncate text-xs">{{ channel.usage }}</span>
+                <span class="text-foreground-muted w-20 shrink-0 truncate text-xs">{{
+                  channelName(channel.usage)
+                }}</span>
                 @switch (layer.fill) {
                   @case ('Constant') {
                     <input
@@ -658,6 +661,8 @@ export class LayerPanel {
   }
 
   protected readonly hexOf = hexOf;
+  protected readonly channelName = channelName;
+  protected readonly blendName = blendName;
 
   /** The chosen layer's graph, which knows its own knobs. */
   private readonly shelf = signal<readonly MaterialInfo[]>([]);

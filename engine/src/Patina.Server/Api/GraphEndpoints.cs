@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
 using Patina.Ipc;
+using Patina.Library;
 using Patina.Server.Graphs;
 using Patina.Server.Stacks;
 
@@ -253,6 +254,7 @@ static class GraphEndpoints {
             var result = session.Save(force);
             sessions.Republish(session);
             if (host.Library is { } library) {
+                Recovery.Clear(library.RootPath, session.Path);
                 MaterialShelf.RefreshOpen(library, stacks);
             }
 

@@ -9,8 +9,17 @@ const Tools: readonly { id: PaintTool; label: string }[] = [
   { id: 'line', label: 'Line' },
   { id: 'path', label: 'Path' }
 ];
-const Mirrors: readonly string[] = ['none', 'x', 'y', 'z'];
-const Rotations: readonly string[] = ['fixed', 'along', 'random'];
+const Mirrors: readonly { value: string; label: string }[] = [
+  { value: 'none', label: 'Off' },
+  { value: 'x', label: 'X' },
+  { value: 'y', label: 'Y' },
+  { value: 'z', label: 'Z' }
+];
+const Rotations: readonly { value: string; label: string }[] = [
+  { value: 'fixed', label: 'Fixed' },
+  { value: 'along', label: 'Follow stroke' },
+  { value: 'random', label: 'Random' }
+];
 
 type NumberSetting = {
   [K in keyof BrushSettings]-?: NonNullable<BrushSettings[K]> extends number ? K : never;
@@ -24,7 +33,7 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number }[] = [
   { key: 'falloff', label: 'Softness', max: 1 },
   { key: 'angle', label: 'Angle', max: 6.28 },
   { key: 'positionJitter', label: 'Scatter', max: 1 },
-  { key: 'angleJitter', label: 'Turn jitter', max: 3.14 },
+  { key: 'angleJitter', label: 'Rotation jitter', max: 3.14 },
   { key: 'sizeJitter', label: 'Size jitter', max: 1 },
   { key: 'pressureSize', label: 'Pressure to size', max: 1 },
   { key: 'pressureFlow', label: 'Pressure to flow', max: 1 }
@@ -53,14 +62,16 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number }[] = [
     </div>
     <div class="flex items-center gap-2">
       <span class="text-foreground-muted w-16 shrink-0 text-xs">Mirror</span>
-      <xui-select
-        class="min-w-0 flex-1"
+      <select
+        class="well h-7 min-w-0 flex-1 px-1 text-sm"
         aria-label="Mirror"
         data-testid="paint-mirror"
-        [items]="mirrors"
-        [value]="store.mirror()"
-        (valueChange)="store.mirror.set(asMirror($event))"
-      />
+        (change)="store.mirror.set(asMirror(text($event)))"
+      >
+        @for (mirror of mirrors; track mirror.value) {
+          <option [value]="mirror.value" [selected]="mirror.value === store.mirror()">{{ mirror.label }}</option>
+        }
+      </select>
     </div>
     <div class="flex items-center gap-2">
       <span class="text-foreground-muted w-16 shrink-0 text-xs">Size</span>
@@ -94,15 +105,19 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number }[] = [
       />
     </div>
     <div class="flex items-center gap-1">
-      <span class="text-foreground-muted w-16 shrink-0 text-xs">Turn</span>
-      <xui-select
-        class="min-w-0 flex-1"
+      <span class="text-foreground-muted w-16 shrink-0 text-xs">Rotation</span>
+      <select
+        class="well h-7 min-w-0 flex-1 px-1 text-sm"
         aria-label="Brush rotation"
         data-testid="paint-rotation"
-        [items]="rotations"
-        [value]="store.brush().rotation"
-        (valueChange)="set('rotation', $event ?? 'fixed')"
-      />
+        (change)="set('rotation', text($event))"
+      >
+        @for (rotation of rotations; track rotation.value) {
+          <option [value]="rotation.value" [selected]="rotation.value === store.brush().rotation">
+            {{ rotation.label }}
+          </option>
+        }
+      </select>
     </div>
     @for (slider of sliders; track slider.key) {
       <div class="flex items-center gap-2">
@@ -118,6 +133,7 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number }[] = [
           [value]="store.brush()[slider.key]"
           (valueChange)="set(slider.key, $event)"
         />
+        <span class="readout w-10 shrink-0 text-end text-xs">{{ shown(slider.key) }}</span>
       </div>
     }
   `
@@ -128,6 +144,15 @@ export class BrushPanel {
   protected readonly mirrors = Mirrors;
   protected readonly rotations = Rotations;
   protected readonly sliders = Sliders;
+
+  /** What a slider stands at: angles in degrees and the rest as a percentage of what it holds. */
+  protected shown(key: NumberSetting): string {
+    const value = this.store.brush()[key];
+    return key === 'angle' || key === 'angleJitter'
+      ? `${Math.round((value * 180) / Math.PI)}°`
+      : `${Math.round(value * 100)}%`;
+  }
+
   protected readonly alphas = computed(() => {
     const named = this.store.vocabulary()?.alphas ?? ['Round'];
     const alpha = this.store.brush().alpha;

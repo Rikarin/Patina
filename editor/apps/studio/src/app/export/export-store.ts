@@ -26,6 +26,8 @@ export class ExportStore {
   private readonly currentId = signal<string | null>(null);
   private client: PatinaClient | null = null;
 
+  /** What the last export of an open stack wrote. */
+  readonly exported = signal<readonly string[]>([]);
   readonly presets = signal<readonly ExportPresetInfo[]>([]);
   readonly problems = signal<readonly string[]>([]);
   readonly preview = signal<BuildPreview | null>(null);
@@ -40,6 +42,15 @@ export class ExportStore {
   });
 
   /** Reads the presets this library can use. */
+  /** Writes each map of an open stack to a folder, from what is on screen, saved or not. */
+  async exportStack(id: string, folder: string): Promise<void> {
+    const client = await this.api();
+    const maps = unwrap(
+      await client.POST('/api/v1/stacks/{id}/export', { params: { path: { id } }, body: { folder } })
+    );
+    this.exported.set(maps.map(map => map.file ?? map.usage));
+  }
+
   async load(): Promise<void> {
     const list = unwrap(await (await this.api()).GET('/api/v1/export/presets'));
     this.presets.set(list.presets);

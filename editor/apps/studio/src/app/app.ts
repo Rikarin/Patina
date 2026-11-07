@@ -1,21 +1,25 @@
+import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { XuiDialogImports } from '@xui/dialog';
 import { type XuiDockManagerLayout, XuiDockManagerImports } from '@xui/dock-manager';
+import { XuiInputImports } from '@xui/input';
 import { BakePane } from './bake/bake-pane';
 import { BakeStore } from './bake/bake-store';
-import { ExportPane } from './export/export-pane';
 import { desktop } from './core/desktop';
 import { EditCommands } from './core/edit-commands';
+import { Shortcuts } from './core/shortcuts';
+import { StartPane } from './core/start-pane';
 import { SystemStatus } from './core/system-status';
+import { ViewOptions } from './core/view-options';
+import { keepLayout, layoutOf, resetLayout, showing } from './core/workspaces';
+import { ExportPane } from './export/export-pane';
 import { Inspector } from './graph/graph-inspector';
 import { GraphPane } from './graph/graph-pane';
 import { ImageMaterialPane } from './graph/image-material-pane';
 import { TextureView } from './graph/texture-view';
 import { LibraryPane } from './library/library-pane';
 import { ProjectStore } from './library/project-store';
-import { keepLayout, layoutOf, showing } from './core/workspaces';
-import { StartPane } from './core/start-pane';
 import { LayerStack } from './paint/layer-stack';
 import { MaterialShelf } from './paint/material-shelf';
 import { PaintAtlas } from './paint/paint-atlas';
@@ -33,7 +37,9 @@ import { ViewportPane } from './viewport/viewport-pane';
     Inspector,
     LayerStack,
     LibraryPane,
+    DatePipe,
     MaterialShelf,
+    XuiInputImports,
     PaintAtlas,
     PaintPane,
     StartPane,
@@ -44,7 +50,7 @@ import { ViewportPane } from './viewport/viewport-pane';
     XuiDockManagerImports
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'flex h-full flex-col' },
+  host: { class: 'flex h-full flex-col', '(document:keydown)': 'shortcuts.press($event)' },
   template: `
     <header class="chrome-bar window-drag flex h-10 shrink-0 items-center gap-2 px-3" [class.pl-20]="traffic()">
       <span class="shrink-0 font-semibold" data-testid="app-title" [title]="title()">Patina</span>
@@ -67,15 +73,31 @@ import { ViewportPane } from './viewport/viewport-pane';
             >
               {{ tab.name }}{{ tab.dirty ? ' •' : '' }}
             </button>
-            <button type="button" [attr.aria-label]="'Close ' + tab.name" data-testid="document-tab-close" (click)="project.closeTab(tab.path)">
+            <button
+              type="button"
+              [attr.aria-label]="'Close ' + tab.name"
+              data-testid="document-tab-close"
+              (click)="project.closeTab(tab.path)"
+            >
               ×
             </button>
           </div>
         }
       </div>
       <div class="flex shrink-0 items-center gap-1">
-        <button type="button" xuiButton size="sm" variant="ghost" data-testid="open-bake" (click)="baking.set(true)">Bake…</button>
-        <button type="button" xuiButton size="sm" variant="ghost" data-testid="open-export" (click)="exporting.set(true)">Export…</button>
+        <button type="button" xuiButton size="sm" variant="ghost" data-testid="open-bake" (click)="baking.set(true)">
+          Bake…
+        </button>
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          data-testid="open-export"
+          (click)="exporting.set(true)"
+        >
+          Export…
+        </button>
       </div>
     </header>
 
@@ -119,17 +141,15 @@ import { ViewportPane } from './viewport/viewport-pane';
       @let current = status.state();
       @switch (current.kind) {
         @case ('connecting') {
-          <span class="readout">Connecting to the Server…</span>
+          <span class="readout">Starting…</span>
         }
         @case ('online') {
           <span class="readout shrink-0">Patina {{ current.system.version }}</span>
           <span class="readout truncate">{{ current.system.library ?? 'No library open' }}</span>
-          <span class="readout shrink-0"
-            >Worker {{ current.system.worker.connected ? 'connected' : 'not connected' }}</span
-          >
+          <span class="readout shrink-0">GPU {{ current.system.worker.connected ? 'ready' : 'starting' }}</span>
         }
         @case ('offline') {
-          <span class="readout text-error truncate">Server unreachable: {{ current.reason }}</span>
+          <span class="readout text-error truncate">The engine stopped: {{ current.reason }}</span>
         }
       }
     </footer>
@@ -154,11 +174,97 @@ import { ViewportPane } from './viewport/viewport-pane';
       <xui-dialog-body data-testid="project-leaving">This document has changes that are not saved.</xui-dialog-body>
       <xui-dialog-footer>
         <button type="button" xuiButton variant="ghost" (click)="project.resolveClosing('cancel')">Cancel</button>
-        <button type="button" xuiButton variant="ghost" data-testid="project-discard" (click)="project.resolveClosing('discard')">
+        <button
+          type="button"
+          xuiButton
+          variant="ghost"
+          data-testid="project-discard"
+          (click)="project.resolveClosing('discard')"
+        >
           Don't Save
         </button>
-        <button type="button" xuiButton color="primary" data-testid="project-save" (click)="project.resolveClosing('save')">
+        <button
+          type="button"
+          xuiButton
+          color="primary"
+          data-testid="project-save"
+          (click)="project.resolveClosing('save')"
+        >
           Save
+        </button>
+      </xui-dialog-footer>
+    </xui-dialog>
+
+    <xui-dialog size="sm" title="Keyboard Shortcuts" [(open)]="keys">
+      <xui-dialog-body>
+        <div class="flex flex-col gap-1" data-testid="shortcuts">
+          @for (shortcut of shortcuts.all(); track shortcut.id) {
+            <div class="flex items-center gap-2">
+              <span class="min-w-0 flex-1 text-sm">{{ shortcut.label }}</span>
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                [attr.aria-label]="'Change the key for ' + shortcut.label"
+                (keydown)="bind($event, shortcut.id)"
+              >
+                {{ shortcut.key.toUpperCase() }}
+              </button>
+            </div>
+          }
+        </div>
+      </xui-dialog-body>
+      <xui-dialog-footer>
+        <button type="button" xuiButton variant="ghost" (click)="shortcuts.reset()">Reset</button>
+      </xui-dialog-footer>
+    </xui-dialog>
+
+    <xui-dialog size="sm" title="Save As" [open]="project.savingAs()" (openChange)="project.savingAs.set($event)">
+      <form (submit)="saveAs($event, saveName.value)">
+        <xui-dialog-body>
+          <input
+            #saveName
+            class="w-full"
+            xuiInput
+            aria-label="New name"
+            autocomplete="off"
+            data-testid="save-as-name"
+          />
+        </xui-dialog-body>
+        <xui-dialog-footer>
+          <button type="button" xuiButton variant="ghost" (click)="project.savingAs.set(false)">Cancel</button>
+          <button type="submit" xuiButton color="primary" data-testid="save-as-save">Save</button>
+        </xui-dialog-footer>
+      </form>
+    </xui-dialog>
+
+    <xui-dialog
+      size="sm"
+      title="Recover unsaved work?"
+      [open]="project.recoverable() !== null"
+      (openChange)="$event || project.resolveRecovery(false)"
+    >
+      <xui-dialog-body data-testid="app-recovery">
+        Patina kept work on this document that was never saved, from {{ project.recoverable()?.saved | date: 'short' }}.
+      </xui-dialog-body>
+      <xui-dialog-footer>
+        <button
+          type="button"
+          xuiButton
+          variant="ghost"
+          data-testid="recovery-discard"
+          (click)="project.resolveRecovery(false)"
+        >
+          Discard
+        </button>
+        <button
+          type="button"
+          xuiButton
+          color="primary"
+          data-testid="recovery-restore"
+          (click)="project.resolveRecovery(true)"
+        >
+          Restore
         </button>
       </xui-dialog-footer>
     </xui-dialog>
@@ -169,7 +275,9 @@ import { ViewportPane } from './viewport/viewport-pane';
       [open]="project.quitting()"
       (openChange)="$event || project.resolveQuitting('cancel')"
     >
-      <xui-dialog-body data-testid="app-quitting">{{ project.unsavedTabs().length }} document(s) have unsaved changes.</xui-dialog-body>
+      <xui-dialog-body data-testid="app-quitting"
+        >{{ project.unsavedTabs().length }} document(s) have unsaved changes.</xui-dialog-body
+      >
       <xui-dialog-footer>
         <button type="button" xuiButton variant="ghost" (click)="project.resolveQuitting('cancel')">Cancel</button>
         <button type="button" xuiButton variant="ghost" (click)="project.resolveQuitting('discard')">Don't Save</button>
@@ -183,6 +291,9 @@ export class App {
   protected readonly project = inject(ProjectStore);
   private readonly bakes = inject(BakeStore);
   private readonly edit = inject(EditCommands);
+  private readonly options = inject(ViewOptions);
+  protected readonly shortcuts = inject(Shortcuts);
+  protected readonly keys = signal(false);
   protected readonly baking = signal(false);
   protected readonly exporting = signal(false);
   /** The layout of what is in front. Each kind of document keeps its own (ADR 0012). */
@@ -190,7 +301,13 @@ export class App {
   /** What is open, which is also what the window says. */
   protected readonly title = computed(() => {
     const state = this.status.state();
-    const library = state.kind === 'online' ? state.system.library?.split(/[\\/]/).pop()?.replace(/\.ptlib$/, '') : null;
+    const library =
+      state.kind === 'online'
+        ? state.system.library
+            ?.split(/[\\/]/)
+            .pop()
+            ?.replace(/\.ptlib$/, '')
+        : null;
     const name = this.project.active()?.name;
     const dirty = this.project.active()?.dirty ? ' •' : '';
     return [name ? `${name}${dirty}` : null, library].filter(Boolean).join(' — ');
@@ -224,12 +341,37 @@ export class App {
 
       if (command === 'save') {
         void this.project.saveActive();
+      } else if (command === 'saveAs') {
+        this.project.savingAs.set(true);
+      } else if (command === 'toggleStats') {
+        this.options.toggleStats();
+      } else if (command === 'resetLayout') {
+        this.layout.set(resetLayout(this.project.workspace()));
+      } else if (command === 'shortcuts') {
+        this.keys.set(true);
       }
     });
     if (bridge) {
       effect(() => {
         bridge.setTitle(this.title());
       });
+    }
+  }
+
+  /** The next key pressed in a row of the shortcuts dialog becomes that row's. */
+  protected bind(event: KeyboardEvent, id: string): void {
+    if (event.key.length === 1) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.shortcuts.rebind(id, event.key);
+    }
+  }
+
+  protected saveAs(event: Event, name: string): void {
+    event.preventDefault();
+    if (name.trim()) {
+      this.project.savingAs.set(false);
+      void this.project.saveAs(name.trim());
     }
   }
 

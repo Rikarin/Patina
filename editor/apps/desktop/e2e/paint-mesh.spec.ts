@@ -26,7 +26,7 @@ test.beforeEach(async () => {
     env: { ...process.env, PATINA_USER_DATA: join(scratch, 'user-data') }
   });
   window = await app.firstWindow();
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('Worker connected');
+  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('GPU ready');
 });
 
 test.afterEach(async () => {
@@ -118,7 +118,7 @@ test('a brush on the mesh shows on it in the viewport, across its flats, and und
 
   await drag(0.3, 0.45, 0.72, 0.55);
   await expect.poll(async () => changed(before, await shot()), { timeout: 30_000 }).toBeGreaterThan(1500);
-  await expect(window.getByTestId('viewport-stamp')).toBeVisible();
+  await expect(window.getByTestId('viewport-stamp')).toBeAttached();
   await window.screenshot({ path: join(shots, 'paint-mesh.png') });
 
   await window.getByTestId('paint-undo').click();

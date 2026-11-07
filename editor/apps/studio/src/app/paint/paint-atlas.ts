@@ -10,7 +10,10 @@ import { StrokeGesture } from './stroke-gesture';
   selector: 'ptn-paint-atlas',
   imports: [XuiButtonImports, XuiNonIdealStateImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'relative flex h-full min-h-0 items-center justify-center overflow-hidden p-2' },
+  host: {
+    class: 'relative flex h-full min-h-0 items-center justify-center overflow-hidden p-2',
+    '(document:keydown.escape)': 'gesture.cancel()'
+  },
   template: `
     @if (tiling()) {
       <button

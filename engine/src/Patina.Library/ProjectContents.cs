@@ -149,6 +149,44 @@ static class ProjectFiles {
         }
     }
 
+    /// <summary>
+    ///     A new document with another's content, as Save As and Duplicate make. A stack's paint is copied with it and
+    ///     renamed, or two stacks would paint on one file.
+    /// </summary>
+    /// <exception cref="FileNotFoundException">The project or document is not there.</exception>
+    /// <exception cref="ProjectRefusedException">The name cannot be used, or is taken.</exception>
+    public static ProjectItem Copy(string root, string path, AssetId id, string name) {
+        var (full, document) = Project(root, path);
+        var item = document.Documents.FirstOrDefault(d => d.Id == id)
+            ?? throw new FileNotFoundException($"This project has no document {id}.");
+        var slug = NewProjects.Slug(name);
+        var file = slug + Path.GetExtension(item.File);
+        if (slug.Length == 0 || File.Exists(Path.Combine(full, file))) {
+            throw new ProjectRefusedException($"'{name}' cannot be used here.");
+        }
+
+        var stem = Path.GetFileNameWithoutExtension(item.File);
+        var text = File.ReadAllText(Path.Combine(full, item.File));
+        foreach (var paint in StackInputs.PaintsOf(item.File, text)) {
+            var renamed = paint.Replace(stem, slug, StringComparison.Ordinal);
+            if (File.Exists(Path.Combine(full, paint))) {
+                File.Copy(Path.Combine(full, paint), Path.Combine(full, renamed));
+            }
+
+            text = text.Replace(paint, renamed, StringComparison.Ordinal);
+        }
+
+        LibraryFiles.Replace(Path.Combine(full, file), text);
+        var bake = GraphMeshMaps.FileOf(Path.Combine(full, item.File));
+        if (File.Exists(bake)) {
+            File.Copy(bake, GraphMeshMaps.FileOf(Path.Combine(full, file)));
+        }
+
+        var copy = item with { Id = AssetId.New(), File = file, Name = name };
+        LibraryFiles.WriteProject(root, path, document with { Documents = [..document.Documents, copy] });
+        return copy;
+    }
+
     /// <summary>Says what a graph is for.</summary>
     public static ProjectItem SetRole(string root, string path, AssetId id, string role) {
         var (_, document) = Project(root, path);

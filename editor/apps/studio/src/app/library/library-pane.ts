@@ -279,7 +279,7 @@ export class LibraryPane {
   protected readonly canPick = desktop() !== undefined;
   protected readonly noLibraryText = this.canPick
     ? "A library holds one game's projects, and anything in one can be used in another."
-    : 'This Server was started without a library.';
+    : 'No library is open.';
   protected readonly recent = signal<readonly string[]>([]);
   /** The tree is the Library's home; a search or a tag looks across every folder instead. */
   protected readonly showsTree = computed(() => {

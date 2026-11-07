@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal } from '@angular/core';
 import type { StackLayer } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
+import { blendName } from '../core/labels';
 import { ProjectStore } from '../library/project-store';
 import { type DropZone, dropManyCommands } from './layer-drag';
 import { hexOf } from './layer-panel';
@@ -19,8 +20,6 @@ const MaskMarks: Readonly<Record<string, string>> = {
   Bake: 'B',
   Paint: 'P'
 };
-
-const BlendNames: Readonly<Record<string, string>> = { Copy: 'Normal', LinearDodge: 'Add', HardLight: 'Hard Light' };
 
 interface MenuAt {
   x: number;
@@ -499,7 +498,7 @@ export class LayerStack {
   }
 
   protected blendName(layer: StackLayer): string {
-    return BlendNames[layer.blend] ?? layer.blend;
+    return blendName(layer.blend);
   }
 
   protected percent(layer: StackLayer): number {

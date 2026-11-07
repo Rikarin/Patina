@@ -74,6 +74,15 @@ static class LibraryTreeEndpoints {
         library.MapPatch("/project/document/role", SetDocumentRole)
             .Described("SetDocumentRole", "Says what a graph is for: a material, a mask, a brush or a filter.");
 
+        library.MapPost("/project/document/copy", CopyDocument)
+            .Described("CopyDocument", "Makes a new document with another's content, as Save As and Duplicate do.");
+
+        library.MapGet("/recovery", GetRecovery)
+            .Described("GetRecovery", "Whether a document has work autosaved after its last save.");
+
+        library.MapPost("/recovery", Recover)
+            .Described("RecoverDocument", "Restores or forgets autosaved work. The document has to be closed.");
+
         library.MapPatch("/project", RenameProject)
             .Described("RenameProject", "Gives a project a new display name. Its folder stays.");
     }
@@ -406,6 +415,51 @@ static class LibraryTreeEndpoints {
             }
         }
     }
+
+    static Results<Ok<ProjectContents>, ProblemHttpResult> CopyDocument(
+        LibraryHost host,
+        ProjectDocumentCopyRequest request
+    ) =>
+        Guarded(
+            host,
+            library => {
+                library.CopyDocument(request.Project, new(request.Document), request.Name);
+                host.RequestRescan();
+                return TypedResults.Ok(library.Contents(request.Project));
+            }
+        );
+
+    static Results<Ok<DocumentRecovery>, ProblemHttpResult> GetRecovery(LibraryHost host, string path) =>
+        Guarded(
+            host,
+            library => TypedResults.Ok(
+                new DocumentRecovery(Recovery.Newer(library.RootPath, Path.GetFullPath(path, library.RootPath)))
+            )
+        );
+
+    static Results<Ok<DocumentRecovery>, ProblemHttpResult> Recover(
+        LibraryHost host,
+        StackSessions stacks,
+        GraphSessions graphs,
+        DocumentRecoveryRequest request
+    ) =>
+        Guarded(
+            host,
+            library => {
+                var file = Path.GetFullPath(request.Path, library.RootPath);
+                if (stacks.All.Any(open => open.Path == file) || graphs.All.Any(open => open.Path == file)) {
+                    throw new ProjectRefusedException("Close the document first.");
+                }
+
+                if (request.Restore) {
+                    Recovery.Restore(library.RootPath, file);
+                } else {
+                    Recovery.Clear(library.RootPath, file);
+                }
+
+                return TypedResults.Ok(new DocumentRecovery(null));
+            }
+        );
 
     static Results<Ok<ProjectContents>, ProblemHttpResult> RenameProject(
         LibraryHost host,

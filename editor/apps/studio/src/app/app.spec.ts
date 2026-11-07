@@ -58,7 +58,7 @@ describe('App', () => {
     const status = element.querySelector('footer[role=status]')?.textContent;
     expect(status).toContain('Patina 1.2.3');
     expect(status).toContain('/games/Ember.ptlib');
-    expect(status).toContain('Worker not connected');
+    expect(status).toContain('GPU starting');
   });
 
   it('says so when no library is open', async () => {

@@ -1,22 +1,22 @@
 import {
-  BrowserWindow,
-  type IpcMainEvent,
-  type IpcMainInvokeEvent,
-  type OpenDialogOptions,
   app,
+  BrowserWindow,
   dialog,
   ipcMain,
   net,
   protocol,
   session,
-  shell
+  shell,
+  type IpcMainEvent,
+  type IpcMainInvokeEvent,
+  type OpenDialogOptions
 } from 'electron';
-import { LibraryPlace, type LibraryChoice } from './libraries';
-import { installMenu } from './menu';
 import { existsSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { contentSecurityPolicy } from './csp';
+import { LibraryPlace, type LibraryChoice } from './libraries';
+import { installMenu } from './menu';
 import { Sidecars } from './sidecars';
 
 // Patina desktop: the studio in a sandboxed window, and the backend (patina-server + patina-worker) as supervised
@@ -93,9 +93,7 @@ let quitConfirmed = false;
 
 function backend(): Sidecars {
   // PATINA_LIBRARY is for scripts and tests. People get the library they last had open.
-  sidecars ??= new Sidecars(startingLibrary(), statuses =>
-    window?.webContents.send('patina:sidecars', statuses)
-  );
+  sidecars ??= new Sidecars(startingLibrary(), statuses => window?.webContents.send('patina:sidecars', statuses));
   return sidecars;
 }
 
@@ -107,7 +105,7 @@ function startingLibrary(): string | null {
     return null;
   }
 
-  return asked || places().last();
+  return asked || askedToOpen || places().last();
 }
 
 let libraryPlaces: LibraryPlace | null = null;
@@ -347,7 +345,31 @@ function handleIpc(): void {
   });
 }
 
-app.on('second-instance', () => {
+/** A library the system asked to open before there was a window to open it in. */
+let askedToOpen: string | null = process.argv.find(argument => argument.endsWith('.ptlib')) ?? null;
+
+function openFromSystem(path: string): void {
+  if (!LibraryPlace.isLibrary(path)) {
+    dialog.showErrorBox('This is not a library', `${path} has no library.yaml.`);
+  } else if (window) {
+    void openLibrary({ path, create: false });
+  } else {
+    askedToOpen = path;
+  }
+}
+
+// Finder double-clicks arrive here, and may do so before the app is ready.
+app.on('open-file', (event, path) => {
+  event.preventDefault();
+  openFromSystem(path);
+});
+
+app.on('second-instance', (_event, argv) => {
+  const library = argv.find(argument => argument.endsWith('.ptlib'));
+  if (library) {
+    openFromSystem(library);
+  }
+
   if (window) {
     if (window.isMinimized()) {
       window.restore();

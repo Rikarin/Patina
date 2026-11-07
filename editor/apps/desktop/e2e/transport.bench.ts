@@ -182,7 +182,7 @@ test('frames to a canvas over the WebSocket', async () => {
     env: { ...process.env, PATINA_USER_DATA: join(scratch, 'user-data') }
   });
   const window = await app.firstWindow();
-  await window.getByRole('status', { name: 'Server status' }).getByText('Worker connected').waitFor();
+  await window.getByRole('status', { name: 'Server status' }).getByText('GPU ready').waitFor();
   // A blank page, so the pane's own subscriber is not part of the numbers. The preload still runs there.
   await window.goto('about:blank');
   await window.reload();

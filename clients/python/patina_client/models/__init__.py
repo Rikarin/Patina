@@ -9,6 +9,8 @@ from .baked_map_file import BakedMapFile
 from .build_preview import BuildPreview
 from .build_preview_project import BuildPreviewProject
 from .build_request import BuildRequest
+from .document_recovery import DocumentRecovery
+from .document_recovery_request import DocumentRecoveryRequest
 from .export_preset_file import ExportPresetFile
 from .export_preset_info import ExportPresetInfo
 from .export_preset_list import ExportPresetList
@@ -112,6 +114,7 @@ from .output_report import OutputReport
 from .problem_details import ProblemDetails
 from .project_contents import ProjectContents
 from .project_create_request import ProjectCreateRequest
+from .project_document_copy_request import ProjectDocumentCopyRequest
 from .project_document_info import ProjectDocumentInfo
 from .project_document_mesh_request import ProjectDocumentMeshRequest
 from .project_document_request import ProjectDocumentRequest
@@ -207,6 +210,8 @@ __all__ = (
     "BuildPreview",
     "BuildPreviewProject",
     "BuildRequest",
+    "DocumentRecovery",
+    "DocumentRecoveryRequest",
     "ExportPresetFile",
     "ExportPresetInfo",
     "ExportPresetList",
@@ -310,6 +315,7 @@ __all__ = (
     "ProblemDetails",
     "ProjectContents",
     "ProjectCreateRequest",
+    "ProjectDocumentCopyRequest",
     "ProjectDocumentInfo",
     "ProjectDocumentMeshRequest",
     "ProjectDocumentRequest",

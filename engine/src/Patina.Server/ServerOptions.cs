@@ -2,6 +2,9 @@ namespace Patina.Server;
 
 /// <summary>Configuration section <c>Patina</c>.</summary>
 public sealed class ServerOptions {
+    /// <summary>How often what is open and unsaved is kept.</summary>
+    public int AutosaveSeconds { get; set; } = 60;
+
     /// <summary>
     ///     Access token every request must present (<c>Authorization: Bearer</c>). Without one, a Server with a library
     ///     makes its own, since the discovery file must offer one; a Server with no library is a development Server and

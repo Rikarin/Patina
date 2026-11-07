@@ -24,7 +24,7 @@ test.beforeEach(async () => {
     env: { ...process.env, PATINA_USER_DATA: join(scratch, 'user-data') }
   });
   window = await app.firstWindow();
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('Worker connected');
+  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('GPU ready');
   await newLibrary(app, window, join(scratch, 'Game.ptlib'));
   await newProject(app, window, 'Housing', join(scratch, 'meshes', 'housing_low.glb'));
 });
@@ -41,6 +41,8 @@ async function choose(field: string, path: string): Promise<void> {
 }
 
 test('a bake runs from the panel and its maps show in the Texture pane', async () => {
+  // A real bake on a CI runner takes minutes, and the test's own limit would cut it off first.
+  test.setTimeout(300_000);
   const output = join(scratch, 'maps');
 
   await window.getByTestId('open-bake').click();
@@ -49,7 +51,7 @@ test('a bake runs from the panel and its maps show in the Texture pane', async (
   await choose('output', output);
   await window.getByTestId('bake-start').click();
 
-  await expect(window.getByTestId('bake-state')).toHaveText('done', { timeout: 120_000 });
+  await expect(window.getByTestId('bake-state')).toHaveText('done', { timeout: 240_000 });
   await expect(window.getByTestId('bake-percent')).toHaveText('100%');
 
   // The results are files where they were asked for, whatever the panel shows of them.

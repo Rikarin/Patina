@@ -100,6 +100,7 @@ builder.Services.AddSingleton(static services => new BakeCache(
     )
 );
 builder.Services.AddHostedService<JobRunner>();
+builder.Services.AddHostedService<Autosave>();
 builder.Services.AddHostedService<DiscoveryPublisher>();
 
 var app = builder.Build();

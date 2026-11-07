@@ -15,6 +15,7 @@ import { desktop } from '../core/desktop';
 import { GraphStore } from '../graph/graph-store';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore, pressureOf } from '../paint/paint-store';
+import { ViewOptions } from '../core/view-options';
 import { StrokeGesture } from '../paint/stroke-gesture';
 import { FramePainter } from './frame-painter';
 import type { ViewportFrame } from './frame-transport';
@@ -27,7 +28,7 @@ import { ViewportClient } from './viewport-client';
   imports: [XuiButtonImports],
   providers: [ViewportClient],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'flex h-full min-h-0 flex-col' },
+  host: { class: 'flex h-full min-h-0 flex-col', '(document:keydown.escape)': 'gesture.cancel()' },
   template: `
     <div class="chrome-bar flex h-9 shrink-0 items-center gap-2 px-2">
       @if (!paint.worn()) {
@@ -63,12 +64,12 @@ import { ViewportClient } from './viewport-client';
       }
       <span class="flex-1"></span>
       @if (stampMs() !== null) {
-        <span class="readout" data-testid="viewport-stamp" [attr.data-stamp-ms]="stampTimes()">
+        <span class="readout" [class.hidden]="!options.stats()" data-testid="viewport-stamp" [attr.data-stamp-ms]="stampTimes()">
           stamp {{ stampMs() }} ms
         </span>
       }
       @if (viewport.stats(); as stats) {
-        <span class="readout" data-testid="viewport-stats">
+        <span class="readout" data-testid="viewport-stats" [class.hidden]="!options.stats()">
           {{ stats.width }}×{{ stats.height }} · {{ stats.fps }} fps · {{ stats.latencyMs.toFixed(0) }} ms
         </span>
       }
@@ -132,6 +133,7 @@ export class ViewportPane implements AfterViewInit {
   protected readonly painting = signal(false);
   /** Where the brush is over the canvas, in the units of a stroke. */
   protected readonly brushAt = signal<{ x: number; y: number } | null>(null);
+  protected readonly options = inject(ViewOptions);
   protected readonly gesture = new StrokeGesture(this.paint, () => this.aim());
   protected readonly curve = computed(() =>
     this.gesture

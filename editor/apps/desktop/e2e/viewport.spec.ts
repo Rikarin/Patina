@@ -84,7 +84,7 @@ async function colours(): Promise<{ gold: number; red: number; total: number }> 
 }
 
 test('a glTF opened in the docked viewport shows up lit, and a drag orbits it', async () => {
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('Worker connected');
+  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('GPU ready');
   await expect(window.locator('html')).toHaveAttribute('data-skin', 'bezel');
 
   await openMesh();
@@ -142,5 +142,5 @@ test('killing the Worker keeps the view, and frames come back from its successor
     )
     .toBeGreaterThan(before);
   console.warn(`S5: a frame from the new Worker ${Date.now() - killed} ms after the kill`);
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('Worker connected');
+  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('GPU ready');
 });

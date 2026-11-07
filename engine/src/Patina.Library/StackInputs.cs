@@ -39,6 +39,12 @@ public static class StackInputs {
         return [..found];
     }
 
+    /// <summary>The paint files a stack names, as paths beside it.</summary>
+    public static IReadOnlyList<string> PaintsOf(string stack, string text) =>
+        stack.EndsWith(Extension, StringComparison.Ordinal)
+            ? [..Of(stack, text).Where(static name => name.EndsWith(PaintExtension, StringComparison.Ordinal))]
+            : [];
+
     /// <summary>Refuses a stack whose paint would be read from outside its folder.</summary>
     /// <exception cref="InvalidDataException">One is.</exception>
     public static void CheckPaint(string stack, string text) {

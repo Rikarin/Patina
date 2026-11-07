@@ -426,6 +426,15 @@ public sealed class GraphSession : FollowedSession<GraphEvent>, IFileSession {
         }
     }
 
+    /// <summary>The document as it stands.</summary>
+    public string Text {
+        get {
+            lock (Changing) {
+                return GraphDocuments.Text(editor.Document);
+            }
+        }
+    }
+
     /// <summary>Why the last evaluation failed, if it did.</summary>
     public string? EvaluationError {
         get {

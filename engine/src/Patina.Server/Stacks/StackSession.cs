@@ -231,6 +231,15 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         }
     }
 
+    /// <summary>The document as it stands.</summary>
+    public string Text {
+        get {
+            lock (Changing) {
+                return StackDocuments.Text(editor.Document);
+            }
+        }
+    }
+
     /// <summary>The evaluation that last failed and has not been followed by a good one, if there is one.</summary>
     public string? EvaluationError {
         get {

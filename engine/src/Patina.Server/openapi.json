@@ -1813,6 +1813,187 @@
         }
       }
     },
+    "/api/v1/library/project/document/copy": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Makes a new document with another\u0027s content, as Save As and Duplicate do.",
+        "operationId": "CopyDocument",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectDocumentCopyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/recovery": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Whether a document has work autosaved after its last save.",
+        "operationId": "GetRecovery",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentRecovery"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Restores or forgets autosaved work. The document has to be closed.",
+        "operationId": "RecoverDocument",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentRecoveryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentRecovery"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/materials": {
       "get": {
         "tags": [
@@ -4589,6 +4770,38 @@
           }
         },
         "description": "What to build."
+      },
+      "DocumentRecovery": {
+        "type": "object",
+        "properties": {
+          "saved": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When it was kept, or null when there is nothing to recover.",
+            "format": "date-time"
+          }
+        },
+        "description": "Whether a document has work autosaved after its last save."
+      },
+      "DocumentRecoveryRequest": {
+        "required": [
+          "path",
+          "restore"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The document, below the library."
+          },
+          "restore": {
+            "type": "boolean",
+            "description": "True puts it in place of the file, and false forgets it."
+          }
+        },
+        "description": "What to do with autosaved work, with the document closed."
       },
       "ExportPresetFile": {
         "required": [
@@ -7436,6 +7649,30 @@
           }
         },
         "description": "The body of \u0060POST /api/v1/library/projects\u0060."
+      },
+      "ProjectDocumentCopyRequest": {
+        "required": [
+          "project",
+          "document",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "document": {
+            "type": "string",
+            "description": "The document.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "What the copy is called."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/project/document/copy\u0060."
       },
       "ProjectDocumentInfo": {
         "required": [

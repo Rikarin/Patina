@@ -486,6 +486,41 @@ export interface paths {
     patch: operations['SetDocumentRole'];
     trace?: never;
   };
+  '/api/v1/library/project/document/copy': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Makes a new document with another's content, as Save As and Duplicate do. */
+    post: operations['CopyDocument'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/recovery': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Whether a document has work autosaved after its last save. */
+    get: operations['GetRecovery'];
+    put?: never;
+    /** Restores or forgets autosaved work. The document has to be closed. */
+    post: operations['RecoverDocument'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/materials': {
     parameters: {
       query?: never;
@@ -1466,6 +1501,21 @@ export interface components {
       presets?: null | string[];
       /** @description Where exports go, or null for `exports/` in the library. */
       folder?: null | string;
+    };
+    /** @description Whether a document has work autosaved after its last save. */
+    DocumentRecovery: {
+      /**
+       * Format: date-time
+       * @description When it was kept, or null when there is nothing to recover.
+       */
+      saved?: null | string;
+    };
+    /** @description What to do with autosaved work, with the document closed. */
+    DocumentRecoveryRequest: {
+      /** @description The document, below the library. */
+      path: string;
+      /** @description True puts it in place of the file, and false forgets it. */
+      restore: boolean;
     };
     /** @description One file of a preset, as a client shows it. */
     ExportPresetFile: {
@@ -2632,6 +2682,18 @@ export interface components {
       image?: null | string;
       /** @description The detailed mesh it bakes from, on the Server's machine. */
       high?: null | string;
+    };
+    /** @description The body of `POST /api/v1/library/project/document/copy`. */
+    ProjectDocumentCopyRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /**
+       * Format: uuid
+       * @description The document.
+       */
+      document: string;
+      /** @description What the copy is called. */
+      name: string;
     };
     /** @description Something in a project that can be opened and edited (ADR 0012). */
     ProjectDocumentInfo: {
@@ -5211,6 +5273,157 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  CopyDocument: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectDocumentCopyRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetRecovery: {
+    parameters: {
+      query: {
+        path: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DocumentRecovery'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  RecoverDocument: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['DocumentRecoveryRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DocumentRecovery'];
         };
       };
       /** @description Bad Request */

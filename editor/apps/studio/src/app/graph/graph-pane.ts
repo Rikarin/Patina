@@ -793,7 +793,7 @@ export class GraphCanvas {
           class="flex-1"
           title="This graph was closed"
           data-testid="graph-ended"
-          [description]="'Another client closed ' + session.name + '.'"
+          [description]="session.name + ' was closed in another window.'"
         >
           <button action type="button" xuiButton size="sm" (click)="store.reopen()">Open it again</button>
         </xui-non-ideal-state>

@@ -27,7 +27,7 @@ test('the app starts both sidecars and shows the shell', async () => {
   const status = window.getByRole('status', { name: 'Server status' });
 
   await expect(status).toContainText('No library open');
-  await expect(status).toContainText('Worker connected');
+  await expect(status).toContainText('GPU ready');
   for (const pane of ['Library', 'Start', 'Inspector']) {
     await expect(window.getByText(pane, { exact: true }).first()).toBeVisible();
   }

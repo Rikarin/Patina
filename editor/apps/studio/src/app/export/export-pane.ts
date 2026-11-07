@@ -3,7 +3,9 @@ import type { BuildRequest } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiSelectImports } from '@xui/select';
+import { desktop } from '../core/desktop';
 import { LibrarySelection } from '../library/library-selection';
+import { PaintStore } from '../paint/paint-store';
 import { ExportStore } from './export-store';
 
 /**
@@ -43,6 +45,18 @@ import { ExportStore } from './export-store';
 
       @for (problem of store.problems(); track problem) {
         <xui-callout intent="warning">{{ problem }}</xui-callout>
+      }
+
+      @if (paint.state(); as stack) {
+        <div class="well flex flex-col gap-2 p-2 text-xs" data-testid="export-document">
+          <span>This document's maps, as they are now.</span>
+          <button type="button" xuiButton size="sm" data-testid="export-stack" (click)="exportStack(stack.id)">
+            Export Maps…
+          </button>
+          @if (store.exported().length > 0) {
+            <span class="readout" data-testid="export-stack-done">{{ store.exported().length }} map(s) written</span>
+          }
+        </div>
       }
 
       <span class="text-foreground-muted text-xs" data-testid="export-scope">
@@ -140,6 +154,7 @@ import { ExportStore } from './export-store';
 })
 export class ExportPane implements OnInit {
   protected readonly store = inject(ExportStore);
+  protected readonly paint = inject(PaintStore);
   private readonly selection = inject(LibrarySelection);
   protected readonly preset = signal<string | null>(null);
   protected readonly error = signal<string | null>(null);
@@ -172,6 +187,18 @@ export class ExportPane implements OnInit {
       await this.store.load();
       this.preset.update(preset => preset ?? this.presetIds()[0] ?? null);
     });
+  }
+
+  /** Painted work reaches a file with no build behind it: the stack that is open, in a folder chosen now. */
+  protected async exportStack(id: string): Promise<void> {
+    const folder = await desktop()?.openFolder();
+    if (folder) {
+      try {
+        await this.store.exportStack(id, folder);
+      } catch (failure) {
+        this.error.set(failure instanceof Error ? failure.message : String(failure));
+      }
+    }
   }
 
   protected choose(preset: string | null): void {
