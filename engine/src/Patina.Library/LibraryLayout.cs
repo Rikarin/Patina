@@ -13,6 +13,12 @@ public static class LibraryLayout {
     /// <summary>Where paint is copied before a new mesh moves it, a folder per move. Nothing reads it.</summary>
     public const string PaintBackupFolder = ".paint-backup";
 
+    /// <summary>What a finished bake leaves beside its maps.</summary>
+    public const string BakeManifestFile = "bake.json";
+
+    /// <summary>What a picture the Server drew for a mesh mask is called, which is no picture of the user's.</summary>
+    public const string MeshMaskPrefix = "mesh-mask-";
+
     /// <exception cref="InvalidDataException">The name leaves the folder.</exception>
     public static string Beside(string folder, string name) {
         var root = Path.GetFullPath(folder);
@@ -82,6 +88,10 @@ public static class LibraryLayout {
     public static string AutosavePath(string root) => Path.Combine(root, CacheFolder, "autosave");
 
     public static string PaintPath(string root) => Path.Combine(root, CacheFolder, "paint");
+
+    /// <summary>Where this machine keeps the file a mesh came from, when that is outside the library.</summary>
+    public static string MeshSourcePath(string root, AssetId mesh) =>
+        Path.Combine(root, CacheFolder, "mesh-sources", mesh.Value.ToString("N"));
 
     public static string PreviewsPath(string root) => Path.Combine(root, CacheFolder, "previews");
 

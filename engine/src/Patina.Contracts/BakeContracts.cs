@@ -149,7 +149,8 @@ public sealed record JobPage(IReadOnlyList<JobState> Jobs, long Sequence);
 /// <param name="Name">The stem of the files' names.</param>
 /// <param name="Format">The format they are in.</param>
 /// <param name="Result">The maps, with paths relative to this file's folder.</param>
-public sealed record BakeManifest(string Name, string Format, BakeResult Result);
+/// <param name="Mesh">The digest of the mesh baked onto, which says when these maps went out of date.</param>
+public sealed record BakeManifest(string Name, string Format, BakeResult Result, string? Mesh = null);
 
 /// <summary>Says which folder of baked maps a graph's Mesh Map nodes read.</summary>
 /// <param name="Folder">A folder holding a bake's files, or null to read none.</param>

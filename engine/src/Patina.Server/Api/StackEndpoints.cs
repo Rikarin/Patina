@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
 using Patina.Ipc;
+using Patina.Library;
 using Patina.Server.Graphs;
 using Patina.Server.Stacks;
 using Patina.Server.Viewport;
@@ -215,7 +216,12 @@ static class StackEndpoints {
     static Results<Ok<StackState>, ProblemHttpResult> GetState(string id, StackSessions sessions) =>
         sessions.Find(id) is { } session ? TypedResults.Ok(session.State) : NoSession(id);
 
-    static Results<NoContent, ProblemHttpResult> Close(string id, StackSessions sessions, bool discard = false) {
+    static Results<NoContent, ProblemHttpResult> Close(
+        string id,
+        StackSessions sessions,
+        LibraryHost host,
+        bool discard = false
+    ) {
         var session = sessions.Find(id);
         if (session?.Summary.Dirty == true && !discard) {
             return TypedResults.Problem(
@@ -228,7 +234,12 @@ static class StackEndpoints {
             return NoSession(id);
         }
 
+        var thrownAway = session.Summary.Dirty;
         sessions.Close(session);
+        if (thrownAway && host.Library is { } library) {
+            Recovery.Clear(library.RootPath, session.Path); // or what was refused would be offered back
+        }
+
         return TypedResults.NoContent();
     }
 
@@ -369,7 +380,11 @@ static class StackEndpoints {
                 Encoding.UTF8.GetBytes($"{side}\n{string.Join('\n', request.Parts.Order(StringComparer.Ordinal))}")
             )
         )[..16];
-        var file = Path.Combine(Path.GetDirectoryName(session.Path)!, "pictures", $"mesh-mask-{name}.png");
+        var file = Path.Combine(
+            Path.GetDirectoryName(session.Path)!,
+            "pictures",
+            $"{LibraryLayout.MeshMaskPrefix}{name}.png"
+        );
         try {
             var connection = await worker.ConnectionAsync(cancellationToken);
             await connection.SendAsync(

@@ -10,7 +10,7 @@ namespace Patina.Jobs;
 /// </summary>
 public sealed class BakeCache(string root) {
     /// <summary>The name of the file in a bake's folder that says what is there.</summary>
-    public const string ManifestFile = "bake.json";
+    public const string ManifestFile = LibraryLayout.BakeManifestFile;
 
     /// <summary>The folder a bake's key names.</summary>
     public string FolderOf(string key) => Path.Combine(root, key);

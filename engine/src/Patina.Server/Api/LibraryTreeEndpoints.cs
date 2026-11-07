@@ -62,6 +62,12 @@ static class LibraryTreeEndpoints {
         library.MapPost("/project/meshes", AddMesh)
             .Described("AddProjectMesh", "Brings a mesh into a project, and its detailed mesh if it has one.");
 
+        library.MapGet("/project/mesh-change", GetMeshChange)
+            .Described(
+                "GetProjectMeshChange",
+                "Whether a mesh file differs from the one the project already has, so that reloading has work to do."
+            );
+
         library.MapPatch("/project/settings", ProjectSettingsEndpoint.SetAsync)
             .Described(
                 "SetProjectSettings",
@@ -70,6 +76,9 @@ static class LibraryTreeEndpoints {
 
         library.MapPost("/project/documents", AddDocument)
             .Described("AddProjectDocument", "Makes a document of a kind in a project.");
+
+        library.MapPost("/project/files", ImportFile)
+            .Described("ImportProjectFile", "Brings a mesh or a picture into a project. Anything else is refused.");
 
         library.MapPost("/project/pictures", AddPicture)
             .Described("AddProjectPicture", "Brings a picture into a project, for a layer or a mask to read.");
@@ -250,11 +259,28 @@ static class LibraryTreeEndpoints {
     static Results<Ok<ProjectContents>, ProblemHttpResult> GetProject(LibraryHost host, string path) =>
         Guarded(host, library => TypedResults.Ok(library.Contents(path)));
 
+    static Results<Ok<ProjectMeshChange>, ProblemHttpResult> GetMeshChange(
+        LibraryHost host,
+        string project,
+        string mesh
+    ) =>
+        Guarded(host, library => TypedResults.Ok(new ProjectMeshChange(library.MeshChanged(project, mesh))));
+
     static Results<Ok<ProjectContents>, ProblemHttpResult> AddMesh(LibraryHost host, ProjectMeshRequest request) =>
         Guarded(
             host,
             library => {
                 library.AddMesh(request.Project, request.Mesh, request.High);
+                host.RequestRescan();
+                return TypedResults.Ok(library.Contents(request.Project));
+            }
+        );
+
+    static Results<Ok<ProjectContents>, ProblemHttpResult> ImportFile(LibraryHost host, ProjectFileRequest request) =>
+        Guarded(
+            host,
+            library => {
+                library.Import(request.Project, request.File);
                 host.RequestRescan();
                 return TypedResults.Ok(library.Contents(request.Project));
             }
@@ -441,12 +467,24 @@ static class LibraryTreeEndpoints {
             }
         );
 
-    static Results<Ok<DocumentRecovery>, ProblemHttpResult> GetRecovery(LibraryHost host, string path) =>
+    /// <summary>
+    ///     Nothing while a session holds unsaved edits: autosave is only a copy of those, and answering an offer of it would
+    ///     close the session that has the real thing.
+    /// </summary>
+    static Results<Ok<DocumentRecovery>, ProblemHttpResult> GetRecovery(
+        LibraryHost host,
+        StackSessions stacks,
+        GraphSessions graphs,
+        string path
+    ) =>
         Guarded(
             host,
-            library => TypedResults.Ok(
-                new DocumentRecovery(Recovery.Newer(library.RootPath, Path.GetFullPath(path, library.RootPath)))
-            )
+            library => {
+                var file = Path.GetFullPath(path, library.RootPath);
+                var editing = stacks.All.Any(open => open.Path == file && open.Summary.Dirty)
+                    || graphs.All.Any(open => open.Path == file && open.Summary.Dirty);
+                return TypedResults.Ok(new DocumentRecovery(editing ? null : Recovery.Newer(library.RootPath, file)));
+            }
         );
 
     static Results<Ok<DocumentRecovery>, ProblemHttpResult> Recover(

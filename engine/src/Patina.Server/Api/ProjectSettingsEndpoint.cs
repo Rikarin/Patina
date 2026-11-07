@@ -35,6 +35,11 @@ static class ProjectSettingsEndpoint {
                 return TypedResults.Ok(before);
             }
 
+            // ⚠ Nothing below can improve on the same file, and all of it costs: the paint would be resampled.
+            if (request.High is null && request.AutoUnwrap is null && !library.MeshChanged(project, mesh)) {
+                return TypedResults.Ok(before);
+            }
+
             // ⚠ Bringing a file of the same name overwrites the old mesh, and the paint is still on its layout.
             var moving = before.PreservePaint && request.Mesh is not null && current is not null
                 ? KeepOld(Held(current.Path)!)
@@ -137,7 +142,7 @@ static class ProjectSettingsEndpoint {
         return kept;
     }
 
-    /// <summary>Puts each document's paint on the new layout, keeping a copy of what it was.</summary>
+    /// <summary>Puts each document's paint on the new layout. The Worker keeps a copy of what it moves.</summary>
     static async Task MovePaintAsync(
         OpenLibrary library,
         WorkerLink worker,
@@ -168,11 +173,6 @@ static class ProjectSettingsEndpoint {
                 continue;
             }
 
-            Directory.CreateDirectory(backup);
-            foreach (var paint in paints) {
-                File.Copy(paint, Path.Combine(backup, Path.GetFileName(paint)), true);
-            }
-
             await connection.SendAsync(
                 new() {
                     Type = IpcTypes.MeshMovePaint,
@@ -180,7 +180,8 @@ static class ProjectSettingsEndpoint {
                         from,
                         library.ProjectFile(project, to.File),
                         paints,
-                        document.Material ?? string.Empty
+                        document.Material ?? string.Empty,
+                        backup
                     )
                 },
                 cancellationToken
@@ -204,6 +205,6 @@ static class ProjectSettingsEndpoint {
             cancellationToken
         );
         var high = mesh.High is null ? null : library.ProjectFile(project, mesh.High);
-        return reply.MeshUnwrapped == true ? library.AddMesh(project, output, high, mesh.Source) : mesh;
+        return reply.MeshUnwrapped == true ? library.AddMesh(project, output, high, library.SourceOf(mesh)) : mesh;
     }
 }

@@ -1,8 +1,8 @@
 using Patina.Contracts;
 using Patina.Export;
 using Patina.Ipc;
-using System.Diagnostics;
 using Patina.Viewport;
+using System.Diagnostics;
 using Vixen.Interchange;
 using Vixen.Texturing.Painting;
 
@@ -158,11 +158,20 @@ sealed class WorkerLoop(
         }
     }
 
-    /// <summary>Uses no device either, and each file is replaced only when its new paint is whole.</summary>
+    /// <summary>
+    ///     Uses no device either, and each file is replaced only when its new paint is whole. A layout that did not change
+    ///     leaves the paint alone, since every move resamples it and costs a little sharpness.
+    /// </summary>
     IpcMessage MovePaint(IpcMessage request) {
         var ask = request.MeshMovePaint ?? throw new IpcException("mesh.move-paint moves nothing.");
         var (from, to) = (meshes.Of(ask.From, ask.Set).Projection, meshes.Of(ask.To, ask.Set).Projection);
+        if (PaintTransfer.SameLayout(from, to)) {
+            return IpcMessage.Ok(request.Id);
+        }
+
+        Directory.CreateDirectory(ask.Backup);
         foreach (var file in ask.Paints) {
+            File.Copy(file, Path.Combine(ask.Backup, Path.GetFileName(file)), true);
             PaintCanvas canvas;
             using (var read = File.OpenRead(file)) {
                 canvas = PaintCanvas.Read(read);

@@ -1,5 +1,5 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
-import { type ProjectContents, type ProjectDocumentInfo, unwrap } from '@patina/api-client';
+import { ApiError, type ProjectContents, type ProjectDocumentInfo, unwrap } from '@patina/api-client';
 import { BakeStore } from '../bake/bake-store';
 import { desktop } from '../core/desktop';
 import { SystemStatus } from '../core/system-status';
@@ -75,11 +75,15 @@ export class ProjectStore {
   private readonly mutableActive = signal<string | null>(null);
   private readonly mutableContents = signal<ReadonlyMap<string, ProjectContents>>(new Map());
   private readonly mutableFailure = signal<string | null>(null);
+  private readonly mutableNotice = signal<string | null>(null);
+  private readonly mutableReloading = signal<string | null>(null);
   private readonly mutableClosing = signal<string | null>(null);
   private readonly mutableQuitting = signal(false);
   private readonly mutableNewKind = signal<{ kind: string } | null>(null);
   /** The Project Settings dialog is up. */
   readonly settingsOpen = signal(false);
+  /** Why Project Settings could not apply. It is said in the dialog, which covers everything else. */
+  readonly settingsFailure = signal<string | null>(null);
   private readonly mutableUnwrapping = signal(false);
   /** A mesh is being given a UV layout, which can take a while on a large one. */
   readonly unwrapping = this.mutableUnwrapping.asReadonly();
@@ -92,6 +96,10 @@ export class ProjectStore {
   /** Goes up each time something asks for the Bake dialog. */
   readonly bakeAsked = this.mutableBakeAsked.asReadonly();
   readonly failure = this.mutableFailure.asReadonly();
+  /** The mesh file waiting on whether to reload it, which costs open documents their undo. */
+  readonly reloading = this.mutableReloading.asReadonly();
+  /** What just worked, when nothing on screen would show it. */
+  readonly notice = this.mutableNotice.asReadonly();
   /** The tab waiting on what to do with its unsaved edits. */
   readonly closing = this.mutableClosing.asReadonly();
   /** The app wants to quit and something is not saved. */
@@ -118,6 +126,8 @@ export class ProjectStore {
   });
   /** The model's texture sets, one document per material. A model with one material has none to choose. */
   readonly textureSets = computed(() => (this.current()?.documents ?? []).filter(document => document.material));
+  /** The bake layers read was made on a mesh the project no longer has. */
+  readonly bakeOutOfDate = computed(() => this.current()?.bakes.at(-1)?.stale === true);
   /** The mesh's file name. */
   readonly meshName = computed(() => this.mesh()?.path.split('/').pop() ?? null);
   /** The tabs with edits that are not saved. */
@@ -182,6 +192,11 @@ export class ProjectStore {
     desktop()?.onQuitRequested(() => {
       this.mutableQuitting.set(true);
     });
+
+    this.paint.onAction = () => {
+      this.mutableFailure.set(null);
+      this.mutableNotice.set(null);
+    };
   }
 
   /** A project moved or deleted since is no failure of anything being done now, so it is forgotten quietly. */
@@ -205,7 +220,7 @@ export class ProjectStore {
 
   /** Opens one document of a project, by its path below the library, or goes to it if it is open. */
   async openDocument(project: string, wanted: string | null): Promise<void> {
-    this.mutableFailure.set(null);
+    this.startAction();
     try {
       const contents = await this.read(project);
       const document = contents.documents.find(held => held.path === wanted) ?? firstOf(contents.documents);
@@ -259,6 +274,7 @@ export class ProjectStore {
 
   /** Closes a tab, asking first if it has edits that are not saved. */
   async closeTab(path: string): Promise<void> {
+    this.startAction();
     const tab = this.mutableTabs().find(held => held.path === path);
     if (tab?.dirty) {
       this.mutableClosing.set(path);
@@ -276,9 +292,12 @@ export class ProjectStore {
       return;
     }
 
+    this.startAction();
     if (choice === 'save') {
       await this.activate(path);
-      await this.saveActive();
+      if (!(await this.saveActive())) {
+        return; // it stays open, and what stopped the save says why
+      }
     }
 
     await this.remove(path, choice === 'discard');
@@ -292,19 +311,17 @@ export class ProjectStore {
     }
 
     if (choice === 'save') {
+      // Quitting now would lose what could not be saved, so the app stays and says why.
       try {
         for (const tab of this.unsavedTabs()) {
           await this.activate(tab.path);
-          await this.saveActive();
+          if (!(await this.saveActive())) {
+            this.mutableFailure.set(`${tab.name} could not be saved, so Patina stayed open.`);
+            return;
+          }
         }
       } catch (failure) {
-        // Quitting now would lose what could not be saved, so the app stays and says why.
         this.mutableFailure.set(messageOf(failure));
-        return;
-      }
-
-      if (this.unsavedTabs().length > 0) {
-        this.mutableFailure.set('Some documents could not be saved, so Patina stayed open.');
         return;
       }
     }
@@ -320,9 +337,10 @@ export class ProjectStore {
     }
   }
 
-  /** Saves what is in front. */
-  async saveActive(): Promise<void> {
-    await (isGraph(this.active()) ? this.graph.save() : this.paint.act('save'));
+  /** Saves what is in front. False if it did not happen, and its store has said why. */
+  async saveActive(): Promise<boolean> {
+    this.startAction();
+    return isGraph(this.active()) ? this.graph.save() : this.paint.act('save');
   }
 
   askToBake(): void {
@@ -351,7 +369,8 @@ export class ProjectStore {
 
     const front = this.mutableActive();
     const moving = !!settings.mesh || settings.autoUnwrap === true;
-    this.mutableFailure.set(null);
+    this.startAction();
+    this.settingsFailure.set(null);
     this.mutableUnwrapping.set(true);
     try {
       if (moving && !(await this.release([project.path]))) {
@@ -378,11 +397,11 @@ export class ProjectStore {
 
       return true;
     } catch (failure) {
-      this.mutableFailure.set(messageOf(failure));
       if (moving) {
         await this.openDocument(project.path, front);
       }
 
+      this.fail(messageOf(failure));
       return false;
     } finally {
       this.mutableUnwrapping.set(false);
@@ -400,11 +419,34 @@ export class ProjectStore {
 
   /** Reads the mesh again from where it came from, as after an export from a modelling tool. */
   async reloadMesh(): Promise<void> {
+    const project = this.current();
     const source = this.mesh()?.source;
-    if (source) {
+    if (!source) {
+      this.settingsOpen.set(project !== null); // it came in before Patina kept this, so it needs choosing once
+      return;
+    }
+
+    this.startAction();
+    try {
+      const client = await this.library.api();
+      const query = { project: project?.path ?? '', mesh: source };
+      const { changed } = unwrap(await client.GET('/api/v1/library/project/mesh-change', { params: { query } }));
+      if (changed) {
+        this.mutableReloading.set(source);
+      } else {
+        this.mutableNotice.set('The mesh has not changed.');
+      }
+    } catch (failure) {
+      this.mutableFailure.set(messageOf(failure));
+    }
+  }
+
+  /** Carries out the answer to reloading a mesh that changed. */
+  async resolveReloading(reload: boolean): Promise<void> {
+    const source = this.mutableReloading();
+    this.mutableReloading.set(null);
+    if (reload && source !== null) {
       await this.applySettings({ mesh: source });
-    } else if (this.current()) {
-      this.settingsOpen.set(true); // it came in before Patina kept this, so it needs choosing once
     }
   }
 
@@ -418,33 +460,38 @@ export class ProjectStore {
     );
   }
 
-  /** Brings files into the open project: meshes as meshes, pictures for layers and masks. */
+  /** Brings files into the open project. The Server says what each is, and refuses what nothing could read. */
   async importFiles(paths: readonly string[]): Promise<void> {
     const project = this.current();
     if (!project) {
+      this.startAction();
       this.mutableFailure.set('Open a project to bring files into it.');
       return;
     }
 
-    try {
-      const client = await this.library.api();
-      for (const path of paths) {
-        const body = { project: project.path, picture: path };
-        if (/\.(?:glb|gltf|fbx|obj)$/iu.test(path)) {
-          unwrap(
-            await client.POST('/api/v1/library/project/meshes', {
-              body: { project: project.path, mesh: path, high: null }
-            })
-          );
-        } else {
-          unwrap(await client.POST('/api/v1/library/project/pictures', { body }));
-        }
+    this.startAction();
+    const imported: string[] = [];
+    const refused: string[] = [];
+    const client = await this.library.api();
+    for (const path of paths) {
+      try {
+        const body = { project: project.path, file: path };
+        const contents = unwrap(await client.POST('/api/v1/library/project/files', { body }));
+        this.mutableContents.update(all => new Map(all).set(project.path, contents));
+        imported.push(path.split(/[\\/]/u).pop() ?? path);
+      } catch (failure) {
+        refused.push(messageOf(failure));
       }
+    }
 
-      await this.read(project.path);
+    if (imported.length > 0) {
+      const what = imported.length === 1 ? imported[0] : `${imported.length} files`;
+      this.mutableNotice.set(`Imported ${what} into ${project.name}`);
       this.library.refreshSoon();
-    } catch (failure) {
-      this.mutableFailure.set(messageOf(failure));
+    }
+
+    if (refused.length > 0) {
+      this.mutableFailure.set(refused.join(' '));
     }
   }
 
@@ -467,8 +514,12 @@ export class ProjectStore {
       return;
     }
 
+    this.startAction();
     try {
-      await this.saveActive();
+      if (!(await this.saveActive())) {
+        return;
+      }
+
       const client = await this.library.api();
       const body = { project, document: document.id, name };
       const contents = unwrap(await client.POST('/api/v1/library/project/document/copy', { body }));
@@ -500,29 +551,42 @@ export class ProjectStore {
     }
   }
 
-  /** Puts autosaved work back, or lets it go. The document closes for it and opens again. */
+  /** Puts autosaved work back, or lets it go. The Server wants the document closed for either, so it opens again after. */
   async resolveRecovery(restore: boolean): Promise<void> {
     const offer = this.recoverable();
-    const project = this.active()?.project;
     this.recoverable.set(null);
     if (!offer) {
       return;
     }
 
+    const project = this.mutableTabs().find(tab => tab.path === offer.path)?.project;
+    this.startAction();
+    let failed: string | null = null;
     try {
-      const client = await this.library.api();
-      const body = { path: offer.path, restore };
-      if (restore) {
-        await this.remove(offer.path, true);
+      // Not a discard: that is for edits, and it would take the autosave with them.
+      if (!(await this.remove(offer.path, false))) {
+        return;
       }
 
+      const client = await this.library.api();
+      const body = { path: offer.path, restore };
       unwrap(await client.POST('/api/v1/library/recovery', { body }));
-      if (restore && project) {
-        await this.openDocument(project, offer.path);
-      }
     } catch (failure) {
-      this.mutableFailure.set(messageOf(failure));
+      failed = messageOf(failure);
     }
+
+    if (project) {
+      await this.openDocument(project, offer.path);
+    }
+
+    if (failed !== null) {
+      this.mutableFailure.set(failed);
+    }
+  }
+
+  /** Puts the question off: nothing is decided, so the work stays and the next open asks again. */
+  dismissRecovery(): void {
+    this.recoverable.set(null);
   }
 
   /** Says what a graph is for, which decides where the shelf puts it. A graph of the wrong shape is refused. */
@@ -531,6 +595,7 @@ export class ProjectStore {
       return;
     }
 
+    this.startAction();
     try {
       const client = await this.library.api();
       const body = { project, document: document.id, role };
@@ -550,10 +615,13 @@ export class ProjectStore {
       return null;
     }
 
+    this.startAction();
     try {
       const client = await this.library.api();
       const body = { project: project.path, picture };
-      return unwrap(await client.POST('/api/v1/library/project/pictures', { body })).path;
+      const added = unwrap(await client.POST('/api/v1/library/project/pictures', { body })).path;
+      await this.read(project.path);
+      return added;
     } catch (failure) {
       this.mutableFailure.set(messageOf(failure));
       return null;
@@ -570,7 +638,7 @@ export class ProjectStore {
     );
     const dirty = inside.find(tab => tab.dirty);
     if (dirty) {
-      this.mutableFailure.set(`${dirty.name} has unsaved changes. Save it first.`);
+      this.fail(`${dirty.name} has unsaved changes. Save it first.`);
       return false;
     }
 
@@ -579,6 +647,18 @@ export class ProjectStore {
     }
 
     return true;
+  }
+
+  /** What went wrong before has nothing to do with what is starting now. */
+  private startAction(): void {
+    this.mutableFailure.set(null);
+    this.mutableNotice.set(null);
+    this.paint.failure.set(null);
+  }
+
+  /** Says what went wrong where it can be read: nothing shows through the Project Settings dialog. */
+  private fail(reason: string): void {
+    (this.settingsOpen() ? this.settingsFailure : this.mutableFailure).set(reason);
   }
 
   private isShowing(tab: DocumentTab): boolean {
@@ -619,12 +699,14 @@ export class ProjectStore {
     }
   }
 
-  private async remove(path: string, discard: boolean): Promise<void> {
+  /** Closes a tab. False if its session stayed, which keeps the tab: the edits there would be out of reach without it. */
+  private async remove(path: string, discard: boolean): Promise<boolean> {
     const tab = this.mutableTabs().find(held => held.path === path);
     if (!tab) {
-      return;
+      return true;
     }
 
+    let closed = true;
     this.switching = true;
     try {
       if (this.mutableActive() === path) {
@@ -635,16 +717,22 @@ export class ProjectStore {
 
       await this.closeSession(tab, discard);
     } catch (failure) {
+      closed = false;
       this.mutableFailure.set(messageOf(failure));
     } finally {
       this.switching = false;
     }
 
-    this.mutableTabs.update(tabs => tabs.filter(held => held.path !== path));
-    const next = this.mutableTabs().at(-1);
+    if (closed) {
+      this.mutableTabs.update(tabs => tabs.filter(held => held.path !== path));
+    }
+
+    const next = closed ? this.mutableTabs().at(-1) : tab;
     if (next && this.mutableActive() === null) {
       await this.activate(next.path);
     }
+
+    return closed;
   }
 
   private async closeSession(tab: DocumentTab, discard: boolean): Promise<void> {
@@ -654,9 +742,16 @@ export class ProjectStore {
 
     const client = await this.library.api();
     const id = tab.session;
-    await (isGraph(tab)
-      ? client.DELETE('/api/v1/graphs/{id}', { params: { path: { id }, query: { discard } } })
-      : client.DELETE('/api/v1/stacks/{id}', { params: { path: { id } } }));
+    try {
+      await (isGraph(tab)
+        ? client.DELETE('/api/v1/graphs/{id}', { params: { path: { id }, query: { discard } } })
+        : client.DELETE('/api/v1/stacks/{id}', { params: { path: { id }, query: { discard } } }));
+    } catch (failure) {
+      // A session already gone is what closing wanted.
+      if (!(failure instanceof ApiError && failure.status === 404)) {
+        throw failure;
+      }
+    }
   }
 
   private update(path: string, change: Partial<DocumentTab>): void {

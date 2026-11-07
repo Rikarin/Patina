@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
-import { XuiCalloutImports } from '@xui/callout';
 import { XuiInputImports } from '@xui/input';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { desktop } from '../core/desktop';
@@ -17,15 +16,11 @@ import { PaintStore } from './paint-store';
  */
 @Component({
   selector: 'ptn-paint',
-  imports: [BrushPanel, LayerPanel, XuiButtonImports, XuiCalloutImports, XuiNonIdealStateImports, XuiInputImports],
+  imports: [BrushPanel, LayerPanel, XuiButtonImports, XuiNonIdealStateImports, XuiInputImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
   template: `
     <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto p-3">
-      @if (store.failure() ?? project.failure(); as failure) {
-        <xui-callout color="error" data-testid="paint-failure">{{ failure }}</xui-callout>
-      }
-
       @if (store.state(); as state) {
         @if (project.current(); as open) {
           <div class="flex items-center gap-2">

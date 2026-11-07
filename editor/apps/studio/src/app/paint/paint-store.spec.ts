@@ -68,9 +68,18 @@ function setup() {
   const bodies: unknown[] = [];
   const picks: unknown[] = [];
   const posts: string[] = [];
+  /** What the Server answers to an undo, a redo or a save, when a test wants it to refuse. */
+  const steps: { reply: (() => Response) | null; queries: string[] } = { reply: null, queries: [] };
   const fetcher = (async (input: Request) => {
-    const path = new URL(input.url).pathname;
+    const { pathname: path, search } = new URL(input.url);
     posts.push(path);
+    if (/\/(?:undo|redo|save)$/u.test(path)) {
+      steps.queries.push(search);
+      if (steps.reply) {
+        return steps.reply();
+      }
+    }
+
     if (path.endsWith('/commands')) {
       bodies.push(await input.json());
       return Response.json({ revision: 2, sequence: 4, history: { canUndo: true, canRedo: false, dirty: true } });
@@ -105,8 +114,80 @@ function setup() {
       }
     ]
   });
-  return { store: TestBed.inject(PaintStore), bodies, picks, posts, sockets };
+  return { store: TestBed.inject(PaintStore), bodies, picks, posts, sockets, steps };
 }
+
+const problem = (status: number, detail: string) => () => Response.json({ detail }, { status });
+
+describe('PaintStore saving', () => {
+  async function opened() {
+    const test = setup();
+    await test.store.open('/a/Crate.vxlayers', false);
+    return test;
+  }
+
+  it('says why a save failed, where other failures go', async () => {
+    const { store, steps } = await opened();
+    steps.reply = problem(503, 'No Worker came.');
+
+    expect(await store.act('save')).toBe(false);
+
+    expect(store.failure()).toBe('No Worker came.');
+    expect(store.saveConflict()).toBe(false);
+  });
+
+  it('asks about a file that changed instead of calling it a failure', async () => {
+    const { store, steps } = await opened();
+    steps.reply = problem(409, 'It changed on disk.');
+
+    expect(await store.act('save')).toBe(false);
+
+    expect(store.saveConflict()).toBe(true);
+    expect(store.failure()).toBeNull();
+  });
+
+  it('overwrites only when asked, and the question goes', async () => {
+    const { store, steps } = await opened();
+    steps.reply = problem(409, 'It changed on disk.');
+    await store.act('save');
+    steps.reply = null;
+
+    expect(await store.act('save', true)).toBe(true);
+
+    expect(steps.queries).toEqual(['', '?force=true']);
+    expect(store.saveConflict()).toBe(false);
+  });
+
+  it('takes nothing left to undo as an answer', async () => {
+    const { store, steps } = await opened();
+    steps.reply = problem(409, 'There is nothing to undo.');
+
+    expect(await store.act('undo')).toBe(false);
+
+    expect(store.failure()).toBeNull();
+    expect(store.saveConflict()).toBe(false);
+  });
+
+  it('says why an undo failed', async () => {
+    const { store, steps } = await opened();
+    steps.reply = problem(500, 'It broke.');
+
+    expect(await store.act('undo')).toBe(false);
+
+    expect(store.failure()).toBe('It broke.');
+  });
+
+  it('starts over when something new starts', async () => {
+    const { store, steps } = await opened();
+    steps.reply = problem(503, 'No Worker came.');
+    await store.act('save');
+    steps.reply = null;
+
+    await store.act('save');
+
+    expect(store.failure()).toBeNull();
+  });
+});
 
 describe('PaintStore', () => {
   it('turns a view position into texels', () => {

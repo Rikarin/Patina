@@ -9,6 +9,7 @@ import { BakeStore } from './bake/bake-store';
 import { desktop } from './core/desktop';
 import { DiagnosticsDialog } from './core/diagnostics-dialog';
 import { EditCommands } from './core/edit-commands';
+import { FileConflictDialog } from './core/file-conflict-dialog';
 import { Shortcuts } from './core/shortcuts';
 import { StartPane } from './core/start-pane';
 import { SystemStatus } from './core/system-status';
@@ -47,6 +48,7 @@ import { ViewportPane } from './viewport/viewport-pane';
     LibraryPane,
     DatePipe,
     DiagnosticsDialog,
+    FileConflictDialog,
     MaterialShelf,
     XuiInputImports,
     PaintAtlas,
@@ -201,6 +203,9 @@ import { ViewportPane } from './viewport/viewport-pane';
           <span class="readout shrink-0">Patina {{ current.system.version }}</span>
           <span class="readout truncate">{{ current.system.library ?? 'No library open' }}</span>
           <span class="readout shrink-0">GPU {{ current.system.worker.connected ? 'ready' : 'starting' }}</span>
+          @if (project.notice(); as notice) {
+            <span class="readout truncate" data-testid="app-notice">{{ notice }}</span>
+          }
         }
         @case ('offline') {
           <span class="readout text-error truncate">The engine stopped: {{ current.reason }}</span>
@@ -248,6 +253,37 @@ import { ViewportPane } from './viewport/viewport-pane';
         </button>
       </xui-dialog-footer>
     </xui-dialog>
+
+    <xui-dialog
+      size="sm"
+      title="Reload Mesh"
+      [open]="project.reloading() !== null"
+      (openChange)="$event || project.resolveReloading(false)"
+    >
+      <xui-dialog-body data-testid="mesh-reload">
+        The mesh file changed. Open documents close and lose their undo history. Bakes made on the old mesh go out of
+        date.
+      </xui-dialog-body>
+      <xui-dialog-footer>
+        <button type="button" xuiButton variant="ghost" (click)="project.resolveReloading(false)">Cancel</button>
+        <button
+          type="button"
+          xuiButton
+          color="primary"
+          data-testid="mesh-reload-confirm"
+          (click)="project.resolveReloading(true)"
+        >
+          Reload
+        </button>
+      </xui-dialog-footer>
+    </xui-dialog>
+
+    <ptn-file-conflict
+      [name]="project.active()?.name ?? ''"
+      [open]="paint.saveConflict()"
+      (cancelled)="paint.saveConflict.set(false)"
+      (overwrite)="paint.act('save', true)"
+    />
 
     <ptn-diagnostics [(open)]="diagnosing" />
 
@@ -298,10 +334,11 @@ import { ViewportPane } from './viewport/viewport-pane';
       size="sm"
       title="Recover unsaved work?"
       [open]="project.recoverable() !== null"
-      (openChange)="$event || project.resolveRecovery(false)"
+      (openChange)="$event || project.dismissRecovery()"
     >
       <xui-dialog-body data-testid="app-recovery">
         Patina kept work on this document that was never saved, from {{ project.recoverable()?.saved | date: 'short' }}.
+        Closing this keeps it, and asks again next time.
       </xui-dialog-body>
       <xui-dialog-footer>
         <button
@@ -351,7 +388,7 @@ export class App {
   protected readonly shortcuts = inject(Shortcuts);
   protected readonly keys = signal(false);
   protected readonly diagnosing = signal(false);
-  private readonly paint = inject(PaintStore);
+  protected readonly paint = inject(PaintStore);
   /** The one thing that went wrong last, which stays until it is read. */
   protected readonly failure = computed(() => this.paint.failure() ?? this.project.failure());
   protected readonly baking = signal(false);

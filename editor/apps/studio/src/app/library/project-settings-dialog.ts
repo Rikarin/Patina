@@ -65,7 +65,20 @@ function fileName(path: string | null | undefined): string {
             </span>
             <xui-switch ariaLabel="Preserve Paint" data-testid="project-settings-preserve" [(checked)]="preservePaint" />
           </label>
-          @if (project.failure(); as failure) {
+          <div class="flex flex-col gap-1" data-testid="project-files">
+            <span class="section-label">Files</span>
+            <div class="well flex max-h-40 flex-col overflow-auto px-2 py-1">
+              @for (file of files(); track file.path) {
+                <div class="flex items-center gap-2" data-testid="project-file" [title]="file.path">
+                  <span class="min-w-0 flex-1 truncate text-sm">{{ file.name }}</span>
+                  <span class="readout shrink-0">{{ file.kind }}</span>
+                </div>
+              } @empty {
+                <span class="text-foreground-muted text-sm">Nothing yet. Use File > Import, or drop files on the window.</span>
+              }
+            </div>
+          </div>
+          @if (project.settingsFailure(); as failure) {
             <xui-callout color="error" data-testid="project-settings-failure">{{ failure }}</xui-callout>
           }
         </xui-dialog-body>
@@ -92,6 +105,20 @@ export class ProjectSettingsDialog {
   protected readonly autoUnwrap = signal(true);
   protected readonly preservePaint = signal(true);
   protected readonly meshName = computed(() => fileName(this.mesh()) || (this.project.meshName() ?? ''));
+  /** What the project holds besides its documents. */
+  protected readonly files = computed(() => {
+    const contents = this.project.current();
+    return [
+      ...(contents?.meshes ?? []).map(mesh => ({ kind: 'Mesh', name: fileName(mesh.path), path: mesh.path })),
+      ...(contents?.pictures ?? []).map(picture => ({ kind: 'Picture', name: picture.name, path: picture.path })),
+      ...(contents?.bakes ?? []).map(bake => ({
+        kind: bake.stale ? 'Maps, out of date' : 'Maps',
+        name: bake.name,
+        path: bake.path
+      }))
+    ];
+  });
+
   protected readonly changed = computed(
     () =>
       this.mesh().trim() !== '' ||
@@ -102,6 +129,7 @@ export class ProjectSettingsDialog {
   constructor() {
     effect(() => {
       if (this.project.settingsOpen()) {
+        this.project.settingsFailure.set(null);
         this.mesh.set('');
         this.autoUnwrap.set(this.project.current()?.autoUnwrap ?? true);
         this.preservePaint.set(this.project.current()?.preservePaint ?? true);

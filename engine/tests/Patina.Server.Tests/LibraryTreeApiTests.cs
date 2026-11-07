@@ -1,6 +1,8 @@
 using Patina.Contracts;
+using Patina.Library;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace Patina.Server.Tests;
 
@@ -266,6 +268,273 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
 
         Assert.Equal(HttpStatusCode.Conflict, moved.StatusCode);
         Assert.True(Directory.Exists(Path.Combine(server.Library, "projects", "crate")));
+    }
+
+    [Fact]
+    public async Task Autosaved_work_is_offered_only_while_nothing_newer_is_open() {
+        var (document, file, stack) = await OpenStackAsync();
+        LeaveAutosave(file);
+        Assert.NotNull(await RecoveryOfAsync(document));
+
+        await EditAsync(stack);
+
+        Assert.Null(await RecoveryOfAsync(document));
+    }
+
+    [Fact]
+    public async Task Autosaved_work_can_only_be_answered_with_the_document_closed() {
+        var (document, file, stack) = await OpenStackAsync();
+        LeaveAutosave(file);
+
+        using var refused = await client.PostAsJsonAsync(
+            "/api/v1/library/recovery",
+            new DocumentRecoveryRequest(document, false),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.NotNull(await RecoveryOfAsync(document));
+
+        using var closed = await client.DeleteAsync($"/api/v1/stacks/{stack}", Token);
+        Assert.Equal(HttpStatusCode.NoContent, closed.StatusCode);
+        using var answered = await client.PostAsJsonAsync(
+            "/api/v1/library/recovery",
+            new DocumentRecoveryRequest(document, false),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.OK, answered.StatusCode);
+        Assert.Null(await RecoveryOfAsync(document));
+    }
+
+    [Fact]
+    public async Task Discarding_a_stack_forgets_its_autosave_and_reopens_on_the_saved_file() {
+        var (document, file, stack) = await OpenStackAsync();
+        var before = await File.ReadAllTextAsync(file, Token);
+        await EditAsync(stack);
+        LeaveAutosave(file);
+
+        using var refused = await client.DeleteAsync($"/api/v1/stacks/{stack}", Token);
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        using var discarded = await client.DeleteAsync($"/api/v1/stacks/{stack}?discard=true", Token);
+        Assert.Equal(HttpStatusCode.NoContent, discarded.StatusCode);
+
+        Assert.Null(await RecoveryOfAsync(document));
+        using var reopened = await client.PostAsJsonAsync("/api/v1/stacks", new { path = document }, Token);
+        var state = await reopened.Content.ReadFromJsonAsync(ContractsJsonContext.Default.StackState, Token);
+        Assert.False(state!.History.Dirty);
+        Assert.NotEqual(stack, state.Id);
+        Assert.Equal(before, await File.ReadAllTextAsync(file, Token));
+    }
+
+    [Fact]
+    public async Task Discarding_a_graph_forgets_its_autosave() {
+        var state = await client.OpenAsync(GraphTesting.Write(server.Library, GraphTesting.Sample()), Token);
+        await client.EditAsync(state.Id, Token, new GraphSetValue(2, "Hue", [0.5f]));
+        LeaveAutosave(state.Path);
+
+        using var discarded = await client.DeleteAsync($"/api/v1/graphs/{state.Id}?discard=true", Token);
+
+        Assert.Equal(HttpStatusCode.NoContent, discarded.StatusCode);
+        Assert.Null(await RecoveryOfAsync(state.Path));
+    }
+
+    [Fact]
+    public async Task Discard_on_a_clean_session_has_nothing_to_throw_away() {
+        var (document, file, stack) = await OpenStackAsync();
+        LeaveAutosave(file);
+
+        using var closed = await client.DeleteAsync($"/api/v1/stacks/{stack}?discard=true", Token);
+
+        Assert.Equal(HttpStatusCode.NoContent, closed.StatusCode);
+        Assert.NotNull(await RecoveryOfAsync(document));
+    }
+
+    [Fact]
+    public async Task An_import_goes_where_its_kind_goes_and_the_project_lists_it() {
+        await MakeCrateAsync();
+
+        var withMesh = await ImportAsync("Spare.glb");
+        var withPicture = await ImportAsync("Rust.png");
+
+        Assert.Contains(withMesh!.Meshes, static mesh => mesh.Path == "projects/crate/Spare.glb");
+        Assert.Equal(
+            new("picture", "Rust.png", "projects/crate/pictures/Rust.png"),
+            Assert.Single(withPicture!.Pictures)
+        );
+        Assert.True(File.Exists(Path.Combine(server.Library, "projects/crate/pictures/Rust.png")));
+    }
+
+    [Theory]
+    [InlineData("model.dae")]
+    [InlineData("scene.usd")]
+    [InlineData("notes.txt")]
+    [InlineData("height.exr")]
+    public async Task An_import_nothing_can_read_is_refused_and_copies_nothing(string name) {
+        await MakeCrateAsync();
+        var file = Path.Combine(files.FullName, name);
+        File.WriteAllText(file, "not much");
+
+        using var refused = await client.PostAsJsonAsync(
+            "/api/v1/library/project/files",
+            new ProjectFileRequest("crate", file),
+            Token
+        );
+        using var picture = await client.PostAsJsonAsync(
+            "/api/v1/library/project/pictures",
+            new ProjectPictureRequest("crate", file),
+            Token
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.Contains(name, await refused.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
+        Assert.Contains(".glb", await refused.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.BadRequest, picture.StatusCode);
+        Assert.False(Directory.Exists(Path.Combine(server.Library, "projects/crate/pictures")));
+    }
+
+    [Fact]
+    public async Task A_picture_the_Server_drew_for_a_mask_is_not_listed_as_the_users() {
+        await MakeCrateAsync();
+        var pictures = Directory.CreateDirectory(Path.Combine(server.Library, "projects/crate/pictures"));
+        File.WriteAllText(Path.Combine(pictures.FullName, "mesh-mask-1234.png"), "drawn");
+
+        var contents = await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=crate", Token);
+
+        Assert.Empty(contents!.Pictures);
+    }
+
+    [Fact]
+    public async Task Reloading_a_file_that_did_not_change_has_nothing_to_do() {
+        var (source, project) = await MakeProjectOnMeshAsync();
+        var yaml = await File.ReadAllTextAsync(Path.Combine(project, "project.yaml"), Token);
+
+        Assert.False(await MeshChangedAsync(source));
+        // There is no Worker here, so anything past the check would wait on one and fail.
+        using var reloaded = await client.PatchAsJsonAsync(
+            "/api/v1/library/project/settings",
+            new ProjectSettingsRequest("crate", source, null, null, null),
+            Token
+        );
+
+        Assert.Equal(HttpStatusCode.OK, reloaded.StatusCode);
+        Assert.Equal(yaml, await File.ReadAllTextAsync(Path.Combine(project, "project.yaml"), Token));
+        Assert.False(Directory.Exists(Path.Combine(project, LibraryLayout.PaintBackupFolder)));
+
+        await File.AppendAllTextAsync(source, "more", Token);
+        Assert.True(await MeshChangedAsync(source));
+    }
+
+    [Fact]
+    public async Task Another_file_of_a_different_name_is_a_change_even_with_the_same_bytes() {
+        var (source, _) = await MakeProjectOnMeshAsync();
+        var other = Path.Combine(files.FullName, "Other.glb");
+        File.Copy(source, other);
+
+        Assert.True(await MeshChangedAsync(other));
+    }
+
+    [Fact]
+    public async Task A_bake_goes_out_of_date_when_the_mesh_it_was_made_on_does() {
+        var (_, project) = await MakeProjectOnMeshAsync();
+        var bake = Directory.CreateDirectory(Path.Combine(project, "bakes", "first"));
+        var manifest = Path.Combine(bake.FullName, "crate.bake.json");
+
+        void Baked(string? mesh) =>
+            File.WriteAllBytes(
+                manifest,
+                JsonSerializer.SerializeToUtf8Bytes(
+                    new BakeManifest("crate", "png8", new([], 0, 0, [], false), mesh),
+                    ContractsJsonContext.Default.BakeManifest
+                )
+            );
+
+        async Task<bool> StaleAsync() {
+            var contents = await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=crate", Token);
+            return Assert.Single(contents!.Bakes).Stale;
+        }
+
+        Baked(LibraryFiles.Digest(Path.Combine(project, "Low Poly.glb")));
+        Assert.False(await StaleAsync());
+
+        Baked("some other mesh");
+        Assert.True(await StaleAsync());
+
+        Baked(null);
+        Assert.False(await StaleAsync());
+    }
+
+    async Task<(string Source, string Project)> MakeProjectOnMeshAsync() {
+        var source = Path.Combine(files.FullName, "Low Poly.glb");
+        File.WriteAllText(source, "mesh");
+        using var created = await client.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new ProjectCreateRequest("Crate", Mesh: source, Resolution: 1024),
+            Token
+        );
+        return (source, Path.Combine(server.Library, "projects", "crate"));
+    }
+
+    async Task<bool> MeshChangedAsync(string mesh) {
+        var change = await client.GetFromJsonAsync<ProjectMeshChange>(
+            $"/api/v1/library/project/mesh-change?project=crate&mesh={Uri.EscapeDataString(mesh)}",
+            Token
+        );
+        return change!.Changed;
+    }
+
+    Task<HttpResponseMessage> MakeCrateAsync() =>
+        client.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new ProjectCreateRequest("Crate", Kind: "layered-material"),
+            Token
+        );
+
+    async Task<ProjectContents?> ImportAsync(string name) {
+        var file = Path.Combine(files.FullName, name);
+        File.WriteAllText(file, "bytes");
+        using var imported = await client.PostAsJsonAsync(
+            "/api/v1/library/project/files",
+            new ProjectFileRequest("crate", file),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.OK, imported.StatusCode);
+        return await imported.Content.ReadFromJsonAsync<ProjectContents>(Token);
+    }
+
+    async Task<(string Document, string File, string Stack)> OpenStackAsync() {
+        await client.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new ProjectCreateRequest("Crate", Kind: "layered-material"),
+            Token
+        );
+        var contents = await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=crate", Token);
+        var document = contents!.Documents[0].Path;
+        using var opened = await client.PostAsJsonAsync("/api/v1/stacks", new { path = document }, Token);
+        var stack = await opened.Content.ReadFromJsonAsync(ContractsJsonContext.Default.StackState, Token);
+        return (document, Path.GetFullPath(document, server.Library), stack!.Id);
+    }
+
+    /// <summary>What autosave leaves, older than nothing: the file was last saved a while ago.</summary>
+    void LeaveAutosave(string file) {
+        Recovery.Keep(server.Library, file, "autosaved");
+        File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddHours(-1));
+    }
+
+    async Task EditAsync(string stack) {
+        using var edited = await client.PostAsJsonAsync(
+            $"/api/v1/stacks/{stack}/commands",
+            new([new StackAddChannel("height")]),
+            ContractsJsonContext.Default.StackCommandBatch,
+            Token
+        );
+        Assert.True(edited.IsSuccessStatusCode, await edited.Content.ReadAsStringAsync(Token));
+    }
+
+    async Task<DateTimeOffset?> RecoveryOfAsync(string document) {
+        var found = await client.GetFromJsonAsync<DocumentRecovery>(
+            $"/api/v1/library/recovery?path={Uri.EscapeDataString(document)}",
+            Token
+        );
+        return found!.Saved;
     }
 
     [Fact]

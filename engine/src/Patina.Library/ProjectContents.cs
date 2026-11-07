@@ -1,5 +1,6 @@
 using Patina.Contracts;
 using System.Collections.Frozen;
+using System.Text.Json;
 
 namespace Patina.Library;
 
@@ -17,11 +18,15 @@ static class ProjectFiles {
     static readonly FrozenSet<string> MeshExtensions =
         new[] { ".glb", ".gltf", ".fbx", ".obj" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>What a layer or a mask can read, which is 8-bit pictures: an EXR is for the viewport and bakes.</summary>
+    static readonly FrozenSet<string> PictureExtensions =
+        new[] { ".png", ".jpg", ".jpeg", ".tga", ".bmp", ".gif" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Everything in a project, with paths below the library.</summary>
     public static ProjectContents Read(string root, string path) {
         var (full, document) = Project(root, path);
         var files = Files(full);
-        var meshes = document.Meshes.Select(mesh => Listed(path, mesh)).ToList();
+        var meshes = document.Meshes.Select(mesh => Listed(root, path, mesh)).ToList();
         meshes.AddRange(
             files.Where(f => IsMesh(f) && !document.Meshes.Any(m => m.File == f || m.High == f))
                 .Select(f => new ProjectMeshInfo(null, Below(path, f), null))
@@ -45,7 +50,11 @@ static class ProjectFiles {
             meshes,
             documents,
             Below(path, BakeFolder),
-            Bakes(full, path)
+            Bakes(full, path, document.Meshes),
+            [
+                ..files.Where(IsPicture)
+                    .Select(f => new ProjectFile("picture", Path.GetFileName(f), Below(path, f)))
+            ]
         ) { AutoUnwrap = document.AutoUnwrap, PreservePaint = document.PreservePaint };
     }
 
@@ -65,20 +74,99 @@ static class ProjectFiles {
         var outside = Path.GetFullPath(mesh).StartsWith(full + Path.DirectorySeparatorChar, StringComparison.Ordinal)
             ? null
             : Path.GetFullPath(mesh);
+        var origin = source ?? outside;
         var added = new ProjectMesh(
             held?.Id ?? AssetId.New(),
             file,
             high is null ? held?.High : Bring(full, high),
-            source ?? outside ?? held?.Source
+            origin is null ? held?.Source : InLibrary(root, origin),
+            LibraryFiles.Digest(Path.Combine(full, file))
         );
+        if (origin is not null) {
+            RememberSource(root, added, origin);
+        }
+
         var others = document.Meshes.Where(m => m.File != file);
         LibraryFiles.WriteProject(root, path, document with { Meshes = [..others, added] });
         return added;
     }
 
+    /// <summary>The file a mesh came from on this machine, or null if it is not known here.</summary>
+    public static string? SourceOf(string root, ProjectMesh mesh) {
+        if (mesh.Source is { } held) {
+            return Path.GetFullPath(LibraryLayout.Full(root, held));
+        }
+
+        var kept = LibraryLayout.MeshSourcePath(root, mesh.Id);
+        return File.Exists(kept) ? File.ReadAllText(kept) : null;
+    }
+
+    /// <summary>
+    ///     A path inside the library travels with it, so the project file holds that. One outside means nothing on another
+    ///     machine and would put this one's folders in Git, so it stays in the cache, and a clone chooses the file once.
+    /// </summary>
+    static void RememberSource(string root, ProjectMesh mesh, string origin) {
+        var kept = LibraryLayout.MeshSourcePath(root, mesh.Id);
+        if (mesh.Source is null) {
+            Directory.CreateDirectory(Path.GetDirectoryName(kept)!);
+            LibraryFiles.Replace(kept, Path.GetFullPath(origin));
+        } else if (File.Exists(kept)) {
+            File.Delete(kept);
+        }
+    }
+
+    static string? InLibrary(string root, string file) {
+        var full = Path.GetFullPath(file);
+        return full.StartsWith(Path.GetFullPath(root) + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+            ? LibraryLayout.Relative(root, full)
+            : null;
+    }
+
+    /// <summary>
+    ///     Whether a file differs from the mesh the project has. The copy brought in is what counts: an unwrapped mesh is
+    ///     a new file, and the one it came from stays beside it under its own name.
+    /// </summary>
+    /// <exception cref="FileNotFoundException">The project or the file is not there.</exception>
+    public static bool MeshChanged(string root, string path, string mesh) {
+        var (full, document) = Project(root, path);
+        if (!File.Exists(mesh)) {
+            throw new FileNotFoundException($"There is no file '{mesh}'.", mesh);
+        }
+
+        var name = Path.GetFileName(mesh);
+        var held = Path.Combine(full, name);
+        var same = File.Exists(held)
+            && document.Meshes.Any(m => m.File == name || Path.GetFileName(SourceOf(root, m)) == name)
+            && LibraryFiles.Digest(held) == LibraryFiles.Digest(mesh);
+        return !same;
+    }
+
+    /// <summary>Brings a file into a project as what it is, which only a mesh or a picture can be.</summary>
+    /// <exception cref="FileNotFoundException">The project or the file is not there.</exception>
+    /// <exception cref="ProjectRefusedException">Nothing here reads it.</exception>
+    public static void Import(string root, string path, string file) {
+        if (IsMesh(file)) {
+            AddMesh(root, path, file, null);
+        } else if (PictureExtensions.Contains(Path.GetExtension(file))) {
+            AddPicture(root, path, file);
+        } else {
+            throw new ProjectRefusedException(
+                $"Nothing in Patina reads '{Path.GetFileName(file)}'. A project takes meshes ({Known(MeshExtensions)}) and pictures ({Known(PictureExtensions)})."
+            );
+        }
+    }
+
     /// <summary>Brings a picture into a project's pictures folder, unless it is in the project already.</summary>
+    /// <exception cref="FileNotFoundException">The project or the picture is not there.</exception>
+    /// <exception cref="ProjectRefusedException">A layer could not read it.</exception>
     public static string AddPicture(string root, string path, string picture) {
         var (full, _) = Project(root, path);
+        if (!PictureExtensions.Contains(Path.GetExtension(picture))) {
+            throw new ProjectRefusedException(
+                $"'{Path.GetFileName(picture)}' is not a picture a layer can read: use {Known(PictureExtensions)}."
+            );
+        }
+
         if (!File.Exists(picture)) {
             throw new FileNotFoundException($"There is no file '{picture}'.", picture);
         }
@@ -313,8 +401,9 @@ static class ProjectFiles {
     /// <exception cref="ProjectRefusedException">It is not a mesh.</exception>
     public static void Require(string mesh) {
         if (!IsMesh(mesh)) {
-            var known = string.Join(", ", MeshExtensions.Order(StringComparer.Ordinal));
-            throw new ProjectRefusedException($"'{Path.GetFileName(mesh)}' is not a mesh: use {known}.");
+            throw new ProjectRefusedException(
+                $"'{Path.GetFileName(mesh)}' is not a mesh: use {Known(MeshExtensions)}."
+            );
         }
 
         if (!File.Exists(mesh)) {
@@ -353,24 +442,60 @@ static class ProjectFiles {
             .Take(MaxFiles)
     ];
 
-    static List<ProjectFile> Bakes(string full, string path) {
+    static List<ProjectFile> Bakes(string full, string path, IReadOnlyList<ProjectMesh> meshes) {
         var bakes = Path.Combine(full, BakeFolder);
         return Directory.Exists(bakes)
             ? [
                 ..LibraryScanner.VisibleFolders(bakes)
                     .Select(static bake => Path.GetFileName(bake))
-                    .Select(bake => new ProjectFile("bake", bake, Below(path, $"{BakeFolder}/{bake}")))
+                    .Select(bake => new ProjectFile(
+                            "bake",
+                            bake,
+                            Below(path, $"{BakeFolder}/{bake}"),
+                            OutOfDate(Path.Combine(bakes, bake), meshes)
+                        )
+                    )
             ]
             : [];
     }
 
-    static ProjectMeshInfo Listed(string path, ProjectMesh mesh) =>
-        new(mesh.Id.Value, Below(path, mesh.File), mesh.High is { } high ? Below(path, high) : null, mesh.Source);
+    /// <summary>Whether a bake was made on a mesh the project no longer has. One that does not say is left alone.</summary>
+    static bool OutOfDate(string bake, IReadOnlyList<ProjectMesh> meshes) {
+        HashSet<string?> current = [..meshes.Select(static mesh => mesh.Hash)];
+        current.Remove(null);
+        return current.Count > 0
+            && Directory.EnumerateFiles(bake, $"*{LibraryLayout.BakeManifestFile}")
+                .Select(ManifestMesh)
+                .Any(mesh => mesh is not null && !current.Contains(mesh));
+    }
+
+    static string? ManifestMesh(string file) {
+        try {
+            return JsonSerializer.Deserialize(File.ReadAllBytes(file), ContractsJsonContext.Default.BakeManifest)?.Mesh;
+        } catch (JsonException) {
+            return null; // something half written says nothing about the mesh
+        }
+    }
+
+    static ProjectMeshInfo Listed(string root, string path, ProjectMesh mesh) =>
+        new(
+            mesh.Id.Value,
+            Below(path, mesh.File),
+            mesh.High is { } high ? Below(path, high) : null,
+            SourceOf(root, mesh)
+        );
 
     static ProjectDocumentInfo Listed(string path, ProjectItem item) =>
         new(item.Id.Value, item.Kind, item.Name, Below(path, item.File), item.Mesh?.Value, item.Role, item.Material);
 
     static bool IsMesh(string file) => MeshExtensions.Contains(Path.GetExtension(file));
+
+    /// <summary>A picture of the user's: what the Server drew for a mesh mask is not one.</summary>
+    static bool IsPicture(string file) =>
+        PictureExtensions.Contains(Path.GetExtension(file))
+        && !Path.GetFileName(file).StartsWith(LibraryLayout.MeshMaskPrefix, StringComparison.Ordinal);
+
+    static string Known(IEnumerable<string> extensions) => string.Join(", ", extensions.Order(StringComparer.Ordinal));
 
     /// <summary>The kind a file not yet listed is taken for. A stack that names no mesh still opens as one.</summary>
     static string? Unlisted(string file) {

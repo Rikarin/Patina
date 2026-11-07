@@ -1672,6 +1672,75 @@
         }
       }
     },
+    "/api/v1/library/project/mesh-change": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Whether a mesh file differs from the one the project already has, so that reloading has work to do.",
+        "operationId": "GetProjectMeshChange",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mesh",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectMeshChange"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/project/settings": {
       "patch": {
         "tags": [
@@ -1745,6 +1814,67 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ProjectDocumentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project/files": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Brings a mesh or a picture into a project. Anything else is refused.",
+        "operationId": "ImportProjectFile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectFileRequest"
               }
             }
           },
@@ -7904,6 +8034,7 @@
           "documents",
           "bakeFolder",
           "bakes",
+          "pictures",
           "autoUnwrap",
           "preservePaint"
         ],
@@ -7946,6 +8077,13 @@
               "$ref": "#/components/schemas/ProjectFile"
             },
             "description": "The bakes it has."
+          },
+          "pictures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectFile"
+            },
+            "description": "The pictures brought in for layers and masks."
           },
           "autoUnwrap": {
             "type": "boolean",
@@ -8218,7 +8356,8 @@
         "required": [
           "kind",
           "name",
-          "path"
+          "path",
+          "stale"
         ],
         "type": "object",
         "properties": {
@@ -8233,9 +8372,45 @@
           "path": {
             "type": "string",
             "description": "Its path below the library."
+          },
+          "stale": {
+            "type": "boolean",
+            "description": "For a bake, whether the mesh has changed since it was made.",
+            "default": false
           }
         },
         "description": "A result of a bake in a project\u0027s folder."
+      },
+      "ProjectFileRequest": {
+        "required": [
+          "project",
+          "file"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project\u0027s path."
+          },
+          "file": {
+            "type": "string",
+            "description": "The file, anywhere the Server can read."
+          }
+        },
+        "description": "A file to bring into a project as whatever it is."
+      },
+      "ProjectMeshChange": {
+        "required": [
+          "changed"
+        ],
+        "type": "object",
+        "properties": {
+          "changed": {
+            "type": "boolean",
+            "description": "The file differs from the one the project has."
+          }
+        },
+        "description": "Whether reloading a mesh has work to do."
       },
       "ProjectMeshInfo": {
         "required": [

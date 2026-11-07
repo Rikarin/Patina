@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 
 namespace Patina.Library;
@@ -54,6 +55,12 @@ public static class LibraryFiles {
                 []
             )
         );
+
+    /// <summary>What a file holds, as a name for it: two files with one digest are the same bytes.</summary>
+    public static string Digest(string file) {
+        using var stream = File.OpenRead(file);
+        return Convert.ToHexStringLower(SHA256.HashData(stream));
+    }
 
     /// <summary>
     ///     The full path of the document of the project at <paramref name="path" /> below <c>projects/</c>.

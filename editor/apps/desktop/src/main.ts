@@ -345,7 +345,10 @@ function handleIpc(): void {
     const options: OpenDialogOptions = {
       title: 'Import',
       filters: [
-        { name: 'Meshes and pictures', extensions: ['glb', 'gltf', 'fbx', 'obj', 'png', 'jpg', 'jpeg', 'exr', 'tga'] }
+        {
+          name: 'Meshes and pictures',
+          extensions: ['glb', 'gltf', 'fbx', 'obj', 'png', 'jpg', 'jpeg', 'tga', 'bmp', 'gif']
+        }
       ],
       properties: ['openFile']
     };
