@@ -33,6 +33,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Fractional opacity exports as it is. All five presets wrote it through sRGB, so 0.5 came out as 0.735.
+- `1-map` lanes in an sRGB file invert the value and not its encoded number, and a lane with no map goes through the file's encoding like any other.
 - Bake formats, export presets, job states and layer blend modes show plain names instead of internal ids.
 - The first stroke after opening a 4K stack no longer waits seconds for the maps to reach the mesh.
 - Save All on the quit dialog stays open and says why if a document could not be saved, instead of doing nothing or quitting without it.
