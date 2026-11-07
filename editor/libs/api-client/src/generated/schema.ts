@@ -1071,6 +1071,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/stacks/{id}/mesh-parts': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The named meshes in the stack's texture set, which a layer can be limited to. */
+    get: operations['GetStackMeshParts'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/mesh-mask': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Draws where some named meshes lie in the layout, as a picture for a setLayer command's meshMask. */
+    post: operations['DrawStackMeshMask'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/stacks/{id}/export': {
     parameters: {
       query?: never;
@@ -2851,6 +2885,8 @@ export interface components {
       path: string;
       /** @description The detailed mesh it bakes from, below the library. */
       high?: null | string;
+      /** @description The file it was brought in from, which reloading reads again. */
+      source?: null | string;
     };
     /** @description The body of `POST /api/v1/library/project/meshes`. */
     ProjectMeshRequest: {
@@ -3172,6 +3208,7 @@ export interface components {
         [key: string]: unknown;
       };
       mask?: null | components['schemas']['StackMask'];
+      meshMask?: null | components['schemas']['StackMeshMask'];
       /** @description The world axis a planar projection looks along or a cylinder wraps: X, Y or Z. */
       planarAxis?: null | string;
       placement?: null | components['schemas']['StackPlacement'];
@@ -3498,6 +3535,8 @@ export interface components {
       parameters?: null | {
         [key: string]: string;
       };
+      /** @description The named meshes the layer is limited to, or null for the whole model. */
+      meshParts?: null | string[];
     };
     /** @description One step run on a mask. */
     StackMaskEffect: {
@@ -3521,6 +3560,25 @@ export interface components {
     StackMeshMapsRequest: {
       /** @description The bake's folder, or null for none. */
       folder?: null | string;
+    };
+    /** @description Limits a layer to some of the model's named meshes, on top of any mask it has. */
+    StackMeshMask: {
+      /** @description The named meshes it stays on. Empty is the whole model. */
+      parts: string[];
+      /** @description The picture of where they lie, from `POST /stacks/{id}/mesh-mask`. */
+      asset: string;
+    };
+    /** @description The body of `POST /api/v1/stacks/{id}/mesh-mask`. */
+    StackMeshMaskRequest: {
+      /** @description The named meshes to draw. */
+      parts: string[];
+    };
+    /** @description The named meshes of a stack's model, and the picture of some of them. */
+    StackMeshParts: {
+      /** @description The named meshes in its texture set. */
+      parts: string[];
+      /** @description The picture, when one was asked for. */
+      asset?: null | string;
     };
     /** @description Opens a layer stack. */
     StackOpenRequest: {
@@ -7079,6 +7137,108 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetStackMeshParts: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackMeshParts'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  DrawStackMeshMask: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StackMeshMaskRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackMeshParts'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
         headers: {
           [name: string]: unknown;
         };

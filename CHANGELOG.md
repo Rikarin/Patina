@@ -8,6 +8,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - Project Settings holds the project's mesh, Auto Unwrap and Preserve Paint. A mesh with no UVs gets a layout in a new file beside it, when it is set or from the error's Unwrap Mesh button.
+- A layer can be kept to named meshes, from the square on its row. It combines with any mask the layer has.
+- Blend mode and opacity sit at the top of the Layers pane.
+- Reload Mesh (Cmd+Shift+R) reads the mesh again from where it came from, and Project Settings is on a project's right-click menu.
+- Folders take masks from the layer menu.
 - Texture sets: each material of a mesh gets its own layers, maps, bake and export, and the whole model shows together while one is painted.
 - Paint follows a new mesh or a repacked layout by where it sits on the surface, with a copy of the old paint kept in the project.
 - The macOS app carries MoltenVK, so it needs no Vulkan SDK or Homebrew.

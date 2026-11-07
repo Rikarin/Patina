@@ -104,6 +104,8 @@ sealed class WorkerLoop(
                 IpcTypes.MeshUnwrap => Unwrap(request),
                 IpcTypes.MeshMovePaint => MovePaint(request),
                 IpcTypes.MeshMaterials => Materials(request),
+                IpcTypes.MeshParts => Parts(request),
+                IpcTypes.MeshPartMask => PartMask(request),
                 IpcTypes.BakeStart => bakes.Start(request, link),
                 IpcTypes.BakeCancel => bakes.Cancel(request),
                 IpcTypes.BuildStart => builds.Start(request, link),
@@ -121,6 +123,29 @@ sealed class WorkerLoop(
             };
         } catch (Exception e) when (e is ModelFormatException or IOException or InvalidOperationException) {
             throw new IpcException($"'{Path.GetFileName(ask.Source)}' could not be unwrapped: {e.Message}");
+        }
+    }
+
+    static IpcMessage Parts(IpcMessage request) {
+        var file = request.MeshFile ?? throw new IpcException("mesh.parts names no file.");
+        try {
+            return new() {
+                Type = IpcTypes.Ok,
+                Id = request.Id,
+                Parts = ViewportGeometry.Parts(file, request.MeshSet ?? string.Empty)
+            };
+        } catch (Exception e) when (e is ModelFormatException or IOException or UnauthorizedAccessException) {
+            throw new IpcException($"'{Path.GetFileName(file)}' would not read: {e.Message}");
+        }
+    }
+
+    static IpcMessage PartMask(IpcMessage request) {
+        var ask = request.MeshPartMask ?? throw new IpcException("mesh.part-mask draws nothing.");
+        try {
+            MeshPartMask.Draw(ask);
+            return IpcMessage.Ok(request.Id);
+        } catch (Exception e) when (e is ModelFormatException or IOException or UnauthorizedAccessException) {
+            throw new IpcException($"'{Path.GetFileName(ask.Mesh)}' would not read: {e.Message}");
         }
     }
 

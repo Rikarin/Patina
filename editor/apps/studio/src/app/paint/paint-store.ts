@@ -287,6 +287,41 @@ export class PaintStore {
   }
 
   /** Adds a layer at the top of the stack, or of the chosen group, and chooses it. */
+  /** The named meshes in this texture set, which a layer can be kept to. */
+  async meshParts(): Promise<readonly string[]> {
+    const id = this.state()?.id;
+    if (!id) {
+      return [];
+    }
+
+    const client = await this.api();
+    return unwrap(await client.GET('/api/v1/stacks/{id}/mesh-parts', { params: { path: { id } } })).parts;
+  }
+
+  /** Keeps a layer to these named meshes, or to the whole model when there are none. */
+  async keepToMeshes(layer: StackLayer, parts: readonly string[]): Promise<void> {
+    const id = this.state()?.id;
+    if (!id) {
+      return;
+    }
+
+    try {
+      const client = await this.api();
+      const asset =
+        parts.length === 0
+          ? ''
+          : (unwrap(
+              await client.POST('/api/v1/stacks/{id}/mesh-mask', {
+                params: { path: { id } },
+                body: { parts: [...parts] }
+              })
+            ).asset ?? '');
+      await this.edit({ op: 'setLayer', layer: layer.id, meshMask: { parts: [...parts], asset } });
+    } catch (failure) {
+      this.failure.set(failure instanceof Error ? failure.message : String(failure));
+    }
+  }
+
   async addLayer(kind = 'paint', name = 'Paint', filter?: string): Promise<void> {
     const chosen = this.chosen();
     const parent = chosen?.kind === 'group' ? chosen.id : null;

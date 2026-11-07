@@ -69,6 +69,8 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(IReadOnlyList<ProjectReport>))]
 [JsonSerializable(typeof(StackEventPage))]
 [JsonSerializable(typeof(StackExportRequest))]
+[JsonSerializable(typeof(StackMeshMaskRequest))]
+[JsonSerializable(typeof(StackMeshParts))]
 [JsonSerializable(typeof(BuildManifest))]
 [JsonSerializable(typeof(BuildLogLine))]
 [JsonSerializable(typeof(ExportManifest))]

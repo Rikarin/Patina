@@ -41,6 +41,7 @@ class StackMask:
             effects (list[StackMaskEffect] | None | Unset): What runs on the mask, in order, or null to keep them.
             parameters (None | StackMaskParametersType1 | Unset): What a generator's knobs are set to, as text, or null to
                 keep them.
+            mesh_parts (list[str] | None | Unset): The named meshes the layer is limited to, or null for the whole model.
      """
 
     source: str
@@ -54,6 +55,7 @@ class StackMask:
     colour: list[float] | None | Unset = UNSET
     effects: list[StackMaskEffect] | None | Unset = UNSET
     parameters: None | StackMaskParametersType1 | Unset = UNSET
+    mesh_parts: list[str] | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -110,6 +112,16 @@ class StackMask:
         else:
             parameters = self.parameters
 
+        mesh_parts: list[str] | None | Unset
+        if isinstance(self.mesh_parts, Unset):
+            mesh_parts = UNSET
+        elif isinstance(self.mesh_parts, list):
+            mesh_parts = self.mesh_parts
+
+
+        else:
+            mesh_parts = self.mesh_parts
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -129,6 +141,8 @@ class StackMask:
             field_dict["effects"] = effects
         if parameters is not UNSET:
             field_dict["parameters"] = parameters
+        if mesh_parts is not UNSET:
+            field_dict["meshParts"] = mesh_parts
 
         return field_dict
 
@@ -218,6 +232,24 @@ class StackMask:
         parameters = _parse_parameters(d.pop("parameters", UNSET))
 
 
+        def _parse_mesh_parts(data: object) -> list[str] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                mesh_parts_type_1 = cast(list[str], data)
+
+                return mesh_parts_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[str] | None | Unset, data)
+
+        mesh_parts = _parse_mesh_parts(d.pop("meshParts", UNSET))
+
+
         stack_mask = cls(
             source=source,
             value=value,
@@ -230,6 +262,7 @@ class StackMask:
             colour=colour,
             effects=effects,
             parameters=parameters,
+            mesh_parts=mesh_parts,
         )
 
 

@@ -174,6 +174,17 @@ interface MenuAt {
             Open
           </button>
         }
+        @if (at.row?.kind === 'project') {
+          <button
+            type="button"
+            class="hover:bg-selection px-3 py-1 text-start"
+            role="menuitem"
+            data-testid="menu-project-settings"
+            (click)="act(openSettings)"
+          >
+            Project Settings…
+          </button>
+        }
         @if (at.row?.kind === 'document' && at.row.document.kind === 'graph') {
           <div class="border-hairline my-1 border-t"></div>
           @for (role of graphRoles; track role) {
@@ -426,6 +437,13 @@ export class LibraryTree {
     this.menu.set(null);
     void item(at?.row ?? null);
   }
+
+  /** The settings belong to what is open, so a project opens first. */
+  protected readonly openSettings = (row: TreeRow | null): void => {
+    if (row?.kind === 'project') {
+      void this.project.openSettings(row.path);
+    }
+  };
 
   protected readonly openRow = (row: TreeRow | null): void => {
     if (row) {

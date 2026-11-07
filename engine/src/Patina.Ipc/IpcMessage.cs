@@ -88,6 +88,10 @@ public static class IpcTypes {
 
     public const string MeshMaterials = "mesh.materials";
 
+    public const string MeshParts = "mesh.parts";
+
+    public const string MeshPartMask = "mesh.part-mask";
+
     /// <summary>Renders each fill of a stack alone, small.</summary>
     public const string StackThumbnails = "stack.thumbnails";
 
@@ -201,8 +205,16 @@ public sealed class IpcMessage {
 
     public MeshMovePaintAsk? MeshMovePaint { get; set; }
 
-    /// <summary>The file for <see cref="IpcTypes.MeshMaterials" />.</summary>
+    /// <summary>The file for <see cref="IpcTypes.MeshMaterials" /> and <see cref="IpcTypes.MeshParts" />.</summary>
     public string? MeshFile { get; set; }
+
+    /// <summary>The texture set for <see cref="IpcTypes.MeshParts" />.</summary>
+    public string? MeshSet { get; set; }
+
+    /// <summary>A model's named meshes, in the answer to <see cref="IpcTypes.MeshParts" />.</summary>
+    public IReadOnlyList<string>? Parts { get; set; }
+
+    public MeshPartMaskAsk? MeshPartMask { get; set; }
 
     /// <summary>A model's materials, in the answer to <see cref="IpcTypes.MeshMaterials" />.</summary>
     public IReadOnlyList<string>? Materials { get; set; }
@@ -505,6 +517,13 @@ public sealed record MeshUnwrapAsk(string Source, string Output);
 /// <param name="Paints">The paint files.</param>
 /// <param name="Set">The texture set they belong to, whose triangles are all that are read.</param>
 public sealed record MeshMovePaintAsk(string From, string To, IReadOnlyList<string> Paints, string Set);
+
+/// <summary>Draws where some of a model's named meshes lie in its layout, white on black.</summary>
+/// <param name="Mesh">The mesh file.</param>
+/// <param name="Parts">The named meshes.</param>
+/// <param name="Side">The picture's width and height.</param>
+/// <param name="Output">The picture.</param>
+public sealed record MeshPartMaskAsk(string Mesh, IReadOnlyList<string> Parts, int Side, string Output);
 
 /// <summary>Writes canvases to a folder: the stack's own for a save, the cache's for a checkpoint.</summary>
 /// <param name="Session">The session.</param>

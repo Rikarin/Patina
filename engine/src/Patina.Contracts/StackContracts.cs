@@ -78,6 +78,7 @@ public sealed record StackLayer(
 /// <param name="Softness">How much further the mask takes to reach nothing.</param>
 /// <param name="Effects">What runs on the mask, in order, or null to keep them.</param>
 /// <param name="Parameters">What a generator's knobs are set to, as text, or null to keep them.</param>
+/// <param name="MeshParts">The named meshes the layer is limited to, or null for the whole model.</param>
 public sealed record StackMask(
     string Source,
     float Value = 1f,
@@ -89,8 +90,23 @@ public sealed record StackMask(
     float Tolerance = 0.02f,
     float Softness = 0f,
     IReadOnlyList<StackMaskEffect>? Effects = null,
-    IReadOnlyDictionary<string, string>? Parameters = null
+    IReadOnlyDictionary<string, string>? Parameters = null,
+    IReadOnlyList<string>? MeshParts = null
 );
+
+/// <summary>Limits a layer to some of the model's named meshes, on top of any mask it has.</summary>
+/// <param name="Parts">The named meshes it stays on. Empty is the whole model.</param>
+/// <param name="Asset">The picture of where they lie, from <c>POST /stacks/{id}/mesh-mask</c>.</param>
+public sealed record StackMeshMask(IReadOnlyList<string> Parts, string Asset);
+
+/// <summary>The body of <c>POST /api/v1/stacks/{id}/mesh-mask</c>.</summary>
+/// <param name="Parts">The named meshes to draw.</param>
+public sealed record StackMeshMaskRequest(IReadOnlyList<string> Parts);
+
+/// <summary>The named meshes of a stack's model, and the picture of some of them.</summary>
+/// <param name="Parts">The named meshes in its texture set.</param>
+/// <param name="Asset">The picture, when one was asked for.</param>
+public sealed record StackMeshParts(IReadOnlyList<string> Parts, string? Asset = null);
 
 /// <summary>One step run on a mask.</summary>
 /// <param name="Node">The node type or compound it is.</param>
@@ -307,6 +323,7 @@ public sealed record StackMoveLayer(string Layer, int Delta) : StackCommand;
 /// <param name="Filter">What a filter does.</param>
 /// <param name="Settings">A filter's numbers, replacing what these names held.</param>
 /// <param name="Mask">Its mask, which replaces the old one and keeps any painted canvas.</param>
+/// <param name="MeshMask">The named meshes it is kept to, or null to leave that as it is.</param>
 /// <param name="PlanarAxis">The world axis a planar projection looks along or a cylinder wraps: X, Y or Z.</param>
 /// <param name="Placement">Where a fill sits on the surface, which replaces where it sat.</param>
 /// <param name="Parameters">What a graph fill sets the graph's knobs to, replacing what these names held.</param>
@@ -325,6 +342,7 @@ public sealed record StackSetLayer(
     string? Filter = null,
     IReadOnlyDictionary<string, IReadOnlyList<float>>? Settings = null,
     StackMask? Mask = null,
+    StackMeshMask? MeshMask = null,
     string? PlanarAxis = null,
     StackPlacement? Placement = null,
     IReadOnlyDictionary<string, string>? Parameters = null

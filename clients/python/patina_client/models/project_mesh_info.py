@@ -29,11 +29,13 @@ class ProjectMeshInfo:
             path (str): Its path below the library.
             id (None | Unset | UUID): Its id. Null until the project lists it.
             high (None | str | Unset): The detailed mesh it bakes from, below the library.
+            source (None | str | Unset): The file it was brought in from, which reloading reads again.
      """
 
     path: str
     id: None | Unset | UUID = UNSET
     high: None | str | Unset = UNSET
+    source: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -57,6 +59,12 @@ class ProjectMeshInfo:
         else:
             high = self.high
 
+        source: None | str | Unset
+        if isinstance(self.source, Unset):
+            source = UNSET
+        else:
+            source = self.source
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -67,6 +75,8 @@ class ProjectMeshInfo:
             field_dict["id"] = id
         if high is not UNSET:
             field_dict["high"] = high
+        if source is not UNSET:
+            field_dict["source"] = source
 
         return field_dict
 
@@ -107,10 +117,21 @@ class ProjectMeshInfo:
         high = _parse_high(d.pop("high", UNSET))
 
 
+        def _parse_source(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        source = _parse_source(d.pop("source", UNSET))
+
+
         project_mesh_info = cls(
             path=path,
             id=id,
             high=high,
+            source=source,
         )
 
 

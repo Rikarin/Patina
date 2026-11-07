@@ -389,6 +389,25 @@ export class ProjectStore {
     }
   }
 
+  /** Opens a project if it needs it, then its settings. */
+  async openSettings(path: string): Promise<void> {
+    if (this.current()?.path !== path) {
+      await this.open(path);
+    }
+
+    this.settingsOpen.set(this.current()?.path === path);
+  }
+
+  /** Reads the mesh again from where it came from, as after an export from a modelling tool. */
+  async reloadMesh(): Promise<void> {
+    const source = this.mesh()?.source;
+    if (source) {
+      await this.applySettings({ mesh: source });
+    } else if (this.current()) {
+      this.settingsOpen.set(true); // it came in before Patina kept this, so it needs choosing once
+    }
+  }
+
   /** What a new project starts with, before anything opens it. */
   async startSettings(path: string, autoUnwrap: boolean): Promise<void> {
     const client = await this.library.api();

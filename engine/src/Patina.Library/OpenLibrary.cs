@@ -174,9 +174,9 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
 
     /// <summary>Brings a mesh into a project, and its detailed mesh if it has one.</summary>
     /// <returns>The mesh as the project lists it.</returns>
-    public ProjectMesh AddMesh(string path, string mesh, string? high) {
+    public ProjectMesh AddMesh(string path, string mesh, string? high, string? source = null) {
         lock (createGate) {
-            var added = ProjectFiles.AddMesh(RootPath, path, mesh, high);
+            var added = ProjectFiles.AddMesh(RootPath, path, mesh, high, source);
             Interlocked.Increment(ref unscannedWrites);
             return added;
         }

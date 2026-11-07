@@ -18,6 +18,7 @@ if TYPE_CHECKING:
   from ..models.stack_command_stack_set_layer_textures_type_1 import StackCommandStackSetLayerTexturesType1
   from ..models.stack_command_stack_set_layer_values_type_1 import StackCommandStackSetLayerValuesType1
   from ..models.stack_mask import StackMask
+  from ..models.stack_mesh_mask import StackMeshMask
   from ..models.stack_placement import StackPlacement
 
 
@@ -51,6 +52,7 @@ class StackCommandStackSetLayer:
             settings (None | StackCommandStackSetLayerSettingsType1 | Unset): A filter's numbers, replacing what these names
                 held.
             mask (None | StackMask | Unset):
+            mesh_mask (None | StackMeshMask | Unset):
             planar_axis (None | str | Unset): The world axis a planar projection looks along or a cylinder wraps: X, Y or Z.
             placement (None | StackPlacement | Unset):
             parameters (None | StackCommandStackSetLayerParametersType1 | Unset): What a graph fill sets the graph's knobs
@@ -72,6 +74,7 @@ class StackCommandStackSetLayer:
     filter_: None | str | Unset = UNSET
     settings: None | StackCommandStackSetLayerSettingsType1 | Unset = UNSET
     mask: None | StackMask | Unset = UNSET
+    mesh_mask: None | StackMeshMask | Unset = UNSET
     planar_axis: None | str | Unset = UNSET
     placement: None | StackPlacement | Unset = UNSET
     parameters: None | StackCommandStackSetLayerParametersType1 | Unset = UNSET
@@ -87,6 +90,7 @@ class StackCommandStackSetLayer:
         from ..models.stack_command_stack_set_layer_textures_type_1 import StackCommandStackSetLayerTexturesType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_layer_values_type_1 import StackCommandStackSetLayerValuesType1 # noqa: PLC0415
         from ..models.stack_mask import StackMask # noqa: PLC0415
+        from ..models.stack_mesh_mask import StackMeshMask # noqa: PLC0415
         from ..models.stack_placement import StackPlacement # noqa: PLC0415
         op = self.op.value
 
@@ -182,6 +186,14 @@ class StackCommandStackSetLayer:
         else:
             mask = self.mask
 
+        mesh_mask: dict[str, Any] | None | Unset
+        if isinstance(self.mesh_mask, Unset):
+            mesh_mask = UNSET
+        elif isinstance(self.mesh_mask, StackMeshMask):
+            mesh_mask = self.mesh_mask.to_dict()
+        else:
+            mesh_mask = self.mesh_mask
+
         planar_axis: None | str | Unset
         if isinstance(self.planar_axis, Unset):
             planar_axis = UNSET
@@ -237,6 +249,8 @@ class StackCommandStackSetLayer:
             field_dict["settings"] = settings
         if mask is not UNSET:
             field_dict["mask"] = mask
+        if mesh_mask is not UNSET:
+            field_dict["meshMask"] = mesh_mask
         if planar_axis is not UNSET:
             field_dict["planarAxis"] = planar_axis
         if placement is not UNSET:
@@ -255,6 +269,7 @@ class StackCommandStackSetLayer:
         from ..models.stack_command_stack_set_layer_textures_type_1 import StackCommandStackSetLayerTexturesType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_layer_values_type_1 import StackCommandStackSetLayerValuesType1 # noqa: PLC0415
         from ..models.stack_mask import StackMask # noqa: PLC0415
+        from ..models.stack_mesh_mask import StackMeshMask # noqa: PLC0415
         from ..models.stack_placement import StackPlacement # noqa: PLC0415
         d = dict(src_dict)
         op = StackCommandStackSetLayerOp(d.pop("op"))
@@ -442,6 +457,26 @@ class StackCommandStackSetLayer:
         mask = _parse_mask(d.pop("mask", UNSET))
 
 
+        def _parse_mesh_mask(data: object) -> None | StackMeshMask | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                mesh_mask_type_1 = StackMeshMask.from_dict(data)
+
+
+
+                return mesh_mask_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackMeshMask | Unset, data)
+
+        mesh_mask = _parse_mesh_mask(d.pop("meshMask", UNSET))
+
+
         def _parse_planar_axis(data: object) -> None | str | Unset:
             if data is None:
                 return data
@@ -508,6 +543,7 @@ class StackCommandStackSetLayer:
             filter_=filter_,
             settings=settings,
             mask=mask,
+            mesh_mask=mesh_mask,
             planar_axis=planar_axis,
             placement=placement,
             parameters=parameters,

@@ -438,7 +438,7 @@ public sealed class StackEditor : ILayerStackDocument {
                 Filter = Parsed(change.Filter, layer.Filter, "filter"),
                 Settings = Merged(layer.Settings, Copied(change.Settings)),
                 Texts = Merged(layer.Texts, change.Parameters),
-                Mask = Masked(layer.Mask, change.Mask)
+                Mask = StackDocuments.MeshMasked(Masked(layer.Mask, change.Mask), change.MeshMask)
             },
             "Change layer"
         );

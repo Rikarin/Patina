@@ -14,6 +14,10 @@ public static class StackDocuments {
     public const string Extension = ".vxlayers";
     const string ColourSelect = "Analysis/Colour Select";
     const string SelectColour = "Colour";
+
+    /// <summary>Marks a mask entry as the one that keeps a layer to some meshes, and holds their names.</summary>
+    const string MeshParts = "meshParts";
+
     const string SelectTolerance = "Tolerance";
     const string SelectSoftness = "Softness";
     const float DefaultTolerance = 0.02f;
@@ -203,6 +207,38 @@ public static class StackDocuments {
         LibraryFiles.Replace(path, Text(Parse(File.ReadAllText(path)) with { Model = model }));
     }
 
+    /// <summary>
+    ///     Keeps a layer to some of the model's meshes. It is a mask entry that multiplies over the mask below, and is
+    ///     the bottom of the stack when there is none, so it combines with any mask without being one.
+    /// </summary>
+    public static MaskAsset MeshMasked(MaskAsset mask, StackMeshMask? change) {
+        List<MaskLayerAsset> others =
+            [..mask.Layers.Where(static entry => !entry.GeneratorTexts.ContainsKey(MeshParts))];
+        var held = mask.Layers.Find(static entry => entry.GeneratorTexts.ContainsKey(MeshParts));
+        var entry = change is null
+            ? held
+            : change.Parts.Count == 0
+                ? null
+                : new() {
+                    Source = LayerMaskSource.Texture,
+                    Asset = change.Asset,
+                    GeneratorTexts = new() { [MeshParts] = string.Join('\n', change.Parts) }
+                };
+        if (entry is not null) {
+            var blend = mask.Source == LayerMaskSource.None && others.Count == 0
+                ? LayerBlendMode.Copy
+                : LayerBlendMode.Multiply;
+            others.Add(entry with { Blend = blend });
+        }
+
+        return mask with { Layers = others };
+    }
+
+    static string[]? MeshPartsOf(MaskAsset mask) =>
+        mask.Layers.Find(static entry => entry.GeneratorTexts.ContainsKey(MeshParts))
+            ?.GeneratorTexts[MeshParts]
+            .Split('\n');
+
     static StackLayer State(LayerAsset layer) =>
         new(
             layer.Id,
@@ -241,7 +277,8 @@ public static class StackDocuments {
                             )
                         )
                 ],
-                layer.Mask.GeneratorTexts
+                layer.Mask.GeneratorTexts,
+                MeshPartsOf(layer.Mask)
             ),
             layer.PlanarAxis.ToString(),
             new(

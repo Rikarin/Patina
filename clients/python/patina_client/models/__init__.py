@@ -178,6 +178,9 @@ from .stack_mask_effect_texts_type_1 import StackMaskEffectTextsType1
 from .stack_mask_effect_values_type_1 import StackMaskEffectValuesType1
 from .stack_mask_parameters_type_1 import StackMaskParametersType1
 from .stack_mesh_maps_request import StackMeshMapsRequest
+from .stack_mesh_mask import StackMeshMask
+from .stack_mesh_mask_request import StackMeshMaskRequest
+from .stack_mesh_parts import StackMeshParts
 from .stack_open_request import StackOpenRequest
 from .stack_painted import StackPainted
 from .stack_pixels import StackPixels
@@ -386,6 +389,9 @@ __all__ = (
     "StackMaskEffectValuesType1",
     "StackMaskParametersType1",
     "StackMeshMapsRequest",
+    "StackMeshMask",
+    "StackMeshMaskRequest",
+    "StackMeshParts",
     "StackOpenRequest",
     "StackPainted",
     "StackPixels",

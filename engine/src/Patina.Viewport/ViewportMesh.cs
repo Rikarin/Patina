@@ -12,7 +12,8 @@ namespace Patina.Viewport;
 /// <param name="FirstIndex">Where it starts in <see cref="ViewportMesh.Indices" />.</param>
 /// <param name="IndexCount">How many indices.</param>
 /// <param name="Material">Which material in <see cref="ViewportMesh.Materials" />.</param>
-readonly record struct ViewportPart(int FirstIndex, int IndexCount, int Material);
+/// <param name="Name">The name of the mesh in the file.</param>
+readonly record struct ViewportPart(int FirstIndex, int IndexCount, int Material, string Name);
 
 /// <summary>What a material in the file asks for.</summary>
 /// <param name="Factors">Its numbers.</param>
@@ -43,6 +44,15 @@ public sealed record ViewportGeometry(
     /// <summary>Reads the triangles of one material, or all of them if the file has no material of that name.</summary>
     /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
     public static ViewportGeometry Read(string path, string material) => ViewportMesh.Read(path).Geometry(material);
+
+    /// <summary>The named meshes in a file, in one texture set if it is one of the file's materials.</summary>
+    /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
+    public static IReadOnlyList<string> Parts(string path, string set) => ViewportMesh.Read(path).PartsOf(set);
+
+    /// <summary>The layout of these named meshes, three coordinates to a triangle.</summary>
+    /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
+    public static IReadOnlyList<Vector2> Layout(string path, IReadOnlyCollection<string> parts) =>
+        ViewportMesh.Read(path).LayoutOf(parts);
 
     /// <summary>The materials the file's triangles use, which is its texture sets.</summary>
     /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
@@ -134,7 +144,7 @@ sealed class ViewportMesh {
                 indices.Add(offset + (uint)index);
             }
 
-            parts.Add(new(first, mesh.Indices.Length, part.Material));
+            parts.Add(new(first, mesh.Indices.Length, part.Material, part.Mesh));
         }
 
         return new([..vertices], [..indices], [..parts], ReadMaterials(read), bounds, hasCoordinates, false);
@@ -143,6 +153,24 @@ sealed class ViewportMesh {
     /// <summary>The materials some part is drawn with.</summary>
     public string[] MaterialsInUse() =>
         [..Parts.Select(static part => part.Material).Distinct().Order().Select(material => Materials[material].Name)];
+
+    /// <summary>The named meshes of a texture set, or of the whole file for a set that is no material here.</summary>
+    public string[] PartsOf(string set) {
+        var material = MaterialOf(set);
+        return [
+            ..Parts.Where(part => material < 0 || part.Material == material).Select(static part => part.Name).Distinct()
+        ];
+    }
+
+    /// <summary>The layout of the named meshes, three coordinates to a triangle.</summary>
+    public Vector2[] LayoutOf(IReadOnlyCollection<string> names) {
+        var coordinates = Geometry().Coordinates;
+        return [
+            ..Parts.Where(part => names.Contains(part.Name))
+                .SelectMany(part => Indices.Skip(part.FirstIndex).Take(part.IndexCount))
+                .Select(corner => coordinates[corner])
+        ];
+    }
 
     /// <summary>Which material a texture set paints, by name.</summary>
     /// <returns>Its index, or -1 for one that is no material here.</returns>

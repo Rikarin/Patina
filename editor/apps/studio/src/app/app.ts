@@ -400,6 +400,8 @@ export class App {
         this.project.savingAs.set(true);
       } else if (command === 'import') {
         void bridge.openFile().then(path => (path ? this.project.importFiles([path]) : undefined));
+      } else if (command === 'reloadMesh') {
+        void this.project.reloadMesh();
       } else if (command === 'projectSettings') {
         this.project.settingsOpen.set(this.project.current() !== null);
       } else if (command === 'toggleStats') {

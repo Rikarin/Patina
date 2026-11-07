@@ -3925,6 +3925,138 @@
         }
       }
     },
+    "/api/v1/stacks/{id}/mesh-parts": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "The named meshes in the stack\u0027s texture set, which a layer can be limited to.",
+        "operationId": "GetStackMeshParts",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackMeshParts"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/mesh-mask": {
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Draws where some named meshes lie in the layout, as a picture for a setLayer command\u0027s meshMask.",
+        "operationId": "DrawStackMeshMask",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StackMeshMaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackMeshParts"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stacks/{id}/export": {
       "post": {
         "tags": [
@@ -8129,6 +8261,13 @@
               "string"
             ],
             "description": "The detailed mesh it bakes from, below the library."
+          },
+          "source": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The file it was brought in from, which reloading reads again."
           }
         },
         "description": "A mesh in a project."
@@ -8854,6 +8993,17 @@
               {
                 "description": "Its mask, which replaces the old one and keeps any painted canvas.",
                 "$ref": "#/components/schemas/StackMask"
+              }
+            ]
+          },
+          "meshMask": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The named meshes it is kept to, or null to leave that as it is.",
+                "$ref": "#/components/schemas/StackMeshMask"
               }
             ]
           },
@@ -9595,6 +9745,16 @@
               "type": "string"
             },
             "description": "What a generator\u0027s knobs are set to, as text, or null to keep them."
+          },
+          "meshParts": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "The named meshes the layer is limited to, or null for the whole model."
           }
         },
         "description": "What decides where a layer shows."
@@ -9654,6 +9814,66 @@
           }
         },
         "description": "Chooses the bake a stack\u0027s generators and bake masks read."
+      },
+      "StackMeshMask": {
+        "required": [
+          "parts",
+          "asset"
+        ],
+        "type": "object",
+        "properties": {
+          "parts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The named meshes it stays on. Empty is the whole model."
+          },
+          "asset": {
+            "type": "string",
+            "description": "The picture of where they lie, from \u0060POST /stacks/{id}/mesh-mask\u0060."
+          }
+        },
+        "description": "Limits a layer to some of the model\u0027s named meshes, on top of any mask it has."
+      },
+      "StackMeshMaskRequest": {
+        "required": [
+          "parts"
+        ],
+        "type": "object",
+        "properties": {
+          "parts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The named meshes to draw."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/stacks/{id}/mesh-mask\u0060."
+      },
+      "StackMeshParts": {
+        "required": [
+          "parts"
+        ],
+        "type": "object",
+        "properties": {
+          "parts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The named meshes in its texture set."
+          },
+          "asset": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The picture, when one was asked for."
+          }
+        },
+        "description": "The named meshes of a stack\u0027s model, and the picture of some of them."
       },
       "StackOpenRequest": {
         "required": [

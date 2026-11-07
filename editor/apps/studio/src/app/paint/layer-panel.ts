@@ -78,33 +78,6 @@ export function hexOf(colour: readonly number[] | undefined): string {
             (keydown.enter)="commitName(layer)"
           />
         </div>
-        <div class="flex items-center gap-2">
-          <span class="text-foreground-muted w-16 shrink-0 text-xs">Opacity</span>
-          <xui-slider
-            class="min-w-0 flex-1"
-            labelStepSize="0"
-            aria-label="Layer opacity"
-            data-testid="paint-layer-opacity"
-            [max]="1"
-            [min]="0"
-            [stepSize]="0.01"
-            [value]="opacity.shown()"
-            (valueChange)="setOpacity(layer, $event)"
-            (pointerup)="opacity.release()"
-          />
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="text-foreground-muted w-16 shrink-0 text-xs">Blend</span>
-          <xui-select
-            class="min-w-0 flex-1"
-            aria-label="Blend mode"
-            data-testid="paint-layer-blend"
-            [itemText]="blendName"
-            [items]="blends()"
-            [value]="layer.blend"
-            (valueChange)="store.edit({ op: 'setLayer', layer: layer.id, blend: $event })"
-          />
-        </div>
         <div class="flex flex-wrap items-center gap-1">
           @for (channel of store.state()?.channels ?? []; track channel.usage) {
             <button
@@ -590,10 +563,7 @@ export class LayerPanel {
   protected readonly generators = computed(() => this.store.vocabulary()?.generators ?? []);
   protected readonly meshMaps = computed(() => this.store.vocabulary()?.meshMaps ?? []);
   protected readonly name = new LiveValue<string>(() => this.store.chosen()?.name ?? '');
-  protected readonly opacity = new LiveValue<number>(() => this.store.chosen()?.opacity ?? 1);
   protected readonly scalarDraft = signal<{ usage: string; value: number } | null>(null);
-  private readonly sending = signal(false);
-  private latest: { layer: string; opacity: number } | null = null;
 
   constructor() {
     effect(() => {
@@ -619,7 +589,6 @@ export class LayerPanel {
       this.store.layer();
       untracked(() => {
         this.name.release();
-        this.opacity.release();
       });
     });
   }
@@ -649,28 +618,6 @@ export class LayerPanel {
     if (name !== layer.name) {
       void this.store.edit({ op: 'setLayer', layer: layer.id, name });
     }
-  }
-
-  /** One request out at a time, the newest value next, so that a fast slider costs what the Server can take. */
-  protected setOpacity(layer: StackLayer, opacity: number): void {
-    this.opacity.edit(opacity);
-    this.latest = { layer: layer.id, opacity };
-    void this.sendOpacity();
-  }
-
-  private async sendOpacity(): Promise<void> {
-    if (this.sending()) {
-      return;
-    }
-
-    this.sending.set(true);
-    while (this.latest) {
-      const { layer, opacity } = this.latest;
-      this.latest = null;
-      await this.store.edit({ op: 'setLayer', layer, opacity });
-    }
-
-    this.sending.set(false);
   }
 
   protected hex(layer: StackLayer, usage: string, fallback: readonly number[]): string {

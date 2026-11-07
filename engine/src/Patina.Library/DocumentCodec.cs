@@ -17,6 +17,7 @@ public static class DocumentCodec {
     const string MaterialKey = "material";
     const string MeshesKey = "meshes";
     const string AutoUnwrapKey = "autoUnwrap";
+    const string SourceKey = "source";
     const string PreservePaintKey = "preservePaint";
     const string DocumentsKey = "documents";
     const string FileKey = "file";
@@ -88,7 +89,8 @@ public static class DocumentCodec {
             [
                 Pair(IdKey, YamlText.Plain(mesh.Id.ToString())),
                 Pair(FileKey, YamlText.Text(mesh.File)),
-                ..Present(HighKey, mesh.High)
+                ..Present(HighKey, mesh.High),
+                ..Present(SourceKey, mesh.Source)
             ]
         );
 
@@ -182,7 +184,8 @@ public static class DocumentCodec {
                 .Select(static mesh => new ProjectMesh(
                         mesh.Id<AssetId>(IdKey),
                         Inside(mesh, mesh.Require(FileKey)),
-                        mesh.Optional(HighKey) is { } high ? Inside(mesh, high) : null
+                        mesh.Optional(HighKey) is { } high ? Inside(mesh, high) : null,
+                        mesh.Optional(SourceKey)
                     )
                 )
         ];

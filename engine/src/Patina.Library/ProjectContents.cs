@@ -52,7 +52,7 @@ static class ProjectFiles {
     /// <summary>Brings a mesh into a project, unless it is in there already, and lists it.</summary>
     /// <exception cref="FileNotFoundException">The project or a mesh is not there.</exception>
     /// <exception cref="ProjectRefusedException">A file is not a mesh.</exception>
-    public static ProjectMesh AddMesh(string root, string path, string mesh, string? high) {
+    public static ProjectMesh AddMesh(string root, string path, string mesh, string? high, string? source = null) {
         var (full, document) = Project(root, path);
         Require(mesh);
         if (high is not null) {
@@ -62,7 +62,15 @@ static class ProjectFiles {
         var file = Bring(full, mesh);
         var held = document.Meshes.FirstOrDefault(m => m.File == file);
         // The same file again keeps its id, or the documents on it would point at nothing.
-        var added = new ProjectMesh(held?.Id ?? AssetId.New(), file, high is null ? held?.High : Bring(full, high));
+        var outside = Path.GetFullPath(mesh).StartsWith(full + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+            ? null
+            : Path.GetFullPath(mesh);
+        var added = new ProjectMesh(
+            held?.Id ?? AssetId.New(),
+            file,
+            high is null ? held?.High : Bring(full, high),
+            source ?? outside ?? held?.Source
+        );
         var others = document.Meshes.Where(m => m.File != file);
         LibraryFiles.WriteProject(root, path, document with { Meshes = [..others, added] });
         return added;
@@ -357,7 +365,7 @@ static class ProjectFiles {
     }
 
     static ProjectMeshInfo Listed(string path, ProjectMesh mesh) =>
-        new(mesh.Id.Value, Below(path, mesh.File), mesh.High is { } high ? Below(path, high) : null);
+        new(mesh.Id.Value, Below(path, mesh.File), mesh.High is { } high ? Below(path, high) : null, mesh.Source);
 
     static ProjectDocumentInfo Listed(string path, ProjectItem item) =>
         new(item.Id.Value, item.Kind, item.Name, Below(path, item.File), item.Mesh?.Value, item.Role, item.Material);

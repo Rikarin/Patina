@@ -1,10 +1,13 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal } from '@angular/core';
 import type { StackLayer } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
-import { blendName } from '../core/labels';
+import { XuiSelectImports } from '@xui/select';
+import { XuiSliderImports } from '@xui/slider';
+import { blendName as blendLabelOf, blendName } from '../core/labels';
 import { ProjectStore } from '../library/project-store';
 import { type DropZone, dropManyCommands } from './layer-drag';
 import { hexOf } from './layer-panel';
+import { LiveValue } from './live-value';
 import { MaterialUse } from './material-use';
 import { type LayerRow, PaintStore } from './paint-store';
 
@@ -33,11 +36,11 @@ interface MenuAt {
  */
 @Component({
   selector: 'ptn-layer-stack',
-  imports: [XuiButtonImports],
+  imports: [XuiButtonImports, XuiSelectImports, XuiSliderImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'flex h-full min-h-0 flex-col',
-    '(document:click)': 'menu.set(null)',
+    '(document:click)': 'menu.set(null); meshes.set(null)',
     '(document:keydown)': 'press($event)'
   },
   template: `
@@ -151,6 +154,33 @@ interface MenuAt {
       </div>
     }
 
+    @if (store.chosen(); as layer) {
+      <div class="chrome-bar flex shrink-0 items-center gap-2 px-2 py-1" data-testid="layer-blending">
+        <xui-select
+          class="w-28 shrink-0"
+          aria-label="Blend mode"
+          data-testid="paint-layer-blend"
+          [itemText]="blendLabel"
+          [items]="blends()"
+          [value]="layer.blend"
+          (valueChange)="store.edit({ op: 'setLayer', layer: layer.id, blend: $event })"
+        />
+        <xui-slider
+          class="min-w-0 flex-1"
+          labelStepSize="0"
+          aria-label="Layer opacity"
+          data-testid="paint-layer-opacity"
+          [max]="1"
+          [min]="0"
+          [stepSize]="0.01"
+          [value]="opacity.shown()"
+          (valueChange)="setOpacity(layer, $event)"
+          (pointerup)="opacity.release()"
+        />
+        <span class="readout w-9 shrink-0 text-end text-xs">{{ round(opacity.shown()) }}%</span>
+      </div>
+    }
+
     <div
       class="min-h-0 flex-1 overflow-auto"
       role="tree"
@@ -260,6 +290,24 @@ interface MenuAt {
             </button>
           }
 
+          <button
+            type="button"
+            class="border-hairline grid size-5 shrink-0 place-items-center border"
+            data-testid="layer-mesh-mask"
+            [attr.aria-label]="'Meshes of ' + row.layer.name"
+            [attr.aria-pressed]="!!row.layer.mask.meshParts"
+            [class.bg-selection]="!!row.layer.mask.meshParts"
+            [title]="row.layer.mask.meshParts ? 'On some meshes' : 'On every mesh'"
+            (click)="$event.stopPropagation(); openMeshes($event, row.layer)"
+          >
+            <svg viewBox="0 0 16 16" class="size-3" aria-hidden="true">
+              <path d="M2 2h12v12H2z" fill="none" stroke="currentColor" stroke-width="1.5" />
+              @if (row.layer.mask.meshParts) {
+                <path d="M2 2h6v6H2z" fill="currentColor" />
+              }
+            </svg>
+          </button>
+
           <span class="min-w-0 flex-1 leading-tight">
             @if (renaming() === row.layer.id) {
               <input
@@ -287,6 +335,33 @@ interface MenuAt {
       }
     </div>
 
+    @if (meshes(); as at) {
+      <div
+        class="bg-surface-raised border-hairline fixed z-50 flex max-h-80 min-w-44 flex-col gap-1 overflow-auto border p-2 text-sm"
+        role="group"
+        aria-label="Meshes this layer is on"
+        data-testid="layer-meshes"
+        [style.left.px]="at.x"
+        [style.top.px]="at.y"
+        (click)="$event.stopPropagation()"
+        (keydown.escape)="meshes.set(null)"
+      >
+        @for (part of parts(); track part) {
+          <label class="flex items-center gap-2">
+            <input
+              type="checkbox"
+              [attr.data-testid]="'layer-mesh-' + part"
+              [checked]="onPart(at.layer, part)"
+              (change)="setPart(at.layer, part, checked($event))"
+            />
+            <span class="truncate">{{ part }}</span>
+          </label>
+        } @empty {
+          <span class="text-foreground-muted text-xs">This mesh has no named parts.</span>
+        }
+      </div>
+    }
+
     @if (menu(); as at) {
       <div
         class="bg-surface-raised border-hairline fixed z-50 flex min-w-44 flex-col rounded border py-1 text-sm shadow-lg"
@@ -307,8 +382,7 @@ interface MenuAt {
         >
           Rename
         </button>
-        @if (at.layer.kind !== 'group') {
-          @if (at.layer.mask.source === 'None') {
+        @if (at.layer.mask.source === 'None') {
             <button
               type="button"
               class="hover:bg-selection px-3 py-1 text-start"
@@ -347,7 +421,6 @@ interface MenuAt {
               Remove Mask
             </button>
           }
-        }
         <div class="border-hairline my-1 border-t"></div>
         <button
           type="button"
@@ -366,6 +439,55 @@ export class LayerStack {
   protected readonly store = inject(PaintStore);
   protected readonly project = inject(ProjectStore);
 
+  protected round(share: number): number {
+    return Math.round(share * 100);
+  }
+
+  /** One request out at a time, the newest value next, so that a fast slider costs what the Server can take. */
+  protected setOpacity(layer: StackLayer, opacity: number): void {
+    this.opacity.edit(opacity);
+    this.latest = { layer: layer.id, opacity };
+    void this.sendOpacity();
+  }
+
+  private async sendOpacity(): Promise<void> {
+    if (this.sendingOpacity) {
+      return;
+    }
+
+    this.sendingOpacity = true;
+    while (this.latest) {
+      const { layer, opacity } = this.latest;
+      this.latest = null;
+      await this.store.edit({ op: 'setLayer', layer, opacity });
+    }
+
+    this.sendingOpacity = false;
+  }
+
+  protected async openMeshes(event: MouseEvent, layer: StackLayer): Promise<void> {
+    this.meshes.set({ x: event.clientX, y: event.clientY, layer });
+    this.parts.set(await this.store.meshParts());
+  }
+
+  protected onPart(layer: StackLayer, part: string): boolean {
+    return layer.mask.meshParts?.includes(part) ?? true;
+  }
+
+  protected checked(event: Event): boolean {
+    return (event.target as HTMLInputElement).checked;
+  }
+
+  protected setPart(layer: StackLayer, part: string, on: boolean): void {
+    const kept = this.parts().filter(name => (name === part ? on : this.onPart(layer, name)));
+    void this.store.keepToMeshes(layer, kept.length === this.parts().length ? [] : kept);
+    const held = this.meshes();
+    if (held) {
+      // The row's layer changes under the open list when the Server answers, so the list keeps up from the store.
+      this.meshes.set({ ...held, layer: { ...layer, mask: { ...layer.mask, meshParts: kept } } });
+    }
+  }
+
   /** Goes to a texture set, which is a document of the project. */
   protected chooseSet(path: string): void {
     const project = this.project.current();
@@ -376,6 +498,14 @@ export class LayerStack {
   protected readonly rowHeight = RowHeight;
   protected readonly closed = signal<ReadonlySet<string>>(new Set());
   protected readonly menu = signal<MenuAt | null>(null);
+  /** The list of meshes a layer can be kept to, where it was asked for. */
+  protected readonly meshes = signal<MenuAt | null>(null);
+  protected readonly parts = signal<readonly string[]>([]);
+  protected readonly blends = computed(() => this.store.vocabulary()?.blends ?? []);
+  protected readonly blendLabel = blendLabelOf;
+  protected readonly opacity = new LiveValue<number>(() => this.store.chosen()?.opacity ?? 1);
+  private latest: { layer: string; opacity: number } | null = null;
+  private sendingOpacity = false;
   protected readonly renaming = signal<string | null>(null);
   protected readonly target = signal<{ id: string; zone: DropZone } | null>(null);
   protected dragged: readonly string[] = [];

@@ -214,6 +214,70 @@ test('each material of a mesh is a texture set, and paint follows a repacked mes
   expect(readdirSync(join(scratch, 'Sets.ptlib', 'projects', 'sets', '.paint-backup'))).toHaveLength(1);
 });
 
+test('a layer keeps to named meshes, a folder takes a mask, and the mesh reloads from its source', async () => {
+  await newLibrary(app, window, join(scratch, 'Parts.ptlib'));
+  const mesh = join(scratch, 'parts.obj');
+  writeFileSync(
+    mesh,
+    [
+      ...['0 0 0', '1 0 0', '1 1 0', '0 1 0', '2 0 0', '3 0 0', '3 1 0', '2 1 0'].map(v => `v ${v}`),
+      ...['0 0', '0.5 0', '0.5 1', '0 1', '0.5 0', '1 0', '1 1', '0.5 1'].map(t => `vt ${t}`),
+      'o Lid',
+      'f 1/1 2/2 3/3 4/4',
+      'o Hinge',
+      'f 5/5 6/6 7/7 8/8'
+    ].join('\n')
+  );
+  await newProject(app, window, 'Parts', mesh);
+  await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 60_000 });
+
+  await window.getByTestId('paint-add-fill').click();
+  await window.getByTestId('paint-fill-baseColor').locator('button').first().click();
+  await window.getByRole('textbox', { name: 'Hex color' }).fill('#00ff00');
+  await window.getByRole('textbox', { name: 'Hex color' }).press('Enter');
+  await window.keyboard.press('Escape');
+  await expect(window.getByTestId('layer-blending')).toBeVisible();
+
+  const greenAt = (across: number): Promise<number> =>
+    window.getByTestId('paint-picture').evaluate((image, x) => {
+      const canvas = globalThis.document.createElement('canvas');
+      [canvas.width, canvas.height] = [64, 64];
+      const context = canvas.getContext('2d');
+      context?.drawImage(image as HTMLImageElement, 0, 0, 64, 64);
+      return context?.getImageData(Math.floor(x * 64), 32, 1, 1).data[1] ?? 0;
+    }, across);
+  await expect.poll(() => greenAt(0.75), { timeout: 30_000 }).toBeGreaterThan(200);
+
+  await window.locator('[data-testid^=paint-layer-fill]').getByTestId('layer-mesh-mask').click();
+  await expect(window.getByTestId('layer-meshes')).toContainText('Hinge');
+  await window.getByTestId('layer-mesh-Hinge').uncheck();
+  await window.mouse.click(4, 300); // anywhere else closes the list
+  await expect.poll(() => greenAt(0.75), { timeout: 30_000 }).toBeLessThan(200);
+  expect(await greenAt(0.25)).toBeGreaterThan(200);
+
+  await window.getByTestId('paint-add-group').click();
+  const folder = window.locator('[data-testid^=paint-layer-]', { hasText: 'Folder' }).first();
+  await folder.click({ button: 'right' });
+  await window.getByTestId('layer-menu-mask-paint').click();
+  await expect(folder.getByTestId('layer-mask')).toBeVisible();
+
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]?.webContents.send('patina:command', 'save');
+  });
+  await expect(window.getByTestId('document-tab-name').filter({ hasText: '•' })).toHaveCount(0, { timeout: 30_000 });
+  const yaml = join(scratch, 'Parts.ptlib', 'projects', 'parts', 'project.yaml');
+  expect(readFileSync(yaml, 'utf8')).toContain(`source: ${mesh}`);
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]?.webContents.send('patina:command', 'reloadMesh');
+  });
+  await expect(window.getByTestId('app-failure')).toHaveCount(0);
+  await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 60_000 });
+
+  await window.locator('[data-testid=tree-row][data-path="parts"]').click({ button: 'right' });
+  await window.getByTestId('menu-project-settings').click();
+  await expect(window.getByTestId('project-settings')).toBeVisible();
+});
+
 test('Save All on the quit dialog saves a painted stack and quits', async () => {
   await openOnMesh();
   await drag(0.3, 0.45, 0.72, 0.55);

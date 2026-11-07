@@ -79,7 +79,8 @@ public sealed record ProjectFile(string Kind, string Name, string Path);
 /// <param name="Id">Its id. Null until the project lists it.</param>
 /// <param name="Path">Its path below the library.</param>
 /// <param name="High">The detailed mesh it bakes from, below the library.</param>
-public sealed record ProjectMeshInfo(Guid? Id, string Path, string? High);
+/// <param name="Source">The file it was brought in from, which reloading reads again.</param>
+public sealed record ProjectMeshInfo(Guid? Id, string Path, string? High, string? Source = null);
 
 /// <summary>Something in a project that can be opened and edited (ADR 0012).</summary>
 /// <param name="Id">Its GUID. Null until the project lists it.</param>
