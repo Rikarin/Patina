@@ -83,6 +83,12 @@ static class ProjectFiles {
             throw new FileNotFoundException($"There is no file '{picture}'.", picture);
         }
 
+        if (!PictureFormats.IsPicture(picture)) {
+            throw new ProjectRefusedException(
+                $"'{Path.GetFileName(picture)}' is not a picture: use {string.Join(", ", PictureFormats.Pictures)}."
+            );
+        }
+
         var source = Path.GetFullPath(picture);
         if (source.StartsWith(full + Path.DirectorySeparatorChar, StringComparison.Ordinal)) {
             return Below(path, Path.GetRelativePath(full, source).Replace('\\', '/'));

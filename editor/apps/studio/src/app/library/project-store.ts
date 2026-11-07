@@ -545,7 +545,7 @@ export class ProjectStore {
   /** Asks the user for a picture and brings it into the project, for a layer or a mask to read. */
   async pickPicture(): Promise<string | null> {
     const project = this.current();
-    const picture = await desktop()?.openImage();
+    const picture = await desktop()?.openImage(this.status.pictures());
     if (!project || !picture) {
       return null;
     }

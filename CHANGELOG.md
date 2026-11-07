@@ -34,6 +34,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Every place that takes a picture reads the same formats, and file dialogs offer that list: PNG, JPEG, TGA, BMP, PSD, GIF, EXR and HDR. An `.exr` in a layer and a `.tga` skew map no longer fail after they are chosen.
+- Layers and image materials keep a picture's depth: 16-bit PNGs, EXR and HDR were narrowed to 8 bits, or refused.
+- The viewport's environment takes `.exr` panoramas as well as `.hdr`.
 - A cage bake works on a mesh with several materials. It was refused, because the cage was read whole and the low mesh was not.
 - The Export panel reports every way a build can end: failed steps with their reasons, files a preset left out, and what a stopped or failed build finished. Preview numbers and the Export Maps count clear when the question changes.
 - Export Maps writes the open document's maps wherever the viewport is looking. It used to write every set of the model if the viewport wore them, and only one otherwise.

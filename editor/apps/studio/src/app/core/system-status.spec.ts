@@ -7,7 +7,8 @@ const system = {
   apiVersion: 1,
   library: '/games/Ember.ptlib',
   host: { os: 'macOS', architecture: 'Arm64', runtime: '.NET 10' },
-  worker: { connected: true, version: '1.2.3' }
+  worker: { connected: true, version: '1.2.3' },
+  formats: { pictures: ['.png'], environments: ['.hdr'] }
 };
 
 function statusWith(answer: () => Promise<Response>): SystemStatus {

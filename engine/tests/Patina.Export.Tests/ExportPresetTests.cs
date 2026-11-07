@@ -1,4 +1,6 @@
+using Patina.Contracts;
 using Patina.Export.Presets;
+using Vixen.Interchange;
 
 namespace Patina.Export.Tests;
 
@@ -179,6 +181,14 @@ public sealed class ExportPresetTests : IDisposable {
 
         Assert.Equal(map, Assert.Single(Assert.Single(ExportPresetReader.Read(text, "test").Textures).Maps));
         Assert.Equal(map, MapPictures.ExportNameOf(map));
+    }
+
+    [Fact]
+    public void Every_picture_format_is_one_a_decoder_can_take() {
+        var decoded = ImageDecoders.BuiltIn.SelectMany(static d => d.Extensions).Append(".exr").ToHashSet();
+
+        Assert.Subset(decoded, PictureFormats.Pictures.ToHashSet());
+        Assert.Subset(PictureFormats.Pictures.ToHashSet(), PictureFormats.Environments.ToHashSet());
     }
 
     [Theory]

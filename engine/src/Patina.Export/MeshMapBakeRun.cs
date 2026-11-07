@@ -135,17 +135,19 @@ public static class MeshMapBakeRun {
 
     /// <summary>A grey image as a mask, its rows the atlas's rows: the first is v = 0, as in every baked map.</summary>
     static BakeMask SkewMask(string path) {
-        var (width, height, channels, samples) = PngCodec.Decode16(File.ReadAllBytes(path));
-        if (width != height) {
-            throw new InvalidDataException($"The skew map '{path}' is {width} × {height}, and the atlas is square.");
+        var picture = MapPictures.ReadFile(path);
+        if (picture.Width != picture.Height) {
+            throw new InvalidDataException(
+                $"The skew map '{path}' is {picture.Width} × {picture.Height}, and the atlas is square."
+            );
         }
 
-        var values = new float[width * height];
+        var values = new float[picture.Width * picture.Height];
         for (var at = 0; at < values.Length; at++) {
-            values[at] = samples[at * channels] / (float)ushort.MaxValue;
+            values[at] = picture.Samples[at * picture.Channels];
         }
 
-        return new(width, values);
+        return new(picture.Width, values);
     }
 
     static BakeManifest Write(BakedMaps maps, BakeRequest request, string folder, string name) {

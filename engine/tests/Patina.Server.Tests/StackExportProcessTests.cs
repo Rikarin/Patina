@@ -106,6 +106,51 @@ public sealed partial class StackProcessTests {
     }
 
     /// <summary>
+    ///     A picture keeps its depth to the exported file. The ramp spans a few bytes' worth of height across a
+    ///     thousand texels, so eight bits would leave a few terraces, and a file that could not be read would fail.
+    /// </summary>
+    [Theory]
+    [InlineData(".png")]
+    [InlineData(".exr")]
+    public async Task An_image_material_keeps_the_depth_of_its_picture(string extension) {
+        using var deadline = Deadline(240);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        await StartAsync("Unused.vxlayers", deadline.Token);
+
+        const int Wide = 1024;
+        var ramp = Enumerable.Range(0, Wide * 2).Select(static at => 0.4f + at % Wide / (Wide * 100f)).ToArray();
+        var picture = Path.Combine(folder.FullName, $"ramp{extension}");
+        File.WriteAllBytes(
+            picture,
+            extension == ".exr"
+                ? ExrCodec.Encode(new(Wide, 2, 1, ramp))
+                : PngCodec.Encode16(
+                    Wide,
+                    2,
+                    1,
+                    [..ramp.Select(static value => (ushort)MathF.Round(value * ushort.MaxValue))]
+                )
+        );
+        var made = await http.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new { name = "Ramp", kind = "image-material", image = picture, resolution = 1024 },
+            deadline.Token
+        );
+        Assert.True(made.IsSuccessStatusCode, await made.Content.ReadAsStringAsync(deadline.Token));
+
+        var job = await BuildAsync("unreal", deadline.Token);
+        var report = await ReportedAsync(job.Id, deadline.Token);
+        SkipWithoutDevice(report);
+        Assert.Equal(0, job.Report!.Failed);
+
+        var height = Path.Combine(Library, "exports", "unreal", "ramp", "T_Ramp_H.png");
+        var (width, _, lanes, samples) = PngCodec.Decode16(File.ReadAllBytes(height));
+        var levels = Enumerable.Range(0, width).Select(x => samples[x * lanes]).Distinct().Count();
+        // Half-floats hold about 40 steps in this span, and bytes about 3.
+        Assert.True(levels > 20, $"{levels} levels came through: the picture was narrowed.");
+    }
+
+    /// <summary>
     ///     A model of two materials is two texture sets. Later outputs once replaced earlier ones, because maps were
     ///     kept by name alone, so the second set's file went out under the project's one name.
     /// </summary>

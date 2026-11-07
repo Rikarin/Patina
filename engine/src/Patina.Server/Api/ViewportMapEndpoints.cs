@@ -40,7 +40,7 @@ static class ViewportMapEndpoints {
             .ProducesProblem(Missing);
         api.MapPut("/viewport/environment", SetEnvironment)
             .WithName("SetViewportEnvironment")
-            .WithSummary("Chooses what lights the model: a built-in room, or an .hdr panorama.")
+            .WithSummary("Chooses what lights the model: a built-in room, or an .hdr or .exr panorama.")
             .ProducesProblem(Missing)
             .ProducesProblem(Refused);
 
@@ -83,8 +83,11 @@ static class ViewportMapEndpoints {
         ViewportSession session
     ) {
         if (!Rooms.Contains(request.Source)) {
-            if (!request.Source.EndsWith(".hdr", StringComparison.OrdinalIgnoreCase)) {
-                return TypedResults.Problem($"'{request.Source}' is no room and no .hdr file.", statusCode: Refused);
+            if (!PictureFormats.IsEnvironment(request.Source)) {
+                return TypedResults.Problem(
+                    $"'{request.Source}' is no room and no {string.Join(" or ", PictureFormats.Environments)} file.",
+                    statusCode: Refused
+                );
             }
 
             if (!File.Exists(request.Source)) {

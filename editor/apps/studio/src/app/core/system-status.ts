@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, InjectionToken, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, InjectionToken, computed, inject, signal } from '@angular/core';
 import { type Connection, type PatinaClient, type SystemInfo, createPatinaClient, unwrap } from '@patina/api-client';
 import { desktop } from './desktop';
 
@@ -30,6 +30,16 @@ export class SystemStatus {
   private stopped = false;
 
   readonly state = this.mutableState.asReadonly();
+
+  private readonly formats = computed(() => {
+    const state = this.mutableState();
+    return state.kind === 'online' ? state.system.formats : null;
+  });
+
+  /** What a file dialog offers for a picture: the Server's one list of what it reads. */
+  readonly pictures = computed(() => this.formats()?.pictures);
+  /** What a file dialog offers for an environment. */
+  readonly environments = computed(() => this.formats()?.environments);
 
   constructor() {
     inject(DestroyRef).onDestroy(() => {

@@ -35,7 +35,8 @@ const system = {
   apiVersion: 1,
   library: '/games/Ember.ptlib' as string | null,
   host: { os: 'macOS', architecture: 'Arm64', runtime: '.NET 10' },
-  worker: { connected: false }
+  worker: { connected: false },
+  formats: { pictures: ['.png'], environments: ['.hdr'] }
 };
 
 describe('App', () => {

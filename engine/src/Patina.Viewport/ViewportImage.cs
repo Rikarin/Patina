@@ -48,7 +48,13 @@ static class ViewportImage {
             return Wide(Rgba(width, height, channels, values), width, height, meaning, false);
         }
 
-        return Narrow(Eight(bytes, kind), meaning);
+        var decoded = Eight(bytes, kind);
+        if (decoded.Format == PixelFormat.Rgba32Float) {
+            var floats = System.Runtime.InteropServices.MemoryMarshal.Cast<byte, float>(decoded.PixelSpan()).ToArray();
+            return Wide(floats, decoded.Width, decoded.Height, meaning, true);
+        }
+
+        return Narrow(decoded, meaning);
     }
 
     /// <summary>One colour, for a slot nothing fills.</summary>

@@ -1,7 +1,10 @@
 using Patina.Contracts;
 using Patina.Export.Presets;
 using Patina.Jobs;
+using System.Runtime.InteropServices;
 using Vixen.Core.Imaging;
+using Vixen.Graphics;
+using Vixen.Interchange;
 
 namespace Patina.Export;
 
@@ -13,6 +16,9 @@ public sealed record MapPicture(string Name, FloatImage Image, GreenAxis Green);
 
 /// <summary>Reads and writes the lossless maps an output's object holds, at the depth they arrived.</summary>
 public static class MapPictures {
+    /// <summary>Where a PNG's header says how many bits a sample has.</summary>
+    const int PngDepthAt = 24;
+
     /// <summary>A manifest's name for a way green runs.</summary>
     public static string NameOf(GreenAxis green) => green == GreenAxis.Up ? "up" : "down";
 
@@ -45,21 +51,58 @@ public static class MapPictures {
         return new(map, name, image.Width, image.Height, green is { } axis ? NameOf(axis) : null);
     }
 
-    /// <summary>A file as numbers, 16-bit PNGs and float files included.</summary>
-    /// <exception cref="InvalidDataException">It is neither a PNG nor an EXR.</exception>
+    /// <summary>A picture as numbers at whatever depth it has: any of <see cref="PictureFormats.Pictures" />.</summary>
+    /// <exception cref="InvalidDataException">It is not a picture this reads.</exception>
     public static FloatImage ReadFile(string path) {
         var data = File.ReadAllBytes(path);
-        if (Path.GetExtension(path) == ".exr") {
+        var kind = Path.GetExtension(path).ToLowerInvariant();
+        if (kind == ".exr") {
             return ExrCodec.Decode(data);
         }
 
-        var (width, height, channels, samples) = PngCodec.Decode16(data);
-        var values = new float[samples.Length];
-        for (var at = 0; at < values.Length; at++) {
-            values[at] = samples[at] / (float)ushort.MaxValue;
+        if (kind == ".png") {
+            var (width, height, channels, samples) = PngCodec.Decode16(data);
+            var values = new float[samples.Length];
+            for (var at = 0; at < values.Length; at++) {
+                values[at] = samples[at] / (float)ushort.MaxValue;
+            }
+
+            return new(width, height, channels, values);
         }
 
-        return new(width, height, channels, values);
+        return Decoded(data, kind);
+    }
+
+    /// <summary>Whether a file holds more than a byte can, which a graph then reads at its own depth.</summary>
+    public static bool IsDeep(string path) {
+        var kind = Path.GetExtension(path).ToLowerInvariant();
+        return kind is ".exr" or ".hdr" || (kind == ".png" && PngDepth(path) == 16);
+    }
+
+    static byte PngDepth(string path) {
+        Span<byte> head = stackalloc byte[PngDepthAt + 1];
+        using var file = File.OpenRead(path);
+        return file.Read(head) > PngDepthAt ? head[PngDepthAt] : (byte)0;
+    }
+
+    static FloatImage Decoded(byte[] data, string kind) {
+        if (!PictureFormats.Pictures.Contains(kind, StringComparer.Ordinal)) {
+            throw new InvalidDataException($"'{kind}' is not a picture this reads.");
+        }
+
+        using var stream = new MemoryStream(data);
+        var picture = new StbImageDecoder().Decode(stream, kind);
+        var bytes = picture.PixelSpan();
+        var values = new float[picture.Width * picture.Height * 4];
+        if (picture.Format == PixelFormat.Rgba32Float) {
+            MemoryMarshal.Cast<byte, float>(bytes).CopyTo(values);
+        } else {
+            for (var at = 0; at < values.Length; at++) {
+                values[at] = bytes[at] / (float)byte.MaxValue;
+            }
+        }
+
+        return new(picture.Width, picture.Height, 4, values);
     }
 
     /// <summary>
@@ -90,8 +133,14 @@ public static class MapPictures {
     public static string? ExportNameOf(string bakedMap) =>
         bakedMap switch {
             "ao" => ExportMaps.Occlusion,
-            ExportMaps.Normal or ExportMaps.Height or ExportMaps.Curvature or ExportMaps.Thickness or ExportMaps.Id
-                or ExportMaps.Position or ExportMaps.WorldNormal or ExportMaps.BentNormal => bakedMap,
+            ExportMaps.Normal
+                or ExportMaps.Height
+                or ExportMaps.Curvature
+                or ExportMaps.Thickness
+                or ExportMaps.Id
+                or ExportMaps.Position
+                or ExportMaps.WorldNormal
+                or ExportMaps.BentNormal => bakedMap,
             _ => null
         };
 
