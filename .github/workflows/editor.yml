@@ -28,7 +28,8 @@ jobs:
           node-version: 24
           cache: pnpm
           cache-dependency-path: editor/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
+      - id: install
+        uses: ./.github/actions/editor-install
       - name: Generated API client matches the Server's OpenAPI document
         run: pnpm exec nx run api-client:check-generated
       - name: Type-check (strict, templates included)
@@ -65,7 +66,8 @@ jobs:
           node-version: 24
           cache: pnpm
           cache-dependency-path: editor/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
+      - id: install
+        uses: ./.github/actions/editor-install
       - run: pnpm exec nx build desktop
       - name: Playwright (Electron)
         run: xvfb-run --auto-servernum pnpm exec playwright test --config apps/desktop/e2e/playwright.config.ts

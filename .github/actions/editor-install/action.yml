@@ -1,0 +1,51 @@
+name: Editor install
+description: >
+  Installs the editor's packages with Electron's download cached, and keeps that cache for electron-builder's downloads
+  later in the job. GitHub's release download links have answered 503 and 504 for hours while the rest of GitHub worked,
+  failing every job that fetched Electron or a builder tool from them. A cache filled once makes a job independent of
+  those links, so it is saved as soon as the install has filled it, not at the end of a job that may fail for other
+  reasons. Electron and electron-builder check what they download against published hashes either way.
+outputs:
+  builder-key:
+    description: The cache key to save electron-builder's downloads under, after the step that makes them.
+    value: ${{ steps.keys.outputs.builder }}
+  builder-hit:
+    description: Whether electron-builder's downloads came from the cache.
+    value: ${{ steps.builder.outputs.cache-hit }}
+runs:
+  using: composite
+  steps:
+    - id: keys
+      shell: bash
+      run: |
+        echo "electron_config_cache=$RUNNER_TEMP/electron" >> "$GITHUB_ENV"
+        echo "ELECTRON_BUILDER_CACHE=$RUNNER_TEMP/electron-builder" >> "$GITHUB_ENV"
+        echo "electron=electron-dist-$RUNNER_OS-${{ hashFiles('editor/pnpm-lock.yaml') }}" >> "$GITHUB_OUTPUT"
+        echo "builder=electron-builder-$RUNNER_OS-${{ hashFiles('editor/pnpm-lock.yaml', 'editor/apps/desktop/scripts/package.mjs') }}" >> "$GITHUB_OUTPUT"
+    - id: electron
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/electron
+        key: ${{ steps.keys.outputs.electron }}
+        restore-keys: electron-dist-${{ runner.os }}-
+    - id: builder
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/electron-builder
+        key: ${{ steps.keys.outputs.builder }}
+        restore-keys: electron-builder-${{ runner.os }}-
+    # Electron's postinstall fetches its binary with no retry of its own.
+    - shell: bash
+      working-directory: editor
+      run: |
+        for wait in 0 30 90; do
+          sleep "$wait"
+          pnpm install --frozen-lockfile && exit 0
+          echo "::warning::pnpm install failed; trying again"
+        done
+        exit 1
+    - if: steps.electron.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/electron
+        key: ${{ steps.keys.outputs.electron }}
