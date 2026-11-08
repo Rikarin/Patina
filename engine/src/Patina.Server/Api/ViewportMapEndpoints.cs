@@ -47,6 +47,13 @@ static class ViewportMapEndpoints {
             )
             .ProducesProblem(Missing)
             .ProducesProblem(Refused);
+        api.MapPut("/viewport/isolation", Isolate)
+            .WithName("SetViewportIsolation")
+            .WithTags(Tag)
+            .WithSummary(
+                "Draws only some named meshes and materials (texture sets) of the model, for every client. Empty lists "
+                + "draw the whole model."
+            );
         api.MapPut("/viewport/bake", ShowBakeAsync)
             .WithName("ShowBakeInViewport")
             .WithTags(Tag)
@@ -110,6 +117,11 @@ static class ViewportMapEndpoints {
         } catch (FileNotFoundException e) {
             return TypedResults.Problem(e.Message, statusCode: Missing);
         }
+    }
+
+    static Ok<ViewportState> Isolate(ViewportIsolation request, ViewportSession session) {
+        session.Isolate(request);
+        return TypedResults.Ok(session.State);
     }
 
     static async Task<Results<Ok<ViewportState>, ProblemHttpResult>> ShowBakeAsync(

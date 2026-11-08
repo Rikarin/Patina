@@ -89,7 +89,8 @@ public sealed class ViewportSession(
                     frames,
                     error ?? mapsError,
                     display.Display,
-                    stack
+                    stack,
+                    display.Isolation
                 );
             }
         }
@@ -218,8 +219,19 @@ public sealed class ViewportSession(
     public void SetDisplay(ViewportDisplaySet settings) {
         ArgumentNullException.ThrowIfNull(settings);
         lock (changing) {
-            display = settings;
+            display = settings with { Isolation = display.Isolation };
             mapsError = null;
+            revision++;
+        }
+
+        Wake();
+    }
+
+    /// <summary>Draws some of the model alone, for every client and for a new Worker. Whole takes the isolation off.</summary>
+    public void Isolate(ViewportIsolation isolation) {
+        ArgumentNullException.ThrowIfNull(isolation);
+        lock (changing) {
+            display = display with { Isolation = isolation.Whole ? null : isolation };
             revision++;
         }
 

@@ -118,6 +118,38 @@ public sealed class ViewportRendererTests : IDisposable {
         return [..header, ..Enumerable.Repeat(red, 32).SelectMany(static pixel => pixel)];
     }
 
+    /// <summary>
+    ///     Isolation draws the materials it names and nothing else (#136): all of them together is the whole model to
+    ///     the byte, one alone is neither the whole nor nothing, and a name the model lacks leaves only the sky.
+    /// </summary>
+    [Fact]
+    public void An_isolated_material_is_drawn_alone() {
+        using var renderer = Open();
+        renderer.OpenMesh(Fixture);
+        var camera = OrbitCamera.Default;
+        var whole = Render(renderer, camera);
+        var materials = ViewportGeometry.Materials(Fixture);
+        Assert.True(materials.Count > 1, "The fixture should have more than one material to isolate.");
+
+        renderer.Isolate([], ["no such material"]);
+        var none = Render(renderer, camera);
+        var gold = Enumerable.Range(0, Width * Height).Count(i => none[i * 4] > none[i * 4 + 2] + 40 && none[i * 4 + 1] > 80);
+        Assert.Equal(0, gold);
+        Assert.NotEqual(whole, none);
+
+        foreach (var material in materials) {
+            renderer.Isolate([], [material]);
+            var alone = Render(renderer, camera);
+            Assert.NotEqual(whole, alone);
+            Assert.NotEqual(none, alone);
+        }
+
+        renderer.Isolate([], materials);
+        Assert.Equal(whole, Render(renderer, camera));
+        renderer.Isolate([], []);
+        Assert.Equal(whole, Render(renderer, camera));
+    }
+
     [Fact]
     public void The_fixture_comes_out_lit_over_the_sky() {
         using var renderer = Open();

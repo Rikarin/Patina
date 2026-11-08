@@ -125,6 +125,15 @@ static class StackEndpoints {
             "The colours of the id map the stack reads, the largest first, and the one at a place on it if asked.",
             Missing
         );
+        Post(
+            "/{id}/find",
+            FindLayer,
+            "FindStackLayer",
+            "The layer on top at a place on the map, as a click on the mesh or the map finds it. Its answer is a layer "
+            + "id: the Worker weighs each layer there and no picture leaves it.",
+            Missing,
+            Unavailable
+        );
         Get(
             "/{id}/thumbnails",
             GetThumbnails,
@@ -325,6 +334,24 @@ static class StackEndpoints {
             return TypedResults.Problem(e.Message, statusCode: Refused);
         } catch (Exception e) when (e is TimeoutException or IOException) {
             return TypedResults.Problem(e.Message, statusCode: Unavailable);
+        }
+    }
+
+    static async Task<Results<Ok<StackFound>, ProblemHttpResult>> FindLayer(
+        string id,
+        StackFindRequest request,
+        StackSessions sessions,
+        StackEvaluator evaluator,
+        CancellationToken cancellationToken
+    ) {
+        if (sessions.Find(id) is not { } session) {
+            return NoSession(id);
+        }
+
+        try {
+            return TypedResults.Ok(new StackFound(await evaluator.FindAsync(session, request.U, request.V, cancellationToken)));
+        } catch (Exception e) when (e is IpcException or IOException or TimeoutException) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
         }
     }
 

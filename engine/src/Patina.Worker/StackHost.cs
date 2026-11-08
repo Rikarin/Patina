@@ -66,6 +66,11 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
         return IpcMessage.Ok(request.Id);
     }
 
+    public IpcMessage FindLayer(IpcMessage request) {
+        var ask = request.StackFind ?? throw new IpcException("stack.find names no stack.");
+        return new() { Type = IpcTypes.Ok, FoundLayer = Find(ask.Session).LayerAt(ask.U, ask.V) };
+    }
+
     public IpcMessage Thumbnails(IpcMessage request) {
         var ask = request.StackThumbnails ?? throw new IpcException("stack.thumbnails names no stack.");
         return new() { Type = IpcTypes.Ok, StackLayerThumbnails = Find(ask.Session).Thumbnails(previews, ask.Folder) };
@@ -436,6 +441,36 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
 
             using var bake = run.Evaluate();
             return writer.Write(bake, [output.Image], folder)[0].Hash;
+        }
+
+        /// <summary>
+        ///     The topmost layer that covers a place on the map, inside its folders (#136). Each candidate, top first, is
+        ///     weighed alone with the folders around it, so its own mask and theirs, its opacity and a paint layer's
+        ///     strokes all count, and one texel of it is read back: a number, never the picture.
+        /// </summary>
+        public string? LayerAt(float u, float v) {
+            var chosen = document.Sets.First(candidate => candidate.Name == set);
+            var x = Math.Clamp((int)(u * document.BaseWidth), 0, document.BaseWidth - 1);
+            var y = Math.Clamp((int)(v * document.BaseHeight), 0, document.BaseHeight - 1);
+            foreach (var (layer, alone) in StackFinding.Candidates(chosen)) {
+                using LayerStackEvaluator run = new(evaluator, canvases, path, fill) { Weighing = true };
+                var weighed = document with { Sets = [alone] };
+                if (run.Prepare(weighed, alone, compounds.Registry, compounds.Source).Count > 0) {
+                    continue;
+                }
+
+                // In any channel it writes: a layer that sets roughness alone is still on top where it does.
+                using var bake = run.Evaluate();
+                var outputs = run.Outputs.Where(output => alone.Channels.Exists(channel => channel.Usage == output.Usage));
+                if (outputs.Any(output => StackFinding.Covers(
+                        bake.ReadTexels(output.Image, [new(x, y, 1, 1)])[0],
+                        bake.Plan.Images[output.Image].Format
+                    ))) {
+                    return layer;
+                }
+            }
+
+            return null;
         }
 
         static IEnumerable<LayerAsset> Fills(IEnumerable<LayerAsset> layers) =>

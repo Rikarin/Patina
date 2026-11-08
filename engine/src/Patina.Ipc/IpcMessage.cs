@@ -104,6 +104,9 @@ public static class IpcTypes {
     /// <summary>Renders each fill of a stack alone, small.</summary>
     public const string StackThumbnails = "stack.thumbnails";
 
+    /// <summary>Says which layer is on top at a place on a stack's map, from how much each layer covers there.</summary>
+    public const string StackFind = "stack.find";
+
     /// <summary>Draws a material small for the shelf, from a copy of its document that nothing keeps.</summary>
     public const string MaterialThumbnail = "material.thumbnail";
 
@@ -247,6 +250,11 @@ public sealed class IpcMessage {
     /// <summary>The reply to stack.thumbnails.</summary>
     public IReadOnlyList<StackLayerThumbnail>? StackLayerThumbnails { get; set; }
 
+    public StackFindAsk? StackFind { get; set; }
+
+    /// <summary>The reply to stack.find: the layer on top there, or null when none covers it.</summary>
+    public string? FoundLayer { get; set; }
+
     public MaterialThumbnailAsk? MaterialThumbnail { get; set; }
 
     /// <summary>The reply to material.thumbnail: the picture's hash, or null when the material draws nothing.</summary>
@@ -339,7 +347,13 @@ public sealed record ViewportMapSet(
 /// <param name="Display">The settings as a client gave them.</param>
 /// <param name="Look">The <c>.cube</c> table, or null.</param>
 /// <param name="Picture">The picture, or null.</param>
-public sealed record ViewportDisplaySet(ViewportDisplay Display, ViewportMapFile? Look, ViewportMapFile? Picture);
+/// <param name="Isolation">The parts and materials drawn alone, or null for the whole model.</param>
+public sealed record ViewportDisplaySet(
+    ViewportDisplay Display,
+    ViewportMapFile? Look,
+    ViewportMapFile? Picture,
+    ViewportIsolation? Isolation = null
+);
 
 /// <summary>
 ///     An orbit around the model and the lens it looks through: radians, a distance in framings, a pan in bounding
@@ -421,6 +435,12 @@ public sealed record StackThumbnailAsk(string Session, string Folder);
 /// <param name="Layer">The layer.</param>
 /// <param name="Hash">Its name in the preview folder.</param>
 public sealed record StackLayerThumbnail(string Layer, string Hash);
+
+/// <summary>Asks which layer of a loaded stack is on top at a place on its map.</summary>
+/// <param name="Session">The stack.</param>
+/// <param name="U">Across the map, 0 to 1.</param>
+/// <param name="V">Down it, 0 to 1.</param>
+public sealed record StackFindAsk(string Session, float U, float V);
 
 /// <summary>Asks for one picture of a loaded graph at the size the graph computes it.</summary>
 /// <param name="Session">The graph.</param>

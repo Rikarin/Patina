@@ -259,6 +259,18 @@ public sealed record StackVocabulary(
 /// <param name="Hash">Its name under <c>/previews/{hash}</c>.</param>
 public sealed record StackThumbnail(string Layer, string Hash);
 
+/// <summary>Asks which layer is on top at a place on a stack's map, as a click on the mesh or the map finds it.</summary>
+/// <param name="U">Across the map, 0 to 1: the texture coordinate <c>POST /viewport/pick</c> gives.</param>
+/// <param name="V">Down it, 0 to 1.</param>
+public sealed record StackFindRequest(float U, float V);
+
+/// <summary>The layer on top at a place on a stack's map.</summary>
+/// <param name="Layer">
+///     The topmost layer that covers the place, inside its folders, or null when only the stack's defaults are there.
+///     A filter covers nothing of its own, and a flattened folder is one layer.
+/// </param>
+public sealed record StackFound(string? Layer);
+
 /// <summary>The fills of a stack, each drawn alone.</summary>
 /// <param name="Items">Them.</param>
 public sealed record StackThumbnails(IReadOnlyList<StackThumbnail> Items);
