@@ -158,8 +158,7 @@ static class BuildEndpoints {
     /// <summary>A job's id as part of a path: only what a job's id can be.</summary>
     static string Safe(string id) => id.All(char.IsAsciiHexDigit) ? id : "-";
 
-    static ProblemHttpResult NoLibrary() =>
-        Refusals.NoLibraryOpen();
+    static ProblemHttpResult NoLibrary() => Refusals.NoLibraryOpen();
 
     static ProblemHttpResult NoReport(string id) =>
         TypedResults.Problem($"Build '{id}' has no report.", statusCode: StatusCodes.Status404NotFound);

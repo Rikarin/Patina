@@ -661,8 +661,9 @@ public sealed class StackEditor : ILayerStackDocument {
     void Writable(StackStroke stroke, LayerAsset layer) {
         // A mask is any layer's, and only a paint layer has pixels of its own besides.
         if (layer.Kind != LayerKind.Paint) {
+            var kind = layer.Kind.ToString().ToLowerInvariant();
             throw new StackEditRefusedException(
-                $"Only a paint layer can be painted, and '{layer.Name}' is a {layer.Kind.ToString().ToLowerInvariant()} layer.",
+                $"Only a paint layer can be painted, and '{layer.Name}' is a {kind} layer.",
                 Api.Refusals.NotPaintLayer,
                 new Dictionary<string, string> { ["layer"] = layer.Name, ["kind"] = layer.Kind.ToString() }
             );

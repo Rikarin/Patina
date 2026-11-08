@@ -45,8 +45,7 @@ public static class Refusals {
             detail,
             statusCode: status,
             extensions: new Dictionary<string, object?> {
-                ["code"] = code,
-                ["values"] = values ?? new Dictionary<string, string>()
+                ["code"] = code, ["values"] = values ?? new Dictionary<string, string>()
             }
         );
 

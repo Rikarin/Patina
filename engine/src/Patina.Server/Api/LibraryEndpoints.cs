@@ -282,6 +282,5 @@ static class LibraryEndpoints {
             )
             : null;
 
-    static ProblemHttpResult NoLibrary() =>
-        Refusals.NoLibraryOpen();
+    static ProblemHttpResult NoLibrary() => Refusals.NoLibraryOpen();
 }

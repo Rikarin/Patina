@@ -43,7 +43,8 @@ public static class StackDocuments {
         Terms.InStack(Enum.GetNames<LayerFillSource>()),
         Terms.InStack(Enum.GetNames<LayerProjection>()),
         Terms.InStack(
-            TextureCompoundLibrary.Shipped.Where(static path => path.StartsWith("Generators/", StringComparison.Ordinal))
+            TextureCompoundLibrary.Shipped.Where(static path => path.StartsWith("Generators/", StringComparison.Ordinal)
+            )
         ),
         Terms.InStack(TextureNodeLibrary.MeshMaps),
         Terms.InStack(PaintAlphas.Names),

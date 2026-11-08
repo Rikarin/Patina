@@ -1,12 +1,12 @@
-using System.Text;
 using Patina.Contracts;
+using System.Text;
 
 namespace Patina.Server;
 
 /// <summary>
-///     What a person calls the words the engine stores: a blend mode, a mask source, a channel, a mesh map. The values
-///     stay what files and commands carry; a label goes beside each one on the wire, so that no client shows a raw value
-///     and none holds a list of its own (#198).
+///     What a person calls the words the engine stores: a blend mode, a mask source, a channel, a mesh map. The
+///     values stay what files and commands carry; a label goes beside each one on the wire, so that no client shows a
+///     raw value and none holds a list of its own (#198).
 /// </summary>
 public static class Terms {
     /// <summary>The words whose label is not what splitting them into words gives.</summary>
@@ -39,18 +39,19 @@ public static class Terms {
     };
 
     /// <summary>
-    ///     What a layer stack calls some words differently from a graph. A painting tool's default blend is Normal, where
-    ///     a graph's blend node copies; a mask or a fill is uniform, or a bitmap, or read from a mesh map.
+    ///     What a layer stack calls some words differently from a graph. A painting tool's default blend is Normal,
+    ///     where a graph's blend node copies; a mask or a fill is uniform, or a bitmap, or read from a mesh map.
     /// </summary>
     static readonly Dictionary<string, string> InStacks = new(StringComparer.Ordinal) {
-        ["Copy"] = "Normal",
-        ["Constant"] = "Uniform",
-        ["Texture"] = "Bitmap",
-        ["Bake"] = "Mesh Map"
+        ["Copy"] = "Normal", ["Constant"] = "Uniform", ["Texture"] = "Bitmap", ["Bake"] = "Mesh Map"
     };
 
-    /// <summary>What a person calls a value: its own name if it has one, or the value split into capitalised words.</summary>
-    /// <param name="value">A value as a file or a command holds it, or a library path, whose last part is its name.</param>
+    /// <summary>
+    ///     What a person calls a value: its own name if it has one, or the value split into capitalised words.
+    /// </summary>
+    /// <param name="value">
+    ///     A value as a file or a command holds it, or a library path, whose last part is its name.
+    /// </param>
     public static string Label(string value) {
         if (Named.TryGetValue(value, out var named)) {
             return named;

@@ -64,7 +64,7 @@ public sealed class StackVocabularyTests {
     [MemberData(nameof(Words))]
     public void Every_word_has_a_label_a_person_reads(string value, string label) {
         Assert.False(string.IsNullOrWhiteSpace(label), value);
-        Assert.Matches(@"^[A-Z0-9]", label);
+        Assert.Matches("^[A-Z0-9]", label);
         Assert.DoesNotMatch("[a-z][A-Z]", label);
         Assert.DoesNotContain('/', label);
     }
@@ -91,7 +91,10 @@ public sealed class StackVocabularyTests {
 
     [Fact]
     public void A_generator_reads_as_its_name_and_not_its_path() {
-        Assert.Contains(StackDocuments.Vocabulary.Generators, static term => term.Value == "Generators/Dirt" && term.Label == "Dirt");
+        Assert.Contains(
+            StackDocuments.Vocabulary.Generators,
+            static term => term.Value == "Generators/Dirt" && term.Label == "Dirt"
+        );
     }
 
     [Fact]
@@ -110,7 +113,9 @@ public sealed class StackVocabularyTests {
             new Vixen.NodeGraph.SettingDefinition("Usage", "baseColor", Accepted: ["baseColor", "metalness", "ao"])
         );
         Assert.Equal(["Base Color", "Metallic", "Ambient Occlusion"], usage.Labels);
-        Assert.Null(Graphs.GraphDocuments.Definition(new Vixen.NodeGraph.SettingDefinition("Name", "")).Labels);
+        Assert.Null(
+            Graphs.GraphDocuments.Definition(new Vixen.NodeGraph.SettingDefinition("Name", string.Empty)).Labels
+        );
     }
 
     /// <summary>A number a client shows until it is set has to be the one the filter runs with.</summary>
@@ -278,9 +283,7 @@ public sealed class StackVocabularyTests {
         );
 
         var refusal = Assert.Throws<StackEditRefusedException>(() =>
-            editor.Apply(
-                new([new StackStroke("a", "fill", "baseColor", new(4f), [1f, 1f, 1f, 1f], [new(1f, 1f)])])
-            )
+            editor.Apply(new([new StackStroke("a", "fill", "baseColor", new(4f), [1f, 1f, 1f, 1f], [new(1f, 1f)])]))
         );
 
         Assert.Equal(Api.Refusals.NotPaintLayer, refusal.Code);
