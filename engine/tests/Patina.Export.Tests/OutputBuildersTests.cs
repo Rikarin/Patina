@@ -310,9 +310,9 @@ public sealed class OutputBuildersTests : IDisposable {
     }
 
     /// <summary>
-    ///     A triangle over half the layout covers the texels on its side of the diagonal and none on the other: the closed
-    ///     form padding starts from. ⚠ An OBJ's v runs up the picture and the reader turns it over, as it does for the
-    ///     bake, so the triangle at v = 0 lands on the picture's last rows.
+    ///     A triangle over half the layout covers the texels on its side of the diagonal and none on the other: the
+    ///     closed form padding starts from. ⚠ An OBJ's v runs up the picture and the reader turns it over, as it does
+    ///     for the bake, so the triangle at v = 0 lands on the picture's last rows.
     /// </summary>
     [Fact]
     public void A_meshs_coverage_is_its_layout_the_way_up_a_bake_reads_it() {
@@ -322,11 +322,11 @@ public sealed class OutputBuildersTests : IDisposable {
         var coverage = MeshCoverage.Of(mesh, null, 16, 16)!;
 
         Assert.Equal(1f, coverage.Samples[15 * 16]);
-        Assert.Equal(1f, coverage.Samples[(15 * 16) + 14]);
+        Assert.Equal(1f, coverage.Samples[15 * 16 + 14]);
         Assert.Equal(1f, coverage.Samples[16]);
         Assert.Equal(0f, coverage.Samples[15]);
-        Assert.Equal(0f, coverage.Samples[(1 * 16) + 3]);
-        Assert.InRange(coverage.Samples.Sum(), 16 * 16 / 2, (16 * 16 / 2) + 16);
+        Assert.Equal(0f, coverage.Samples[1 * 16 + 3]);
+        Assert.InRange(coverage.Samples.Sum(), 128f, 144f);
     }
 
     ExportSource Source(string name, float value, string usage = "roughness") {

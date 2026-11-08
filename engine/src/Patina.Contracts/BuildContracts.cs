@@ -348,7 +348,7 @@ public sealed record LibraryReport {
     /// <summary>Why a finished build wrote nothing, or null when it wrote something or something failed.</summary>
     public string? Nothing { get; init; }
 
-    /// <summary>What a running build is on, for a person: a project and an output or a preset. Null once it ends.</summary>
+    /// <summary>What a running build is on, for a person: a project and an output or a preset.</summary>
     public string? Current { get; init; }
 }
 

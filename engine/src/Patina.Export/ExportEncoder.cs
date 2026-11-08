@@ -103,7 +103,8 @@ public static class ExportEncoder {
                 var level = Math.Clamp(picture.Samples[at], 0f, 1f) * 255f;
                 var below = MathF.Floor(level);
                 var fraction = level - below;
-                values[at] = (byte)(fraction < 1e-4f ? below : below + (Chance(at) < fraction ? 1 : 0));
+                var up = fraction >= 1e-4f && Chance(at) < fraction;
+                values[at] = (byte)(up ? below + 1 : below);
             }
         );
         return values;

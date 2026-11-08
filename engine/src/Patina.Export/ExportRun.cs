@@ -122,7 +122,11 @@ public static class ExportRun {
     ///     Pads a packed picture from its set's coverage, then changes its size. Padding comes first, at the maps' own
     ///     size, so that a smaller file's edge texels average the islands' colour and not the background's.
     /// </summary>
-    static PackedPicture Finish(PackedPicture picture, IReadOnlyDictionary<string, MapPicture> maps, ExportPreset preset) {
+    static PackedPicture Finish(
+        PackedPicture picture,
+        IReadOnlyDictionary<string, MapPicture> maps,
+        ExportPreset preset
+    ) {
         var image = new FloatImage(picture.Width, picture.Height, picture.Lanes, picture.Samples);
         var warnings = picture.Warnings;
         if (preset.Padding.Mode != PaddingMode.None && maps.TryGetValue(ExportMaps.Coverage, out var coverage)) {
@@ -149,7 +153,9 @@ public static class ExportRun {
             );
             image = ImageResize.Resize(image, width, height, ExportFilters.Of(preset.Filter));
             if (scale > 1) {
-                warnings = [..warnings, $"The maps are {picture.Width}×{picture.Height} and were enlarged to {width}×{height}."];
+                warnings = [
+                    ..warnings, $"The maps are {picture.Width}×{picture.Height} and were enlarged to {width}×{height}."
+                ];
             }
         }
 
@@ -182,7 +188,8 @@ public static class ExportRun {
         Directory.CreateDirectory(target);
         var before = BuildObjects.Delivered(target);
 
-        var several = manifest.PerSet || manifest.Files.Select(static file => file.Set).Distinct(StringComparer.Ordinal).Count() > 1;
+        var several = manifest.PerSet
+            || manifest.Files.Select(static file => file.Set).Distinct(StringComparer.Ordinal).Count() > 1;
         List<string> delivered = [];
         foreach (var file in manifest.Files) {
             var name = NamingTemplate.Resolve(

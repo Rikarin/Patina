@@ -86,14 +86,14 @@ public static class ExportPresetReader {
             : "balanced";
 
     /// <summary>Why a quality is not one a format takes, or null.</summary>
-    public static string? QualityProblem(string format, string quality) =>
-        format == ExportFormats.Jpeg
-            ? int.TryParse(quality, CultureInfo.InvariantCulture, out var number) && number is >= 1 and <= 100
-                ? null
-                : $"a JPEG's quality is 1 to 100, not '{quality}'."
-            : quality is "fast" or "balanced" or "best"
-                ? null
-                : $"'{quality}' is not a quality.";
+    public static string? QualityProblem(string format, string quality) {
+        if (format == ExportFormats.Jpeg) {
+            var fits = int.TryParse(quality, CultureInfo.InvariantCulture, out var number) && number is >= 1 and <= 100;
+            return fits ? null : $"a JPEG's quality is 1 to 100, not '{quality}'.";
+        }
+
+        return quality is "fast" or "balanced" or "best" ? null : $"'{quality}' is not a quality.";
+    }
 
     /// <summary>Padding: a mode, and for every mode but none and infinite, a distance; a colour for colour.</summary>
     static ExportPadding ReadPadding(YamlNode? node, string where) {
@@ -113,7 +113,9 @@ public static class ExportPresetReader {
                 var colour = Child(mapping, "colour") is YamlSequenceNode lanes
                     ? lanes.Select(lane => Number((lane as YamlScalarNode)?.Value, "padding colour", where)).ToList()
                     : [];
-                var distance = Optional(mapping, "distance") is { } text ? Whole(text, "padding distance", where) : (int?)null;
+                var distance = Optional(mapping, "distance") is { } text
+                    ? Whole(text, "padding distance", where)
+                    : (int?)null;
                 return Padding(Field(mapping, "mode", where), distance, colour, where);
             default:
                 throw new ExportPresetException($"{where}: padding is a mode or a mapping.");
@@ -199,10 +201,14 @@ public static class ExportPresetReader {
     }
 
     /// <summary>
-    ///     Why a file of this shape cannot be written, or null. Compressed blocks hold fixed lanes, and a file format holds
-    ///     what it holds, so a list that does not fit must not be cut to fit.
+    ///     Why a file of this shape cannot be written, or null. Compressed blocks hold fixed lanes, and a file format
+    ///     holds what it holds, so a list that does not fit must not be cut to fit.
     /// </summary>
-    public static string? ShapeProblem(string format, string compression, string space, int count) {
+    public static string? ShapeProblem(string format, string compression, string space, int count) =>
+        LaneProblem(format, compression, count) ?? SpaceProblem(format, compression, space);
+
+    /// <summary>Why a file cannot hold this many lanes, or null.</summary>
+    static string? LaneProblem(string format, string compression, int count) {
         var (least, most) = compression switch {
             ExportCompressions.Bc4 => (1, 1),
             ExportCompressions.Bc5 => (2, 2),
@@ -220,10 +226,13 @@ public static class ExportPresetReader {
         }
 
         var lanes = ExportFormats.LanesOf(format);
-        if (!lanes.Contains(count)) {
-            return $"{ExportFormats.LabelOf(format)} holds {string.Join(", ", lanes)} lanes, not {count}.";
-        }
+        return lanes.Contains(count)
+            ? null
+            : $"{ExportFormats.LabelOf(format)} holds {string.Join(", ", lanes)} lanes, not {count}.";
+    }
 
+    /// <summary>Why a file cannot hold numbers of this space, or null.</summary>
+    static string? SpaceProblem(string format, string compression, string space) {
         var floating = compression is ExportCompressions.Bc6H or ExportCompressions.Half or ExportCompressions.Wide
             || ExportFormats.IsFloat(format);
         if (floating && space == "srgb") {

@@ -150,8 +150,8 @@ public sealed class ProjectOutputsTests : IDisposable {
     }
 
     /// <summary>
-    ///     A set on a mesh reads the mesh's layout, which its export pads from, so the mesh is one of its files and a new
-    ///     mesh gives it a new key. A mesh that is not there yet is not named.
+    ///     A set on a mesh reads the mesh's layout, which its export pads from, so the mesh is one of its files and a
+    ///     new mesh gives it a new key. A mesh that is not there yet is not named.
     /// </summary>
     [Fact]
     public void A_set_on_a_mesh_names_the_mesh_and_its_material() {

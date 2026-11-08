@@ -92,11 +92,18 @@ public sealed class ExportOptionsTests : IDisposable {
 
     [Fact]
     public void A_jpeg_takes_a_quality_from_one_to_a_hundred() {
-        var preset = Read(WithTexture(ExportFormats.Jpeg, "srgb", "[roughness]").Replace("channels", "quality: 75\n    channels", StringComparison.Ordinal));
+        var preset = Read(
+            WithTexture(ExportFormats.Jpeg, "srgb", "[roughness]")
+                .Replace("channels", "quality: 75\n    channels", StringComparison.Ordinal)
+        );
 
         Assert.Equal("75", preset.Textures[0].Quality);
         Assert.Equal("90", Read(WithTexture(ExportFormats.Jpeg, "srgb", "[roughness]")).Textures[0].Quality);
-        Assert.Throws<ExportPresetException>(() => Read(WithTexture(ExportFormats.Jpeg, "srgb", "[roughness]").Replace("channels", "quality: best\n    channels", StringComparison.Ordinal)));
+        Assert.Throws<ExportPresetException>(static () => Read(
+                WithTexture(ExportFormats.Jpeg, "srgb", "[roughness]")
+                    .Replace("channels", "quality: best\n    channels", StringComparison.Ordinal)
+            )
+        );
     }
 
     [Fact]
@@ -106,7 +113,8 @@ public sealed class ExportOptionsTests : IDisposable {
                 ExportFormats.Png8,
                 "linear",
                 "[roughness]",
-                "padding:\n  mode: colour\n  distance: 4\n  colour: [0.5, 0.25]\nsize: 1024\nfilter: bilinear\ndither: true"
+                "padding:\n  mode: colour\n  distance: 4\n  colour: [0.5, 0.25]\n"
+                + "size: 1024\nfilter: bilinear\ndither: true"
             )
         );
 
@@ -115,8 +123,13 @@ public sealed class ExportOptionsTests : IDisposable {
         Assert.Equal(1024, preset.Size);
         Assert.Equal(ExportFilters.Bilinear, preset.Filter);
         Assert.True(preset.Dither);
-        Assert.Equal(PaddingMode.Infinite, Read(WithTexture(ExportFormats.Png8, "linear", "[roughness]", "padding: infinite")).Padding.Mode);
-        Assert.Throws<ExportPresetException>(() => Read(WithTexture(ExportFormats.Png8, "linear", "[roughness]", "padding: lots")));
+        Assert.Equal(
+            PaddingMode.Infinite,
+            Read(WithTexture(ExportFormats.Png8, "linear", "[roughness]", "padding: infinite")).Padding.Mode
+        );
+        Assert.Throws<ExportPresetException>(static () =>
+            Read(WithTexture(ExportFormats.Png8, "linear", "[roughness]", "padding: lots"))
+        );
     }
 
     /// <summary>
@@ -128,8 +141,7 @@ public sealed class ExportOptionsTests : IDisposable {
     [InlineData("none", 0.75f)]
     public void Padding_fills_what_the_layout_does_not_cover_from_what_it_does(string mode, float right) {
         var maps = new Dictionary<string, MapPicture> {
-            ["roughness"] = Halves("roughness", 0.25f, 0.75f),
-            [ExportMaps.Coverage] = LeftHalf()
+            ["roughness"] = Halves("roughness", 0.25f, 0.75f), [ExportMaps.Coverage] = LeftHalf()
         };
         var preset = Read(WithTexture(ExportFormats.Png16, "linear", "[roughness]", $"padding: {mode}"));
 
@@ -160,15 +172,21 @@ public sealed class ExportOptionsTests : IDisposable {
     [Fact]
     public void Dithering_keeps_the_mean_and_leaves_exact_levels_alone() {
         const int count = 64 * 64;
-        var between = (100f + (1f / 3f)) / 255f;
+        var between = (100f + 1f / 3f) / 255f;
         var picture = new PackedPicture(64, 64, 1, [..Enumerable.Repeat(between, count)], []);
-        var exact = new PackedPicture(64, 64, 1, [..Enumerable.Repeat(1f, count / 2), ..Enumerable.Repeat(0f, count / 2)], []);
+        var exact = new PackedPicture(
+            64,
+            64,
+            1,
+            [..Enumerable.Repeat(1f, count / 2), ..Enumerable.Repeat(0f, count / 2)],
+            []
+        );
 
         var rounded = ExportEncoder.Bytes(picture, false);
         var dithered = ExportEncoder.Bytes(picture, true);
 
-        Assert.All(rounded, value => Assert.Equal(100, value));
-        Assert.All(dithered, value => Assert.InRange(value, (byte)100, (byte)101));
+        Assert.All(rounded, static value => Assert.Equal(100, value));
+        Assert.All(dithered, static value => Assert.InRange(value, (byte)100, (byte)101));
         Assert.InRange(dithered.Average(static b => (double)b), 100.30, 100.37);
         Assert.Equal(ExportEncoder.Bytes(exact, false), ExportEncoder.Bytes(exact, true));
         Assert.Equal(dithered, ExportEncoder.Bytes(picture, true));
@@ -209,7 +227,9 @@ public sealed class ExportOptionsTests : IDisposable {
     [Fact]
     public void Options_a_preset_cannot_take_are_refused_with_the_reason() {
         var preset = Read();
-        var withAlpha = Read(WithTexture(ExportFormats.Png8, "srgb", "[baseColor.r, baseColor.g, baseColor.b, opacity.r]"));
+        var withAlpha = Read(
+            WithTexture(ExportFormats.Png8, "srgb", "[baseColor.r, baseColor.g, baseColor.b, opacity.r]")
+        );
 
         var refused = Assert.Throws<ExportPresetException>(() => ExportOverrides.Apply(
                 withAlpha,
@@ -242,7 +262,7 @@ public sealed class ExportOptionsTests : IDisposable {
         var manifest = ExportRun.Run(preset, sets, Path("object"), null, Token);
         var delivered = ExportRun.Deliver("key", Path("object"), manifest, Path("out"), new("Crate", "test"));
 
-        Assert.All(manifest.Files, file => Assert.Equal("Body", file.Set));
+        Assert.All(manifest.Files, static file => Assert.Equal("Body", file.Set));
         Assert.Contains("Body", System.IO.Path.GetFileName(Assert.Single(delivered)), StringComparison.Ordinal);
     }
 }

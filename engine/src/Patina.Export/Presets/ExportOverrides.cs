@@ -1,5 +1,4 @@
 using Patina.Contracts;
-using Patina.Library;
 using System.Text.Json;
 
 namespace Patina.Export.Presets;
@@ -13,7 +12,7 @@ public static class ExportOverrides {
     /// <summary>The preset with the changes made.</summary>
     /// <param name="preset">The preset.</param>
     /// <param name="options">The changes, or null for none.</param>
-    /// <exception cref="ExportPresetException">A change is not one the preset can take, and the message says which.</exception>
+    /// <exception cref="ExportPresetException">A change the preset cannot take; the message says which.</exception>
     public static ExportPreset Apply(ExportPreset preset, ExportOptions? options) {
         ArgumentNullException.ThrowIfNull(preset);
         if (options is null) {
@@ -21,33 +20,17 @@ public static class ExportOverrides {
         }
 
         var where = $"Export through '{preset.Name}'";
-        var files = options.Files ?? [];
-        foreach (var choice in files) {
-            if (!preset.Textures.Any(texture => texture.File == choice.Template)) {
-                throw new ExportPresetException($"{where}: the preset has no file '{choice.Template}'.");
-            }
-        }
-
-        List<ExportTexture> textures = [];
-        foreach (var texture in preset.Textures) {
-            var choice = files.LastOrDefault(c => c.Template == texture.File);
-            if (choice is { Enabled: false }) {
-                continue;
-            }
-
-            textures.Add(choice?.Format is { } format && format != texture.Format ? Reformat(texture, format, where) : texture);
-        }
-
-        if (textures.Count == 0) {
-            throw new ExportPresetException($"{where}: every file is turned off, so there is nothing to write.");
-        }
-
+        var textures = Textures(preset, options.Files ?? [], where);
         if (options.Size is { } size && size is < 1 or > ExportPresetReader.MaxSize) {
-            throw new ExportPresetException($"{where}: size is a side from 1 to {ExportPresetReader.MaxSize}, not {size}.");
+            throw new ExportPresetException(
+                $"{where}: size is a side from 1 to {ExportPresetReader.MaxSize}, not {size}."
+            );
         }
 
         if (options.Filter is { } filter && !ExportFilters.All.Contains(filter, StringComparer.Ordinal)) {
-            throw new ExportPresetException($"{where}: filter '{filter}' is not one of {string.Join(", ", ExportFilters.All)}.");
+            throw new ExportPresetException(
+                $"{where}: filter '{filter}' is not one of {string.Join(", ", ExportFilters.All)}."
+            );
         }
 
         return preset with {
@@ -63,16 +46,46 @@ public static class ExportOverrides {
         };
     }
 
+    /// <summary>The preset's files with some turned off and some in another format.</summary>
+    static List<ExportTexture> Textures(ExportPreset preset, IReadOnlyList<ExportFileChoice> files, string where) {
+        if (files.FirstOrDefault(c => preset.Textures.All(texture => texture.File != c.Template)) is { } missing) {
+            throw new ExportPresetException($"{where}: the preset has no file '{missing.Template}'.");
+        }
+
+        // The last choice for a file wins, as a later edit would.
+        Dictionary<string, ExportFileChoice> chosen = new(StringComparer.Ordinal);
+        foreach (var choice in files) {
+            chosen[choice.Template] = choice;
+        }
+
+        List<ExportTexture> textures = [];
+        foreach (var texture in preset.Textures) {
+            var choice = chosen.GetValueOrDefault(texture.File);
+            if (choice is not { Enabled: false }) {
+                textures.Add(
+                    choice?.Format is { } format && format != texture.Format
+                        ? Reformat(texture, format, where)
+                        : texture
+                );
+            }
+        }
+
+        return textures.Count > 0
+            ? textures
+            : throw new ExportPresetException($"{where}: every file is turned off, so there is nothing to write.");
+    }
+
     /// <summary>The revision a preset has under some changes: its own when there are none.</summary>
     public static string Revision(string revision, ExportOptions? options) =>
         options is null
             ? revision
             : Library.Revision.Of(
-                [
-                    ..System.Text.Encoding.UTF8.GetBytes(revision),
-                    ..JsonSerializer.SerializeToUtf8Bytes(options, ContractsJsonContext.Default.ExportOptions)
-                ]
-            ).Text;
+                    [
+                        ..System.Text.Encoding.UTF8.GetBytes(revision),
+                        ..JsonSerializer.SerializeToUtf8Bytes(options, ContractsJsonContext.Default.ExportOptions)
+                    ]
+                )
+                .Text;
 
     /// <summary>
     ///     A file in another format. A container's compression and mips do not carry over to a plain file, and a format

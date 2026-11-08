@@ -158,7 +158,8 @@ public static class ProjectOutputs {
 
         // A document on a mesh reads its layout, which says what padding grows from, so its key moves with the mesh.
         string[] mesh = [];
-        if (!graph && project.Meshes.FirstOrDefault(m => m.Id == item.Mesh) is { } owned
+        if (!graph
+            && project.Meshes.FirstOrDefault(m => m.Id == item.Mesh) is { } owned
             && File.Exists(Path.Combine(folder, owned.File))) {
             mesh = [owned.File];
             settings[MeshSetting] = owned.File;

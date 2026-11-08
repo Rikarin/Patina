@@ -44,7 +44,7 @@ public sealed record ExportTexture(
 }
 
 /// <summary>What fills the texels a mesh's layout does not cover, before a file is written.</summary>
-/// <param name="Mode">How: none, grow without end, or grow by <paramref name="Distance" /> and then fill the rest.</param>
+/// <param name="Mode">None, grow without end, or grow by <paramref name="Distance" /> and fill the rest.</param>
 /// <param name="Distance">How many texels the islands grow by, for every mode but infinite.</param>
 /// <param name="Colour">For <see cref="PaddingMode.Colour" />, the value of each lane of the file.</param>
 public sealed record ExportPadding(PaddingMode Mode, int Distance, IReadOnlyList<float> Colour) {
@@ -104,7 +104,7 @@ public sealed record ExportPreset(
     /// <summary>What fills the background of a mesh's layout.</summary>
     public ExportPadding Padding { get; init; } = ExportPadding.None;
 
-    /// <summary>Whether a value between two 8-bit levels is dithered rather than rounded, so a gradient does not band.</summary>
+    /// <summary>Whether a value between two 8-bit levels is dithered rather than rounded, against banding.</summary>
     public bool Dither { get; init; }
 
     /// <summary>The longest side of every file, or null for the size of the maps.</summary>
@@ -241,8 +241,8 @@ public static class ExportMaps {
     public const string BentNormal = "bent";
 
     /// <summary>
-    ///     Which texels a mesh's layout covers, one where it does: what a stack on a mesh makes beside its maps, and what
-    ///     padding grows from.
+    ///     Which texels a mesh's layout covers, one where it does: what a stack on a mesh makes beside its maps, and
+    ///     what padding grows from.
     /// </summary>
     public const string Coverage = "coverage";
 
