@@ -80,7 +80,8 @@ public sealed partial class StackProcessTests {
                     new StackSetLayer("paint", Mask: new("Paint", Effects: [new(kind.Node, true, numbers, texts)]))
                 );
                 await EvaluatedAsync(socket, nudged.Revision, deadline.Token);
-                if (Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor") == plain) {
+                if (Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor") == plain
+                    && !KeepsAHardEdge.Contains(kind.Node)) {
                     failures.Add($"mask {kind.Node} changes nothing, even with {Described(numbers, texts)}");
                 }
             }
@@ -90,20 +91,28 @@ public sealed partial class StackProcessTests {
     }
 
     /// <summary>
+    ///     Filters whose whole point is to leave a step where it is, so a mask of hard-edged strokes at two values comes
+    ///     through them unchanged however they are set. Each is held to moving a soft picture on the layer side.
+    /// </summary>
+    static readonly HashSet<string> KeepsAHardEdge = ["Filters/Median", "Filters/Painterly Smooth"];
+
+    /// <summary>
     ///     Away from a default that leaves the picture alone, as a person would move it: a curve that bends, a choice
-    ///     that differs and every number moved.
+    ///     that differs and every number moved, within the slider's own range. Each colour is a different colour, so a
+    ///     filter that moves one colour onto another is not handed the same one twice.
     /// </summary>
     static (Dictionary<string, IReadOnlyList<float>> Numbers, Dictionary<string, string> Texts) Nudged(
         StackFilterKind kind
     ) {
         Dictionary<string, IReadOnlyList<float>> numbers = [];
+        var colours = 0;
         foreach (var port in kind.Ports) {
             var start = port.Default.Count > 0 ? port.Default[0] : 0f;
             numbers[port.Name] = port.Kind switch {
                 "Bool" => [start == 0f ? 1f : 0f],
                 "Int" => [start + 1f],
-                "Float4" => [0.2f, 0.9f, 0.4f, 1f],
-                _ => [port.Range?.Maximum is { } top && start + 0.3f > top ? start - 0.3f : start + 0.3f]
+                "Float4" => colours++ % 2 == 0 ? [0.2f, 0.9f, 0.4f, 1f] : [0.9f, 0.6f, 0.7f, 1f],
+                _ => [Moved(start, port.Range)]
             };
         }
 
@@ -126,6 +135,19 @@ public sealed partial class StackProcessTests {
         }
 
         return (numbers, texts);
+    }
+
+    /// <summary>
+    ///     A number moved by 0.3, up unless that leaves the slider's range, down unless that leaves the hard one, and
+    ///     otherwise half way to the top of the slider.
+    /// </summary>
+    static float Moved(float start, GraphPortRange? range) {
+        var top = range?.Maximum ?? range?.SoftMaximum;
+        if (top is not { } ceiling || start + 0.3f <= ceiling) {
+            return start + 0.3f;
+        }
+
+        return range?.Minimum is { } floor && start - 0.3f < floor ? (start + ceiling) / 2f : start - 0.3f;
     }
 
     /// <summary>The first choice a setting takes that is not where it starts, or null for one with no list.</summary>
