@@ -218,9 +218,9 @@ import { ViewportPane } from './viewport/viewport-pane';
         <div class="flex h-[70vh] min-h-0 flex-col"><ptn-bake /></div>
       </xui-dialog-body>
     </xui-dialog>
-    <xui-dialog size="lg" title="Export" [(open)]="exporting">
+    <xui-dialog class="max-w-5xl" size="lg" title="Export" [(open)]="exporting">
       <xui-dialog-body>
-        <div class="flex h-[70vh] min-h-0 flex-col"><ptn-export /></div>
+        <div class="flex h-[75vh] min-h-0 flex-col"><ptn-export /></div>
       </xui-dialog-body>
     </xui-dialog>
 
@@ -442,6 +442,8 @@ export class App {
         this.project.savingAs.set(true);
       } else if (command === 'import') {
         void bridge.openFile(this.status.pictures()).then(path => (path ? this.project.importFiles([path]) : undefined));
+      } else if (command === 'export') {
+        this.exporting.set(true);
       } else if (command === 'reloadMesh') {
         void this.project.reloadMesh();
       } else if (command === 'projectSettings') {

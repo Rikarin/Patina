@@ -1,206 +1,709 @@
-import { ChangeDetectionStrategy, Component, type OnInit, computed, effect, inject, signal } from '@angular/core';
-import type { BuildRequest } from '@patina/api-client';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  type OnInit,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked
+} from '@angular/core';
+import type { BuildRequest, ExportPresetFile, ExportPresetInfo } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
+import { XuiColorPickerImports } from '@xui/color-picker';
+import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
+import { XuiSliderImports } from '@xui/slider';
+import { XuiSwitchImports } from '@xui/switch';
 import { desktop } from '../core/desktop';
 import { jobStateName } from '../core/labels';
 import { LibrarySelection } from '../library/library-selection';
+import { ProjectStore } from '../library/project-store';
 import { PaintStore } from '../paint/paint-store';
-import { ExportStore } from './export-store';
+import {
+  type ExportScope,
+  type ExportSettings,
+  ExportStore,
+  type FileChoice,
+  requestFor,
+  settingsFor,
+  usesDistance
+} from './export-store';
+
+const Sizes = ['native', '256', '512', '1024', '2048', '4096', '8192'];
+
+const PaddingNames: Readonly<Record<string, string>> = {
+  none: 'None',
+  infinite: 'Dilation, infinite',
+  transparent: 'Dilation + transparent',
+  colour: 'Dilation + colour',
+  diffusion: 'Dilation + diffusion'
+};
+
+const FilterNames: Readonly<Record<string, string>> = {
+  box: 'Box (averages every texel)',
+  bilinear: 'Bilinear',
+  nearest: 'Nearest (no new values)'
+};
+
+const StatusNames: Readonly<Record<string, string>> = {
+  built: 'written',
+  reused: 'copied from an earlier export',
+  fresh: 'already up to date',
+  failed: 'failed'
+};
+
+const MapNames: Readonly<Record<string, string>> = {
+  baseColor: 'Base Color',
+  normal: 'Normal',
+  roughness: 'Roughness',
+  metalness: 'Metallic',
+  occlusion: 'Ambient Occlusion',
+  height: 'Height',
+  emissive: 'Emissive',
+  opacity: 'Opacity',
+  mask: 'Mask',
+  curvature: 'Curvature',
+  thickness: 'Thickness',
+  id: 'ID',
+  position: 'Position',
+  world: 'World Normal',
+  bent: 'Bent Normal',
+  coverage: 'Coverage'
+};
+
+/** A colour as the colour picker holds it, from lanes 0 to 1. */
+function hexOf(colour: readonly number[]): string {
+  const lane = (at: number, fallback: number) =>
+    Math.round(Math.min(1, Math.max(0, colour[at] ?? fallback)) * 255)
+      .toString(16)
+      .padStart(2, '0');
+  return `#${lane(0, 0)}${lane(1, 0)}${lane(2, 0)}${lane(3, 1)}`;
+}
+
+function lanesOf(hex: string): number[] {
+  const digits = hex.replace('#', '');
+  const lanes = [0, 2, 4, 6].map(at => Number.parseInt(digits.slice(at, at + 2) || 'ff', 16) / 255);
+  return lanes.map(lane => Math.round(lane * 1000) / 1000);
+}
 
 /**
- * Exports the library: choose a preset, see what would change, run it, read what it did. The panel only asks. The Server
- * plans from build keys, so what the preview says is what runs, and everything sent is an id or a path, as for any client.
+ * The Export dialog: what to export (the document in front, its project, or the library), through which preset, at what
+ * size, padded how, into which folder, and which of the preset's files in which formats. The Server plans from build
+ * keys, so what Preview says is what runs, and everything sent is an id, a path or a setting, as for any client.
  */
 @Component({
   selector: 'ptn-export',
-  imports: [XuiButtonImports, XuiCalloutImports, XuiSelectImports],
+  imports: [
+    XuiButtonImports,
+    XuiCalloutImports,
+    XuiColorPickerImports,
+    XuiSegmentedControlImports,
+    XuiSelectImports,
+    XuiSliderImports,
+    XuiSwitchImports
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
   template: `
-    <div class="flex min-h-0 flex-1 flex-col gap-2.5 overflow-x-hidden overflow-y-auto p-3">
-      <div class="flex flex-col gap-1">
-        <span class="text-foreground-muted text-xs">Preset</span>
-        <xui-select
-          class="w-full"
-          ariaLabel="Preset"
-          data-testid="export-preset"
-          [itemText]="presetName"
-          [items]="presetIds()"
-          [value]="preset()"
-          (valueChange)="choose($event)"
-        />
-      </div>
+    <div class="grid min-h-0 flex-1 grid-cols-[19rem_minmax(0,1fr)] gap-3 overflow-hidden p-3">
+      <div class="flex min-h-0 flex-col gap-3 overflow-y-auto pr-1" data-testid="export-settings">
+        <section class="flex flex-col gap-1.5">
+          <span class="text-foreground-muted text-xs font-medium">Export</span>
+          <xui-segmented-control
+            size="sm"
+            fill
+            ariaLabel="What to export"
+            data-testid="export-scope-choice"
+            [options]="scopes()"
+            [value]="scope()"
+            (valueChange)="chooseScope($event)"
+          />
+          <span class="text-foreground-muted truncate text-xs" data-testid="export-scope" [title]="scopeText()">
+            {{ scopeText() }}
+          </span>
+        </section>
 
-      @if (chosen(); as info) {
-        <div class="well flex flex-col gap-1 p-2 text-xs" data-testid="export-preset-info">
-          <span>{{ info.engine }}, normal {{ info.normal }}, {{ info.origin }}</span>
-          @for (file of info.files; track file.template) {
-            <span class="readout truncate"
-              >{{ file.template }} · {{ file.format
-              }}{{ file.compression === 'none' ? '' : ' ' + file.compression }}</span
-            >
+        <section class="flex flex-col gap-1.5">
+          <span class="text-foreground-muted text-xs font-medium">Preset</span>
+          <xui-select
+            class="w-full"
+            ariaLabel="Preset"
+            data-testid="export-preset"
+            [filterable]="false"
+            [itemText]="presetName"
+            [items]="presetIds()"
+            [value]="settings().preset"
+            (valueChange)="choosePreset($event)"
+          />
+          @if (chosen(); as info) {
+            <span class="text-foreground-muted text-xs" data-testid="export-preset-info">
+              {{ info.engine }} · normal map {{ greenName(info.normal) }} ·
+              {{ info.origin === 'factory' ? 'built in' : 'this library' }}
+            </span>
           }
-        </div>
-      }
+        </section>
 
-      @for (problem of store.problems(); track problem) {
-        <xui-callout color="warning">{{ problem }}</xui-callout>
-      }
-
-      @if (paint.state(); as stack) {
-        <div class="well flex flex-col gap-2 p-2 text-xs" data-testid="export-document">
-          <span>This document's maps, as they are now.</span>
-          <button type="button" xuiButton size="sm" data-testid="export-stack" (click)="exportStack(stack.id)">
-            Export Maps…
-          </button>
-          @if (store.exported().length > 0) {
-            <span class="readout" data-testid="export-stack-done">{{ store.exported().length }} map(s) written</span>
-          }
-        </div>
-      }
-
-      <span class="text-foreground-muted text-xs" data-testid="export-scope">
-        {{ asset() ? 'Only what reads ' + asset()?.name : 'The whole library' }}
-      </span>
-
-      @if (store.preview(); as preview) {
-        <div class="well grid grid-cols-[1fr_auto] gap-x-3 p-2 text-xs" data-testid="export-impact">
-          <span>Projects to touch</span>
-          <span class="readout" data-testid="export-impact-projects">{{ preview.projects }}</span>
-          <span>Outputs to build</span>
-          <span class="readout" data-testid="export-impact-rebuilds">{{ preview.rebuilds }}</span>
-          <span>Of those, shared work</span>
-          <span class="readout">{{ preview.shared }}</span>
-          <span>Up to date</span>
-          <span class="readout">{{ preview.fresh }}</span>
-          <span>Exports to write</span>
-          <span class="readout" data-testid="export-impact-exports">{{ preview.exports }}</span>
-          @if (preview.unresolved > 0) {
-            <span>Cannot be built</span>
-            <span class="readout">{{ preview.unresolved }}</span>
-          }
-        </div>
-        @if (preview.nothing; as nothing) {
-          <xui-callout color="warning" data-testid="export-nothing">{{ nothing }}</xui-callout>
-        }
-      }
-
-      <div class="flex gap-1">
-        <button type="button" xuiButton size="sm" data-testid="export-preview" [disabled]="!preset()" (click)="ask()">
-          Preview
-        </button>
-        <button
-          type="button"
-          xuiButton
-          size="sm"
-          data-testid="export-start"
-          [disabled]="!preset() || running()"
-          (click)="start()"
-        >
-          Export
-        </button>
-        @if (running()) {
-          <button type="button" xuiButton size="sm" variant="ghost" data-testid="export-cancel" (click)="cancel()">
-            Stop
-          </button>
-        }
-      </div>
-
-      @if (error(); as message) {
-        <xui-callout color="error" data-testid="export-error">{{ message }}</xui-callout>
-      }
-
-      @if (store.build(); as build) {
-        <div class="flex items-center justify-between text-xs">
-          <span class="readout" data-testid="export-state">{{ stateName(build.state) }}</span>
-          <span class="readout" data-testid="export-percent">{{ percent() }}%</span>
-        </div>
-        @if (build.error) {
-          <xui-callout color="error" data-testid="export-build-error">{{ build.error }}</xui-callout>
-        }
-      }
-
-      @if (store.report(); as report) {
-        <div class="well grid grid-cols-[1fr_auto] gap-x-3 p-2 text-xs" data-testid="export-report">
-          <span>Projects touched</span>
-          <span class="readout" data-testid="export-report-projects">{{ report.projects }}</span>
-          <span>Built</span>
-          <span class="readout" data-testid="export-report-built">{{ report.built }}</span>
-          <span>Reused</span>
-          <span class="readout">{{ report.reused }}</span>
-          <span>Files written</span>
-          <span class="readout" data-testid="export-report-files">{{ report.files }}</span>
-          <span>Failed</span>
-          <span class="readout" data-testid="export-report-failed">{{ report.failed }}</span>
-        </div>
-        @if (report.nothing; as nothing) {
-          <xui-callout color="warning" data-testid="export-report-nothing">{{ nothing }}</xui-callout>
-        }
-        @for (project of store.projects(); track project.id) {
-          <div class="flex flex-col gap-1 text-xs" data-testid="export-report-project">
-            <span class="font-semibold">{{ project.name }}</span>
-            @for (output of project.outputs; track output.name) {
-              @if (output.error; as why) {
-                <xui-callout color="error" compact data-testid="export-report-error">
-                  {{ output.name }}: {{ why }}
-                </xui-callout>
-              }
+        <section class="flex flex-col gap-1.5">
+          <span class="text-foreground-muted text-xs font-medium">Output folder</span>
+          <span class="readout truncate text-xs" data-testid="export-folder" [title]="settings().folder ?? ''">
+            {{ settings().folder ?? 'The library’s exports folder' }}
+          </span>
+          <div class="flex gap-1">
+            <button type="button" xuiButton size="sm" data-testid="export-folder-choose" (click)="chooseFolder()">
+              Choose…
+            </button>
+            @if (settings().folder) {
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                variant="ghost"
+                data-testid="export-folder-default"
+                (click)="change({ folder: null })"
+              >
+                Use Default
+              </button>
             }
-            @for (done of project.exports; track done.preset) {
-              <span class="text-foreground-muted truncate" [title]="done.folder ?? ''">
-                {{ done.preset }}: {{ done.files.length }} files, {{ done.status }}
+            @if (revealable(); as path) {
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                variant="ghost"
+                data-testid="export-reveal"
+                (click)="reveal(path)"
+              >
+                Reveal
+              </button>
+            }
+          </div>
+        </section>
+
+        <section class="flex flex-col gap-1.5">
+          <span class="text-foreground-muted text-xs font-medium">Size</span>
+          <div class="flex gap-1">
+            <xui-select
+              class="min-w-0 flex-1"
+              ariaLabel="Size"
+              data-testid="export-size"
+              [filterable]="false"
+              [itemText]="sizeName"
+              [items]="sizes"
+              [value]="settings().size === null ? 'native' : '' + settings().size"
+              (valueChange)="chooseSize($event)"
+            />
+            <xui-select
+              class="min-w-0 flex-1"
+              ariaLabel="Resize filter"
+              data-testid="export-filter"
+              [disabled]="settings().size === null"
+              [filterable]="false"
+              [itemText]="filterName"
+              [items]="store.filters()"
+              [value]="settings().filter"
+              (valueChange)="change({ filter: $event ?? 'box' })"
+            />
+          </div>
+        </section>
+
+        <section class="flex flex-col gap-1.5">
+          <span class="text-foreground-muted text-xs font-medium">Padding</span>
+          <xui-select
+            class="w-full"
+            ariaLabel="Padding"
+            data-testid="export-padding"
+            [filterable]="false"
+            [itemText]="paddingName"
+            [items]="store.paddings()"
+            [value]="settings().padding"
+            (valueChange)="change({ padding: $event ?? 'none' })"
+          />
+          @if (distanced()) {
+            <div class="flex items-center gap-2">
+              <span class="text-foreground-muted w-16 shrink-0 text-xs">Distance</span>
+              <xui-slider
+                class="min-w-0 flex-1"
+                labelStepSize="0"
+                [attr.aria-label]="'Padding distance'"
+                data-testid="export-distance"
+                [max]="64"
+                [min]="0"
+                [stepSize]="1"
+                [value]="settings().distance"
+                (valueChange)="change({ distance: $event })"
+              />
+              <span class="readout w-12 shrink-0 text-right text-xs" data-testid="export-distance-readout">
+                {{ settings().distance }} px
               </span>
-              @if (done.error; as why) {
-                <xui-callout color="error" compact data-testid="export-report-error">
-                  {{ done.preset }}: {{ why }}
-                </xui-callout>
-              }
-              @for (file of done.skipped; track file) {
-                <span class="text-foreground-muted truncate" data-testid="export-report-skipped" [title]="file">
-                  Left out, no map for it: {{ file }}
+            </div>
+          }
+          @if (settings().padding === 'colour') {
+            <div class="flex items-center gap-2">
+              <span class="text-foreground-muted w-16 shrink-0 text-xs">Colour</span>
+              <xui-color-picker showAlpha [value]="paddingHex()" (valueChange)="change({ colour: lanes($event) })" />
+            </div>
+          }
+          <span class="text-foreground-muted text-xs">
+            Fills what the mesh's layout leaves empty, so mips and filtering read the islands. A material with no mesh
+            has nothing to fill.
+          </span>
+        </section>
+
+        <section class="flex items-center justify-between gap-2">
+          <span
+            class="text-xs"
+            title="An 8-bit file rounds up as often as its value is past the level below, so gradients do not band"
+          >
+            Dither 8-bit files
+          </span>
+          <xui-switch
+            ariaLabel="Dither 8-bit files"
+            data-testid="export-dither"
+            [checked]="settings().dither"
+            (checkedChange)="change({ dither: $event })"
+          />
+        </section>
+      </div>
+
+      <div class="flex min-h-0 flex-col gap-2.5 overflow-y-auto">
+        @for (problem of store.problems(); track problem) {
+          <xui-callout color="warning" compact>{{ problem }}</xui-callout>
+        }
+
+        @if (setNames().length > 0) {
+          <section class="well flex flex-col gap-1 p-2" data-testid="export-sets">
+            <div class="flex items-center gap-1">
+              <span class="text-foreground-muted min-w-0 flex-1 text-xs font-medium">Texture sets</span>
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                variant="ghost"
+                data-testid="export-sets-all"
+                (click)="checkSets('all')"
+              >
+                Check All
+              </button>
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                variant="ghost"
+                data-testid="export-sets-none"
+                (click)="checkSets('none')"
+              >
+                Uncheck All
+              </button>
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                variant="ghost"
+                data-testid="export-sets-invert"
+                (click)="checkSets('invert')"
+              >
+                Invert
+              </button>
+            </div>
+            @for (set of setNames(); track set) {
+              <label class="flex items-center gap-2 text-xs" data-testid="export-set">
+                <input
+                  type="checkbox"
+                  [attr.aria-label]="'Export ' + set"
+                  [checked]="!settings().skipped.includes(set)"
+                  [disabled]="scope() === 'document'"
+                  (change)="toggleSet(set)"
+                />
+                <span class="truncate">{{ set }}</span>
+              </label>
+            }
+          </section>
+        }
+
+        @if (chosen(); as info) {
+          <section class="well flex flex-col p-2" data-testid="export-files">
+            <div
+              class="text-foreground-muted grid grid-cols-[1.25rem_minmax(0,1fr)_11rem] gap-x-2 pb-1 text-xs font-medium"
+            >
+              <span></span>
+              <span>File</span>
+              <span>Format</span>
+            </div>
+            @for (file of info.files; track file.template) {
+              @let choice = choiceOf(file);
+              <div
+                class="grid grid-cols-[1.25rem_minmax(0,1fr)_11rem] items-center gap-x-2 py-0.5 text-xs"
+                data-testid="export-file"
+                [class.opacity-50]="!choice.enabled"
+              >
+                <input
+                  type="checkbox"
+                  data-testid="export-file-on"
+                  [attr.aria-label]="'Write ' + file.template"
+                  [checked]="choice.enabled"
+                  (change)="chooseFile(file, { enabled: !choice.enabled })"
+                />
+                <span class="min-w-0 truncate" [title]="mapsOf(file)">
+                  <span class="readout">{{ file.template }}</span>
+                  <span class="text-foreground-muted"> · {{ mapsOf(file) }}</span>
                 </span>
-              }
-              @for (warning of done.warnings; track warning) {
-                <span class="text-foreground-muted truncate" [title]="warning">{{ warning }}</span>
-              }
+                <xui-select
+                  class="w-full"
+                  data-testid="export-file-format"
+                  [ariaLabel]="'Format of ' + file.template"
+                  [filterable]="false"
+                  [itemText]="formatName"
+                  [items]="formatsFor(file)"
+                  [value]="choice.format"
+                  (valueChange)="chooseFile(file, { format: $event ?? file.format })"
+                />
+              </div>
+            }
+          </section>
+        }
+
+        @if (unsaved().length > 0) {
+          <xui-callout color="warning" compact data-testid="export-unsaved">
+            Export reads saved files. {{ unsavedText() }}
+            @if (project.active()?.dirty) {
+              <button type="button" xuiButton size="sm" data-testid="export-save" (click)="project.saveActive()">
+                Save
+              </button>
+            }
+          </xui-callout>
+        }
+
+        @if (paint.state(); as stack) {
+          <div class="flex items-center gap-2 text-xs" data-testid="export-document">
+            <span class="text-foreground-muted min-w-0 flex-1"
+              >Or write this document's maps as they are on screen, as PNG.</span
+            >
+            <button
+              type="button"
+              xuiButton
+              size="sm"
+              variant="ghost"
+              data-testid="export-stack"
+              (click)="exportStack(stack.id)"
+            >
+              Export Maps…
+            </button>
+            @if (store.exported().length > 0) {
+              <span class="readout" data-testid="export-stack-done">{{ store.exported().length }} maps written</span>
             }
           </div>
         }
-        @if (store.projectCount() > store.projects().length) {
-          <span class="text-foreground-muted text-xs">
-            {{ store.projectCount() - store.projects().length }} more in {{ report.folder }}
-          </span>
+
+        @if (store.preview(); as preview) {
+          <div class="well grid grid-cols-[1fr_auto] gap-x-3 p-2 text-xs" data-testid="export-impact">
+            <span>Projects to touch</span>
+            <span class="readout" data-testid="export-impact-projects">{{ preview.projects }}</span>
+            <span>Outputs to build</span>
+            <span class="readout" data-testid="export-impact-rebuilds">{{ preview.rebuilds }}</span>
+            <span>Of those, shared work</span>
+            <span class="readout">{{ preview.shared }}</span>
+            <span>Up to date</span>
+            <span class="readout">{{ preview.fresh }}</span>
+            <span>Exports to write</span>
+            <span class="readout" data-testid="export-impact-exports">{{ preview.exports }}</span>
+            @if (preview.unresolved > 0) {
+              <span>Cannot be built</span>
+              <span class="readout">{{ preview.unresolved }}</span>
+            }
+          </div>
+          @if (preview.nothing; as nothing) {
+            <xui-callout color="warning" compact data-testid="export-nothing">{{ nothing }}</xui-callout>
+          }
         }
-      }
+
+        @if (confirming()) {
+          <div class="well flex flex-col gap-2 p-2 text-xs" data-testid="export-confirm">
+            <span>
+              Export every project in the library through {{ chosen()?.name }}? It can take a while, and it replaces
+              what earlier exports wrote there.
+            </span>
+            <div class="flex gap-1">
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                color="primary"
+                data-testid="export-confirm-yes"
+                (click)="run()"
+              >
+                Export Library
+              </button>
+              <button type="button" xuiButton size="sm" variant="ghost" (click)="confirming.set(false)">Cancel</button>
+            </div>
+          </div>
+        }
+
+        <div class="flex gap-1">
+          <button type="button" xuiButton size="sm" data-testid="export-preview" [disabled]="!chosen()" (click)="ask()">
+            Preview
+          </button>
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            color="primary"
+            data-testid="export-start"
+            [disabled]="!chosen() || running() || nothingChosen()"
+            (click)="start()"
+          >
+            Export
+          </button>
+          @if (running()) {
+            <button type="button" xuiButton size="sm" variant="ghost" data-testid="export-cancel" (click)="cancel()">
+              Stop
+            </button>
+          }
+        </div>
+
+        @if (error(); as message) {
+          <xui-callout color="error" compact data-testid="export-error">{{ message }}</xui-callout>
+        }
+
+        @if (store.build(); as build) {
+          <div class="flex flex-col gap-1.5" data-testid="export-progress">
+            <div class="flex items-center gap-2 text-xs">
+              <span class="readout" data-testid="export-state">{{ stateName(build.state) }}</span>
+              <span class="text-foreground-muted min-w-0 flex-1 truncate" data-testid="export-current">
+                {{ running() ? (build.report?.current ?? '') : '' }}
+              </span>
+              <span class="readout" data-testid="export-percent">{{ percent() }}%</span>
+            </div>
+            <div
+              class="bg-surface-sunken h-1.5 overflow-hidden rounded-sm"
+              role="progressbar"
+              aria-label="Export progress"
+              [attr.aria-valuenow]="percent()"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            >
+              <div class="bg-primary h-full" [style.width.%]="percent()"></div>
+            </div>
+          </div>
+          @if (build.error) {
+            <xui-callout color="error" compact data-testid="export-build-error">{{ build.error }}</xui-callout>
+          }
+        }
+
+        @if (store.report(); as report) {
+          <div class="well grid grid-cols-[1fr_auto] gap-x-3 p-2 text-xs" data-testid="export-report">
+            <span>Projects touched</span>
+            <span class="readout" data-testid="export-report-projects">{{ report.projects }}</span>
+            <span>Built</span>
+            <span class="readout" data-testid="export-report-built">{{ report.built }}</span>
+            <span>Reused</span>
+            <span class="readout">{{ report.reused }}</span>
+            <span>Files written</span>
+            <span class="readout" data-testid="export-report-files">{{ report.files }}</span>
+            <span>Failed</span>
+            <span class="readout" data-testid="export-report-failed">{{ report.failed }}</span>
+          </div>
+          @if (report.nothing; as nothing) {
+            <xui-callout color="warning" compact data-testid="export-report-nothing">{{ nothing }}</xui-callout>
+          }
+          @for (done of store.projects(); track done.id) {
+            <div class="flex flex-col gap-1 text-xs" data-testid="export-report-project">
+              <span class="font-semibold">{{ done.name }}</span>
+              @for (output of done.outputs; track output.name) {
+                @if (output.error; as why) {
+                  <xui-callout color="error" compact data-testid="export-report-error">
+                    {{ output.name }}: {{ why }}
+                  </xui-callout>
+                }
+              }
+              @for (written of done.exports; track written.preset) {
+                <div class="flex items-center gap-2">
+                  <span class="text-foreground-muted min-w-0 flex-1 truncate" [title]="written.folder ?? ''">
+                    {{ presetName(written.preset) }}: {{ written.files.length }}
+                    {{ written.files.length === 1 ? 'file' : 'files' }},
+                    {{ statusName(written.status) }}
+                  </span>
+                  @if (written.folder) {
+                    <button
+                      type="button"
+                      xuiButton
+                      size="sm"
+                      variant="ghost"
+                      data-testid="export-report-reveal"
+                      (click)="reveal(written.folder)"
+                    >
+                      Reveal
+                    </button>
+                  }
+                </div>
+                @if (written.error; as why) {
+                  <xui-callout color="error" compact data-testid="export-report-error">
+                    {{ presetName(written.preset) }}: {{ why }}
+                  </xui-callout>
+                }
+                @for (file of written.skipped; track file) {
+                  <span class="text-foreground-muted truncate" data-testid="export-report-skipped" [title]="file">
+                    Left out, no map for it: {{ file }}
+                  </span>
+                }
+                @for (warning of written.warnings; track warning) {
+                  <span class="text-foreground-muted truncate" [title]="warning">{{ warning }}</span>
+                }
+              }
+            </div>
+          }
+          @if (store.projectCount() > store.projects().length) {
+            <span class="text-foreground-muted text-xs">
+              {{ store.projectCount() - store.projects().length }} more in {{ report.folder }}
+            </span>
+          }
+        }
+      </div>
     </div>
   `
 })
 export class ExportPane implements OnInit {
   protected readonly store = inject(ExportStore);
   protected readonly paint = inject(PaintStore);
+  protected readonly project = inject(ProjectStore);
   private readonly selection = inject(LibrarySelection);
-  protected readonly preset = signal<string | null>(null);
+
+  /** The scope chosen by hand, which holds until it stops being possible. */
+  private readonly picked = signal<ExportScope | null>(null);
+  protected readonly settings = signal<ExportSettings>(settingsFor(null));
   protected readonly error = signal<string | null>(null);
+  protected readonly confirming = signal(false);
+  protected readonly sizes = Sizes;
+
   protected readonly presetIds = computed(() => this.store.presets().map(preset => preset.id));
-  protected readonly chosen = computed(() => this.store.presets().find(preset => preset.id === this.preset()) ?? null);
-  protected readonly presetName = (id: string): string =>
-    this.store.presets().find(preset => preset.id === id)?.name ?? id;
+  protected readonly chosen = computed<ExportPresetInfo | null>(
+    () => this.store.presets().find(preset => preset.id === this.settings().preset) ?? null
+  );
   protected readonly stateName = jobStateName;
   protected readonly running = computed(() => ['queued', 'running'].includes(this.store.build()?.state ?? ''));
   protected readonly percent = computed(() => Math.round((this.store.build()?.progress ?? 0) * 100));
+  protected readonly distanced = computed(() => usesDistance(this.settings().padding));
+  protected readonly paddingHex = computed(() => hexOf(this.settings().colour));
 
-  /** A material selected in the Library narrows the build to what reads it, which is the impact of editing it. */
-  protected readonly asset = computed(() => {
+  protected readonly presetName = (id: string): string =>
+    this.store.presets().find(preset => preset.id === id)?.name ?? id;
+  protected readonly sizeName = (size: string): string => (size === 'native' ? 'The maps’ own size' : `${size} px`);
+  protected readonly filterName = (filter: string): string => FilterNames[filter] ?? filter;
+  protected readonly paddingName = (mode: string): string => PaddingNames[mode] ?? mode;
+  protected readonly formatName = (format: string): string =>
+    this.store.formats().find(known => known.id === format)?.label ?? format;
+  protected readonly lanes = lanesOf;
+
+  /** The project the dialog is about: the one in front, or the one selected in the Library. */
+  private readonly target = computed<{ id: string; name: string } | null>(() => {
+    const open = this.project.current();
+    if (open) {
+      return { id: open.id, name: open.name };
+    }
+    const item = this.selection.item();
+    return item?.kind === 'project' ? { id: item.project.id, name: item.project.name } : null;
+  });
+
+  /** The texture set of the document in front, when it is one an export writes. */
+  private readonly documentSet = computed(() => {
+    const document = this.project.document();
+    const sets = this.project.current()?.exportSets ?? [];
+    const set = document ? (document.material ?? document.name) : null;
+    return set && sets.includes(set) ? set : null;
+  });
+
+  /** A material selected in the Library narrows a library export to what reads it, which is the impact of editing it. */
+  private readonly asset = computed(() => {
     const item = this.selection.item();
     return item?.kind === 'asset' ? item.asset : null;
   });
 
+  /** What the dialog exports: what was picked, or else the narrowest thing that is open. */
+  protected readonly scope = computed<ExportScope>(() => {
+    const possible = this.scopes()
+      .filter(option => !option.disabled)
+      .map(option => option.value);
+    const picked = this.picked();
+    return picked && possible.includes(picked) ? picked : (possible[0] ?? 'library');
+  });
+
+  protected readonly scopes = computed<XuiSegmentedOption<ExportScope>[]>(() => [
+    { value: 'document', label: 'Document', disabled: this.documentSet() === null },
+    { value: 'project', label: 'Project', disabled: this.target() === null },
+    { value: 'library', label: 'Library' }
+  ]);
+
+  protected readonly scopeText = computed(() => {
+    switch (this.scope()) {
+      case 'document':
+        return `${this.project.document()?.name ?? ''} in ${this.target()?.name ?? ''}`;
+      case 'project':
+        return `Every texture set of ${this.target()?.name ?? ''}`;
+      default: {
+        const asset = this.asset();
+        return asset ? `Every project that reads ${asset.name}` : 'Every project in the library';
+      }
+    }
+  });
+
+  /** The sets the dialog lists: the project's, when the project is open and has more than one name to choose. */
+  protected readonly setNames = computed(() => {
+    if (this.scope() === 'library') {
+      return [];
+    }
+    const sets = this.project.current()?.id === this.target()?.id ? (this.project.current()?.exportSets ?? []) : [];
+    return this.scope() === 'document' ? sets.filter(set => set === this.documentSet()) : sets;
+  });
+
+  protected readonly nothingChosen = computed(
+    () =>
+      (this.scope() === 'project' &&
+        this.setNames().length > 0 &&
+        this.setNames().every(set => this.settings().skipped.includes(set))) ||
+      (this.chosen()?.files.every(file => !this.choiceOf(file).enabled) ?? false)
+  );
+
+  /** Documents of what is being exported that have changes the export will not see. */
+  protected readonly unsaved = computed(() => {
+    const tabs = this.project.unsavedTabs();
+    if (this.scope() === 'library') {
+      return tabs;
+    }
+    const path = this.project.current()?.path;
+    return this.project.current()?.id === this.target()?.id ? tabs.filter(tab => tab.project === path) : [];
+  });
+
+  protected readonly unsavedText = computed(() => {
+    const tabs = this.unsaved();
+    const [only] = tabs;
+    return tabs.length === 1 && only
+      ? `${only.name} has changes that are not saved.`
+      : `${tabs.length} documents have changes that are not saved.`;
+  });
+
+  /** A folder Reveal can show: the one chosen, or where the last export put its files. */
+  protected readonly revealable = computed(() => {
+    const folder = this.settings().folder;
+    if (folder) {
+      return folder;
+    }
+    return (
+      this.store
+        .projects()
+        .flatMap(done => done.exports)
+        .find(written => written.folder)?.folder ?? null
+    );
+  });
+
   private readonly stack = computed(() => this.paint.state()?.id ?? null);
+
+  /** The project whose settings are being edited; null for the library's. */
+  private readonly settingsOwner = computed(() => (this.scope() === 'library' ? null : (this.target()?.id ?? null)));
 
   /** A build that has stopped is read once, whichever way it stopped. */
   private read = '';
+  private loaded = false;
 
   constructor() {
     effect(() => {
@@ -216,44 +719,142 @@ export class ExportPane implements OnInit {
 
     // Numbers that answered another question say nothing about this one.
     effect(() => {
+      this.scope();
       this.asset();
+      this.settings();
       this.store.preview.set(null);
+      this.confirming.set(false);
     });
     effect(() => {
       this.stack();
       this.store.exported.set([]);
+    });
+
+    // A project's export starts where its last one ended, and the library's from its own.
+    effect(() => {
+      const owner = this.settingsOwner();
+      const presets = this.store.presets();
+      if (presets.length > 0) {
+        untracked(() => this.restore(owner, presets));
+      }
     });
   }
 
   ngOnInit(): void {
     void this.attempt(async () => {
       await this.store.load();
-      this.preset.update(preset => preset ?? this.presetIds()[0] ?? null);
+      this.loaded = true;
     });
+  }
+
+  protected greenName(normal: string): string {
+    return normal === 'y-up' ? 'OpenGL (Y+)' : 'DirectX (Y−)';
+  }
+
+  protected statusName(status: string): string {
+    return StatusNames[status] ?? status;
+  }
+
+  protected mapsOf(file: ExportPresetFile): string {
+    return file.maps.map(map => MapNames[map] ?? map).join(', ') || 'Constants';
+  }
+
+  protected choiceOf(file: ExportPresetFile): FileChoice {
+    const preset = this.settings().preset ?? '';
+    return this.settings().files[preset]?.[file.template] ?? { enabled: true, format: file.format };
+  }
+
+  /** The formats a file can be written in: those that hold its lane count. */
+  protected formatsFor(file: ExportPresetFile): string[] {
+    return this.store
+      .formats()
+      .filter(format => format.lanes.includes(file.lanes))
+      .map(format => format.id);
+  }
+
+  protected chooseScope(scope: ExportScope | null): void {
+    if (scope) {
+      this.picked.set(scope);
+    }
+  }
+
+  protected choosePreset(id: string | null): void {
+    const preset = this.store.presets().find(known => known.id === id) ?? null;
+    if (preset) {
+      this.settings.set(settingsFor(preset, this.settings()));
+      this.keep();
+    }
+  }
+
+  protected chooseSize(size: string | null): void {
+    this.change({ size: !size || size === 'native' ? null : Number(size) });
+  }
+
+  protected change(change: Partial<ExportSettings>): void {
+    this.settings.update(settings => ({ ...settings, ...change }));
+    this.keep();
+  }
+
+  protected chooseFile(file: ExportPresetFile, change: Partial<FileChoice>): void {
+    const preset = this.settings().preset;
+    if (!preset) {
+      return;
+    }
+    const next = { ...this.choiceOf(file), ...change };
+    this.settings.update(settings => ({
+      ...settings,
+      files: { ...settings.files, [preset]: { ...settings.files[preset], [file.template]: next } }
+    }));
+    this.keep();
+  }
+
+  protected toggleSet(set: string): void {
+    const skipped = this.settings().skipped;
+    this.change({ skipped: skipped.includes(set) ? skipped.filter(name => name !== set) : [...skipped, set] });
+  }
+
+  protected checkSets(how: 'all' | 'none' | 'invert'): void {
+    const sets = this.setNames();
+    const skipped = this.settings().skipped;
+    this.change({
+      skipped: how === 'all' ? [] : how === 'none' ? [...sets] : sets.filter(set => !skipped.includes(set))
+    });
+  }
+
+  protected async chooseFolder(): Promise<void> {
+    const folder = await desktop()?.openFolder();
+    if (folder) {
+      this.change({ folder });
+    }
+  }
+
+  protected reveal(path: string): void {
+    void desktop()?.reveal(path);
   }
 
   /** Painted work reaches a file with no build behind it: the stack that is open, in a folder chosen now. */
   protected async exportStack(id: string): Promise<void> {
     const folder = await desktop()?.openFolder();
     if (folder) {
-      try {
-        await this.store.exportStack(id, folder);
-      } catch (failure) {
-        this.error.set(failure instanceof Error ? failure.message : String(failure));
-      }
+      await this.attempt(() => this.store.exportStack(id, folder));
     }
-  }
-
-  protected choose(preset: string | null): void {
-    this.preset.set(preset);
-    this.store.preview.set(null);
   }
 
   protected ask(): Promise<void> {
     return this.attempt(() => this.store.ask(this.request()));
   }
 
+  /** A library export asks first: it touches every project and replaces what they last exported. */
   protected start(): Promise<void> {
+    if (this.scope() === 'library' && !this.asset()) {
+      this.confirming.set(true);
+      return Promise.resolve();
+    }
+    return this.run();
+  }
+
+  protected run(): Promise<void> {
+    this.confirming.set(false);
     return this.attempt(() => this.store.start(this.request()));
   }
 
@@ -262,9 +863,48 @@ export class ExportPane implements OnInit {
   }
 
   private request(): BuildRequest {
-    const preset = this.preset();
-    const asset = this.asset();
-    return { presets: preset ? [preset] : [], ...(asset ? { asset: asset.id } : {}) };
+    const preset = this.chosen();
+    if (!preset) {
+      return { presets: [] };
+    }
+    const target = this.target();
+    switch (this.scope()) {
+      case 'document':
+        return requestFor(this.settings(), preset, {
+          projects: target ? [target.id] : [],
+          sets: this.documentSet() ? [this.documentSet() as string] : null
+        });
+      case 'project': {
+        const sets = this.setNames();
+        const skipped = this.settings().skipped.filter(set => sets.includes(set));
+        return requestFor(this.settings(), preset, {
+          projects: target ? [target.id] : [],
+          sets: skipped.length > 0 ? sets.filter(set => !skipped.includes(set)) : null
+        });
+      }
+      default:
+        return requestFor(this.settings(), preset, { asset: this.asset()?.id ?? null });
+    }
+  }
+
+  private restore(owner: string | null, presets: readonly ExportPresetInfo[]): void {
+    const saved = this.store.settings(owner);
+    const preset =
+      presets.find(known => known.id === saved?.preset) ??
+      presets.find(known => known.id === this.settings().preset) ??
+      presets[0];
+    if (!preset) {
+      return;
+    }
+    this.settings.set(
+      saved?.preset === preset.id ? { ...settingsFor(preset), ...saved } : settingsFor(preset, saved ?? undefined)
+    );
+  }
+
+  private keep(): void {
+    if (this.loaded) {
+      this.store.keep(this.settingsOwner(), this.settings());
+    }
   }
 
   private async attempt(work: () => Promise<void>): Promise<void> {
