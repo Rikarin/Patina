@@ -59,12 +59,16 @@ async function inner(): Promise<string> {
   const area = await box();
   const inset = 6;
   const clip = { x: area.x + inset, y: area.y + inset, width: area.width - 2 * inset, height: area.height - 2 * inset };
-  return (await window.screenshot({ clip })).toString('base64');
+  return (await window.screenshot({ clip, scale: 'css' })).toString('base64');
 }
 
-async function changed(before: string, after: string): Promise<number> {
+/**
+ * How many pixels moved by more than `step` levels of red. The default is well above anything a settled picture does
+ * between frames; a change that is only shading wants less.
+ */
+async function changed(before: string, after: string, step = 24): Promise<number> {
   return window.evaluate(
-    async ({ first, second }) => {
+    async ({ first, second, step }) => {
       const load = async (data: string) => {
         const bytes = Uint8Array.from(atob(data), character => character.charCodeAt(0));
         const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
@@ -80,12 +84,12 @@ async function changed(before: string, after: string): Promise<number> {
       const [one, two] = [await load(first), await load(second)];
       let count = 0;
       for (let at = 0; at < one.length; at += 4) {
-        count += Math.abs((one[at] ?? 0) - (two[at] ?? 0)) > 24 ? 1 : 0;
+        count += Math.abs((one[at] ?? 0) - (two[at] ?? 0)) > step ? 1 : 0;
       }
 
       return count;
     },
-    { first: before, second: after }
+    { first: before, second: after, step }
   );
 }
 
@@ -159,7 +163,10 @@ test('height painted on the mesh lights it as a bump, sharp or smooth', async ()
   const smooth = await inner();
   await window.getByTestId('texture-set-height-normal').getByText('Sharp').click();
   await away();
-  await expect.poll(async () => changed(smooth, await inner()), { timeout: 30_000 }).toBeGreaterThan(50);
+  // Smooth blurs the height a texel, which a frame drawn one pixel per CSS pixel (CI's Xvfb) shows as a softer change
+  // than a Retina frame does: no pixel moved 24 levels there, though hundreds moved 8. Nothing reaching the viewport
+  // moves none.
+  await expect.poll(async () => changed(smooth, await inner(), 8), { timeout: 30_000 }).toBeGreaterThan(50);
   await settled();
   await window.screenshot({ path: join(shots, 'paint-height-sharp.png') });
 });
