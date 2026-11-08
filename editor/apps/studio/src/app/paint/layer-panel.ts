@@ -21,7 +21,7 @@ import { amount, percent } from '../core/numbers';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { FilterFields } from './filter-fields';
-import { LiveValue } from './live-value';
+import { LayerDraft } from './live-value';
 import { MaterialUse } from './material-use';
 import { colourOf, PaintStore, writesChannel } from './paint-store';
 
@@ -86,7 +86,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
             aria-label="Layer name"
             data-testid="paint-layer-name"
             [value]="name.shown()"
-            (input)="name.edit(text($event))"
+            (input)="name.edit(layer.id, text($event))"
             (blur)="commitName(layer)"
             (keydown.enter)="commitName(layer)"
           />
@@ -106,7 +106,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
             aria-label="Anchor point name"
             data-testid="paint-anchor-point"
             [value]="point.shown()"
-            (input)="editPoint(layer, text($event))"
+            (input)="point.edit(layer.id, text($event))"
             (blur)="commitPoint(layer)"
             (keydown.enter)="commitPoint(layer)"
           />
@@ -721,10 +721,9 @@ export class LayerPanel {
   /** A layer by its name, which is what the anchor list offers rather than its id. */
   protected readonly layerName = (id: string): string =>
     this.store.layers().find(row => row.layer.id === id)?.layer.name ?? id;
-  protected readonly name = new LiveValue<string>(() => this.store.chosen()?.name ?? '');
-  protected readonly point = new LiveValue<string>(() => this.store.chosen()?.anchorPoint ?? '');
-  /** The layer the anchor point field was typed into, which is the only one a commit may write. */
-  private pointOf: string | null = null;
+  /** The name and anchor point fields, each committed only to the layer it was typed for. */
+  protected readonly name = new LayerDraft<string>(() => this.store.chosen()?.name ?? '');
+  protected readonly point = new LayerDraft<string>(() => this.store.chosen()?.anchorPoint ?? '');
   protected readonly scalarDraft = signal<{ usage: string; value: number } | null>(null);
 
   constructor() {
@@ -752,7 +751,6 @@ export class LayerPanel {
       untracked(() => {
         this.name.release();
         this.point.release();
-        this.pointOf = null;
       });
     });
   }
@@ -774,10 +772,10 @@ export class LayerPanel {
     void this.store.edit({ op: 'setLayer', layer: layer.id, channels: next.length === all.length ? [] : next });
   }
 
+  /** Sends what was typed, for the layer it was typed for; see {@link LayerDraft}. */
   protected commitName(layer: StackLayer): void {
-    const name = this.name.shown();
-    this.name.release();
-    if (name !== layer.name) {
+    const name = this.name.take(layer.id);
+    if (name !== null && name !== layer.name) {
       void this.store.edit({ op: 'setLayer', layer: layer.id, name });
     }
   }
@@ -861,24 +859,10 @@ export class LayerPanel {
       : null;
   }
 
-  protected editPoint(layer: StackLayer, value: string): void {
-    this.pointOf = layer.id;
-    this.point.edit(value);
-  }
-
-  /**
-   * Sends what was typed, for the layer it was typed for. ⚠ Only then: the field loses focus when another row is
-   * pressed, and by that time the chosen layer may be the other one, whose name an unguarded commit would write here.
-   */
+  /** Sends what was typed, for the layer it was typed for; see {@link LayerDraft}. */
   protected commitPoint(layer: StackLayer): void {
-    if (this.pointOf !== layer.id) {
-      return;
-    }
-
-    const point = this.point.shown().trim();
-    this.pointOf = null;
-    this.point.release();
-    if (point !== layer.anchorPoint) {
+    const point = this.point.take(layer.id)?.trim();
+    if (point !== undefined && point !== layer.anchorPoint) {
       void this.store.edit({ op: 'setLayer', layer: layer.id, anchorPoint: point });
     }
   }

@@ -467,3 +467,24 @@ test('an anchor point is named, read by a mask in one channel, and lists who rea
   await expect(window.getByTestId('paint-anchor-uses')).toContainText('Read by Paint · mask · Roughness');
   await window.screenshot({ path: join(shots, 'layers-anchor-uses.png') });
 });
+
+test('a name typed for one layer is never written onto another when a row is pressed', async () => {
+  const name = window.getByTestId('paint-layer-name');
+  const base = window.getByTestId('paint-layer-base');
+  const paint = window.getByTestId('paint-layer-paint');
+  await base.click();
+  await expect(name).toHaveValue('Base');
+  await name.fill('Bottom');
+
+  // Pressing another row chooses it before the field's blur commits, which once wrote "Paint" onto Base.
+  await paint.click();
+  await expect(name).toHaveValue('Paint');
+  await name.fill('Top');
+  await name.press('Enter');
+  await expect(paint).toContainText('Top');
+  await expect(base).toContainText('Base');
+  await expect(base).not.toContainText('Paint');
+
+  await window.getByTestId('paint-undo').click();
+  await expect(paint).toContainText('Paint');
+});
