@@ -633,7 +633,7 @@ export class GraphThumbnail {
           Delete and Relink <span menuItemLabel>{{ commands.keyText('deleteRelink') }}</span>
         </button>
         <button type="button" xuiMenuItem [disabled]="!store.editable()" (triggered)="store.remove(selectedNodes(), [])">
-          Delete
+          Delete <span menuItemLabel>{{ commands.keyText('delete') }}</span>
         </button>
         <xui-menu-divider />
         <button

@@ -4,6 +4,7 @@ import { XuiButtonImports } from '@xui/button';
 import { type XuiSegmentedOption, XuiSegmentedControlImports } from '@xui/segmented-control';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
+import { Commands } from '../core/commands';
 import { degrees, percent } from '../core/numbers';
 import type { AxisView } from './orbit';
 import { DefaultDisplay, ViewportClient } from './viewport-client';
@@ -203,7 +204,7 @@ const Snaps: readonly { view: AxisView; label: string; key: string }[] = [
         <span class="readout w-16 shrink-0 text-end text-xs">{{ shown(slider) }}</span>
       </div>
     }
-    <div class="flex items-center gap-2" title="Draws the triangles' edges over the model (W)">
+    <div class="flex items-center gap-2" [title]="commands.tooltip('toggleWireframe')">
       <span class="text-foreground-muted w-20 shrink-0 text-xs">Wireframe</span>
       <xui-switch
         ariaLabel="Wireframe"
@@ -229,6 +230,7 @@ const Snaps: readonly { view: AxisView; label: string; key: string }[] = [
 export class ViewportDisplayPanel {
   protected readonly viewport = inject(ViewportClient);
   protected readonly display = this.viewport.display;
+  protected readonly commands = inject(Commands);
   protected readonly projections = Projections;
   protected readonly lighting = Lighting;
   protected readonly finish = Finish;

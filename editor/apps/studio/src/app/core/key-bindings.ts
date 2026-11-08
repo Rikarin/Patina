@@ -1,5 +1,15 @@
 import { type Chord, normalChord, platformChord } from './chords';
-import { type CommandArea, type CommandSpec, DefaultPreset, KeyPresets, overlaps, presetOf } from './command-table';
+import {
+  type CommandArea,
+  type CommandSpec,
+  DefaultPreset,
+  FixedKeys,
+  KeyPresets,
+  overlaps,
+  presetOf,
+  reachesFocus,
+  reservedKeys
+} from './command-table';
 
 /**
  * A person's keys as the desktop app keeps them, in `keys.json` in its settings folder: per user, not per library, and
@@ -36,10 +46,36 @@ export function readKeySettings(value: unknown, table: readonly CommandSpec[]): 
   return { version: 1, preset, keys };
 }
 
+/** What holds a key that no command can take from it: the app menu's own item, or a control's key, and where. */
+export interface KeyHolder {
+  readonly label: string;
+  readonly where: string;
+}
+
+/**
+ * What holds a chord that `spec` may not have, or null: an item of the app menu, which takes its key before the window
+ * sees it, or a key a control answers itself while its keys would work there, unless that key does this very command.
+ */
+export function heldBy(spec: CommandSpec, chord: Chord, mac: boolean): KeyHolder | null {
+  const reserved = reservedKeys(mac).find(key => key.chord === chord);
+  if (reserved) {
+    return { label: reserved.label, where: 'the app menu' };
+  }
+
+  const fixed = FixedKeys.find(
+    key =>
+      key.command !== spec.id &&
+      reachesFocus(spec, key.focus) &&
+      key.chords.some(held => platformChord(held, mac) === chord)
+  );
+  return fixed ? { label: fixed.label, where: fixed.section.toLowerCase() } : null;
+}
+
 /**
  * Each command's keys: a person's own first, then the preset's, then the table's. A key two commands would share where
  * both can be live goes to the first that claims it, a person's own before a default, so a hand-edited file can never
- * make a command unreachable without saying which one won.
+ * make a command unreachable without saying which one won. A key the app menu or a control holds ({@link heldBy}) goes
+ * to none.
  */
 export function settleKeys(table: readonly CommandSpec[], settings: KeySettings, mac: boolean): Map<string, Chord[]> {
   const preset = presetOf(settings.preset);
@@ -48,7 +84,10 @@ export function settleKeys(table: readonly CommandSpec[], settings: KeySettings,
   const claim = (spec: CommandSpec, chords: readonly Chord[]) => {
     for (const chord of chords.map(held => platformChord(held, mac))) {
       const area = spec.area ?? 'app';
-      if (!claimed.some(other => other.chord === chord && overlaps(other.area, area))) {
+      if (
+        heldBy(spec, chord, mac) === null &&
+        !claimed.some(other => other.chord === chord && overlaps(other.area, area))
+      ) {
         claimed.push({ chord, area });
         settled.get(spec.id)?.push(chord);
       }

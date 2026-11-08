@@ -149,6 +149,11 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   bake.
 - A quick Undo then Redo does both. A key for Undo or Redo pressed while an edit is still on its way waits for it, then runs if there
   is something to undo or redo, so Redo pressed before the undo came back is no longer lost. Keys pressed behind it wait their turn.
+- Keyboard Shortcuts refuses a key the app menu takes first, such as Cmd+Q, Cmd+H or Cmd+M on a Mac, and a key a list, the graph
+  canvas or a text field answers itself where the command's key would work, and says what has it. It lists the app menu's keys too.
+- F2 only renames. The layouts in Window > Layout moved from F1 to F3 to Cmd or Ctrl+1 to 3.
+- W switches the viewport's wireframe, as the switch's tooltip said, and the Viewport menu has Wireframe.
+- Bake… is off with no project open, and the graph node menu's Delete shows its key.
 
 ### Changed
 

@@ -135,6 +135,7 @@ import { ViewportPane } from './viewport/viewport-pane';
           size="sm"
           variant="ghost"
           data-testid="open-bake"
+          [disabled]="!commands.enabled('bake')"
           [title]="commands.tooltip('bake')"
           (click)="commands.run('bake')"
         >
@@ -578,7 +579,8 @@ export class App {
     }
 
     handle('export', { run: () => this.exporting.set(true) });
-    handle('bake', { run: () => this.baking.set(true) });
+    // With no project there is no mesh to bake, and the dialog would only say so.
+    handle('bake', { enabled: () => project.current() !== null, run: () => this.baking.set(true) });
     handle('quickBake', { enabled: () => this.bakeSettings.blocked() === null, run: () => this.quickBake() });
     handle('toggleStats', { checked: () => this.options.stats(), run: () => this.options.toggleStats() });
     for (const [at, id] of ['layout1', 'layout2', 'layout3'].entries()) {

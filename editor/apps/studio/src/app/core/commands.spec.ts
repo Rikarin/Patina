@@ -5,9 +5,17 @@ import { ProjectStore } from '../library/project-store';
 import { PaintStore } from '../paint/paint-store';
 import { menuModel } from './app-menu';
 import { acceleratorOf, chordOf, chordText, normalChord } from './chords';
-import { CommandTable, KeyPresets, MenuBar, type MenuEntry } from './command-table';
+import {
+  type CommandSpec,
+  CommandTable,
+  FixedKeys,
+  KeyPresets,
+  MenuBar,
+  type MenuEntry,
+  reservedKeys
+} from './command-table';
 import { Commands, KeyWaitMs } from './commands';
-import { readKeySettings, settleKeys } from './key-bindings';
+import { heldBy, readKeySettings, settleKeys } from './key-bindings';
 import { ShortcutsDialog } from './shortcuts-dialog';
 
 const key = (init: KeyboardEventInit) => new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
@@ -78,6 +86,32 @@ describe('the command table', () => {
     }
   });
 
+  it('gives no command a key the app menu takes, or one a control answers where the command’s keys work', () => {
+    for (const mac of [true, false]) {
+      for (const spec of CommandTable) {
+        for (const reserved of reservedKeys(mac)) {
+          expect(heldBy(spec, reserved.chord, mac), `${spec.id} ${reserved.chord}`).not.toBeNull();
+        }
+      }
+    }
+
+    const spec = (id: string) => CommandTable.find(command => command.id === id) as CommandSpec;
+    // F2 is Rename in a list, which can have focus whatever is in front, so it is no layout's.
+    expect(heldBy(spec('layout2'), 'F2', true)).toEqual({ label: 'Rename in the Library', where: 'lists and trees' });
+    expect(heldBy(spec('brushTool'), 'Home', true)?.label).toBe('Move');
+    // The viewport's keys need the viewport focused, where no list is.
+    expect(heldBy(spec('nextView'), 'Home', true)).toBeNull();
+    // Delete in a list deletes, so Delete may be Delete's.
+    expect(heldBy(spec('delete'), 'Delete', true)).toBeNull();
+    // A text field keeps Escape from every command but one that works while typing.
+    expect(heldBy(spec('cancelStroke'), 'Escape', true)).toBeNull();
+    const typing: CommandSpec = { id: 'typing', label: 'Typing', section: 'Painting', area: 'stack', typing: true };
+    expect(heldBy(typing, 'Escape', true)?.where).toBe('text');
+
+    const settled = settleKeys(CommandTable, { version: 1, preset: 'standard', keys: { brushTool: ['Mod+Q'] } }, true);
+    expect(settled.get('brushTool')).toEqual([]);
+  });
+
   it('lets a person’s own key win over a default, and drops what a hand-edited file got wrong', () => {
     const settings = readKeySettings(
       { preset: 'nonsense', keys: { eraserTool: ['b'], brushTool: 'B', unknown: ['X'], lineTool: ['Mod+Banana'] } },
@@ -87,6 +121,46 @@ describe('the command table', () => {
     const settled = settleKeys(CommandTable, settings, true);
     expect(settled.get('eraserTool')).toEqual(['B']);
     expect(settled.get('brushTool')).toEqual([]);
+  });
+});
+
+/** What {@link sources} needs of Node's file system. */
+interface Fs {
+  readdirSync(path: string, options: { recursive: true }): string[];
+  readFileSync(path: string, encoding: 'utf8'): string;
+}
+
+/** Every source file of the studio and its UI library, but tests, for checks that read what the code says. */
+async function sources(): Promise<{ path: string; text: string }[]> {
+  // Read at run time, so that the bundle the tests run from does not try to hold the file system.
+  const module = 'node:fs';
+  const fs = (await import(/* @vite-ignore */ module)) as Fs;
+  const roots = ['apps/studio/src/app', 'libs/studio-ui/src'];
+  return roots.flatMap(root =>
+    fs
+      .readdirSync(root, { recursive: true })
+      .filter(path => path.endsWith('.ts') && !path.endsWith('.spec.ts'))
+      .map(path => ({ path: `${root}/${path}`, text: fs.readFileSync(`${root}/${path}`, 'utf8') }))
+  );
+}
+
+describe('keys written into the code', () => {
+  it('names a key in a tooltip or a menu only through the table, so it is one that works (#229)', async () => {
+    // A key in brackets at the end of words, `(W)` or `(⌘B)`, and a menu item's key written out rather than read.
+    const keyInWords =
+      /\((?:[⌘⇧⌥⌃]+)?(?:(?:Mod|Ctrl|Cmd|Alt|Shift|Option)\+)*(?:[A-Z]|F\d{1,2}|Space|Enter|Esc|Escape|Delete|Del|Tab|Backspace)\)/gu;
+    const menuLabel = /menuItemLabel>\s*([^{<\s][^<]*?)\s*</gu;
+    const fixed = new Set(FixedKeys.flatMap(key => key.chords));
+    const found = (await sources()).flatMap(({ path, text }) =>
+      [...text.matchAll(keyInWords), ...text.matchAll(menuLabel)].map(match => ({
+        path,
+        key: (match[1] ?? match[0]).replace(/^\(|\)$/gu, '')
+      }))
+    );
+
+    expect(found.length, 'the check reads the code at all').toBeGreaterThan(0);
+    // A command's key can be changed, so only a key a control answers itself can be written into words.
+    expect(found.filter(({ key }) => !fixed.has(normalChord(key) ?? key))).toEqual([]);
   });
 });
 
@@ -324,7 +398,7 @@ describe('Commands', () => {
 
   it('refuses a key another command has where both work, and swaps when asked', () => {
     const refused = commands.bind('eraserTool', 'B');
-    expect(refused.done ? null : [refused.taken.id, refused.chord]).toEqual(['brushTool', 'B']);
+    expect(refused.done ? null : [refused.taken?.id, refused.chord]).toEqual(['brushTool', 'B']);
     expect(commands.keys().get('eraserTool')).toEqual(['E']);
 
     commands.swap('eraserTool', 'brushTool', 'B');
@@ -334,6 +408,17 @@ describe('Commands', () => {
 
     // A graph's key can be a stack's too: the two are never in front at once.
     expect(commands.bind('groupNodes', 'B')).toEqual({ done: true });
+
+    // Nothing swaps a key away from the app menu or a list.
+    expect(commands.bind('layout1', 'F2')).toEqual({
+      done: false,
+      chord: 'F2',
+      taken: null,
+      label: 'Rename in the Library',
+      where: 'lists and trees'
+    });
+    expect(commands.bind('eraserTool', 'Mod+M')).toMatchObject({ done: false, taken: null, label: 'Minimise' });
+    expect(commands.keys().get('eraserTool')).toEqual(['B']);
   });
 
   it('starts again from a preset, which moves the view with the right button', () => {
@@ -378,12 +463,21 @@ describe('the Keyboard Shortcuts dialog', () => {
     };
     const commands = TestBed.inject(Commands);
 
-    await press({ key: 'q', code: 'KeyQ', metaKey: true });
-    expect(commands.keys().get('brushTool')).toEqual(['Mod+Q']);
+    await press({ key: 'j', code: 'KeyJ', metaKey: true });
+    expect(commands.keys().get('brushTool')).toEqual(['Mod+J']);
 
     await press({ key: 'x', code: 'KeyX', metaKey: true });
-    expect(commands.keys().get('brushTool')).toEqual(['Mod+Q']);
-    expect(document.querySelector('[data-testid=shortcuts-taken]')?.textContent).toContain('⌘X is already Cut');
+    expect(commands.keys().get('brushTool')).toEqual(['Mod+J']);
+    const taken = () => document.querySelector('[data-testid=shortcuts-taken]')?.textContent ?? '';
+    expect(taken()).toContain('⌘X is already Cut');
+    expect(document.querySelector('[data-testid=shortcuts-swap]')).not.toBeNull();
+
+    // The app menu takes ⌘Q before the window sees it, so nothing can swap it away (#224).
+    await press({ key: 'q', code: 'KeyQ', metaKey: true });
+    expect(commands.keys().get('brushTool')).toEqual(['Mod+J']);
+    expect(taken()).toContain('⌘Q is already Quit Patina, in the app menu');
+    expect(document.querySelector('[data-testid=shortcuts-swap]')).toBeNull();
+    expect(document.querySelector('[aria-label="App menu"]')?.textContent).toContain('⌘Q');
   });
 });
 

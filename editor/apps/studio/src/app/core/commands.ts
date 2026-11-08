@@ -5,7 +5,7 @@ import { PaintStore } from '../paint/paint-store';
 import { type Chord, chordOf, chordText, isMac, normalChord } from './chords';
 import { type CommandArea, type CommandSpec, CommandTable, KeyPresets, presetOf } from './command-table';
 import { desktop } from './desktop';
-import { type KeySettings, NoKeySettings, readKeySettings, settleKeys, takenBy } from './key-bindings';
+import { type KeySettings, NoKeySettings, heldBy, readKeySettings, settleKeys, takenBy } from './key-bindings';
 
 /** How a command was asked for, which decides what it may do: a key in a text field leaves the text alone. */
 export type CommandVia = 'key' | 'accelerator' | 'menu' | 'button';
@@ -69,8 +69,12 @@ interface WaitingKey {
   readonly until: number;
 }
 
-/** The outcome of a rebinding: done, or refused because another command has the key where this one's keys work. */
-export type Rebinding = { done: true } | { done: false; taken: CommandSpec; chord: Chord };
+/**
+ * The outcome of a rebinding: done, or refused because something has the key where this one's keys work. `taken` is the
+ * command that has it, which a swap can move; null for the app menu or a control, which keep theirs.
+ */
+export type Rebinding =
+  { done: true } | { done: false; chord: Chord; taken: CommandSpec | null; label: string; where: string | null };
 
 /**
  * The one command table at work: what each key does, what the native menu shows and which of its items are on, and
@@ -256,12 +260,19 @@ export class Commands {
 
   /**
    * Gives a command a key, in place of the keys it had. Refused when another command has it where this one's keys
-   * work: one key never does two things, and the caller can offer {@link swap}.
+   * work, and the caller can offer {@link swap}; or when the app menu or a control holds it, which nothing moves. One
+   * key never does two things.
    */
   bind(id: string, chord: Chord): Rebinding {
+    const spec = this.specs.get(id);
+    const held = spec ? heldBy(spec, chord, this.mac) : null;
+    if (held) {
+      return { done: false, chord, taken: null, label: held.label, where: held.where };
+    }
+
     const taken = takenBy(this.table, this.keys(), id, chord);
     if (taken) {
-      return { done: false, taken, chord };
+      return { done: false, chord, taken, label: taken.label, where: null };
     }
 
     this.write({ ...this.settings().keys, [id]: [chord] });

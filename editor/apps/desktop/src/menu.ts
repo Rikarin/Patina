@@ -134,6 +134,10 @@ export function installMenu(actions: MenuActions, menus: MenuModel | null): void
 /**
  * The menu bar. `starting` is before the studio has said what its menus are: then New Library and Open Library are the
  * main process's own, since there may be no studio to send them to.
+ *
+ * ⚠ The keys of the items this adds itself (the app menu's roles, Close Window, Full Screen, Minimise, Reload and the
+ * developer tools) are listed in the studio's `reservedKeys` (core/command-table.ts), so that no command is given one.
+ * One added here goes there too.
  */
 export function template(actions: MenuActions, menus: MenuModel, starting = false): MenuItemConstructorOptions[] {
   const mac = process.platform === 'darwin';

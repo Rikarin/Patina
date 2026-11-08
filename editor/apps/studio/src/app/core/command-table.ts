@@ -163,12 +163,21 @@ export const CommandTable: readonly CommandSpec[] = [
   { id: 'panDown', label: 'Pan Down', section: 'Viewport', keys: ['Shift+Down'], area: 'viewport' },
   { id: 'zoomIn', label: 'Zoom In', section: 'Viewport', keys: ['Plus', '='], area: 'viewport' },
   { id: 'zoomOut', label: 'Zoom Out', section: 'Viewport', keys: ['-'], area: 'viewport' },
+  {
+    id: 'toggleWireframe',
+    label: 'Wireframe',
+    section: 'Viewport',
+    keys: ['W'],
+    area: 'viewport',
+    hint: 'Draws the triangles’ edges over the model'
+  },
 
   { id: 'toggleStats', label: 'Show Statistics', section: 'View' },
 
-  { id: 'layout1', label: 'First Layout', section: 'Window', keys: ['F1'] },
-  { id: 'layout2', label: 'Second Layout', section: 'Window', keys: ['F2'] },
-  { id: 'layout3', label: 'Third Layout', section: 'Window', keys: ['F3'] },
+  // As Finder's views are: F2 is Rename in every list, so the layouts are not on F keys (#224).
+  { id: 'layout1', label: 'First Layout', section: 'Window', keys: ['Mod+1'] },
+  { id: 'layout2', label: 'Second Layout', section: 'Window', keys: ['Mod+2'] },
+  { id: 'layout3', label: 'Third Layout', section: 'Window', keys: ['Mod+3'] },
   { id: 'resetLayout', label: 'Reset Layout', section: 'Window' },
   { id: 'showHistory', label: 'History', section: 'Window', hint: 'Shows every undo step' },
 
@@ -315,7 +324,9 @@ export const MenuBar: readonly {
       },
       '-',
       'zoomIn',
-      'zoomOut'
+      'zoomOut',
+      '-',
+      'toggleWireframe'
     ]
   },
   {
@@ -330,21 +341,135 @@ export const MenuBar: readonly {
   { label: 'Help', items: ['shortcuts', 'diagnostics', '-', 'reportProblem'] }
 ];
 
-/** Keys a control answers itself, as its kind of control does everywhere. Listed, but not rebound. */
-export const FixedKeys: readonly { readonly section: string; readonly label: string; readonly keys: string }[] = [
-  { section: 'Lists and trees', label: 'Move', keys: '↑ ↓, Home, End, Page Up, Page Down' },
-  { section: 'Lists and trees', label: 'Open or close a folder', keys: '→ ←' },
-  { section: 'Lists and trees', label: 'Open or choose', keys: 'Enter' },
-  { section: 'Lists and trees', label: 'Rename in the Library', keys: 'F2' },
-  { section: 'Lists and trees', label: 'Delete a Library folder', keys: 'Delete' },
-  { section: 'Lists and trees', label: 'Context menu', keys: 'Shift+F10, Menu key' },
-  { section: 'Graph canvas', label: 'Select all nodes', keys: 'Mod+A' },
-  { section: 'Graph canvas', label: 'Delete the selection', keys: 'Delete' },
-  { section: 'Graph canvas', label: 'Move the selection', keys: 'Arrows, Shift for a grid step' },
-  { section: 'Graph canvas', label: 'Clear the selection', keys: 'Escape' },
-  { section: 'Graph canvas', label: 'Bend a wire through a reroute dot', keys: 'Alt+click the wire' },
-  { section: 'Text', label: 'Commit or cancel', keys: 'Enter, Escape' }
+/** What has focus when a control answers a key itself: a list or tree, the graph canvas, or a text field. */
+export type FixedFocus = 'list' | 'canvas' | 'text';
+
+/** A key a control answers itself, as its kind of control does everywhere. Listed, but not rebound. */
+export interface FixedKey {
+  readonly section: string;
+  readonly label: string;
+  /** The keys as the shortcuts dialog shows them, `Mod` being the platform's command key. */
+  readonly keys: string;
+  /** The chords it takes, which no command may have where its keys work while such a control has focus. */
+  readonly chords: readonly Chord[];
+  readonly focus: FixedFocus;
+  /** The command it carries out, as Delete in a list deletes: that command may have the key too. */
+  readonly command?: string;
+}
+
+const Arrows: readonly Chord[] = ['Up', 'Down', 'Left', 'Right'];
+
+/**
+ * Keys a control answers itself. Enter and Space have no chords here: they press whatever control has focus, everywhere
+ * ({@link Commands.press}), so a command on them is one that runs when nothing that takes them has focus.
+ */
+export const FixedKeys: readonly FixedKey[] = [
+  {
+    section: 'Lists and trees',
+    label: 'Move',
+    keys: '↑ ↓, Home, End, Page Up, Page Down',
+    chords: ['Up', 'Down', 'Home', 'End', 'PageUp', 'PageDown'],
+    focus: 'list'
+  },
+  {
+    section: 'Lists and trees',
+    label: 'Open or close a folder',
+    keys: '→ ←',
+    chords: ['Right', 'Left'],
+    focus: 'list'
+  },
+  { section: 'Lists and trees', label: 'Open or choose', keys: 'Enter', chords: [], focus: 'list' },
+  { section: 'Lists and trees', label: 'Rename in the Library', keys: 'F2', chords: ['F2'], focus: 'list' },
+  {
+    section: 'Lists and trees',
+    label: 'Delete a Library folder',
+    keys: 'Delete',
+    chords: ['Delete', 'Backspace'],
+    focus: 'list',
+    command: 'delete'
+  },
+  {
+    section: 'Lists and trees',
+    label: 'Context menu',
+    keys: 'Shift+F10, Menu key',
+    chords: ['Shift+F10', 'ContextMenu'],
+    focus: 'list'
+  },
+  {
+    section: 'Graph canvas',
+    label: 'Select all nodes',
+    keys: 'Mod+A',
+    chords: ['Mod+A'],
+    focus: 'canvas',
+    command: 'selectAll'
+  },
+  {
+    section: 'Graph canvas',
+    label: 'Delete the selection',
+    keys: 'Delete',
+    chords: ['Delete', 'Backspace'],
+    focus: 'canvas',
+    command: 'delete'
+  },
+  {
+    section: 'Graph canvas',
+    label: 'Move the selection',
+    keys: 'Arrows, Shift for a grid step',
+    chords: [...Arrows, ...Arrows.map(arrow => `Shift+${arrow}`)],
+    focus: 'canvas'
+  },
+  { section: 'Graph canvas', label: 'Clear the selection', keys: 'Escape', chords: ['Escape'], focus: 'canvas' },
+  {
+    section: 'Graph canvas',
+    label: 'Bend a wire through a reroute dot',
+    keys: 'Alt+click the wire',
+    chords: [],
+    focus: 'canvas'
+  },
+  { section: 'Text', label: 'Commit or cancel', keys: 'Enter, Escape', chords: ['Escape'], focus: 'text' }
 ];
+
+/**
+ * The keys the desktop app's own menu items take before the window sees them, as `apps/desktop/src/menu.ts` and
+ * Electron's menu roles give them. No command can have one: on a Mac, ⌘Q would quit whatever it was bound to. Reload
+ * and the developer tools are only in a development build, but are kept from every build so a keys file works in both.
+ */
+export function reservedKeys(mac: boolean): readonly { readonly chord: Chord; readonly label: string }[] {
+  return mac
+    ? [
+        { chord: 'Mod+Q', label: 'Quit Patina' },
+        { chord: 'Mod+H', label: 'Hide Patina' },
+        { chord: 'Mod+Alt+H', label: 'Hide Others' },
+        { chord: 'Mod+M', label: 'Minimise' },
+        { chord: 'Mod+Shift+W', label: 'Close Window' },
+        { chord: 'Mod+Ctrl+F', label: 'Full Screen' },
+        { chord: 'Mod+R', label: 'Reload' },
+        { chord: 'Mod+Alt+I', label: 'Developer Tools' }
+      ]
+    : [
+        { chord: 'Mod+Q', label: 'Quit Patina' },
+        { chord: 'Mod+M', label: 'Minimise' },
+        { chord: 'F11', label: 'Full Screen' },
+        { chord: 'Mod+R', label: 'Reload' },
+        { chord: 'Mod+Shift+I', label: 'Developer Tools' }
+      ];
+}
+
+/** Whether a command's keys work while a control of this kind has focus, which is when a fixed key would clash. */
+export function reachesFocus(spec: CommandSpec, focus: FixedFocus): boolean {
+  const area = spec.area ?? 'app';
+  switch (focus) {
+    // A text field keeps its keys, except a command's that works while typing.
+    case 'text':
+      return spec.typing === true;
+    // The canvas shows only with a graph in front.
+    case 'canvas':
+      return area === 'app' || area === 'graph';
+    // Lists are in every kind of document, but the viewport's keys need the viewport focused.
+    case 'list':
+      return area !== 'viewport';
+  }
+}
 
 /** What a drag in a 3D or 2D view does, by button and modifier, in one preset. */
 export interface Navigation {
@@ -353,11 +478,10 @@ export interface Navigation {
   readonly pan: string;
   readonly zoom: string;
   /** Which way a drag goes. `painting` is whether a left drag would paint. */
-  drag(event: { button: number; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }, painting: boolean):
-    | 'stroke'
-    | 'orbit'
-    | 'pan'
-    | 'zoom';
+  drag(
+    event: { button: number; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean },
+    painting: boolean
+  ): 'stroke' | 'orbit' | 'pan' | 'zoom';
   /** Whether a drag in a flat 2D view pans it. */
   pans2d(event: { button: number; altKey: boolean }): boolean;
 }
@@ -402,7 +526,11 @@ const RightDrag: Navigation = {
 export const KeyPresets: Readonly<
   Record<
     string,
-    { readonly label: string; readonly navigation: Navigation; readonly keys: Readonly<Record<string, readonly Chord[]>> }
+    {
+      readonly label: string;
+      readonly navigation: Navigation;
+      readonly keys: Readonly<Record<string, readonly Chord[]>>;
+    }
   >
 > = {
   standard: { label: 'Standard', navigation: Standard, keys: {} },

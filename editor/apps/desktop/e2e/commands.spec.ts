@@ -65,22 +65,27 @@ test('keys keep their modifiers, stay out of dialogs and fields, refuse a clash 
   await row('brushTool').click();
   await window.keyboard.press('ControlOrMeta+x');
   await expect(window.getByTestId('shortcuts-taken')).toContainText('is already Cut');
+  // The app menu has Cmd+Q, and takes it before the window sees it (#224).
   await row('brushTool').click();
   await window.keyboard.press('ControlOrMeta+q');
-  await expect(row('brushTool')).not.toHaveText(/^\s*Q\s*$/u);
-  await expect(row('brushTool')).toContainText('Q');
+  await expect(window.getByTestId('shortcuts-taken')).toContainText('is already Quit Patina, in the app menu');
+  await expect(window.getByTestId('shortcuts-swap')).toHaveCount(0);
+  await row('brushTool').click();
+  await window.keyboard.press('ControlOrMeta+j');
+  await expect(row('brushTool')).not.toHaveText(/^\s*J\s*$/u);
+  await expect(row('brushTool')).toContainText('J');
   await window.keyboard.press('Escape');
   await expect(window.getByTestId('shortcuts')).toBeHidden();
   await expect(tool('line')).not.toHaveClass(/shadow-elevation-1/u);
 
   await window.locator('body').press('l');
   await expect(tool('line')).toHaveClass(/shadow-elevation-1/u);
-  await window.locator('body').press('q'); // Q alone is not ⌘Q
+  await window.locator('body').press('j'); // J alone is not ⌘J
   await expect(tool('line')).toHaveClass(/shadow-elevation-1/u);
-  await expect(tool('brush')).toHaveAttribute('title', /Q/u);
+  await expect(tool('brush')).toHaveAttribute('title', /J/u);
 
   const keys = JSON.parse(readFileSync(join(scratch, 'user-data', 'keys.json'), 'utf8')) as { keys: object };
-  expect(keys.keys).toEqual({ brushTool: ['Mod+Q'] });
+  expect(keys.keys).toEqual({ brushTool: ['Mod+J'] });
 });
 
 test('the History pane lists the undo steps and goes back to one', async () => {
