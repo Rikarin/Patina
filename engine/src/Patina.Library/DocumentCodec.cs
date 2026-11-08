@@ -23,6 +23,7 @@ public static class DocumentCodec {
     const string HashKey = "hash";
     const string PreservePaintKey = "preservePaint";
     const string UnwrapKey = "unwrap";
+    const string ViewportKey = "viewport";
     const string UnwrappedKey = "unwrapped";
     const string DocumentsKey = "documents";
     const string FileKey = "file";
@@ -68,6 +69,7 @@ public static class DocumentCodec {
                     ..document.AutoUnwrap ? [] : new[] { Pair(AutoUnwrapKey, YamlText.Plain("false")) },
                     ..document.PreservePaint ? [] : new[] { Pair(PreservePaintKey, YamlText.Plain("false")) },
                     ..Named(UnwrapKey, document.Unwrap != new UnwrapOptions(), Unwrap(document.Unwrap)),
+                    ..Named(ViewportKey, document.Viewport is not null, Viewport(document.Viewport)),
                     Pair(ReferencesKey, References(document.References)),
                     Pair(
                         OutputsKey,
@@ -101,6 +103,77 @@ public static class DocumentCodec {
                 ..Named(UnwrappedKey, mesh.Unwrapped is not null, Unwrapped(mesh.Unwrapped))
             ]
         );
+
+    /// <summary>The viewport's settings as a flat map, every one of them, so a project file has one shape.</summary>
+    static YamlMappingNode Viewport(ViewportDisplay? display) {
+        if (display is null) {
+            return new();
+        }
+
+        return new(
+            [
+                Pair("environment", YamlText.Text(display.Environment)),
+                Pair("environmentRotation", YamlText.Plain(display.EnvironmentRotation)),
+                Pair("backgroundBlur", YamlText.Plain(display.BackgroundBlur)),
+                Pair("backgroundOpacity", YamlText.Plain(display.BackgroundOpacity)),
+                Pair("lightRotation", YamlText.Plain(display.LightRotation)),
+                Pair("exposure", YamlText.Plain(display.Exposure)),
+                Pair("shadows", YamlText.Plain(display.Shadows)),
+                Pair("toneMapping", YamlText.Text(display.ToneMapping)),
+                ..Present("look", display.Look),
+                Pair("view", YamlText.Text(display.View)),
+                ..Present("picture", display.Picture),
+                Pair("wireframe", YamlText.Plain(display.Wireframe ? "true" : "false")),
+                Pair("orthographic", YamlText.Plain(display.Orthographic ? "true" : "false")),
+                Pair("fieldOfView", YamlText.Plain(display.FieldOfView)),
+                Pair("contrast", YamlText.Plain(display.Contrast)),
+                Pair("saturation", YamlText.Plain(display.Saturation)),
+                Pair("vignette", YamlText.Plain(display.Vignette)),
+                Pair("grain", YamlText.Plain(display.Grain)),
+                Pair("aberration", YamlText.Plain(display.Aberration)),
+                Pair("sharpen", YamlText.Plain(display.Sharpen))
+            ]
+        );
+    }
+
+    /// <summary>A setting left out is the one the viewport opens with, and one that is not a number is refused.</summary>
+    static ViewportDisplay? ReadViewport(IReadOnlyDictionary<string, string> map, YamlFields fields) {
+        if (map.Count == 0) {
+            return null;
+        }
+
+        var defaults = new ViewportDisplay();
+
+        double Number(string key, double fallback) =>
+            !map.TryGetValue(key, out var text) ? fallback
+            : double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value
+            : throw fields.Problem($"'{ViewportKey}.{key}' is not a number.");
+
+        bool Flag(string key) => map.GetValueOrDefault(key) == "true";
+
+        return new() {
+            Environment = map.GetValueOrDefault("environment", defaults.Environment),
+            EnvironmentRotation = Number("environmentRotation", defaults.EnvironmentRotation),
+            BackgroundBlur = Number("backgroundBlur", defaults.BackgroundBlur),
+            BackgroundOpacity = Number("backgroundOpacity", defaults.BackgroundOpacity),
+            LightRotation = Number("lightRotation", defaults.LightRotation),
+            Exposure = Number("exposure", defaults.Exposure),
+            Shadows = Number("shadows", defaults.Shadows),
+            ToneMapping = map.GetValueOrDefault("toneMapping", defaults.ToneMapping),
+            Look = map.GetValueOrDefault("look"),
+            View = map.GetValueOrDefault("view", defaults.View),
+            Picture = map.GetValueOrDefault("picture"),
+            Wireframe = Flag("wireframe"),
+            Orthographic = Flag("orthographic"),
+            FieldOfView = Number("fieldOfView", defaults.FieldOfView),
+            Contrast = Number("contrast", defaults.Contrast),
+            Saturation = Number("saturation", defaults.Saturation),
+            Vignette = Number("vignette", defaults.Vignette),
+            Grain = Number("grain", defaults.Grain),
+            Aberration = Number("aberration", defaults.Aberration),
+            Sharpen = Number("sharpen", defaults.Sharpen)
+        };
+    }
 
     static YamlMappingNode Unwrap(UnwrapOptions options) =>
         new(
@@ -249,7 +322,8 @@ public static class DocumentCodec {
                     Documents = ReadItems(fields),
                     AutoUnwrap = fields.Optional(AutoUnwrapKey) != "false",
                     PreservePaint = fields.Optional(PreservePaintKey) != "false",
-                    Unwrap = ReadUnwrap(fields.TextMap(UnwrapKey), fields)
+                    Unwrap = ReadUnwrap(fields.TextMap(UnwrapKey), fields),
+                    Viewport = ReadViewport(fields.TextMap(ViewportKey), fields)
                 };
             }
         );

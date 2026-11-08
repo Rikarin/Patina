@@ -217,6 +217,61 @@ public sealed class ViewportProcessTests : IDisposable {
         Assert.Equal(2d, (await StateAsync(instance, deadline.Token)).Camera.Yaw);
     }
 
+    /// <summary>
+    ///     The display settings are the Server's: clay reaches the frames, and a Worker started after a crash is told it
+    ///     again, so the gold fixture stays grey.
+    /// </summary>
+    [Fact]
+    public async Task Display_settings_reach_the_frames_and_outlive_the_worker() {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        deadline.CancelAfter(TimeSpan.FromSeconds(120));
+        var instance = await StartServerAsync(deadline.Token);
+        var worker = StartWorker();
+        using var socket = await ConnectAsync(instance, deadline.Token);
+        await SendAsync(socket, new(Width: 160, Height: 100, Input: 1), deadline.Token);
+        await UntilSizeAsync(instance, 160, deadline.Token);
+        await OpenMeshAsync(instance, deadline.Token);
+        Assert.InRange(Warm(await ReceiveFrameAsync(socket, instance, deadline.Token)), 160, 160 * 100);
+
+        using (var request = Authorised(HttpMethod.Put, instance, "/api/v1/viewport/display")) {
+            request.Content = JsonContent.Create(
+                new ViewportDisplay(View: ViewportViews.Clay),
+                ContractsJsonContext.Default.ViewportDisplay
+            );
+            using var response = await Http.SendAsync(request, deadline.Token);
+            response.EnsureSuccessStatusCode();
+        }
+
+        await SendAsync(socket, new(Input: 2), deadline.Token);
+        Assert.InRange(Warm(await FrameAfterAsync(socket, instance, 2, deadline.Token)), 0, 16);
+
+        worker.Kill();
+        await worker.WaitForExitAsync(deadline.Token);
+        await SendAsync(socket, new(new(1d, 0.3d, 1.05d), Input: 3), deadline.Token);
+        StartWorker();
+        Assert.InRange(Warm(await FrameAfterAsync(socket, instance, 3, deadline.Token)), 0, 16);
+        Assert.Equal(ViewportViews.Clay, (await StateAsync(instance, deadline.Token)).Display.View);
+
+        static int Warm(byte[] frame) =>
+            Enumerable.Range(0, (frame.Length - HeaderBytes) / 4)
+                .Count(i => frame[HeaderBytes + i * 4] > frame[HeaderBytes + i * 4 + 2] + 40);
+    }
+
+    /// <summary>The first frame that includes an input.</summary>
+    static async Task<byte[]> FrameAfterAsync(
+        ClientWebSocket socket,
+        ServerInstance instance,
+        uint input,
+        CancellationToken cancellationToken
+    ) {
+        while (true) {
+            var frame = await ReceiveFrameAsync(socket, instance, cancellationToken);
+            if (BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(16)) >= input) {
+                return frame;
+            }
+        }
+    }
+
     [Fact]
     public async Task The_frame_stream_carries_the_same_frames_and_input_comes_over_the_socket() {
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);

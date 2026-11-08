@@ -19,8 +19,19 @@ static class RenderBench {
     /// <param name="width">The frame's width.</param>
     /// <param name="height">The frame's height.</param>
     /// <param name="bake">A folder a bake was delivered to, to lay over the mesh, or null.</param>
-    /// <param name="camera">The first frame's camera, or null for the default.</param>
-    public static int Run(string mesh, string png, int width, int height, string? bake, OrbitCamera? camera) {
+    /// <param name="camera">The first frame's camera.</param>
+    /// <param name="shading">How the frames are lit, shown and finished.</param>
+    /// <param name="environment">A room or a panorama, or null for the studio.</param>
+    public static int Run(
+        string mesh,
+        string png,
+        int width,
+        int height,
+        string? bake,
+        OrbitCamera camera,
+        ViewportShading shading,
+        string? environment
+    ) {
         var start = Stopwatch.StartNew();
         var cache = new ShaderCache(ShaderCache.DefaultDirectory);
         if (!ViewportRenderer.TryCreate(cache, out var created, out var refusal)) {
@@ -34,6 +45,13 @@ static class RenderBench {
         start.Restart();
         renderer.OpenMesh(mesh);
         Say($"mesh open in {start.Elapsed.TotalMilliseconds:F0} ms");
+        renderer.Shading = shading;
+        if (environment is not null) {
+            start.Restart();
+            renderer.SetEnvironment(environment);
+            Say($"environment baked in {start.Elapsed.TotalMilliseconds:F0} ms");
+        }
+
         if (bake is not null) {
             start.Restart();
             renderer.SetMaps(Maps(bake));
@@ -42,7 +60,7 @@ static class RenderBench {
 
         var pixels = new byte[ViewportRenderer.FrameBytes(width, height)];
         start.Restart();
-        renderer.Render(camera ?? OrbitCamera.Default, width, height, pixels);
+        renderer.Render(camera, width, height, pixels);
         Say($"first frame in {start.Elapsed.TotalMilliseconds:F0} ms");
         File.WriteAllBytes(png, PngCodec.Encode(new(width, height, pixels)));
 
@@ -50,7 +68,7 @@ static class RenderBench {
         start.Restart();
         for (var i = 0; i < Frames; i++) {
             var frame = Stopwatch.GetTimestamp();
-            renderer.Render(OrbitCamera.Default with { Yaw = i * 0.02f }, width, height, pixels);
+            renderer.Render(camera with { Yaw = i * 0.02f }, width, height, pixels);
             times[i] = Stopwatch.GetElapsedTime(frame).TotalMilliseconds;
         }
 

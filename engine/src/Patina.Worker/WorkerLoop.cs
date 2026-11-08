@@ -86,6 +86,7 @@ sealed class WorkerLoop(
                 IpcTypes.ViewportOpen => viewport.Open(request),
                 IpcTypes.ViewportMaps => viewport.SetMaps(request),
                 IpcTypes.ViewportCamera => viewport.SetCamera(request),
+                IpcTypes.ViewportDisplay => viewport.SetDisplay(request),
                 IpcTypes.ViewportRender => viewport.Render(request),
                 IpcTypes.ViewportPick => viewport.Pick(request),
                 IpcTypes.GraphLoad

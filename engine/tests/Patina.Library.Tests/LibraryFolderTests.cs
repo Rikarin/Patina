@@ -330,6 +330,45 @@ public sealed class LibraryFolderTests : IDisposable {
         Assert.True(File.Exists(library.ProjectFile(made.Path, before.File)));
     }
 
+    /// <summary>
+    ///     A project keeps how its viewport was left, every setting of it, through its file: a project that never set
+    ///     one has none, and its file says nothing about the viewport.
+    /// </summary>
+    [Fact]
+    public void A_project_remembers_how_its_viewport_was_left() {
+        var made = library.CreateProject(new("Lamp"));
+        Assert.Null(library.Contents(made.Path).Viewport);
+        Assert.DoesNotContain("viewport", File.ReadAllText(LibraryFiles.ProjectFile(root, made.Path)));
+        var left = new ViewportDisplay {
+            Environment = "/hdri/forest path.exr",
+            EnvironmentRotation = 2.25,
+            BackgroundBlur = 0.1,
+            BackgroundOpacity = 0.5,
+            LightRotation = -1.5,
+            Exposure = -0.75,
+            Shadows = 0.4,
+            ToneMapping = "agx",
+            Look = "/looks/warm.cube",
+            View = "picture",
+            Picture = "/bakes/curvature.png",
+            Wireframe = true,
+            Orthographic = true,
+            FieldOfView = 1.2,
+            Contrast = 1.1,
+            Saturation = 0.9,
+            Vignette = 0.2,
+            Grain = 0.3,
+            Aberration = 0.4,
+            Sharpen = 0.5
+        };
+
+        library.SetViewport(made.Path, left);
+
+        Assert.Equal(left, library.Contents(made.Path).Viewport);
+        library.SetViewport(made.Path, new());
+        Assert.Equal(new ViewportDisplay(), library.Contents(made.Path).Viewport);
+    }
+
     [Fact]
     public void A_project_remembers_how_it_unwraps_and_what_an_unwrap_came_to() {
         var made = library.CreateProject(new("Ball"));

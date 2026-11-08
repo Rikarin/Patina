@@ -38,17 +38,15 @@ static class ViewportMapEndpoints {
             .WithTags(Tag)
             .WithSummary("Lays pictures over the mesh's own materials. An empty body takes them off.")
             .ProducesProblem(Missing);
-        api.MapPut("/viewport/environment", SetEnvironment)
-            .WithName("SetViewportEnvironment")
-            .WithSummary("Chooses what lights the model: a built-in room, or an .hdr or .exr panorama.")
+        api.MapPut("/viewport/display", SetDisplayAsync)
+            .WithName("SetViewportDisplay")
+            .WithTags(Tag)
+            .WithSummary(
+                "Sets how the model is lit, shown and finished: environment, light, exposure, curve, look, view, "
+                + "lens and effects. No export sees any of it."
+            )
             .ProducesProblem(Missing)
             .ProducesProblem(Refused);
-
-        api.MapPut("/viewport/look", SetLook)
-            .WithName("SetViewportLook")
-            .WithTags(Tag)
-            .WithSummary("Views frames through a .cube table. No export sees it. A null path views without one.")
-            .ProducesProblem(Missing);
         api.MapPut("/viewport/bake", ShowBakeAsync)
             .WithName("ShowBakeInViewport")
             .WithTags(Tag)
@@ -78,30 +76,35 @@ static class ViewportMapEndpoints {
         }
     }
 
-    static Results<Ok<ViewportState>, ProblemHttpResult> SetEnvironment(
-        ViewportEnvironmentRequest request,
-        ViewportSession session
+    static async Task<Results<Ok<ViewportState>, ProblemHttpResult>> SetDisplayAsync(
+        ViewportDisplay request,
+        ViewportSession session,
+        CancellationToken cancellationToken
     ) {
-        if (!Rooms.Contains(request.Source)) {
-            if (!PictureFormats.IsEnvironment(request.Source)) {
+        if (request.Problem() is { } wrong) {
+            return TypedResults.Problem(wrong, statusCode: Refused);
+        }
+
+        if (!Rooms.Contains(request.Environment)) {
+            if (!PictureFormats.IsEnvironment(request.Environment)) {
                 return TypedResults.Problem(
-                    $"'{request.Source}' is no room and no {string.Join(" or ", PictureFormats.Environments)} file.",
+                    $"'{request.Environment}' is no room and no {string.Join(" or ", PictureFormats.Environments)} file.",
                     statusCode: Refused
                 );
             }
 
-            if (!File.Exists(request.Source)) {
-                return TypedResults.Problem($"There is no file '{request.Source}'.", statusCode: Missing);
+            if (!File.Exists(request.Environment)) {
+                return TypedResults.Problem($"There is no file '{request.Environment}'.", statusCode: Missing);
             }
         }
 
-        session.SetEnvironment(request.Source);
-        return TypedResults.Ok(session.State);
-    }
+        if (request.Look is { } table && !table.EndsWith(".cube", StringComparison.OrdinalIgnoreCase)) {
+            return TypedResults.Problem($"'{table}' is not a .cube table.", statusCode: Refused);
+        }
 
-    static Results<Ok<ViewportState>, ProblemHttpResult> SetLook(ViewportLookRequest request, ViewportSession session) {
         try {
-            session.SetLook(Hash(request.Path));
+            var (look, picture) = await Task.Run(() => (Hash(request.Look), Hash(request.Picture)), cancellationToken);
+            session.SetDisplay(new(request, look, picture));
             return TypedResults.Ok(session.State);
         } catch (FileNotFoundException e) {
             return TypedResults.Problem(e.Message, statusCode: Missing);
@@ -182,7 +185,6 @@ static class ViewportMapEndpoints {
                     files.GetValueOrDefault("roughness"),
                     files.GetValueOrDefault("metalness"),
                     files.GetValueOrDefault("occlusion"),
-                    null,
                     files.GetValueOrDefault("emissive"),
                     files.GetValueOrDefault("opacity")
                 ) {
@@ -205,7 +207,6 @@ static class ViewportMapEndpoints {
             Hash(paths.Roughness),
             Hash(paths.Metallic),
             Hash(paths.Occlusion),
-            null,
             Hash(paths.Emissive),
             Hash(paths.Opacity)
         );

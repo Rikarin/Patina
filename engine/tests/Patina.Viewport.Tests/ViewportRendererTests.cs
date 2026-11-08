@@ -54,11 +54,12 @@ public sealed class ViewportRendererTests : IDisposable {
         renderer.OpenMesh(Fixture);
 
         var camera = OrbitCamera.Default;
-        renderer.ShadowStrength = 0f;
+        renderer.Shading = new() { Shadows = 0f };
         var unshadowed = Render(renderer, camera);
-        renderer.ShadowStrength = 1f;
+        renderer.Shading = new();
         var shadowed = Render(renderer, camera);
-        var turned = Render(renderer, camera with { LightRotation = 2f });
+        renderer.Shading = new() { LightRotation = 2f };
+        var turned = Render(renderer, camera);
 
         // A shadow only ever takes light away, and turning the light moves it. The model is metal, which takes little
         // of its light from the sun, so a shadow is a small change on few pixels.
@@ -70,18 +71,25 @@ public sealed class ViewportRendererTests : IDisposable {
     }
 
     [Fact]
-    public void The_environment_turns_with_the_light() {
+    public void The_environment_turns_apart_from_the_light() {
         using var renderer = Open();
         renderer.OpenMesh(Fixture);
 
-        var still = At(Render(renderer, OrbitCamera.Default with { Yaw = 0f }), 2, 2);
-        var turned = At(Render(renderer, OrbitCamera.Default with { Yaw = 1.2f, LightRotation = 1.2f }), 2, 2);
-        var apart = At(Render(renderer, OrbitCamera.Default with { Yaw = 1.2f }), 2, 2);
+        var still = Render(renderer, OrbitCamera.Default with { Yaw = 0f });
+        renderer.Shading = new() { EnvironmentRotation = 1.2f };
+        var turned = Render(renderer, OrbitCamera.Default with { Yaw = 1.2f });
+        renderer.Shading = new();
+        var apart = Render(renderer, OrbitCamera.Default with { Yaw = 1.2f });
+        renderer.Shading = new() { LightRotation = 1.2f };
+        var lit = Render(renderer, OrbitCamera.Default with { Yaw = 1.2f });
 
-        // Going round with the environment sees the same sky; going round without it sees another.
-        Assert.InRange(turned.R - still.R, -3, 3);
-        Assert.InRange(turned.B - still.B, -3, 3);
-        Assert.NotEqual(still, apart);
+        // Going round with the environment sees the same sky; going round without it sees another. Turning the light
+        // moves its shading on the model and leaves the sky where it was.
+        Assert.InRange(At(turned, 2, 2).R - At(still, 2, 2).R, -3, 3);
+        Assert.InRange(At(turned, 2, 2).B - At(still, 2, 2).B, -3, 3);
+        Assert.NotEqual(At(still, 2, 2), At(apart, 2, 2));
+        Assert.Equal(At(apart, 2, 2), At(lit, 2, 2));
+        Assert.NotEqual(apart, lit);
     }
 
     [Fact]
@@ -152,12 +160,25 @@ public sealed class ViewportRendererTests : IDisposable {
         Assert.Throws<InvalidOperationException>(() => Render(renderer, OrbitCamera.Default));
     }
 
-    [Fact]
-    public void The_eye_sits_at_the_distance_asked_for() {
+    /// <summary>
+    ///     At one framing the bounding sphere's silhouette meets the narrower side of the picture: its half-angle, the
+    ///     arcsine of the radius over the distance, is half the vertical field of view in a wide picture and the
+    ///     horizontal one in a tall picture.
+    /// </summary>
+    [Theory]
+    [InlineData(16f / 9f)]
+    [InlineData(9f / 16f)]
+    [InlineData(1f / 3f)]
+    [InlineData(4f)]
+    public void One_framing_fits_the_bounding_sphere_in_the_narrower_side(float aspectRatio) {
         var bounds = new BoundingBox(new(-1f, -2f, 0f), new(1f, 2f, 4f));
+        var camera = new OrbitCamera(0.3f, 0.2f, 1f);
+        var radius = bounds.Extent.Length();
 
-        var eye = OrbitCamera.Default.Eye(bounds);
+        var reach = (camera.Eye(bounds, aspectRatio) - bounds.Center).Length();
 
-        Assert.Equal(OrbitCamera.Default.Distance * bounds.Extent.Length(), (eye - bounds.Center).Length(), 3);
+        var half = camera.FieldOfView * 0.5f;
+        var narrower = MathF.Min(half, MathF.Atan(aspectRatio * MathF.Tan(half)));
+        Assert.Equal(narrower, MathF.Asin(radius / reach), 4);
     }
 }

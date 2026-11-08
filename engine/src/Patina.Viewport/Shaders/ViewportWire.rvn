@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package Patina.Viewport
+
+import Vixen.Shaders.Core
+
+// The triangles' edges, as lines over the shaded model. A line lies exactly on its surface, so each end is lifted
+// towards the eye by a share of the model's size: a fixed step in the model's units holds in an orthographic view, where
+// the eye is hundreds of radii away and a step in depth would lift a line through the far side of the model.
+
+shader ViewportWire {
+    var viewProjection: mat4
+    var cameraPosition: float3
+    var lift: float
+    var wireColor: float4
+
+    [VertexShader]
+    [Semantic("SV_Position")]
+    func Vertex(position: float3): float4 {
+        val toward = Math.SafeNormalize(cameraPosition - position)
+        return viewProjection * float4(position + toward * lift, 1f)
+    }
+
+    [FragmentShader]
+    [Semantic("SV_Target")]
+    func Fragment(): float4 {
+        return wireColor
+    }
+}

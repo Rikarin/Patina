@@ -51,7 +51,12 @@ static class ProjectFiles {
                 ..files.Where(IsPicture)
                     .Select(f => new ProjectFile("picture", Path.GetFileName(f), Below(path, f)))
             ]
-        ) { AutoUnwrap = document.AutoUnwrap, PreservePaint = document.PreservePaint, Unwrap = document.Unwrap };
+        ) {
+            AutoUnwrap = document.AutoUnwrap,
+            PreservePaint = document.PreservePaint,
+            Unwrap = document.Unwrap,
+            Viewport = document.Viewport
+        };
     }
 
     /// <summary>Brings a mesh into a project, unless it is in there already, and lists it.</summary>
@@ -266,6 +271,12 @@ static class ProjectFiles {
                 Unwrap = unwrap ?? document.Unwrap
             }
         );
+    }
+
+    /// <summary>Keeps how the viewport is to open in a project.</summary>
+    public static void SetViewport(string root, string path, ViewportDisplay viewport) {
+        var (_, document) = Project(root, path);
+        LibraryFiles.WriteProject(root, path, document with { Viewport = viewport });
     }
 
     /// <summary>Puts a texturing document on another mesh.</summary>

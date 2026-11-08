@@ -276,18 +276,18 @@
         }
       }
     },
-    "/api/v1/viewport/environment": {
+    "/api/v1/viewport/display": {
       "put": {
         "tags": [
-          "ViewportMapEndpoints"
+          "Viewport"
         ],
-        "summary": "Chooses what lights the model: a built-in room, or an .hdr or .exr panorama.",
-        "operationId": "SetViewportEnvironment",
+        "summary": "Sets how the model is lit, shown and finished: environment, light, exposure, curve, look, view, lens and effects. No export sees any of it.",
+        "operationId": "SetViewportDisplay",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ViewportEnvironmentRequest"
+                "$ref": "#/components/schemas/ViewportDisplay"
               }
             }
           },
@@ -316,47 +316,6 @@
           },
           "422": {
             "description": "Unprocessable Entity",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/viewport/look": {
-      "put": {
-        "tags": [
-          "Viewport"
-        ],
-        "summary": "Views frames through a .cube table. No export sees it. A null path views without one.",
-        "operationId": "SetViewportLook",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ViewportLookRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ViewportState"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -8459,6 +8418,17 @@
           "unwrap": {
             "description": "How Auto Unwrap lays a mesh out.",
             "$ref": "#/components/schemas/UnwrapOptions"
+          },
+          "viewport": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "How the viewport was left in this project, for a client to put back, or null for as it opens.",
+                "$ref": "#/components/schemas/ViewportDisplay"
+              }
+            ]
           }
         },
         "description": "A project as it opens."
@@ -9060,6 +9030,17 @@
               {
                 "description": "How Auto Unwrap lays a mesh out. A mesh it already wrote is unwrapped again with these, from the file it came\nfrom, and its paint moves across as a new mesh\u0027s would.",
                 "$ref": "#/components/schemas/UnwrapOptions"
+              }
+            ]
+          },
+          "viewport": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "How the viewport is to open in this project from now on. It is kept, not applied: \u0060PUT /viewport/display\u0060\nshows it.",
+                "$ref": "#/components/schemas/ViewportDisplay"
               }
             ]
           }
@@ -11343,9 +11324,7 @@
           "distance",
           "panX",
           "panY",
-          "panZ",
-          "exposure",
-          "lightRotation"
+          "panZ"
         ],
         "type": "object",
         "properties": {
@@ -11361,7 +11340,7 @@
           },
           "distance": {
             "type": "number",
-            "description": "From the point it circles, in bounding radii.",
+            "description": "From the point it circles, in framings: at one, the sphere round the model\u0027s bounds just fits the picture\u0027s\nnarrower side, whatever its shape and the field of view. double ViewportCameraState.Framed shows the whole model.",
             "format": "double"
           },
           "panX": {
@@ -11381,34 +11360,152 @@
             "description": "The same along z.",
             "format": "double",
             "default": 0
+          }
+        },
+        "description": "The viewport\u0027s camera: an orbit around the model. Its lens is in ViewportDisplay."
+      },
+      "ViewportDisplay": {
+        "required": [
+          "environment",
+          "environmentRotation",
+          "backgroundBlur",
+          "backgroundOpacity",
+          "lightRotation",
+          "exposure",
+          "shadows",
+          "toneMapping",
+          "view",
+          "wireframe",
+          "orthographic",
+          "fieldOfView",
+          "contrast",
+          "saturation",
+          "vignette",
+          "grain",
+          "aberration",
+          "sharpen"
+        ],
+        "type": "object",
+        "properties": {
+          "environment": {
+            "type": "string",
+            "description": "A built-in room (studio, overcast or sunset), or the path of an \u0060.hdr\u0060 or \u0060.exr\u0060 panorama.",
+            "default": "studio"
           },
-          "exposure": {
+          "environmentRotation": {
             "type": "number",
-            "description": "How bright the picture is, where one is as it comes.",
+            "description": "How far the environment has turned around the model, which the light does not follow.",
+            "format": "double",
+            "default": 0
+          },
+          "backgroundBlur": {
+            "type": "number",
+            "description": "How blurred the background is, 0 sharp to 1 a haze. Lighting is not blurred.",
+            "format": "double",
+            "default": 0.66
+          },
+          "backgroundOpacity": {
+            "type": "number",
+            "description": "How much of the environment shows behind the model, 0 none (black) to 1 all.",
             "format": "double",
             "default": 1
           },
           "lightRotation": {
             "type": "number",
-            "description": "How far the light has turned around the model, in radians.",
+            "description": "How far the light has turned around the model.",
+            "format": "double",
+            "default": 0
+          },
+          "exposure": {
+            "type": "number",
+            "description": "Stops above or below the picture as it comes.",
+            "format": "double",
+            "default": 0
+          },
+          "shadows": {
+            "type": "number",
+            "description": "How dark the model\u0027s shadow is, 0 none to 1 no direct light.",
+            "format": "double",
+            "default": 1
+          },
+          "toneMapping": {
+            "type": "string",
+            "description": "One of IReadOnlyList\u0026lt;string\u0026gt; ViewportToneMappings.All.",
+            "default": "aces"
+          },
+          "look": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A \u0060.cube\u0060 table the frame is viewed through after the curve, or null."
+          },
+          "view": {
+            "type": "string",
+            "description": "One of IReadOnlyList\u0026lt;string\u0026gt; ViewportViews.All.",
+            "default": "lit"
+          },
+          "picture": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The picture the \u0060picture\u0060 view shows on the mesh, on the Server\u0027s machine, or null."
+          },
+          "wireframe": {
+            "type": "boolean",
+            "description": "Whether the triangles\u0027 edges are drawn over the model.",
+            "default": false
+          },
+          "orthographic": {
+            "type": "boolean",
+            "description": "Whether parallel lines stay parallel. It keeps the size the picture has at the point the camera circles.",
+            "default": false
+          },
+          "fieldOfView": {
+            "type": "number",
+            "description": "The vertical field of view, from 0.1 to 2.6.",
+            "format": "double",
+            "default": 0.7
+          },
+          "contrast": {
+            "type": "number",
+            "description": "Contrast about middle grey, 0 to 2, where one leaves it alone.",
+            "format": "double",
+            "default": 1
+          },
+          "saturation": {
+            "type": "number",
+            "description": "Colour, 0 grey to 2, where one leaves it alone.",
+            "format": "double",
+            "default": 1
+          },
+          "vignette": {
+            "type": "number",
+            "description": "How dark the corners go, 0 to 1.",
+            "format": "double",
+            "default": 0
+          },
+          "grain": {
+            "type": "number",
+            "description": "Film grain, 0 to 1.",
+            "format": "double",
+            "default": 0
+          },
+          "aberration": {
+            "type": "number",
+            "description": "How far red and blue part towards the edges, 0 to 1.",
+            "format": "double",
+            "default": 0
+          },
+          "sharpen": {
+            "type": "number",
+            "description": "Contrast-adaptive sharpening, 0 to 1.",
             "format": "double",
             "default": 0
           }
         },
-        "description": "The viewport\u0027s camera: an orbit around the model."
-      },
-      "ViewportEnvironmentRequest": {
-        "required": [
-          "source"
-        ],
-        "type": "object",
-        "properties": {
-          "source": {
-            "type": "string",
-            "description": "A built-in room (studio, overcast or sunset), or the path of an \u0060.hdr\u0060 or \u0060.exr\u0060 panorama."
-          }
-        },
-        "description": "Chooses what lights the model."
+        "description": "How the viewport is lit, shown and finished. None of it reaches a file that is exported; a project keeps it, so\nit opens as it was left. Angles are radians and exposure is in stops; an effect at zero is off. A field left out\nof a request is the one the viewport opens with."
       },
       "ViewportGraphRequest": {
         "required": [
@@ -11422,19 +11519,6 @@
           }
         },
         "description": "Asks the viewport to lay a graph\u0027s Output nodes over the mesh it is showing, as they stand now."
-      },
-      "ViewportLookRequest": {
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "A \u0060.cube\u0060 file, or null to view without one."
-          }
-        },
-        "description": "Views the frame through a table, which changes what is shown and nothing that is exported."
       },
       "ViewportMapPaths": {
         "type": "object",
@@ -11473,13 +11557,6 @@
               "string"
             ],
             "description": "Ambient occlusion."
-          },
-          "look": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "The viewing table, which \u0060PUT /viewport/look\u0060 sets and pictures do not touch."
           },
           "emissive": {
             "type": [
@@ -11629,7 +11706,7 @@
           "height",
           "renderScale",
           "frames",
-          "environment"
+          "display"
         ],
         "type": "object",
         "properties": {
@@ -11675,17 +11752,16 @@
             ],
             "description": "Why the last command failed, or null."
           },
+          "display": {
+            "description": "How the model is lit, shown and finished.",
+            "$ref": "#/components/schemas/ViewportDisplay"
+          },
           "stack": {
             "type": [
               "null",
               "string"
             ],
             "description": "The stack session it is wearing, or null."
-          },
-          "environment": {
-            "type": "string",
-            "description": "What lights the model: a built-in room, or the path of a panorama.",
-            "default": "studio"
           }
         },
         "description": "The reply to \u0060GET /api/v1/viewport\u0060. The Server owns all of this; a Worker can die without losing it."
@@ -11750,9 +11826,6 @@
     },
     {
       "name": "Viewport"
-    },
-    {
-      "name": "ViewportMapEndpoints"
     },
     {
       "name": "Graphs"

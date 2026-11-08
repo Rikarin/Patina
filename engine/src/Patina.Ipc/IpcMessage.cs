@@ -27,6 +27,12 @@ public static class IpcTypes {
     public const string ViewportCamera = "viewport.camera";
 
     /// <summary>
+    ///     Server to Worker: light, show and finish frames as <see cref="IpcMessage.Display" /> says from now on. The
+    ///     files in it go with their hashes, and a Worker that has read a hash does not read it again.
+    /// </summary>
+    public const string ViewportDisplay = "viewport.display";
+
+    /// <summary>
     ///     Server to Worker: render <see cref="IpcMessage.Render" /> into shared memory; answers with
     ///     <see cref="IpcMessage.Frame" />. The pixels are not in the message.
     /// </summary>
@@ -131,7 +137,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 8;
+    public const int ProtocolVersion = 9;
 
     public string Type { get; set; } = string.Empty;
 
@@ -179,6 +185,9 @@ public sealed class IpcMessage {
 
     /// <summary>viewport.camera: the camera.</summary>
     public ViewportCamera? Camera { get; set; }
+
+    /// <summary>viewport.display: how frames are lit, shown and finished.</summary>
+    public ViewportDisplaySet? Display { get; set; }
 
     /// <summary>viewport.render: what to render and where to put it.</summary>
     public ViewportRender? Render { get; set; }
@@ -309,28 +318,33 @@ public sealed record WorkerHealth(double UptimeSeconds, long WorkingSetBytes, do
 /// <summary>A picture on a disk the Worker can read, and the hash of what is in it.</summary>
 public sealed record ViewportMapFile(string Path, string Hash);
 
-/// <summary>
-///     The pictures laid over the open mesh's materials. A null slot keeps the material's own. <c>Look</c> is a viewing
-///     table for the frame, which goes with them because a Worker that comes back must be told it too.
-/// </summary>
+/// <summary>The pictures laid over the open mesh's materials. A null slot keeps the material's own.</summary>
 public sealed record ViewportMapSet(
     ViewportMapFile? BaseColor = null,
     ViewportMapFile? Normal = null,
     ViewportMapFile? Roughness = null,
     ViewportMapFile? Metallic = null,
     ViewportMapFile? Occlusion = null,
-    ViewportMapFile? Look = null,
     ViewportMapFile? Emissive = null,
     ViewportMapFile? Opacity = null
 ) {
     /// <summary>Whether normals here point green down, as a graph's do.</summary>
     public bool GreenDown { get; init; }
-
-    /// <summary>What lights the model: a built-in room by name or an <c>.hdr</c> at a path. Null keeps it.</summary>
-    public string? Environment { get; init; }
 }
 
-/// <summary>An orbit around the model: radians, and a distance in bounding radii.</summary>
+/// <summary>
+///     How frames are lit, shown and finished, with the files it names hashed: the viewing table, and the picture the
+///     picture view shows.
+/// </summary>
+/// <param name="Display">The settings as a client gave them.</param>
+/// <param name="Look">The <c>.cube</c> table, or null.</param>
+/// <param name="Picture">The picture, or null.</param>
+public sealed record ViewportDisplaySet(ViewportDisplay Display, ViewportMapFile? Look, ViewportMapFile? Picture);
+
+/// <summary>
+///     An orbit around the model and the lens it looks through: radians, a distance in framings, a pan in bounding
+///     radii. The lens comes from the display settings, so a pick sees what the picture shows.
+/// </summary>
 public sealed record ViewportCamera(
     double Yaw,
     double Pitch,
@@ -338,8 +352,8 @@ public sealed record ViewportCamera(
     double PanX = 0,
     double PanY = 0,
     double PanZ = 0,
-    double Exposure = 1,
-    double LightRotation = 0
+    double FieldOfView = 0.7,
+    bool Orthographic = false
 );
 
 /// <summary>

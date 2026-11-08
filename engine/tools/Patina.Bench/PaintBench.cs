@@ -47,8 +47,8 @@ static class PaintBench {
         );
         Say($"read and rastered {clock.Elapsed.TotalMilliseconds:F0} ms, {surface.Charts} charts");
         var orbit = OrbitCamera.Default;
-        var (right, up, forward) = orbit.Axes(geometry.Bounds);
-        var view = new PaintView(orbit.Eye(geometry.Bounds), right, up, forward, OrbitCamera.FieldOfView, 565, 260);
+        var (right, up, forward) = orbit.Axes();
+        var view = new PaintView(orbit.Eye(geometry.Bounds, 565f / 260f), right, up, forward, orbit.Lens, 565, 260);
         PaintCanvas canvas;
         if (file is null) {
             canvas = new(size, size);

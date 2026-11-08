@@ -72,6 +72,9 @@ public sealed record ProjectDocument(
 
     /// <summary>How Auto Unwrap lays a mesh out.</summary>
     public UnwrapOptions Unwrap { get; init; } = new();
+
+    /// <summary>How the viewport was left in this project, or null for as it opens.</summary>
+    public ViewportDisplay? Viewport { get; init; }
 }
 
 /// <summary>A mesh a project owns.</summary>
