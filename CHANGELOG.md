@@ -81,6 +81,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Opening a brush preset from the library before any texturing document of its project keeps the project's recent colours, palette and symmetry. It used to write them back empty.
 - A layer's Name field no longer writes the next layer's name onto the one being renamed when another row is pressed before the field loses focus.
 - File > Import, or files dropped on the window, just after a project is made or opened bring the files into it, where they said to open a project while its tab was already showing.
 - Ambient Occlusion and Height to AO tile on every GPU. On some drivers, Linux's software Vulkan among them, the first column and row read the far edge and left a seam where the picture repeats.

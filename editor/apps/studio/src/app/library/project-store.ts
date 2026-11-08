@@ -255,7 +255,7 @@ export class ProjectStore {
 
       // A preset is taken up by the brush, and has no workspace of its own.
       if (document.kind === 'brush-preset') {
-        await this.brushes.useFile(project, document.path);
+        await this.brushes.useFile(project, document.path, contents.paint);
         return;
       }
 

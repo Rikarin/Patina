@@ -91,6 +91,31 @@ describe('BrushStore', () => {
     expect(brushes.current()?.name).toBe('Chalk');
   });
 
+  it('opens a preset before any texturing document without wiping the colours, palette and symmetry kept (#222)', async () => {
+    vi.useFakeTimers();
+    const { brushes, paint, puts } = setup();
+    const kept = {
+      recentColours: ['#aa0000'],
+      palette: ['#00bb00'],
+      brush: { ...NewBrush, radius: 64 },
+      symmetry: { kind: 'mirror' as const, axis: 'x' as const, centre: 'model' as const, offset: 0, count: 2 }
+    };
+    await brushes.useFile('crate', 'starter:Chalk', kept);
+    TestBed.tick();
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(paint.radius()).toBe(20);
+    expect(puts).toHaveLength(1);
+    expect(puts[0]?.body).toMatchObject({
+      project: 'crate',
+      paint: { recentColours: ['#aa0000'], palette: ['#00bb00'], brush: { radius: 20 }, symmetry: kept.symmetry }
+    });
+
+    // The texturing document that opens next takes up what the project holds, which the preset left alone.
+    await brushes.adopt('crate', kept);
+    expect(paint.palette()).toEqual(['#00bb00']);
+  });
+
   it('favours a shipped preset through the Server, and follows the copy it keeps', async () => {
     const { brushes, puts } = setup();
     await brushes.adopt('crate', null);
