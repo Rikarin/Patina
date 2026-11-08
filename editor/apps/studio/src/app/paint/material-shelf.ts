@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
-import { type MaterialInfo, unwrap } from '@patina/api-client';
+import { type MaterialInfo, type StackTerm, unwrap } from '@patina/api-client';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiInputImports } from '@xui/input';
 import { type XuiSegmentedOption, XuiSegmentedControlImports } from '@xui/segmented-control';
@@ -7,19 +7,9 @@ import { XuiSelectImports } from '@xui/select';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { MaterialUse } from './material-use';
+import { labelIn } from '../core/labels';
 import { messageOf } from '../core/messages';
 
-const OriginNames: Readonly<Record<string, string>> = {
-  shipped: 'Starter',
-  project: 'This project',
-  library: 'Other projects'
-};
-const RoleNames: Readonly<Record<string, string>> = {
-  material: 'Materials',
-  mask: 'Masks',
-  filter: 'Filters',
-  brush: 'Brushes'
-};
 const SearchQuiet = 200;
 /** How many pictures one request asks for, so that the first ones show while the rest are drawn. */
 const PictureBatch = 8;
@@ -33,26 +23,6 @@ const Views: readonly XuiSegmentedOption<ShelfView>[] = [
   { value: 'large', label: 'Large' }
 ];
 const Everything = 'all';
-
-/** Whether a material has every word, in its name, its role, its kind, where it is from or its path. */
-export function shelfMatches(material: MaterialInfo, search: string): boolean {
-  const text = [
-    material.name,
-    material.role,
-    RoleNames[material.role] ?? '',
-    material.kind,
-    OriginNames[material.origin] ?? material.origin,
-    material.project ?? '',
-    material.source
-  ]
-    .join(' ')
-    .toLowerCase();
-  return search
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(word => word !== '')
-    .every(word => text.includes(word));
-}
 
 function savedView(): ShelfView {
   try {
@@ -82,7 +52,7 @@ function savedView(): ShelfView {
         autocomplete="off"
         aria-label="Search materials"
         data-testid="shelf-search"
-        placeholder="Search by name, kind or path"
+        placeholder="Search by name, type, origin or path"
         [value]="search()"
         (input)="search.set(text($event))"
       />
@@ -94,7 +64,7 @@ function savedView(): ShelfView {
           data-testid="shelf-role"
           [filterable]="false"
           [itemText]="roleLabel"
-          [items]="roles"
+          [items]="roles()"
           [value]="role()"
           (valueChange)="role.set($event ?? everything)"
         />
@@ -105,7 +75,7 @@ function savedView(): ShelfView {
           data-testid="shelf-origin"
           [filterable]="false"
           [itemText]="originLabel"
-          [items]="origins"
+          [items]="origins()"
           [value]="origin()"
           (valueChange)="origin.set($event ?? everything)"
         />
@@ -196,13 +166,18 @@ export class MaterialShelf {
   /** Goes up with each list, so that pictures asked for an older one land nowhere. */
   private generation = 0;
 
+  /** The types and origins the Server names, which it also searches by, so no list of them is kept here. */
+  private readonly roleTerms = signal<readonly StackTerm[]>([]);
+  private readonly originTerms = signal<readonly StackTerm[]>([]);
+
   protected readonly everything = Everything;
-  protected readonly roles = [Everything, ...Object.keys(RoleNames)];
-  protected readonly origins = [Everything, ...Object.keys(OriginNames)];
+  protected readonly roles = computed(() => [Everything, ...this.roleTerms().map(term => term.value)]);
+  protected readonly origins = computed(() => [Everything, ...this.originTerms().map(term => term.value)]);
   protected readonly views = Views;
-  protected readonly roleLabel = (role: string): string => (role === Everything ? 'All types' : (RoleNames[role] ?? role));
+  protected readonly roleLabel = (role: string): string =>
+    role === Everything ? 'All types' : labelIn(this.roleTerms(), role);
   protected readonly originLabel = (origin: string): string =>
-    origin === Everything ? 'Everywhere' : (OriginNames[origin] ?? origin);
+    origin === Everything ? 'Everywhere' : labelIn(this.originTerms(), origin);
 
   protected readonly search = signal('');
   protected readonly role = signal(Everything);
@@ -210,13 +185,11 @@ export class MaterialShelf {
   protected readonly view = signal<ShelfView>(savedView());
   protected readonly failure = signal<string | null>(null);
   private searching: ReturnType<typeof setTimeout> | undefined;
+  /** What the Server found for the search, narrowed to a type and an origin. The search itself is the Server's (#230). */
   protected readonly shown = computed(() => {
-    const [search, role, origin] = [this.search().trim(), this.role(), this.origin()];
+    const [role, origin] = [this.role(), this.origin()];
     return this.materials().filter(
-      material =>
-        (role === Everything || material.role === role) &&
-        (origin === Everything || material.origin === origin) &&
-        shelfMatches(material, search)
+      material => (role === Everything || material.role === role) && (origin === Everything || material.origin === origin)
     );
   });
 
@@ -254,11 +227,11 @@ export class MaterialShelf {
   }
 
   protected originOf(material: MaterialInfo): string {
-    return material.project ?? OriginNames[material.origin] ?? material.origin;
+    return material.project ?? this.originLabel(material.origin);
   }
 
   protected describe(material: MaterialInfo): string {
-    return `${RoleNames[material.role] ?? material.role}, ${this.originOf(material)}`;
+    return `${this.roleLabel(material.role)}, ${this.originOf(material)}`;
   }
 
   protected use(material: MaterialInfo): void {
@@ -282,6 +255,8 @@ export class MaterialShelf {
       const open = this.project.active()?.path;
       const materials = list.items.filter(material => material.source !== open);
       this.materials.set(materials);
+      this.roleTerms.set(list.roles);
+      this.originTerms.set(list.origins);
       this.failure.set(null);
       await this.draw(materials, generation);
     } catch (failure) {

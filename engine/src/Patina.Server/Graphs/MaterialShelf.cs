@@ -30,15 +30,26 @@ public static class MaterialShelf {
 
     /// <summary>What each project lists, kept while its file stands, so a search does not read a library.</summary>
     static readonly ConcurrentDictionary<string, (DateTime Stamp, IReadOnlyList<ProjectDocumentInfo> Documents)>
-        Listed =
+        Kept =
         new(StringComparer.Ordinal);
+
+    /// <summary>The types a shelf narrows to, and where a material can be from.</summary>
+    static readonly string[] Roles = [GraphRoles.Material, GraphRoles.Mask, GraphRoles.Filter, GraphRoles.Brush];
+
+    static readonly string[] Origins = ["shipped", "project", ElsewhereOrigin];
+
+    /// <summary>A list as the API answers it, with the words its types and origins are shown and searched by.</summary>
+    public static MaterialList Listed(IReadOnlyList<MaterialInfo> items) =>
+        new(items, Terms.InShelf(Roles), Terms.InShelf(Origins));
 
     /// <summary>
     ///     What a project can use: the shipped materials, its own and any other project's. Nothing
     ///     has to be promoted first (ADR 0012). A library holds thousands of projects, so the last are capped and a
-    ///     search is what reaches the rest.
+    ///     search is what reaches the rest. A search keeps what <see cref="Matches" /> finds, the same way wherever a
+    ///     material is from, so the shelf has one definition of a match (#230).
     /// </summary>
     public static IReadOnlyList<MaterialInfo> List(OpenLibrary library, string? project, string? search = null) {
+        var words = search?.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
         List<MaterialInfo> found = [
             ..SmartMaterial.Shipped.Select(static name => new MaterialInfo(
                     name,
@@ -59,8 +70,42 @@ public static class MaterialShelf {
             );
         }
 
-        found.AddRange(Elsewhere(library, project, search).Take(ElsewhereLimit));
+        found.RemoveAll(material => !Matches(material, words));
+        found.AddRange(Elsewhere(library, project, words).Take(ElsewhereLimit));
         return found;
+    }
+
+    /// <summary>
+    ///     Whether a material has every word of a search, ignoring case, in one of what the shelf shows of it: its name,
+    ///     its type and what that is called, its kind, where it is from and what that is called, its project or its path.
+    /// </summary>
+    public static bool Matches(MaterialInfo material, IReadOnlyCollection<string> words) =>
+        words.Count == 0
+        || Has(
+            words,
+            material.Name,
+            material.Role,
+            Terms.InShelf(material.Role),
+            material.Kind,
+            material.Origin,
+            Terms.InShelf(material.Origin),
+            material.Project ?? string.Empty,
+            material.Source
+        );
+
+    static bool Has(IEnumerable<string> words, params ReadOnlySpan<string> fields) {
+        foreach (var word in words) {
+            var found = false;
+            foreach (var field in fields) {
+                found |= field.Contains(word, StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (!found) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>The graphs that ship with Patina. They are CC0, and using one puts a copy in the project.</summary>
@@ -97,22 +142,40 @@ public static class MaterialShelf {
         return held?.Path ?? library.CreateGraph(new(name, project), StarterText(name));
     }
 
-    /// <summary>Whether a document has every word of a search in its name, its path or its kind.</summary>
-    static bool Found(ProjectDocumentInfo document, string[] words) =>
-        words.All(word => document.Name.Contains(word, StringComparison.OrdinalIgnoreCase)
-            || document.Path.Contains(word, StringComparison.OrdinalIgnoreCase)
-            || document.Kind.Contains(word, StringComparison.OrdinalIgnoreCase)
+    /// <summary>
+    ///     Whether a document of another project could match before its file is read, which a search of a large library
+    ///     cannot afford for every document. It looks at every field <see cref="Matches" /> does, with each type and
+    ///     kind the file could turn out to give, so it passes everything that matches and the file decides the rest.
+    /// </summary>
+    static bool Maybe(ProjectDocumentInfo document, string project, string[] words) {
+        var graph = document.Kind is DocumentKinds.Graph or DocumentKinds.ImageMaterial;
+        var role = document.Kind == DocumentKinds.LayeredMaterial ? GraphRoles.Material : document.Role ?? GraphRoles.Material;
+        return Has(
+            words,
+            document.Name,
+            document.Path,
+            document.Kind,
+            graph ? DocumentKinds.Graph : string.Empty,
+            role,
+            Terms.InShelf(role),
+            graph ? "empty" : string.Empty,
+            graph ? Terms.InShelf("empty") : string.Empty,
+            ElsewhereOrigin,
+            Terms.InShelf(ElsewhereOrigin),
+            project
         );
+    }
 
-    static IEnumerable<MaterialInfo> Elsewhere(OpenLibrary library, string? project, string? search) {
-        var words = search?.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
+    static IEnumerable<MaterialInfo> Elsewhere(OpenLibrary library, string? project, string[] words) {
         for (var offset = 0;; offset += ProjectPage) {
             var page = library.Projects(new(Offset: offset, Limit: ProjectPage)).Items;
             foreach (var summary in page.Where(summary => summary.Path != project)) {
-                var wanted = DocumentsOf(library, summary.Path).Where(document => Found(document, words));
+                var wanted = DocumentsOf(library, summary.Path).Where(document => Maybe(document, summary.Name, words));
                 foreach (var document in wanted) {
-                    if (Readable(library, document) is { } material) {
-                        yield return material with { Origin = ElsewhereOrigin, Project = summary.Name };
+                    if (Readable(library, document) is { } read
+                        && read with { Origin = ElsewhereOrigin, Project = summary.Name } is var material
+                        && Matches(material, words)) {
+                        yield return material;
                     }
                 }
             }
@@ -126,12 +189,12 @@ public static class MaterialShelf {
     static IReadOnlyList<ProjectDocumentInfo> DocumentsOf(OpenLibrary library, string project) {
         var file = library.ProjectFile(project, LibraryLayout.ProjectFile);
         var stamp = File.GetLastWriteTimeUtc(file);
-        if (Listed.TryGetValue(file, out var held) && held.Stamp == stamp) {
+        if (Kept.TryGetValue(file, out var held) && held.Stamp == stamp) {
             return held.Documents;
         }
 
         var documents = library.Contents(project).Documents;
-        Listed[file] = (stamp, documents);
+        Kept[file] = (stamp, documents);
         return documents;
     }
 

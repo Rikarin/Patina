@@ -347,8 +347,14 @@ public sealed record MaterialInfo(
 );
 
 /// <summary>The materials a project can use.</summary>
-/// <param name="Items">Them.</param>
-public sealed record MaterialList(IReadOnlyList<MaterialInfo> Items);
+/// <param name="Items">Them, every one with each word of the search, if there was one.</param>
+/// <param name="Roles">The types a shelf can narrow to, with what to call them.</param>
+/// <param name="Origins">Where a material can be from, with what to call each.</param>
+public sealed record MaterialList(
+    IReadOnlyList<MaterialInfo> Items,
+    IReadOnlyList<StackTerm> Roles,
+    IReadOnlyList<StackTerm> Origins
+);
 
 /// <summary>The body of <c>POST /api/v1/library/materials/thumbnails</c>.</summary>
 /// <param name="Sources">The materials, as their list names them.</param>

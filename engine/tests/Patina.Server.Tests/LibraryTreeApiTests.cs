@@ -144,6 +144,70 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
     }
 
     /// <summary>
+    ///     A search of the shelf matches another project's material by every field the shelf shows of it, as it does
+    ///     one of this project's: its type and what that is called, where it is from, and its project, not only its
+    ///     name, path and kind (#230). The Server's list is the one definition of a match, with the words it uses.
+    /// </summary>
+    [Fact]
+    public async Task The_shelf_finds_another_projects_material_by_its_type_origin_and_project() {
+        await client.PostAsJsonAsync("/api/v1/library/projects", new ProjectCreateRequest("Alpha"), Token);
+        await client.PostAsJsonAsync("/api/v1/library/projects", new ProjectCreateRequest("Wear Kit"), Token);
+        var graph = await client.PostAsJsonAsync(
+            "/api/v1/library/project/documents",
+            new ProjectDocumentRequest("wear-kit", "graph", "Scratches"),
+            Token
+        );
+        var made = (await graph.Content.ReadFromJsonAsync<ProjectContents>(Token))!.Documents.First(static d =>
+            d.Kind == "graph"
+        );
+        await File.WriteAllTextAsync(
+            Path.Combine(server.Library, made.Path),
+            """
+            name: Scratches
+            nodes:
+              - { id: 1, type: Source/Uniform }
+              - { id: 2, type: Output/Output, texts: { Usage: mask } }
+            edges:
+              - { fromNode: 1, fromPort: Out, toNode: 2, toPort: Input }
+            groups: []
+            comments: []
+            interface: []
+            settings: { baseWidth: '64', baseHeight: '64', seed: '1' }
+            parameters: []
+            """,
+            Token
+        );
+        var mask = await client.PatchAsJsonAsync(
+            "/api/v1/library/project/document/role",
+            new ProjectDocumentRoleRequest("wear-kit", made.Id!.Value, "mask"),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.OK, mask.StatusCode);
+        Assert.Contains(await ElsewhereAsync("alpha"), static material => material.Name == "Scratches");
+
+        async Task<string[]> Search(string search) {
+            var list = await client.GetFromJsonAsync<MaterialList>(
+                $"/api/v1/library/materials?project=alpha&search={Uri.EscapeDataString(search)}",
+                Token
+            );
+            return [..list!.Items.Select(static material => $"{material.Name}@{material.Origin}")];
+        }
+
+        foreach (var found in new[] { "other", "other projects", "scratches other", "wear kit", "mask", "Masks" }) {
+            Assert.Contains("Scratches@library", await Search(found));
+        }
+
+        Assert.Equal(["Scratches@library"], await Search("scratches other"));
+        Assert.DoesNotContain("Scratches@library", await Search("scratches brush"));
+        var starters = await Search("starter");
+        Assert.NotEmpty(starters);
+        Assert.All(starters, static found => Assert.EndsWith("@shipped", found, StringComparison.Ordinal));
+        var terms = await client.GetFromJsonAsync<MaterialList>("/api/v1/library/materials?project=alpha", Token);
+        Assert.Contains(new StackTerm("library", "Other projects"), terms!.Origins);
+        Assert.Contains(new StackTerm("mask", "Masks"), terms.Roles);
+    }
+
+    /// <summary>
     ///     Export settings are the project's, kept in its project.yaml by the Server for any client: what one client
     ///     sets, another reads back from the project's contents. That they outlive the cache is the library's test
     ///     (<c>A_projects_export_bake_viewport_and_paint_settings_outlive_the_cache_together</c>), which closes the

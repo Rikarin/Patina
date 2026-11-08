@@ -682,7 +682,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** What a project's layers can be filled with. */
+    /** What a project's layers can be filled with. A search keeps those with every word in their name, type, kind, origin, project or path, wherever they are from. */
     get: operations['GetMaterials'];
     put?: never;
     post?: never;
@@ -3357,8 +3357,12 @@ export interface components {
     };
     /** @description The materials a project can use. */
     MaterialList: {
-      /** @description Them. */
+      /** @description Them, every one with each word of the search, if there was one. */
       items: components['schemas']['MaterialInfo'][];
+      /** @description The types a shelf can narrow to, with what to call them. */
+      roles: components['schemas']['StackTerm'][];
+      /** @description Where a material can be from, with what to call each. */
+      origins: components['schemas']['StackTerm'][];
     };
     /** @description A material's picture in the preview cache. The pixels are at `/previews/{hash}`. */
     MaterialThumbnail: {

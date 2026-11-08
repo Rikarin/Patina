@@ -81,6 +81,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The shelf's search finds another project's materials by every word it finds this project's by: a type ("mask", "masks"), where it is from ("other projects") or the project's name, as well as the name, kind and path. The Server does the matching for every material, and names the types and origins the shelf shows.
 - Export settings stay with what they belong to. A project that has never exported starts from its preset, where it used to take the last project's folder, texture sets and files. A library export keeps its settings in the library's `library.yaml` (through `PUT /api/v1/library/export`), so switching the scope to a project and back no longer resets them, and a change made just before another project comes to the front is still kept in the project it was made in.
 - Opening a brush preset from the library before any texturing document of its project keeps the project's recent colours, palette and symmetry. It used to write them back empty.
 - A layer's Name field no longer writes the next layer's name onto the one being renamed when another row is pressed before the field loses focus.

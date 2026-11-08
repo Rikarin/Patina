@@ -2618,7 +2618,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "What a project\u0027s layers can be filled with.",
+        "summary": "What a project\u0027s layers can be filled with. A search keeps those with every word in their name, type, kind, origin, project or path, wherever they are from.",
         "operationId": "GetMaterials",
         "parameters": [
           {
@@ -9807,7 +9807,9 @@
       },
       "MaterialList": {
         "required": [
-          "items"
+          "items",
+          "roles",
+          "origins"
         ],
         "type": "object",
         "properties": {
@@ -9816,7 +9818,21 @@
             "items": {
               "$ref": "#/components/schemas/MaterialInfo"
             },
-            "description": "Them."
+            "description": "Them, every one with each word of the search, if there was one."
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "The types a shelf can narrow to, with what to call them."
+          },
+          "origins": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "Where a material can be from, with what to call each."
           }
         },
         "description": "The materials a project can use."
