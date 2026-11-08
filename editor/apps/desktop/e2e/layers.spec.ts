@@ -12,6 +12,7 @@ import { join, resolve } from 'node:path';
 import { colouredGlb, leave, newLibrary, newProject } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
+const shots = resolve(__dirname, '../../../dist/e2e-results');
 const softwareWebGl = process.platform === 'linux' ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : [];
 
 let scratch: string;
@@ -150,7 +151,7 @@ test('a fill shows only the projection controls that apply', async () => {
   await expect(window.getByTestId('paint-fill-projection')).toHaveCount(0); // a constant is the same from every side
 
   await window.getByTestId('paint-fill-source').click();
-  await window.getByRole('option', { name: 'Texture' }).click();
+  await window.getByRole('option', { name: 'Bitmap' }).click();
   const projection = window.getByTestId('paint-fill-projection');
   await expect(projection).toHaveValue('Uv');
   await expect(window.getByTestId('paint-fill-scale')).toBeVisible(); // a UV fill can repeat, turn and move
@@ -191,11 +192,12 @@ test('colours painted in Blender bake to an id map, and a mask selects one', asy
   // Both colours came through the file, as they were painted.
   const swatches = window.getByTestId('paint-id-colour');
   await expect(swatches).toHaveCount(2, { timeout: 30_000 });
-  await expect(window.getByRole('button', { name: 'Select #ff0000' })).toBeVisible();
-  await expect(window.getByRole('button', { name: 'Select #0000ff' })).toBeVisible();
+  // A swatch says its colour's name and share, not a hex code a screen reader spells out.
+  await expect(window.getByRole('button', { name: /^Select red, \d+% of the map$/u })).toBeVisible();
+  await expect(window.getByRole('button', { name: /^Select blue, \d+% of the map$/u })).toBeVisible();
 
   // Red is the left half of the map, so the fill lands there and nowhere else.
-  await window.getByRole('button', { name: 'Select #ff0000' }).click();
+  await window.getByRole('button', { name: /^Select red/u }).click();
   await expect.poll(() => greenAt(0.25), { timeout: 30_000 }).toBeGreaterThan(200);
   expect(await greenAt(0.75)).toBeLessThan(200);
 
@@ -348,3 +350,71 @@ const greenAt = (across: number) =>
     context?.drawImage(image as HTMLImageElement, 0, 0, 64, 64);
     return context?.getImageData(Math.floor(x * 64), 32, 1, 1).data[1] ?? 0;
   }, across);
+
+test('the layer menu and the Add menu work from the keyboard alone', async () => {
+  const paint = window.getByTestId('paint-layer-paint');
+  const base = window.getByTestId('paint-layer-base');
+  await paint.click();
+
+  // Shift+F10 is the key every keyboard has: the menu opens on the row, with its first item in hand.
+  await paint.press('Shift+F10');
+  const menu = window.getByTestId('layer-menu');
+  await expect(menu).toBeVisible();
+  await expect(window.getByTestId('layer-menu-rename')).toBeFocused();
+  await window.keyboard.press('ArrowUp');
+  await expect(window.getByTestId('paint-remove')).toBeFocused(); // the last, and red, item
+  await window.screenshot({ path: join(shots, 'layer-menu-keys.png') });
+  await window.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  await expect(paint).toBeFocused();
+
+  // The arrows walk the rows, and choose as they go.
+  await window.keyboard.press('ArrowDown');
+  await expect(base).toBeFocused();
+  await expect(base).toHaveAttribute('aria-selected', 'true');
+  await window.keyboard.press('ArrowUp');
+  await expect(paint).toBeFocused();
+
+  // A filter from the menu, by its heading, with no mouse.
+  await paint.press('Shift+F10');
+  await window.getByTestId('layer-menu-filter').focus();
+  await window.keyboard.press('ArrowRight');
+  await expect(window.getByTestId('layer-menu-filters')).toBeVisible();
+  await window.getByTestId('layer-menu-category-Filters').focus();
+  await window.keyboard.press('ArrowRight');
+  await window.getByTestId('layer-menu-step-Blur').focus();
+  await window.keyboard.press('Enter');
+  await expect(window.getByTestId('layer-effect-mark')).toHaveCount(1);
+
+  // Add… is the toolbar's way to the same things.
+  await window.getByTestId('layers-add').focus();
+  await window.keyboard.press('Enter');
+  await expect(window.getByTestId('add-paint')).toBeFocused();
+  await window.screenshot({ path: join(shots, 'layers-add-menu.png') });
+  await window.getByTestId('add-fill').focus();
+  await window.keyboard.press('Enter');
+  await expect(window.locator('[data-testid^=paint-layer-fill]')).toHaveCount(1);
+});
+
+test('every slider shows its number, and a share is a percentage', async () => {
+  const paint = window.getByTestId('paint-layer-paint');
+  await expect(paint.getByTestId('paint-layer-opacity-readout')).toHaveText('100%');
+
+  await paint.click({ button: 'right' });
+  await window.getByTestId('layer-menu-mask-black').click();
+  await paint.getByTestId('layer-mask').click();
+  await expect(window.getByTestId('paint-mask-value-readout')).toHaveText('0%');
+  await expect(window.getByTestId('paint-mask-source')).toContainText('Uniform');
+  await window.screenshot({ path: join(shots, 'layer-readouts.png') });
+});
+
+test('Export says when it would read files with unsaved changes', async () => {
+  await window.getByTestId('paint-add').click();
+  await expect(window.getByTestId('paint-unsaved')).toBeVisible();
+  await window.getByTestId('open-export').click();
+  await expect(window.getByTestId('export-unsaved')).toContainText('without its unsaved changes');
+  await window.screenshot({ path: join(shots, 'export-unsaved.png') });
+
+  await window.getByTestId('export-save-all').click();
+  await expect(window.getByTestId('export-unsaved')).toHaveCount(0, { timeout: 30_000 });
+});

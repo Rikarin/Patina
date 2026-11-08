@@ -11,10 +11,16 @@ export interface Connection {
 
 /** An error reply, with the Server's ProblemDetails text when it sent one. */
 export class ApiError extends Error {
+  /**
+   * @param code What the refusal is, stable across wording: a client says a known one in its own words (#198).
+   * @param values The names the Server's message was written from, such as the layer a brush was refused on.
+   */
   constructor(
     readonly status: number,
     message: string,
-    readonly errors: readonly string[] = []
+    readonly errors: readonly string[] = [],
+    readonly code: string | null = null,
+    readonly values: Readonly<Record<string, string>> = {}
   ) {
     super(message);
     this.name = 'ApiError';
@@ -88,12 +94,20 @@ function toApiError(response: Response, error: unknown): ApiError {
     detail?: string;
     title?: string;
     errors?: unknown;
+    code?: unknown;
+    values?: unknown;
   };
   const errors = Array.isArray(problem.errors) ? problem.errors.map(String) : [];
+  const values =
+    problem.values !== null && typeof problem.values === 'object'
+      ? Object.fromEntries(Object.entries(problem.values).map(([key, value]) => [key, String(value)]))
+      : {};
   const text = typeof error === 'string' && error.trim() ? error : undefined; // a plain BadRequest<string>
   return new ApiError(
     response.status,
     problem.detail ?? problem.title ?? text ?? `${response.status} ${response.statusText}`.trim(),
-    errors
+    errors,
+    typeof problem.code === 'string' ? problem.code : null,
+    values
   );
 }

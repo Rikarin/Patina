@@ -104,6 +104,7 @@ test('a new user makes a library, groups projects in folders, and comes back to 
   await window.getByTestId('tree-rename').press('Enter');
   await expect(row('Hero Props')).toBeVisible();
   await row('Hero Props').click({ button: 'right' });
+  await window.getByTestId('menu-colour').hover();
   await window.getByTestId('menu-colour-#3e63dd').click();
   await expect(row('Hero Props').getByTestId('tree-folder-icon').locator('path')).toHaveAttribute('fill', '#3e63dd');
   expect(readFileSync(join(library, 'projects', 'Hero Props', 'folder.yaml'), 'utf8')).toContain('#3e63dd');
@@ -115,13 +116,19 @@ test('a new user makes a library, groups projects in folders, and comes back to 
   await window.getByTestId('tree-rename').press('Enter');
   await expect(row('Hero Props/Doors')).toBeVisible();
 
-  // Regrouping: a closed project moves by dragging, and keeps being itself.
+  // Regrouping: a project moves by dragging, and keeps being itself. Its document is open in a tab behind, and has to
+  // close for the move, which loses its undo, so it asks first.
   await drag('housing', 'Hero Props/Doors');
+  await expect(window.getByTestId('tree-closing')).toContainText('Moving Housing closes Housing, and its undo history');
+  await window.screenshot({ path: join(shots, 'tree-closing.png') });
+  await window.getByTestId('tree-closing-confirm').click();
   await expect(row('Hero Props/Doors/housing')).toBeVisible({ timeout: 15_000 });
   await expect(row('housing')).toHaveCount(0);
 
-  // The open one is closed for the move, and opens again from its new place.
+  // So does the one in front.
   await drag('door', 'Hero Props');
+  await expect(window.getByTestId('tree-closing')).toContainText('closes Door');
+  await window.getByTestId('tree-closing-confirm').click();
   await expect(row('Hero Props/door')).toBeVisible({ timeout: 15_000 });
   await expect(window.getByTestId('document-tab')).toHaveCount(0);
 

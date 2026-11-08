@@ -10,12 +10,18 @@ import {
   matUndo
 } from '@ng-icons/material-icons/baseline';
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal } from '@angular/core';
-import type { StackLayer } from '@patina/api-client';
+import type { StackFilterKind, StackLayer } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
+import { XuiContextMenuImports } from '@xui/context-menu';
+import { XuiMenuImports } from '@xui/menu';
+import { XuiPopoverImports } from '@xui/popover';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { IconImports } from '../core/icons';
-import { blendName as blendLabelOf, channelName } from '../core/labels';
+import { MenuKeys, keyLabels } from '../core/menu-keys';
+import { diagnosticOf } from '../core/messages';
+import { percent } from '../core/numbers';
+import { blendName as blendLabelOf, channelName, termName } from '../core/labels';
 import { ProjectStore } from '../library/project-store';
 import { type DropZone, dropManyCommands } from './layer-drag';
 import { hexOf } from './layer-panel';
@@ -51,26 +57,28 @@ const MaskMarks: Readonly<Record<string, string>> = {
   Paint: 'P'
 };
 
-interface MenuAt {
-  x: number;
-  y: number;
-  layer: StackLayer;
-}
-
 /**
  * The layer stack, top first. A row is what a layer is, its mask beside it, and how it blends. Dragging moves layers
  * and folders; clicking a layer or its mask chooses what the brush paints.
  */
 @Component({
   selector: 'ptn-layer-stack',
-  imports: [IconImports, XuiButtonImports, XuiSelectImports, XuiSliderImports],
+  imports: [
+    IconImports,
+    MenuKeys,
+    XuiButtonImports,
+    XuiContextMenuImports,
+    XuiMenuImports,
+    XuiPopoverImports,
+    XuiSelectImports,
+    XuiSliderImports
+  ],
   viewProviders: [
     provideIcons({ matBrush, matDeleteOutline, matFolder, matFormatColorFill, matRedo, matSave, matTune, matUndo })
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'flex h-full min-h-0 flex-col',
-    '(document:click)': 'menu.set(null); meshes.set(null)',
     '(document:pointerup)': 'letGo()',
     '(document:keydown)': 'press($event)'
   },
@@ -88,6 +96,19 @@ interface MenuAt {
         [value]="store.channel()"
         (valueChange)="store.showChannel($event ?? store.channel())"
       />
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        class="shrink-0 px-1.5 text-xs"
+        data-testid="layers-add"
+        title="Add a layer, or a mask or an effect to the chosen layer"
+        [xuiMenuTriggerFor]="addMenu"
+        (menuOpened)="menuId.set(store.layer())"
+      >
+        Add…
+      </button>
       <span class="flex-1"></span>
       <button
         type="button"
@@ -232,8 +253,10 @@ interface MenuAt {
               [disabled]="!item.layer"
               (click)="reveal(item.layer)"
             >
-              <span class="readout shrink-0" [class.text-error]="item.severity === 'Error'">{{ item.severity }}</span>
-              <span class="truncate" [title]="item.message">{{ item.message }}</span>
+              <span class="readout shrink-0" [class.text-error]="item.severity === 'Error'">{{
+                item.severity === 'Error' ? 'Error' : 'Warning'
+              }}</span>
+              <span class="truncate" [title]="item.message">{{ diagnosticOf(item.message).summary }}</span>
             </button>
           </li>
         }
@@ -246,6 +269,12 @@ interface MenuAt {
       aria-label="Layers"
       aria-multiselectable="true"
       data-testid="paint-layers"
+      ptnMenuKeys
+      (aiming)="aimMenu($event)"
+      [xuiContextMenuTriggerFor]="layerMenu"
+      (pointerdown)="pressed($event)"
+      (contextmenu)="aimMenu($event)"
+      (contextMenuClosed)="restoreFocus()"
       (dragover)="overList($event)"
       (drop)="dropOnList($event)"
     >
@@ -258,19 +287,20 @@ interface MenuAt {
           [attr.aria-selected]="store.selection().has(row.layer.id)"
           [attr.aria-expanded]="row.layer.kind === 'group' ? !closed().has(row.layer.id) : null"
           [attr.data-testid]="'paint-layer-' + row.layer.id"
+          [attr.data-layer]="row.layer.id"
+          [attr.tabindex]="row.layer.id === (store.layer() ?? rows()[0]?.layer?.id) ? 0 : -1"
           [class.bg-selection]="store.selection().has(row.layer.id)"
           [class.opacity-50]="!row.layer.enabled"
           [style.height.px]="row.effect ? effectHeight : rowHeight"
           [style.padding-inline-start.px]="row.depth * 14 + 4"
           (click)="click($event, row.layer)"
-          (contextmenu)="openMenu($event, row.layer)"
           (dragstart)="start($event, row.layer.id)"
           (dragover)="over($event, row)"
           (dragleave)="target.set(null)"
           (dragend)="dragged = []"
           (drop)="drop($event, row)"
+          (keydown)="key($event, row)"
           (keydown.enter)="choose(row.layer, false)"
-          tabindex="0"
         >
           @if (target()?.id === row.layer.id) {
             <span
@@ -360,7 +390,7 @@ interface MenuAt {
                 [attr.aria-label]="'Mask of ' + row.layer.name"
                 [class.outline]="row.layer.id === store.layer() && store.masking()"
                 [style.background]="maskColour(row.layer)"
-                [title]="row.layer.mask.source + ' mask'"
+                [title]="termName(row.layer.mask.source) + ' mask'"
                 (click)="$event.stopPropagation(); choose(row.layer, true)"
               >
                 <svg viewBox="0 0 16 16" class="size-5" aria-hidden="true">
@@ -418,7 +448,12 @@ interface MenuAt {
               [attr.aria-pressed]="!!row.layer.mask.meshParts"
               [class.bg-selection]="!!row.layer.mask.meshParts"
               [title]="row.layer.mask.meshParts ? 'On some meshes' : 'On every mesh'"
-              (click)="$event.stopPropagation(); openMeshes($event, row.layer)"
+              placement="bottom-end"
+              [ariaLabel]="'Meshes ' + row.layer.name + ' is on'"
+              [role]="'dialog'"
+              [xuiPopover]="meshList"
+              (click)="$event.stopPropagation()"
+              (opened)="openMeshes(row.layer)"
             >
               <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
                 <path d="M2 2h12v12H2z" fill="none" stroke="currentColor" stroke-width="1.5" />
@@ -471,7 +506,9 @@ interface MenuAt {
                 [value]="opacityOf(row.layer)"
                 (valueChange)="setOpacity(row.layer, $event)"
               />
-              <span class="readout w-7 shrink-0 text-end text-xs">{{ round(opacityOf(row.layer)) }}</span>
+              <span class="readout w-9 shrink-0 ps-1 text-end text-xs" data-testid="paint-layer-opacity-readout">{{
+                percent(opacityOf(row.layer))
+              }}</span>
             </span>
           </span>
 
@@ -533,244 +570,226 @@ interface MenuAt {
       }
     </div>
 
-    @if (meshes(); as at) {
-      <div
-        class="bg-surface-raised border-hairline fixed z-50 flex max-h-80 min-w-44 flex-col gap-1 overflow-auto border p-2 text-sm"
-        role="group"
-        aria-label="Meshes this layer is on"
-        data-testid="layer-meshes"
-        [style.left.px]="at.x"
-        [style.top.px]="at.y"
-        (click)="$event.stopPropagation()"
-        (keydown.escape)="meshes.set(null)"
-      >
-        @for (part of parts(); track part) {
-          <label class="flex items-center gap-2">
-            <input
-              type="checkbox"
-              [attr.data-testid]="'layer-mesh-' + part"
-              [checked]="onPart(at.layer, part)"
-              [disabled]="isLastPart(at.layer, part)"
-              (change)="setPart(at.layer, part, checked($event))"
-            />
-            <span class="truncate">{{ part }}</span>
-          </label>
-        } @empty {
-          <span class="text-foreground-muted text-xs">This mesh has no named parts.</span>
+    <ng-template #meshList>
+      <div class="flex max-h-80 min-w-44 flex-col gap-1 overflow-auto p-1 text-sm" data-testid="layer-meshes">
+        @if (meshLayer(); as layer) {
+          @for (part of parts(); track part) {
+            <label class="flex items-center gap-2">
+              <input
+                type="checkbox"
+                [attr.data-testid]="'layer-mesh-' + part"
+                [checked]="onPart(layer, part)"
+                [disabled]="isLastPart(layer, part)"
+                (change)="setPart(layer, part, checked($event))"
+              />
+              <span class="truncate">{{ part }}</span>
+            </label>
+          } @empty {
+            <span class="text-foreground-muted text-xs">This mesh has no named parts.</span>
+          }
         }
       </div>
-    }
+    </ng-template>
 
-    @if (menu(); as at) {
-      <div
-        class="bg-surface-raised border-hairline fixed z-50 flex min-w-44 flex-col rounded border py-1 text-sm shadow-lg"
-        role="menu"
-        tabindex="-1"
-        data-testid="layer-menu"
-        [style.left.px]="at.x"
-        [style.top.px]="at.y"
-        (click)="$event.stopPropagation()"
-        (keydown.escape)="menu.set(null)"
-      >
-        <button
-          type="button"
-          class="hover:bg-selection px-3 py-1 text-start"
-          role="menuitem"
-          data-testid="layer-menu-rename"
-          (click)="startRename(at.layer)"
-        >
-          Rename
+    <ng-template #addMenu>
+      <xui-menu data-testid="layers-add-menu" aria-label="Add">
+        <button type="button" xuiMenuItem data-testid="add-paint" (triggered)="add('paint', 'Paint')">Paint Layer</button>
+        <button type="button" xuiMenuItem data-testid="add-fill" (triggered)="add('fill', 'Fill')">Fill Layer</button>
+        <button type="button" xuiMenuItem data-testid="add-filter" (triggered)="add('filter', 'Filter', 'Levels')">
+          Filter Layer
         </button>
-        <div class="border-hairline my-1 border-t"></div>
-        @if (at.layer.mask.source === 'None') {
-          <button
-            type="button"
-            class="hover:bg-selection px-3 py-1 text-start"
-            role="menuitem"
-            data-testid="layer-menu-mask-white"
-            (click)="addValueMask(at.layer, 1)"
-          >
-            Add White Mask
+        <button type="button" xuiMenuItem data-testid="add-group" (triggered)="add('group', 'Folder')">Folder</button>
+        @if (menuLayer(); as layer) {
+          <xui-menu-divider />
+          @if (layer.mask.source === 'None') {
+            <button type="button" xuiMenuItem data-testid="add-mask" [xuiMenuTriggerFor]="maskMenu">
+              Mask on {{ layer.name }}
+            </button>
+          }
+          <button type="button" xuiMenuItem data-testid="add-effect" [xuiMenuTriggerFor]="effectMenu">
+            {{ store.masking() ? 'Effect on the Mask of ' : 'Effect in ' }}{{ layer.name }}
           </button>
+        }
+      </xui-menu>
+    </ng-template>
+
+    <ng-template #maskMenu>
+      <xui-menu aria-label="Mask">
+        @if (menuLayer(); as layer) {
+          <button type="button" xuiMenuItem (triggered)="addValueMask(layer, 1)">White Mask</button>
+          <button type="button" xuiMenuItem (triggered)="addValueMask(layer, 0)">Black Mask</button>
+          <button type="button" xuiMenuItem (triggered)="addBitmapMask(layer)">Bitmap Mask…</button>
+          <button type="button" xuiMenuItem (triggered)="addMask(layer, 'Paint')">Paint Mask</button>
+          <button type="button" xuiMenuItem (triggered)="addColourMask(layer)">Colour Selection Mask</button>
+          <button type="button" xuiMenuItem (triggered)="addMask(layer, 'Generator')">Generator</button>
+        }
+      </xui-menu>
+    </ng-template>
+
+    <ng-template #effectMenu>
+      <xui-menu aria-label="Effect">
+        @if (menuLayer(); as layer) {
+          @if (!store.masking()) {
+            <button type="button" xuiMenuItem (triggered)="addContent(layer, 'paint', 'Paint')">Paint</button>
+            <button type="button" xuiMenuItem (triggered)="addContent(layer, 'fill', 'Fill')">Fill</button>
+          }
+          @for (kind of quickSteps; track kind.node) {
+            <button type="button" xuiMenuItem (triggered)="addStep(layer, kind.node)">{{ kind.name }}</button>
+          }
+          <button type="button" xuiMenuItem [xuiMenuTriggerFor]="filterMenu">Filter</button>
+        }
+      </xui-menu>
+    </ng-template>
+
+    <ng-template #filterMenu>
+      <xui-menu data-testid="layer-menu-filters" [attr.aria-label]="store.masking() ? 'Filters for the mask' : 'Filters'">
+        @for (group of stepGroups(); track group.category) {
           <button
             type="button"
-            class="hover:bg-selection px-3 py-1 text-start"
-            role="menuitem"
-            data-testid="layer-menu-mask-black"
-            (click)="addValueMask(at.layer, 0)"
+            xuiMenuItem
+            [attr.data-testid]="'layer-menu-category-' + group.category"
+            [xuiMenuTriggerFor]="categoryMenu"
+            [xuiMenuTriggerData]="{ $implicit: group }"
           >
-            Add Black Mask
+            {{ group.category }}
           </button>
+        }
+      </xui-menu>
+    </ng-template>
+
+    <ng-template #categoryMenu let-group>
+      <xui-menu [attr.aria-label]="group.category">
+        @for (kind of group.kinds; track kind.node) {
           <button
             type="button"
-            class="hover:bg-selection px-3 py-1 text-start"
-            role="menuitem"
-            data-testid="layer-menu-mask-bitmap"
-            (click)="addBitmapMask(at.layer)"
+            xuiMenuItem
+            [attr.data-testid]="'layer-menu-step-' + kind.name"
+            [title]="kind.summary"
+            (triggered)="addChosenStep(kind.node)"
           >
-            Add Bitmap Mask…
+            {{ kind.name }}
           </button>
-          <button
-            type="button"
-            class="hover:bg-selection px-3 py-1 text-start"
-            role="menuitem"
-            data-testid="layer-menu-mask-paint"
-            (click)="addMask(at.layer, 'Paint')"
-          >
-            Add Paint Mask
+        }
+      </xui-menu>
+    </ng-template>
+
+    <ng-template #layerMenu>
+      <xui-menu data-testid="layer-menu" [attr.aria-label]="menuLayer() ? 'Layer' : 'Layers'">
+        @if (menuLayer(); as layer) {
+          <button type="button" xuiMenuItem data-testid="layer-menu-rename" (triggered)="startRename(layer)">Rename</button>
+          <xui-menu-divider />
+          @if (layer.mask.source === 'None') {
+            <button type="button" xuiMenuItem data-testid="layer-menu-mask-white" (triggered)="addValueMask(layer, 1)">
+              Add White Mask
+            </button>
+            <button type="button" xuiMenuItem data-testid="layer-menu-mask-black" (triggered)="addValueMask(layer, 0)">
+              Add Black Mask
+            </button>
+            <button type="button" xuiMenuItem data-testid="layer-menu-mask-bitmap" (triggered)="addBitmapMask(layer)">
+              Add Bitmap Mask…
+            </button>
+            <button type="button" xuiMenuItem data-testid="layer-menu-mask-paint" (triggered)="addMask(layer, 'Paint')">
+              Add Paint Mask
+            </button>
+            <button type="button" xuiMenuItem data-testid="layer-menu-mask-colour" (triggered)="addColourMask(layer)">
+              Add Colour Selection Mask
+            </button>
+            <button
+              type="button"
+              xuiMenuItem
+              data-testid="layer-menu-mask-generator"
+              (triggered)="addMask(layer, 'Generator')"
+            >
+              Add Generator
+            </button>
+          } @else {
+            <button type="button" xuiMenuItem data-testid="layer-menu-mask-invert" (triggered)="invertMask(layer)">
+              Invert Mask
+            </button>
+            <button type="button" xuiMenuItem data-testid="layer-menu-mask-remove" (triggered)="addMask(layer, 'None')">
+              Remove Mask
+            </button>
+          }
+          <xui-menu-divider />
+          @if (!store.masking()) {
+            <button
+              type="button"
+              xuiMenuItem
+              data-testid="layer-menu-effect-paint"
+              (triggered)="addContent(layer, 'paint', 'Paint')"
+            >
+              Add Paint
+            </button>
+            <button
+              type="button"
+              xuiMenuItem
+              data-testid="layer-menu-effect-fill"
+              (triggered)="addContent(layer, 'fill', 'Fill')"
+            >
+              Add Fill
+            </button>
+          }
+          @for (kind of quickSteps; track kind.node) {
+            <button
+              type="button"
+              xuiMenuItem
+              [attr.data-testid]="'layer-menu-effect-' + kind.name"
+              (triggered)="addStep(layer, kind.node)"
+            >
+              Add {{ kind.name }}{{ store.masking() ? ' to Mask' : '' }}
+            </button>
+          }
+          <button type="button" xuiMenuItem data-testid="layer-menu-filter" [xuiMenuTriggerFor]="filterMenu">
+            {{ store.masking() ? 'Add Filter to Mask' : 'Add Filter' }}
           </button>
-          <button
-            type="button"
-            class="hover:bg-selection px-3 py-1 text-start"
-            role="menuitem"
-            data-testid="layer-menu-mask-colour"
-            (click)="addColourMask(at.layer)"
-          >
-            Add Colour Selection Mask
+          <xui-menu-divider />
+          <button type="button" xuiMenuItem data-testid="layer-menu-group" (triggered)="groupSelected()">
+            Group Layers <span menuItemLabel>{{ keys.mod }}G</span>
           </button>
-          <button
-            type="button"
-            class="hover:bg-selection px-3 py-1 text-start"
-            role="menuitem"
-            data-testid="layer-menu-mask-generator"
-            (click)="addMask(at.layer, 'Generator')"
-          >
-            Add Generator
+          <button type="button" xuiMenuItem data-testid="layer-menu-duplicate" (triggered)="store.duplicateLayers()">
+            Duplicate Layers <span menuItemLabel>{{ keys.mod }}D</span>
+          </button>
+          <button type="button" xuiMenuItem data-testid="layer-menu-copy" (triggered)="store.copyLayers()">
+            Copy <span menuItemLabel>{{ keys.mod }}C</span>
+          </button>
+          <button type="button" xuiMenuItem data-testid="layer-menu-cut" (triggered)="store.cutLayers()">
+            Cut <span menuItemLabel>{{ keys.mod }}X</span>
           </button>
         } @else {
-          <button
-            type="button"
-            class="hover:bg-selection px-3 py-1 text-start"
-            role="menuitem"
-            data-testid="layer-menu-mask-invert"
-            (click)="invertMask(at.layer)"
-          >
-            Invert Mask
+          <button type="button" xuiMenuItem data-testid="layer-menu-new-paint" (triggered)="add('paint', 'Paint')">
+            New Paint Layer
           </button>
-          <button
-            type="button"
-            class="hover:bg-selection px-3 py-1 text-start"
-            role="menuitem"
-            data-testid="layer-menu-mask-remove"
-            (click)="addMask(at.layer, 'None')"
-          >
-            Remove Mask
+          <button type="button" xuiMenuItem data-testid="layer-menu-new-fill" (triggered)="add('fill', 'Fill')">
+            New Fill Layer
+          </button>
+          <button type="button" xuiMenuItem data-testid="layer-menu-new-group" (triggered)="add('group', 'Folder')">
+            New Folder
           </button>
         }
-        <div class="border-hairline my-1 border-t"></div>
-        @if (!store.masking()) {
-          <button
-            type="button"
-            class="hover:bg-selection px-3 py-1 text-start"
-            role="menuitem"
-            data-testid="layer-menu-effect-paint"
-            (click)="addContent(at.layer, 'paint', 'Paint')"
-          >
-            Add Paint
-          </button>
-          <button
-            type="button"
-            class="hover:bg-selection px-3 py-1 text-start"
-            role="menuitem"
-            data-testid="layer-menu-effect-fill"
-            (click)="addContent(at.layer, 'fill', 'Fill')"
-          >
-            Add Fill
-          </button>
-        }
-        @for (kind of quickSteps; track kind.node) {
-          <button
-            type="button"
-            class="hover:bg-selection px-3 py-1 text-start"
-            role="menuitem"
-            [attr.data-testid]="'layer-menu-effect-' + kind.name"
-            (click)="addStep(at.layer, kind.node)"
-          >
-            Add {{ kind.name }}{{ store.masking() ? ' to Mask' : '' }}
-          </button>
-        }
-        <div class="px-3 py-1">
-          <xui-select
-            class="w-full [&_button]:text-xs"
-            data-testid="layer-menu-filter"
-            searchPlaceholder="Find a filter"
-            [ariaLabel]="store.masking() ? 'Add a filter to the mask' : 'Add a filter'"
-            [itemText]="stepName"
-            [items]="steps()"
-            [matchTargetWidth]="false"
-            [placeholder]="store.masking() ? 'Add Filter to Mask…' : 'Add Filter…'"
-            [value]="null"
-            (valueChange)="$event && addStep(at.layer, $event)"
-          />
-        </div>
-        <div class="border-hairline my-1 border-t"></div>
         <button
           type="button"
-          class="hover:bg-selection px-3 py-1 text-start"
-          role="menuitem"
-          data-testid="layer-menu-group"
-          (click)="groupSelected()"
-        >
-          Group Layers
-        </button>
-        <button
-          type="button"
-          class="hover:bg-selection flex justify-between gap-4 px-3 py-1 text-start"
-          role="menuitem"
-          data-testid="layer-menu-duplicate"
-          (click)="menu.set(null); store.duplicateLayers()"
-        >
-          Duplicate Layers <span class="text-foreground-muted">⌘D</span>
-        </button>
-        <button
-          type="button"
-          class="hover:bg-selection flex justify-between gap-4 px-3 py-1 text-start"
-          role="menuitem"
-          data-testid="layer-menu-copy"
-          (click)="menu.set(null); store.copyLayers()"
-        >
-          Copy <span class="text-foreground-muted">⌘C</span>
-        </button>
-        <button
-          type="button"
-          class="hover:bg-selection flex justify-between gap-4 px-3 py-1 text-start"
-          role="menuitem"
-          data-testid="layer-menu-cut"
-          (click)="menu.set(null); store.cutLayers()"
-        >
-          Cut <span class="text-foreground-muted">⌘X</span>
-        </button>
-        <button
-          type="button"
-          class="hover:bg-selection flex justify-between gap-4 px-3 py-1 text-start disabled:opacity-50"
-          role="menuitem"
+          xuiMenuItem
           data-testid="layer-menu-paste"
           [disabled]="!store.clip()"
-          (click)="menu.set(null); store.pasteLayers()"
+          (triggered)="store.pasteLayers()"
         >
-          Paste <span class="text-foreground-muted">⌘V</span>
+          Paste <span menuItemLabel>{{ keys.mod }}V</span>
         </button>
-        <div class="border-hairline my-1 border-t"></div>
-        <button
-          type="button"
-          class="hover:bg-selection px-3 py-1 text-start"
-          role="menuitem"
-          data-testid="paint-remove"
-          (click)="remove(at.layer)"
-        >
-          Delete Layers
-        </button>
-      </div>
-    }
+        @if (menuLayer(); as layer) {
+          <xui-menu-divider />
+          <button type="button" xuiMenuItem color="error" data-testid="paint-remove" (triggered)="remove(layer)">
+            Delete Layers <span menuItemLabel>{{ keys.delete }}</span>
+          </button>
+        }
+      </xui-menu>
+    </ng-template>
   `
 })
 export class LayerStack {
   protected readonly store = inject(PaintStore);
   protected readonly project = inject(ProjectStore);
 
-  protected round(share: number): number {
-    return Math.round(share * 100);
-  }
+  protected readonly percent = percent;
 
   protected opacityOf(layer: StackLayer): number {
     const draft = this.draft();
@@ -815,9 +834,13 @@ export class LayerStack {
     }
   }
 
-  protected async openMeshes(event: MouseEvent, layer: StackLayer): Promise<void> {
-    this.meshes.set({ x: event.clientX, y: event.clientY, layer });
+  protected async openMeshes(layer: StackLayer): Promise<void> {
+    this.meshLayer.set(layer);
     this.parts.set(await this.store.meshParts());
+    // The list opened before its meshes arrived, with nothing to focus, so the first goes to the hand now.
+    setTimeout(() => {
+      globalThis.document.querySelector<HTMLElement>('[data-testid=layer-meshes] input:not(:disabled)')?.focus();
+    });
   }
 
   protected onPart(layer: StackLayer, part: string): boolean {
@@ -836,11 +859,8 @@ export class LayerStack {
   protected setPart(layer: StackLayer, part: string, on: boolean): void {
     const kept = this.parts().filter(name => (name === part ? on : this.onPart(layer, name)));
     void this.store.keepToMeshes(layer, kept.length === this.parts().length ? [] : kept);
-    const held = this.meshes();
-    if (held) {
-      // The row's layer changes under the open list when the Server answers, so the list keeps up from the store.
-      this.meshes.set({ ...held, layer: { ...layer, mask: { ...layer.mask, meshParts: kept } } });
-    }
+    // The list shows what was asked for at once, ahead of the Server's answer, so a quick second click builds on it.
+    this.meshLayer.set({ ...layer, mask: { ...layer.mask, meshParts: kept } });
   }
 
   /** Goes to a texture set, which is a document of the project. */
@@ -853,26 +873,33 @@ export class LayerStack {
   protected readonly rowHeight = RowHeight;
   protected readonly quickSteps = QuickSteps;
 
-  /** What the menu's list offers: every filter on a layer, and on a mask all but its own colour selection. */
-  protected readonly steps = computed(() =>
-    (this.store.masking() ? this.store.vocabulary()?.maskEffects : this.store.vocabulary()?.filters)?.map(
-      kind => kind.node
-    ) ?? []
-  );
+  /** The filters a menu offers, under the headings the node library uses. */
+  protected readonly stepGroups = computed(() => {
+    const kinds = (this.store.masking() ? this.store.vocabulary()?.maskEffects : this.store.vocabulary()?.filters) ?? [];
+    const groups = new Map<string, StackFilterKind[]>();
+    for (const kind of kinds) {
+      groups.set(kind.category, [...(groups.get(kind.category) ?? []), kind]);
+    }
 
-  protected readonly stepName = (node: string): string => {
-    const kind = this.store.vocabulary()?.filters.find(held => held.node === node);
-    return kind ? `${kind.name} · ${kind.category}` : node;
-  };
+    return [...groups].map(([category, held]) => ({ category, kinds: held }));
+  });
   protected readonly effectHeight = EffectHeight;
   protected readonly closed = signal<ReadonlySet<string>>(new Set());
-  protected readonly menu = signal<MenuAt | null>(null);
+  /** The layer a menu is about, or null for the stack itself. */
+  protected readonly menuId = signal<string | null>(null);
+  protected readonly menuLayer = computed(() => {
+    const id = this.menuId();
+    return this.store.layers().find(row => row.layer.id === id)?.layer ?? null;
+  });
+  protected readonly keys = keyLabels();
   protected readonly channels = computed(() => (this.store.state()?.channels ?? []).map(channel => channel.usage));
   protected readonly channelLabel = channelName;
-  /** The list of meshes a layer can be kept to, where it was asked for. */
-  protected readonly meshes = signal<MenuAt | null>(null);
+  /** The layer whose list of meshes is open. */
+  protected readonly meshLayer = signal<StackLayer | null>(null);
   protected readonly parts = signal<readonly string[]>([]);
-  protected readonly blends = computed(() => this.store.vocabulary()?.blends ?? []);
+  protected readonly blends = computed(() => this.store.vocabulary()?.blends.map(term => term.value) ?? []);
+  protected readonly termName = termName;
+  protected readonly diagnosticOf = diagnosticOf;
   protected readonly blendLabel = blendLabelOf;
   /** The row whose controls are under the hand, which must not start dragging the layer. */
   protected readonly sliding = signal<string | null>(null);
@@ -1026,10 +1053,25 @@ export class LayerStack {
     this.focusChosen();
   }
 
-  /** The row that held focus has gone, and the next Delete should still reach the stack. */
-  private focusChosen(): void {
+  /** A closed menu gives focus back to the chosen row, unless an item sent it somewhere on purpose. */
+  protected restoreFocus(): void {
+    // The menu says it closed while focus is still on its item, so this looks once the menu has gone.
+    this.focusChosen();
+  }
+
+  /** Focus goes back to the chosen row: after a delete, whose row has gone, and after a menu closes. */
+  protected focusChosen(): void {
     setTimeout(() => {
-      const row = globalThis.document.querySelector<HTMLElement>(`[data-testid="paint-layer-${this.store.layer()}"]`);
+      const active = globalThis.document.activeElement;
+      if (this.renaming() !== null) {
+        return;
+      }
+
+      if (active && active !== globalThis.document.body && !this.host.nativeElement.contains(active)) {
+        return; // a menu item moved focus somewhere on purpose, such as a rename field or a dialog
+      }
+
+      const row = this.host.nativeElement.querySelector<HTMLElement>(`[data-layer="${this.store.layer()}"]`);
       row?.focus();
     });
   }
@@ -1060,18 +1102,90 @@ export class LayerStack {
     return layer.mask.colour ? hexOf(layer.mask.colour) : null;
   }
 
-  protected openMenu(event: MouseEvent, layer: StackLayer): void {
-    event.preventDefault();
-    event.stopPropagation();
-    if (!this.store.selection().has(layer.id)) {
+  /**
+   * A menu is about the row it opens on, which it chooses unless it is already in what is selected. The press before
+   * a right-click says which, as does the keyboard's own event from the row: the menu draws as it opens, and an item
+   * that changed under focus would take the focus with it.
+   */
+  /**
+   * A right press aims the menu before it opens. ⚠ A method, not `button === 2 && …` in the template: a listener that
+   * returns false makes Angular prevent the default, and a pointerdown with its default prevented never starts a drag.
+   */
+  protected pressed(event: PointerEvent): void {
+    if (event.button === 2) {
+      this.aimMenu(event);
+    }
+  }
+
+  protected aimMenu(event: { target: EventTarget | null }): void {
+    const id = (event.target as HTMLElement).closest<HTMLElement>('[data-layer]')?.dataset['layer'] ?? null;
+    const layer = this.store.layers().find(row => row.layer.id === id)?.layer ?? null;
+    if (layer && !this.store.selection().has(layer.id)) {
       this.choose(layer, false);
     }
 
-    this.menu.set({ x: event.clientX, y: event.clientY, layer });
+    this.menuId.set(layer?.id ?? null);
+  }
+
+  /** The filter chosen in a menu, on the layer the menu is about. */
+  protected addChosenStep(node: string): void {
+    const layer = this.menuLayer();
+    if (layer) {
+      void this.addStep(layer, node);
+    }
+  }
+
+  /** Arrow keys walk the rows as a tree does: up and down, into a folder and out to the one it is in. */
+  protected key(event: KeyboardEvent, row: LayerRow): void {
+    if (event.target !== event.currentTarget || event.altKey || event.metaKey || event.ctrlKey) {
+      return;
+    }
+
+    const rows = this.rows();
+    const at = rows.findIndex(held => held.layer.id === row.layer.id);
+    const folder = row.layer.kind === 'group';
+    let next: LayerRow | undefined;
+    switch (event.key) {
+      case 'ArrowDown':
+        next = rows[at + 1];
+        break;
+      case 'ArrowUp':
+        next = rows[at - 1];
+        break;
+      case 'Home':
+        next = rows[0];
+        break;
+      case 'End':
+        next = rows.at(-1);
+        break;
+      case 'ArrowRight':
+        if (folder && this.closed().has(row.layer.id)) {
+          this.toggle(row.layer.id);
+        } else if (folder) {
+          next = rows[at + 1]?.parent === row.layer.id ? rows[at + 1] : undefined;
+        }
+
+        break;
+      case 'ArrowLeft':
+        if (folder && !this.closed().has(row.layer.id)) {
+          this.toggle(row.layer.id);
+        } else {
+          next = rows.find(held => held.layer.id === row.parent);
+        }
+
+        break;
+      default:
+        return;
+    }
+
+    event.preventDefault();
+    if (next) {
+      this.choose(next.layer, false);
+      this.focusChosen();
+    }
   }
 
   protected startRename(layer: StackLayer): void {
-    this.menu.set(null);
     this.renaming.set(layer.id);
     setTimeout(() => {
       const input = globalThis.document.querySelector<HTMLInputElement>('[data-testid=layer-rename]');
@@ -1110,7 +1224,7 @@ export class LayerStack {
       effect: index
     }));
     return layer.mask.source === 'Generator' && layer.mask.generator
-      ? [{ key: 'generator', name: layer.mask.generator, enabled: true, effect: null }, ...effects]
+      ? [{ key: 'generator', name: termName(layer.mask.generator), enabled: true, effect: null }, ...effects]
       : effects;
   }
 
@@ -1132,7 +1246,6 @@ export class LayerStack {
 
   /** Adds a step to the mask, which needs a mask to run on, so a layer with none gets a white one. */
   protected async addWork(layer: StackLayer, node: string): Promise<void> {
-    this.menu.set(null);
     await this.store.setMask(layer, {
       ...layer.mask,
       source: layer.mask.source === 'None' ? 'Constant' : layer.mask.source,
@@ -1148,7 +1261,6 @@ export class LayerStack {
   }
 
   protected async addContent(layer: StackLayer, kind: string, name: string, filterNode?: string): Promise<void> {
-    this.menu.set(null);
     await this.store.addEffect(this.ownerOf(layer), kind, name, filterNode);
   }
 
@@ -1159,13 +1271,11 @@ export class LayerStack {
   }
 
   protected async addValueMask(layer: StackLayer, value: number): Promise<void> {
-    this.menu.set(null);
     await this.store.setMask(layer, { ...layer.mask, source: 'Constant', value });
     this.store.masking.set(false);
   }
 
   protected async addBitmapMask(layer: StackLayer): Promise<void> {
-    this.menu.set(null);
     const asset = await this.project.pickPicture();
     if (asset) {
       await this.store.setMask(layer, { ...layer.mask, source: 'Texture', asset });
@@ -1174,7 +1284,6 @@ export class LayerStack {
 
   /** Invert is on or off, so a second time takes it away rather than stacking another. */
   protected async invertMask(layer: StackLayer): Promise<void> {
-    this.menu.set(null);
     const node = this.store.vocabulary()?.maskEffects.find(effect => effect.name === 'Invert')?.node;
     if (node) {
       await this.store.setMask(layer, { ...layer.mask, effects: toggledEffect(layer.mask.effects ?? [], node) });
@@ -1183,7 +1292,6 @@ export class LayerStack {
 
   /** Puts the selected layers in a new folder, where the top one of them was. */
   protected async groupSelected(): Promise<void> {
-    this.menu.set(null);
     const chosen = [...this.store.selection()];
     if (chosen.length === 0) {
       return;
@@ -1198,7 +1306,6 @@ export class LayerStack {
   }
 
   protected async addMask(layer: StackLayer, source: string): Promise<void> {
-    this.menu.set(null);
     await this.store.setMask(layer, { ...layer.mask, source });
     this.store.masking.set(source === 'Paint');
     this.store.maskGrey.set(0);
@@ -1206,13 +1313,11 @@ export class LayerStack {
 
   /** A mask from one colour of the id map, which the Properties pane then offers to choose. */
   protected async addColourMask(layer: StackLayer): Promise<void> {
-    this.menu.set(null);
     await this.store.setMask(layer, { ...layer.mask, source: 'Bake', map: 'id' });
     this.store.masking.set(false);
   }
 
   protected async remove(layer: StackLayer): Promise<void> {
-    this.menu.set(null);
     if (this.store.selection().has(layer.id)) {
       await this.removeSelected();
     } else {

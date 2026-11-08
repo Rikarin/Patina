@@ -7,6 +7,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Menus work from the keyboard. Shift+F10 or the Menu key opens a layer's or a library row's menu where it is, the arrows walk it and its submenus, Enter chooses and Escape closes it and gives focus back. The arrows walk the layer rows too, and open and close folders. Layers has an Add… menu for new layers, masks and effects, and the list of meshes a layer keeps to takes focus and closes on Escape.
+- Moving or renaming a folder or project with open documents asks first, since it closes them and loses their undo, and Project Settings says which documents a new mesh or layout will close before Apply. Export says when open documents have unsaved changes, which it would leave out, and offers to save them.
 - A lazy mouse: the brush trails the pointer by a distance set in the brush panel, and paints the same however fast the pointer reports. Shift-click draws a straight line on from where the last stroke ended, in the map or on the mesh, and Cmd or Ctrl snaps it to 5°.
 - Layers duplicate (Cmd+D), copy, cut and paste, from the layer menu and from Edit. A copy is the layers and their paint as they stood, so a cut layer still pastes, and it pastes into another texture set or stack of the same size. A duplicated or pasted paint layer and its mask have pixels of their own, never the original's. Each is one undo step.
 - A new paint layer's first stroke no longer shows paint a removed layer of the same name left in its file.
@@ -37,7 +39,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Mask generators have settings: how far Metal Edge Wear reaches, how much Dust settles, and the rest of what each one exposes.
 - The viewport works from the keyboard: arrows turn it, Shift and the arrows pan it, plus and minus zoom, and F frames the model.
 - The viewport has shadows, and an environment to choose: Studio, Overcast, Sunset, or an `.hdr` panorama. Turning the light turns the environment with it.
-- Projects can be duplicated and deleted from the Library. A deleted project goes to the library's hidden `.trash` folder.
+- Projects can be duplicated and deleted from the Library. A deleted project goes to the library's trash.
 - The graph toolbar and the brush tools are icons, the brush colour keeps recent colours, and roughness, metalness and the like are sliders on a constant fill.
 - A pen's pressure changes brush size by default.
 - A Nodes pane lists every node by category: search it, double-click to add, or drag onto the canvas. A number in the Inspector becomes a parameter with one button.
@@ -109,6 +111,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Every slider has its number beside it, and a share reads as a percentage with %, an angle in degrees: layer opacity, mask value, colour tolerance and softness, and the mask grey. The brush angle steps a degree at a time, and the brush size says what it measures.
+- Lists show names, never the engine's words: blend modes, mask and fill sources, generators, mesh maps, channels, a setting's choices, port kinds and anchor layers. Delete Project and Delete Folder are red, and folder colours have names.
+- Messages say what happened in plain words. A compiler problem shows its first sentence, with its code and the rest behind Details.
 - A brush can paint several channels at once, one undo step, and a stack can add height, normal, emissive and the rest. There is an
   Eraser and a colour Picker, and painting has rebindable keys, with `[` and `]` for size and Esc to end a path.
 - The viewport paints as soon as a stack is on the mesh: Alt or right turns, middle or Shift pans, F frames, and the camera comes as

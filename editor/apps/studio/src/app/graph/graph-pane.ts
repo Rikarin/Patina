@@ -37,6 +37,7 @@ import { IconImports } from '../core/icons';
 import { NodeDragType } from './node-library';
 import { SystemStatus } from '../core/system-status';
 import { isWireable, wireFamily } from './graph-fields';
+import { diagnosticOf } from '../core/messages';
 import { diagnosticsOf, edgeKey, evaluationSummary } from './graph-model';
 import { GraphStore, type NodeLink, type NodeWire } from './graph-store';
 import { NewGraphDialog } from './new-graph-dialog';
@@ -301,11 +302,11 @@ export class GraphThumbnail {
 
     @if (store.link() === 'reconnecting') {
       <xui-callout class="shrink-0" color="error" compact data-testid="graph-offline">
-        Server unreachable. Editing is paused until it is back.
+        Lost touch with Patina’s engine. Editing is paused until it reconnects.
       </xui-callout>
     } @else if (workerMissing()) {
       <xui-callout class="shrink-0" color="warning" compact data-testid="graph-no-worker">
-        The renderer is not running. Edits are kept, and thumbnails catch up when it is back.
+        The GPU engine is not running. Edits are kept, and thumbnails catch up when it starts again.
       </xui-callout>
     }
     @if (current?.evaluation?.error; as reason) {
@@ -407,20 +408,40 @@ export class GraphThumbnail {
     </xui-node-graph>
 
     @if (diagnostics().length > 0) {
-      <ul class="well max-h-24 shrink-0 overflow-auto" aria-label="Diagnostics" data-testid="graph-diagnostics">
-        @for (item of diagnostics(); track $index) {
-          <li>
-            <button
-              type="button"
-              class="hover:bg-surface-hover flex w-full items-baseline gap-2 px-2 py-0.5 text-start"
-              (click)="reveal(item)"
-            >
-              <span class="readout shrink-0" [class.text-error]="item.severity === 'Error'">{{ item.id }}</span>
-              <span class="truncate" [title]="item.message">{{ item.message }}</span>
-            </button>
-          </li>
-        }
-      </ul>
+      <div class="well relative max-h-24 shrink-0 overflow-auto">
+        <button
+          type="button"
+          class="text-foreground-muted hover:text-foreground absolute end-1 top-0.5 text-xs"
+          data-testid="graph-diagnostics-details"
+          [attr.aria-pressed]="diagnosticDetails()"
+          (click)="diagnosticDetails.set(!diagnosticDetails())"
+        >
+          {{ diagnosticDetails() ? 'Hide Details' : 'Details' }}
+        </button>
+        <ul aria-label="Problems" data-testid="graph-diagnostics">
+          @for (item of diagnostics(); track $index) {
+            @let said = diagnosticOf(item.message);
+            <li>
+              <button
+                type="button"
+                class="hover:bg-surface-hover flex w-full items-baseline gap-2 px-2 py-0.5 pe-20 text-start"
+                (click)="reveal(item)"
+              >
+                <span class="readout shrink-0" [class.text-error]="item.severity === 'Error'">{{
+                  item.severity === 'Error' ? 'Error' : 'Warning'
+                }}</span>
+                @if (diagnosticDetails()) {
+                  <span class="min-w-0" data-testid="graph-diagnostic-detail">
+                    <span class="readout text-foreground-muted">{{ item.id }}</span> {{ item.message }}
+                  </span>
+                } @else {
+                  <span class="truncate" [title]="said.summary">{{ said.summary }}</span>
+                }
+              </button>
+            </li>
+          }
+        </ul>
+      </div>
     }
 
     <ptn-new-graph [(open)]="creating" />
@@ -576,6 +597,10 @@ export class GraphCanvas {
     const store = this.graph().store;
     return store.linking() !== null || store.surfaceSize().height < MinimapRoom;
   });
+
+  /** Whether the problems list shows each one's code and its whole text, which is for whoever reports it. */
+  protected readonly diagnosticDetails = signal(false);
+  protected readonly diagnosticOf = diagnosticOf;
 
   protected readonly diagnostics = computed(() => {
     const document = this.document();

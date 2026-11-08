@@ -79,6 +79,7 @@ export type StackView = components['schemas']['StackView'];
 export type StackBrush = components['schemas']['StackBrush'];
 export type StackMask = components['schemas']['StackMask'];
 export type StackVocabulary = components['schemas']['StackVocabulary'];
+export type StackTerm = components['schemas']['StackTerm'];
 export type StackCommand = StackCommandBatch['commands'][number];
 export type ViewportPick = components['schemas']['ViewportPick'];
 export type StackEditResult = components['schemas']['StackEditResult'];

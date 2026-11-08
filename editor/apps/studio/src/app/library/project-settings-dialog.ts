@@ -8,6 +8,7 @@ import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
 import type { UnwrapOptions } from '@patina/api-client';
 import { desktop } from '../core/desktop';
+import { SystemStatus } from '../core/system-status';
 import { ProjectStore } from './project-store';
 
 /** What a project unwraps with until someone says otherwise, as the Server has it. */
@@ -91,7 +92,7 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
                   size="sm"
                   ariaLabel="Unwrap atlas size"
                   data-testid="unwrap-resolution"
-                  [items]="resolutions"
+                  [items]="resolutions()"
                   [itemText]="texels"
                   [value]="options().resolution"
                   (valueChange)="set({ resolution: $event ?? options().resolution })"
@@ -189,7 +190,7 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
             <span class="flex flex-col">
               <span class="text-sm">Preserve Paint</span>
               <span class="text-foreground-muted text-xs">
-                Moves paint to a new mesh's UVs by where it sits on the surface. Open documents close and lose their undo.
+                Moves paint to a new mesh's UVs by where it sits on the surface.
               </span>
             </span>
             <xui-switch ariaLabel="Preserve Paint" data-testid="project-settings-preserve" [(checked)]="preservePaint" />
@@ -207,6 +208,14 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
               }
             </div>
           </div>
+          @if (closes(); as documents) {
+            <xui-callout color="warning" data-testid="project-settings-closes">
+              Applying closes {{ documents.length === 1 ? documents[0]?.name : documents.length + ' open documents' }} to
+              move {{ documents.length === 1 ? 'it' : 'them' }} onto the new layout, and
+              {{ documents.length === 1 ? 'its' : 'their' }} undo history is lost. Saved
+              work is kept{{ unsaved() ? ', and unsaved edits have to be saved first' : '' }}.
+            </xui-callout>
+          }
           @if (project.settingsFailure(); as failure) {
             <xui-callout color="error" data-testid="project-settings-failure">{{ failure }}</xui-callout>
           }
@@ -220,7 +229,7 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
             data-testid="project-settings-apply"
             [disabled]="project.unwrapping() || !changed()"
           >
-            {{ project.unwrapping() ? 'Applying…' : 'Apply' }}
+            {{ project.unwrapping() ? 'Applying…' : closes() ? 'Close and Apply' : 'Apply' }}
           </button>
         </xui-dialog-footer>
       </form>
@@ -249,7 +258,13 @@ export class ProjectSettingsDialog {
   });
 
   protected readonly options = signal<UnwrapOptions>(DefaultUnwrap);
-  protected readonly resolutions = [512, 1024, 2048, 4096, 8192];
+  private readonly status = inject(SystemStatus);
+  /** The sides every panel offers, from the Server, and the one this project has even if the list has not. */
+  protected readonly resolutions = computed(() => {
+    const sides = this.status.textureSides();
+    const held = this.options().resolution;
+    return sides.includes(held) ? sides : [...sides, held].sort((a, b) => a - b);
+  });
   protected readonly qualities = ['boxes', 'outlines', 'groups'];
   protected readonly turns = [1, 2, 4];
   protected readonly overflows = ['shrink', 'refuse'];
@@ -269,6 +284,16 @@ export class ProjectSettingsDialog {
   protected readonly optionsChanged = computed(
     () => JSON.stringify(this.options()) !== JSON.stringify(this.project.current()?.unwrap ?? DefaultUnwrap)
   );
+
+  /** What applying would close, which it says before the click rather than after. Null when it closes nothing. */
+  protected readonly closes = computed(() => {
+    const path = this.project.current()?.path;
+    const moving = this.project.movesMesh(this.settings());
+    const documents = path && moving ? this.project.openInside([path]) : [];
+    return documents.length > 0 ? documents : null;
+  });
+
+  protected readonly unsaved = computed(() => this.closes()?.some(document => document.dirty) ?? false);
 
   protected readonly changed = computed(
     () =>
@@ -290,6 +315,18 @@ export class ProjectSettingsDialog {
     });
   }
 
+  /** What Apply sends. */
+  private settings() {
+    return {
+      mesh: this.mesh().trim() || null,
+      // Sent only when changed: setting auto unwrap on is what closes documents to unwrap the mesh.
+      ...(this.autoUnwrap() === this.project.current()?.autoUnwrap ? {} : { autoUnwrap: this.autoUnwrap() }),
+      // Sent only when changed too: new options lay out again the mesh Auto Unwrap wrote, and move its paint.
+      ...(this.optionsChanged() ? { unwrap: this.options() } : {}),
+      preservePaint: this.preservePaint()
+    };
+  }
+
   protected set(change: Partial<UnwrapOptions>): void {
     this.options.update(options => ({ ...options, ...change }));
   }
@@ -308,14 +345,7 @@ export class ProjectSettingsDialog {
 
   protected async apply(event: Event): Promise<void> {
     event.preventDefault();
-    const applied = await this.project.applySettings({
-      mesh: this.mesh().trim() || null,
-      // Sent only when changed: setting auto unwrap on is what closes documents to unwrap the mesh.
-      ...(this.autoUnwrap() === this.project.current()?.autoUnwrap ? {} : { autoUnwrap: this.autoUnwrap() }),
-      // Sent only when changed too: new options lay out again the mesh Auto Unwrap wrote, and move its paint.
-      ...(this.optionsChanged() ? { unwrap: this.options() } : {}),
-      preservePaint: this.preservePaint()
-    });
+    const applied = await this.project.applySettings(this.settings());
     if (applied) {
       this.project.settingsOpen.set(false);
     }

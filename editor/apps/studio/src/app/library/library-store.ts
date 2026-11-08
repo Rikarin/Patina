@@ -15,6 +15,7 @@ import {
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { LibrarySelection } from './library-selection';
 import { type Page, PagedList } from './paged-list';
+import { messageOf } from '../core/messages';
 
 export const SearchDebounceMs = 200;
 const IdlePollMs = 5_000;
@@ -230,7 +231,7 @@ export class LibraryStore {
         this.selection.clear();
       } else {
         this.client = null; // a restarted Server has a new port and token
-        this.mutableState.set({ kind: 'error', reason: error instanceof Error ? error.message : String(error) });
+        this.mutableState.set({ kind: 'error', reason: messageOf(error) });
       }
     }
 

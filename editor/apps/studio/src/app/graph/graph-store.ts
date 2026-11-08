@@ -21,6 +21,7 @@ import { DraftLayer } from './draft-layer';
 import { EditQueue } from './edit-queue';
 import { type GraphDocument, applyEvent, classify, documentOf, edgeKey } from './graph-model';
 import { PreviewLoader } from './preview-loader';
+import { messageOf } from '../core/messages';
 
 export type GraphSessionState =
   | { kind: 'none' }
@@ -85,7 +86,7 @@ const GroupPrefix = 'group-';
 const ShippedPrefix = 'shipped:';
 
 function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return messageOf(error);
 }
 
 /** The socket for a graph: the browser cannot set a header on one, so the token goes in the query. */
@@ -657,7 +658,7 @@ export class GraphStore {
       const types = this.mutableTypes();
       return found.paths.flatMap(path => types.get(path) ?? []);
     } catch (failure) {
-      this.mutableProblem.set(failure instanceof Error ? failure.message : String(failure));
+      this.mutableProblem.set(messageOf(failure));
       return [];
     }
   }

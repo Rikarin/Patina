@@ -1,6 +1,7 @@
 import { type CollectionViewer, DataSource, type ListRange } from '@angular/cdk/collections';
 import { signal } from '@angular/core';
 import { BehaviorSubject, type Observable, type Subscription } from 'rxjs';
+import { messageOf } from '../core/messages';
 
 /** One page of a list, as every library endpoint answers it. */
 export interface Page<T> {
@@ -186,7 +187,7 @@ export class PagedList<T> extends DataSource<T | undefined> {
       }
     } catch (error) {
       if (!flight.signal.aborted) {
-        this.error.set(error instanceof Error ? error.message : String(error));
+        this.error.set(messageOf(error));
       }
     } finally {
       if (this.flights.get(page) === flight) {

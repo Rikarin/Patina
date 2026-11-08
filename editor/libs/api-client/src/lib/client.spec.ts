@@ -38,6 +38,22 @@ describe('api-client', () => {
     }
   });
 
+  it('keeps a refusal\'s code and the values its reason was written from', () => {
+    const response = new Response(null, { status: 422 });
+    const refused = (() => {
+      try {
+        unwrap({ response, error: { detail: 'Only a paint layer.', code: 'stroke-not-paint-layer', values: { layer: 'Rust' } } });
+      } catch (error) {
+        return error as ApiError;
+      }
+
+      return null;
+    })();
+    expect(refused?.code).toBe('stroke-not-paint-layer');
+    expect(refused?.values).toEqual({ layer: 'Rust' });
+    expect(refused?.message).toBe('Only a paint layer.');
+  });
+
   it('rejects a call the Server refuses, so a caller that does not unwrap still sees the failure', async () => {
     const client = createPatinaClient({ baseUrl: 'http://127.0.0.1:5190', token: null }, () =>
       Promise.resolve(Response.json({ title: 'Conflict', detail: 'No Worker.' }, { status: 503 }))

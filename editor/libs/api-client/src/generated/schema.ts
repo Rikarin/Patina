@@ -2540,6 +2540,11 @@ export interface components {
       group: string;
       /** @description The values it may take; empty for any. */
       accepted: string[];
+      /**
+       * @description What a person calls each of Accepted, in its order. The Server fills it in; a client that
+       *     sends a definition leaves it out.
+       */
+      labels?: null | string[];
     };
     /** @description The reply to `GET /api/v1/graphs/{id}`: the whole document as the Server holds it. */
     GraphState: {
@@ -3997,6 +4002,13 @@ export interface components {
       /** @description Whether it has edits no file holds. */
       dirty: boolean;
     };
+    /** @description A word a stack's field takes, and what a person calls it. */
+    StackTerm: {
+      /** @description What a file and a command hold. */
+      value: string;
+      /** @description What to show. A client shows this, never the value. */
+      label: string;
+    };
     /** @description What a layer looks like alone. */
     StackThumbnail: {
       /** @description The layer. */
@@ -4038,24 +4050,28 @@ export interface components {
        */
       height: number;
     };
-    /** @description The words a stack's fields take, so that a client holds no list of its own. */
+    /** @description The words a stack's fields take, each with its label, so that a client holds no list of its own. */
     StackVocabulary: {
       /** @description The sixteen blend modes. */
-      blends: string[];
+      blends: components['schemas']['StackTerm'][];
       /** @description The filters a layer can be. */
       filters: components['schemas']['StackFilterKind'][];
       /** @description The mask sources. */
-      masks: string[];
+      masks: components['schemas']['StackTerm'][];
+      /** @description What a fill layer reads. */
+      fills: components['schemas']['StackTerm'][];
+      /** @description How a fill's pictures land on the mesh. */
+      projections: components['schemas']['StackTerm'][];
       /** @description The compounds that read a mesh's bakes. */
-      generators: string[];
+      generators: components['schemas']['StackTerm'][];
       /** @description The maps a bake mask or a generator can read. */
-      meshMaps: string[];
+      meshMaps: components['schemas']['StackTerm'][];
       /** @description The named brush alphas. */
-      alphas: string[];
+      alphas: components['schemas']['StackTerm'][];
       /** @description The steps a mask can run. */
       maskEffects: components['schemas']['StackFilterKind'][];
       /** @description The channels a stack can have. */
-      usages: string[];
+      usages: components['schemas']['StackTerm'][];
       /** @description The knobs each generator has, by its path. */
       generatorParameters: {
         [key: string]: components['schemas']['GraphSettingDefinition'][];

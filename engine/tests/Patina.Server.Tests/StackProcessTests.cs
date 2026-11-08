@@ -341,7 +341,7 @@ public sealed partial class StackProcessTests : IDisposable {
             deadline.Token
         ))!;
         Assert.Equal(16, words.Blends.Count);
-        Assert.Contains("Generators/Dirt", words.Generators);
+        Assert.Contains(words.Generators, static term => term is { Value: "Generators/Dirt", Label: "Dirt" });
         Assert.Contains(words.GeneratorParameters["Generators/Metal Edge Wear"], static knob => knob.Name == "amount");
 
         await EditAsync(

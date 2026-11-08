@@ -1,4 +1,5 @@
 import type { GraphNodeType, GraphPortDefinition, GraphSettingDefinition } from '@patina/api-client';
+import { choiceName } from '../core/labels';
 
 /** A row of the Inspector: one thing a node lets an author set. */
 export type GraphField =
@@ -25,7 +26,16 @@ export type GraphField =
       maximum: number | null;
     }
   | { control: 'switch'; source: 'text'; name: string; summary: string; fallback: string }
-  | { control: 'choice'; source: 'text'; name: string; summary: string; fallback: string; choices: readonly string[] }
+  | {
+      control: 'choice';
+      source: 'text';
+      name: string;
+      summary: string;
+      fallback: string;
+      choices: readonly string[];
+      /** What a person calls each choice, from the labels the Server sent. */
+      label: (value: string) => string;
+    }
   | { control: 'text'; source: 'text'; name: string; summary: string; fallback: string }
   | { control: 'curve'; source: 'text'; name: string; summary: string; fallback: string }
   | { control: 'ramp'; source: 'text'; name: string; summary: string; fallback: string };
@@ -80,7 +90,7 @@ export function fieldOfPort(port: GraphPortDefinition): GraphField | null {
 function fieldOfSetting(setting: GraphSettingDefinition): GraphField {
   const base = { source: 'text', name: setting.name, summary: setting.summary, fallback: setting.default } as const;
   if (setting.accepted.length > 0) {
-    return { ...base, control: 'choice', choices: setting.accepted };
+    return { ...base, control: 'choice', choices: setting.accepted, label: value => choiceName(setting, value) };
   }
 
   if (setting.name === CurveSetting || setting.name === RampSetting) {

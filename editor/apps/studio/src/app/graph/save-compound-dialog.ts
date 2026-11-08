@@ -18,7 +18,7 @@ import { GraphStore } from './graph-store';
     <xui-dialog title="Save as compound" size="sm" [(open)]="open">
       <form (submit)="save($event)">
         <xui-dialog-body class="flex flex-col gap-3">
-          <xui-form-field label="Name" helperText="Goes to Compounds, beside this graph. Undo keeps the file.">
+          <xui-form-field label="Name" helperText="Saved in the Compounds folder next to this graph. Undoing puts the nodes back and keeps the saved compound.">
             <input
               class="w-full"
               xuiInput

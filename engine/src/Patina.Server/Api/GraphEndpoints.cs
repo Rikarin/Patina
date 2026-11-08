@@ -166,9 +166,10 @@ static class GraphEndpoints {
         }
 
         if (session.Summary.Dirty && !discard) {
-            return TypedResults.Problem(
-                "This graph has unsaved edits. Save it, or close it with discard=true.",
-                statusCode: StatusCodes.Status409Conflict
+            return Refusals.Problem(
+                "This graph has unsaved edits. Save it first, or close it discarding them.",
+                StatusCodes.Status409Conflict,
+                Refusals.Unsaved
             );
         }
 
@@ -401,5 +402,10 @@ static class GraphEndpoints {
         );
 
     static ProblemHttpResult NoSession(string id) =>
-        TypedResults.Problem($"There is no open graph '{id}'.", statusCode: StatusCodes.Status404NotFound);
+        Refusals.Problem(
+            $"There is no open graph '{id}'.",
+            StatusCodes.Status404NotFound,
+            Refusals.GraphNotOpen,
+            new Dictionary<string, string> { ["id"] = id }
+        );
 }

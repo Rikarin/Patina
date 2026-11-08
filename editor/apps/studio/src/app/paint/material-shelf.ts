@@ -7,6 +7,7 @@ import { XuiSelectImports } from '@xui/select';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { MaterialUse } from './material-use';
+import { messageOf } from '../core/messages';
 
 const OriginNames: Readonly<Record<string, string>> = {
   shipped: 'Starter',
@@ -284,7 +285,7 @@ export class MaterialShelf {
       this.failure.set(null);
       await this.draw(materials, generation);
     } catch (failure) {
-      this.failure.set(failure instanceof Error ? failure.message : String(failure));
+      this.failure.set(messageOf(failure));
     }
   }
 

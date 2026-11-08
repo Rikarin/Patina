@@ -282,6 +282,5 @@ static class LibraryEndpoints {
             )
             : null;
 
-    static ProblemHttpResult NoLibrary() =>
-        TypedResults.Problem("This Server has no library.", statusCode: StatusCodes.Status404NotFound);
+    static ProblemHttpResult NoLibrary() => Refusals.NoLibraryOpen();
 }

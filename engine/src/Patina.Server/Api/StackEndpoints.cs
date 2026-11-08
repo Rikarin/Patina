@@ -170,7 +170,7 @@ static class StackEndpoints {
         } catch (FileNotFoundException e) {
             return TypedResults.Problem(e.Message, statusCode: Missing);
         } catch (StackEditRefusedException e) {
-            return TypedResults.Problem(e.Message, statusCode: Refused);
+            return Refusals.Of(e, Refused);
         }
     }
 
@@ -233,9 +233,10 @@ static class StackEndpoints {
     ) {
         var session = sessions.Find(id);
         if (session?.Summary.Dirty == true && !discard) {
-            return TypedResults.Problem(
-                "This stack has unsaved edits. Save it, or close it with discard=true.",
-                statusCode: Conflict
+            return Refusals.Problem(
+                "This stack has unsaved edits. Save it first, or close it discarding them.",
+                Conflict,
+                Refusals.Unsaved
             );
         }
 
@@ -469,7 +470,7 @@ static class StackEndpoints {
         try {
             return await ReadAsync(id, sessions, evaluator, true, sessions.Resolve(request.Folder), cancellationToken);
         } catch (StackEditRefusedException e) {
-            return TypedResults.Problem(e.Message, statusCode: Refused);
+            return Refusals.Of(e, Refused);
         } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
             return TypedResults.Problem(e.Message, statusCode: Unavailable);
         }
@@ -491,7 +492,7 @@ static class StackEndpoints {
         try {
             return TypedResults.Ok(await evaluator.PixelsAsync(session, clean, folder, cancellationToken, sampled));
         } catch (TimeoutException e) {
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
+            return Refusals.Of(e, Unavailable);
         } catch (IpcException e) {
             return TypedResults.Problem(e.Message, statusCode: Refused);
         }

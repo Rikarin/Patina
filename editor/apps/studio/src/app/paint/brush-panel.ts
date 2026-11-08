@@ -6,7 +6,8 @@ import { XuiColorPickerImports } from '@xui/color-picker';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { IconImports } from '../core/icons';
-import { channelName } from '../core/labels';
+import { channelName, termName } from '../core/labels';
+import { degrees, percent, toDegrees, toRadians } from '../core/numbers';
 import { type BrushSettings, type Mirror, PaintStore, type PaintTool } from './paint-store';
 
 const Tools: readonly { id: PaintTool; label: string; icon: string }[] = [
@@ -38,14 +39,15 @@ type NumberSetting = {
  * to move. The lazy mouse is how far the brush trails the pointer, in the units of the size; Shift-click draws a line on
  * from where the last stroke ended, and Cmd or Ctrl snaps it to 5°.
  */
-const Sliders: readonly { key: NumberSetting; label: string; max: number; min?: number }[] = [
+const Sliders: readonly { key: NumberSetting; label: string; max: number; min?: number; angle?: boolean }[] = [
   { key: 'flow', label: 'Flow', max: 1 },
   { key: 'opacity', label: 'Opacity', max: 1 },
   { key: 'spacing', label: 'Spacing', max: 4, min: 0.01 },
   { key: 'falloff', label: 'Softness', max: 1 },
-  { key: 'angle', label: 'Angle', max: 6.28 },
+  // An angle slides in whole degrees, and the brush keeps radians.
+  { key: 'angle', label: 'Angle', max: 360, angle: true },
   { key: 'positionJitter', label: 'Scatter', max: 1 },
-  { key: 'angleJitter', label: 'Rotation jitter', max: 3.14 },
+  { key: 'angleJitter', label: 'Rotation jitter', max: 180, angle: true },
   { key: 'sizeJitter', label: 'Size jitter', max: 1 },
   { key: 'pressureSize', label: 'Pressure to size', max: 1 },
   { key: 'pressureFlow', label: 'Pressure to flow', max: 1 },
@@ -93,11 +95,12 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number; min?: 
       </select>
     </div>
     <div class="flex items-center gap-2">
-      <span class="text-foreground-muted w-16 shrink-0 text-xs">Size</span>
+      <span class="text-foreground-muted w-16 shrink-0 text-xs" [title]="sizeMeans">Size</span>
       <xui-slider
         class="min-w-0 flex-1"
         labelStepSize="0"
         aria-label="Brush size"
+        aria-describedby="paint-size-means"
         data-testid="paint-size"
         [max]="256"
         [min]="1"
@@ -105,7 +108,8 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number; min?: 
         [value]="store.radius()"
         (valueChange)="store.radius.set($event)"
       />
-      <span class="readout w-12 shrink-0 text-end text-xs">{{ store.radius() }} px</span>
+      <span class="readout w-12 shrink-0 text-end text-xs" [title]="sizeMeans">{{ store.radius() }} px</span>
+      <span id="paint-size-means" hidden>{{ sizeMeans }}</span>
     </div>
     @if (store.masking()) {
       <div class="flex items-center gap-2">
@@ -121,7 +125,7 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number; min?: 
           [value]="store.maskGrey()"
           (valueChange)="store.maskGrey.set($event)"
         />
-        <span class="readout w-12 shrink-0 text-end text-xs">{{ store.maskGrey().toFixed(2) }}</span>
+        <span class="readout w-12 shrink-0 text-end text-xs">{{ percent(store.maskGrey()) }}</span>
       </div>
     } @else {
       <div class="flex items-center gap-2">
@@ -141,8 +145,9 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number; min?: 
         class="min-w-0 flex-1"
         aria-label="Brush alpha"
         data-testid="paint-alpha"
+        [itemText]="termName"
         [items]="alphas()"
-        [value]="store.brush().alpha"
+        [value]="store.brush().alpha ?? null"
         (valueChange)="set('alpha', $event)"
       />
     </div>
@@ -204,9 +209,9 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number; min?: 
           [attr.data-testid]="'paint-' + slider.key"
           [max]="slider.max"
           [min]="slider.min ?? 0"
-          [stepSize]="slider.min ?? slider.max / 100"
-          [value]="store.brush()[slider.key]"
-          (valueChange)="set(slider.key, $event)"
+          [stepSize]="slider.angle ? 1 : (slider.min ?? slider.max / 100)"
+          [value]="slider.angle ? inDegrees(store.brush()[slider.key]) : store.brush()[slider.key]"
+          (valueChange)="set(slider.key, slider.angle ? toRadians($event) : $event)"
         />
         <span class="readout w-10 shrink-0 text-end text-xs">{{ shown(slider.key) }}</span>
       </div>
@@ -220,12 +225,13 @@ export class BrushPanel {
   protected readonly rotations = Rotations;
   protected readonly sliders = Sliders;
   protected readonly nameOf = channelName;
+  protected readonly termName = termName;
   protected readonly others = computed(() =>
     (this.store.state()?.channels ?? []).filter(channel => channel.usage !== this.store.channel())
   );
   protected readonly addable = computed(() => {
     const held = this.store.state()?.channels.map(channel => channel.usage) ?? [];
-    return (this.store.vocabulary()?.usages ?? []).filter(usage => !held.includes(usage));
+    return (this.store.vocabulary()?.usages ?? []).map(term => term.value).filter(usage => !held.includes(usage));
   });
 
   protected toggleChannel(usage: string, event: Event): void {
@@ -259,13 +265,24 @@ export class BrushPanel {
       return `${Math.round(value)} px`;
     }
 
-    return key === 'angle' || key === 'angleJitter'
-      ? `${Math.round((value * 180) / Math.PI)}°`
-      : `${Math.round(value * 100)}%`;
+    return key === 'angle' || key === 'angleJitter' ? degrees(value) : percent(value);
+  }
+
+  /**
+   * What a size is: the brush's radius, in pixels of the screen on the mesh, so that it stays the same under the
+   * pointer at any zoom, and in pixels of the map on the flat view.
+   */
+  protected readonly sizeMeans =
+    'The radius of the brush: pixels of the screen when painting on the mesh, and pixels of the map in the flat view.';
+  protected readonly percent = percent;
+  protected readonly toRadians = toRadians;
+
+  protected inDegrees(radians: number): number {
+    return Math.round(toDegrees(radians));
   }
 
   protected readonly alphas = computed(() => {
-    const named = this.store.vocabulary()?.alphas ?? ['Round'];
+    const named = this.store.vocabulary()?.alphas.map(term => term.value) ?? ['Round'];
     const alpha = this.store.brush().alpha;
     return alpha && !named.includes(alpha) ? [...named, alpha] : named;
   });

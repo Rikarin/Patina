@@ -2,39 +2,57 @@ import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrollin
 import { ChangeDetectionStrategy, Component, type ElementRef, computed, inject, output, signal, viewChild } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
+import { XuiContextMenuImports } from '@xui/context-menu';
 import { XuiDialogImports } from '@xui/dialog';
 import { XuiInputImports } from '@xui/input';
+import { XuiMenuImports } from '@xui/menu';
 import { desktop } from '../core/desktop';
+import { documentKindName } from '../core/labels';
+import { MenuKeys } from '../core/menu-keys';
 import { SystemStatus } from '../core/system-status';
 import { LibrarySelection } from './library-selection';
 import { FolderColours, LibraryTreeStore, type TreeRow, canDrop, parentOf } from './library-tree-store';
+import { type DocumentTab, ProjectStore } from './project-store';
 import { ViewportFit } from './viewport-fit';
-import { ProjectStore } from './project-store';
 
 const RowHeight = 28;
 const Indent = 14;
 const DragType = 'application/x-patina-library';
 
-/** What each kind of document is called (ADR 0012). */
-const KindNames: Readonly<Record<string, string>> = {
-  texturing: 'Texturing',
-  'layered-material': 'Layered Material',
-  'image-material': 'Image Material',
-  graph: 'Material Graph'
-};
+/** What a graph can be used as, which decides where the shelf puts it. */
+const GraphRoles: readonly { role: string; label: string }[] = [
+  { role: 'material', label: 'Use as Material' },
+  { role: 'mask', label: 'Use as Mask' },
+  { role: 'brush', label: 'Use as Brush' },
+  { role: 'filter', label: 'Use as Filter' }
+];
 
-interface MenuAt {
-  x: number;
-  y: number;
-  row: TreeRow | null;
+/** What each folder colour is called, in the order the store keeps them. */
+const ColourNames: readonly string[] = ['Red', 'Orange', 'Yellow', 'Green', 'Teal', 'Blue', 'Purple', 'Pink'];
+
+/** A move or rename that would close open documents, waiting for a yes. */
+interface Closing {
+  what: string;
+  documents: readonly DocumentTab[];
+  go: () => Promise<void>;
 }
 
 /** The projects as folders: drag to regroup, right-click or the keyboard for the rest. */
 @Component({
   selector: 'ptn-library-tree',
-  imports: [ScrollingModule, ViewportFit, XuiButtonImports, XuiCalloutImports, XuiDialogImports, XuiInputImports],
+  imports: [
+    MenuKeys,
+    ScrollingModule,
+    ViewportFit,
+    XuiButtonImports,
+    XuiCalloutImports,
+    XuiContextMenuImports,
+    XuiDialogImports,
+    XuiInputImports,
+    XuiMenuImports
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'relative flex min-h-0 flex-1 flex-col', '(document:click)': 'menu.set(null)' },
+  host: { class: 'relative flex min-h-0 flex-1 flex-col' },
   template: `
     @if (tree.failure(); as failure) {
       <xui-callout color="error" data-testid="tree-failure" compact>
@@ -59,7 +77,12 @@ interface MenuAt {
       (keydown)="press($event)"
       (click)="click($event)"
       (dblclick)="activateAt($event)"
-      (contextmenu)="openMenu($event)"
+      ptnMenuKeys="[role=treeitem][aria-selected=true]"
+      (aiming)="aimMenu($event)"
+      [xuiContextMenuTriggerFor]="treeMenu"
+      (pointerdown)="pressed($event)"
+      (contextmenu)="aimMenu($event)"
+      (contextMenuClosed)="restoreFocus()"
       (dragstart)="start($event)"
       (dragover)="over($event)"
       (dragleave)="dropInto.set(null)"
@@ -158,113 +181,94 @@ interface MenuAt {
         </div>
     </cdk-virtual-scroll-viewport>
 
-    @if (menu(); as at) {
-      <div
-        class="bg-surface-raised border-hairline fixed z-50 flex min-w-44 flex-col rounded border py-1 text-sm shadow-lg"
-        role="menu"
-        tabindex="-1"
-        data-testid="tree-menu"
-        [style.left.px]="at.x"
-        [style.top.px]="at.y"
-        (click)="$event.stopPropagation()"
-        (keydown.escape)="menu.set(null)"
-      >
-        @if (at.row?.kind === 'project' || at.row?.kind === 'document') {
-          <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="menu-open" (click)="act(openRow)">
-            Open
-          </button>
+    <ng-template #treeMenu>
+      <xui-menu data-testid="tree-menu" aria-label="Library">
+        @let row = menuRow();
+        @if (row?.kind === 'project' || row?.kind === 'document') {
+          <button type="button" xuiMenuItem data-testid="menu-open" (triggered)="act(openRow)">Open</button>
         }
-        @if (at.row?.kind === 'project') {
-          <button
-            type="button"
-            class="hover:bg-selection px-3 py-1 text-start"
-            role="menuitem"
-            data-testid="menu-project-settings"
-            (click)="act(openSettings)"
-          >
+        @if (row?.kind === 'project') {
+          <button type="button" xuiMenuItem data-testid="menu-project-settings" (triggered)="act(openSettings)">
             Project Settings…
           </button>
         }
-        @if (at.row?.kind === 'document' && at.row.document.kind === 'graph') {
-          <div class="border-hairline my-1 border-t"></div>
-          @for (role of graphRoles; track role) {
+        @if (row?.kind === 'document' && row.document.kind === 'graph') {
+          <xui-menu-divider />
+          @for (choice of graphRoles; track choice.role) {
             <button
               type="button"
-              class="hover:bg-selection px-3 py-1 text-start"
-              role="menuitemradio"
-              [attr.aria-checked]="(at.row.document.role ?? 'material') === role"
-              [attr.data-testid]="'menu-role-' + role"
-              (click)="setRole(at.row, role)"
+              xuiMenuItem
+              [attr.role]="'menuitemradio'"
+              [attr.aria-checked]="(row.document.role ?? 'material') === choice.role"
+              [attr.data-testid]="'menu-role-' + choice.role"
+              [selected]="(row.document.role ?? 'material') === choice.role"
+              (triggered)="setRole(row, choice.role)"
             >
-              Use as {{ role }}
+              {{ choice.label }}
             </button>
           }
-          <div class="border-hairline my-1 border-t"></div>
+          <xui-menu-divider />
         }
-        <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="menu-new-project" (click)="act(newProject)">
-          New Project…
-        </button>
-        <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="menu-new-folder" (click)="act(newFolder)">
-          New Folder
-        </button>
-        @if (at.row?.kind === 'folder' || at.row?.kind === 'project') {
-          <div class="border-hairline my-1 border-t"></div>
-          <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="menu-rename" (click)="act(rename)">
-            Rename
+        <button type="button" xuiMenuItem data-testid="menu-new-project" (triggered)="act(newProject)">New Project…</button>
+        <button type="button" xuiMenuItem data-testid="menu-new-folder" (triggered)="act(newFolder)">New Folder</button>
+        @if (row?.kind === 'folder' || row?.kind === 'project') {
+          <xui-menu-divider />
+          <button type="button" xuiMenuItem data-testid="menu-rename" (triggered)="act(rename)">
+            Rename <span menuItemLabel>F2</span>
           </button>
           @if (canReveal()) {
-            <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="menu-reveal" (click)="act(reveal)">
-              Show in File Browser
-            </button>
+            <button type="button" xuiMenuItem data-testid="menu-reveal" (triggered)="act(reveal)">Show in File Browser</button>
           }
         }
-        @if (at.row?.kind === 'project') {
-          <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="menu-duplicate" (click)="act(duplicate)">
-            Duplicate
-          </button>
-          <div class="border-hairline my-1 border-t"></div>
-          <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="menu-delete-project" (click)="act(askDelete)">
+        @if (row?.kind === 'project') {
+          <button type="button" xuiMenuItem data-testid="menu-duplicate" (triggered)="act(duplicate)">Duplicate</button>
+          <xui-menu-divider />
+          <button type="button" xuiMenuItem color="error" data-testid="menu-delete-project" (triggered)="act(askDelete)">
             Delete Project…
           </button>
         }
-        @if (at.row?.kind === 'folder') {
-          <div class="border-hairline my-1 border-t"></div>
-          <div class="flex items-center gap-1 px-3 py-1" role="group" aria-label="Folder colour">
-            <button
-              type="button"
-              class="border-hairline size-4 rounded-full border"
-              aria-label="No colour"
-              title="No colour"
-              data-testid="menu-colour-none"
-              (click)="colour(null)"
-            ></button>
-            @for (colour of colours; track colour) {
-              <button
-                type="button"
-                class="size-4 rounded-full"
-                [attr.aria-label]="'Colour ' + colour"
-                [attr.data-testid]="'menu-colour-' + colour"
-                [style.background]="colour"
-                (click)="this.colour(colour)"
-              ></button>
-            }
-          </div>
-          <div class="border-hairline my-1 border-t"></div>
-          <button type="button" class="hover:bg-selection px-3 py-1 text-start" role="menuitem" data-testid="menu-delete" (click)="act(askDelete)">
+        @if (row?.kind === 'folder') {
+          <button type="button" xuiMenuItem data-testid="menu-colour" [xuiMenuTriggerFor]="colourMenu">Colour</button>
+          <xui-menu-divider />
+          <button type="button" xuiMenuItem color="error" data-testid="menu-delete" (triggered)="act(askDelete)">
             Delete Folder…
           </button>
         }
-      </div>
-    }
+      </xui-menu>
+    </ng-template>
+
+    <ng-template #colourMenu>
+      <xui-menu aria-label="Folder colour">
+        @let row = menuRow();
+        @let held = row?.kind === 'folder' ? (row.folder.color ?? null) : null;
+        <button type="button" xuiMenuItem data-testid="menu-colour-none" [selected]="held === null" (triggered)="colour(null)">
+          No Colour
+        </button>
+        @for (choice of colours; track choice.hex) {
+          <button
+            type="button"
+            xuiMenuItem
+            [attr.data-testid]="'menu-colour-' + choice.hex"
+            [selected]="held === choice.hex"
+            (triggered)="colour(choice.hex)"
+          >
+            <span class="flex items-center gap-2">
+              <span class="size-3 shrink-0 rounded-full" aria-hidden="true" [style.background]="choice.hex"></span>
+              {{ choice.name }}
+            </span>
+          </button>
+        }
+      </xui-menu>
+    </ng-template>
 
     <xui-dialog size="sm" title="Delete project" [open]="deletingProject() !== null" (openChange)="$event || deletingProject.set(null)">
       <xui-dialog-body data-testid="tree-delete-project">
-        Delete {{ projectName(deletingProject()) }}? Its folder moves to the library's hidden .trash folder, and can be moved back
+        Delete {{ projectName(deletingProject()) }}? Its files are kept in the library's trash, and can be brought back
         from there by hand.
       </xui-dialog-body>
       <xui-dialog-footer>
         <button type="button" xuiButton variant="ghost" (click)="deletingProject.set(null)">Cancel</button>
-        <button type="button" xuiButton color="primary" data-testid="tree-delete-project-confirm" (click)="confirmDeleteProject()">
+        <button type="button" xuiButton color="error" data-testid="tree-delete-project-confirm" (click)="confirmDeleteProject()">
           Delete Project
         </button>
       </xui-dialog-footer>
@@ -274,8 +278,8 @@ interface MenuAt {
       <xui-dialog-body data-testid="tree-delete">
         @if (deleting()?.folder; as folder) {
           @if (folder.projectCount > 0) {
-            {{ folder.name }} holds {{ folder.projectCount }} project(s). They move up a level, and nothing is deleted
-            but the folder.
+            {{ folder.name }} holds {{ folder.projectCount }} {{ folder.projectCount === 1 ? 'project' : 'projects' }}.
+            They move up a level, and nothing is deleted but the folder.
           } @else {
             Delete {{ folder.name }} and any empty folders in it?
           }
@@ -283,8 +287,33 @@ interface MenuAt {
       </xui-dialog-body>
       <xui-dialog-footer>
         <button type="button" xuiButton variant="ghost" (click)="deleting.set(null)">Cancel</button>
-        <button type="button" xuiButton color="primary" data-testid="tree-delete-confirm" (click)="confirmDelete()">
+        <button type="button" xuiButton color="error" data-testid="tree-delete-confirm" (click)="confirmDelete()">
           Delete Folder
+        </button>
+      </xui-dialog-footer>
+    </xui-dialog>
+
+    <xui-dialog size="sm" title="Close open documents?" [open]="closing() !== null" (openChange)="$event || closing.set(null)">
+      <xui-dialog-body data-testid="tree-closing">
+        @if (closing(); as ask) {
+          <p>
+            {{ ask.what }} closes
+            {{ ask.documents.length === 1 ? ask.documents[0]?.name : ask.documents.length + ' open documents' }}, and
+            {{ ask.documents.length === 1 ? 'its' : 'their' }} undo history is lost. Saved work is kept.
+          </p>
+          @if (ask.documents.length > 1) {
+            <ul class="text-foreground-muted mt-1 list-inside list-disc text-xs">
+              @for (document of ask.documents; track document.path) {
+                <li>{{ document.name }}</li>
+              }
+            </ul>
+          }
+        }
+      </xui-dialog-body>
+      <xui-dialog-footer>
+        <button type="button" xuiButton variant="ghost" (click)="closing.set(null)">Cancel</button>
+        <button type="button" xuiButton color="warning" data-testid="tree-closing-confirm" (click)="confirmClosing()">
+          Close and Continue
         </button>
       </xui-dialog-footer>
     </xui-dialog>
@@ -302,8 +331,10 @@ export class LibraryTree {
 
   protected readonly rowHeight = RowHeight;
   protected readonly indent = Indent;
-  protected readonly colours = FolderColours;
-  protected readonly menu = signal<MenuAt | null>(null);
+  protected readonly colours = FolderColours.map((hex, at) => ({ hex, name: ColourNames[at] ?? hex }));
+  /** The row a menu is about, or null for the library itself. */
+  protected readonly menuRow = signal<TreeRow | null>(null);
+  protected readonly closing = signal<Closing | null>(null);
   protected readonly renaming = signal<string | null>(null);
   protected readonly dropInto = signal<string | null>(null);
   protected readonly deleting = signal<Extract<TreeRow, { kind: 'folder' }> | null>(null);
@@ -333,11 +364,11 @@ export class LibraryTree {
   }
 
   protected kindName(kind: string): string {
-    return KindNames[kind] ?? kind;
+    return documentKindName(kind);
   }
 
   protected kindMark(kind: string): string {
-    return (KindNames[kind] ?? kind).slice(0, 1);
+    return documentKindName(kind).slice(0, 1);
   }
 
   protected toggleProject(event: Event, path: string): void {
@@ -412,30 +443,51 @@ export class LibraryTree {
     }
   }
 
-  protected openMenu(event: MouseEvent): void {
-    const row = this.rowAt(event);
-    event.preventDefault();
-    event.stopPropagation();
-    if (row && row.kind !== 'more' && row.kind !== 'document' && !this.tree.selected().has(row.path)) {
+  /**
+   * A menu is about the row it opens on, chosen unless it is already in what is selected. The press before a
+   * right-click says which, so the menu draws once, with the right items, as it opens.
+   */
+  /**
+   * A right press aims the menu before it opens. ⚠ A method, not `button === 2 && …` in the template: a listener that
+   * returns false makes Angular prevent the default, and a pointerdown with its default prevented never starts a drag.
+   */
+  protected pressed(event: PointerEvent): void {
+    if (event.button === 2) {
+      this.aimMenu(event);
+    }
+  }
+
+  protected aimMenu(event: { target: EventTarget | null }): void {
+    const found = this.rowAt(event);
+    const row = found?.kind === 'more' ? null : found;
+    if (row && row.kind !== 'document' && !this.tree.selected().has(row.path)) {
       this.tree.choose(row.path);
       this.show(row);
     }
 
-    this.menu.set({ x: event.clientX, y: event.clientY, row });
+    this.menuRow.set(row);
   }
 
-  /** Carries out a menu item on what the menu was opened over. */
-  protected readonly graphRoles = ['material', 'mask', 'brush', 'filter'] as const;
+  /** A closed menu gives focus back to the tree, unless an item sent it somewhere on purpose. */
+  protected restoreFocus(): void {
+    // The menu says it closed while focus is still on its item, so this looks once the menu has gone.
+    setTimeout(() => {
+      const active = globalThis.document.activeElement;
+      if (this.renaming() === null && (active === null || active === globalThis.document.body)) {
+        this.viewport()?.elementRef.nativeElement.focus();
+      }
+    });
+  }
+
+  protected readonly graphRoles = GraphRoles;
 
   protected setRole(row: Extract<TreeRow, { kind: 'document' }>, role: string): void {
-    this.menu.set(null);
     void this.project.setRole(row.project, row.document, role);
   }
 
+  /** Carries out a menu item on what the menu was opened over. */
   protected act(item: (row: TreeRow | null) => void | Promise<void>): void {
-    const at = this.menu();
-    this.menu.set(null);
-    void item(at?.row ?? null);
+    void item(this.menuRow());
   }
 
   /** The settings belong to what is open, so a project opens first. */
@@ -487,11 +539,29 @@ export class LibraryTree {
   };
 
   protected colour(color: string | null): void {
-    const at = this.menu();
-    this.menu.set(null);
-    if (at?.row?.kind === 'folder') {
-      void this.tree.setColour(at.row.path, color);
+    const row = this.menuRow();
+    if (row?.kind === 'folder') {
+      void this.tree.setColour(row.path, color);
     }
+  }
+
+  /**
+   * Moving or renaming what holds open documents closes them, which loses their undo, so it asks first. Nothing open
+   * there, and it goes ahead.
+   */
+  private whenClosed(paths: readonly string[], what: string, go: () => Promise<void>): void {
+    const documents = this.project.openInside(paths);
+    if (documents.length === 0) {
+      void go();
+    } else {
+      this.closing.set({ what, documents, go });
+    }
+  }
+
+  protected async confirmClosing(): Promise<void> {
+    const ask = this.closing();
+    this.closing.set(null);
+    await ask?.go();
   }
 
   protected async confirmDelete(): Promise<void> {
@@ -563,7 +633,7 @@ export class LibraryTree {
     this.dropInto.set(into);
   }
 
-  protected async drop(event: DragEvent): Promise<void> {
+  protected drop(event: DragEvent): void {
     event.preventDefault();
     event.stopPropagation();
     const into = this.dropTarget(this.rowAt(event));
@@ -571,9 +641,12 @@ export class LibraryTree {
     this.dragged = [];
     this.dropInto.set(null);
     if (canDrop(paths, into)) {
-      if (await this.project.release(paths)) {
-        await this.tree.move(paths, into);
-      }
+      const what = paths.length === 1 ? `Moving ${this.nameAt(paths[0] ?? '')}` : `Moving ${paths.length} items`;
+      this.whenClosed(paths, what, async () => {
+        if (await this.project.release(paths)) {
+          await this.tree.move(paths, into);
+        }
+      });
     }
   }
 
@@ -598,16 +671,23 @@ export class LibraryTree {
     }
 
     if (row.kind === 'folder') {
-      if (await this.project.release([row.path])) {
-        await this.tree.renameFolder(row.path, name);
-      }
+      this.whenClosed([row.path], `Renaming ${row.folder.name}`, async () => {
+        if (await this.project.release([row.path])) {
+          await this.tree.renameFolder(row.path, name);
+        }
+      });
     } else if (row.kind === 'project') {
       await this.tree.renameProject(row.path, name);
     }
   }
 
+  private nameAt(path: string): string {
+    const row = this.tree.rows().find(held => held.path === path);
+    return row && row.kind !== 'more' ? this.labelOf(row) : (path.split('/').pop() ?? path);
+  }
+
   /** One listener for every row, rather than one per row recycled by the viewport. */
-  private rowAt(event: Event): TreeRow | null {
+  private rowAt(event: { target: EventTarget | null }): TreeRow | null {
     const element = (event.target as HTMLElement).closest<HTMLElement>('[data-path]');
     const { path, kind } = element?.dataset ?? {};
     return this.tree.rows().find(row => row.path === path && row.kind === kind) ?? null;

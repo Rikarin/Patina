@@ -14,6 +14,7 @@ import type { WorkspaceName } from '../core/workspaces';
 import { GraphStore } from '../graph/graph-store';
 import { PaintStore } from '../paint/paint-store';
 import { LibraryStore } from './library-store';
+import { messageOf } from '../core/messages';
 
 /** An open document. Its session stays on the Server while another tab is in front, with all its edits and history. */
 export interface DocumentTab {
@@ -35,10 +36,6 @@ function isGraph(tab: DocumentTab | null | undefined): boolean {
 /** What opening a project means: its texturing, or else whatever it has. */
 function firstOf(documents: readonly ProjectDocumentInfo[]): ProjectDocumentInfo | undefined {
   return documents.find(document => document.kind === 'texturing') ?? documents[0];
-}
-
-function messageOf(failure: unknown): string {
-  return failure instanceof Error ? failure.message : String(failure);
 }
 
 /**
@@ -315,23 +312,39 @@ export class ProjectStore {
       return;
     }
 
-    if (choice === 'save') {
-      // Quitting now would lose what could not be saved, so the app stays and says why.
-      try {
-        for (const tab of this.unsavedTabs()) {
-          await this.activate(tab.path);
-          if (!(await this.saveActive())) {
-            this.mutableFailure.set(`${tab.name} could not be saved, so Patina stayed open.`);
-            return;
-          }
-        }
-      } catch (failure) {
-        this.mutableFailure.set(messageOf(failure));
-        return;
-      }
+    // Quitting now would lose what could not be saved, so the app stays and says why.
+    if (choice === 'save' && !(await this.saveAll('so Patina stayed open'))) {
+      return;
     }
 
     desktop()?.quit();
+  }
+
+  /**
+   * Saves every tab with unsaved edits, each brought to the front in turn. False at the first that could not be, which
+   * is named in the failure.
+   * @param after What failing means, said after the document's name.
+   */
+  async saveAll(after = ''): Promise<boolean> {
+    const front = this.mutableActive();
+    try {
+      for (const tab of this.unsavedTabs()) {
+        await this.activate(tab.path);
+        if (!(await this.saveActive())) {
+          this.mutableFailure.set(`${tab.name} could not be saved${after ? `, ${after}` : ''}.`);
+          return false;
+        }
+      }
+    } catch (failure) {
+      this.mutableFailure.set(messageOf(failure));
+      return false;
+    }
+
+    if (front && this.mutableActive() !== front) {
+      await this.activate(front);
+    }
+
+    return true;
   }
 
   /** Shows an image material as the graph it is, for going further than its maps. */
@@ -374,9 +387,7 @@ export class ProjectStore {
     }
 
     const front = this.mutableActive();
-    // New unwrap options lay out again a mesh Auto Unwrap wrote, which moves its paint like a new mesh.
-    const relaid = !!settings.unwrap && project.meshes.some(mesh => !!mesh.unwrapped);
-    const moving = !!settings.mesh || settings.autoUnwrap === true || relaid;
+    const moving = this.movesMesh(settings);
     this.startAction();
     this.settingsFailure.set(null);
     this.mutableUnwrapping.set(true);
@@ -415,6 +426,13 @@ export class ProjectStore {
     } finally {
       this.mutableUnwrapping.set(false);
     }
+  }
+
+  /** Whether settings would rewrite what the documents stand on, and so close them and lose their undo. */
+  movesMesh(settings: { mesh?: string | null; autoUnwrap?: boolean; unwrap?: UnwrapOptions }): boolean {
+    // New unwrap options lay out again a mesh Auto Unwrap wrote, which moves its paint like a new mesh.
+    const relaid = !!settings.unwrap && (this.current()?.meshes ?? []).some(mesh => !!mesh.unwrapped);
+    return !!settings.mesh || settings.autoUnwrap === true || relaid;
   }
 
   /** Opens a project if it needs it, then its settings. */
@@ -642,9 +660,7 @@ export class ProjectStore {
    * unsaved edits, which only its owner can decide about.
    */
   async release(paths: readonly string[]): Promise<boolean> {
-    const inside = this.mutableTabs().filter(tab =>
-      paths.some(path => tab.project === path || tab.project?.startsWith(`${path}/`))
-    );
+    const inside = this.openInside(paths);
     const dirty = inside.find(tab => tab.dirty);
     if (dirty) {
       this.fail(`${dirty.name} has unsaved changes. Save it first.`);
@@ -656,6 +672,13 @@ export class ProjectStore {
     }
 
     return true;
+  }
+
+  /** The open documents below these folders or projects, which moving them would close. */
+  openInside(paths: readonly string[]): readonly DocumentTab[] {
+    return this.mutableTabs().filter(tab =>
+      paths.some(path => tab.project === path || tab.project?.startsWith(`${path}/`))
+    );
   }
 
   /** What went wrong before has nothing to do with what is starting now. */

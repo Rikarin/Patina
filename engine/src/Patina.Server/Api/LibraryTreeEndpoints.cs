@@ -449,8 +449,7 @@ static class LibraryTreeEndpoints {
     internal static ProblemHttpResult Problem(Exception e, int status) =>
         TypedResults.Problem(e.Message, statusCode: status);
 
-    internal static ProblemHttpResult NoLibrary() =>
-        TypedResults.Problem("This Server has no library.", statusCode: StatusCodes.Status404NotFound);
+    internal static ProblemHttpResult NoLibrary() => Refusals.NoLibraryOpen();
 }
 
 /// <summary>Something cannot change on disk because it is open.</summary>

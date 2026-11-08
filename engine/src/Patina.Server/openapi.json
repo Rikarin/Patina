@@ -7581,6 +7581,16 @@
               "type": "string"
             },
             "description": "The values it may take; empty for any."
+          },
+          "labels": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "What a person calls each of Accepted, in its order. The Server fills it in; a client that\nsends a definition leaves it out."
           }
         },
         "description": "A value a node type or a graph lets an author set."
@@ -10921,6 +10931,24 @@
         },
         "description": "An open stack, for a list."
       },
+      "StackTerm": {
+        "required": [
+          "value",
+          "label"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "description": "What a file and a command hold."
+          },
+          "label": {
+            "type": "string",
+            "description": "What to show. A client shows this, never the value."
+          }
+        },
+        "description": "A word a stack\u0027s field takes, and what a person calls it."
+      },
       "StackThumbnail": {
         "required": [
           "layer",
@@ -11022,6 +11050,8 @@
           "blends",
           "filters",
           "masks",
+          "fills",
+          "projections",
           "generators",
           "meshMaps",
           "alphas",
@@ -11034,7 +11064,7 @@
           "blends": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/StackTerm"
             },
             "description": "The sixteen blend modes."
           },
@@ -11048,28 +11078,42 @@
           "masks": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/StackTerm"
             },
             "description": "The mask sources."
+          },
+          "fills": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "What a fill layer reads."
+          },
+          "projections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "How a fill\u0027s pictures land on the mesh."
           },
           "generators": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/StackTerm"
             },
             "description": "The compounds that read a mesh\u0027s bakes."
           },
           "meshMaps": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/StackTerm"
             },
             "description": "The maps a bake mask or a generator can read."
           },
           "alphas": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/StackTerm"
             },
             "description": "The named brush alphas."
           },
@@ -11083,7 +11127,7 @@
           "usages": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/StackTerm"
             },
             "description": "The channels a stack can have."
           },
@@ -11098,7 +11142,7 @@
             "description": "The knobs each generator has, by its path."
           }
         },
-        "description": "The words a stack\u0027s fields take, so that a client holds no list of its own."
+        "description": "The words a stack\u0027s fields take, each with its label, so that a client holds no list of its own."
       },
       "SystemInfo": {
         "required": [

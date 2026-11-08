@@ -207,6 +207,7 @@ from .stack_problem import StackProblem
 from .stack_stamp import StackStamp
 from .stack_state import StackState
 from .stack_summary import StackSummary
+from .stack_term import StackTerm
 from .stack_thumbnail import StackThumbnail
 from .stack_thumbnails import StackThumbnails
 from .stack_view import StackView
@@ -439,6 +440,7 @@ __all__ = (
     "StackStamp",
     "StackState",
     "StackSummary",
+    "StackTerm",
     "StackThumbnail",
     "StackThumbnails",
     "StackView",
