@@ -32,8 +32,8 @@ public sealed class GraphEditor {
     readonly NodeGraphModel graph;
     readonly GraphInterfaceEdits ports;
     readonly GraphParameterEdits parameters;
-    readonly List<Step> undoable = [];
-    readonly List<Step> redoable = [];
+    readonly List<UndoStep> undoable = [];
+    readonly List<UndoStep> redoable = [];
     NodeTypeRegistry registry;
     long nextStep;
     long? savedStep;
@@ -64,14 +64,11 @@ public sealed class GraphEditor {
             undoable.Count > 0 ? undoable[^1].Id : null
         );
 
-    /// <summary>The history as a list: the steps that stand, oldest first, and the ones undone, the next redo first.</summary>
-    public HistoryList Steps => UndoHistory.List(undoable, redoable, static step => new(step.Id, step.Label));
+    /// <summary>The steps that stand, oldest first, which <see cref="UndoHistory.List" /> lists.</summary>
+    public IReadOnlyList<UndoStep> DoneSteps => undoable;
 
-    /// <summary>Undoes or redoes until a step is the newest that stands, or undoes everything for null.</summary>
-    /// <returns>Which way it went and the last step it passed, or null when the history already stood there.</returns>
-    /// <exception cref="HistoryStepGoneException">The history does not hold the step.</exception>
-    public HistoryMove? JumpTo(long? step) =>
-        UndoHistory.Jump(undoable, redoable, static held => held.Id, step, Undo, Redo);
+    /// <summary>The steps undone, the next redo last.</summary>
+    public IReadOnlyList<UndoStep> UndoneSteps => redoable;
 
     /// <summary>Applies a batch whole, or throws and leaves the document as it was.</summary>
     /// <returns>The nodes the batch created under a client's <c>ref</c>.</returns>
@@ -451,7 +448,8 @@ public sealed class GraphEditor {
         TypeOf(node).Port(name, direction)
         ?? throw new GraphEditRefusedException($"{node.Type} has no {direction} port '{name}'.");
 
-    sealed record Step(long Id, string Label, List<IAuthoringCommand> Commands);
+    /// <summary>One undo step: what it is called, what a jump names it by, and the commands it did.</summary>
+    public sealed record UndoStep(long Id, string Label, List<IAuthoringCommand> Commands);
 
     /// <summary>Nothing listens: a session reads the document after every edit.</summary>
     sealed class HeadlessContext : ICommandContext {

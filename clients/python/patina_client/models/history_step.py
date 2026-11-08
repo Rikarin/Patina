@@ -23,7 +23,7 @@ class HistoryStep:
     """ One undo step of a graph or a stack.
 
         Attributes:
-            id (int): What a jump names it by. Ids only grow, so a step that has gone is never mistaken for another.
+            id (int): What a jump names it by. Ids only grow: a step that has gone is never taken for another.
             label (str): What it is called, as undo and redo call it.
      """
 

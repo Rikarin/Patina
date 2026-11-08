@@ -81,10 +81,20 @@ static class StackEndpoints {
             Conflict
         );
         Post("/{id}/redo", Redo, "RedoStack", "Puts back the newest undone batch.", Missing, Conflict);
-        Get("/{id}/history", GetHistory, "GetStackHistory", "The undo history as a list, for a client that shows it.", Missing);
+        Get(
+            "/{id}/history",
+            Results<Ok<HistoryList>, ProblemHttpResult>(string id, StackSessions sessions) =>
+                sessions.Find(id)?.Steps is { } steps ? TypedResults.Ok(steps) : NoSession(id),
+            "GetStackHistory",
+            "The undo history as a list, for a client that shows it.",
+            Missing
+        );
         Post(
             "/{id}/history",
-            JumpHistory,
+            Results<Ok<StackEditResult>, ProblemHttpResult>(string id, HistoryJump jump, StackSessions sessions) =>
+                sessions.Find(id) is { } open
+                    ? UndoHistory.Answer(() => open.JumpTo(jump.Step), jump.Step)
+                    : NoSession(id),
             "JumpStackHistory",
             "Undoes or redoes until a step is the newest that stands, as one event.",
             Missing,
@@ -274,25 +284,6 @@ static class StackEndpoints {
 
     static Results<Ok<StackEditResult>, ProblemHttpResult> Redo(string id, StackSessions sessions) =>
         Step(id, sessions, static session => session.Redo(), "redo");
-
-    static Results<Ok<HistoryList>, ProblemHttpResult> GetHistory(string id, StackSessions sessions) =>
-        sessions.Find(id) is { } session ? TypedResults.Ok(session.Steps) : NoSession(id);
-
-    static Results<Ok<StackEditResult>, ProblemHttpResult> JumpHistory(
-        string id,
-        HistoryJump jump,
-        StackSessions sessions
-    ) {
-        if (sessions.Find(id) is not { } session) {
-            return NoSession(id);
-        }
-
-        try {
-            return TypedResults.Ok(session.JumpTo(jump.Step));
-        } catch (HistoryStepGoneException e) {
-            return Refusals.Of(e, jump.Step);
-        }
-    }
 
     static async Task<Results<Ok<StackEditResult>, ProblemHttpResult>> Save(
         string id,

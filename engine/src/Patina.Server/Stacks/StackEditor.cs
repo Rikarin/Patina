@@ -104,8 +104,8 @@ public sealed class StackJournalEntry(
 public sealed class StackEditor : ILayerStackDocument {
     static readonly HeadlessContext Context = new();
 
-    readonly List<Step> undoable = [];
-    readonly List<Step> redoable = [];
+    readonly List<UndoStep> undoable = [];
+    readonly List<UndoStep> redoable = [];
     long nextEntry;
     long nextStep;
     long? savedStep;
@@ -152,14 +152,11 @@ public sealed class StackEditor : ILayerStackDocument {
             undoable.Count > 0 ? undoable[^1].Id : null
         );
 
-    /// <summary>The history as a list: the steps that stand, oldest first, and the ones undone, the next redo first.</summary>
-    public HistoryList Steps => UndoHistory.List(undoable, redoable, static step => new(step.Id, step.Label));
+    /// <summary>The steps that stand, oldest first, which <see cref="UndoHistory.List" /> lists.</summary>
+    public IReadOnlyList<UndoStep> DoneSteps => undoable;
 
-    /// <summary>Undoes or redoes until a step is the newest that stands, or undoes everything for null.</summary>
-    /// <returns>Which way it went and the last step it passed, or null when the history already stood there.</returns>
-    /// <exception cref="HistoryStepGoneException">The history does not hold the step.</exception>
-    public HistoryMove? JumpTo(long? step) =>
-        UndoHistory.Jump(undoable, redoable, static held => held.Id, step, Undo, Redo);
+    /// <summary>The steps undone, the next redo last.</summary>
+    public IReadOnlyList<UndoStep> UndoneSteps => redoable;
 
     /// <summary>The strokes that stand, oldest first.</summary>
     public IReadOnlyList<StackJournalEntry> Standing => [..undoable.SelectMany(static step => step.Strokes)];
@@ -185,7 +182,7 @@ public sealed class StackEditor : ILayerStackDocument {
         }
 
         EndDrag();
-        var step = new Step(nextStep + 1, batch.Label ?? Label(batch.Commands[0]));
+        var step = new UndoStep(nextStep + 1, batch.Label ?? Label(batch.Commands[0]));
         List<IAuthoringCommand> applied = [];
         try {
             foreach (var command in batch.Commands) {
@@ -319,7 +316,7 @@ public sealed class StackEditor : ILayerStackDocument {
         }
     }
 
-    void Run(StackCommand command, Step step, List<IAuthoringCommand> applied) {
+    void Run(StackCommand command, UndoStep step, List<IAuthoringCommand> applied) {
         void Do(IAuthoringCommand edit) {
             edit.Do(Context);
             applied.Add(edit);
@@ -631,7 +628,7 @@ public sealed class StackEditor : ILayerStackDocument {
         }
     }
 
-    void Stroke(StackStroke stroke, Step step, string set, Action<IAuthoringCommand> run) {
+    void Stroke(StackStroke stroke, UndoStep step, string set, Action<IAuthoringCommand> run) {
         var layer = Require(stroke.Layer);
         if (stroke.Brush.Radius <= 0f) {
             throw new StackEditRefusedException("A brush has a radius.");
@@ -830,7 +827,7 @@ public sealed class StackEditor : ILayerStackDocument {
         layers.SelectMany(static layer => Flattened(layer.Children).Prepend(layer));
 
     /// <summary>Each layer duplicated just above itself, with canvases of its own copied from its own.</summary>
-    void Duplicate(StackDuplicateLayers duplicate, Step step, string set, Action<IAuthoringCommand> run) {
+    void Duplicate(StackDuplicateLayers duplicate, UndoStep step, string set, Action<IAuthoringCommand> run) {
         var outermost = Outermost(duplicate.Layers, set);
         StackLayerCopies copies = new(this, set);
         List<(string Source, LayerAsset Copy)> made = [
@@ -848,7 +845,7 @@ public sealed class StackEditor : ILayerStackDocument {
     ///     A copy's layers, new each time, over the chosen layer or at the top. Their canvases are the copy's, so a
     ///     cut layer and one painted since are what was copied. Limits to named meshes are another stack's meshes.
     /// </summary>
-    void Paste(StackPasteLayers paste, Step step, string set, Action<IAuthoringCommand> run) {
+    void Paste(StackPasteLayers paste, UndoStep step, string set, Action<IAuthoringCommand> run) {
         var clip = Clip(paste.Clip)
             ?? throw new StackEditRefusedException("That copy has gone, with the Server that held it. Copy again.");
         var layers = LayerStackYaml.Read(clip.Text).Sets[0].Layers;
@@ -883,7 +880,7 @@ public sealed class StackEditor : ILayerStackDocument {
         Journal(copies, step);
     }
 
-    void Journal(StackLayerCopies copies, Step step) {
+    void Journal(StackLayerCopies copies, UndoStep step) {
         foreach (var (from, to) in copies.Canvases) {
             step.Strokes.Add(StackJournalEntry.Copy(nextEntry++, to, from, Document.Model));
         }
@@ -931,7 +928,8 @@ public sealed class StackEditor : ILayerStackDocument {
             string.Create(CultureInfo.InvariantCulture, $"This stack has no layer '{id}'.")
         );
 
-    sealed record Step(long Id, string Label) {
+    /// <summary>One undo step: what it is called, what a jump names it by, and what it did.</summary>
+    public sealed record UndoStep(long Id, string Label) {
         public List<IAuthoringCommand> Commands { get; } = [];
 
         public List<StackJournalEntry> Strokes { get; } = [];

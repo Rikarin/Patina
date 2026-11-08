@@ -169,7 +169,7 @@ public sealed record GraphHistoryState(
 );
 
 /// <summary>One undo step of a graph or a stack.</summary>
-/// <param name="Id">What a jump names it by. Ids only grow, so a step that has gone is never mistaken for another.</param>
+/// <param name="Id">What a jump names it by. Ids only grow: a step that has gone is never taken for another.</param>
 /// <param name="Label">What it is called, as undo and redo call it.</param>
 public sealed record HistoryStep(long Id, string Label);
 

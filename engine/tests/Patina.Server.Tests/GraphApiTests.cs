@@ -646,7 +646,10 @@ public sealed partial class GraphApiTests : IDisposable {
             Assert.Equal([listed.Done[1], listed.Done[2]], back.Undone);
 
             // Forward to the newest, then to before everything, which is the file as it was opened.
-            Assert.Equal(third.History.Step, (await client.JumpAsync(state.Id, third.History.Step, Token)).History.Step);
+            Assert.Equal(
+                third.History.Step,
+                (await client.JumpAsync(state.Id, third.History.Step, Token)).History.Step
+            );
             Assert.Equal("9", (await client.StateAsync(state.Id, Token)).Settings["seed"]);
             var start = await client.JumpAsync(state.Id, null, Token);
             Assert.Null(start.History.Step);
@@ -657,7 +660,7 @@ public sealed partial class GraphApiTests : IDisposable {
             await client.EditAsync(state.Id, Token, new GraphSetSetting("seed", "3"));
             using var gone = await client.PostAsJsonAsync(
                 $"/api/v1/graphs/{state.Id}/history",
-                new HistoryJump(third.History.Step),
+                new(third.History.Step),
                 ContractsJsonContext.Default.HistoryJump,
                 Token
             );

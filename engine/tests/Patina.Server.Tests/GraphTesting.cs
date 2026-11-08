@@ -109,7 +109,7 @@ static class GraphTesting {
     ) {
         using var response = await client.PostAsJsonAsync(
             $"/api/v1/graphs/{id}/history",
-            new HistoryJump(step),
+            new(step),
             ContractsJsonContext.Default.HistoryJump,
             token
         );

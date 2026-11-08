@@ -251,38 +251,10 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     }
 
     /// <returns>Null when there was nothing to undo.</returns>
-    public StackEditResult? Undo() => Walk(static editor => editor.Undo(), GraphEventKind.Undone);
+    public StackEditResult? Undo() => Walk(static held => UndoHistory.Moved(held.Undo(), GraphEventKind.Undone));
 
     /// <returns>Null when there was nothing to redo.</returns>
-    public StackEditResult? Redo() => Walk(static editor => editor.Redo(), GraphEventKind.Redone);
-
-    /// <summary>The undo history as a list.</summary>
-    public HistoryList Steps {
-        get {
-            lock (Changing) {
-                return editor.Steps;
-            }
-        }
-    }
-
-    /// <summary>
-    ///     Undoes or redoes until a step is the newest that stands, as one event: followers see the stack jump.
-    /// </summary>
-    /// <param name="step">The step, or null to undo everything.</param>
-    /// <exception cref="HistoryStepGoneException">The history does not hold the step, and nothing changed.</exception>
-    public StackEditResult JumpTo(long? step) {
-        StackEditResult result;
-        lock (Changing) {
-            if (editor.JumpTo(step) is not { } moved) {
-                return new(revision, Log.Sequence, editor.History);
-            }
-
-            result = Announce(moved.Kind, moved.Label, []);
-        }
-
-        wake();
-        return result;
-    }
+    public StackEditResult? Redo() => Walk(static held => UndoHistory.Moved(held.Redo(), GraphEventKind.Redone));
 
     /// <summary>
     ///     What the document says now, and that everything the Worker has been told is about to be on
@@ -350,6 +322,18 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
             closed = true;
         }
     }
+
+    /// <summary>The undo history as a list.</summary>
+    public HistoryList Steps => Read(static held => Listed(held));
+
+    /// <summary>
+    ///     Undoes or redoes until a step is the newest that stands, as one event: followers see the stack jump.
+    /// </summary>
+    /// <param name="step">The step, or null to undo everything.</param>
+    /// <exception cref="HistoryStepGoneException">The history does not hold the step, and nothing changed.</exception>
+    public StackEditResult JumpTo(long? step) =>
+        Walk(held => UndoHistory.Jump(Listed(held), step, held.Undo, held.Redo))
+        ?? Read<StackEditResult>(held => new(revision, Log.Sequence, held.History));
 
     /// <summary>What the evaluation loop should do next, or null.</summary>
     public StackWork? Pending() {
@@ -469,14 +453,24 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         }
     }
 
-    StackEditResult? Walk(Func<StackEditor, string?> move, GraphEventKind kind) {
+    static HistoryList Listed(StackEditor held) =>
+        UndoHistory.List(held.DoneSteps, held.UndoneSteps, static step => new(step.Id, step.Label));
+
+    /// <summary>What the stack says, read under the lock.</summary>
+    T Read<T>(Func<StackEditor, T> read) {
+        lock (Changing) {
+            return read(editor);
+        }
+    }
+
+    StackEditResult? Walk(Func<StackEditor, HistoryMove?> move) {
         StackEditResult result;
         lock (Changing) {
-            if (move(editor) is not { } label) {
+            if (move(editor) is not { } moved) {
                 return null;
             }
 
-            result = Announce(kind, label, []);
+            result = Announce(moved.Kind, moved.Label, []);
         }
 
         wake();
