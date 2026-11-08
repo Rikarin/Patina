@@ -239,6 +239,9 @@ async function addNodeAt(search: string, x: number, y: number): Promise<void> {
   await window.keyboard.press('Enter');
   // Its backdrop would take the next press.
   await expect(window.locator('input[role=combobox]')).toHaveCount(0);
+  // It lands selected once the Server has it, and the next node is wired to what is selected then: one added sooner
+  // takes the node before this one.
+  await expect(window.getByTestId('inspector-title')).toHaveText(search.split('/').at(-1) ?? search);
 }
 
 async function newGraph(name: string): Promise<void> {
@@ -306,6 +309,13 @@ test('builds a tiling material from a new graph, down to its channels and full s
   await inspect(3);
   const ramp = window.getByTestId('gradient-ramp');
   await ramp.click({ position: { x: 60, y: 8 } });
+  // The press makes Stop 2 and selects it, and the position field shows it on the next render. A fill before that
+  // selects the old stop's text, the render replaces it, and the typing lands after it: 0.2130.45, which is no number.
+  const added = window.getByRole('slider', { name: 'Stop 2' });
+  await expect(added).toHaveClass(/border-foreground/);
+  await expect(window.getByTestId('field-Ramp').getByRole('spinbutton')).toHaveValue(
+    (await added.getAttribute('aria-valuenow')) ?? ''
+  );
   await window.getByTestId('field-Ramp').getByRole('spinbutton').fill('0.45');
   await window.getByTestId('field-Ramp').getByRole('spinbutton').press('Enter');
   await expect(window.getByRole('slider', { name: 'Stop 2' })).toHaveAttribute('aria-valuenow', '0.45');
