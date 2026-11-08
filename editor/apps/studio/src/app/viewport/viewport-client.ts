@@ -100,10 +100,13 @@ export class ViewportClient {
         void this.refresh();
       }
     });
-    // A project opens its viewport as it was left. Only a change of project puts it back, not a save.
+    // A project opens its viewport as it was left, once its contents have been read. Only a change of project puts
+    // it back, not a save.
     effect(() => {
       const project = this.projects.active()?.project ?? null;
-      untracked(() => this.adopt(project));
+      if (this.projects.current() !== null) {
+        untracked(() => this.adopt(project));
+      }
     });
   }
 

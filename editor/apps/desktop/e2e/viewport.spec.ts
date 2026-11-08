@@ -172,6 +172,23 @@ test('the display settings change the picture, and the project keeps them', asyn
   await expect
     .poll(() => readFileSync(projectFile(), 'utf8'), { timeout: 10_000 })
     .toMatch(/toneMapping: agx[\s\S]*wireframe: true[\s\S]*orthographic: true/u);
+
+  // Back later, with a new Server: the project opens its viewport as it was left.
+  await app.close();
+  app = await electron.launch({
+    args: [...softwareWebGl, main],
+    env: { ...process.env, PATINA_USER_DATA: join(scratch, 'user-data') }
+  });
+  window = await app.firstWindow();
+  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('Game.ptlib', { timeout: 30_000 });
+  if (!(await window.getByTestId('document-tab-name').filter({ hasText: 'Test' }).isVisible())) {
+    await window.locator('[data-testid=tree-row][data-path="test"]').dblclick();
+  }
+
+  // The layout comes back too, with Preview still maximized.
+  await window.getByTestId('viewport-display-toggle').click();
+  await expect(window.getByTestId('viewport-tonemap')).toHaveValue('agx', { timeout: 30_000 });
+  await expect(window.getByTestId('viewport-display').getByRole('switch')).toBeChecked();
 });
 
 test('killing the Worker keeps the view, and frames come back from its successor', async () => {
