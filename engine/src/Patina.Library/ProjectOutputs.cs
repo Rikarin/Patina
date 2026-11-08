@@ -117,6 +117,12 @@ public static class ProjectOutputs {
     /// <summary>The file a <see cref="BuildTools.TextureGraph" /> output builds, among its files.</summary>
     public const string GraphSetting = "graph";
 
+    /// <summary>The mesh a document is painted on, among its files, relative to the project.</summary>
+    public const string MeshSetting = "mesh";
+
+    /// <summary>The mesh's material a document is the texture set of, when it is one.</summary>
+    public const string MaterialSetting = "material";
+
     /// <summary>What <paramref name="project" /> builds.</summary>
     /// <param name="project">The project.</param>
     /// <param name="folder">Its folder.</param>
@@ -150,10 +156,21 @@ public static class ProjectOutputs {
             settings[GraphSetting] = item.File;
         }
 
+        // A document on a mesh reads its layout, which says what padding grows from, so its key moves with the mesh.
+        string[] mesh = [];
+        if (!graph && project.Meshes.FirstOrDefault(m => m.Id == item.Mesh) is { } owned
+            && File.Exists(Path.Combine(folder, owned.File))) {
+            mesh = [owned.File];
+            settings[MeshSetting] = owned.File;
+            if (item.Material is { } material) {
+                settings[MaterialSetting] = material;
+            }
+        }
+
         yield return new(
             item.File,
             graph ? BuildTools.TextureGraph : BuildTools.LayerStack,
-            [item.File, ..Reads(project, item, folder), ..bake],
+            [item.File, ..Reads(project, item, folder), ..mesh, ..bake],
             [..project.References.Select(static reference => reference.Asset).Distinct()],
             settings
         );

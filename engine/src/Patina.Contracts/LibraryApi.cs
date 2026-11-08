@@ -130,6 +130,12 @@ public sealed record ProjectContents(
     /// <summary>Whether a mesh with no UV layout is given one when it is set.</summary>
     public bool AutoUnwrap { get; init; } = true;
 
+    /// <summary>
+    ///     The texture sets an export writes, by name: what <see cref="ExportOptions.Sets" /> chooses from. Empty for a
+    ///     project of one unnamed set.
+    /// </summary>
+    public IReadOnlyList<string> ExportSets { get; init; } = [];
+
     /// <summary>Whether paint moves to a new mesh's layout.</summary>
     public bool PreservePaint { get; init; } = true;
 

@@ -152,7 +152,27 @@ public sealed class OutputBuilders(
             }
         );
 
-        return Pictures(step, folder, usages, raw, GreenOf(step, GreenAxis.Down));
+        var manifest = Pictures(step, folder, usages, raw, GreenOf(step, GreenAxis.Down));
+        return manifest.Maps.Count > 0 && Coverage(step, manifest.Maps[0].Width, manifest.Maps[0].Height) is { } islands
+            ? manifest with { Maps = [..manifest.Maps, MapPictures.Write(folder, ExportMaps.Coverage, islands, true, null)] }
+            : manifest;
+    }
+
+    /// <summary>
+    ///     Which texels of the stack's mesh layout its texture set covers, one where it does: what an export's padding
+    ///     grows from. Null for a stack on no mesh, which has no background to pad.
+    /// </summary>
+    static FloatImage? Coverage(OutputStep step, int width, int height) {
+        if (!step.Settings.ContainsKey(ProjectOutputs.MeshSetting)) {
+            return null;
+        }
+
+        return MeshCoverage.Of(
+            MeshMapSettings.Role(step, ProjectOutputs.MeshSetting),
+            step.Settings.GetValueOrDefault(ProjectOutputs.MaterialSetting),
+            width,
+            height
+        );
     }
 
     static BuildManifest Bake(OutputStep step, string folder, int threads, CancellationToken cancellationToken) {

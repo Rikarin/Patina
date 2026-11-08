@@ -149,6 +149,30 @@ public sealed class ProjectOutputsTests : IDisposable {
         Assert.Equal([shared.Asset], output.Uses);
     }
 
+    /// <summary>
+    ///     A set on a mesh reads the mesh's layout, which its export pads from, so the mesh is one of its files and a new
+    ///     mesh gives it a new key. A mesh that is not there yet is not named.
+    /// </summary>
+    [Fact]
+    public void A_set_on_a_mesh_names_the_mesh_and_its_material() {
+        File.WriteAllText(Path.Combine(folder.FullName, "crate.glb"), "x");
+        var mesh = new ProjectMesh(AssetId.New(), "crate.glb");
+        var gone = new ProjectMesh(AssetId.New(), "gone.glb");
+        var project = Project(
+            Item(DocumentKinds.Texturing, "body.vxlayers", "Body") with { Mesh = mesh.Id },
+            Item(DocumentKinds.Texturing, "lid.vxlayers", "Lid") with { Mesh = gone.Id }
+        ) with {
+            Meshes = [mesh, gone]
+        };
+
+        var outputs = ProjectOutputs.Of(project, folder.FullName);
+
+        Assert.Contains("crate.glb", outputs[0].Files);
+        Assert.Equal("crate.glb", outputs[0].Settings[ProjectOutputs.MeshSetting]);
+        Assert.Equal("Body", outputs[0].Settings[ProjectOutputs.MaterialSetting]);
+        Assert.False(outputs[1].Settings.ContainsKey(ProjectOutputs.MeshSetting));
+    }
+
     [Fact]
     public void Outputs_written_by_hand_replace_what_the_documents_imply() {
         OutputDeclaration written = new("lods", BuildTools.MeshLod, ["low.glb"], [], new Dictionary<string, string>());

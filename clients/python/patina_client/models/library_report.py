@@ -40,6 +40,8 @@ class LibraryReport:
             finished (datetime.datetime | None | Unset): When it finished, while it has not null.
             nothing (None | str | Unset): Why a finished build wrote nothing, or null when it wrote something or something
                 failed.
+            current (None | str | Unset): What a running build is on, for a person: a project and an output or a preset.
+                Null once it ends.
      """
 
     build: str
@@ -55,6 +57,7 @@ class LibraryReport:
     folder: str
     finished: datetime.datetime | None | Unset = UNSET
     nothing: None | str | Unset = UNSET
+    current: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -98,6 +101,12 @@ class LibraryReport:
         else:
             nothing = self.nothing
 
+        current: None | str | Unset
+        if isinstance(self.current, Unset):
+            current = UNSET
+        else:
+            current = self.current
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -118,6 +127,8 @@ class LibraryReport:
             field_dict["finished"] = finished
         if nothing is not UNSET:
             field_dict["nothing"] = nothing
+        if current is not UNSET:
+            field_dict["current"] = current
 
         return field_dict
 
@@ -181,6 +192,16 @@ class LibraryReport:
         nothing = _parse_nothing(d.pop("nothing", UNSET))
 
 
+        def _parse_current(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        current = _parse_current(d.pop("current", UNSET))
+
+
         library_report = cls(
             build=build,
             started=started,
@@ -195,6 +216,7 @@ class LibraryReport:
             folder=folder,
             finished=finished,
             nothing=nothing,
+            current=current,
         )
 
 

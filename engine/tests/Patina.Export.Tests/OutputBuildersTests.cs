@@ -309,6 +309,26 @@ public sealed class OutputBuildersTests : IDisposable {
         Assert.Equal(0.5f, MapPictures.ReadFile(Path.Combine(made, map.File)).Samples[0], 0.001f);
     }
 
+    /// <summary>
+    ///     A triangle over half the layout covers the texels on its side of the diagonal and none on the other: the closed
+    ///     form padding starts from. ⚠ An OBJ's v runs up the picture and the reader turns it over, as it does for the
+    ///     bake, so the triangle at v = 0 lands on the picture's last rows.
+    /// </summary>
+    [Fact]
+    public void A_meshs_coverage_is_its_layout_the_way_up_a_bake_reads_it() {
+        var mesh = Path.Combine(folder.FullName, "half.obj");
+        File.WriteAllText(mesh, "v 0 0 0\nv 1 0 0\nv 0 1 0\nvt 0 0\nvt 1 0\nvt 0 1\nf 1/1 2/2 3/3\n");
+
+        var coverage = MeshCoverage.Of(mesh, null, 16, 16)!;
+
+        Assert.Equal(1f, coverage.Samples[15 * 16]);
+        Assert.Equal(1f, coverage.Samples[(15 * 16) + 14]);
+        Assert.Equal(1f, coverage.Samples[16]);
+        Assert.Equal(0f, coverage.Samples[15]);
+        Assert.Equal(0f, coverage.Samples[(1 * 16) + 3]);
+        Assert.InRange(coverage.Samples.Sum(), 16 * 16 / 2, (16 * 16 / 2) + 16);
+    }
+
     ExportSource Source(string name, float value, string usage = "roughness") {
         var path = Directory.CreateDirectory(Path.Combine(folder.FullName, name)).FullName;
         var map = MapPictures.Write(path, usage, new(1, 1, 1, [value]), true, null);

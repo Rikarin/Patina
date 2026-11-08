@@ -6,6 +6,8 @@ engine: Unreal Engine
 # Y-down, the form the engine's "Flip Green Channel" option exists to convert from. Epic documents the option and not
 # the name of the convention, so this rests on long practice and is marked uncertain in the ADR.
 normal: y-down
+# Islands grow until every texel is filled, so mips and filtering read the chart and not the background.
+padding: infinite
 textures:
   - file: T_{project}_D
     format: png8

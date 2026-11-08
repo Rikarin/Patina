@@ -4,6 +4,8 @@ id: unity-hdrp
 name: Unity (HDRP)
 engine: Unity
 normal: y-up
+# Islands grow until every texel is filled, so mips and filtering read the chart and not the background.
+padding: infinite
 textures:
   - file: "{project}_BaseColor"
     format: png8

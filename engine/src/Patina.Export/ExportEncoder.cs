@@ -2,6 +2,7 @@ using Patina.Export.Presets;
 using Vixen.Core.Imaging;
 using Vixen.Core.Imaging.BlockCompression;
 using Vixen.Graphics;
+using Vixen.Interchange;
 
 namespace Patina.Export;
 
@@ -18,16 +19,44 @@ public static class ExportEncoder {
         PackedPicture picture,
         ExportTexture texture,
         CancellationToken cancellationToken
+    ) =>
+        Encode(picture, texture, false, cancellationToken);
+
+    /// <summary>The file's bytes, and how many mip levels it has.</summary>
+    /// <param name="picture">The lanes.</param>
+    /// <param name="texture">What the preset asked for.</param>
+    /// <param name="dither">Whether an 8-bit file is dithered rather than rounded.</param>
+    /// <param name="cancellationToken">Stops block compression between blocks.</param>
+    public static (byte[] Bytes, int Levels) Encode(
+        PackedPicture picture,
+        ExportTexture texture,
+        bool dither,
+        CancellationToken cancellationToken
     ) {
         ArgumentNullException.ThrowIfNull(picture);
         ArgumentNullException.ThrowIfNull(texture);
         var image = new FloatImage(picture.Width, picture.Height, picture.Lanes, picture.Samples);
+        var (width, height, lanes) = (image.Width, image.Height, image.Channels);
         switch (texture.Format) {
             case ExportFormats.Png8:
-                return (PngCodec.Encode8(image.Width, image.Height, image.Channels, Unsigned<byte>(picture, 255)), 1);
+                return (PngCodec.Encode8(width, height, lanes, Bytes(picture, dither)), 1);
             case ExportFormats.Png16:
-                return (PngCodec.Encode16(image.Width, image.Height, image.Channels, Unsigned<ushort>(picture, 65535)),
-                    1);
+                return (PngCodec.Encode16(width, height, lanes, Unsigned<ushort>(picture, 65535)), 1);
+            case ExportFormats.Tga:
+                return (TgaWriter.Encode(width, height, lanes, Bytes(picture, dither)), 1);
+            case ExportFormats.Jpeg:
+                var quality = int.Parse(texture.Quality, System.Globalization.CultureInfo.InvariantCulture);
+                return (JpegWriter.Encode(width, height, lanes, Bytes(picture, dither), quality), 1);
+            case ExportFormats.WebP:
+                return (WebPWriter.Encode(width, height, lanes, Bytes(picture, dither)), 1);
+            case ExportFormats.Tiff8:
+                return (TiffWriter.Encode8(width, height, lanes, Bytes(picture, dither)), 1);
+            case ExportFormats.Tiff16:
+                return (TiffWriter.Encode16(width, height, lanes, Unsigned<ushort>(picture, 65535)), 1);
+            case ExportFormats.Tiff32:
+                return (TiffWriter.EncodeFloat(image), 1);
+            case ExportFormats.Hdr:
+                return (HdrWriter.Encode(image), 1);
             case ExportFormats.Exr16:
                 return (ExrCodec.Encode(image, ExrPixels.Half), 1);
             case ExportFormats.Exr32:
@@ -52,6 +81,43 @@ public static class ExportEncoder {
             at => values[at] = T.CreateTruncating(MathF.Round(Math.Clamp(picture.Samples[at], 0f, 1f) * top))
         );
         return values;
+    }
+
+    /// <summary>
+    ///     Eight-bit samples, rounded or dithered. Dithering rounds up with a chance equal to how far past the level
+    ///     below a value is, so a gradient's mean is kept where rounding steps it, and a value already on a level is
+    ///     left there: a mask's zero and one stay exactly zero and one. The chance is a hash of the sample's place, so
+    ///     the same maps give the same bytes, which is what lets a file be keyed and reused.
+    /// </summary>
+    public static byte[] Bytes(PackedPicture picture, bool dither) {
+        ArgumentNullException.ThrowIfNull(picture);
+        if (!dither) {
+            return Unsigned<byte>(picture, 255);
+        }
+
+        var values = new byte[picture.Samples.Length];
+        Parallel.For(
+            0,
+            values.Length,
+            at => {
+                var level = Math.Clamp(picture.Samples[at], 0f, 1f) * 255f;
+                var below = MathF.Floor(level);
+                var fraction = level - below;
+                values[at] = (byte)(fraction < 1e-4f ? below : below + (Chance(at) < fraction ? 1 : 0));
+            }
+        );
+        return values;
+    }
+
+    /// <summary>A number in [0, 1) from a place: a 32-bit integer hash (Wang's), so it has no pattern to see.</summary>
+    static float Chance(int at) {
+        var x = (uint)at;
+        x = (x ^ 61) ^ (x >> 16);
+        x *= 9;
+        x ^= x >> 4;
+        x *= 0x27d4eb2d;
+        x ^= x >> 15;
+        return (x >> 8) / 16777216f;
     }
 
     /// <summary>

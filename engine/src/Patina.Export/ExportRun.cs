@@ -3,6 +3,7 @@ using Patina.Export.Presets;
 using Patina.Jobs;
 using Patina.Library;
 using System.Text.Json;
+using Vixen.Core.Imaging;
 
 namespace Patina.Export;
 
@@ -63,10 +64,20 @@ public static class ExportRun {
         List<ExportedFile> files = [];
         List<string> skipped = [];
         List<string> warnings = [];
-        var steps = preset.Textures.Count * sets.Count;
+        var several = sets.Count > 1;
+        if (preset.Sets is { } chosen) {
+            var missing = chosen.Where(name => sets.All(set => set.Name != name)).ToList();
+            if (missing.Count > 0) {
+                warnings.Add($"No texture set is called {string.Join(", ", missing)}, so nothing was written for it.");
+            }
+
+            sets = [..sets.Where(set => chosen.Contains(set.Name, StringComparer.Ordinal))];
+        }
+
+        var steps = Math.Max(1, preset.Textures.Count * sets.Count);
         for (var at = 0; at < sets.Count; at++) {
             var (set, maps) = (sets[at].Name, sets[at].Maps);
-            var named = sets.Count > 1 ? $"{set}: " : string.Empty;
+            var named = several ? $"{set}: " : string.Empty;
             for (var index = 0; index < preset.Textures.Count; index++) {
                 cancellationToken.ThrowIfCancellationRequested();
                 var texture = preset.Textures[index];
@@ -75,9 +86,9 @@ public static class ExportRun {
                     continue;
                 }
 
-                var picture = ChannelPacker.Pack(texture, maps, preset.Normal);
+                var picture = Finish(ChannelPacker.Pack(texture, maps, preset.Normal), maps, preset);
                 warnings.AddRange(picture.Warnings.Select(warning => named + warning));
-                var (bytes, levels) = ExportEncoder.Encode(picture, texture, cancellationToken);
+                var (bytes, levels) = ExportEncoder.Encode(picture, texture, preset.Dither, cancellationToken);
                 var extension = ExportFormats.ExtensionOf(texture.Format);
                 var name = $"s{at}t{index}{extension}";
                 File.WriteAllBytes(Path.Combine(part, name), bytes);
@@ -98,13 +109,51 @@ public static class ExportRun {
             }
         }
 
-        var manifest = new ExportManifest(preset.Id, files, skipped, warnings);
+        var manifest = new ExportManifest(preset.Id, files, skipped, warnings) { PerSet = several };
         File.WriteAllBytes(
             Path.Combine(part, ManifestFile),
             JsonSerializer.SerializeToUtf8Bytes(manifest, ContractsJsonContext.Default.ExportManifest)
         );
         BuildObjects.Publish(part, folder);
         return manifest;
+    }
+
+    /// <summary>
+    ///     Pads a packed picture from its set's coverage, then changes its size. Padding comes first, at the maps' own
+    ///     size, so that a smaller file's edge texels average the islands' colour and not the background's.
+    /// </summary>
+    static PackedPicture Finish(PackedPicture picture, IReadOnlyDictionary<string, MapPicture> maps, ExportPreset preset) {
+        var image = new FloatImage(picture.Width, picture.Height, picture.Lanes, picture.Samples);
+        var warnings = picture.Warnings;
+        if (preset.Padding.Mode != PaddingMode.None && maps.TryGetValue(ExportMaps.Coverage, out var coverage)) {
+            var islands = ImageResize.Resize(coverage.Image, image.Width, image.Height, ResizeFilter.Nearest);
+            var covered = new bool[image.Width * image.Height];
+            for (var at = 0; at < covered.Length; at++) {
+                covered[at] = islands.Samples[at * islands.Channels] >= 0.5f;
+            }
+
+            ImagePadding.Pad(
+                image,
+                covered,
+                preset.Padding.Mode,
+                preset.Padding.Distance,
+                [..preset.Padding.Colour]
+            );
+        }
+
+        if (preset.Size is { } side && side != Math.Max(image.Width, image.Height)) {
+            var scale = side / (double)Math.Max(image.Width, image.Height);
+            var (width, height) = (
+                Math.Max(1, (int)Math.Round(image.Width * scale)),
+                Math.Max(1, (int)Math.Round(image.Height * scale))
+            );
+            image = ImageResize.Resize(image, width, height, ExportFilters.Of(preset.Filter));
+            if (scale > 1) {
+                warnings = [..warnings, $"The maps are {picture.Width}×{picture.Height} and were enlarged to {width}×{height}."];
+            }
+        }
+
+        return new(image.Width, image.Height, image.Channels, image.Samples, warnings);
     }
 
     /// <summary>
@@ -133,7 +182,7 @@ public static class ExportRun {
         Directory.CreateDirectory(target);
         var before = BuildObjects.Delivered(target);
 
-        var several = manifest.Files.Select(static file => file.Set).Distinct(StringComparer.Ordinal).Count() > 1;
+        var several = manifest.PerSet || manifest.Files.Select(static file => file.Set).Distinct(StringComparer.Ordinal).Count() > 1;
         List<string> delivered = [];
         foreach (var file in manifest.Files) {
             var name = NamingTemplate.Resolve(

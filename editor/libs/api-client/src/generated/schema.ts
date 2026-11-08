@@ -1676,6 +1676,7 @@ export interface components {
       presets?: null | string[];
       /** @description Where exports go, or null for `exports/` in the library. */
       folder?: null | string;
+      options?: null | components['schemas']['ExportOptions'];
     };
     /** @description Whether a document has work autosaved after its last save. */
     DocumentRecovery: {
@@ -1692,14 +1693,90 @@ export interface components {
       /** @description True puts it in place of the file, and false forgets it. */
       restore: boolean;
     };
+    /** @description One file of a preset changed for one export. */
+    ExportFileChoice: {
+      /** @description Which file: its naming template. */
+      template: string;
+      /**
+       * @description Whether it is written at all.
+       * @default true
+       */
+      enabled: boolean;
+      /** @description Another format for it, or null for the preset's. */
+      format?: null | string;
+    };
+    /** @description A file format a preset or an export can name. */
+    ExportFormatInfo: {
+      /** @description Its name in a preset. */
+      id: string;
+      /** @description Its name for a person, with its depth. */
+      label: string;
+      /** @description What its files end in. */
+      extension: string;
+      /** @description The lane counts it holds. */
+      lanes: number[];
+      /** @description Whether it holds only linear numbers, as a float or 16-bit format does here. */
+      linear: boolean;
+      /** @description Whether it is a GPU container, the only kind a preset can block-compress. */
+      container: boolean;
+    };
+    /**
+     * @description A preset's settings changed for one export, as an export dialog changes them. Null fields keep the preset's.
+     *     Changing one gives the export another key, so it never reuses files made under other settings.
+     */
+    ExportOptions: {
+      /**
+       * Format: int32
+       * @description The longest side of every file, 1 to 8192: 2048 makes a 4096 map's file 2048.
+       */
+      size?: null | number;
+      /** @description How a file changes size: box, bilinear or nearest. */
+      filter?: null | string;
+      padding?: null | components['schemas']['ExportPaddingInfo'];
+      /** @description Whether 8-bit files are dithered rather than rounded. */
+      dither?: null | boolean;
+      /** @description The texture sets to write, or null for every one. */
+      sets?: null | string[];
+      /** @description Files turned off or written in another format. */
+      files?: null | components['schemas']['ExportFileChoice'][];
+    };
+    /** @description What fills the texels a mesh's layout leaves empty. */
+    ExportPaddingInfo: {
+      /** @description none, infinite, transparent, colour or diffusion. */
+      mode: string;
+      /**
+       * Format: int32
+       * @description How many texels the islands grow by first, for every mode but none and infinite.
+       */
+      distance: number;
+      /** @description For colour, the value of each lane of a file, 0 to 1. */
+      colour: number[];
+    };
     /** @description One file of a preset, as a client shows it. */
     ExportPresetFile: {
+      /** @description Its naming template. */
       template: string;
+      /** @description Its format: one of IReadOnlyList&lt;ExportFormatInfo&gt; ExportPresetList.Formats. */
       format: string;
+      /** @description What is inside a KTX2 or DDS file, or none. */
       compression: string;
+      /** @description srgb or linear. */
       space: string;
+      /** @description Whether it carries a mip chain. */
       mips: boolean;
+      /** @description The maps it reads. */
       maps: string[];
+      /**
+       * Format: int32
+       * @description How many lanes it has, which decides the formats it can change to.
+       * @default 4
+       */
+      lanes: number;
+      /**
+       * @description For JPEG, 1 to 100; for block compression, fast, balanced or best.
+       * @default balanced
+       */
+      quality: string;
     };
     /** @description An export preset. */
     ExportPresetInfo: {
@@ -1717,11 +1794,30 @@ export interface components {
       revision: string;
       /** @description What it makes. */
       files: components['schemas']['ExportPresetFile'][];
+      /** @description What fills the background of a mesh's layout. */
+      padding: components['schemas']['ExportPaddingInfo'];
+      /** @description Whether 8-bit files are dithered. */
+      dither: boolean;
+      /**
+       * Format: int32
+       * @description The longest side of every file, or null for the maps' own size.
+       */
+      size?: null | number;
+      /** @description How a file changes size. */
+      filter: string;
     };
     /** @description Every preset a library can use, and the files in its folder that are not presets. */
     ExportPresetList: {
+      /** @description The presets. */
       presets: components['schemas']['ExportPresetInfo'][];
+      /** @description One line per file that is not a preset. */
       problems: string[];
+      /** @description The file formats there are, for a client that offers another one. */
+      formats: components['schemas']['ExportFormatInfo'][];
+      /** @description The padding modes there are, in order. */
+      paddings: string[];
+      /** @description The resize filters there are. */
+      filters: string[];
     };
     /** @description One preset in a project's report. */
     ExportReport: {
@@ -2784,6 +2880,8 @@ export interface components {
       folder: string;
       /** @description Why a finished build wrote nothing, or null when it wrote something or something failed. */
       nothing?: null | string;
+      /** @description What a running build is on, for a person: a project and an output or a preset. Null once it ends. */
+      current?: null | string;
     };
     /** @description A graph rendered to a picture a brush stamps. */
     MaterialBrush: {
@@ -2895,6 +2993,11 @@ export interface components {
       pictures: components['schemas']['ProjectFile'][];
       /** @description Whether a mesh with no UV layout is given one when it is set. */
       autoUnwrap: boolean;
+      /**
+       * @description The texture sets an export writes, by name: what IReadOnlyList&lt;string&gt;? ExportOptions.Sets chooses from. Empty for a
+       *     project of one unnamed set.
+       */
+      exportSets: string[];
       /** @description Whether paint moves to a new mesh's layout. */
       preservePaint: boolean;
       /** @description How Auto Unwrap lays a mesh out. */

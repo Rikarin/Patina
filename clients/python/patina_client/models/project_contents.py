@@ -39,6 +39,9 @@ class ProjectContents:
             bakes (list[ProjectFile]): The bakes it has.
             pictures (list[ProjectFile]): The pictures brought in for layers and masks.
             auto_unwrap (bool): Whether a mesh with no UV layout is given one when it is set.
+            export_sets (list[str]): The texture sets an export writes, by name: what IReadOnlyList&lt;string&gt;?
+                ExportOptions.Sets chooses from. Empty for a
+                project of one unnamed set.
             preserve_paint (bool): Whether paint moves to a new mesh's layout.
             unwrap (UnwrapOptions): How Auto Unwrap lays out a mesh. Each texture set gets an atlas of its own.
      """
@@ -52,6 +55,7 @@ class ProjectContents:
     bakes: list[ProjectFile]
     pictures: list[ProjectFile]
     auto_unwrap: bool
+    export_sets: list[str]
     preserve_paint: bool
     unwrap: UnwrapOptions
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -103,6 +107,10 @@ class ProjectContents:
 
         auto_unwrap = self.auto_unwrap
 
+        export_sets = self.export_sets
+
+
+
         preserve_paint = self.preserve_paint
 
         unwrap = self.unwrap.to_dict()
@@ -120,6 +128,7 @@ class ProjectContents:
             "bakes": bakes,
             "pictures": pictures,
             "autoUnwrap": auto_unwrap,
+            "exportSets": export_sets,
             "preservePaint": preserve_paint,
             "unwrap": unwrap,
         })
@@ -188,6 +197,9 @@ class ProjectContents:
 
         auto_unwrap = d.pop("autoUnwrap")
 
+        export_sets = cast(list[str], d.pop("exportSets"))
+
+
         preserve_paint = d.pop("preservePaint")
 
         unwrap = UnwrapOptions.from_dict(d.pop("unwrap"))
@@ -205,6 +217,7 @@ class ProjectContents:
             bakes=bakes,
             pictures=pictures,
             auto_unwrap=auto_unwrap,
+            export_sets=export_sets,
             preserve_paint=preserve_paint,
             unwrap=unwrap,
         )

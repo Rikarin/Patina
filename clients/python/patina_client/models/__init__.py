@@ -11,6 +11,10 @@ from .build_preview_project import BuildPreviewProject
 from .build_request import BuildRequest
 from .document_recovery import DocumentRecovery
 from .document_recovery_request import DocumentRecoveryRequest
+from .export_file_choice import ExportFileChoice
+from .export_format_info import ExportFormatInfo
+from .export_options import ExportOptions
+from .export_padding_info import ExportPaddingInfo
 from .export_preset_file import ExportPresetFile
 from .export_preset_info import ExportPresetInfo
 from .export_preset_list import ExportPresetList
@@ -243,6 +247,10 @@ __all__ = (
     "BuildRequest",
     "DocumentRecovery",
     "DocumentRecoveryRequest",
+    "ExportFileChoice",
+    "ExportFormatInfo",
+    "ExportOptions",
+    "ExportPaddingInfo",
     "ExportPresetFile",
     "ExportPresetInfo",
     "ExportPresetList",

@@ -54,7 +54,23 @@ static class BuildEndpoints {
         }
 
         var found = ExportPresetCatalog.Read(library.RootPath);
-        return TypedResults.Ok(new ExportPresetList([..found.Presets.Select(Describe)], found.Problems));
+        return TypedResults.Ok(
+            new ExportPresetList([..found.Presets.Select(Describe)], found.Problems) {
+                Formats = [
+                    ..ExportFormats.All.Select(static f => new ExportFormatInfo(
+                            f,
+                            ExportFormats.LabelOf(f),
+                            ExportFormats.ExtensionOf(f),
+                            ExportFormats.LanesOf(f),
+                            ExportFormats.IsFloat(f) || ExportFormats.IsWide(f),
+                            ExportFormats.IsContainer(f)
+                        )
+                    )
+                ],
+                Paddings = ExportPadding.Names,
+                Filters = ExportFilters.All
+            }
+        );
     }
 
     static ExportPresetInfo Describe(ExportPreset preset) =>
@@ -72,11 +88,18 @@ static class BuildEndpoints {
                         t.Compression,
                         t.Space,
                         t.Mips,
-                        [..t.Maps]
+                        [..t.Maps],
+                        t.Channels.Count,
+                        t.Quality
                     )
                 )
             ]
-        );
+        ) {
+            Padding = new(ExportPadding.NameOf(preset.Padding.Mode), preset.Padding.Distance, preset.Padding.Colour),
+            Dither = preset.Dither,
+            Size = preset.Size,
+            Filter = preset.Filter
+        };
 
     static async Task<Results<Ok<BuildPreview>, ProblemHttpResult>> PreviewAsync(
         BuildRequest request,

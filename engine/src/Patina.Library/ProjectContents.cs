@@ -51,7 +51,17 @@ static class ProjectFiles {
                 ..files.Where(IsPicture)
                     .Select(f => new ProjectFile("picture", Path.GetFileName(f), Below(path, f)))
             ]
-        ) { AutoUnwrap = document.AutoUnwrap, PreservePaint = document.PreservePaint, Unwrap = document.Unwrap };
+        ) {
+            AutoUnwrap = document.AutoUnwrap,
+            PreservePaint = document.PreservePaint,
+            Unwrap = document.Unwrap,
+            ExportSets = [
+                ..ProjectOutputs.Of(document, full)
+                    .Select(static output => output.Settings.GetValueOrDefault(ProjectOutputs.SetSetting, string.Empty))
+                    .Where(static set => set.Length > 0)
+                    .Distinct(StringComparer.Ordinal)
+            ]
+        };
     }
 
     /// <summary>Brings a mesh into a project, unless it is in there already, and lists it.</summary>
