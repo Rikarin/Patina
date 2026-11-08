@@ -79,12 +79,7 @@ async function carryMoltenVK() {
   const archive = join(cache, `MoltenVK-macos-${MoltenVK.version}.tar`);
   mkdirSync(cache, { recursive: true });
   if (!existsSync(archive) || sha256(readFileSync(archive)) !== MoltenVK.sha256) {
-    const response = await fetch(MoltenVK.url);
-    if (!response.ok) {
-      throw new Error(`${MoltenVK.url} answered ${response.status}`);
-    }
-
-    const bytes = Buffer.from(await response.arrayBuffer());
+    const bytes = await download(MoltenVK.url);
     if (sha256(bytes) !== MoltenVK.sha256) {
       throw new Error(`${MoltenVK.url} is not the archive pinned here: it hashes to ${sha256(bytes)}`);
     }
@@ -97,6 +92,54 @@ async function carryMoltenVK() {
   execFileSync('tar', ['-xf', archive, '-C', cache, 'MoltenVK/LICENSE', 'MoltenVK/MoltenVK/dynamic/dylib/macOS']);
   cpSync(join(extracted, 'MoltenVK/dynamic/dylib/macOS/libMoltenVK.dylib'), join(out, 'libMoltenVK.dylib'));
   cpSync(join(extracted, 'LICENSE'), join(out, 'MoltenVK-LICENSE.txt'));
+}
+
+/**
+ * A release file's bytes. GitHub's release download links have answered 503 and 504 for whole afternoons while its API
+ * served the same file, so each try takes the link and then, given a token, the API, before waiting longer. The caller
+ * checks the hash, so where the bytes came from does not matter.
+ */
+async function download(url) {
+  const failures = [];
+  for (const wait of [0, 10, 30, 90]) {
+    await new Promise(done => setTimeout(done, wait * 1000));
+    for (const attempt of [() => fetch(url), () => fromApi(url)]) {
+      try {
+        const response = await attempt();
+        if (response?.ok) {
+          return Buffer.from(await response.arrayBuffer());
+        }
+        if (response) {
+          failures.push(`${response.url} answered ${response.status}`);
+        }
+      } catch (error) {
+        failures.push(`${url}: ${error.message}`);
+      }
+    }
+  }
+  throw new Error(`Could not download ${url}:\n  ${failures.join('\n  ')}`);
+}
+
+/** The same release file through the GitHub API, or nothing without a token or for a link that is not a release's. */
+async function fromApi(url) {
+  const token = process.env.RELEASE_DOWNLOAD_TOKEN;
+  const release = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/releases\/download\/([^/]+)\/([^/]+)$/.exec(url);
+  if (!token || !release) {
+    return undefined;
+  }
+
+  const [, owner, repo, tag, name] = release;
+  const headers = { authorization: `Bearer ${token}`, 'x-github-api-version': '2022-11-28' };
+  const listing = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases/tags/${tag}`, { headers });
+  if (!listing.ok) {
+    return listing;
+  }
+
+  const asset = (await listing.json()).assets.find(each => each.name === name);
+  if (!asset) {
+    throw new Error(`release ${tag} of ${owner}/${repo} has no ${name}`);
+  }
+  return fetch(asset.url, { headers: { ...headers, accept: 'application/octet-stream' } });
 }
 
 function sha256(bytes) {

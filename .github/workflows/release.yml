@@ -96,7 +96,8 @@ jobs:
           node-version: 24
           cache: pnpm
           cache-dependency-path: editor/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
+      - id: install
+        uses: ./.github/actions/editor-install
       - name: Build and package
         shell: bash
         env:
@@ -107,7 +108,14 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           # Without a certificate, do not let electron-builder pick one up from the runner's keychain.
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.CSC_LINK != '' }}
+          # Lets publish-engine.mjs fetch MoltenVK through the API when the release link fails; read by nothing else.
+          RELEASE_DOWNLOAD_TOKEN: ${{ github.token }}
         run: pnpm dist
+      - if: always() && steps.install.outputs.builder-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/electron-builder
+          key: ${{ steps.install.outputs.builder-key }}
       # Hashed here, where they were built: the release job checks what it downloads against these and publishes
       # them as SHA256SUMS. "<sha256>  <name>" per line (Git Bash marks binary mode with "*"; that is dropped).
       - name: Checksums
