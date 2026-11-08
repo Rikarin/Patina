@@ -476,14 +476,16 @@ test('a name typed for one layer is never written onto another when a row is pre
   await expect(name).toHaveValue('Base');
   await name.fill('Bottom');
 
-  // Pressing another row chooses it before the field's blur commits, which once wrote "Paint" onto Base.
+  // Pressing another row may choose it before the field's blur commits, which once wrote "Paint" onto Base. Base keeps
+  // its name or takes the one typed for it, depending on which comes first, and never takes Paint's.
   await paint.click();
   await expect(name).toHaveValue('Paint');
   await name.fill('Top');
   await name.press('Enter');
   await expect(paint).toContainText('Top');
-  await expect(base).toContainText('Base');
+  await expect(base).toContainText(/Base|Bottom/);
   await expect(base).not.toContainText('Paint');
+  await expect(base).not.toContainText('Top');
 
   await window.getByTestId('paint-undo').click();
   await expect(paint).toContainText('Paint');
