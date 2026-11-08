@@ -7,6 +7,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- The viewport has display settings beside the picture: perspective or orthographic with a field of view, the views it snaps to, exposure in stops, the environment and the light turned apart, shadows, the background's opacity and blur, Vixen's ACES, AgX, Filmic and Reinhard curves or none, contrast, saturation, vignette, grain, lateral aberration, sharpening and a wireframe. A `.cube` look sits beside the environment. The view shows the model lit, as clay, unlit, one stored channel exactly as the file holds it, or a mesh map from the last bake, and V steps through them. The number pad snaps to the front, side and top as Blender's does. A project keeps the settings and opens as it was left, and any client can set them with `PUT /api/v1/viewport/display`.
 - A lazy mouse: the brush trails the pointer by a distance set in the brush panel, and paints the same however fast the pointer reports. Shift-click draws a straight line on from where the last stroke ended, in the map or on the mesh, and Cmd or Ctrl snaps it to 5°.
 - Layers duplicate (Cmd+D), copy, cut and paste, from the layer menu and from Edit. A copy is the layers and their paint as they stood, so a cut layer still pastes, and it pastes into another texture set or stack of the same size. A duplicated or pasted paint layer and its mask have pixels of their own, never the original's. Each is one undo step.
 - A new paint layer's first stroke no longer shows paint a removed layer of the same name left in its file.
@@ -36,7 +37,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A library reopens on the document that was last in front.
 - Mask generators have settings: how far Metal Edge Wear reaches, how much Dust settles, and the rest of what each one exposes.
 - The viewport works from the keyboard: arrows turn it, Shift and the arrows pan it, plus and minus zoom, and F frames the model.
-- The viewport has shadows, and an environment to choose: Studio, Overcast, Sunset, or an `.hdr` panorama. Turning the light turns the environment with it.
+- The viewport has shadows, and an environment to choose: Studio, Overcast, Sunset, or an `.hdr` panorama.
 - Projects can be duplicated and deleted from the Library. A deleted project goes to the library's hidden `.trash` folder.
 - The graph toolbar and the brush tools are icons, the brush colour keeps recent colours, and roughness, metalness and the like are sliders on a constant fill.
 - A pen's pressure changes brush size by default.
@@ -45,6 +46,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The viewport shows the whole model in a pane of any shape: the opening view and F fit it to the pane's narrower side, where a tall pane used to cut it off. F keeps the angle the camera looks from.
+- A panorama's sun keeps its light. Every texel used to be clamped at 64, which kept a small part of a real sun, and the panorama was read nearest, which could miss a small sun altogether.
 - Painted height lights the surface. A texture set with a Height channel writes a normal from it, combined over its Normal channel when it has one, so a bump painted in height shows in the viewport and goes out with the export. Texture Sets has a Sharp or Smooth choice for how height becomes the normal; Smooth, the default, hides the steps of an 8-bit height.
 - A mesh laid out past UDIM tile 1001 is no longer taken in silence. Layers says which tiles a texture set reaches as soon as it opens, and a bake refuses it by name instead of filling 1001 and leaving the rest empty. Patina still paints, bakes and exports one tile.
 - Auto Unwrap keeps what it did not lay out: smooth normals, every material (each its own texture set with an atlas of its own), vertex colours and part names. A material that already has UVs keeps them. Project Settings sets its atlas size, margin, packing, island turns, texel density and what happens when islands do not fit, lays the mesh out again when they change, and shows what each set's layout came to: islands, stretch, how much of the atlas is used, and any turned-over triangles.

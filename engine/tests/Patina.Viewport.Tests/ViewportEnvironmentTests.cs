@@ -41,7 +41,11 @@ public sealed class ViewportEnvironmentTests : IDisposable {
         var solidAngle = MathF.Tau / width * (MathF.Cos(top) - MathF.Cos(bottom));
         var middle = (top + bottom) * 0.5f;
         var across = ((column + 0.5f) / width - 0.5f) * MathF.Tau;
-        var toward = new Vector3(MathF.Sin(middle) * MathF.Sin(across), MathF.Cos(middle), -MathF.Sin(middle) * MathF.Cos(across));
+        var toward = new Vector3(
+            MathF.Sin(middle) * MathF.Sin(across),
+            MathF.Cos(middle),
+            -MathF.Sin(middle) * MathF.Cos(across)
+        );
         var expected = radiance * solidAngle / MathF.PI;
 
         var received = environment.Irradiance.Irradiance(Vector3.Normalize(toward)).X;

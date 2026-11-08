@@ -347,10 +347,7 @@ public sealed class ViewportSession(
         }
 
         var reply = await connection.SendAsync(
-            new() {
-                Type = IpcTypes.ViewportPick,
-                Pick = new(request.X, request.Y, look, across, down, path)
-            },
+            new() { Type = IpcTypes.ViewportPick, Pick = new(request.X, request.Y, look, across, down, path) },
             cancellationToken
         );
         return reply.Picked!;
@@ -378,10 +375,17 @@ public sealed class ViewportSession(
     ///     Settings a Worker cannot use cost the settings and not the view, as a picture does: the error stays on the
     ///     state and the frame goes on with what the Worker had.
     /// </summary>
-    async Task TellDisplayAsync(IpcConnection connection, ViewportDisplaySet settings, CancellationToken cancellationToken) {
+    async Task TellDisplayAsync(
+        IpcConnection connection,
+        ViewportDisplaySet settings,
+        CancellationToken cancellationToken
+    ) {
         toldDisplay = null;
         try {
-            await connection.SendAsync(new() { Type = IpcTypes.ViewportDisplay, Display = settings }, cancellationToken);
+            await connection.SendAsync(
+                new() { Type = IpcTypes.ViewportDisplay, Display = settings },
+                cancellationToken
+            );
         } catch (IpcException e) {
             ServerLog.ViewportFailed(logger, e.Message);
             lock (changing) {

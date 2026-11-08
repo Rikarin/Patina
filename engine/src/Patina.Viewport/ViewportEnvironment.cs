@@ -99,22 +99,26 @@ sealed class ViewportEnvironment {
         var width = (picture.Width + factor - 1) / factor;
         var height = Math.Max(1, (picture.Height + factor - 1) / factor);
         var shrunk = new float[width * height * 4];
-        Parallel.For(0, height, row => {
-            for (var column = 0; column < width; column++) {
-                var sum = Vector3.Zero;
-                var count = 0;
-                for (var y = row * factor; y < Math.Min((row + 1) * factor, picture.Height); y++) {
-                    for (var x = column * factor; x < Math.Min((column + 1) * factor, picture.Width); x++) {
-                        sum += Texel(picture.Pixels, picture.Width, y, x);
-                        count++;
+        Parallel.For(
+            0,
+            height,
+            row => {
+                for (var column = 0; column < width; column++) {
+                    var sum = Vector3.Zero;
+                    var count = 0;
+                    for (var y = row * factor; y < Math.Min((row + 1) * factor, picture.Height); y++) {
+                        for (var x = column * factor; x < Math.Min((column + 1) * factor, picture.Width); x++) {
+                            sum += Texel(picture.Pixels, picture.Width, y, x);
+                            count++;
+                        }
                     }
-                }
 
-                var mean = sum / Math.Max(count, 1);
-                var at = (row * width + column) * 4;
-                (shrunk[at], shrunk[at + 1], shrunk[at + 2]) = (mean.X, mean.Y, mean.Z);
+                    var mean = sum / Math.Max(count, 1);
+                    var at = (row * width + column) * 4;
+                    (shrunk[at], shrunk[at + 1], shrunk[at + 2]) = (mean.X, mean.Y, mean.Z);
+                }
             }
-        });
+        );
         return (shrunk, width, height);
     }
 

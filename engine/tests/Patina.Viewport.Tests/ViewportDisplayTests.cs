@@ -96,7 +96,8 @@ public sealed class ViewportDisplayTests : IDisposable {
 
         var pixels = Render(renderer, OrbitCamera.Default, width, height);
 
-        var border = Enumerable.Range(0, width).SelectMany(x => new[] { (x, 0), (x, height - 1) })
+        var border = Enumerable.Range(0, width)
+            .SelectMany(x => new[] { (x, 0), (x, height - 1) })
             .Concat(Enumerable.Range(0, height).SelectMany(y => new[] { (0, y), (width - 1, y) }))
             .Count(spot => At(pixels, width, spot.Item1, spot.Item2) is var (r, g, b) && r + g + b > 6);
         var model = Enumerable.Range(0, width * height).Count(i => pixels[i * 4] + pixels[i * 4 + 1] > 40);
@@ -123,7 +124,9 @@ public sealed class ViewportDisplayTests : IDisposable {
         File.WriteAllBytes(picture, PngCodec.Encode(new(Map, Map, Solid(33, 166, 222))));
         renderer.SetPicture(new(picture, "mesh map"));
         var camera = new OrbitCamera(0f, 0f, 0.5f);
-        var tinted = new ViewportShading { Exposure = 2f, ToneMapping = ViewportToneMapping.AgX, Vignette = 1f, Contrast = 1.4f };
+        var tinted = new ViewportShading {
+            Exposure = 2f, ToneMapping = ViewportToneMapping.AgX, Vignette = 1f, Contrast = 1.4f
+        };
 
         (ViewportView View, (int, int, int) Stored)[] cases = [
             (ViewportView.BaseColor, (200, 90, 30)),
@@ -148,7 +151,9 @@ public sealed class ViewportDisplayTests : IDisposable {
     /// <summary>Two stored sRGB colours added as light, as an unlit view adds base colour and emission.</summary>
     static int Added(int one, int other) {
         var linear = Math.Min(Decoded(one) + Decoded(other), 1.0);
-        return (int)Math.Round(255 * (linear <= 0.0031308 ? linear * 12.92 : 1.055 * Math.Pow(linear, 1 / 2.4) - 0.055));
+        return (int)Math.Round(
+            255 * (linear <= 0.0031308 ? linear * 12.92 : 1.055 * Math.Pow(linear, 1 / 2.4) - 0.055)
+        );
 
         static double Decoded(int value) {
             var stored = value / 255.0;
@@ -182,7 +187,8 @@ public sealed class ViewportDisplayTests : IDisposable {
     }
 
     /// <summary>
-    ///     Each of Vixen's curves draws its own picture of about the same brightness, a stop of exposure brightens, and with no curve anything over
+    ///     Each of Vixen's curves draws its own picture of about the same brightness, a stop of exposure brightens, and with
+    ///     no curve anything over
     ///     white clips, which a curve exists to stop.
     /// </summary>
     [Fact]
@@ -217,7 +223,8 @@ public sealed class ViewportDisplayTests : IDisposable {
         var curved = Render(renderer, OrbitCamera.Default, 160, 100);
         Assert.True(Count(clipped, 255) > Count(curved, 255) * 2, "No curve clipped no more than ACES did.");
 
-        static int Count(byte[] pixels, byte value) => Enumerable.Range(0, pixels.Length / 4).Count(i => pixels[i * 4] == value);
+        static int Count(byte[] pixels, byte value) =>
+            Enumerable.Range(0, pixels.Length / 4).Count(i => pixels[i * 4] == value);
     }
 
     /// <summary>
@@ -288,7 +295,9 @@ public sealed class ViewportDisplayTests : IDisposable {
         Assert.True(At(vignette, 160, 1, 1).R + 20 < At(plain, 160, 1, 1).R);
         Assert.InRange(At(vignette, 160, 80, 50).R - At(plain, 160, 80, 50).R, -2, 2);
 
-        foreach (var shading in new ViewportShading[] { new() { Grain = 0.5f }, new() { Aberration = 1f }, new() { Sharpen = 1f } }) {
+        foreach (var shading in new ViewportShading[] {
+                     new() { Grain = 0.5f }, new() { Aberration = 1f }, new() { Sharpen = 1f }
+                 }) {
             renderer.Shading = shading;
             Assert.NotEqual(plain, Render(renderer, OrbitCamera.Default, 160, 100));
         }

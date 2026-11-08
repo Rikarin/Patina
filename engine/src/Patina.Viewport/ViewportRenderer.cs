@@ -25,6 +25,7 @@ public sealed class ViewportRenderer : IDisposable {
 
     /// <summary>How far the edges are lifted towards the eye, in bounding radii.</summary>
     const float WireLift = 0.002f;
+
     const int SettleWidth = 320;
     const int SettleHeight = 200;
     const int SettledFrames = 8;
@@ -128,9 +129,15 @@ public sealed class ViewportRenderer : IDisposable {
             ]
         );
         skySet = BindEnvironment(sky, DescriptorSetSlot.PerMaterial, skyConstants);
-        wireSet = device.CreateDescriptorSet(wire.Effect.SetLayouts[(int)DescriptorSetSlot.PerMaterial], "viewport wire");
+        wireSet = device.CreateDescriptorSet(
+            wire.Effect.SetLayouts[(int)DescriptorSetSlot.PerMaterial],
+            "viewport wire"
+        );
         cleanup.Add(() => device.Destroy(wireSet));
-        device.UpdateDescriptorSet(wireSet, [DescriptorWrite.Uniform(wire.Effect.BlockOf(DescriptorSetSlot.PerMaterial).Binding, wireConstants)]);
+        device.UpdateDescriptorSet(
+            wireSet,
+            [DescriptorWrite.Uniform(wire.Effect.BlockOf(DescriptorSetSlot.PerMaterial).Binding, wireConstants)]
+        );
     }
 
     /// <summary>How the model is lit, shown and finished, from the next frame on.</summary>
@@ -576,7 +583,8 @@ public sealed class ViewportRenderer : IDisposable {
         var (reading, readingView) = (target.Hdr, target.HdrView);
         for (var at = 0; at < stages.Count; at++) {
             var stage = stages[at];
-            var (writing, writingView) = at % 2 == 0 ? (target.Output, target.OutputView) : (target.Spare, target.SpareView);
+            var (writing, writingView) =
+                at % 2 == 0 ? (target.Output, target.OutputView) : (target.Spare, target.SpareView);
             commands.Barrier(
                 new BarrierGroup(
                     [],
@@ -766,7 +774,7 @@ public sealed class ViewportRenderer : IDisposable {
 
             uint[] pairs = edges.Count == 0 ? [0u, 0u] : [..edges];
             EdgeIndexCount = pairs.Length;
-            Edges = Upload<uint>(pairs, BufferUsage.Index, "viewport edges");
+            Edges = Upload(pairs, BufferUsage.Index, "viewport edges");
 
             void Add(uint from, uint to) {
                 var (low, high) = from < to ? (from, to) : (to, from);

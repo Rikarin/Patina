@@ -110,28 +110,23 @@ public static class DocumentCodec {
             return new();
         }
 
+        (string Key, double Value)[] numbers = [
+            ("environmentRotation", display.EnvironmentRotation), ("backgroundBlur", display.BackgroundBlur),
+            ("backgroundOpacity", display.BackgroundOpacity), ("lightRotation", display.LightRotation),
+            ("exposure", display.Exposure), ("shadows", display.Shadows), ("fieldOfView", display.FieldOfView),
+            ("contrast", display.Contrast), ("saturation", display.Saturation), ("vignette", display.Vignette),
+            ("grain", display.Grain), ("aberration", display.Aberration), ("sharpen", display.Sharpen)
+        ];
         return new(
             [
                 Pair("environment", YamlText.Text(display.Environment)),
-                Pair("environmentRotation", YamlText.Plain(display.EnvironmentRotation)),
-                Pair("backgroundBlur", YamlText.Plain(display.BackgroundBlur)),
-                Pair("backgroundOpacity", YamlText.Plain(display.BackgroundOpacity)),
-                Pair("lightRotation", YamlText.Plain(display.LightRotation)),
-                Pair("exposure", YamlText.Plain(display.Exposure)),
-                Pair("shadows", YamlText.Plain(display.Shadows)),
                 Pair("toneMapping", YamlText.Text(display.ToneMapping)),
                 ..Present("look", display.Look),
                 Pair("view", YamlText.Text(display.View)),
                 ..Present("picture", display.Picture),
                 Pair("wireframe", YamlText.Plain(display.Wireframe ? "true" : "false")),
                 Pair("orthographic", YamlText.Plain(display.Orthographic ? "true" : "false")),
-                Pair("fieldOfView", YamlText.Plain(display.FieldOfView)),
-                Pair("contrast", YamlText.Plain(display.Contrast)),
-                Pair("saturation", YamlText.Plain(display.Saturation)),
-                Pair("vignette", YamlText.Plain(display.Vignette)),
-                Pair("grain", YamlText.Plain(display.Grain)),
-                Pair("aberration", YamlText.Plain(display.Aberration)),
-                Pair("sharpen", YamlText.Plain(display.Sharpen))
+                ..numbers.Select(static number => Pair(number.Key, YamlText.Plain(number.Value)))
             ]
         );
     }

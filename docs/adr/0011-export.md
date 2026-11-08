@@ -100,8 +100,9 @@ reads them so, whatever `TexturePixels` says of linear. So **base colour is sRGB
 unchanged, which is what the viewport showed. Everything else is linear, emissive included, because it goes past one, and the
 viewport's emissive slot reads it so. A linear file of base colour decodes it. A float file holds linear numbers.
 
-`PUT /viewport/look` views frames through a `.cube` table in the Worker, on the tonemapped, sRGB-encoded frame, after read-back. It
-is a viewing aid and no export sees it. A table is taken to expect those numbers, which the format does not state. OCIO stays out.
+The `look` of `PUT /viewport/display` views frames through a `.cube` table in the Worker, on the tonemapped, sRGB-encoded frame,
+after read-back. It is a viewing aid and no export sees it. A table is taken to expect those numbers, which the format does not
+state. OCIO stays out. A view of one stored channel skips the curve, the look and the effects, so its pixels are the file's.
 
 ## Block compression and files
 

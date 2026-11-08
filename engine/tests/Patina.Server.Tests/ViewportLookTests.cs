@@ -62,7 +62,11 @@ public sealed class ViewportLookTests {
             Vignette = 0.3
         };
 
-        using var reply = await client.PutAsJsonAsync("/api/v1/viewport/display", asked, TestContext.Current.CancellationToken);
+        using var reply = await client.PutAsJsonAsync(
+            "/api/v1/viewport/display",
+            asked,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Equal(HttpStatusCode.OK, reply.StatusCode);
         var state = await reply.Content.ReadFromJsonAsync<ViewportState>(TestContext.Current.CancellationToken);
@@ -84,7 +88,11 @@ public sealed class ViewportLookTests {
         var before = server.Services.GetRequiredService<ViewportSession>().State.Display;
 
         using var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
-        using var reply = await client.PutAsync("/api/v1/viewport/display", content, TestContext.Current.CancellationToken);
+        using var reply = await client.PutAsync(
+            "/api/v1/viewport/display",
+            content,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Equal(status, reply.StatusCode);
         Assert.Equal(before, server.Services.GetRequiredService<ViewportSession>().State.Display);

@@ -43,7 +43,8 @@ public readonly record struct OrbitCamera(
     public float Lens => Orthographic ? OrthographicLens : FieldOfView;
 
     /// <summary>Where the camera sits for a model with these bounds, in a picture of this shape.</summary>
-    public Vector3 Eye(BoundingBox bounds, float aspectRatio) => Target(bounds) - Direction * Reach(bounds, aspectRatio);
+    public Vector3 Eye(BoundingBox bounds, float aspectRatio) =>
+        Target(bounds) - Direction * Reach(bounds, aspectRatio);
 
     /// <summary>The point it looks at and circles.</summary>
     public Vector3 Target(BoundingBox bounds) => bounds.Center + Pan * Radius(bounds);

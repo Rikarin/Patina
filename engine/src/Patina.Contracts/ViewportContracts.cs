@@ -125,7 +125,8 @@ public sealed record ViewportDisplay(
         (string Name, double Value, double Low, double High)[] ranges = [
             (nameof(FieldOfView), FieldOfView, 0.1, 2.6), (nameof(Exposure), Exposure, -10, 10),
             (nameof(BackgroundBlur), BackgroundBlur, 0, 1), (nameof(BackgroundOpacity), BackgroundOpacity, 0, 1),
-            (nameof(Shadows), Shadows, 0, 1), (nameof(Contrast), Contrast, 0, 2), (nameof(Saturation), Saturation, 0, 2),
+            (nameof(Shadows), Shadows, 0, 1), (nameof(Contrast), Contrast, 0, 2),
+            (nameof(Saturation), Saturation, 0, 2),
             (nameof(Vignette), Vignette, 0, 1), (nameof(Grain), Grain, 0, 1), (nameof(Aberration), Aberration, 0, 1),
             (nameof(Sharpen), Sharpen, 0, 1)
         ];
