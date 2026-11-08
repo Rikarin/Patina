@@ -95,6 +95,11 @@ export class ProjectStore {
   private readonly mutableBakeAsked = signal(0);
   private readonly linkedBakes = new Set<string>();
   private switching = false;
+  /**
+   * The tab on its way to the front, done when it is there. A new tab shows before it is in front, while the viewport
+   * lets go of what was, and something sent in between would otherwise find no project open.
+   */
+  private bringing: Promise<void> = Promise.resolve();
   private restored: string | null = null;
 
   readonly tabs = this.mutableTabs.asReadonly();
@@ -254,6 +259,12 @@ export class ProjectStore {
       return;
     }
 
+    this.bringing = this.bringToFront(tab);
+    await this.bringing;
+  }
+
+  private async bringToFront(tab: DocumentTab): Promise<void> {
+    const path = tab.path;
     this.switching = true;
     try {
       this.detach();
@@ -512,6 +523,7 @@ export class ProjectStore {
 
   /** Brings files into the open project. The Server says what each is, and refuses what nothing could read. */
   async importFiles(paths: readonly string[]): Promise<void> {
+    await this.bringing; // a project made or opened a moment ago is the one meant
     const project = this.current();
     if (!project) {
       this.startAction();

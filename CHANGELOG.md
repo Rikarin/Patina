@@ -58,6 +58,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- File > Import, or files dropped on the window, just after a project is made or opened bring the files into it, where they said to open a project while its tab was already showing.
 - Ambient Occlusion and Height to AO tile on every GPU. On some drivers, Linux's software Vulkan among them, the first column and row read the far edge and left a seam where the picture repeats.
 - Transform 2D turns a graph that is not square in texels, so a circle stays round. It turned in the unit square, which squashed a turned picture by the graph's aspect.
 - The viewport shows the whole model in a pane of any shape: the opening view and F fit it to the pane's narrower side, where a tall pane used to cut it off. F keeps the angle the camera looks from.

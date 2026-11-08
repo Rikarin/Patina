@@ -523,6 +523,28 @@ describe('ProjectStore', () => {
       expect(store.current()?.pictures).toHaveLength(1);
     });
 
+    it('brings files into a project whose tab shows but is not in front yet', async () => {
+      const { store, client } = harness();
+      let release = (): void => undefined;
+      client.DELETE.mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            release = () => resolve({ data: {}, response: new Response() });
+          })
+      );
+      client.POST.mockImplementation(reply as never);
+      const opening = store.open('a');
+      await vi.waitFor(() => expect(store.tabs()).toHaveLength(1));
+      expect(store.current()).toBeNull(); // the viewport is still letting go of what was in front
+
+      const importing = store.importFiles(['/in/rust.png']);
+      release();
+      await Promise.all([opening, importing]);
+
+      expect(store.failure()).toBeNull();
+      expect(store.notice()).toBe('Imported rust.png into A');
+    });
+
     it('says nothing worked when nothing did', async () => {
       const { store, client } = harness();
       await store.open('a');
