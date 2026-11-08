@@ -508,6 +508,10 @@ public sealed record StackLoad(
 ///     For no stroke at all: the canvas, relative to the stack or absolute, that <paramref name="Paint" /> becomes a
 ///     copy of, every channel of it. Undone, the copy goes.
 /// </param>
+/// <param name="Capture">
+///     For no stroke at all: the group of a document whose composite <paramref name="Paint" /> becomes, every channel
+///     of it, which is how a group is flattened. Undone, the canvas is empty again.
+/// </param>
 public sealed record StackPaintPart(
     long Id,
     string Paint,
@@ -521,8 +525,15 @@ public sealed record StackPaintPart(
     string Curve,
     StackSymmetry? Symmetry,
     uint? Start = null,
-    string? From = null
+    string? From = null,
+    StackCapture? Capture = null
 );
+
+/// <summary>What a flattened group's canvas is made of.</summary>
+/// <param name="Document">The stack as text, as it stood when the group was flattened.</param>
+/// <param name="Layer">The group's id.</param>
+/// <param name="Backdrop">Whether a pass-through group keeps what is beneath it, which only a whole stack does.</param>
+public sealed record StackCapture(string Document, string Layer, bool Backdrop);
 
 #pragma warning restore SK7005
 

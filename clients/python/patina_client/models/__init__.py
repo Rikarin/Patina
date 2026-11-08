@@ -166,6 +166,9 @@ from .project_report_page import ProjectReportPage
 from .project_settings_request import ProjectSettingsRequest
 from .project_summary import ProjectSummary
 from .project_viewport_request import ProjectViewportRequest
+from .stack_anchor import StackAnchor
+from .stack_anchor_ref import StackAnchorRef
+from .stack_anchor_use import StackAnchorUse
 from .stack_brush import StackBrush
 from .stack_brush_terms import StackBrushTerms
 from .stack_channel import StackChannel
@@ -179,6 +182,8 @@ from .stack_command_stack_add_layer_op import StackCommandStackAddLayerOp
 from .stack_command_stack_add_layer_values_type_1 import StackCommandStackAddLayerValuesType1
 from .stack_command_stack_duplicate_layers import StackCommandStackDuplicateLayers
 from .stack_command_stack_duplicate_layers_op import StackCommandStackDuplicateLayersOp
+from .stack_command_stack_flatten_layer import StackCommandStackFlattenLayer
+from .stack_command_stack_flatten_layer_op import StackCommandStackFlattenLayerOp
 from .stack_command_stack_move_layer import StackCommandStackMoveLayer
 from .stack_command_stack_move_layer_op import StackCommandStackMoveLayerOp
 from .stack_command_stack_nest_layer import StackCommandStackNestLayer
@@ -190,6 +195,7 @@ from .stack_command_stack_remove_layer_op import StackCommandStackRemoveLayerOp
 from .stack_command_stack_set_height_normal import StackCommandStackSetHeightNormal
 from .stack_command_stack_set_height_normal_op import StackCommandStackSetHeightNormalOp
 from .stack_command_stack_set_layer import StackCommandStackSetLayer
+from .stack_command_stack_set_layer_inputs_type_1 import StackCommandStackSetLayerInputsType1
 from .stack_command_stack_set_layer_op import StackCommandStackSetLayerOp
 from .stack_command_stack_set_layer_parameters_type_1 import StackCommandStackSetLayerParametersType1
 from .stack_command_stack_set_layer_settings_type_1 import StackCommandStackSetLayerSettingsType1
@@ -201,6 +207,8 @@ from .stack_command_stack_set_seed import StackCommandStackSetSeed
 from .stack_command_stack_set_seed_op import StackCommandStackSetSeedOp
 from .stack_command_stack_stroke import StackCommandStackStroke
 from .stack_command_stack_stroke_op import StackCommandStackStrokeOp
+from .stack_command_stack_unflatten_layer import StackCommandStackUnflattenLayer
+from .stack_command_stack_unflatten_layer_op import StackCommandStackUnflattenLayerOp
 from .stack_create_request import StackCreateRequest
 from .stack_delta import StackDelta
 from .stack_edit_result import StackEditResult
@@ -212,14 +220,17 @@ from .stack_filter_kind import StackFilterKind
 from .stack_id_colour import StackIdColour
 from .stack_id_colours import StackIdColours
 from .stack_layer import StackLayer
+from .stack_layer_inputs_type_1 import StackLayerInputsType1
 from .stack_layer_parameters_type_1 import StackLayerParametersType1
 from .stack_layer_settings import StackLayerSettings
 from .stack_layer_textures import StackLayerTextures
 from .stack_layer_values import StackLayerValues
 from .stack_mask import StackMask
 from .stack_mask_effect import StackMaskEffect
+from .stack_mask_effect_inputs_type_1 import StackMaskEffectInputsType1
 from .stack_mask_effect_texts_type_1 import StackMaskEffectTextsType1
 from .stack_mask_effect_values_type_1 import StackMaskEffectValuesType1
+from .stack_mask_inputs_type_1 import StackMaskInputsType1
 from .stack_mask_parameters_type_1 import StackMaskParametersType1
 from .stack_mesh_maps_request import StackMeshMapsRequest
 from .stack_mesh_mask import StackMeshMask
@@ -426,6 +437,9 @@ __all__ = (
     "ProjectSettingsRequest",
     "ProjectSummary",
     "ProjectViewportRequest",
+    "StackAnchor",
+    "StackAnchorRef",
+    "StackAnchorUse",
     "StackBrush",
     "StackBrushTerms",
     "StackChannel",
@@ -439,6 +453,8 @@ __all__ = (
     "StackCommandStackAddLayerValuesType1",
     "StackCommandStackDuplicateLayers",
     "StackCommandStackDuplicateLayersOp",
+    "StackCommandStackFlattenLayer",
+    "StackCommandStackFlattenLayerOp",
     "StackCommandStackMoveLayer",
     "StackCommandStackMoveLayerOp",
     "StackCommandStackNestLayer",
@@ -450,6 +466,7 @@ __all__ = (
     "StackCommandStackSetHeightNormal",
     "StackCommandStackSetHeightNormalOp",
     "StackCommandStackSetLayer",
+    "StackCommandStackSetLayerInputsType1",
     "StackCommandStackSetLayerOp",
     "StackCommandStackSetLayerParametersType1",
     "StackCommandStackSetLayerSettingsType1",
@@ -461,6 +478,8 @@ __all__ = (
     "StackCommandStackSetSeedOp",
     "StackCommandStackStroke",
     "StackCommandStackStrokeOp",
+    "StackCommandStackUnflattenLayer",
+    "StackCommandStackUnflattenLayerOp",
     "StackCreateRequest",
     "StackDelta",
     "StackEditResult",
@@ -472,14 +491,17 @@ __all__ = (
     "StackIdColour",
     "StackIdColours",
     "StackLayer",
+    "StackLayerInputsType1",
     "StackLayerParametersType1",
     "StackLayerSettings",
     "StackLayerTextures",
     "StackLayerValues",
     "StackMask",
     "StackMaskEffect",
+    "StackMaskEffectInputsType1",
     "StackMaskEffectTextsType1",
     "StackMaskEffectValuesType1",
+    "StackMaskInputsType1",
     "StackMaskParametersType1",
     "StackMeshMapsRequest",
     "StackMeshMask",

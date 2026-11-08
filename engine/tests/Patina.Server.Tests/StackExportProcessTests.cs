@@ -387,7 +387,7 @@ public sealed partial class StackProcessTests {
         await EditAsync(
             state.Id,
             deadline.Token,
-            new StackSetLayer(fill, Mask: new("Generator", Anchor: string.Empty))
+            new StackSetLayer(fill, Mask: new("Generator"))
         );
         await SaveAsync(state.Id, deadline.Token);
 

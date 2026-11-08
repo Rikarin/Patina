@@ -140,8 +140,44 @@ public static class StackDocuments {
                     StringComparer.Ordinal
                 )
                 ?? [],
-            Texts = effect.Texts?.ToDictionary(StringComparer.Ordinal) ?? []
+            Texts = effect.Texts?.ToDictionary(StringComparer.Ordinal) ?? [],
+            Inputs = References(effect.Inputs) ?? []
         };
+
+    /// <summary>A reference to an anchor point as a file holds it.</summary>
+    public static AnchorReference Reference(StackAnchorRef? reference) =>
+        reference is null ? new() : new() { Anchor = reference.Anchor, Channel = reference.Channel };
+
+    /// <summary>Anchor point references by port, as a file holds them, or null when none were given.</summary>
+    public static Dictionary<string, AnchorReference>? References(
+        IReadOnlyDictionary<string, StackAnchorRef>? inputs
+    ) =>
+        inputs?.ToDictionary(static pair => pair.Key, static pair => Reference(pair.Value), StringComparer.Ordinal);
+
+    static StackAnchorRef? Wire(AnchorReference reference) =>
+        reference.Anchor.Length == 0 && reference.Channel.Length == 0 ? null : new(reference.Anchor, reference.Channel);
+
+    static Dictionary<string, StackAnchorRef>? Wire(Dictionary<string, AnchorReference> inputs) =>
+        inputs.Count == 0
+            ? null
+            : inputs.ToDictionary(static pair => pair.Key, static pair => Wire(pair.Value)!, StringComparer.Ordinal);
+
+    /// <summary>The anchor points a set publishes, and who reads each, for a client to list.</summary>
+    public static IReadOnlyList<StackAnchor> Anchors(TextureSetAsset set) {
+        var uses = LayerStackEdit.AnchorUses(set);
+        return [
+            ..LayerStackEdit.AnchorPoints(set)
+                .Select(point => new StackAnchor(
+                        point.Key,
+                        point.Value,
+                        [
+                            ..uses.Where(use => use.Reference.Anchor == point.Key)
+                                .Select(static use => new StackAnchorUse(use.Layer, use.Where, use.Reference.Channel))
+                        ]
+                    )
+                )
+        ];
+    }
 
     /// <summary>
     ///     Every adjustment a stack can run, read from the same registry and compounds its compile reads, each with
@@ -280,7 +316,7 @@ public static class StackDocuments {
                 layer.Mask.Source.ToString(),
                 layer.Mask.Value,
                 layer.Mask.Asset,
-                layer.Mask.Anchor,
+                Wire(layer.Mask.Anchor),
                 layer.Mask.Generator,
                 layer.Mask.Map,
                 Selection(layer.Mask)?.Values.GetValueOrDefault(SelectColour),
@@ -292,12 +328,14 @@ public static class StackDocuments {
                                 effect.Node,
                                 effect.Enabled,
                                 Numbers(effect.Values),
-                                effect.Texts
+                                effect.Texts,
+                                Wire(effect.Inputs)
                             )
                         )
                 ],
                 layer.Mask.GeneratorTexts,
-                MeshPartsOf(layer.Mask)
+                MeshPartsOf(layer.Mask),
+                Wire(layer.Mask.GeneratorInputs)
             ),
             layer.PlanarAxis.ToString(),
             new(
@@ -308,7 +346,11 @@ public static class StackDocuments {
                 layer.Placement.Sharpness
             ),
             layer.Texts,
-            FilterNodeOf(layer)
+            FilterNodeOf(layer),
+            layer.AnchorPoint,
+            Wire(layer.Anchor),
+            Wire(layer.Inputs),
+            layer.Flattened
         );
 
     static Dictionary<string, IReadOnlyList<float>> Numbers(Dictionary<string, float[]> numbers) =>

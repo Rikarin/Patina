@@ -3676,6 +3676,34 @@ export interface components {
        */
       viewport: components['schemas']['ViewportDisplay'];
     };
+    /** @description An anchor point and every place that reads it. */
+    StackAnchor: {
+      /** @description The anchor point's name. */
+      name: string;
+      /** @description The id of the layer that publishes it. */
+      layer: string;
+      /** @description Who reads it, and in which channel. */
+      uses: components['schemas']['StackAnchorUse'][];
+    };
+    /** @description A reference to an anchor point, by its name, in one channel. */
+    StackAnchorRef: {
+      /** @description The anchor point's name. */
+      anchor: string;
+      /**
+       * @description The channel read, by usage. Empty, for a fill or a filter's input only, means the channel being written.
+       * @default
+       */
+      channel: string;
+    };
+    /** @description One place a stack reads an anchor point. */
+    StackAnchorUse: {
+      /** @description The id of the layer that reads it. */
+      layer: string;
+      /** @description What part of that layer: fill, mask, mask entry 2, or an input's port. */
+      where: string;
+      /** @description The channel it reads, or empty for the channel being written. */
+      channel: string;
+    };
     /** @description A brush. Everything but the radius has the value a new brush has. */
     StackBrush: {
       /**
@@ -3874,6 +3902,8 @@ export interface components {
       | components['schemas']['StackCommandStackSetSeed']
       | components['schemas']['StackCommandStackDuplicateLayers']
       | components['schemas']['StackCommandStackPasteLayers']
+      | components['schemas']['StackCommandStackFlattenLayer']
+      | components['schemas']['StackCommandStackUnflattenLayer']
       | components['schemas']['StackCommandStackSetHeightNormal'];
     /** @description Edits applied whole or not at all, as one undo step. */
     StackCommandBatch: {
@@ -3925,6 +3955,16 @@ export interface components {
       op: 'duplicateLayers';
       /** @description Which. A layer inside another of them goes with that one. */
       layers: string[];
+    };
+    /**
+     * @description Flattens a group into a canvas that composites what its children did, keeping them, unread, as the way back. The
+     *     whole stack is flattened by gathering every layer into one group first. Undoing it takes the canvas away.
+     */
+    StackCommandStackFlattenLayer: {
+      /** @enum {string} */
+      op: 'flattenLayer';
+      /** @description The group, or null for the whole stack. */
+      layer?: null | string;
     };
     /** @description Moves a layer up or down its list. */
     StackCommandStackMoveLayer: {
@@ -4026,6 +4066,16 @@ export interface components {
       };
       /** @description The node or compound a filter runs, or empty to go back to the named filter. */
       filterNode?: null | string;
+      /**
+       * @description The anchor point it publishes, or empty for none. A new name rewrites every reference to the old one, in the
+       *     same step.
+       */
+      anchorPoint?: null | string;
+      anchor?: null | components['schemas']['StackAnchorRef'];
+      /** @description The image inputs of a graph fill or a filter that anchor points feed, replacing all of them. */
+      inputs?: null | {
+        [key: string]: components['schemas']['StackAnchorRef'];
+      };
     };
     /** @description Names the mesh a stack is painted on, which is undone like any other edit. */
     StackCommandStackSetModel: {
@@ -4082,6 +4132,13 @@ export interface components {
       curve: string;
       symmetry?: null | components['schemas']['StackSymmetry'];
     };
+    /** @description Takes a flattened group back to its children, which composite again. */
+    StackCommandStackUnflattenLayer: {
+      /** @enum {string} */
+      op: 'unflattenLayer';
+      /** @description The group. */
+      layer: string;
+    };
     /** @description Creates a layer stack: one base fill, and one paint layer over it. */
     StackCreateRequest: {
       /** @description The file to write, absolute or relative to the library. */
@@ -4103,6 +4160,8 @@ export interface components {
       layers: components['schemas']['StackLayer'][];
       /** @description Each channel a stroke touched, as layer and usage. */
       painted: components['schemas']['StackPainted'][];
+      /** @description The anchor points its set publishes now, and who reads each. */
+      anchors?: null | components['schemas']['StackAnchor'][];
     };
     /** @description Where an edit left the session. */
     StackEditResult: {
@@ -4251,7 +4310,7 @@ export interface components {
       painted: boolean;
       /** @description What a group holds. */
       children: components['schemas']['StackLayer'][];
-      /** @description What a fill reads: Constant, Texture or Graph. */
+      /** @description What a fill reads: Constant, Texture, Graph or Anchor. */
       fill: string;
       /** @description What a constant fill writes to each channel. */
       values: {
@@ -4288,6 +4347,22 @@ export interface components {
        * @default
        */
       filterNode: string;
+      /**
+       * @description The name of the anchor point this layer publishes, or empty for none.
+       * @default
+       */
+      anchorPoint: string;
+      anchor?: null | components['schemas']['StackAnchorRef'];
+      /** @description The image inputs of a graph fill or a filter that anchor points feed, by port. */
+      inputs?: null | {
+        [key: string]: components['schemas']['StackAnchorRef'];
+      };
+      /**
+       * @description Whether this is a group flattened into a canvas: it composites that canvas, and its children are kept, unread,
+       *     as the way back.
+       * @default false
+       */
+      flattened: boolean;
     };
     /** @description What decides where a layer shows. */
     StackMask: {
@@ -4304,11 +4379,7 @@ export interface components {
        * @default
        */
       asset: string;
-      /**
-       * @description The layer an anchor mask reads.
-       * @default
-       */
-      anchor: string;
+      anchor?: null | components['schemas']['StackAnchorRef'];
       /**
        * @description The compound a generator runs, such as Generators/Dirt.
        * @default
@@ -4341,6 +4412,10 @@ export interface components {
       };
       /** @description The named meshes the layer is limited to, or null for the whole model. */
       meshParts?: null | string[];
+      /** @description The image inputs of a generator that anchor points feed, by port, or null to keep them. */
+      inputs?: null | {
+        [key: string]: components['schemas']['StackAnchorRef'];
+      };
     };
     /** @description One step run on a mask. */
     StackMaskEffect: {
@@ -4358,6 +4433,10 @@ export interface components {
       /** @description Its settings, by name. */
       texts?: null | {
         [key: string]: string;
+      };
+      /** @description Its other image inputs, by port, each fed by an anchor point. The mask goes into the one left. */
+      inputs?: null | {
+        [key: string]: components['schemas']['StackAnchorRef'];
       };
     };
     /** @description Chooses the bake a stack's generators and bake masks read. */
@@ -4553,6 +4632,8 @@ export interface components {
        * @default Smooth
        */
       heightNormal: string;
+      /** @description The anchor points its set publishes, by name, and who reads each. */
+      anchors?: null | components['schemas']['StackAnchor'][];
     };
     /** @description An open stack, for a list. */
     StackSummary: {

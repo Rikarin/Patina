@@ -10,6 +10,7 @@ sealed class StackLayerCopies(StackEditor editor, string set) {
     readonly HashSet<string> ids = [..StackEditor.Flattened(editor.Set.Layers).Select(static layer => layer.Id)];
     readonly HashSet<string> names = [..StackEditor.Flattened(editor.Set.Layers).Select(static layer => layer.Name)];
     readonly HashSet<string> paints = new(StringComparer.Ordinal);
+    readonly HashSet<string> points = [..LayerStackEdit.AnchorPoints(editor.Set).Keys];
     readonly Dictionary<string, string> renamed = new(StringComparer.Ordinal);
 
     public List<(string From, string To)> Canvases { get; } = [];
@@ -19,7 +20,13 @@ sealed class StackLayerCopies(StackEditor editor, string set) {
     /// <param name="source">Where a canvas it names is read from.</param>
     public LayerAsset Of(LayerAsset layer, Func<string, string> source) {
         var id = Free(ids, Stem(layer.Id), static (stem, count) => $"{stem}-{count}");
-        renamed[layer.Id] = id;
+        var point = layer.AnchorPoint.Length > 0
+            ? Free(points, layer.AnchorPoint, static (name, count) => $"{name} {count}")
+            : string.Empty;
+        if (point != layer.AnchorPoint) {
+            renamed[layer.AnchorPoint] = point;
+        }
+
         var mask = layer.Mask with {
             Paint = Canvas(layer.Mask.Paint, id, true, source),
             Layers = [
@@ -37,26 +44,19 @@ sealed class StackLayerCopies(StackEditor editor, string set) {
         return layer with {
             Id = id,
             Name = Free(names, layer.Name, static (name, count) => $"{name} {count}"),
+            AnchorPoint = point,
             Paint = Canvas(layer.Paint, id, false, source),
             Mask = mask,
             Children = [..layer.Children.Select(child => Of(child, source))]
         };
     }
 
-    /// <summary>An anchor onto a layer that came along now reads the copy of it, and any other stays.</summary>
+    /// <summary>
+    ///     A reference to an anchor point that came along now reads the copy of it, and any other stays. A copy's
+    ///     anchor point takes a name nothing in the stack publishes, so no copy's name is another's original.
+    /// </summary>
     public LayerAsset Reanchored(LayerAsset layer) =>
-        layer with {
-            Mask = layer.Mask with {
-                Anchor = renamed.GetValueOrDefault(layer.Mask.Anchor, layer.Mask.Anchor),
-                Layers = [
-                    ..layer.Mask.Layers.Select(entry => entry with {
-                            Anchor = renamed.GetValueOrDefault(entry.Anchor, entry.Anchor)
-                        }
-                    )
-                ]
-            },
-            Children = [..layer.Children.Select(Reanchored)]
-        };
+        renamed.Aggregate(layer, static (held, move) => LayerStackEdit.Reanchored([held], move.Key, move.Value)[0]);
 
     string Canvas(string paint, string layer, bool mask, Func<string, string> source) {
         var from = paint.Trim();

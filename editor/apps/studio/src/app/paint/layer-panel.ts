@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, u
 import type {
   GraphSettingDefinition,
   MaterialInfo,
+  StackAnchorRef,
   StackFilterKind,
   StackLayer,
   StackMask,
@@ -90,6 +91,35 @@ export function hexOf(colour: readonly number[] | undefined): string {
             (keydown.enter)="commitName(layer)"
           />
         </div>
+        <div class="flex items-center gap-2">
+          <span
+            class="text-foreground-muted w-16 shrink-0 text-xs"
+            title="A name other layers read the stack by, as it stands just above this layer"
+            >Anchor</span
+          >
+          <input
+            class="min-w-0 flex-1"
+            xuiInput
+            size="sm"
+            autocomplete="off"
+            placeholder="None"
+            aria-label="Anchor point name"
+            data-testid="paint-anchor-point"
+            [value]="point.shown()"
+            (input)="editPoint(layer, text($event))"
+            (blur)="commitPoint(layer)"
+            (keydown.enter)="commitPoint(layer)"
+          />
+        </div>
+        @if (usesOf(layer); as uses) {
+          <ul class="text-foreground-muted flex flex-col gap-0.5 ps-[4.5rem] text-xs" data-testid="paint-anchor-uses">
+            @for (use of uses; track $index) {
+              <li>Read by {{ layerName(use.layer) }} · {{ use.where }}{{ use.channel ? ' · ' + channelName(use.channel) : '' }}</li>
+            } @empty {
+              <li>Nothing reads it yet.</li>
+            }
+          </ul>
+        }
         <p class="section-label mt-1">Material Channels</p>
         <div class="flex flex-wrap items-center gap-1">
           @for (channel of store.state()?.channels ?? []; track channel.usage) {
@@ -126,7 +156,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
                 (valueChange)="store.edit({ op: 'setLayer', layer: layer.id, fill: $event })"
               />
             </div>
-            @if (layer.fill !== 'Constant') {
+            @if (layer.fill !== 'Constant' && layer.fill !== 'Anchor') {
               <div class="flex items-center gap-2">
                 <span class="text-foreground-muted w-16 shrink-0 text-xs">Projection</span>
                 <select
@@ -218,7 +248,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
                 </div>
               }
             }
-            @for (channel of store.state()?.channels ?? []; track channel.usage) {
+            @for (channel of layer.fill === 'Anchor' ? [] : (store.state()?.channels ?? []); track channel.usage) {
               <div class="flex items-center gap-2">
                 <span class="text-foreground-muted w-20 shrink-0 truncate text-xs">{{
                   channelName(channel.usage)
@@ -280,6 +310,35 @@ export function hexOf(colour: readonly number[] | undefined): string {
                   [value]="graphOf(layer)"
                   (valueChange)="chooseGraph(layer, $event)"
                 />
+              </div>
+            }
+            @if (layer.fill === 'Anchor') {
+              <div class="flex items-center gap-2">
+                <span class="text-foreground-muted w-16 shrink-0 text-xs">Anchor</span>
+                <xui-select
+                  class="min-w-0 flex-1"
+                  aria-label="Anchor point the fill reads"
+                  data-testid="paint-fill-anchor"
+                  [items]="anchorNames(layer)"
+                  [value]="layer.anchor?.anchor || null"
+                  (valueChange)="setFillAnchor(layer, { anchor: $event ?? '' })"
+                />
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-foreground-muted w-16 shrink-0 text-xs">Channel</span>
+                <select
+                  class="well h-7 min-w-0 flex-1 px-1 text-sm"
+                  aria-label="Channel the fill reads"
+                  data-testid="paint-fill-anchor-channel"
+                  (change)="setFillAnchor(layer, { channel: text($event) })"
+                >
+                  <option value="" [selected]="!layer.anchor?.channel">Each channel its own</option>
+                  @for (channel of store.state()?.channels ?? []; track channel.usage) {
+                    <option [value]="channel.usage" [selected]="channel.usage === layer.anchor?.channel">
+                      {{ channelName(channel.usage) }}
+                    </option>
+                  }
+                </select>
               </div>
             }
           }
@@ -422,13 +481,24 @@ export function hexOf(colour: readonly number[] | undefined): string {
           }
           @case ('Anchor') {
             <xui-select
-              aria-label="Anchor layer"
+              aria-label="Anchor point the mask reads"
               data-testid="paint-mask-anchor"
-              [itemText]="layerName"
-              [items]="anchors(layer)"
-              [value]="layer.mask.anchor"
-              (valueChange)="setMask(layer, { anchor: $event ?? '' })"
+              [items]="anchorNames(layer)"
+              [value]="layer.mask.anchor?.anchor || null"
+              (valueChange)="setMaskAnchor(layer, { anchor: $event ?? '' })"
             />
+            <select
+              class="well h-7 px-1 text-sm"
+              aria-label="Channel the mask reads"
+              data-testid="paint-mask-anchor-channel"
+              (change)="setMaskAnchor(layer, { channel: text($event) })"
+            >
+              @for (channel of store.state()?.channels ?? []; track channel.usage) {
+                <option [value]="channel.usage" [selected]="channel.usage === maskChannel(layer)">
+                  {{ channelName(channel.usage) }}
+                </option>
+              }
+            </select>
           }
           @case ('Generator') {
             <xui-select
@@ -652,6 +722,9 @@ export class LayerPanel {
   protected readonly layerName = (id: string): string =>
     this.store.layers().find(row => row.layer.id === id)?.layer.name ?? id;
   protected readonly name = new LiveValue<string>(() => this.store.chosen()?.name ?? '');
+  protected readonly point = new LiveValue<string>(() => this.store.chosen()?.anchorPoint ?? '');
+  /** The layer the anchor point field was typed into, which is the only one a commit may write. */
+  private pointOf: string | null = null;
   protected readonly scalarDraft = signal<{ usage: string; value: number } | null>(null);
 
   constructor() {
@@ -678,6 +751,8 @@ export class LayerPanel {
       this.store.layer();
       untracked(() => {
         this.name.release();
+        this.point.release();
+        this.pointOf = null;
       });
     });
   }
@@ -774,11 +849,58 @@ export class LayerPanel {
     void this.store.edit({ op: 'setLayer', layer: layer.id, settings: { [setting]: [...value] } });
   }
 
-  protected anchors(layer: StackLayer): readonly string[] {
-    return this.store
-      .layers()
-      .map(row => row.layer.id)
-      .filter(id => id !== layer.id);
+  /** The anchor points a layer may read, by name: every one but its own, which would read itself. */
+  protected anchorNames(layer: StackLayer): readonly string[] {
+    return (this.store.state()?.anchors ?? []).map(anchor => anchor.name).filter(name => name !== layer.anchorPoint);
+  }
+
+  /** Who reads the anchor point a layer publishes, or nothing when it publishes none. */
+  protected usesOf(layer: StackLayer) {
+    return layer.anchorPoint
+      ? ((this.store.state()?.anchors ?? []).find(anchor => anchor.name === layer.anchorPoint)?.uses ?? [])
+      : null;
+  }
+
+  protected editPoint(layer: StackLayer, value: string): void {
+    this.pointOf = layer.id;
+    this.point.edit(value);
+  }
+
+  /**
+   * Sends what was typed, for the layer it was typed for. ⚠ Only then: the field loses focus when another row is
+   * pressed, and by that time the chosen layer may be the other one, whose name an unguarded commit would write here.
+   */
+  protected commitPoint(layer: StackLayer): void {
+    if (this.pointOf !== layer.id) {
+      return;
+    }
+
+    const point = this.point.shown().trim();
+    this.pointOf = null;
+    this.point.release();
+    if (point !== layer.anchorPoint) {
+      void this.store.edit({ op: 'setLayer', layer: layer.id, anchorPoint: point });
+    }
+  }
+
+  protected setFillAnchor(layer: StackLayer, change: Partial<StackAnchorRef>): void {
+    const anchor = { anchor: '', channel: '', ...layer.anchor, ...change };
+    void this.store.edit({ op: 'setLayer', layer: layer.id, anchor });
+  }
+
+  /**
+   * The channel a mask reads its anchor point in. A mask is one picture whichever channel it is applied to, so it
+   * always names one: height when the stack has it, which is what wear is usually read from, or the first.
+   */
+  protected maskChannel(layer: StackLayer): string {
+    const channels = (this.store.state()?.channels ?? []).map(channel => channel.usage);
+    const held = layer.mask.anchor?.channel;
+    return held && channels.includes(held) ? held : channels.includes('height') ? 'height' : (channels[0] ?? '');
+  }
+
+  protected setMaskAnchor(layer: StackLayer, change: Partial<StackAnchorRef>): void {
+    const anchor = { anchor: layer.mask.anchor?.anchor ?? '', channel: this.maskChannel(layer), ...change };
+    this.setMask(layer, { anchor });
   }
 
   protected readonly hexOf = hexOf;

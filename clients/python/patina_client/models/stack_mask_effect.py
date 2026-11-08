@@ -12,6 +12,7 @@ from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
+  from ..models.stack_mask_effect_inputs_type_1 import StackMaskEffectInputsType1
   from ..models.stack_mask_effect_texts_type_1 import StackMaskEffectTextsType1
   from ..models.stack_mask_effect_values_type_1 import StackMaskEffectValuesType1
 
@@ -32,12 +33,15 @@ class StackMaskEffect:
             enabled (bool): Whether it runs. Default: True.
             values (None | StackMaskEffectValuesType1 | Unset): Its numbers, by port.
             texts (None | StackMaskEffectTextsType1 | Unset): Its settings, by name.
+            inputs (None | StackMaskEffectInputsType1 | Unset): Its other image inputs, by port, each fed by an anchor
+                point. The mask goes into the one left.
      """
 
     node: str
     enabled: bool = True
     values: None | StackMaskEffectValuesType1 | Unset = UNSET
     texts: None | StackMaskEffectTextsType1 | Unset = UNSET
+    inputs: None | StackMaskEffectInputsType1 | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -45,6 +49,7 @@ class StackMaskEffect:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.stack_mask_effect_inputs_type_1 import StackMaskEffectInputsType1 # noqa: PLC0415
         from ..models.stack_mask_effect_texts_type_1 import StackMaskEffectTextsType1 # noqa: PLC0415
         from ..models.stack_mask_effect_values_type_1 import StackMaskEffectValuesType1 # noqa: PLC0415
         node = self.node
@@ -67,6 +72,14 @@ class StackMaskEffect:
         else:
             texts = self.texts
 
+        inputs: dict[str, Any] | None | Unset
+        if isinstance(self.inputs, Unset):
+            inputs = UNSET
+        elif isinstance(self.inputs, StackMaskEffectInputsType1):
+            inputs = self.inputs.to_dict()
+        else:
+            inputs = self.inputs
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -78,6 +91,8 @@ class StackMaskEffect:
             field_dict["values"] = values
         if texts is not UNSET:
             field_dict["texts"] = texts
+        if inputs is not UNSET:
+            field_dict["inputs"] = inputs
 
         return field_dict
 
@@ -85,6 +100,7 @@ class StackMaskEffect:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.stack_mask_effect_inputs_type_1 import StackMaskEffectInputsType1 # noqa: PLC0415
         from ..models.stack_mask_effect_texts_type_1 import StackMaskEffectTextsType1 # noqa: PLC0415
         from ..models.stack_mask_effect_values_type_1 import StackMaskEffectValuesType1 # noqa: PLC0415
         d = dict(src_dict)
@@ -132,11 +148,32 @@ class StackMaskEffect:
         texts = _parse_texts(d.pop("texts", UNSET))
 
 
+        def _parse_inputs(data: object) -> None | StackMaskEffectInputsType1 | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                inputs_type_1 = StackMaskEffectInputsType1.from_dict(data)
+
+
+
+                return inputs_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackMaskEffectInputsType1 | Unset, data)
+
+        inputs = _parse_inputs(d.pop("inputs", UNSET))
+
+
         stack_mask_effect = cls(
             node=node,
             enabled=enabled,
             values=values,
             texts=texts,
+            inputs=inputs,
         )
 
 

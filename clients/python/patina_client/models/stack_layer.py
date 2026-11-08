@@ -12,6 +12,8 @@ from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
+  from ..models.stack_anchor_ref import StackAnchorRef
+  from ..models.stack_layer_inputs_type_1 import StackLayerInputsType1
   from ..models.stack_layer_parameters_type_1 import StackLayerParametersType1
   from ..models.stack_layer_settings import StackLayerSettings
   from ..models.stack_layer_textures import StackLayerTextures
@@ -41,7 +43,7 @@ class StackLayer:
             channels (list[str]): Which channels it writes. Empty means all of them.
             painted (bool): Whether it names a paint file yet.
             children (list[StackLayer]): What a group holds.
-            fill (str): What a fill reads: Constant, Texture or Graph.
+            fill (str): What a fill reads: Constant, Texture, Graph or Anchor.
             values (StackLayerValues): What a constant fill writes to each channel.
             textures (StackLayerTextures): What a texture fill reads for each channel.
             graph (str): The graph a graph fill reads.
@@ -51,8 +53,15 @@ class StackLayer:
             mask (StackMask): What decides where a layer shows.
             planar_axis (str): The world axis a planar projection looks along or a cylinder wraps: X, Y or Z. Default: 'Y'.
             filter_node (str): The node or compound a filter layer runs, whichever way the file names it. Default: ''.
+            anchor_point (str): The name of the anchor point this layer publishes, or empty for none. Default: ''.
+            flattened (bool): Whether this is a group flattened into a canvas: it composites that canvas, and its children
+                are kept, unread,
+                as the way back. Default: False.
             placement (None | StackPlacement | Unset):
             parameters (None | StackLayerParametersType1 | Unset): What a graph fill sets the graph's knobs to, as text.
+            anchor (None | StackAnchorRef | Unset):
+            inputs (None | StackLayerInputsType1 | Unset): The image inputs of a graph fill or a filter that anchor points
+                feed, by port.
      """
 
     id: str
@@ -74,8 +83,12 @@ class StackLayer:
     mask: StackMask
     planar_axis: str = 'Y'
     filter_node: str = ''
+    anchor_point: str = ''
+    flattened: bool = False
     placement: None | StackPlacement | Unset = UNSET
     parameters: None | StackLayerParametersType1 | Unset = UNSET
+    anchor: None | StackAnchorRef | Unset = UNSET
+    inputs: None | StackLayerInputsType1 | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -83,6 +96,8 @@ class StackLayer:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.stack_anchor_ref import StackAnchorRef # noqa: PLC0415
+        from ..models.stack_layer_inputs_type_1 import StackLayerInputsType1 # noqa: PLC0415
         from ..models.stack_layer_parameters_type_1 import StackLayerParametersType1 # noqa: PLC0415
         from ..models.stack_layer_settings import StackLayerSettings # noqa: PLC0415
         from ..models.stack_layer_textures import StackLayerTextures # noqa: PLC0415
@@ -134,6 +149,10 @@ class StackLayer:
 
         filter_node = self.filter_node
 
+        anchor_point = self.anchor_point
+
+        flattened = self.flattened
+
         placement: dict[str, Any] | None | Unset
         if isinstance(self.placement, Unset):
             placement = UNSET
@@ -149,6 +168,22 @@ class StackLayer:
             parameters = self.parameters.to_dict()
         else:
             parameters = self.parameters
+
+        anchor: dict[str, Any] | None | Unset
+        if isinstance(self.anchor, Unset):
+            anchor = UNSET
+        elif isinstance(self.anchor, StackAnchorRef):
+            anchor = self.anchor.to_dict()
+        else:
+            anchor = self.anchor
+
+        inputs: dict[str, Any] | None | Unset
+        if isinstance(self.inputs, Unset):
+            inputs = UNSET
+        elif isinstance(self.inputs, StackLayerInputsType1):
+            inputs = self.inputs.to_dict()
+        else:
+            inputs = self.inputs
 
 
         field_dict: dict[str, Any] = {}
@@ -173,11 +208,17 @@ class StackLayer:
             "mask": mask,
             "planarAxis": planar_axis,
             "filterNode": filter_node,
+            "anchorPoint": anchor_point,
+            "flattened": flattened,
         })
         if placement is not UNSET:
             field_dict["placement"] = placement
         if parameters is not UNSET:
             field_dict["parameters"] = parameters
+        if anchor is not UNSET:
+            field_dict["anchor"] = anchor
+        if inputs is not UNSET:
+            field_dict["inputs"] = inputs
 
         return field_dict
 
@@ -185,6 +226,8 @@ class StackLayer:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.stack_anchor_ref import StackAnchorRef # noqa: PLC0415
+        from ..models.stack_layer_inputs_type_1 import StackLayerInputsType1 # noqa: PLC0415
         from ..models.stack_layer_parameters_type_1 import StackLayerParametersType1 # noqa: PLC0415
         from ..models.stack_layer_settings import StackLayerSettings # noqa: PLC0415
         from ..models.stack_layer_textures import StackLayerTextures # noqa: PLC0415
@@ -251,6 +294,10 @@ class StackLayer:
 
         filter_node = d.pop("filterNode")
 
+        anchor_point = d.pop("anchorPoint")
+
+        flattened = d.pop("flattened")
+
         def _parse_placement(data: object) -> None | StackPlacement | Unset:
             if data is None:
                 return data
@@ -291,6 +338,46 @@ class StackLayer:
         parameters = _parse_parameters(d.pop("parameters", UNSET))
 
 
+        def _parse_anchor(data: object) -> None | StackAnchorRef | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                anchor_type_1 = StackAnchorRef.from_dict(data)
+
+
+
+                return anchor_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackAnchorRef | Unset, data)
+
+        anchor = _parse_anchor(d.pop("anchor", UNSET))
+
+
+        def _parse_inputs(data: object) -> None | StackLayerInputsType1 | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                inputs_type_1 = StackLayerInputsType1.from_dict(data)
+
+
+
+                return inputs_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackLayerInputsType1 | Unset, data)
+
+        inputs = _parse_inputs(d.pop("inputs", UNSET))
+
+
         stack_layer = cls(
             id=id,
             name=name,
@@ -311,8 +398,12 @@ class StackLayer:
             mask=mask,
             planar_axis=planar_axis,
             filter_node=filter_node,
+            anchor_point=anchor_point,
+            flattened=flattened,
             placement=placement,
             parameters=parameters,
+            anchor=anchor,
+            inputs=inputs,
         )
 
 

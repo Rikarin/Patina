@@ -418,3 +418,52 @@ test('Export says when it would read files with unsaved changes', async () => {
   await window.getByTestId('export-save-all').click();
   await expect(window.getByTestId('export-unsaved')).toHaveCount(0, { timeout: 30_000 });
 });
+
+test('a folder flattens into one row, and unflattens to its layers', async () => {
+  await window.getByTestId('paint-add-group').click();
+  const folder = window.locator('[data-testid^=paint-layer-folder]');
+  const paint = window.getByTestId('paint-layer-paint');
+  await drop(paint, folder, 0.5);
+  await expect(paint).toHaveAttribute('aria-level', '2');
+
+  await folder.click({ button: 'right' });
+  await window.getByTestId('layer-menu-flatten').click();
+  await expect(folder.getByTestId('layer-flattened')).toBeVisible();
+  await expect(paint).toHaveCount(0);
+  await expect(window.getByTestId('layers-evaluation')).not.toHaveText('Not evaluated', { timeout: 30_000 });
+  await expect(folder.getByTestId('layer-fault')).toHaveCount(0);
+  await window.screenshot({ path: join(shots, 'layers-flattened.png') });
+
+  await folder.click({ button: 'right' });
+  await window.getByTestId('layer-menu-unflatten').click();
+  await expect(folder.getByTestId('layer-flattened')).toHaveCount(0);
+  await expect(paint).toHaveAttribute('aria-level', '2');
+
+  await window.getByTestId('paint-undo').click();
+  await expect(folder.getByTestId('layer-flattened')).toBeVisible();
+});
+
+test('an anchor point is named, read by a mask in one channel, and lists who reads it', async () => {
+  await window.getByTestId('paint-layer-base').click();
+  await expect(window.getByTestId('paint-layer-name')).toHaveValue('Base');
+  await window.getByTestId('paint-anchor-point').fill('Ground');
+  await window.getByTestId('paint-anchor-point').press('Enter');
+  await expect(window.getByTestId('paint-anchor-uses')).toContainText('Nothing reads it yet');
+
+  const paint = window.getByTestId('paint-layer-paint');
+  await paint.click({ button: 'right' });
+  await window.getByTestId('layer-menu-mask-white').click();
+  await paint.getByTestId('layer-mask').click();
+  await window.getByTestId('paint-mask-source').click();
+  await window.getByRole('option', { name: 'Anchor' }).click();
+  await window.getByTestId('paint-mask-anchor').click();
+  await expect(window.getByRole('option', { name: 'Ground' })).toBeVisible();
+  await window.getByRole('option', { name: 'Ground' }).click();
+  await expect(window.getByTestId('paint-mask-anchor')).toContainText('Ground');
+  await window.getByTestId('paint-mask-anchor-channel').selectOption('roughness');
+  await expect(window.getByTestId('paint-mask-anchor-channel')).toHaveValue('roughness');
+
+  await window.getByTestId('paint-layer-base').click();
+  await expect(window.getByTestId('paint-anchor-uses')).toContainText('Read by Paint · mask · Roughness');
+  await window.screenshot({ path: join(shots, 'layers-anchor-uses.png') });
+});

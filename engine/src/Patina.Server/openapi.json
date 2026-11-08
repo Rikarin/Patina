@@ -10613,6 +10613,74 @@
         },
         "description": "The body of \u0060PUT /api/v1/library/project/viewport\u0060."
       },
+      "StackAnchor": {
+        "required": [
+          "name",
+          "layer",
+          "uses"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The anchor point\u0027s name."
+          },
+          "layer": {
+            "type": "string",
+            "description": "The id of the layer that publishes it."
+          },
+          "uses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackAnchorUse"
+            },
+            "description": "Who reads it, and in which channel."
+          }
+        },
+        "description": "An anchor point and every place that reads it."
+      },
+      "StackAnchorRef": {
+        "required": [
+          "anchor",
+          "channel"
+        ],
+        "type": "object",
+        "properties": {
+          "anchor": {
+            "type": "string",
+            "description": "The anchor point\u0027s name."
+          },
+          "channel": {
+            "type": "string",
+            "description": "The channel read, by usage. Empty, for a fill or a filter\u0027s input only, means the channel being written.",
+            "default": ""
+          }
+        },
+        "description": "A reference to an anchor point, by its name, in one channel."
+      },
+      "StackAnchorUse": {
+        "required": [
+          "layer",
+          "where",
+          "channel"
+        ],
+        "type": "object",
+        "properties": {
+          "layer": {
+            "type": "string",
+            "description": "The id of the layer that reads it."
+          },
+          "where": {
+            "type": "string",
+            "description": "What part of that layer: fill, mask, mask entry 2, or an input\u0027s port."
+          },
+          "channel": {
+            "type": "string",
+            "description": "The channel it reads, or empty for the channel being written."
+          }
+        },
+        "description": "One place a stack reads an anchor point."
+      },
       "StackBrush": {
         "required": [
           "radius",
@@ -10959,6 +11027,12 @@
             "$ref": "#/components/schemas/StackCommandStackPasteLayers"
           },
           {
+            "$ref": "#/components/schemas/StackCommandStackFlattenLayer"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackUnflattenLayer"
+          },
+          {
             "$ref": "#/components/schemas/StackCommandStackSetHeightNormal"
           }
         ],
@@ -10977,6 +11051,8 @@
             "setSeed": "#/components/schemas/StackCommandStackSetSeed",
             "duplicateLayers": "#/components/schemas/StackCommandStackDuplicateLayers",
             "pasteLayers": "#/components/schemas/StackCommandStackPasteLayers",
+            "flattenLayer": "#/components/schemas/StackCommandStackFlattenLayer",
+            "unflattenLayer": "#/components/schemas/StackCommandStackUnflattenLayer",
             "setHeightNormal": "#/components/schemas/StackCommandStackSetHeightNormal"
           }
         }
@@ -11110,6 +11186,27 @@
           }
         },
         "description": "Duplicates layers, each just above itself, with everything inside it. A painted canvas is copied, never shared:\na stroke on the copy leaves the original alone."
+      },
+      "StackCommandStackFlattenLayer": {
+        "required": [
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "flattenLayer"
+            ],
+            "type": "string"
+          },
+          "layer": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The group, or null for the whole stack."
+          }
+        },
+        "description": "Flattens a group into a canvas that composites what its children did, keeping them, unread, as the way back. The\nwhole stack is flattened by gathering every layer into one group first. Undoing it takes the canvas away."
       },
       "StackCommandStackMoveLayer": {
         "required": [
@@ -11391,6 +11488,34 @@
               "string"
             ],
             "description": "The node or compound a filter runs, or empty to go back to the named filter."
+          },
+          "anchorPoint": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The anchor point it publishes, or empty for none. A new name rewrites every reference to the old one, in the\nsame step."
+          },
+          "anchor": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The anchor point an Anchor fill reads.",
+                "$ref": "#/components/schemas/StackAnchorRef"
+              }
+            ]
+          },
+          "inputs": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/StackAnchorRef"
+            },
+            "description": "The image inputs of a graph fill or a filter that anchor points feed, replacing all of them."
           }
         },
         "description": "Changes what a layer\u0027s row shows. What is null stays."
@@ -11525,6 +11650,25 @@
         },
         "description": "Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one\nStroke and they make one undo step, ended by one with Open false."
       },
+      "StackCommandStackUnflattenLayer": {
+        "required": [
+          "layer",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "unflattenLayer"
+            ],
+            "type": "string"
+          },
+          "layer": {
+            "type": "string",
+            "description": "The group."
+          }
+        },
+        "description": "Takes a flattened group back to its children, which composite again."
+      },
       "StackCreateRequest": {
         "required": [
           "path",
@@ -11570,6 +11714,16 @@
               "$ref": "#/components/schemas/StackPainted"
             },
             "description": "Each channel a stroke touched, as layer and usage."
+          },
+          "anchors": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/StackAnchor"
+            },
+            "description": "The anchor points its set publishes now, and who reads each."
           }
         },
         "description": "What an edit changed, so that a client need not read the whole stack again."
@@ -11881,7 +12035,9 @@
           "settings",
           "mask",
           "planarAxis",
-          "filterNode"
+          "filterNode",
+          "anchorPoint",
+          "flattened"
         ],
         "type": "object",
         "properties": {
@@ -11930,7 +12086,7 @@
           },
           "fill": {
             "type": "string",
-            "description": "What a fill reads: Constant, Texture or Graph."
+            "description": "What a fill reads: Constant, Texture, Graph or Anchor."
           },
           "values": {
             "type": "object",
@@ -12007,6 +12163,37 @@
             "type": "string",
             "description": "The node or compound a filter layer runs, whichever way the file names it.",
             "default": ""
+          },
+          "anchorPoint": {
+            "type": "string",
+            "description": "The name of the anchor point this layer publishes, or empty for none.",
+            "default": ""
+          },
+          "anchor": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The anchor point an Anchor fill reads.",
+                "$ref": "#/components/schemas/StackAnchorRef"
+              }
+            ]
+          },
+          "inputs": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/StackAnchorRef"
+            },
+            "description": "The image inputs of a graph fill or a filter that anchor points feed, by port."
+          },
+          "flattened": {
+            "type": "boolean",
+            "description": "Whether this is a group flattened into a canvas: it composites that canvas, and its children are kept, unread,\nas the way back.",
+            "default": false
           }
         },
         "description": "One layer, without its pixels."
@@ -12016,7 +12203,6 @@
           "source",
           "value",
           "asset",
-          "anchor",
           "generator",
           "map",
           "tolerance",
@@ -12040,9 +12226,15 @@
             "default": ""
           },
           "anchor": {
-            "type": "string",
-            "description": "The layer an anchor mask reads.",
-            "default": ""
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The anchor point an anchor mask reads, and the channel it reads it in.",
+                "$ref": "#/components/schemas/StackAnchorRef"
+              }
+            ]
           },
           "generator": {
             "type": "string",
@@ -12106,6 +12298,16 @@
               "type": "string"
             },
             "description": "The named meshes the layer is limited to, or null for the whole model."
+          },
+          "inputs": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/StackAnchorRef"
+            },
+            "description": "The image inputs of a generator that anchor points feed, by port, or null to keep them."
           }
         },
         "description": "What decides where a layer shows."
@@ -12149,6 +12351,16 @@
               "type": "string"
             },
             "description": "Its settings, by name."
+          },
+          "inputs": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/StackAnchorRef"
+            },
+            "description": "Its other image inputs, by port, each fed by an anchor point. The mask goes into the one left."
           }
         },
         "description": "One step run on a mask."
@@ -12536,6 +12748,16 @@
             "type": "string",
             "description": "How a height channel becomes the set\u0027s normal: \u0060Sharp\u0060 or \u0060Smooth\u0060. Read only when the set has a\nheight channel, and then it writes a normal whether or not it declares one.",
             "default": "Smooth"
+          },
+          "anchors": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/StackAnchor"
+            },
+            "description": "The anchor points its set publishes, by name, and who reads each."
           }
         },
         "description": "A whole stack: everything a client needs to draw it, and no pixels."
