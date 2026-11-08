@@ -5,7 +5,7 @@ import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
 import { LibrarySelection } from '../library/library-selection';
 import { ExportPane } from './export-pane';
-import { ExportStore, requestFor, settingsFor } from './export-store';
+import { ExportStore, requestFor, settingsFor, settingsOf, storedOf } from './export-store';
 
 const build = {
   id: 'b1',
@@ -224,6 +224,83 @@ describe('ExportPane', () => {
     expect(rows[0]).toContain('Base Color, Opacity');
     expect(rows[1]).toContain('Roughness');
     expect(page.querySelector('[data-testid="export-preset-info"]')?.textContent).toContain('DirectX (Y−)');
+  });
+});
+
+describe('ExportPane settings', () => {
+  it('starts from what the project keeps, and keeps a change in the project through the Server', async () => {
+    const puts: unknown[] = [];
+    const kept = {
+      preset: 'unreal',
+      folder: '/out',
+      size: 1024,
+      filter: 'nearest',
+      padding: { mode: 'transparent', distance: 8, colour: [] },
+      dither: true,
+      skipped: [],
+      files: [{ preset: 'unreal', template: 'T_{project}_R', enabled: false, format: 'png8' }]
+    };
+    const { fixture, selection } = setup({
+      'GET library/project': () => Response.json({ id: 'p', name: 'Crate', path: 'crate', export: kept }),
+      'PUT library/project/export-settings': request => {
+        void request.json().then(body => puts.push(body));
+        return Response.json({ id: 'p', name: 'Crate', path: 'crate' });
+      }
+    });
+    selection.select({ kind: 'project', project: { id: 'p', name: 'Crate', path: 'crate' } } as never);
+    await settled(fixture);
+    await settled(fixture);
+    const page = fixture.nativeElement as HTMLElement;
+
+    expect(page.querySelector('[data-testid="export-folder"]')?.textContent.trim()).toBe('/out');
+    expect(page.querySelector('[data-testid="export-distance-readout"]')?.textContent.trim()).toBe('8 px');
+    const rough = page.querySelectorAll<HTMLInputElement>('[data-testid="export-file-on"]')[1];
+    expect(rough?.checked).toBe(false);
+    expect(puts).toEqual([]);
+
+    page.querySelector<HTMLElement>('[data-testid="export-dither"] button, [data-testid="export-dither"]')?.click();
+    rough?.click();
+    await new Promise(resolve => setTimeout(resolve, 600));
+
+    expect(puts).toHaveLength(1);
+    expect(puts[0]).toMatchObject({
+      project: 'crate',
+      settings: {
+        preset: 'unreal',
+        folder: '/out',
+        size: 1024,
+        files: [{ preset: 'unreal', template: 'T_{project}_R', enabled: true, format: 'png8' }]
+      }
+    });
+  });
+
+  it('keeps nothing for a library export, which belongs to no project', async () => {
+    const puts: unknown[] = [];
+    const { fixture } = setup({
+      'PUT library/project/export-settings': () => {
+        puts.push(1);
+        return Response.json({});
+      }
+    });
+    await settled(fixture);
+    const page = fixture.nativeElement as HTMLElement;
+
+    page.querySelectorAll<HTMLInputElement>('[data-testid="export-file-on"]')[0]?.click();
+    await new Promise(resolve => setTimeout(resolve, 600));
+
+    expect(puts).toEqual([]);
+  });
+
+  it('turns kept settings back into the dialog’s, and the dialog’s into kept ones, losing nothing', () => {
+    const settings = {
+      ...settingsFor(unreal),
+      folder: '/x',
+      size: 512,
+      skipped: ['Body'],
+      files: { unreal: { 'T_{project}_D': { enabled: false, format: 'tga' } } }
+    };
+
+    expect(settingsOf(storedOf(settings), unreal as never)).toEqual(settings);
   });
 });
 

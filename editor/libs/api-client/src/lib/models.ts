@@ -88,5 +88,6 @@ export type ExportPresetInfo = components['schemas']['ExportPresetInfo'];
 export type ExportPresetFile = components['schemas']['ExportPresetFile'];
 export type ExportFormatInfo = components['schemas']['ExportFormatInfo'];
 export type ExportOptions = components['schemas']['ExportOptions'];
+export type ProjectExportSettings = components['schemas']['ProjectExportSettings'];
 export type LibraryReport = components['schemas']['LibraryReport'];
 export type ProjectReport = components['schemas']['ProjectReport'];

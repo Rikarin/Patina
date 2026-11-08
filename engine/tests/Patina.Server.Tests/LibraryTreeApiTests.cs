@@ -143,6 +143,45 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
         }
     }
 
+    /// <summary>
+    ///     Export settings are the project's, kept in its project.yaml by the Server for any client: what one client
+    ///     sets, another reads back from the project's contents, and they outlive the cache.
+    /// </summary>
+    [Fact]
+    public async Task A_projects_export_settings_are_kept_in_its_file_and_read_back() {
+        await client.PostAsJsonAsync("/api/v1/library/projects", new ProjectCreateRequest("Crate"), Token);
+        var settings = new ProjectExportSettings {
+            Preset = "godot",
+            Size = 1024,
+            Padding = new("transparent", 8, []),
+            Files = [new("godot", "{project}_albedo", true, "tga")]
+        };
+
+        using var kept = await client.PutAsJsonAsync(
+            "/api/v1/library/project/export-settings",
+            new ProjectExportSettingsRequest("crate", settings),
+            Token
+        );
+
+        Assert.Equal(HttpStatusCode.OK, kept.StatusCode);
+        var yaml = await File.ReadAllTextAsync(
+            Path.Combine(server.Library, "projects", "crate", "project.yaml"),
+            Token
+        );
+        Assert.Contains("export:", yaml, StringComparison.Ordinal);
+        var cache = Path.Combine(server.Library, ".ptcache");
+        if (Directory.Exists(cache)) {
+            Directory.Delete(cache, true);
+        }
+
+        var read = await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=crate", Token);
+        Assert.Equal(
+            ("godot", 1024, "transparent"),
+            (read!.Export!.Preset, read.Export.Size, read.Export.Padding!.Mode)
+        );
+        Assert.Equal("tga", Assert.Single(read.Export.Files).Format);
+    }
+
     [Fact]
     public async Task A_document_is_added_to_a_project_and_moves_to_another_mesh() {
         var (first, second) = (Path.Combine(files.FullName, "a.glb"), Path.Combine(files.FullName, "b.glb"));

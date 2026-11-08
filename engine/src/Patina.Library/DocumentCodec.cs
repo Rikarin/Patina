@@ -24,6 +24,7 @@ public static class DocumentCodec {
     const string PreservePaintKey = "preservePaint";
     const string UnwrapKey = "unwrap";
     const string UnwrappedKey = "unwrapped";
+    const string ExportKey = "export";
     const string DocumentsKey = "documents";
     const string FileKey = "file";
     const string HighKey = "high";
@@ -68,6 +69,7 @@ public static class DocumentCodec {
                     ..document.AutoUnwrap ? [] : new[] { Pair(AutoUnwrapKey, YamlText.Plain("false")) },
                     ..document.PreservePaint ? [] : new[] { Pair(PreservePaintKey, YamlText.Plain("false")) },
                     ..Named(UnwrapKey, document.Unwrap != new UnwrapOptions(), Unwrap(document.Unwrap)),
+                    ..Named(ExportKey, document.Export is not null, ExportOf(document.Export)),
                     Pair(ReferencesKey, References(document.References)),
                     Pair(
                         OutputsKey,
@@ -78,6 +80,9 @@ public static class DocumentCodec {
                 ]
             )
         );
+
+    static YamlMappingNode ExportOf(ProjectExportSettings? settings) =>
+        settings is null ? new YamlMappingNode() : ExportCodec.Write(settings);
 
     static KeyValuePair<YamlNode, YamlNode>[] Named(string key, bool present, YamlNode value) =>
         present ? [Pair(key, value)] : [];
@@ -249,7 +254,8 @@ public static class DocumentCodec {
                     Documents = ReadItems(fields),
                     AutoUnwrap = fields.Optional(AutoUnwrapKey) != "false",
                     PreservePaint = fields.Optional(PreservePaintKey) != "false",
-                    Unwrap = ReadUnwrap(fields.TextMap(UnwrapKey), fields)
+                    Unwrap = ReadUnwrap(fields.TextMap(UnwrapKey), fields),
+                    Export = fields.Map(ExportKey) is { } export ? ExportCodec.Read(export) : null
                 };
             }
         );

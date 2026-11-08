@@ -7,6 +7,7 @@ import {
   type JobState,
   type LibraryReport,
   type PatinaClient,
+  type ProjectExportSettings,
   type ProjectReport,
   unwrap
 } from '@patina/api-client';
@@ -14,7 +15,6 @@ import { BakeStore } from '../bake/bake-store';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 
 const ReportPage = 50;
-const SettingsKey = 'patina.export.1.';
 
 /** What an export covers: the document in front, its project, or the whole library. */
 export type ExportScope = 'document' | 'project' | 'library';
@@ -56,6 +56,57 @@ export function settingsFor(preset: ExportPresetInfo | null, previous?: ExportSe
     dither: preset?.dither ?? false,
     skipped: previous?.skipped ?? [],
     files: previous?.files ?? {}
+  };
+}
+
+/** The dialog's settings as the project keeps them in its project.yaml. */
+export function storedOf(settings: ExportSettings): ProjectExportSettings {
+  return {
+    preset: settings.preset,
+    folder: settings.folder,
+    size: settings.size,
+    filter: settings.filter,
+    padding: { mode: settings.padding, distance: settings.distance, colour: [...settings.colour] },
+    dither: settings.dither,
+    skipped: [...settings.skipped],
+    files: Object.entries(settings.files).flatMap(([preset, files]) =>
+      Object.entries(files).map(([template, choice]) => ({
+        preset,
+        template,
+        enabled: choice.enabled,
+        format: choice.format
+      }))
+    )
+  };
+}
+
+/**
+ * The dialog's settings from what a project keeps. A field the project has not kept, or a preset it no longer has,
+ * starts from the preset.
+ */
+export function settingsOf(stored: ProjectExportSettings, preset: ExportPresetInfo): ExportSettings {
+  const start = settingsFor(preset);
+  const same = stored.preset === preset.id;
+  const files: Record<string, Record<string, FileChoice>> = {};
+  for (const file of stored.files) {
+    files[file.preset] = { ...files[file.preset], [file.template]: { enabled: file.enabled, format: file.format } };
+  }
+
+  return {
+    ...start,
+    folder: stored.folder ?? null,
+    skipped: stored.skipped,
+    files,
+    ...(same
+      ? {
+          size: stored.size ?? null,
+          filter: stored.filter ?? start.filter,
+          padding: stored.padding?.mode ?? start.padding,
+          distance: stored.padding?.distance ?? start.distance,
+          colour: stored.padding?.colour.length ? stored.padding.colour : start.colour,
+          dither: stored.dither ?? start.dither
+        }
+      : {})
   };
 }
 
@@ -213,23 +264,21 @@ export class ExportStore {
     this.projectCount.set(page.total);
   }
 
-  /** The settings last used for a project, or for the library when there is none. */
-  settings(project: string | null): ExportSettings | null {
-    try {
-      const saved = globalThis.localStorage.getItem(SettingsKey + (project ?? 'library'));
-      return saved ? (JSON.parse(saved) as ExportSettings) : null;
-    } catch {
-      return null;
-    }
+  /** What a project's export was last set to, from its project.yaml through the Server, or null for none. */
+  async settings(project: string): Promise<ProjectExportSettings | null> {
+    const client = await this.api();
+    const contents = unwrap(await client.GET('/api/v1/library/project', { params: { query: { path: project } } }));
+    return contents.export ?? null;
   }
 
-  /** Keeps a project's settings for its next export. */
-  keep(project: string | null, settings: ExportSettings): void {
-    try {
-      globalThis.localStorage.setItem(SettingsKey + (project ?? 'library'), JSON.stringify(settings));
-    } catch {
-      // A window with no storage starts from the preset next time.
-    }
+  /** Keeps what a project's export is set to, in its project.yaml, where any client's next export starts. */
+  async keep(project: string, settings: ExportSettings): Promise<void> {
+    const client = await this.api();
+    unwrap(
+      await client.PUT('/api/v1/library/project/export-settings', {
+        body: { project, settings: storedOf(settings) }
+      })
+    );
   }
 
   private async api(): Promise<PatinaClient> {

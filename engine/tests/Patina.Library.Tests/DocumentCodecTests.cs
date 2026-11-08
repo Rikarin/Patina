@@ -119,6 +119,43 @@ public sealed class DocumentCodecTests {
             }
         );
 
+    /// <summary>
+    ///     A project's export settings live in its own file, so they travel with the library and a deleted cache
+    ///     cannot lose them. Every field comes back, files sort however they were made, and no key is left unread.
+    /// </summary>
+    [Fact]
+    public void Export_settings_survive_the_round_trip_and_sort_their_files() {
+        var project = TestLibrary.Project("P") with {
+            Export = new() {
+                Preset = "unreal",
+                Folder = "/out/game",
+                Size = 2048,
+                Filter = "bilinear",
+                Padding = new("colour", 4, [1f, 0.5f, 0.25f, 1f]),
+                Dither = true,
+                Skipped = ["Strap", "Body"],
+                Files = [new("unreal", "T_{project}_N", true, "tga"), new("godot", "{project}_orm", false, "png8")]
+            }
+        };
+
+        var text = DocumentCodec.Write(project);
+        var read = DocumentCodec.ReadProject(text, File);
+
+        Assert.Empty(read.UnknownKeys);
+        Assert.Equal(text, DocumentCodec.Write(read.Document));
+        var export = read.Document.Export!;
+        Assert.Equal(
+            ("unreal", "/out/game", 2048, "bilinear", true),
+            (export.Preset, export.Folder, export.Size, export.Filter, export.Dither)
+        );
+        Assert.Equal(("colour", 4), (export.Padding!.Mode, export.Padding.Distance));
+        Assert.Equal([1f, 0.5f, 0.25f, 1f], export.Padding.Colour);
+        Assert.Equal(["Body", "Strap"], export.Skipped);
+        Assert.Equal(["godot", "unreal"], export.Files.Select(static f => f.Preset));
+        Assert.False(export.Files[0].Enabled);
+        Assert.DoesNotContain("export:", DocumentCodec.Write(TestLibrary.Project("Q")), StringComparison.Ordinal);
+    }
+
     [Fact]
     [Trait("Category", "Property")]
     public void An_asset_survives_the_round_trip_byte_for_byte() =>

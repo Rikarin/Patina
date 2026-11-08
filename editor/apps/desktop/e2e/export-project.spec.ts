@@ -95,6 +95,12 @@ test('the dialog exports the document in front as TGA, transparent past its padd
     await window.screenshot({ path: join(shots, 'export-done.png') });
   }
 
+  // The dialog's settings are the project's, in its own file, where the next export starts.
+  const project = readFileSync(join(library, 'projects', 'housing', 'project.yaml'), 'utf8');
+  expect(project).toContain('export:');
+  expect(project).toContain('format: tga');
+  expect(project).toContain('mode: transparent');
+
   const albedo = join(library, 'exports', 'godot', 'housing', 'Housing_albedo.tga');
   expect(existsSync(albedo)).toBe(true);
   if (shots) {

@@ -266,6 +266,15 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
+    /// <summary>Keeps what a project's export is set to, so any client's next export of it starts there.</summary>
+    /// <exception cref="FileNotFoundException">The project is not there.</exception>
+    public void SetExportSettings(string path, ProjectExportSettings settings) {
+        lock (createGate) {
+            ProjectFiles.SetExport(RootPath, path, settings);
+            Interlocked.Increment(ref unscannedWrites);
+        }
+    }
+
     /// <summary>A new document with another's content.</summary>
     public ProjectItem CopyDocument(string path, AssetId document, string name) {
         lock (createGate) {

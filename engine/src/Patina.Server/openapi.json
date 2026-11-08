@@ -1802,6 +1802,67 @@
         }
       }
     },
+    "/api/v1/library/project/export-settings": {
+      "put": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Keeps what a project\u0027s export is set to in its project.yaml, where any client\u0027s next export starts.",
+        "operationId": "SetProjectExportSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectExportSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/project/documents": {
       "post": {
         "tags": [
@@ -5545,6 +5606,34 @@
         },
         "description": "One file of a preset changed for one export."
       },
+      "ExportFileSetting": {
+        "required": [
+          "preset",
+          "template",
+          "enabled",
+          "format"
+        ],
+        "type": "object",
+        "properties": {
+          "preset": {
+            "type": "string",
+            "description": "The preset it is a file of."
+          },
+          "template": {
+            "type": "string",
+            "description": "Which file: its naming template."
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether it is written."
+          },
+          "format": {
+            "type": "string",
+            "description": "The format it is written in."
+          }
+        },
+        "description": "One preset file as a project\u0027s export last had it."
+      },
       "ExportFormatInfo": {
         "required": [
           "id",
@@ -8701,6 +8790,17 @@
             },
             "description": "The texture sets an export writes, by name: what IReadOnlyList\u0026lt;string\u0026gt;? ExportOptions.Sets chooses from. Empty for a\nproject of one unnamed set."
           },
+          "export": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What the project\u0027s last export was set to, from its \u0060project.yaml\u0060, or null.",
+                "$ref": "#/components/schemas/ProjectExportSettings"
+              }
+            ]
+          },
           "preservePaint": {
             "type": "boolean",
             "description": "Whether paint moves to a new mesh\u0027s layout."
@@ -8974,6 +9074,95 @@
           }
         },
         "description": "The body of \u0060POST /api/v1/library/project/duplicate\u0060."
+      },
+      "ProjectExportSettings": {
+        "required": [
+          "skipped",
+          "files"
+        ],
+        "type": "object",
+        "properties": {
+          "preset": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The preset\u0027s id."
+          },
+          "folder": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Where files go, or null for the library\u0027s exports folder."
+          },
+          "size": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The longest side of a file, or null for the maps\u0027 own size.",
+            "format": "int32"
+          },
+          "filter": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How a file changes size: box, bilinear or nearest."
+          },
+          "padding": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What fills the background of the mesh\u0027s layout.",
+                "$ref": "#/components/schemas/ExportPaddingInfo"
+              }
+            ]
+          },
+          "dither": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether 8-bit files are dithered."
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The texture sets left out, by name; every other one is written."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExportFileSetting"
+            },
+            "description": "Files turned off or written in another format, per preset."
+          }
+        },
+        "description": "A project\u0027s export settings, kept in its \u0060project.yaml\u0060 so they travel with the library: what a client\u0027s\nexport starts from next time. Any client reads and writes them; a build reads only what a request sends, so\nkeeping them changes no key."
+      },
+      "ProjectExportSettingsRequest": {
+        "required": [
+          "project",
+          "settings"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "settings": {
+            "description": "What its export is set to now.",
+            "$ref": "#/components/schemas/ProjectExportSettings"
+          }
+        },
+        "description": "The body of \u0060PUT /api/v1/library/project/export-settings\u0060."
       },
       "ProjectFile": {
         "required": [

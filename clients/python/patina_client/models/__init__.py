@@ -12,6 +12,7 @@ from .build_request import BuildRequest
 from .document_recovery import DocumentRecovery
 from .document_recovery_request import DocumentRecoveryRequest
 from .export_file_choice import ExportFileChoice
+from .export_file_setting import ExportFileSetting
 from .export_format_info import ExportFormatInfo
 from .export_options import ExportOptions
 from .export_padding_info import ExportPaddingInfo
@@ -131,6 +132,8 @@ from .project_document_mesh_request import ProjectDocumentMeshRequest
 from .project_document_request import ProjectDocumentRequest
 from .project_document_role_request import ProjectDocumentRoleRequest
 from .project_duplicate_request import ProjectDuplicateRequest
+from .project_export_settings import ProjectExportSettings
+from .project_export_settings_request import ProjectExportSettingsRequest
 from .project_file import ProjectFile
 from .project_file_request import ProjectFileRequest
 from .project_mesh_change import ProjectMeshChange
@@ -248,6 +251,7 @@ __all__ = (
     "DocumentRecovery",
     "DocumentRecoveryRequest",
     "ExportFileChoice",
+    "ExportFileSetting",
     "ExportFormatInfo",
     "ExportOptions",
     "ExportPaddingInfo",
@@ -367,6 +371,8 @@ __all__ = (
     "ProjectDocumentRequest",
     "ProjectDocumentRoleRequest",
     "ProjectDuplicateRequest",
+    "ProjectExportSettings",
+    "ProjectExportSettingsRequest",
     "ProjectFile",
     "ProjectFileRequest",
     "ProjectMeshChange",

@@ -55,6 +55,7 @@ static class ProjectFiles {
             AutoUnwrap = document.AutoUnwrap,
             PreservePaint = document.PreservePaint,
             Unwrap = document.Unwrap,
+            Export = document.Export,
             ExportSets = [
                 ..ProjectOutputs.Of(document, full)
                     .Select(static output => output.Settings.GetValueOrDefault(ProjectOutputs.SetSetting, string.Empty))
@@ -259,6 +260,14 @@ static class ProjectFiles {
     }
 
     /// <summary>Says what happens to a mesh with no UV layout, and to paint on a new layout.</summary>
+    /// <summary>Keeps what a project's export is set to, in its <c>project.yaml</c>.</summary>
+    /// <exception cref="FileNotFoundException">The project is not there.</exception>
+    public static void SetExport(string root, string path, ProjectExportSettings settings) {
+        ArgumentNullException.ThrowIfNull(settings);
+        var (_, document) = Project(root, path);
+        LibraryFiles.WriteProject(root, path, document with { Export = settings });
+    }
+
     public static void SetMeshHandling(
         string root,
         string path,

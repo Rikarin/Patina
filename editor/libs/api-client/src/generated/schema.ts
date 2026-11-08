@@ -470,6 +470,23 @@ export interface paths {
     patch: operations['SetProjectSettings'];
     trace?: never;
   };
+  '/api/v1/library/project/export-settings': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Keeps what a project's export is set to in its project.yaml, where any client's next export starts. */
+    put: operations['SetProjectExportSettings'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/project/documents': {
     parameters: {
       query?: never;
@@ -1704,6 +1721,17 @@ export interface components {
       enabled: boolean;
       /** @description Another format for it, or null for the preset's. */
       format?: null | string;
+    };
+    /** @description One preset file as a project's export last had it. */
+    ExportFileSetting: {
+      /** @description The preset it is a file of. */
+      preset: string;
+      /** @description Which file: its naming template. */
+      template: string;
+      /** @description Whether it is written. */
+      enabled: boolean;
+      /** @description The format it is written in. */
+      format: string;
     };
     /** @description A file format a preset or an export can name. */
     ExportFormatInfo: {
@@ -2998,6 +3026,7 @@ export interface components {
        *     project of one unnamed set.
        */
       exportSets: string[];
+      export?: null | components['schemas']['ProjectExportSettings'];
       /** @description Whether paint moves to a new mesh's layout. */
       preservePaint: boolean;
       /** @description How Auto Unwrap lays a mesh out. */
@@ -3119,6 +3148,38 @@ export interface components {
       path: string;
       /** @description The copy's display name. */
       name: string;
+    };
+    /**
+     * @description A project's export settings, kept in its `project.yaml` so they travel with the library: what a client's
+     *     export starts from next time. Any client reads and writes them; a build reads only what a request sends, so
+     *     keeping them changes no key.
+     */
+    ProjectExportSettings: {
+      /** @description The preset's id. */
+      preset?: null | string;
+      /** @description Where files go, or null for the library's exports folder. */
+      folder?: null | string;
+      /**
+       * Format: int32
+       * @description The longest side of a file, or null for the maps' own size.
+       */
+      size?: null | number;
+      /** @description How a file changes size: box, bilinear or nearest. */
+      filter?: null | string;
+      padding?: null | components['schemas']['ExportPaddingInfo'];
+      /** @description Whether 8-bit files are dithered. */
+      dither?: null | boolean;
+      /** @description The texture sets left out, by name; every other one is written. */
+      skipped: string[];
+      /** @description Files turned off or written in another format, per preset. */
+      files: components['schemas']['ExportFileSetting'][];
+    };
+    /** @description The body of `PUT /api/v1/library/project/export-settings`. */
+    ProjectExportSettingsRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /** @description What its export is set to now. */
+      settings: components['schemas']['ProjectExportSettings'];
     };
     /** @description A result of a bake in a project's folder. */
     ProjectFile: {
@@ -5892,6 +5953,57 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': components['schemas']['ProjectSettingsRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetProjectExportSettings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectExportSettingsRequest'];
       };
     };
     responses: {

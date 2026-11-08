@@ -42,6 +42,11 @@ written in another format, and the texture sets to write. The changes go into th
 are never reused, and a change a preset cannot take (a JPEG of four lanes) refuses the build before anything runs. A file's name
 does not depend on which sets were chosen.
 
+What a project's export was last set to is the project's: an `export` block in its `project.yaml`, read with the project's
+contents and written by `PUT /library/project/export-settings`, so it travels with the library, survives a deleted `.ptcache`, and
+Blender starts from the same place the editor does. Keeping it changes no key: a build reads only its request, and the editor sends
+only what differs from the preset. A library export's settings belong to no project and are not kept.
+
 ## What a project builds
 
 A project made in the app writes no outputs. `ProjectOutputs` works them out from its documents on every read, and writes nothing

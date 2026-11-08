@@ -28,9 +28,11 @@ import {
   type FileChoice,
   requestFor,
   settingsFor,
+  settingsOf,
   usesDistance
 } from './export-store';
 
+const SaveDelay = 400;
 const Sizes = ['native', '256', '512', '1024', '2048', '4096', '8192'];
 
 const PaddingNames: Readonly<Record<string, string>> = {
@@ -595,13 +597,13 @@ export class ExportPane implements OnInit {
   protected readonly lanes = lanesOf;
 
   /** The project the dialog is about: the one in front, or the one selected in the Library. */
-  private readonly target = computed<{ id: string; name: string } | null>(() => {
+  private readonly target = computed<{ id: string; name: string; path: string } | null>(() => {
     const open = this.project.current();
     if (open) {
-      return { id: open.id, name: open.name };
+      return { id: open.id, name: open.name, path: open.path };
     }
     const item = this.selection.item();
-    return item?.kind === 'project' ? { id: item.project.id, name: item.project.name } : null;
+    return item?.kind === 'project' ? { id: item.project.id, name: item.project.name, path: item.project.path } : null;
   });
 
   /** The texture set of the document in front, when it is one an export writes. */
@@ -700,12 +702,17 @@ export class ExportPane implements OnInit {
 
   private readonly stack = computed(() => this.paint.state()?.id ?? null);
 
-  /** The project whose settings are being edited; null for the library's. */
-  private readonly settingsOwner = computed(() => (this.scope() === 'library' ? null : (this.target()?.id ?? null)));
+  /**
+   * The project whose settings are being edited, by path; null for a library export, whose settings belong to no
+   * project and last only while the app is open.
+   */
+  private readonly settingsOwner = computed(() => (this.scope() === 'library' ? null : (this.target()?.path ?? null)));
 
   /** A build that has stopped is read once, whichever way it stopped. */
   private read = '';
-  private loaded = false;
+  /** The project whose settings the dialog holds, which is the only one a change may be written to. */
+  private restored: string | null = null;
+  private saving: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     effect(() => {
@@ -732,21 +739,18 @@ export class ExportPane implements OnInit {
       this.store.exported.set([]);
     });
 
-    // A project's export starts where its last one ended, and the library's from its own.
+    // A project's export starts where its last one ended, from its project.yaml.
     effect(() => {
       const owner = this.settingsOwner();
       const presets = this.store.presets();
       if (presets.length > 0) {
-        untracked(() => this.restore(owner, presets));
+        void untracked(() => this.attempt(() => this.restore(owner, presets)));
       }
     });
   }
 
   ngOnInit(): void {
-    void this.attempt(async () => {
-      await this.store.load();
-      this.loaded = true;
-    });
+    void this.attempt(() => this.store.load());
   }
 
   protected greenName(normal: string): string {
@@ -889,8 +893,12 @@ export class ExportPane implements OnInit {
     }
   }
 
-  private restore(owner: string | null, presets: readonly ExportPresetInfo[]): void {
-    const saved = this.store.settings(owner);
+  private async restore(owner: string | null, presets: readonly ExportPresetInfo[]): Promise<void> {
+    this.restored = null;
+    const saved = owner ? await this.store.settings(owner) : null;
+    if (owner !== this.settingsOwner()) {
+      return; // Another project came to the front while this one was read.
+    }
     const preset =
       presets.find(known => known.id === saved?.preset) ??
       presets.find(known => known.id === this.settings().preset) ??
@@ -898,15 +906,26 @@ export class ExportPane implements OnInit {
     if (!preset) {
       return;
     }
-    this.settings.set(
-      saved?.preset === preset.id ? { ...settingsFor(preset), ...saved } : settingsFor(preset, saved ?? undefined)
-    );
+    this.settings.set(saved ? settingsOf(saved, preset) : settingsFor(preset, this.settings()));
+    this.restored = owner;
   }
 
+  /**
+   * Writes a project's settings to its project.yaml, once the changes pause: a slider dragged across its range is
+   * one write and not sixty. A library export's settings belong to no project and are not written.
+   */
   private keep(): void {
-    if (this.loaded) {
-      this.store.keep(this.settingsOwner(), this.settings());
+    const owner = this.restored;
+    if (owner === null || owner !== this.settingsOwner()) {
+      return;
     }
+    if (this.saving) {
+      clearTimeout(this.saving);
+    }
+    this.saving = setTimeout(() => {
+      this.saving = null;
+      void this.attempt(() => this.store.keep(owner, this.settings()));
+    }, SaveDelay);
   }
 
   private async attempt(work: () => Promise<void>): Promise<void> {
