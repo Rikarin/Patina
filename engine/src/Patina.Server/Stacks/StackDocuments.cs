@@ -283,6 +283,9 @@ public static class StackDocuments {
         return mask with { Layers = others };
     }
 
+    /// <summary>Whether a mask entry is the one that keeps its layer to some meshes, which is the stack's and not the mask's.</summary>
+    public static bool KeepsToMeshes(MaskLayerAsset entry) => entry.GeneratorTexts.ContainsKey(MeshParts);
+
     static string[]? MeshPartsOf(MaskAsset mask) =>
         mask.Layers.Find(static entry => entry.GeneratorTexts.ContainsKey(MeshParts))
             ?.GeneratorTexts[MeshParts]
@@ -335,7 +338,8 @@ public static class StackDocuments {
                 ],
                 layer.Mask.GeneratorTexts,
                 MeshPartsOf(layer.Mask),
-                Wire(layer.Mask.GeneratorInputs)
+                Wire(layer.Mask.GeneratorInputs),
+                StackMaskLayers.Wire(layer.Mask)
             ),
             layer.PlanarAxis.ToString(),
             new(

@@ -212,6 +212,10 @@ public sealed class StackEditor : ILayerStackDocument {
             StackFlattenLayer { Layer: null } => "Flatten stack",
             StackFlattenLayer => "Flatten folder",
             StackUnflattenLayer => "Unflatten folder",
+            StackAddMaskLayer add => $"Add {Terms.InStack([add.Source])[0].Label} to mask",
+            StackRemoveMaskLayer => "Remove mask layer",
+            StackMoveMaskLayer => "Move mask layer",
+            StackSetMaskLayer => "Change mask layer",
             _ => "Edit"
         };
 
@@ -321,6 +325,9 @@ public sealed class StackEditor : ILayerStackDocument {
                 break;
             case StackUnflattenLayer unflatten:
                 Unflatten(unflatten.Layer, set, Do);
+                break;
+            case StackAddMaskLayer or StackRemoveMaskLayer or StackMoveMaskLayer or StackSetMaskLayer:
+                Do(MaskLayers(command, set));
                 break;
             default:
                 throw new StackEditRefusedException($"Unknown command '{command.GetType().Name}'.");
@@ -446,7 +453,7 @@ public sealed class StackEditor : ILayerStackDocument {
 
         var source = Parsed(mask.Source, held.Source, "mask source");
         return source == LayerMaskSource.None
-            ? new() { Layers = held.Layers }
+            ? new() { Layers = [..held.Layers.Where(StackDocuments.KeepsToMeshes)] }
             : held with {
                 Source = source,
                 Value = mask.Value,
@@ -605,7 +612,11 @@ public sealed class StackEditor : ILayerStackDocument {
 
         Aimed(stroke);
 
-        var (paint, start) = stroke.Mask ? MaskCanvas(layer, set, run) : (LayerCanvas(layer, set, run), null);
+        var (paint, start) = stroke switch {
+            { Mask: true, MaskLayer: { } entry } => (MaskLayerCanvas(layer, entry, set, run), null),
+            { Mask: true } => MaskCanvas(layer, set, run),
+            _ => (LayerCanvas(layer, set, run), (uint?)null)
+        };
 
         // ⚠ Live, two strokes of one batch take turns; replayed, they run one after the other. Where they meet in one
         // channel that is two pictures, and a journal has to be one.
@@ -677,6 +688,97 @@ public sealed class StackEditor : ILayerStackDocument {
         var painted = layer.Mask with { Source = LayerMaskSource.Paint, Paint = paint };
         run(Named(layer, layer with { Mask = StackDocuments.MeshMasked(painted, null) }, set));
         return (paint, PaintImage.Pack(showed, showed, showed, 1f));
+    }
+
+    /// <summary>
+    ///     The canvas of a paint entry of a mask's stack, named by its first stroke. It starts transparent, so that what
+    ///     is beneath it shows until it is painted.
+    /// </summary>
+    /// <exception cref="StackEditRefusedException">The entry is not a paint entry.</exception>
+    string MaskLayerCanvas(LayerAsset layer, int index, string set, Action<IAuthoringCommand> run) {
+        var entry = StackMaskLayers.At(layer, index);
+        if (entry.Source != LayerMaskSource.Paint) {
+            throw new StackEditRefusedException(
+                $"Mask layer {index} of '{layer.Name}' is a {entry.Source} layer, and only a paint layer takes a brush.",
+                Api.Refusals.MaskLayerNotPaint,
+                new Dictionary<string, string> { ["layer"] = layer.Name, ["source"] = entry.Source.ToString() }
+            );
+        }
+
+        var paint = entry.Paint.Trim();
+        if (paint.Length > 0) {
+            return paint;
+        }
+
+        paint = FreeCanvas(
+            Path.GetFileNameWithoutExtension(AssetPath),
+            set,
+            string.Create(CultureInfo.InvariantCulture, $"{layer.Id}-{index + 1}"),
+            true,
+            new HashSet<string>()
+        );
+        var named = StackMaskLayers.Changed(layer, index, held => held with { Paint = paint });
+        run(Named(layer, layer with { Mask = named }, set));
+        return paint;
+    }
+
+    /// <summary>An edit of a layer's mask stack, as one change of the layer, so that undo puts the whole mask back.</summary>
+    SetLayerCommand MaskLayers(StackCommand command, string set) {
+        var (id, mask, name) = command switch {
+            StackAddMaskLayer add => (add.Layer,
+                (Func<LayerAsset, MaskAsset>)(layer => StackMaskLayers.Added(layer, NewMaskLayer(add), add.Index)),
+                "Add mask layer"),
+            StackRemoveMaskLayer remove => (remove.Layer, layer => StackMaskLayers.Removed(layer, remove.Index),
+                "Remove mask layer"),
+            StackMoveMaskLayer move => (move.Layer, layer => StackMaskLayers.Moved(layer, move.Index, move.Delta),
+                "Move mask layer"),
+            StackSetMaskLayer change => (change.Layer,
+                layer => StackMaskLayers.Changed(layer, change.Index, held => ChangedMaskLayer(held, change)),
+                "Change mask layer"),
+            _ => throw new StackEditRefusedException($"Unknown command '{command.GetType().Name}'.")
+        };
+        var layer = Require(id);
+        return new(this, new(set, id), layer, layer with { Mask = mask(layer) }, name);
+    }
+
+    static MaskLayerAsset NewMaskLayer(StackAddMaskLayer add) {
+        var source = MaskLayerSource(add.Source);
+        return new() {
+            Source = source,
+            Generator = source == LayerMaskSource.Generator
+                ? add.Generator ?? (StackDocuments.Vocabulary.Generators is [var first, ..] ? first.Value : string.Empty)
+                : string.Empty
+        };
+    }
+
+    static LayerMaskSource MaskLayerSource(string name) {
+        var source = Parsed(name, LayerMaskSource.None, "mask source");
+        return source == LayerMaskSource.None
+            ? throw new StackEditRefusedException("A mask layer has a source; remove it to have none.")
+            : source;
+    }
+
+    static MaskLayerAsset ChangedMaskLayer(MaskLayerAsset held, StackSetMaskLayer change) {
+        if (change.Opacity is < 0f or > 1f || change.Value is < 0f or > 1f) {
+            throw new StackEditRefusedException("A mask layer's value and opacity are from 0 to 1.");
+        }
+
+        var generator = change.Generator ?? held.Generator;
+        var sameGenerator = generator == held.Generator;
+        return held with {
+            Source = change.Source is { } source ? MaskLayerSource(source) : held.Source,
+            Value = change.Value ?? held.Value,
+            Asset = change.Asset ?? held.Asset,
+            Anchor = change.Anchor is { } anchor ? StackDocuments.Reference(anchor) : held.Anchor,
+            Generator = generator,
+            GeneratorTexts = Merged(sameGenerator ? held.GeneratorTexts : [], change.Parameters),
+            GeneratorValues = sameGenerator ? held.GeneratorValues : [],
+            GeneratorInputs = sameGenerator ? held.GeneratorInputs : [],
+            Map = change.Map ?? held.Map,
+            Blend = Parsed(change.Blend, held.Blend, "blend mode"),
+            Opacity = change.Opacity ?? held.Opacity,
+            Enabled = change.Enabled ?? held.Enabled
+        };
     }
 
     /// <summary>

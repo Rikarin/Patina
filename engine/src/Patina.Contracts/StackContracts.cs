@@ -110,6 +110,10 @@ public sealed record StackAnchorUse(string Layer, string Where, string Channel);
 /// <param name="Parameters">What a generator's knobs are set to, as text, or null to keep them.</param>
 /// <param name="MeshParts">The named meshes the layer is limited to, or null for the whole model.</param>
 /// <param name="Inputs">The image inputs of a generator that anchor points feed, by port, or null to keep them.</param>
+/// <param name="Layers">
+///     The mask's own stack over this base, bottom first. Ignored in a change: the mask layer commands edit it, so that
+///     a painted canvas stays with its entry.
+/// </param>
 public sealed record StackMask(
     string Source,
     float Value = 1f,
@@ -123,7 +127,39 @@ public sealed record StackMask(
     IReadOnlyList<StackMaskEffect>? Effects = null,
     IReadOnlyDictionary<string, string>? Parameters = null,
     IReadOnlyList<string>? MeshParts = null,
-    IReadOnlyDictionary<string, StackAnchorRef>? Inputs = null
+    IReadOnlyDictionary<string, StackAnchorRef>? Inputs = null,
+    IReadOnlyList<StackMaskLayer>? Layers = null
+);
+
+/// <summary>
+///     One entry of a mask's own stack: a source, composited over the base and the entries beneath it with its own blend
+///     and opacity. Paint over a generator is a Paint entry over a Generator base.
+/// </summary>
+/// <param name="Source">Constant, Texture, Anchor, Generator, Bake or Paint.</param>
+/// <param name="Value">A constant entry's value.</param>
+/// <param name="Asset">The image a texture entry reads.</param>
+/// <param name="Anchor">The anchor point an anchor entry reads, and the channel it reads it in.</param>
+/// <param name="Generator">The compound a generator entry runs.</param>
+/// <param name="Map">The mesh map a bake entry reads.</param>
+/// <param name="Parameters">What a generator entry's knobs are set to, as text.</param>
+/// <param name="Inputs">The image inputs of a generator entry that anchor points feed, by port.</param>
+/// <param name="Painted">Whether a paint entry has a canvas yet.</param>
+/// <param name="Blend">How it composites over what is beneath it.</param>
+/// <param name="Opacity">How much of it composites, 0 to 1.</param>
+/// <param name="Enabled">Whether it composites at all.</param>
+public sealed record StackMaskLayer(
+    string Source,
+    float Value = 1f,
+    string Asset = "",
+    StackAnchorRef? Anchor = null,
+    string Generator = "",
+    string Map = "",
+    IReadOnlyDictionary<string, string>? Parameters = null,
+    IReadOnlyDictionary<string, StackAnchorRef>? Inputs = null,
+    bool Painted = false,
+    string Blend = "Copy",
+    float Opacity = 1f,
+    bool Enabled = true
 );
 
 /// <summary>Limits a layer to some of the model's named meshes, on top of any mask it has.</summary>
@@ -334,6 +370,8 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackPasteLayers), "pasteLayers"), JsonDerivedType(typeof(StackFlattenLayer), "flattenLayer")]
 [JsonDerivedType(typeof(StackUnflattenLayer), "unflattenLayer")]
 [JsonDerivedType(typeof(StackSetHeightNormal), "setHeightNormal")]
+[JsonDerivedType(typeof(StackAddMaskLayer), "addMaskLayer"), JsonDerivedType(typeof(StackRemoveMaskLayer), "removeMaskLayer")]
+[JsonDerivedType(typeof(StackMoveMaskLayer), "moveMaskLayer"), JsonDerivedType(typeof(StackSetMaskLayer), "setMaskLayer")]
 public abstract record StackCommand;
 
 /// <summary>Adds a layer at the top of the stack.</summary>
@@ -483,6 +521,60 @@ public sealed record StackFlattenLayer(string? Layer = null) : StackCommand;
 /// <param name="Layer">The group.</param>
 public sealed record StackUnflattenLayer(string Layer) : StackCommand;
 
+/// <summary>
+///     Adds an entry to a layer's mask stack. A layer with no mask gets a white one under it first, so that the entry has
+///     something to composite over.
+/// </summary>
+/// <param name="Layer">The layer whose mask it is.</param>
+/// <param name="Source">Constant, Texture, Anchor, Generator, Bake or Paint.</param>
+/// <param name="Index">Where it goes, counted from the bottom of the mask's stack, or null for the top.</param>
+/// <param name="Generator">The compound, for a generator entry, or null for the first the vocabulary offers.</param>
+public sealed record StackAddMaskLayer(string Layer, string Source, int? Index = null, string? Generator = null)
+    : StackCommand;
+
+/// <summary>Removes an entry from a layer's mask stack.</summary>
+/// <param name="Layer">The layer whose mask it is.</param>
+/// <param name="Index">Which, counted from the bottom.</param>
+public sealed record StackRemoveMaskLayer(string Layer, int Index) : StackCommand;
+
+/// <summary>Moves an entry up or down a layer's mask stack.</summary>
+/// <param name="Layer">The layer whose mask it is.</param>
+/// <param name="Index">Which, counted from the bottom.</param>
+/// <param name="Delta">How many places, up the stack when positive.</param>
+public sealed record StackMoveMaskLayer(string Layer, int Index, int Delta) : StackCommand;
+
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field.
+#pragma warning disable SK7005
+
+/// <summary>Changes an entry of a layer's mask stack. What is null stays.</summary>
+/// <param name="Layer">The layer whose mask it is.</param>
+/// <param name="Index">Which, counted from the bottom.</param>
+/// <param name="Source">Where its pixels come from. A paint entry keeps its canvas whatever it becomes.</param>
+/// <param name="Value">A constant entry's value, 0 to 1.</param>
+/// <param name="Asset">The image a texture entry reads.</param>
+/// <param name="Anchor">The anchor point an anchor entry reads.</param>
+/// <param name="Generator">The compound a generator entry runs. Another compound starts from its own knobs.</param>
+/// <param name="Map">The mesh map a bake entry reads.</param>
+/// <param name="Parameters">A generator entry's knobs, replacing what these names held.</param>
+/// <param name="Blend">How it composites.</param>
+/// <param name="Opacity">How much of it composites, 0 to 1.</param>
+/// <param name="Enabled">Whether it composites.</param>
+public sealed record StackSetMaskLayer(
+    string Layer,
+    int Index,
+    string? Source = null,
+    float? Value = null,
+    string? Asset = null,
+    StackAnchorRef? Anchor = null,
+    string? Generator = null,
+    string? Map = null,
+    IReadOnlyDictionary<string, string>? Parameters = null,
+    string? Blend = null,
+    float? Opacity = null,
+    bool? Enabled = null
+) : StackCommand;
+#pragma warning restore SK7005
+
 /// <summary>Copies layers out of a stack, with their pixels as they stand now.</summary>
 /// <param name="Layers">Which. A layer inside another of them goes with that one.</param>
 public sealed record StackClipRequest(IReadOnlyList<string> Layers);
@@ -630,6 +722,10 @@ public sealed record StackBrush(
 ///     The copies the stroke makes of itself on the mesh, or null. A stroke in the atlas is copied too, wherever its
 ///     place on the surface lands; either way the stack needs a mesh.
 /// </param>
+/// <param name="MaskLayer">
+///     With <paramref name="Mask" />, the entry of the mask's stack it paints, counted from the bottom, which must be a
+///     paint entry. Null paints the mask's base.
+/// </param>
 public sealed record StackStroke(
     string Stroke,
     string Layer,
@@ -641,7 +737,8 @@ public sealed record StackStroke(
     bool Mask = false,
     StackView? View = null,
     string Curve = "free",
-    StackSymmetry? Symmetry = null
+    StackSymmetry? Symmetry = null,
+    int? MaskLayer = null
 ) : StackCommand;
 #pragma warning restore SK7005
 
