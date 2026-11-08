@@ -6,7 +6,7 @@ import { PaintStore } from '../paint/paint-store';
 import { menuModel } from './app-menu';
 import { acceleratorOf, chordOf, chordText, normalChord } from './chords';
 import { CommandTable, KeyPresets, MenuBar, type MenuEntry } from './command-table';
-import { Commands } from './commands';
+import { Commands, KeyWaitMs } from './commands';
 import { readKeySettings, settleKeys } from './key-bindings';
 import { ShortcutsDialog } from './shortcuts-dialog';
 
@@ -212,6 +212,114 @@ describe('Commands', () => {
     element('field').focus(); // a box anywhere else undoes its own typing
     commands.run('undo', 'accelerator');
     expect(text).toHaveBeenCalledTimes(2);
+  });
+
+  describe('a key whose command waits for an edit in flight (#223)', () => {
+    /** A document whose undo and redo go out one at a time, and whose history comes back with each answer. */
+    const history = () => {
+      const canUndo = signal(true);
+      const canRedo = signal(false);
+      const sent: ((done: () => void) => void)[] = [];
+      const ran: string[] = [];
+      const inFlight = signal(0);
+      const step = (name: 'undo' | 'redo') => () => {
+        ran.push(name);
+        inFlight.update(count => count + 1);
+        sent.push(done => {
+          done();
+          inFlight.update(count => count - 1);
+        });
+      };
+      commands.handle('undo', { enabled: canUndo, waiting: () => inFlight() > 0, run: step('undo') });
+      commands.handle('redo', { enabled: canRedo, waiting: () => inFlight() > 0, run: step('redo') });
+      const answer = (after: () => void) => {
+        sent.shift()?.(after);
+        TestBed.tick();
+      };
+      return { canUndo, canRedo, ran, answer };
+    };
+    const undoKey = { key: 'z', code: 'KeyZ', metaKey: true };
+    const redoKey = { key: 'Z', code: 'KeyZ', metaKey: true, shiftKey: true };
+
+    it('runs Redo pressed before the undo it would redo has come back', () => {
+      const { canUndo, canRedo, ran, answer } = history();
+      pressOn(null, undoKey);
+      const redo = pressOn(null, redoKey);
+      expect(ran).toEqual(['undo']);
+      expect(redo.defaultPrevented).toBe(true);
+
+      answer(() => {
+        canUndo.set(false);
+        canRedo.set(true);
+      });
+      expect(ran).toEqual(['undo', 'redo']);
+    });
+
+    it('decides each at its turn, and drops one that has nothing to do then', () => {
+      const { canUndo, canRedo, ran, answer } = history();
+      pressOn(null, undoKey);
+      pressOn(null, undoKey);
+      pressOn(null, redoKey);
+      expect(ran).toEqual(['undo']);
+
+      // The one step is undone, so the second Undo has nothing to do; Redo, behind it, still runs.
+      answer(() => {
+        canUndo.set(false);
+        canRedo.set(true);
+      });
+      expect(ran).toEqual(['undo', 'redo']);
+    });
+
+    it('never runs a command that stays off, even when it turns on later', () => {
+      const { canRedo, ran, answer } = history();
+      pressOn(null, undoKey);
+      pressOn(null, redoKey);
+      answer(() => undefined); // the undo came back with nothing to redo
+      expect(ran).toEqual(['undo']);
+
+      canRedo.set(true);
+      TestBed.tick();
+      expect(ran).toEqual(['undo']);
+    });
+
+    it('keeps the keys behind a waiting one in order, and gives up on one kept waiting too long', () => {
+      vi.useFakeTimers();
+      try {
+        const { canUndo, canRedo, ran, answer } = history();
+        const cut = vi.fn(() => ran.push('cut'));
+        commands.handle('cut', { run: cut });
+        pressOn(null, undoKey);
+        pressOn(null, redoKey);
+        pressOn(null, { key: 'x', code: 'KeyX', metaKey: true });
+        expect(ran).toEqual(['undo']); // Cut would overtake Redo
+
+        vi.advanceTimersByTime(KeyWaitMs);
+        TestBed.tick();
+        expect(ran).toEqual(['undo']);
+
+        answer(() => {
+          canUndo.set(false);
+          canRedo.set(true);
+        });
+        expect(ran).toEqual(['undo']);
+        pressOn(null, { key: 'x', code: 'KeyX', metaKey: true });
+        expect(ran).toEqual(['undo', 'cut']);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('waits behind a menu’s key too, but not behind a click', () => {
+      const { canUndo, canRedo, ran, answer } = history();
+      commands.run('undo', 'accelerator');
+      expect(commands.run('redo', 'accelerator')).toBe(true);
+      expect(commands.run('redo', 'menu')).toBe(false);
+      answer(() => {
+        canUndo.set(false);
+        canRedo.set(true);
+      });
+      expect(ran).toEqual(['undo', 'redo']);
+    });
   });
 
   it('refuses a key another command has where both work, and swaps when asked', () => {

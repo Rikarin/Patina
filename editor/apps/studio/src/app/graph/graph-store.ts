@@ -137,7 +137,17 @@ export class GraphStore {
   private readonly mutableGraphInspected = signal(false);
   private readonly positionDrafts = new DraftLayer<GraphPoint>();
   private readonly valueDrafts = new DraftLayer<DraftValue>();
-  private readonly edits = new EditQueue<GraphEditResult>();
+  /** The newest edit the Server answered, by the document it was made to. Its event may not have come yet. */
+  private readonly answered = signal<{ id: string; sequence: number } | null>(null);
+  private readonly edits = new EditQueue<GraphEditResult>(result => {
+    const id = this.mutableDocument()?.id;
+    if (id !== undefined) {
+      this.answered.update(held => ({
+        id,
+        sequence: Math.max(result.sequence, held?.id === id ? held.sequence : 0)
+      }));
+    }
+  });
   private previews = this.newLoader();
   private currentConnection: Connection | null = null;
   private client: PatinaClient | null = null;
@@ -207,6 +217,19 @@ export class GraphStore {
     const document = this.mutableDocument();
     const [first] = this.mutableSelection();
     return (first === undefined ? undefined : document?.nodes.get(first)) ?? null;
+  });
+
+  /**
+   * Whether an edit is still on its way: sent and not answered, or answered and its event not yet applied. Until then
+   * what Undo and Redo would do is not known, so a key for them waits (#223).
+   */
+  readonly settling = computed(() => {
+    const document = this.mutableDocument();
+    const answered = this.answered();
+    return (
+      this.edits.pending() > 0 ||
+      (document !== null && answered?.id === document.id && document.sequence < answered.sequence)
+    );
   });
 
   readonly editable = computed(() => {

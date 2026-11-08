@@ -147,6 +147,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   evaluate refuses to save, and one refused stroke no longer stops painting.
 - A layer-stack build depends on the paint, mesh and bake its stack names, so painting and saving rebuilds it, and it reads the stack's
   bake.
+- A quick Undo then Redo does both. A key for Undo or Redo pressed while an edit is still on its way waits for it, then runs if there
+  is something to undo or redo, so Redo pressed before the undo came back is no longer lost. Keys pressed behind it wait their turn.
 
 ### Changed
 

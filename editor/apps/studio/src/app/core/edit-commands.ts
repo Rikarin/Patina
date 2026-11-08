@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { GraphStore } from '../graph/graph-store';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore } from '../paint/paint-store';
@@ -20,6 +20,8 @@ export class EditCommands {
   private readonly paint = inject(PaintStore);
   private readonly project = inject(ProjectStore);
   private installed = false;
+  /** Undos and redos of a stack still going out: what the next one would do is known when they are back. */
+  private readonly stepping = signal(0);
 
   /** Registers the handlers, once. */
   install(): void {
@@ -39,15 +41,28 @@ export class EditCommands {
 
     const graphInFront = this.project.graphInFront;
     const history = () => (graphInFront() ? this.graph.document()?.history : this.paint.state()?.history) ?? null;
+    // A key for either waits for the edits in flight, since each can turn the other on (#223).
+    const waiting = () => (graphInFront() ? this.graph.settling() : this.stepping() > 0);
+    const step = (action: 'undo' | 'redo') => {
+      if (graphInFront()) {
+        this.graph[action]();
+        return;
+      }
+
+      this.stepping.update(count => count + 1);
+      void this.paint.act(action).finally(() => this.stepping.update(count => count - 1));
+    };
     this.commands.handle('undo', {
       enabled: () => (graphInFront() ? this.graph.editable() : true) && history()?.canUndo === true,
+      waiting,
       label: () => (history()?.undoLabel ? `Undo ${history()?.undoLabel}` : null),
-      run: () => (graphInFront() ? this.graph.undo() : this.paint.act('undo'))
+      run: () => step('undo')
     });
     this.commands.handle('redo', {
       enabled: () => (graphInFront() ? this.graph.editable() : true) && history()?.canRedo === true,
+      waiting,
       label: () => (history()?.redoLabel ? `Redo ${history()?.redoLabel}` : null),
-      run: () => (graphInFront() ? this.graph.redo() : this.paint.act('redo'))
+      run: () => step('redo')
     });
   }
 }

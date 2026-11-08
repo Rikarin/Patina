@@ -57,7 +57,7 @@ describe('EditQueue', () => {
 
     void queue.submit(slider(1), { key: 'scale' });
     const replies = [2, 3, 4, 5].map(value => queue.submit(slider(value), { key: 'scale', merge: true }));
-    expect(queue.pending).toBe(2);
+    expect(queue.pending()).toBe(2);
 
     first.open(1);
     await expect(Promise.all(replies)).resolves.toEqual([5, 5, 5, 5]);

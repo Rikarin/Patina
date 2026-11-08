@@ -1,4 +1,4 @@
-import { type DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { type DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { GraphStore } from '../graph/graph-store';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore } from '../paint/paint-store';
@@ -14,6 +14,12 @@ export type CommandVia = 'key' | 'accelerator' | 'menu' | 'button';
 export interface CommandHandler {
   /** Whether it would do something now. The signals it reads keep the menu's items on and off. */
   readonly enabled?: () => boolean;
+  /**
+   * Whether something in flight may still change what it would do, as an undo going out does for Redo. A key for it
+   * waits until this is false and then runs if it is enabled, so a quick Undo then Redo does both, and a command that
+   * stays off never runs late.
+   */
+  readonly waiting?: () => boolean;
   run(via: CommandVia): unknown;
   /** What the menu says instead of the table's label, such as Undo Paint Stroke. */
   readonly label?: () => string | null;
@@ -51,6 +57,16 @@ export function focusOf(element: Element | null): CommandFocus {
     text: element.matches(TextFields),
     dialog: element.closest('[role=dialog], [role=alertdialog]') !== null
   };
+}
+
+/** How long a key waits for its command at most: longer, and the person has moved on. */
+export const KeyWaitMs = 5000;
+
+/** A key whose command was waiting when it was pressed, or that came after one. */
+interface WaitingKey {
+  readonly id: string;
+  readonly via: CommandVia;
+  readonly until: number;
 }
 
 /** The outcome of a rebinding: done, or refused because another command has the key where this one's keys work. */
@@ -94,6 +110,10 @@ export class Commands {
   readonly focus = computed(() => focusOf(this.focused()));
   /** The text field typed in since it last committed, which is where Undo goes in a pane that undoes its document. */
   private typedIn: EventTarget | null = null;
+  /** Keys waiting for their commands, in the order pressed. A key pressed behind one waits too, so none overtakes. */
+  private readonly waitingKeys = signal<readonly WaitingKey[]>([]);
+  /** Goes up when a waiting key's time is up, since time is not a signal. */
+  private readonly clock = signal(0);
 
   constructor() {
     const document = globalThis.document;
@@ -115,6 +135,11 @@ export class Commands {
       ?.readKeys()
       .then(saved => this.settings.set(readKeySettings(saved, this.table)))
       .catch(() => undefined); // no file is the defaults
+
+    effect(() => {
+      this.clock();
+      this.release();
+    });
   }
 
   /**
@@ -182,8 +207,12 @@ export class Commands {
     return [key ? `${label} (${key})` : label, hint].filter(Boolean).join(' — ');
   }
 
-  /** Runs a command if something would answer it. False if nothing did. */
+  /** Runs a command if something would answer it, or will once what it waits for lands. False if nothing would. */
   run(id: string, via: CommandVia = 'button'): boolean {
+    if (this.waitFor(id, via)) {
+      return true;
+    }
+
     const handler = this.live(id, via);
     if (!handler) {
       return false;
@@ -210,6 +239,11 @@ export class Commands {
     }
 
     for (const id of chord ? (this.byChord().get(chord) ?? []) : []) {
+      if (this.waitFor(id, 'key')) {
+        event.preventDefault();
+        return;
+      }
+
       const handler = this.live(id, 'key');
       // A field types its own keys: the page's default does what a text handler would.
       if (handler && !handler.text) {
@@ -262,6 +296,48 @@ export class Commands {
       .catch(() => undefined); // kept for this session; the file says what it can
   }
 
+  /**
+   * Holds a key back, and says so, when its command is waiting for something in flight, or when another key is
+   * already held back and this one would run: it goes behind it, so that keys run in the order pressed.
+   */
+  private waitFor(id: string, via: CommandVia): boolean {
+    if (via !== 'key' && via !== 'accelerator') {
+      return false;
+    }
+
+    const held = untracked(() => this.waitingKeys());
+    if (!untracked(() => this.waits(id, via) || (held.length > 0 && this.live(id, via) !== null))) {
+      return false;
+    }
+
+    this.waitingKeys.set([...held, { id, via, until: Date.now() + KeyWaitMs }]);
+    setTimeout(() => this.clock.update(tick => tick + 1), KeyWaitMs);
+    return true;
+  }
+
+  /** Runs or drops the keys held back, in order, up to the first whose command is still waiting. */
+  private release(): void {
+    const held = this.waitingKeys();
+    let at = 0;
+    for (; at < held.length; at++) {
+      const key = held[at] as WaitingKey;
+      const late = Date.now() >= key.until;
+      if (!late && this.waits(key.id, key.via)) {
+        break;
+      }
+
+      // Its turn: it runs if its command is on now, and is dropped if not, as a key pressed now would be.
+      const handler = late ? null : this.live(key.id, key.via);
+      if (handler && !handler.text) {
+        untracked(() => void handler.run(key.via));
+      }
+    }
+
+    if (at > 0) {
+      untracked(() => this.waitingKeys.set(held.slice(at)));
+    }
+  }
+
   /** The handler that would run, or null: nothing answers, or where focus is keeps this command's keys. */
   private live(id: string, via: CommandVia): CommandHandler | null {
     const spec = this.specs.get(id);
@@ -278,18 +354,36 @@ export class Commands {
       return via === 'key' ? null : text;
     }
 
+    return this.keeps(spec, via, handlers) ? null : (ready.find(handler => !handler.text) ?? null);
+  }
+
+  /**
+   * Whether a key for a command would wait rather than run or be dropped: something in flight may change what it does,
+   * and where focus is lets its keys work.
+   */
+  private waits(id: string, via: CommandVia): boolean {
+    const spec = this.specs.get(id);
+    const handlers = this.handlers().get(id) ?? [];
+    const focus = this.focus();
+    return (
+      spec !== undefined &&
+      handlers.some(handler => !handler.text && (handler.waiting?.() ?? false)) &&
+      !handlers.some(handler => handler.text && focus.text && (handler.enabled?.() ?? true)) &&
+      !this.keeps(spec, via, handlers)
+    );
+  }
+
+  /** Whether where focus is keeps a command's keys or menu item: a dialog, a text field, or another kind of document. */
+  private keeps(spec: CommandSpec, via: CommandVia, handlers: readonly CommandHandler[]): boolean {
+    const focus = this.focus();
     const keyed = via === 'key' || via === 'accelerator';
     // A field that declined its own handler (one that undoes its document) lets the document's run.
     const declined = handlers.some(handler => handler.text);
-    if (
+    return (
       (focus.dialog && !spec.inDialog) ||
       (keyed && focus.text && !spec.typing && !declined) ||
       (keyed && !this.areaLive(spec.area))
-    ) {
-      return null;
-    }
-
-    return ready.find(handler => !handler.text) ?? null;
+    );
   }
 
   private areaLive(area: CommandArea | undefined): boolean {
