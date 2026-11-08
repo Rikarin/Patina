@@ -4189,9 +4189,9 @@ export interface components {
        */
       anchorPoint?: null | string;
       anchor?: null | components['schemas']['StackAnchorRef'];
-      /** @description The image inputs of a graph fill or a filter that anchor points feed, replacing all of them. */
+      /** @description Where the image inputs of a graph fill or a filter read, by port, replacing all of them. */
       inputs?: null | {
-        [key: string]: components['schemas']['StackAnchorRef'];
+        [key: string]: components['schemas']['StackInput'];
       };
     };
     /** @description Names the mesh a stack is painted on, which is undone like any other edit. */
@@ -4369,9 +4369,25 @@ export interface components {
       /** @description Where, absolute or relative to the library. */
       folder: string;
     };
+    /** @description One image a filter reads, as Properties offers a slot for it. */
+    StackFilterInput: {
+      /** @description Its name, which a layer's `inputs` are keyed by. */
+      port: string;
+      /** @description What the node says it reads there. */
+      summary: string;
+      /**
+       * @description Whether it is the picture the filter changes. It reads the layers beneath in the channel being written until the
+       *     layer says otherwise, and on a mask it is always the mask.
+       */
+      subject: boolean;
+      /** @description Whether the filter runs with nothing there. */
+      optional: boolean;
+      /** @description The channel it is named after, which it reads beneath until the layer says otherwise, or empty. */
+      channel: string;
+    };
     /**
-     * @description An adjustment a filter layer or a mask can run: any node or shipped compound with one image in and one image
-     *     out. A project's own compounds reach a stack from the shelf.
+     * @description An adjustment a filter layer or a mask can run, or a generator an input can read: any node or shipped compound
+     *     a stack can use there. A project's own compounds reach a stack from the shelf.
      */
     StackFilterKind: {
       /** @description The node type or compound, as string StackLayer.FilterNode names it. */
@@ -4382,10 +4398,12 @@ export interface components {
       category: string;
       /** @description One line about it. */
       summary: string;
-      /** @description Its numbers, each saying what it is and what it starts as. Never the image it reads. */
+      /** @description Its numbers, each saying what it is and what it starts as. Never an image it reads. */
       ports: components['schemas']['GraphPortDefinition'][];
       /** @description What it takes as text. */
       settings: components['schemas']['GraphSettingDefinition'][];
+      /** @description The images it reads, its subject first. Empty for a generator. */
+      inputs?: null | components['schemas']['StackFilterInput'][];
     };
     /** @description One colour of a stack's id map. */
     StackIdColour: {
@@ -4403,6 +4421,40 @@ export interface components {
       colours: components['schemas']['StackIdColour'][];
       /** @description The colour at the place asked about, or null. */
       at?: null | number[];
+    };
+    /** @description Where one image input of a filter, a mask step or a graph fill reads. */
+    StackInput: {
+      /** @description Beneath, Anchor, Generator, Texture or Bake. */
+      source: string;
+      /**
+       * @description The channel read beneath, by usage, or empty for the channel being written.
+       * @default
+       */
+      channel: string;
+      anchor?: null | components['schemas']['StackAnchorRef'];
+      /**
+       * @description The node or compound read, for Generator: Source/Noise, Noise/Clouds.
+       * @default
+       */
+      generator: string;
+      /** @description The generator's numbers, by port. */
+      values?: null | {
+        [key: string]: number[];
+      };
+      /** @description The generator's settings, by name. */
+      parameters?: null | {
+        [key: string]: string;
+      };
+      /**
+       * @description The image read, for Texture.
+       * @default
+       */
+      asset: string;
+      /**
+       * @description The mesh map read, for Bake.
+       * @default
+       */
+      map: string;
     };
     /** @description One layer, without its pixels. */
     StackLayer: {
@@ -4470,9 +4522,9 @@ export interface components {
        */
       anchorPoint: string;
       anchor?: null | components['schemas']['StackAnchorRef'];
-      /** @description The image inputs of a graph fill or a filter that anchor points feed, by port. */
+      /** @description Where the image inputs of a graph fill or a filter read, by port. */
       inputs?: null | {
-        [key: string]: components['schemas']['StackAnchorRef'];
+        [key: string]: components['schemas']['StackInput'];
       };
       /**
        * @description Whether this is a group flattened into a canvas: it composites that canvas, and its children are kept, unread,
@@ -4551,9 +4603,9 @@ export interface components {
       texts?: null | {
         [key: string]: string;
       };
-      /** @description Its other image inputs, by port, each fed by an anchor point. The mask goes into the one left. */
+      /** @description Where its other image inputs read, by port. The mask always goes into its first image input. */
       inputs?: null | {
-        [key: string]: components['schemas']['StackAnchorRef'];
+        [key: string]: components['schemas']['StackInput'];
       };
     };
     /** @description Chooses the bake a stack's generators and bake masks read. */
@@ -4879,6 +4931,10 @@ export interface components {
       };
       /** @description What a brush's fields take, and the brush a new one starts as. */
       brush: components['schemas']['StackBrushTerms'];
+      /** @description Where an image input can read: the layers beneath, an anchor point, a generator, an image or a mesh map. */
+      inputs: components['schemas']['StackTerm'][];
+      /** @description The generators an image input can read: noises, patterns, grunges and the rest. */
+      sources: components['schemas']['StackFilterKind'][];
     };
     /** @description The reply to `GET /api/v1/system`. */
     SystemInfo: {

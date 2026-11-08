@@ -64,7 +64,9 @@ public static class StackDocuments {
             StackBrushes.MaximumRadius,
             StackBrushes.MaximumAspect,
             StackBrushes.MaximumCount
-        )
+        ),
+        Terms.InStack(Enum.GetNames<LayerInputSource>()),
+        Sources()
     );
 
     /// <summary>The stack a new file starts as: a base, and somewhere to paint.</summary>
@@ -141,8 +143,62 @@ public static class StackDocuments {
                 )
                 ?? [],
             Texts = effect.Texts?.ToDictionary(StringComparer.Ordinal) ?? [],
-            Inputs = References(effect.Inputs) ?? []
+            Inputs = Sources(effect.Inputs) ?? []
         };
+
+    /// <summary>Where each image input reads, as a file holds it, or null when none were given.</summary>
+    public static Dictionary<string, LayerInputAsset>? Sources(IReadOnlyDictionary<string, StackInput>? inputs) =>
+        inputs?.ToDictionary(static pair => pair.Key, static pair => Source(pair.Value), StringComparer.Ordinal);
+
+    /// <summary>Where one image input reads, as a file holds it.</summary>
+    /// <exception cref="StackEditRefusedException">The source is not one a stack knows.</exception>
+    static LayerInputAsset Source(StackInput input) =>
+        new() {
+            Source = Enum.TryParse<LayerInputSource>(input.Source, false, out var source)
+                && Enum.IsDefined(source)
+                && !int.TryParse(input.Source, out _)
+                    ? source
+                    : throw new StackEditRefusedException(
+                        $"'{input.Source}' is not where an input can read: it reads Beneath, Anchor, Generator, "
+                        + "Texture or Bake."
+                    ),
+            Channel = input.Channel,
+            Anchor = Reference(input.Anchor),
+            Generator = input.Generator,
+            Values = input.Values?.ToDictionary(
+                    static pair => pair.Key,
+                    static pair => pair.Value.ToArray(),
+                    StringComparer.Ordinal
+                )
+                ?? [],
+            Texts = input.Parameters?.ToDictionary(StringComparer.Ordinal) ?? [],
+            Asset = input.Asset,
+            Map = input.Map
+        };
+
+    static Dictionary<string, StackInput>? Wire(Dictionary<string, LayerInputAsset> inputs) =>
+        inputs.Count == 0
+            ? null
+            : inputs.ToDictionary(
+                static pair => pair.Key,
+                static pair => new StackInput(
+                    pair.Value.Source.ToString(),
+                    pair.Value.Channel,
+                    Wire(pair.Value.Anchor),
+                    pair.Value.Generator,
+                    pair.Value.Values.Count == 0
+                        ? null
+                        : pair.Value.Values.ToDictionary(
+                            static value => value.Key,
+                            static value => (IReadOnlyList<float>)value.Value,
+                            StringComparer.Ordinal
+                        ),
+                    pair.Value.Texts.Count == 0 ? null : pair.Value.Texts,
+                    pair.Value.Asset,
+                    pair.Value.Map
+                ),
+                StringComparer.Ordinal
+            );
 
     /// <summary>A reference to an anchor point as a file holds it.</summary>
     public static AnchorReference Reference(StackAnchorRef? reference) =>
@@ -183,12 +239,24 @@ public static class StackDocuments {
     ///     Every adjustment a stack can run, read from the same registry and compounds its compile reads, each with
     ///     what its node declares, so that a client shows what will run.
     /// </summary>
-    static IReadOnlyList<StackFilterKind> Filters() {
-        var library = LayerStackCompiler.Library(out _);
+    static IReadOnlyList<StackFilterKind> Filters() => Kinds(LayerStackGraph.IsAdjustment);
+
+    /// <summary>
+    ///     What an image input can read as a generator: every node and shipped compound that reads no image and writes
+    ///     one, less the two an input names by their own sources, an image and a mesh map.
+    /// </summary>
+    static IReadOnlyList<StackFilterKind> Sources() =>
+        Kinds(static type => type.Path is not ("Source/Bitmap" or "Source/Mesh Map")
+            && type.Ports.Count(static port => port is { Direction: PortDirection.Output, Kind: PortKind.Image }) == 1
+            && !type.Ports.Any(static port => port is { Direction: PortDirection.Input, Kind: PortKind.Image })
+        );
+
+    static IReadOnlyList<StackFilterKind> Kinds(Func<NodeTypeDefinition, bool> offered) {
+        var library = LayerStackCompiler.Library(out var compounds);
         return [
-            ..library.Types.Where(LayerStackGraph.IsAdjustment)
+            ..library.Types.Where(offered)
                 .OrderBy(static type => type.Path, StringComparer.Ordinal)
-                .Select(static type => new StackFilterKind(
+                .Select(type => new StackFilterKind(
                         type.Path,
                         type.Title,
                         type.Category,
@@ -201,7 +269,18 @@ public static class StackDocuments {
                                 )
                                 .Select(GraphDocuments.Definition)
                         ],
-                        [..type.Settings.Select(GraphDocuments.Definition)]
+                        [..type.Settings.Select(GraphDocuments.Definition)],
+                        [
+                            ..LayerStackGraph.Inputs(type, library, compounds)
+                                .Select(static input => new StackFilterInput(
+                                        input.Port,
+                                        input.Summary,
+                                        input.Subject,
+                                        input.Optional,
+                                        input.Channel
+                                    )
+                                )
+                        ]
                     )
                 )
         ];
@@ -229,11 +308,11 @@ public static class StackDocuments {
     }
 
     /// <summary>
-    ///     The filters, less what a mask's colour selection is. That one has its own fields, and an entry of its node
-    ///     in a mask's list is that selection.
+    ///     The filters with one image out, since a mask is one picture, less what a mask's colour selection is. That
+    ///     one has its own fields, and an entry of its node in a mask's list is that selection.
     /// </summary>
     static IReadOnlyList<StackFilterKind> MaskEffects() => [
-        ..Filters().Where(static filter => filter.Node != ColourSelect)
+        ..Kinds(LayerStackGraph.IsMaskStep).Where(static filter => filter.Node != ColourSelect)
     ];
 
     static MaskEffectAsset? Selection(MaskAsset mask) =>

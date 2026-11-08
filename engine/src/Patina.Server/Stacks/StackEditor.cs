@@ -502,7 +502,8 @@ public sealed class StackEditor : ILayerStackDocument {
                 Graph = change.Graph ?? layer.Graph,
                 AnchorPoint = point,
                 Anchor = change.Anchor is { } anchor ? StackDocuments.Reference(anchor) : layer.Anchor,
-                Inputs = StackDocuments.References(change.Inputs) ?? layer.Inputs,
+                Inputs = StackDocuments.Sources(change.Inputs)
+                    ?? (sameFilter && (change.Graph ?? layer.Graph) == layer.Graph ? layer.Inputs : []),
                 Projection = Parsed(change.Projection, layer.Projection, "projection"),
                 PlanarAxis = Parsed(change.PlanarAxis, layer.PlanarAxis, "axis"),
                 Placement = change.Placement is { } placement ? Placed(placement) : layer.Placement,

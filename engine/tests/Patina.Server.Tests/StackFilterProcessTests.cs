@@ -34,7 +34,11 @@ public sealed partial class StackProcessTests {
 
         List<string> failures = [];
         foreach (var kind in words.Filters) {
-            var set = await EditAsync(state.Id, deadline.Token, new StackSetLayer(filter, FilterNode: kind.Node));
+            var set = await EditAsync(
+                state.Id,
+                deadline.Token,
+                new StackSetLayer(filter, FilterNode: kind.Node, Inputs: Fed(kind))
+            );
             var evaluation = await EvaluatedAsync(socket, set.Revision, deadline.Token);
             if (evaluation.Problems.Count > 0) {
                 failures.Add(
@@ -62,7 +66,7 @@ public sealed partial class StackProcessTests {
             var set = await EditAsync(
                 state.Id,
                 deadline.Token,
-                new StackSetLayer("paint", Mask: new("Paint", Effects: [new(kind.Node)]))
+                new StackSetLayer("paint", Mask: new("Paint", Effects: [new(kind.Node, Inputs: Fed(kind))]))
             );
             var evaluation = await EvaluatedAsync(socket, set.Revision, deadline.Token);
             if (evaluation.Problems.Count > 0) {
@@ -77,7 +81,10 @@ public sealed partial class StackProcessTests {
                 var nudged = await EditAsync(
                     state.Id,
                     deadline.Token,
-                    new StackSetLayer("paint", Mask: new("Paint", Effects: [new(kind.Node, true, numbers, texts)]))
+                    new StackSetLayer(
+                        "paint",
+                        Mask: new("Paint", Effects: [new(kind.Node, true, numbers, texts, Fed(kind))])
+                    )
                 );
                 await EvaluatedAsync(socket, nudged.Revision, deadline.Token);
                 if (Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor") == plain
@@ -88,6 +95,25 @@ public sealed partial class StackProcessTests {
         }
 
         Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
+
+    /// <summary>
+    ///     A noise for every image a filter reads beside its subject and cannot do without, as a person fills a warp's
+    ///     field before it does anything. An input named after a channel reads that channel beneath by itself.
+    /// </summary>
+    static Dictionary<string, StackInput>? Fed(StackFilterKind kind) {
+        Dictionary<string, StackInput> inputs = [];
+        foreach (var input in kind.Inputs ?? []) {
+            if (input is { Subject: false, Optional: false, Channel: "" }) {
+                inputs[input.Port] = new(
+                    "Generator",
+                    Generator: "Source/Noise",
+                    Values: new Dictionary<string, IReadOnlyList<float>> { ["Scale"] = [6f] }
+                );
+            }
+        }
+
+        return inputs.Count == 0 ? null : inputs;
     }
 
     /// <summary>

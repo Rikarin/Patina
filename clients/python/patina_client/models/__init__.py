@@ -230,9 +230,13 @@ from .stack_evaluation import StackEvaluation
 from .stack_event import StackEvent
 from .stack_event_page import StackEventPage
 from .stack_export_request import StackExportRequest
+from .stack_filter_input import StackFilterInput
 from .stack_filter_kind import StackFilterKind
 from .stack_id_colour import StackIdColour
 from .stack_id_colours import StackIdColours
+from .stack_input import StackInput
+from .stack_input_parameters_type_1 import StackInputParametersType1
+from .stack_input_values_type_1 import StackInputValuesType1
 from .stack_layer import StackLayer
 from .stack_layer_inputs_type_1 import StackLayerInputsType1
 from .stack_layer_parameters_type_1 import StackLayerParametersType1
@@ -515,9 +519,13 @@ __all__ = (
     "StackEvent",
     "StackEventPage",
     "StackExportRequest",
+    "StackFilterInput",
     "StackFilterKind",
     "StackIdColour",
     "StackIdColours",
+    "StackInput",
+    "StackInputParametersType1",
+    "StackInputValuesType1",
     "StackLayer",
     "StackLayerInputsType1",
     "StackLayerParametersType1",

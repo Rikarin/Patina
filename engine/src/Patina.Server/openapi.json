@@ -11784,9 +11784,9 @@
               "object"
             ],
             "additionalProperties": {
-              "$ref": "#/components/schemas/StackAnchorRef"
+              "$ref": "#/components/schemas/StackInput"
             },
-            "description": "The image inputs of a graph fill or a filter that anchor points feed, replacing all of them."
+            "description": "Where the image inputs of a graph fill or a filter read, by port, replacing all of them."
           }
         },
         "description": "Changes what a layer\u0027s row shows. What is null stays."
@@ -12192,6 +12192,39 @@
         },
         "description": "Writes each channel of a stack to a file."
       },
+      "StackFilterInput": {
+        "required": [
+          "port",
+          "summary",
+          "subject",
+          "optional",
+          "channel"
+        ],
+        "type": "object",
+        "properties": {
+          "port": {
+            "type": "string",
+            "description": "Its name, which a layer\u0027s \u0060inputs\u0060 are keyed by."
+          },
+          "summary": {
+            "type": "string",
+            "description": "What the node says it reads there."
+          },
+          "subject": {
+            "type": "boolean",
+            "description": "Whether it is the picture the filter changes. It reads the layers beneath in the channel being written until the\nlayer says otherwise, and on a mask it is always the mask."
+          },
+          "optional": {
+            "type": "boolean",
+            "description": "Whether the filter runs with nothing there."
+          },
+          "channel": {
+            "type": "string",
+            "description": "The channel it is named after, which it reads beneath until the layer says otherwise, or empty."
+          }
+        },
+        "description": "One image a filter reads, as Properties offers a slot for it."
+      },
       "StackFilterKind": {
         "required": [
           "node",
@@ -12224,7 +12257,7 @@
             "items": {
               "$ref": "#/components/schemas/GraphPortDefinition"
             },
-            "description": "Its numbers, each saying what it is and what it starts as. Never the image it reads."
+            "description": "Its numbers, each saying what it is and what it starts as. Never an image it reads."
           },
           "settings": {
             "type": "array",
@@ -12232,9 +12265,19 @@
               "$ref": "#/components/schemas/GraphSettingDefinition"
             },
             "description": "What it takes as text."
+          },
+          "inputs": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/StackFilterInput"
+            },
+            "description": "The images it reads, its subject first. Empty for a generator."
           }
         },
-        "description": "An adjustment a filter layer or a mask can run: any node or shipped compound with one image in and one image\nout. A project\u0027s own compounds reach a stack from the shelf."
+        "description": "An adjustment a filter layer or a mask can run, or a generator an input can read: any node or shipped compound\na stack can use there. A project\u0027s own compounds reach a stack from the shelf."
       },
       "StackIdColour": {
         "required": [
@@ -12285,6 +12328,78 @@
           }
         },
         "description": "The colours of a stack\u0027s id map, and the one at a place on it if one was asked about."
+      },
+      "StackInput": {
+        "required": [
+          "source",
+          "channel",
+          "generator",
+          "asset",
+          "map"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "Beneath, Anchor, Generator, Texture or Bake."
+          },
+          "channel": {
+            "type": "string",
+            "description": "The channel read beneath, by usage, or empty for the channel being written.",
+            "default": ""
+          },
+          "anchor": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The anchor point read, and in which channel, for Anchor.",
+                "$ref": "#/components/schemas/StackAnchorRef"
+              }
+            ]
+          },
+          "generator": {
+            "type": "string",
+            "description": "The node or compound read, for Generator: Source/Noise, Noise/Clouds.",
+            "default": ""
+          },
+          "values": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "float"
+              }
+            },
+            "description": "The generator\u0027s numbers, by port."
+          },
+          "parameters": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "The generator\u0027s settings, by name."
+          },
+          "asset": {
+            "type": "string",
+            "description": "The image read, for Texture.",
+            "default": ""
+          },
+          "map": {
+            "type": "string",
+            "description": "The mesh map read, for Bake.",
+            "default": ""
+          }
+        },
+        "description": "Where one image input of a filter, a mask step or a graph fill reads."
       },
       "StackLayer": {
         "required": [
@@ -12457,9 +12572,9 @@
               "object"
             ],
             "additionalProperties": {
-              "$ref": "#/components/schemas/StackAnchorRef"
+              "$ref": "#/components/schemas/StackInput"
             },
-            "description": "The image inputs of a graph fill or a filter that anchor points feed, by port."
+            "description": "Where the image inputs of a graph fill or a filter read, by port."
           },
           "flattened": {
             "type": "boolean",
@@ -12629,9 +12744,9 @@
               "object"
             ],
             "additionalProperties": {
-              "$ref": "#/components/schemas/StackAnchorRef"
+              "$ref": "#/components/schemas/StackInput"
             },
-            "description": "Its other image inputs, by port, each fed by an anchor point. The mask goes into the one left."
+            "description": "Where its other image inputs read, by port. The mask always goes into its first image input."
           }
         },
         "description": "One step run on a mask."
@@ -13234,7 +13349,9 @@
           "maskEffects",
           "usages",
           "generatorParameters",
-          "brush"
+          "brush",
+          "inputs",
+          "sources"
         ],
         "type": "object",
         "properties": {
@@ -13321,6 +13438,20 @@
           "brush": {
             "description": "What a brush\u0027s fields take, and the brush a new one starts as.",
             "$ref": "#/components/schemas/StackBrushTerms"
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "Where an image input can read: the layers beneath, an anchor point, a generator, an image or a mesh map."
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackFilterKind"
+            },
+            "description": "The generators an image input can read: noises, patterns, grunges and the rest."
           }
         },
         "description": "The words a stack\u0027s fields take, each with its label, so that a client holds no list of its own."

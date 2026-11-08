@@ -64,8 +64,8 @@ class StackCommandStackSetLayer:
                 reference to the old one, in the
                 same step.
             anchor (None | StackAnchorRef | Unset):
-            inputs (None | StackCommandStackSetLayerInputsType1 | Unset): The image inputs of a graph fill or a filter that
-                anchor points feed, replacing all of them.
+            inputs (None | StackCommandStackSetLayerInputsType1 | Unset): Where the image inputs of a graph fill or a filter
+                read, by port, replacing all of them.
      """
 
     op: StackCommandStackSetLayerOp

@@ -42,6 +42,9 @@ class StackVocabulary:
             generator_parameters (StackVocabularyGeneratorParameters): The knobs each generator has, by its path.
             brush (StackBrushTerms): What a brush's fields take and how a new brush starts, so a client keeps no list or
                 default of its own.
+            inputs (list[StackTerm]): Where an image input can read: the layers beneath, an anchor point, a generator, an
+                image or a mesh map.
+            sources (list[StackFilterKind]): The generators an image input can read: noises, patterns, grunges and the rest.
      """
 
     blends: list[StackTerm]
@@ -56,6 +59,8 @@ class StackVocabulary:
     usages: list[StackTerm]
     generator_parameters: StackVocabularyGeneratorParameters
     brush: StackBrushTerms
+    inputs: list[StackTerm]
+    sources: list[StackFilterKind]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -141,6 +146,20 @@ class StackVocabulary:
 
         brush = self.brush.to_dict()
 
+        inputs = []
+        for inputs_item_data in self.inputs:
+            inputs_item = inputs_item_data.to_dict()
+            inputs.append(inputs_item)
+
+
+
+        sources = []
+        for sources_item_data in self.sources:
+            sources_item = sources_item_data.to_dict()
+            sources.append(sources_item)
+
+
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -157,6 +176,8 @@ class StackVocabulary:
             "usages": usages,
             "generatorParameters": generator_parameters,
             "brush": brush,
+            "inputs": inputs,
+            "sources": sources,
         })
 
         return field_dict
@@ -280,6 +301,26 @@ class StackVocabulary:
 
 
 
+        inputs = []
+        _inputs = d.pop("inputs")
+        for inputs_item_data in (_inputs):
+            inputs_item = StackTerm.from_dict(inputs_item_data)
+
+
+
+            inputs.append(inputs_item)
+
+
+        sources = []
+        _sources = d.pop("sources")
+        for sources_item_data in (_sources):
+            sources_item = StackFilterKind.from_dict(sources_item_data)
+
+
+
+            sources.append(sources_item)
+
+
         stack_vocabulary = cls(
             blends=blends,
             filters=filters,
@@ -293,6 +334,8 @@ class StackVocabulary:
             usages=usages,
             generator_parameters=generator_parameters,
             brush=brush,
+            inputs=inputs,
+            sources=sources,
         )
 
 

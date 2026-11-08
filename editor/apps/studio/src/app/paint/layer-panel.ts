@@ -21,6 +21,7 @@ import { amount, percent } from '../core/numbers';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { FilterFields } from './filter-fields';
+import { FilterInputs, type FilterSources } from './filter-inputs';
 import { LayerDraft } from './live-value';
 import { MaterialUse } from './material-use';
 import { colourOf, PaintStore, writesChannel } from './paint-store';
@@ -63,6 +64,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
   selector: 'ptn-layer-panel',
   imports: [
     FilterFields,
+    FilterInputs,
     XuiButtonImports,
     XuiColorPickerImports,
     XuiInputImports,
@@ -365,6 +367,13 @@ export function hexOf(colour: readonly number[] | undefined): string {
                 [texts]="layer.parameters ?? {}"
                 (numberChange)="setSetting(layer, $event.name, $event.value)"
                 (textChange)="setKnob(layer, $event.name, $event.value)"
+              />
+              <ptn-filter-inputs
+                testId="paint-input-"
+                [anchors]="anchorNames(layer)"
+                [inputs]="layer.inputs ?? {}"
+                [kind]="kind"
+                (inputsChange)="setInputs(layer, $event)"
               />
             } @else if (layer.filterNode) {
               <p class="text-foreground-muted text-xs" data-testid="paint-filter-node">
@@ -675,6 +684,14 @@ export function hexOf(colour: readonly number[] | undefined): string {
                   (numberChange)="setEffectValue(layer, index, $event.name, $event.value)"
                   (textChange)="setEffectText(layer, index, $event.name, $event.value)"
                 />
+                <ptn-filter-inputs
+                  [mask]="true"
+                  [anchors]="anchorNames(layer)"
+                  [inputs]="effect.inputs ?? {}"
+                  [kind]="kind"
+                  [testId]="'paint-effect-' + index + '-input-'"
+                  (inputsChange)="setEffect(layer, index, { inputs: { ...$event } })"
+                />
               }
             </div>
           }
@@ -822,6 +839,11 @@ export class LayerPanel {
     const kind = this.filters().get(node);
     return kind ? `${kind.name} · ${kind.category}` : (node.split('/').pop() ?? node);
   };
+
+  /** Where a filter's images read, all of them at once, as the Server replaces them. */
+  protected setInputs(layer: StackLayer, inputs: FilterSources): void {
+    void this.store.edit({ op: 'setLayer', layer: layer.id, inputs: { ...inputs } });
+  }
 
   /** Another filter starts from its own defaults, which the Server sees to. */
   protected chooseFilter(layer: StackLayer, node: string | null): void {

@@ -60,8 +60,7 @@ class StackLayer:
             placement (None | StackPlacement | Unset):
             parameters (None | StackLayerParametersType1 | Unset): What a graph fill sets the graph's knobs to, as text.
             anchor (None | StackAnchorRef | Unset):
-            inputs (None | StackLayerInputsType1 | Unset): The image inputs of a graph fill or a filter that anchor points
-                feed, by port.
+            inputs (None | StackLayerInputsType1 | Unset): Where the image inputs of a graph fill or a filter read, by port.
      """
 
     id: str
