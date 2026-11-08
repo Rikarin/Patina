@@ -7,6 +7,15 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- A graph node can be bypassed: what feeds it passes straight through, and the picture is what it would be without the node. The node stays where it was with its wires and values, dimmed and marked Off, and Cmd or Ctrl+B, the node's right-click menu or the toolbar switches it back. A node with nothing of its output's kind to pass leaves what it fed unwired.
+- Alt-click a wire to bend it through a reroute dot, which is a node you can move, and which compiles to a straight wire.
+- Delete and Relink (Cmd or Ctrl+Delete, or the node menu) removes nodes and joins what fed them to what they fed.
+- The graph toolbar's Arrange menu lays out the graph, or the selection among itself, in columns in the order data flows, and aligns or distributes the selected nodes. Each is one undo step.
+- A node with a problem shows a badge with how many, red for an error, and its first sentence on hover.
+- A frame has a colour and a description, set beside its title under the graph's Groups.
+- An exposed parameter has a label apart from the name expressions write, a group it is shown under, a one-line summary, a range, and a widget: a slider, an angle dial, or a toggle button for a flag. It can be shown only while another parameter holds a value, or does not. A named choice such as a blend mode can be exposed like a number, as a parameter offering the same choices, and a text parameter's choices can be typed.
+- Presets of a graph's parameters are kept in its file: save the parameters as they are under a name, apply one, update or remove it. A node holding a compound offers the compound's presets in the Inspector, and choosing one sets its settings in one undo step.
+
 - Menus work from the keyboard. Shift+F10 or the Menu key opens a layer's or a library row's menu where it is, the arrows walk it and its submenus, Enter chooses and Escape closes it and gives focus back. The arrows walk the layer rows too, and open and close folders. Layers has an Add… menu for new layers, masks and effects, and the list of meshes a layer keeps to takes focus and closes on Escape.
 - Moving or renaming a folder or project with open documents asks first, since it closes them and loses their undo, and Project Settings says which documents a new mesh or layout will close before Apply.
 - Twenty-nine graph nodes. Colour: Clamp, Threshold, Quantise, Channel Mix, Image Ramp (a ramp read from another image), Replace Colour, Replace Colour Range, Colour Match, Dissolve, sRGB to Linear, Linear to sRGB, Premultiply, Unpremultiply, Lookup Table (a 3D colour table stored as a 2D strip), Palette and Select Input. Filters: Median, Edge-Preserving Blur, Painterly Smooth, Spin Blur and Anti-Alias, and a Glow compound under Utility. Space: Cartesian to Polar, Polar to Cartesian, Four-Corner Warp, Rotate by Map, Swirl, Wedge Symmetry and Trim to Content. Every one with one image in and one out is also a filter layer and a mask step, except Premultiply and Unpremultiply, which cannot change a layer stack's opaque pictures.

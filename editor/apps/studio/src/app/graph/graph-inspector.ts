@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
-import type { GraphEdgeState, GraphNodeState } from '@patina/api-client';
+import type { GraphEdgeState, GraphNodeState, GraphPresetState } from '@patina/api-client';
 import {
+  AngleDial,
   CurveEditor,
   type Curves,
   GradientRamp,
@@ -19,6 +20,7 @@ import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { LibraryInspector } from '../library/library-inspector';
+import { holds } from './graph-authoring';
 import { type GraphField, expressionKey, fieldsOf, hexOfLanes, lanesOfHex, sliderRange } from './graph-fields';
 import { edgeKey } from './graph-model';
 import { GraphNoteInspector, GraphSelection, GraphSettings } from './graph-settings';
@@ -27,6 +29,8 @@ import { GraphStore } from './graph-store';
 type NumberField = Extract<GraphField, { control: 'number' }>;
 
 const SliderSteps = 1000;
+/** How a setting names a parameter of its graph instead of holding a value: Vixen's name-knob reference. */
+const ReferencePrefix = '$';
 
 /**
  * A picked colour over the lanes it replaces. The picker is eight bits and clamps, so a lane it did not move keeps
@@ -41,6 +45,7 @@ export function keptLanes(held: readonly number[], picked: readonly number[]): r
 @Component({
   selector: 'ptn-graph-inspector',
   imports: [
+    AngleDial,
     CurveEditor,
     GradientRamp,
     XuiButtonImports,
@@ -72,6 +77,20 @@ export function keptLanes(held: readonly number[], picked: readonly number[]): r
         Open compound
       </button>
     }
+    @if (presets().length > 0) {
+      <div class="mb-3 flex flex-col gap-1" data-testid="node-presets">
+        <span class="text-foreground-muted text-xs">Preset</span>
+        <xui-select
+          ariaLabel="Preset"
+          placeholder="Choose a preset"
+          [disabled]="!store.editable()"
+          [itemText]="presetName"
+          [items]="presets()"
+          [value]="null"
+          (valueChange)="choosePreset($event)"
+        />
+      </div>
+    }
 
     @for (group of groups(); track group.name) {
       @if (group.name) {
@@ -79,9 +98,25 @@ export function keptLanes(held: readonly number[], picked: readonly number[]): r
       }
       <div class="flex flex-col gap-2.5">
         @for (field of group.fields; track field.name) {
+          @if (shown(field)) {
           <div class="flex flex-col gap-1" [attr.data-testid]="'field-' + field.name" [title]="field.summary">
             <div class="flex items-center justify-between gap-2">
-              <span class="text-foreground-muted truncate text-xs">{{ field.name }}</span>
+              <span class="text-foreground-muted truncate text-xs">{{ field.title }}</span>
+              @if (canExposeSetting(field)) {
+                <button
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  variant="ghost"
+                  title="Make this a parameter of the graph"
+                  [attr.aria-label]="'Expose ' + field.name"
+                  [attr.data-testid]="'expose-' + field.name"
+                  [disabled]="!store.editable()"
+                  (click)="exposeSetting(field)"
+                >
+                  ⇱
+                </button>
+              }
               @if (canShowPort(field)) {
                 <button
                   type="button"
@@ -130,6 +165,15 @@ export function keptLanes(held: readonly number[], picked: readonly number[]): r
                         [value]="current"
                         (valueChange)="setNumber(field, $event)"
                       />
+                    } @else if (field.source === 'text' && field.widget === 'Angle') {
+                      <ptn-angle-dial
+                        [ariaLabel]="field.title"
+                        [disabled]="!store.editable()"
+                        [value]="current"
+                        (released)="release()"
+                        (valueChange)="setNumber(field, $event)"
+                      />
+                      <span class="flex-1"></span>
                     } @else if (field.source === 'text' && field.minimum !== null && field.maximum !== null) {
                       <xui-slider
                         class="min-w-0 flex-1"
@@ -197,12 +241,27 @@ export function keptLanes(held: readonly number[], picked: readonly number[]): r
                   }
                 }
                 @case ('switch') {
-                  <xui-switch
-                    [ariaLabel]="field.name"
-                    [checked]="isOn(field)"
-                    [disabled]="!store.editable()"
-                    (checkedChange)="setOn(field, $event)"
-                  />
+                  @if (field.widget === 'Toggle') {
+                    <button
+                      class="self-start"
+                      type="button"
+                      xuiButton
+                      size="sm"
+                      [active]="isOn(field)"
+                      [attr.aria-pressed]="isOn(field)"
+                      [disabled]="!store.editable()"
+                      (click)="setOn(field, !isOn(field))"
+                    >
+                      {{ field.title }}
+                    </button>
+                  } @else {
+                    <xui-switch
+                      [ariaLabel]="field.title"
+                      [checked]="isOn(field)"
+                      [disabled]="!store.editable()"
+                      (checkedChange)="setOn(field, $event)"
+                    />
+                  }
                 }
                 @case ('colour') {
                   <xui-color-picker
@@ -286,6 +345,7 @@ export function keptLanes(held: readonly number[], picked: readonly number[]): r
               }
             }
           </div>
+          }
         }
       </div>
     } @empty {
@@ -323,6 +383,63 @@ export class GraphInspector {
     return type ? fieldsOf(type) : [];
   });
   protected readonly compound = computed(() => this.store.compounds().has(this.node().type));
+  /** A compound's presets, which set this node's settings. */
+  protected readonly presets = computed(() => this.type()?.presets ?? []);
+  protected readonly presetName = (preset: GraphPresetState): string => preset.name;
+
+  protected choosePreset(preset: GraphPresetState | null): void {
+    if (preset) {
+      this.store.applyNodePreset(this.node().id, preset);
+    }
+  }
+
+  /** A setting is shown unless its condition names another setting of this node that does not hold the value. */
+  protected shown(field: GraphField): boolean {
+    const condition = field.visibleIf;
+    if (!condition) {
+      return true;
+    }
+
+    const other = this.type()?.settings.find(setting => setting.name === condition.setting);
+    return holds(condition, this.store.textOf(this.node().id, condition.setting, other?.default ?? ''));
+  }
+
+  /** A named choice that does not already follow a parameter can become one, as a number can. */
+  protected canExposeSetting(field: GraphField): boolean {
+    return field.control === 'choice' && !this.textOf(field).startsWith(ReferencePrefix);
+  }
+
+  /** Makes a parameter offering the setting's choices, and points the setting at it with Vixen's `$` reference. */
+  protected exposeSetting(field: GraphField): void {
+    if (field.control !== 'choice') {
+      return;
+    }
+
+    const name = this.freeName(field.name);
+    this.store.addParameter({
+      name,
+      default: this.textOf(field),
+      summary: field.summary,
+      kind: 'Text',
+      minimum: null,
+      maximum: null,
+      group: '',
+      accepted: [...field.choices]
+    });
+    this.store.setText(this.node().id, field.name, `${ReferencePrefix}${name}`);
+    this.store.endGesture();
+  }
+
+  private freeName(field: string): string {
+    const taken = new Set(this.store.document()?.parameters.map(parameter => parameter.name) ?? []);
+    const stem = field.replace(/[^A-Za-z0-9]/gu, '') || 'Parameter';
+    let name = stem;
+    for (let count = 2; taken.has(name); count += 1) {
+      name = `${stem}${String(count)}`;
+    }
+
+    return name;
+  }
   /** Expression boxes opened by hand. One that holds text is open anyway. */
   private readonly openExpressions = signal<ReadonlySet<string>>(new Set());
 
@@ -415,12 +532,7 @@ export class GraphInspector {
 
   /** Makes a parameter of the field's name, starting where the field is, and drives the field from it. */
   protected expose(field: NumberField): void {
-    const taken = new Set(this.store.document()?.parameters.map(parameter => parameter.name) ?? []);
-    const stem = field.name.replace(/[^A-Za-z0-9]/gu, '') || 'Parameter';
-    let name = stem;
-    for (let count = 2; taken.has(name); count += 1) {
-      name = `${stem}${String(count)}`;
-    }
+    const name = this.freeName(field.name);
 
     const value = this.numberOf(field);
     this.store.addParameter({

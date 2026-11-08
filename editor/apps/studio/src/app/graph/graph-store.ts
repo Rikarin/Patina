@@ -9,6 +9,7 @@ import {
   type GraphEdgeState,
   type GraphInterfacePort,
   type GraphNodeType,
+  type GraphPresetState,
   type GraphSettingDefinition,
   type GraphState,
   type PatinaClient,
@@ -84,6 +85,10 @@ const noteKey = (id: number): string => `note/${String(id)}`;
 const parameterKey = (name: string): string => `parameter/${name}`;
 const GroupPrefix = 'group-';
 const ShippedPrefix = 'shipped:';
+/** A reroute dot, which Vixen stores as a node of this type with one input and one output. */
+export const RerouteType = 'Reroute';
+export const RerouteIn = 'In';
+export const RerouteOut = 'Out';
 
 function reasonOf(error: unknown): string {
   return messageOf(error);
@@ -740,11 +745,94 @@ export class GraphStore {
     }
 
     if (nodes.length > 0) {
-      commands.push({ op: 'removeNodes', nodes: [...nodes] });
+      commands.push({ op: 'removeNodes', nodes: [...nodes], relink: false });
     }
 
     if (commands.length > 0) {
       void this.apply(commands, null);
+    }
+  }
+
+  /** Removes nodes and keeps the chain joined: what fed each one is wired to what it fed. */
+  removeRelinking(nodes: readonly number[]): void {
+    if (nodes.length > 0) {
+      void this.apply([{ op: 'removeNodes', nodes: [...nodes], relink: true }], null);
+    }
+  }
+
+  /** Switches nodes off, or back on when every one of them is already off. */
+  toggleBypass(nodes: readonly number[] = [...this.mutableSelection()]): void {
+    const document = this.mutableDocument();
+    const switchable = nodes.filter(id => {
+      const type = document?.nodes.get(id)?.type ?? '';
+      return type !== RerouteType && !type.startsWith('Sub-graph/');
+    });
+    if (switchable.length === 0) {
+      return;
+    }
+
+    const bypassed = !switchable.every(id => document?.nodes.get(id)?.bypassed);
+    void this.apply([{ op: 'setBypass', nodes: switchable, bypassed }], null);
+  }
+
+  /** Lays the selection out among itself, or the whole graph when nothing is selected. */
+  arrange(nodes: readonly number[] = [...this.mutableSelection()]): void {
+    void this.apply([{ op: 'arrange', nodes: nodes.length > 1 ? [...nodes] : [] }], null);
+  }
+
+  /** Moves nodes to places worked out by the canvas, such as lining them up, as one undo step. */
+  place(positions: ReadonlyMap<number, GraphPoint>, label: string): void {
+    if (positions.size > 0) {
+      void this.apply(
+        [{ op: 'moveNodes', positions: [...positions].map(([node, { x, y }]) => ({ node, x, y })) }],
+        label
+      );
+    }
+  }
+
+  /** Bends a wire through a new reroute dot at a point. */
+  async insertReroute(edge: GraphEdgeState, at: GraphPoint): Promise<void> {
+    await this.apply(
+      [
+        { op: 'addNode', type: RerouteType, x: at.x, y: at.y, ref: -1 },
+        { op: 'connect', fromNode: edge.fromNode, fromPort: edge.fromPort, toNode: -1, toPort: RerouteIn },
+        { op: 'connect', fromNode: -1, fromPort: RerouteOut, toNode: edge.toNode, toPort: edge.toPort }
+      ],
+      'Add Reroute'
+    );
+  }
+
+  /** Changes a frame's colour or what it says about its nodes. */
+  describeGroup(id: number, change: { color?: string; description?: string }): void {
+    void this.apply([{ op: 'setGroup', id, ...change }], null);
+  }
+
+  /** Saves every parameter's default as it is now, under a name. */
+  savePreset(name: string): void {
+    void this.apply([{ op: 'savePreset', name }], null);
+  }
+
+  /** Sets the parameters to a preset's values. */
+  applyPreset(name: string): void {
+    void this.apply([{ op: 'applyPreset', name }], null);
+  }
+
+  removePreset(name: string): void {
+    void this.apply([{ op: 'removePreset', name }], null);
+  }
+
+  /** Sets a compound node's settings to one of its compound's presets, as one undo step. */
+  applyNodePreset(node: number, preset: GraphPresetState): void {
+    const settings = new Set(
+      this.mutableTypes()
+        .get(this.mutableDocument()?.nodes.get(node)?.type ?? '')
+        ?.settings.map(setting => setting.name) ?? []
+    );
+    const commands: GraphCommand[] = Object.entries(preset.values)
+      .filter(([name]) => settings.has(name))
+      .map(([port, value]) => ({ op: 'setText', node, port, value }));
+    if (commands.length > 0) {
+      void this.apply(commands, `Preset ${preset.name}`);
     }
   }
 

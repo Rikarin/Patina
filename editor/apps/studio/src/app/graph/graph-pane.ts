@@ -13,8 +13,23 @@ import {
   viewChild
 } from '@angular/core';
 import type { GraphDiagnostic, GraphEdgeState, GraphNodeState, GraphNodeType } from '@patina/api-client';
+import { XuiContextMenuImports } from '@xui/context-menu';
+import { XuiMenuImports } from '@xui/menu';
 import { provideIcons } from '@ng-icons/core';
-import { matAdd, matClose, matDashboard, matNoteAdd, matRedo, matSave, matStickyNote2, matTune, matUndo, matWidgets } from '@ng-icons/material-icons/baseline';
+import {
+  matAccountTree,
+  matAdd,
+  matClose,
+  matDashboard,
+  matNoteAdd,
+  matPowerSettingsNew,
+  matRedo,
+  matSave,
+  matStickyNote2,
+  matTune,
+  matUndo,
+  matWidgets
+} from '@ng-icons/material-icons/baseline';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiDialogImports } from '@xui/dialog';
@@ -22,6 +37,7 @@ import {
   type XuiGraphConnection,
   type XuiGraphConnectionDrop,
   type XuiGraphEdge,
+  type XuiGraphNodeHandle,
   type XuiGraphNodeMove,
   type XuiGraphPoint,
   XuiNodeGraph,
@@ -39,7 +55,8 @@ import { SystemStatus } from '../core/system-status';
 import { isWireable, wireFamily } from './graph-fields';
 import { diagnosticOf } from '../core/messages';
 import { diagnosticsOf, edgeKey, evaluationSummary } from './graph-model';
-import { GraphStore, type NodeLink, type NodeWire } from './graph-store';
+import { type Alignment, type NodeBox, aligned, distributed } from './graph-authoring';
+import { GraphStore, type NodeLink, type NodeWire, RerouteIn, RerouteOut, RerouteType } from './graph-store';
 import { NewGraphDialog } from './new-graph-dialog';
 import { SaveCompoundDialog } from './save-compound-dialog';
 
@@ -56,6 +73,8 @@ const NodeClearance = 260;
 /** The canvas height a 128-pixel minimap may sit in: below this it covers more than it shows. */
 const MinimapRoom = 480;
 const portTypes = xuiGraphChartPortTypes(['Image', 'Float', 'Int', 'Bool']);
+/** How wide a reroute dot's card is: room for its two connectors and nothing else. */
+const RerouteWidth = 28;
 const none: ReadonlySet<string> = new Set();
 
 interface PortView {
@@ -82,6 +101,17 @@ interface NodeView {
   compound: string | null;
   /** Whether its type has a picture worth a box, which an Output does not. */
   preview: boolean;
+  /** Switched off: what feeds it passes straight through. */
+  bypassed: boolean;
+  /** A reroute dot, drawn as a pill with a connector each side. */
+  reroute: boolean;
+}
+
+/** What the compiler said about one node, for its badge. */
+interface NodeProblem {
+  severity: 'Error' | 'Warning';
+  count: number;
+  summary: string;
 }
 
 interface NoteView {
@@ -115,6 +145,15 @@ function portsOf(type: GraphNodeType | undefined, numbers: ReadonlySet<string>):
   }));
 }
 
+/**
+ * A reroute dot's two connectors. It carries whatever reaches it, so its ports declare no data type and xUI lets any
+ * wire try; the Server says no to one it cannot carry.
+ */
+const reroutePorts: readonly PortView[] = [
+  { name: RerouteIn, direction: 'input', summary: 'In', dataType: '', maxConnections: 2 },
+  { name: RerouteOut, direction: 'output', summary: 'Out', dataType: '', maxConnections: Number.POSITIVE_INFINITY }
+];
+
 /** One node's picture, on a signal of its own so that a new preview redraws this and nothing else. */
 @Component({
   selector: 'ptn-graph-thumbnail',
@@ -137,19 +176,46 @@ export class GraphThumbnail {
 /** The toolbar, the canvas and what the Server has to say about the open graph. */
 @Component({
   selector: 'ptn-graph-canvas',
-  viewProviders: [provideIcons({ matAdd, matClose, matDashboard, matNoteAdd, matRedo, matSave, matStickyNote2, matTune, matUndo, matWidgets })],
-  imports: [IconImports, 
+  viewProviders: [
+    provideIcons({
+      matAccountTree,
+      matAdd,
+      matClose,
+      matDashboard,
+      matNoteAdd,
+      matPowerSettingsNew,
+      matRedo,
+      matSave,
+      matStickyNote2,
+      matTune,
+      matUndo,
+      matWidgets
+    })
+  ],
+  imports: [
+    IconImports,
     GraphThumbnail,
     NewGraphDialog,
     SaveCompoundDialog,
     XuiButtonImports,
     XuiCalloutImports,
+    XuiContextMenuImports,
+    XuiMenuImports,
     XuiNodeGraphImports,
     XuiOmnibarImports,
     XuiTagImports
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col', '(keydown)': 'onKeydown($event)' },
+  styles: `
+    /* xUI gap: a node always draws a header, and a reroute dot is only its two connectors. */
+    [data-reroute] [data-xui-graph-node-header] {
+      display: none;
+    }
+    [data-reroute] {
+      border-radius: 9999px;
+    }
+  `,
   template: `
     @let current = document();
     <div class="chrome-bar flex h-9 shrink-0 items-center gap-1 px-2">
@@ -214,6 +280,32 @@ export class GraphThumbnail {
         (click)="addNote()"
       >
         <ng-icon xui size="sm" name="matStickyNote2" />
+      </button>
+      <button
+        type="button"
+        xuiButton
+        aria-label="Bypass the selection"
+        title="Bypass the selection: what feeds a node passes straight through (Ctrl+B)"
+        size="sm"
+        variant="ghost"
+        data-testid="graph-bypass"
+        [disabled]="!store.editable() || store.selection().size === 0"
+        (click)="store.toggleBypass()"
+      >
+        <ng-icon xui size="sm" name="matPowerSettingsNew" />
+      </button>
+      <button
+        type="button"
+        xuiButton
+        aria-label="Arrange"
+        title="Arrange: lay out, align or distribute"
+        size="sm"
+        variant="ghost"
+        data-testid="graph-arrange"
+        [disabled]="!store.editable()"
+        [xuiMenuTriggerFor]="arrangeMenu"
+      >
+        <ng-icon xui size="sm" name="matAccountTree" />
       </button>
       <button
         type="button"
@@ -344,6 +436,7 @@ export class GraphThumbnail {
       (connect)="connect($event)"
       (connectionDrop)="openDropPalette($event)"
       (deleteSelection)="remove($event)"
+      (edgeClick)="clickEdge($event)"
       (nodeMove)="settle($event)"
       (dragover)="overCanvas($event)"
       (drop)="dropOnCanvas($event)"
@@ -352,10 +445,17 @@ export class GraphThumbnail {
       @for (group of document()?.groups; track group.id) {
         <xui-graph-group
           data-testid="graph-frame"
-          [color]="'var(--color-chart-' + ((group.id % 8) + 1) + ')'"
+          [attr.title]="group.description || null"
+          [color]="group.color || 'var(--color-chart-' + ((group.id % 8) + 1) + ')'"
           [groupId]="groupPrefix + group.id"
           [label]="group.title"
-        />
+        >
+          @if (group.description) {
+            <span class="text-foreground-muted min-w-0 truncate font-normal" data-testid="graph-frame-description">{{
+              group.description
+            }}</span>
+          }
+        </xui-graph-group>
       }
       @for (note of notes(); track note.id) {
         <xui-graph-node
@@ -371,20 +471,49 @@ export class GraphThumbnail {
         </xui-graph-node>
       }
       @for (view of views(); track view.id) {
+        @let problem = problems().get(view.id);
         <xui-graph-node
           data-testid="graph-node"
-          [accent]="view.accent"
+          [accent]="view.reroute ? undefined : view.accent"
+          [attr.aria-label]="view.reroute ? 'Reroute' : null"
+          [attr.data-bypassed]="view.bypassed || null"
           [attr.data-compound]="view.compound"
           [attr.data-node]="view.id"
+          [attr.data-reroute]="view.reroute || null"
+          [dimmed]="view.bypassed"
           [group]="view.group"
           [label]="view.title"
           [nodeId]="view.key"
           [portLayout]="'columns'"
           [position]="view.position"
-          [width]="nodeWidth"
+          [width]="view.reroute ? rerouteWidth : nodeWidth"
+          [xuiContextMenuTriggerFor]="nodeMenu"
+          (contextmenu)="aimNode(view.id)"
           (dblclick)="enter(view)"
           (positionChange)="move(view.id, $event)"
         >
+          @if (view.bypassed || problem) {
+            <xui-graph-node-actions>
+              @if (view.bypassed) {
+                <xui-tag minimal size="sm" data-testid="graph-node-bypassed" title="Bypassed: what feeds it passes through"
+                  >Off</xui-tag
+                >
+              }
+              @if (problem) {
+                <span
+                  class="readout rounded px-1 text-[10px] leading-4 font-semibold"
+                  data-testid="graph-node-problem"
+                  [attr.data-severity]="problem.severity"
+                  [class.bg-error]="problem.severity === 'Error'"
+                  [class.bg-warning]="problem.severity === 'Warning'"
+                  [class.text-error-foreground]="problem.severity === 'Error'"
+                  [class.text-warning-foreground]="problem.severity === 'Warning'"
+                  [title]="problem.summary"
+                  >{{ problem.count }}</span
+                >
+              }
+            </xui-graph-node-actions>
+          }
           @if (view.preview && store.thumbnail(view.id)()) {
             <xui-graph-node-preview><ptn-graph-thumbnail [node]="view.id" /></xui-graph-node-preview>
           }
@@ -392,7 +521,7 @@ export class GraphThumbnail {
             <xui-graph-port
               [dataType]="port.dataType"
               [direction]="port.direction"
-              [label]="port.name"
+              [label]="view.reroute ? '' : port.name"
               [maxConnections]="port.maxConnections"
               [portId]="port.name"
               [title]="port.summary"
@@ -447,6 +576,74 @@ export class GraphThumbnail {
     <ptn-new-graph [(open)]="creating" />
     <ptn-save-compound [(open)]="savingCompound" />
 
+    <ng-template #arrangeMenu>
+      <xui-menu aria-label="Arrange" data-testid="graph-arrange-menu">
+        <button type="button" xuiMenuItem data-testid="arrange-layout" (triggered)="store.arrange()">
+          {{ store.selection().size > 1 ? 'Lay Out Selection' : 'Lay Out Graph' }}
+        </button>
+        <xui-menu-divider />
+        @for (item of alignments; track item.alignment) {
+          <button
+            type="button"
+            xuiMenuItem
+            [attr.data-testid]="'arrange-' + item.alignment"
+            [disabled]="store.selection().size < 2"
+            (triggered)="align(item.alignment, item.label)"
+          >
+            {{ item.label }}
+          </button>
+        }
+        <xui-menu-divider />
+        <button
+          type="button"
+          xuiMenuItem
+          data-testid="arrange-distribute-horizontal"
+          [disabled]="store.selection().size < 3"
+          (triggered)="distribute('horizontal')"
+        >
+          Distribute Horizontally
+        </button>
+        <button
+          type="button"
+          xuiMenuItem
+          data-testid="arrange-distribute-vertical"
+          [disabled]="store.selection().size < 3"
+          (triggered)="distribute('vertical')"
+        >
+          Distribute Vertically
+        </button>
+      </xui-menu>
+    </ng-template>
+
+    <ng-template #nodeMenu>
+      <xui-menu aria-label="Node" data-testid="graph-node-menu">
+        <button type="button" xuiMenuItem data-testid="node-bypass" [disabled]="!store.editable()" (triggered)="store.toggleBypass()">
+          {{ menuBypassed() ? 'Stop Bypassing' : 'Bypass' }}
+        </button>
+        <button
+          type="button"
+          xuiMenuItem
+          data-testid="node-relink"
+          [disabled]="!store.editable()"
+          (triggered)="store.removeRelinking(selectedNodes())"
+        >
+          Delete and Relink
+        </button>
+        <button type="button" xuiMenuItem [disabled]="!store.editable()" (triggered)="store.remove(selectedNodes(), [])">
+          Delete
+        </button>
+        <xui-menu-divider />
+        <button
+          type="button"
+          xuiMenuItem
+          [disabled]="!store.editable() || store.selection().size < 2"
+          (triggered)="store.arrange()"
+        >
+          Lay Out Selection
+        </button>
+      </xui-menu>
+    </ng-template>
+
     <xui-omnibar
       ariaLabel="Add a node"
       debounce="0"
@@ -485,6 +682,17 @@ export class GraphCanvas {
   protected readonly document = this.store.document;
   protected readonly portTypes = portTypes;
   protected readonly nodeWidth = NodeWidth;
+  protected readonly rerouteWidth = RerouteWidth;
+  protected readonly alignments: readonly { alignment: Alignment; label: string }[] = [
+    { alignment: 'left', label: 'Align Left' },
+    { alignment: 'centre', label: 'Align Centres' },
+    { alignment: 'right', label: 'Align Right' },
+    { alignment: 'top', label: 'Align Top' },
+    { alignment: 'middle', label: 'Align Middles' },
+    { alignment: 'bottom', label: 'Align Bottom' }
+  ];
+  /** Where the last press on the canvas was, and whether Alt was held, for a click on a wire. */
+  private lastPress: { x: number; y: number; alt: boolean } | null = null;
   protected readonly groupPrefix = GroupPrefix;
   protected readonly paletteOpen = signal(false);
   protected readonly creating = signal(false);
@@ -612,6 +820,39 @@ export class GraphCanvas {
     return document ? evaluationSummary(document) : '';
   });
 
+  /** Each node's worst problem and how many it has, from the compiler's last word. */
+  protected readonly problems = computed(() => {
+    const problems = new Map<number, NodeProblem>();
+    for (const item of this.diagnostics()) {
+      if (item.node === undefined || item.node === null) {
+        continue;
+      }
+
+      const held = problems.get(item.node);
+      const severity = item.severity === 'Error' ? 'Error' : 'Warning';
+      if (!held) {
+        problems.set(item.node, { severity, count: 1, summary: diagnosticOf(item.message).summary });
+      } else {
+        held.count++;
+        if (severity === 'Error' && held.severity === 'Warning') {
+          held.severity = 'Error';
+          held.summary = diagnosticOf(item.message).summary;
+        }
+      }
+    }
+
+    return problems;
+  });
+
+  protected readonly selectedNodes = computed(() => [...this.store.selection()]);
+
+  /** Whether everything the node menu acts on is already switched off. */
+  protected readonly menuBypassed = computed(() => {
+    const nodes = this.document()?.nodes;
+    const chosen = this.selectedNodes();
+    return chosen.length > 0 && chosen.every(id => nodes?.get(id)?.bypassed);
+  });
+
   protected readonly workerMissing = computed(() => {
     const state = this.status.state();
     return state.kind === 'online' && !state.system.worker.connected;
@@ -631,8 +872,17 @@ export class GraphCanvas {
       const element = this.graphElement().nativeElement as HTMLElement;
       element.addEventListener(
         'pointerdown',
-        () => {
+        event => {
           element.focus({ preventScroll: true });
+          this.lastPress = { x: event.clientX, y: event.clientY, alt: event.altKey };
+        },
+        { capture: true }
+      );
+      // Ahead of xUI's own Delete: with Ctrl or Cmd held, a delete keeps the chain joined.
+      element.addEventListener(
+        'keydown',
+        event => {
+          this.relinkOnDelete(event);
         },
         { capture: true }
       );
@@ -764,6 +1014,71 @@ export class GraphCanvas {
     this.store.selectNote(nodes.length === 0 && note !== undefined ? Number(note.slice(NotePrefix.length)) : null);
   }
 
+  /** Alt and a click on a wire bends it through a new reroute dot where it was clicked. */
+  protected clickEdge(edge: XuiGraphEdge): void {
+    const press = this.lastPress;
+    const wire = this.document()?.edges.get(edge.id);
+    if (!press?.alt || !wire || !this.store.editable()) {
+      return;
+    }
+
+    const at = this.graph().store.toGraphPoint(press.x, press.y);
+    void this.store.insertReroute(wire, { x: at.x - RerouteWidth / 2, y: at.y - RerouteWidth / 2 });
+  }
+
+  /** A right-click on a node acts on it, and on the selection it belongs to. */
+  protected aimNode(node: number): void {
+    if (!this.store.selection().has(node)) {
+      this.store.select([node]);
+    }
+  }
+
+  protected align(alignment: Alignment, label: string): void {
+    this.store.place(aligned(this.selectedBoxes(), alignment), label);
+  }
+
+  protected distribute(axis: 'horizontal' | 'vertical'): void {
+    this.store.place(
+      distributed(this.selectedBoxes(), axis),
+      axis === 'horizontal' ? 'Distribute Horizontally' : 'Distribute Vertically'
+    );
+  }
+
+  /** The selected nodes as the canvas has them: where they are now, and how big xUI measured them. */
+  private selectedBoxes(): NodeBox[] {
+    const canvas = this.graph().store;
+    const nodes = this.document()?.nodes;
+    const drafts = this.store.positions();
+    return this.selectedNodes().flatMap(id => {
+      const node = nodes?.get(id);
+      const handle: XuiGraphNodeHandle | undefined = canvas.node(String(id));
+      if (!node) {
+        return [];
+      }
+
+      const at = drafts.get(String(id)) ?? { x: node.x, y: node.y };
+      const size = handle?.size() ?? { width: NodeWidth, height: NodeClearance };
+      return [{ id, x: at.x, y: at.y, width: size.width, height: size.height }];
+    });
+  }
+
+  private relinkOnDelete(event: KeyboardEvent): void {
+    const target = event.target as HTMLElement;
+    if (
+      (event.key !== 'Delete' && event.key !== 'Backspace') ||
+      !(event.metaKey || event.ctrlKey) ||
+      target.closest('input, textarea, [contenteditable]')
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    if (this.store.editable()) {
+      this.store.removeRelinking(this.selectedNodes());
+    }
+  }
+
   protected remove(selection: { nodes: string[]; edges: string[] }): void {
     const nodes = selection.nodes.filter(key => !key.startsWith(NotePrefix));
     this.store.remove(nodes.map(Number), selection.edges);
@@ -819,6 +1134,11 @@ export class GraphCanvas {
     if (command && event.key.toLowerCase() === 'g') {
       event.preventDefault();
       this.store.groupSelection();
+    }
+
+    if (command && event.key.toLowerCase() === 'b') {
+      event.preventDefault();
+      this.store.toggleBypass();
     }
   }
 
@@ -948,24 +1268,27 @@ export class GraphCanvas {
     const portKey = numbers.map(port => port.name).join('\0');
     let view = this.nodeViews.get(node);
     if (view?.portKey !== portKey) {
+      const reroute = node.type === RerouteType;
       const portsKey = `${node.type}\0${portKey}`;
       let ports = this.portViews.get(portsKey);
       if (!ports) {
-        ports = portsOf(type, wanted);
+        ports = reroute ? reroutePorts : portsOf(type, wanted);
         this.portViews.set(portsKey, ports);
       }
 
       view = {
         id: node.id,
         key: String(node.id),
-        title: type?.title ?? node.type,
+        title: reroute ? '' : (type?.title ?? node.type),
         accent: accentOf(type?.category ?? ''),
         ports,
         portKey,
         position: { x: node.x, y: node.y },
         group: undefined,
         compound: null,
-        preview: type?.hasPreview ?? true
+        preview: !reroute && (type?.hasPreview ?? true),
+        bypassed: node.bypassed,
+        reroute
       };
       this.nodeViews.set(node, view);
     }
