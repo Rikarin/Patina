@@ -130,6 +130,15 @@ public sealed record ProjectContents(
     /// <summary>Whether a mesh with no UV layout is given one when it is set.</summary>
     public bool AutoUnwrap { get; init; } = true;
 
+    /// <summary>
+    ///     The texture sets an export writes, by name: what <see cref="ExportOptions.Sets" /> chooses from. Empty for a
+    ///     project of one unnamed set.
+    /// </summary>
+    public IReadOnlyList<string> ExportSets { get; init; } = [];
+
+    /// <summary>What the project's last export was set to, from its <c>project.yaml</c>, or null.</summary>
+    public ProjectExportSettings? Export { get; init; }
+
     /// <summary>Whether paint moves to a new mesh's layout.</summary>
     public bool PreservePaint { get; init; } = true;
 
@@ -178,6 +187,49 @@ public sealed record ProjectSettingsRequest(
     bool? PreservePaint = null,
     UnwrapOptions? Unwrap = null
 );
+
+/// <summary>One preset file as a project's export last had it.</summary>
+/// <param name="Preset">The preset it is a file of.</param>
+/// <param name="Template">Which file: its naming template.</param>
+/// <param name="Enabled">Whether it is written.</param>
+/// <param name="Format">The format it is written in.</param>
+public sealed record ExportFileSetting(string Preset, string Template, bool Enabled, string Format);
+
+/// <summary>
+///     A project's export settings, kept in its <c>project.yaml</c> so they travel with the library: what a client's
+///     export starts from next time. Any client reads and writes them; a build reads only what a request sends, so
+///     keeping them changes no key.
+/// </summary>
+public sealed record ProjectExportSettings {
+    /// <summary>The preset's id.</summary>
+    public string? Preset { get; init; }
+
+    /// <summary>Where files go, or null for the library's exports folder.</summary>
+    public string? Folder { get; init; }
+
+    /// <summary>The longest side of a file, or null for the maps' own size.</summary>
+    public int? Size { get; init; }
+
+    /// <summary>How a file changes size: box, bilinear or nearest.</summary>
+    public string? Filter { get; init; }
+
+    /// <summary>What fills the background of the mesh's layout.</summary>
+    public ExportPaddingInfo? Padding { get; init; }
+
+    /// <summary>Whether 8-bit files are dithered.</summary>
+    public bool? Dither { get; init; }
+
+    /// <summary>The texture sets left out, by name; every other one is written.</summary>
+    public IReadOnlyList<string> Skipped { get; init; } = [];
+
+    /// <summary>Files turned off or written in another format, per preset.</summary>
+    public IReadOnlyList<ExportFileSetting> Files { get; init; } = [];
+}
+
+/// <summary>The body of <c>PUT /api/v1/library/project/export-settings</c>.</summary>
+/// <param name="Project">The project, below <c>projects/</c>.</param>
+/// <param name="Settings">What its export is set to now.</param>
+public sealed record ProjectExportSettingsRequest(string Project, ProjectExportSettings Settings);
 
 /// <summary>The body of <c>POST /api/v1/library/project/documents</c>.</summary>
 /// <param name="Project">The project, below <c>projects/</c>.</param>

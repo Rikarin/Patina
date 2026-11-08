@@ -5,6 +5,8 @@ name: Vixen
 engine: Vixen
 # Vixen's frame takes its bitangent along v, which runs down the image (Vixen.TextureGraph's README, held by a test).
 normal: y-down
+# Islands grow until every texel is filled, so mips and filtering read the chart and not the background.
+padding: infinite
 textures:
   - file: "{project}_baseColor"
     format: ktx2

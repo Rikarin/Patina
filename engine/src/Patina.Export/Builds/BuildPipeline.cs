@@ -64,7 +64,7 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
         return BuildPlan.Make(
             library.ScanOutputs(selection, tools, cancellationToken),
             new(library.RootPath),
-            [..presets.Select(static p => new PlannedPreset(p.Id, p.Revision))],
+            [..presets.Select(p => new PlannedPreset(p.Id, ExportOverrides.Revision(p.Revision, request.Options)))],
             ExportsOf(library, request),
             tools
         );
@@ -106,6 +106,10 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
 
         return journal.Finish(fresh, exportsFresh, plan.Nothing ?? BuildJournal.NoFiles, clock.GetUtcNow());
 
+        // What a client shows while a step runs: the totals so far, and what is being made now.
+        void Starting(string what) =>
+            progress?.Invoke(done / (double)steps, journal.Totals(fresh, exportsFresh) with { Current = what });
+
         async Task RunPlanAsync() {
             foreach (var project in plan.Work) {
                 var identity = new ProjectIdentity(
@@ -133,6 +137,7 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                 foreach (var output in project.Stale) {
                     await Yield(yield);
                     cancellationToken.ThrowIfCancellationRequested();
+                    Starting($"{project.Project.Name}: {output.Output.Name}");
                     failed |= !await BuildOutputAsync(journal, identity, project, output, cancellationToken);
                     done++;
                     progress?.Invoke(done / (double)steps, journal.Totals(fresh, exportsFresh));
@@ -141,12 +146,14 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                 foreach (var export in project.Exports.Where(static e => !e.Fresh)) {
                     await Yield(yield);
                     cancellationToken.ThrowIfCancellationRequested();
+                    Starting($"{project.Project.Name}: {presets[export.Preset.Id].Name}");
                     await RunExportAsync(
                         journal,
                         identity,
                         project,
                         export,
                         presets[export.Preset.Id],
+                        request.Options,
                         failed,
                         cancellationToken
                     );
@@ -171,6 +178,15 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                     + "."
                 )
             );
+        }
+
+        // Changes a preset cannot take are refused before anything runs, and not once per project.
+        foreach (var preset in presets) {
+            try {
+                ExportOverrides.Apply(preset, request.Options);
+            } catch (ExportPresetException e) {
+                throw new BuildRefusedException(e.Message, e);
+            }
         }
 
         return presets;
@@ -253,6 +269,7 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
         PlannedProject project,
         PlannedExport export,
         ExportPreset preset,
+        ExportOptions? options,
         bool failed,
         CancellationToken cancellationToken
     ) {
@@ -279,7 +296,7 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                 status = BuildStatuses.Built;
                 journal.Start(step);
                 manifest = await executor.ExportAsync(
-                    new(PresetText(preset), Sources(project), folder),
+                    new(PresetText(preset), Sources(project), folder, options),
                     cancellationToken
                 );
             }

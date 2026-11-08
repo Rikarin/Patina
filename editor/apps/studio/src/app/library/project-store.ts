@@ -326,9 +326,18 @@ export class ProjectStore {
    * @param after What failing means, said after the document's name.
    */
   async saveAll(after = ''): Promise<boolean> {
+    return this.saveTabs(this.unsavedTabs(), after);
+  }
+
+  /**
+   * Saves these tabs, each brought to the front in turn, and brings back the one that was in front. False at the first
+   * that could not be, which is named in the failure.
+   * @param after What failing means, said after the document's name.
+   */
+  async saveTabs(tabs: readonly { path: string; name: string }[], after = ''): Promise<boolean> {
     const front = this.mutableActive();
     try {
-      for (const tab of this.unsavedTabs()) {
+      for (const tab of tabs) {
         await this.activate(tab.path);
         if (!(await this.saveActive())) {
           this.mutableFailure.set(`${tab.name} could not be saved${after ? `, ${after}` : ''}.`);

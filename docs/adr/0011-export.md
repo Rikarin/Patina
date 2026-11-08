@@ -18,6 +18,35 @@ are refused: the alternative is an uncompressed texture in a shipped game. An ex
 sets every file has to say which it is, so a template with no `{set}` gets the set's name after `{project}`, or at its end when it
 has neither. A project of one set keeps the name its preset gives, and `{set}` is then the project's name if the set has none.
 
+### Formats, padding, size and dithering (#154, #156)
+
+A file is `png8`, `png16`, `tga`, `jpeg`, `tiff8`, `tiff16`, `tiff32`, `webp`, `exr16`, `exr32`, `hdr`, `ktx2` or `dds`. The
+writers are Vixen's (`Vixen.Interchange`), each checked against a decoder nobody here wrote. JPEG takes one or three lanes and a
+`quality` from 1 to 100, `hdr` one or three linear lanes, WebP is lossless, and the float and 16-bit formats hold linear numbers.
+
+A preset can also say:
+
+- `padding`: `none`, `infinite`, or a mapping of `mode` (`transparent`, `colour` or `diffusion`), `distance` in texels and, for
+  `colour`, one value per lane of the file. It grows the islands of the texture set's mesh layout into the background, with
+  `ImagePadding` in Vixen, which is `MapBaker.Dilate`'s rule on a picture. The layout is the `coverage` map, which a stack on a mesh
+  writes beside its maps, so a material with no mesh has no background and is not padded. Padding comes before resizing, so a
+  smaller file's edge texels average the chart's colour. The factory presets pad without end, as mips want.
+- `size`: the longest side of every file, and `filter`: `box` (the default, which keeps the mean at any ratio), `bilinear` or
+  `nearest`. The maps are made at their own size and the file is resized, so asking for 2K of a 4K graph costs a 4K evaluation.
+- `dither: true`: an 8-bit file rounds up with a chance equal to how far past the level below a value is, from a hash of the
+  sample's place. A gradient's mean survives where rounding bands it, a value already on a level stays there, and the same maps
+  give the same bytes, which a key needs.
+
+An export can change these for one run (`BuildRequest.Options`): the size, filter, padding and dithering, files turned off or
+written in another format, and the texture sets to write. The changes go into the export's key, so files made under other settings
+are never reused, and a change a preset cannot take (a JPEG of four lanes) refuses the build before anything runs. A file's name
+does not depend on which sets were chosen.
+
+What a project's export was last set to is the project's: an `export` block in its `project.yaml`, read with the project's
+contents and written by `PUT /library/project/export-settings`, so it travels with the library, survives a deleted `.ptcache`, and
+Blender starts from the same place the editor does. Keeping it changes no key: a build reads only its request, and the editor sends
+only what differs from the preset. A library export's settings belong to no project and are not kept.
+
 ## What a project builds
 
 A project made in the app writes no outputs. `ProjectOutputs` works them out from its documents on every read, and writes nothing

@@ -72,6 +72,9 @@ public sealed record ProjectDocument(
 
     /// <summary>How Auto Unwrap lays a mesh out.</summary>
     public UnwrapOptions Unwrap { get; init; } = new();
+
+    /// <summary>What the project's last export was set to, so the next one starts there, or null.</summary>
+    public ProjectExportSettings? Export { get; init; }
 }
 
 /// <summary>A mesh a project owns.</summary>

@@ -1,7 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal, untracked } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
-import { XuiCalloutImports } from '@xui/callout';
 import { XuiDialogImports } from '@xui/dialog';
 import { type XuiDockManagerLayout, XuiDockManagerImports } from '@xui/dock-manager';
 import { XuiInputImports } from '@xui/input';
@@ -58,7 +57,6 @@ import { ViewportPane } from './viewport/viewport-pane';
     TextureView,
     ViewportPane,
     XuiButtonImports,
-    XuiCalloutImports,
     XuiDialogImports,
     XuiDockManagerImports
   ],
@@ -220,24 +218,9 @@ import { ViewportPane } from './viewport/viewport-pane';
         <div class="flex h-[70vh] min-h-0 flex-col"><ptn-bake /></div>
       </xui-dialog-body>
     </xui-dialog>
-    <xui-dialog size="lg" title="Export" [(open)]="exporting">
+    <xui-dialog class="max-w-5xl" size="lg" title="Export" [(open)]="exporting">
       <xui-dialog-body>
-        @if (project.unsavedTabs(); as unsaved) {
-          @if (unsaved.length > 0) {
-            <xui-callout class="mb-2" color="warning" data-testid="export-unsaved" compact>
-              <span class="flex items-center gap-2">
-                <span class="min-w-0 flex-1">
-                  Export reads saved files, so
-                  {{ unsaved.length === 1 ? unsaved[0]?.name + ' goes out without its unsaved changes' : unsaved.length + ' documents go out without their unsaved changes' }}.
-                </span>
-                <button type="button" xuiButton size="sm" data-testid="export-save-all" (click)="project.saveAll()">
-                  {{ unsaved.length === 1 ? 'Save' : 'Save All' }}
-                </button>
-              </span>
-            </xui-callout>
-          }
-        }
-        <div class="flex h-[70vh] min-h-0 flex-col"><ptn-export /></div>
+        <div class="flex h-[75vh] min-h-0 flex-col"><ptn-export /></div>
       </xui-dialog-body>
     </xui-dialog>
 
@@ -466,6 +449,8 @@ export class App {
         this.project.savingAs.set(true);
       } else if (command === 'import') {
         void bridge.openFile(this.status.pictures()).then(path => (path ? this.project.importFiles([path]) : undefined));
+      } else if (command === 'export') {
+        this.exporting.set(true);
       } else if (command === 'reloadMesh') {
         void this.project.reloadMesh();
       } else if (command === 'projectSettings') {

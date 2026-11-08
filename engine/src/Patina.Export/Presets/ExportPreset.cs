@@ -1,3 +1,5 @@
+using Vixen.Core.Imaging;
+
 namespace Patina.Export.Presets;
 
 /// <summary>
@@ -23,7 +25,7 @@ public readonly record struct ChannelSource(string? Map, int Lane, bool Inverted
 /// <param name="File">Its naming template, without an extension.</param>
 /// <param name="Format">One of <see cref="ExportFormats" />.</param>
 /// <param name="Compression">One of <see cref="ExportCompressions" />.</param>
-/// <param name="Quality">How hard BC7 and BC6H search: fast, balanced or best.</param>
+/// <param name="Quality">How hard BC7 and BC6H search: fast, balanced or best. For JPEG, 1 to 100.</param>
 /// <param name="Space">What the file's numbers are: srgb or linear.</param>
 /// <param name="Mips">Whether it carries a full mip chain.</param>
 /// <param name="Channels">One to four lanes, in file order.</param>
@@ -39,6 +41,47 @@ public sealed record ExportTexture(
     /// <summary>The maps it reads.</summary>
     public IEnumerable<string> Maps =>
         Channels.Where(static c => c.Map is not null).Select(static c => c.Map!).Distinct(StringComparer.Ordinal);
+}
+
+/// <summary>What fills the texels a mesh's layout does not cover, before a file is written.</summary>
+/// <param name="Mode">None, grow without end, or grow by <paramref name="Distance" /> and fill the rest.</param>
+/// <param name="Distance">How many texels the islands grow by, for every mode but infinite.</param>
+/// <param name="Colour">For <see cref="PaddingMode.Colour" />, the value of each lane of the file.</param>
+public sealed record ExportPadding(PaddingMode Mode, int Distance, IReadOnlyList<float> Colour) {
+    /// <summary>The distance a mode that needs one gets when the preset gives none.</summary>
+    public const int DefaultDistance = 16;
+
+    /// <summary>No padding: the file holds what the maps held.</summary>
+    public static ExportPadding None { get; } = new(PaddingMode.None, 0, []);
+
+    static readonly string[] names = ["none", "infinite", "transparent", "colour", "diffusion"];
+
+    /// <summary>The names a preset and the API use, in <see cref="PaddingMode" />'s order.</summary>
+    public static IReadOnlyList<string> Names => names;
+
+    /// <summary>A mode's name in a preset and on the wire.</summary>
+    public static string NameOf(PaddingMode mode) => names[(int)mode];
+
+    /// <summary>The mode a name names, or null.</summary>
+    public static PaddingMode? Parse(string? name) =>
+        Array.IndexOf(names, name) is var at and >= 0 ? (PaddingMode)at : null;
+}
+
+/// <summary>How a file is made smaller or larger than its maps.</summary>
+public static class ExportFilters {
+    public const string Box = "box";
+    public const string Bilinear = "bilinear";
+    public const string Nearest = "nearest";
+
+    public static IReadOnlyList<string> All { get; } = [Box, Bilinear, Nearest];
+
+    /// <summary>The filter a name names.</summary>
+    public static ResizeFilter Of(string name) =>
+        name switch {
+            Bilinear => ResizeFilter.Bilinear,
+            Nearest => ResizeFilter.Nearest,
+            _ => ResizeFilter.Box
+        };
 }
 
 /// <summary>A preset: data, read from a file, so that adding an engine needs no build of Patina.</summary>
@@ -57,7 +100,22 @@ public sealed record ExportPreset(
     IReadOnlyList<ExportTexture> Textures,
     string Revision,
     string? Path
-);
+) {
+    /// <summary>What fills the background of a mesh's layout.</summary>
+    public ExportPadding Padding { get; init; } = ExportPadding.None;
+
+    /// <summary>Whether a value between two 8-bit levels is dithered rather than rounded, against banding.</summary>
+    public bool Dither { get; init; }
+
+    /// <summary>The longest side of every file, or null for the size of the maps.</summary>
+    public int? Size { get; init; }
+
+    /// <summary>How a file changes size: one of <see cref="ExportFilters" />.</summary>
+    public string Filter { get; init; } = ExportFilters.Box;
+
+    /// <summary>The texture sets exported, or null for all of them.</summary>
+    public IReadOnlyList<string>? Sets { get; init; }
+}
 
 /// <summary>The file formats a preset can name.</summary>
 public static class ExportFormats {
@@ -67,8 +125,19 @@ public static class ExportFormats {
     public const string Exr32 = "exr32";
     public const string Ktx2 = "ktx2";
     public const string Dds = "dds";
+    public const string Tga = "tga";
+    public const string Jpeg = "jpeg";
+    public const string Tiff8 = "tiff8";
+    public const string Tiff16 = "tiff16";
+    public const string Tiff32 = "tiff32";
+    public const string WebP = "webp";
+    public const string Hdr = "hdr";
 
-    public static IReadOnlyList<string> All { get; } = [Png8, Png16, Exr16, Exr32, Ktx2, Dds];
+    /// <summary>The JPEG quality a preset that names none gets.</summary>
+    public const int DefaultJpegQuality = 90;
+
+    public static IReadOnlyList<string> All { get; } =
+        [Png8, Png16, Tga, Jpeg, Tiff8, Tiff16, Tiff32, WebP, Exr16, Exr32, Hdr, Ktx2, Dds];
 
     /// <summary>What a format's files end in.</summary>
     public static string ExtensionOf(string format) =>
@@ -77,8 +146,52 @@ public static class ExportFormats {
             Exr16 or Exr32 => ".exr",
             Ktx2 => ".ktx2",
             Dds => ".dds",
+            Tga => ".tga",
+            Jpeg => ".jpg",
+            Tiff8 or Tiff16 or Tiff32 => ".tif",
+            WebP => ".webp",
+            Hdr => ".hdr",
             _ => throw new ArgumentException($"'{format}' is not a format.", nameof(format))
         };
+
+    /// <summary>A format's name for a person.</summary>
+    public static string LabelOf(string format) =>
+        format switch {
+            Png8 => "PNG 8-bit",
+            Png16 => "PNG 16-bit",
+            Tga => "TGA 8-bit",
+            Jpeg => "JPEG 8-bit",
+            Tiff8 => "TIFF 8-bit",
+            Tiff16 => "TIFF 16-bit",
+            Tiff32 => "TIFF 32-bit float",
+            WebP => "WebP lossless",
+            Exr16 => "OpenEXR 16-bit float",
+            Exr32 => "OpenEXR 32-bit float",
+            Hdr => "Radiance HDR",
+            Ktx2 => "KTX2",
+            Dds => "DDS",
+            _ => format
+        };
+
+    /// <summary>How many lanes a file of a format can hold.</summary>
+    public static IReadOnlyList<int> LanesOf(string format) =>
+        format switch {
+            Png8 or Png16 or Tga or WebP => [1, 3, 4],
+            Jpeg or Hdr => [1, 3],
+            _ => [1, 2, 3, 4]
+        };
+
+    /// <summary>Whether a format holds float numbers, which are linear.</summary>
+    public static bool IsFloat(string format) => format is Exr16 or Exr32 or Tiff32 or Hdr;
+
+    /// <summary>Whether a format holds 16-bit integers, which here are linear.</summary>
+    public static bool IsWide(string format) => format is Png16 or Tiff16;
+
+    /// <summary>Whether a format's samples are eight bits, which is where dithering applies.</summary>
+    public static bool IsEightBit(string format) => format is Png8 or Tga or Jpeg or Tiff8 or WebP;
+
+    /// <summary>Whether a format is a GPU container, the only kind with mips and block compression.</summary>
+    public static bool IsContainer(string format) => format is Ktx2 or Dds;
 }
 
 /// <summary>What a KTX2 or DDS file can hold.</summary>
@@ -116,7 +229,7 @@ public static class ExportMaps {
     // row as a clone of IpcTypes.
     public static IReadOnlyList<string> All { get; } = [
         BaseColor, Normal, Roughness, Metalness, Occlusion, Height, Emissive, Opacity, Mask, Curvature, Thickness, Id,
-        Position, WorldNormal, BentNormal
+        Position, WorldNormal, BentNormal, Coverage
     ];
 
     // The maps only a bake makes, under the names the bake gives them.
@@ -128,6 +241,12 @@ public static class ExportMaps {
     public const string BentNormal = "bent";
 
     /// <summary>
+    ///     Which texels a mesh's layout covers, one where it does: what a stack on a mesh makes beside its maps, and
+    ///     what padding grows from.
+    /// </summary>
+    public const string Coverage = "coverage";
+
+    /// <summary>
     ///     A lane's value where a project has no such map: what a surface without that map would be. A texture that
     ///     reads no map a project has is not written at all; these fill the lanes of one it does write.
     /// </summary>
@@ -135,7 +254,7 @@ public static class ExportMaps {
         (map, lane) switch {
             (Normal or WorldNormal or BentNormal, 2) => 1f,
             (Normal or WorldNormal or BentNormal, not 3) => 0.5f,
-            (Opacity or Occlusion or Mask, _) => 1f,
+            (Opacity or Occlusion or Mask or Coverage, _) => 1f,
             (_, 3) => 1f,
             (BaseColor or Roughness or Height or Curvature or Position, _) => 0.5f,
             _ => 0f

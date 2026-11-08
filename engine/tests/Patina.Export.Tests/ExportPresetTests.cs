@@ -90,11 +90,11 @@ public sealed class ExportPresetTests : IDisposable {
     }
 
     [Theory]
-    [InlineData("format: png8", "format: tga", "'tga' is not a format")]
+    [InlineData("format: png8", "format: bmp", "'bmp' is not a format")]
     [InlineData("normal: y-up", "normal: opengl", "neither y-up nor y-down")]
     [InlineData("[roughness]", "[smoothness]", "'smoothness' is not a map")]
     [InlineData("[roughness]", "[roughness.q]", "names no lane")]
-    [InlineData("[roughness]", "[roughness, metalness]", "not two")]
+    [InlineData("[roughness]", "[roughness, metalness]", "not 2")]
     [InlineData("{project}_x", "../{project}", "inside the export folder")]
     [InlineData("{project}_x", "{name}_x", "'{name}' is not a name")]
     [InlineData("space: linear", "space: linear\n    compresion: bc7", "'compresion' is not a field")]

@@ -68,6 +68,12 @@ static class LibraryTreeEndpoints {
                 "Sets a project's mesh, detailed mesh and auto unwrap. A mesh goes under all its texturing documents."
             );
 
+        library.MapPut("/project/export-settings", SetExportSettings)
+            .Described(
+                "SetProjectExportSettings",
+                "Keeps what a project's export is set to in its project.yaml, where any client's next export starts."
+            );
+
         library.MapPost("/project/documents", AddDocument)
             .Described("AddProjectDocument", "Makes a document of a kind in a project.");
 
@@ -308,6 +314,18 @@ static class LibraryTreeEndpoints {
 
                 host.RequestRescan();
                 return TypedResults.Ok(contents);
+            }
+        );
+
+    static Results<Ok<ProjectContents>, ProblemHttpResult> SetExportSettings(
+        LibraryHost host,
+        ProjectExportSettingsRequest request
+    ) =>
+        Guarded(
+            host,
+            library => {
+                library.SetExportSettings(request.Project, request.Settings);
+                return TypedResults.Ok(library.Contents(request.Project));
             }
         );
 

@@ -39,6 +39,7 @@ function template(actions: MenuActions): MenuItemConstructorOptions[] {
         { label: 'Open Recent', submenu: recent },
         { type: 'separator' },
         { label: 'Import…', accelerator: 'CmdOrCtrl+I', click: () => actions.command('import') },
+        { label: 'Export…', accelerator: 'CmdOrCtrl+Shift+E', click: () => actions.command('export') },
         { label: 'Reload Mesh', accelerator: 'CmdOrCtrl+Shift+R', click: () => actions.command('reloadMesh') },
         { label: 'Project Settings…', accelerator: 'CmdOrCtrl+Shift+,', click: () => actions.command('projectSettings') },
         { type: 'separator' },

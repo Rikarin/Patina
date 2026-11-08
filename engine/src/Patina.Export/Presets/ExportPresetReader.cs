@@ -58,8 +58,90 @@ public static class ExportPresetReader {
             throw new ExportPresetException($"{where}: two textures are called '{names.Key}'.");
         }
 
-        return new(id, name, engine, normal, read, Revision.Of(System.Text.Encoding.UTF8.GetBytes(text)).Text, path);
+        var size = Optional(root, "size") is { } sizeText ? Whole(sizeText, "size", where) : (int?)null;
+        Require(size is null or (>= 1 and <= MaxSize), $"{where}: size is a side from 1 to {MaxSize}, not {size}.");
+        var filter = Optional(root, "filter") ?? ExportFilters.Box;
+        Require(
+            ExportFilters.All.Contains(filter, StringComparer.Ordinal),
+            $"{where}: filter '{filter}' is not one of {string.Join(", ", ExportFilters.All)}."
+        );
+        var dither = Optional(root, "dither") ?? "false";
+        Require(dither is "true" or "false", $"{where}: dither is true or false, not '{dither}'.");
+
+        return new(id, name, engine, normal, read, Revision.Of(System.Text.Encoding.UTF8.GetBytes(text)).Text, path) {
+            Padding = ReadPadding(Child(root, "padding"), where),
+            Dither = dither == "true",
+            Size = size,
+            Filter = filter
+        };
     }
+
+    /// <summary>The largest side a file is made at, which is also the largest a stack paints.</summary>
+    public const int MaxSize = 8192;
+
+    /// <summary>The quality a texture has when its preset names none.</summary>
+    public static string DefaultQuality(string format) =>
+        format == ExportFormats.Jpeg
+            ? ExportFormats.DefaultJpegQuality.ToString(CultureInfo.InvariantCulture)
+            : "balanced";
+
+    /// <summary>Why a quality is not one a format takes, or null.</summary>
+    public static string? QualityProblem(string format, string quality) {
+        if (format == ExportFormats.Jpeg) {
+            var fits = int.TryParse(quality, CultureInfo.InvariantCulture, out var number) && number is >= 1 and <= 100;
+            return fits ? null : $"a JPEG's quality is 1 to 100, not '{quality}'.";
+        }
+
+        return quality is "fast" or "balanced" or "best" ? null : $"'{quality}' is not a quality.";
+    }
+
+    /// <summary>Padding: a mode, and for every mode but none and infinite, a distance; a colour for colour.</summary>
+    static ExportPadding ReadPadding(YamlNode? node, string where) {
+        switch (node) {
+            case null:
+                return ExportPadding.None;
+            case YamlScalarNode scalar:
+                return Padding(scalar.Value, null, [], where);
+            case YamlMappingNode mapping:
+                foreach (var key in mapping.Children.Keys.OfType<YamlScalarNode>()) {
+                    Require(
+                        key.Value is "mode" or "distance" or "colour",
+                        $"{where}: '{key.Value}' is not a field of padding."
+                    );
+                }
+
+                var colour = Child(mapping, "colour") is YamlSequenceNode lanes
+                    ? lanes.Select(lane => Number((lane as YamlScalarNode)?.Value, "padding colour", where)).ToList()
+                    : [];
+                var distance = Optional(mapping, "distance") is { } text
+                    ? Whole(text, "padding distance", where)
+                    : (int?)null;
+                return Padding(Field(mapping, "mode", where), distance, colour, where);
+            default:
+                throw new ExportPresetException($"{where}: padding is a mode or a mapping.");
+        }
+    }
+
+    /// <summary>Checks a padding and fills in its defaults.</summary>
+    public static ExportPadding Padding(string? mode, int? distance, IReadOnlyList<float> colour, string where) {
+        var parsed = ExportPadding.Parse(mode)
+            ?? throw new ExportPresetException(
+                $"{where}: padding '{mode}' is not one of {string.Join(", ", ExportPadding.Names)}."
+            );
+        Require(distance is null or (>= 0 and <= MaxSize), $"{where}: a padding distance is 0 to {MaxSize} texels.");
+        Require(colour.Count <= 4, $"{where}: a padding colour has at most four lanes.");
+        return new(parsed, distance ?? ExportPadding.DefaultDistance, colour);
+    }
+
+    static int Whole(string text, string field, string where) =>
+        int.TryParse(text, CultureInfo.InvariantCulture, out var number)
+            ? number
+            : throw new ExportPresetException($"{where}: {field} is a whole number, not '{text}'.");
+
+    static float Number(string? text, string field, string where) =>
+        float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)
+            ? number
+            : throw new ExportPresetException($"{where}: {field} is a number, not '{text}'.");
 
     static YamlMappingNode Parse(string text, string where) {
         var stream = new YamlStream();
@@ -99,8 +181,8 @@ public static class ExportPresetReader {
         );
         Require(container || compression == ExportCompressions.None, $"{where}: {format} cannot be compressed.");
 
-        var quality = Optional(node, "quality") ?? "balanced";
-        Require(quality is "fast" or "balanced" or "best", $"{where}: '{quality}' is not a quality.");
+        var quality = Optional(node, "quality") ?? DefaultQuality(format);
+        Require(QualityProblem(format, quality) is null, $"{where}: {QualityProblem(format, quality)}");
         var space = Field(node, "space", where);
         Require(space is "srgb" or "linear", $"{where}: space '{space}' is neither srgb nor linear.");
         var mipsText = Optional(node, "mips") ?? "false";
@@ -111,12 +193,22 @@ public static class ExportPresetReader {
         var lanes = Child(node, "channels") as YamlSequenceNode;
         Require(lanes is { Children.Count: >= 1 and <= 4 }, $"{where}: channels must list one to four lanes.");
         List<ChannelSource> channels = [..lanes!.Select(lane => Channel((lane as YamlScalarNode)?.Value, where))];
-        CheckShape(format, compression, space, channels.Count, where);
+        if (ShapeProblem(format, compression, space, channels.Count) is { } problem) {
+            throw new ExportPresetException($"{where}: {problem}");
+        }
+
         return new(file, format, compression, quality, space, mips, channels);
     }
 
-    /// <summary>Compressed blocks hold fixed lanes, so a list that does not fit must not be cut to fit.</summary>
-    static void CheckShape(string format, string compression, string space, int count, string where) {
+    /// <summary>
+    ///     Why a file of this shape cannot be written, or null. Compressed blocks hold fixed lanes, and a file format
+    ///     holds what it holds, so a list that does not fit must not be cut to fit.
+    /// </summary>
+    public static string? ShapeProblem(string format, string compression, string space, int count) =>
+        LaneProblem(format, compression, count) ?? SpaceProblem(format, compression, space);
+
+    /// <summary>Why a file cannot hold this many lanes, or null.</summary>
+    static string? LaneProblem(string format, string compression, int count) {
         var (least, most) = compression switch {
             ExportCompressions.Bc4 => (1, 1),
             ExportCompressions.Bc5 => (2, 2),
@@ -125,23 +217,37 @@ public static class ExportPresetReader {
 
             _ => (1, 4)
         };
-        Require(count >= least && count <= most, $"{where}: {compression} takes {least} to {most} lanes, not {count}.");
+        if (count < least || count > most) {
+            return $"{compression} takes {least} to {most} lanes, not {count}.";
+        }
 
-        var plain = format is ExportFormats.Png8 or ExportFormats.Png16;
-        Require(!plain || count != 2, $"{where}: a PNG has one, three or four lanes, not two.");
+        if (!ExportFormats.IsContainer(format) && compression != ExportCompressions.None) {
+            return $"{format} cannot be compressed.";
+        }
 
-        var floating = compression is ExportCompressions.Bc6H or ExportCompressions.Half or ExportCompressions.Wide
-            || format is ExportFormats.Exr16 or ExportFormats.Exr32;
-        Require(!(floating && space == "srgb"), $"{where}: {format} {compression} holds linear numbers, not sRGB.");
-        Require(
-            !(compression is ExportCompressions.Bc4 or ExportCompressions.Bc5 && space == "srgb"),
-            $"{where}: {compression} has no sRGB form."
-        );
-        Require(
-            format != ExportFormats.Png16 || space == "linear",
-            $"{where}: a 16-bit PNG here holds linear numbers."
-        );
+        var lanes = ExportFormats.LanesOf(format);
+        return lanes.Contains(count)
+            ? null
+            : $"{ExportFormats.LabelOf(format)} holds {string.Join(", ", lanes)} lanes, not {count}.";
     }
+
+    /// <summary>Why a file cannot hold numbers of this space, or null.</summary>
+    static string? SpaceProblem(string format, string compression, string space) {
+        var floating = compression is ExportCompressions.Bc6H or ExportCompressions.Half or ExportCompressions.Wide
+            || ExportFormats.IsFloat(format);
+        if (floating && space == "srgb") {
+            return $"{format} {compression} holds linear numbers, not sRGB.";
+        }
+
+        if (compression is ExportCompressions.Bc4 or ExportCompressions.Bc5 && space == "srgb") {
+            return $"{compression} has no sRGB form.";
+        }
+
+        return ExportFormats.IsWide(format) && space != "linear"
+            ? $"a 16-bit {ExportFormats.LabelOf(format)[..4].Trim()} here holds linear numbers."
+            : null;
+    }
+
 
     static ChannelSource Channel(string? text, string where) {
         if (string.IsNullOrWhiteSpace(text)) {

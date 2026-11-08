@@ -13,7 +13,7 @@ public static class ExportSteps {
     public static ExportManifest Run(ExportStep step, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(step);
         try {
-            var preset = ExportPresetReader.Read(step.Preset, "the preset");
+            var preset = ExportOverrides.Apply(ExportPresetReader.Read(step.Preset, "the preset"), step.Options);
             return ExportRun.Run(preset, SetsOf(step.Sources), step.Folder, null, cancellationToken);
         } catch (Exception e) when (e is InvalidDataException or ExportPresetException or ArgumentException) {
             throw new BuildStepFailedException(e.Message, e);

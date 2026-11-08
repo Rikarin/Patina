@@ -55,17 +55,85 @@ public sealed record ExportManifest(
     IReadOnlyList<ExportedFile> Files,
     IReadOnlyList<string> Skipped,
     IReadOnlyList<string> Warnings
-);
+) {
+    /// <summary>
+    ///     Whether the project has more than one texture set, so that file names carry the set's even when only one set
+    ///     was exported: a file's name does not change with what else was chosen.
+    /// </summary>
+    public bool PerSet { get; init; }
+}
 
 /// <summary>One file of a preset, as a client shows it.</summary>
+/// <param name="Template">Its naming template.</param>
+/// <param name="Format">Its format: one of <see cref="ExportPresetList.Formats" />.</param>
+/// <param name="Compression">What is inside a KTX2 or DDS file, or none.</param>
+/// <param name="Space">srgb or linear.</param>
+/// <param name="Mips">Whether it carries a mip chain.</param>
+/// <param name="Maps">The maps it reads.</param>
+/// <param name="Lanes">How many lanes it has, which decides the formats it can change to.</param>
+/// <param name="Quality">For JPEG, 1 to 100; for block compression, fast, balanced or best.</param>
 public sealed record ExportPresetFile(
     string Template,
     string Format,
     string Compression,
     string Space,
     bool Mips,
-    IReadOnlyList<string> Maps
+    IReadOnlyList<string> Maps,
+    int Lanes = 4,
+    string Quality = "balanced"
 );
+
+/// <summary>A file format a preset or an export can name.</summary>
+/// <param name="Id">Its name in a preset.</param>
+/// <param name="Label">Its name for a person, with its depth.</param>
+/// <param name="Extension">What its files end in.</param>
+/// <param name="Lanes">The lane counts it holds.</param>
+/// <param name="Linear">Whether it holds only linear numbers, as a float or 16-bit format does here.</param>
+/// <param name="Container">Whether it is a GPU container, the only kind a preset can block-compress.</param>
+public sealed record ExportFormatInfo(
+    string Id,
+    string Label,
+    string Extension,
+    IReadOnlyList<int> Lanes,
+    bool Linear,
+    bool Container
+);
+
+/// <summary>What fills the texels a mesh's layout leaves empty.</summary>
+/// <param name="Mode">none, infinite, transparent, colour or diffusion.</param>
+/// <param name="Distance">How many texels the islands grow by first, for every mode but none and infinite.</param>
+/// <param name="Colour">For colour, the value of each lane of a file, 0 to 1.</param>
+public sealed record ExportPaddingInfo(string Mode, int Distance, IReadOnlyList<float> Colour);
+
+/// <summary>One file of a preset changed for one export.</summary>
+/// <param name="Template">Which file: its naming template.</param>
+/// <param name="Enabled">Whether it is written at all.</param>
+/// <param name="Format">Another format for it, or null for the preset's.</param>
+public sealed record ExportFileChoice(string Template, bool Enabled = true, string? Format = null);
+
+/// <summary>
+///     A preset's settings changed for one export, as an export dialog changes them. Null fields keep the preset's.
+///     Changing one gives the export another key, so it never reuses files made under other settings.
+/// </summary>
+public sealed record ExportOptions {
+    /// <summary>The longest side of every file, 1 to 8192: 2048 makes a 4096 map's file 2048.</summary>
+    public int? Size { get; init; }
+
+    /// <summary>How a file changes size: box, bilinear or nearest.</summary>
+    public string? Filter { get; init; }
+
+    /// <summary>What fills the background of a mesh's layout.</summary>
+    public ExportPaddingInfo? Padding { get; init; }
+
+    /// <summary>Whether 8-bit files are dithered rather than rounded.</summary>
+    public bool? Dither { get; init; }
+
+    /// <summary>The texture sets to write, or null for every one.</summary>
+    public IReadOnlyList<string>? Sets { get; init; }
+
+    /// <summary>Files turned off or written in another format.</summary>
+    public IReadOnlyList<ExportFileChoice>? Files { get; init; }
+}
 
 /// <summary>An export preset.</summary>
 /// <param name="Id">Its id, which a build names.</param>
@@ -83,10 +151,33 @@ public sealed record ExportPresetInfo(
     string Origin,
     string Revision,
     IReadOnlyList<ExportPresetFile> Files
-);
+) {
+    /// <summary>What fills the background of a mesh's layout.</summary>
+    public ExportPaddingInfo Padding { get; init; } = new("none", 0, []);
+
+    /// <summary>Whether 8-bit files are dithered.</summary>
+    public bool Dither { get; init; }
+
+    /// <summary>The longest side of every file, or null for the maps' own size.</summary>
+    public int? Size { get; init; }
+
+    /// <summary>How a file changes size.</summary>
+    public string Filter { get; init; } = "box";
+}
 
 /// <summary>Every preset a library can use, and the files in its folder that are not presets.</summary>
-public sealed record ExportPresetList(IReadOnlyList<ExportPresetInfo> Presets, IReadOnlyList<string> Problems);
+/// <param name="Presets">The presets.</param>
+/// <param name="Problems">One line per file that is not a preset.</param>
+public sealed record ExportPresetList(IReadOnlyList<ExportPresetInfo> Presets, IReadOnlyList<string> Problems) {
+    /// <summary>The file formats there are, for a client that offers another one.</summary>
+    public IReadOnlyList<ExportFormatInfo> Formats { get; init; } = [];
+
+    /// <summary>The padding modes there are, in order.</summary>
+    public IReadOnlyList<string> Paddings { get; init; } = [];
+
+    /// <summary>The resize filters there are.</summary>
+    public IReadOnlyList<string> Filters { get; init; } = [];
+}
 
 /// <summary>What to build.</summary>
 public sealed record BuildRequest {
@@ -104,6 +195,9 @@ public sealed record BuildRequest {
 
     /// <summary>Where exports go, or null for <c>exports/</c> in the library.</summary>
     public string? Folder { get; init; }
+
+    /// <summary>The presets' settings changed for this export, or null for the presets as they are.</summary>
+    public ExportOptions? Options { get; init; }
 }
 
 /// <summary>What a build would do for one project.</summary>
@@ -253,6 +347,9 @@ public sealed record LibraryReport {
 
     /// <summary>Why a finished build wrote nothing, or null when it wrote something or something failed.</summary>
     public string? Nothing { get; init; }
+
+    /// <summary>What a running build is on, for a person: a project and an output or a preset.</summary>
+    public string? Current { get; init; }
 }
 
 /// <summary>A page of a build's per-project reports.</summary>
@@ -296,7 +393,13 @@ public sealed record ExportSource(string Folder, BuildManifest Manifest, string 
 /// <param name="Preset">The preset file's text, so that a Worker needs no library and reads no changed file.</param>
 /// <param name="Sources">The objects to read, later ones winning a map within a set.</param>
 /// <param name="Folder">The folder to make, which appears only when it is whole.</param>
-public sealed record ExportStep(string Preset, IReadOnlyList<ExportSource> Sources, string Folder);
+/// <param name="Options">The preset's settings changed for this export, or null.</param>
+public sealed record ExportStep(
+    string Preset,
+    IReadOnlyList<ExportSource> Sources,
+    string Folder,
+    ExportOptions? Options = null
+);
 
 /// <summary>A line of a build's journal: a step starting, or with its project and a report, a step ended.</summary>
 public sealed record BuildLogLine(

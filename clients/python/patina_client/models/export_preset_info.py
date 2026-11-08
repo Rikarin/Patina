@@ -8,9 +8,11 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
+from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
+  from ..models.export_padding_info import ExportPaddingInfo
   from ..models.export_preset_file import ExportPresetFile
 
 
@@ -33,6 +35,10 @@ class ExportPresetInfo:
             origin (str): Where it comes from: factory or library.
             revision (str): The hash of its file.
             files (list[ExportPresetFile]): What it makes.
+            padding (ExportPaddingInfo): What fills the texels a mesh's layout leaves empty.
+            dither (bool): Whether 8-bit files are dithered.
+            filter_ (str): How a file changes size.
+            size (int | None | Unset): The longest side of every file, or null for the maps' own size.
      """
 
     id: str
@@ -42,6 +48,10 @@ class ExportPresetInfo:
     origin: str
     revision: str
     files: list[ExportPresetFile]
+    padding: ExportPaddingInfo
+    dither: bool
+    filter_: str
+    size: int | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -49,6 +59,7 @@ class ExportPresetInfo:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.export_padding_info import ExportPaddingInfo # noqa: PLC0415
         from ..models.export_preset_file import ExportPresetFile # noqa: PLC0415
         id = self.id
 
@@ -69,6 +80,18 @@ class ExportPresetInfo:
 
 
 
+        padding = self.padding.to_dict()
+
+        dither = self.dither
+
+        filter_ = self.filter_
+
+        size: int | None | Unset
+        if isinstance(self.size, Unset):
+            size = UNSET
+        else:
+            size = self.size
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -80,7 +103,12 @@ class ExportPresetInfo:
             "origin": origin,
             "revision": revision,
             "files": files,
+            "padding": padding,
+            "dither": dither,
+            "filter": filter_,
         })
+        if size is not UNSET:
+            field_dict["size"] = size
 
         return field_dict
 
@@ -88,6 +116,7 @@ class ExportPresetInfo:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.export_padding_info import ExportPaddingInfo # noqa: PLC0415
         from ..models.export_preset_file import ExportPresetFile # noqa: PLC0415
         d = dict(src_dict)
         id = d.pop("id")
@@ -112,6 +141,25 @@ class ExportPresetInfo:
             files.append(files_item)
 
 
+        padding = ExportPaddingInfo.from_dict(d.pop("padding"))
+
+
+
+
+        dither = d.pop("dither")
+
+        filter_ = d.pop("filter")
+
+        def _parse_size(data: object) -> int | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(int | None | Unset, data)
+
+        size = _parse_size(d.pop("size", UNSET))
+
+
         export_preset_info = cls(
             id=id,
             name=name,
@@ -120,6 +168,10 @@ class ExportPresetInfo:
             origin=origin,
             revision=revision,
             files=files,
+            padding=padding,
+            dither=dither,
+            filter_=filter_,
+            size=size,
         )
 
 

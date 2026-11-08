@@ -24,12 +24,14 @@ class ExportPresetFile:
     """ One file of a preset, as a client shows it.
 
         Attributes:
-            template (str):
-            format_ (str):
-            compression (str):
-            space (str):
-            mips (bool):
-            maps (list[str]):
+            template (str): Its naming template.
+            format_ (str): Its format: one of IReadOnlyList&lt;ExportFormatInfo&gt; ExportPresetList.Formats.
+            compression (str): What is inside a KTX2 or DDS file, or none.
+            space (str): srgb or linear.
+            mips (bool): Whether it carries a mip chain.
+            maps (list[str]): The maps it reads.
+            lanes (int): How many lanes it has, which decides the formats it can change to. Default: 4.
+            quality (str): For JPEG, 1 to 100; for block compression, fast, balanced or best. Default: 'balanced'.
      """
 
     template: str
@@ -38,6 +40,8 @@ class ExportPresetFile:
     space: str
     mips: bool
     maps: list[str]
+    lanes: int = 4
+    quality: str = 'balanced'
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -59,6 +63,10 @@ class ExportPresetFile:
 
 
 
+        lanes = self.lanes
+
+        quality = self.quality
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -69,6 +77,8 @@ class ExportPresetFile:
             "space": space,
             "mips": mips,
             "maps": maps,
+            "lanes": lanes,
+            "quality": quality,
         })
 
         return field_dict
@@ -91,6 +101,10 @@ class ExportPresetFile:
         maps = cast(list[str], d.pop("maps"))
 
 
+        lanes = d.pop("lanes")
+
+        quality = d.pop("quality")
+
         export_preset_file = cls(
             template=template,
             format_=format_,
@@ -98,6 +112,8 @@ class ExportPresetFile:
             space=space,
             mips=mips,
             maps=maps,
+            lanes=lanes,
+            quality=quality,
         )
 
 
