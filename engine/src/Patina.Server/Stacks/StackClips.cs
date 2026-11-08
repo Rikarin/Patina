@@ -11,7 +11,16 @@ namespace Patina.Server.Stacks;
 /// <param name="Stack">The stack they came from.</param>
 /// <param name="Width">The width of that stack's canvases.</param>
 /// <param name="Height">Their height.</param>
-public sealed record StackClipContents(string Id, string Text, string Folder, string Stack, int Width, int Height);
+/// <param name="Set">The texture set they came from, which an instance pasted from them reads.</param>
+public sealed record StackClipContents(
+    string Id,
+    string Text,
+    string Folder,
+    string Stack,
+    int Width,
+    int Height,
+    string Set = ""
+);
 
 /// <summary>
 ///     What has been copied out of a stack. A copy is the layers and their pixels as they stood, so a cut layer still

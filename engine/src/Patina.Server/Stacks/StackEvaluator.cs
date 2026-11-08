@@ -176,7 +176,7 @@ public sealed class StackEvaluator(
 
         var id = Guid.NewGuid().ToString("N");
         clips.Add(
-            new(id, text, folder, session.Path, width, height),
+            new(id, text, folder, session.Path, width, height, session.Set),
             held => sessions.All.Any(open => open.Reads(held))
         );
         return new(id, count, session.Path);

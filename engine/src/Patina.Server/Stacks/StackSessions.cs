@@ -1,4 +1,5 @@
 using Patina.Server.Sessions;
+using Vixen.Texturing.Layers;
 
 namespace Patina.Server.Stacks;
 
@@ -36,10 +37,81 @@ public sealed class StackSessions(ServerIdentity identity, StackClips clips) : I
         var full = Resolve(path);
         return table.Open(
             full,
-            () => File.Exists(full)
-                ? new StackSession(full, File.ReadAllText(full), table.Wake) { ImageRoots = LibraryRoot, Clips = clips }
-                : throw new FileNotFoundException($"There is no stack at '{full}'.", full)
+            () => {
+                if (!File.Exists(full)) {
+                    throw new FileNotFoundException($"There is no stack at '{full}'.", full);
+                }
+
+                StackSession session = new(full, File.ReadAllText(full), table.Wake) {
+                    ImageRoots = LibraryRoot, Clips = clips, Changed = CatchUp
+                };
+                session.Siblings = name => Sibling(session, name);
+                return session;
+            }
         );
+    }
+
+    /// <summary>
+    ///     Another texture set of the model, by name: a stack beside this one, as its open session has it or as its file
+    ///     says. Sets of one model are documents of one project, which sit together.
+    /// </summary>
+    TextureSetAsset? Sibling(StackSession asking, string name) {
+        foreach (var open in table.All) {
+            if (open != asking && open.Folder == asking.Folder && open.Published is { } set && set.Name == name) {
+                return set;
+            }
+        }
+
+        if (asking.Folder is not { } folder || !Directory.Exists(folder)) {
+            return null;
+        }
+
+        foreach (var file in Directory.EnumerateFiles(folder, $"*{StackDocuments.Extension}")) {
+            if (string.Equals(file, asking.Path, StringComparison.Ordinal)
+                || table.All.Any(open => string.Equals(open.Path, file, StringComparison.Ordinal))) {
+                continue;
+            }
+
+            if (Read(file) is { } set && set.Name == name) {
+                return set;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>A stack's set from its file, kept until the file changes.</summary>
+    TextureSetAsset? Read(string file) {
+        var written = File.GetLastWriteTimeUtc(file);
+        lock (files) {
+            if (files.TryGetValue(file, out var held) && held.Written == written) {
+                return held.Set;
+            }
+        }
+
+        TextureSetAsset? set;
+        try {
+            set = LayerStackEdit.SetFor(StackDocuments.Parse(File.ReadAllText(file)), string.Empty);
+        } catch (Exception e) when (e is IOException or StackEditRefusedException) {
+            set = null;
+        }
+
+        lock (files) {
+            files[file] = (written, set);
+        }
+
+        return set;
+    }
+
+    readonly Dictionary<string, (DateTime Written, TextureSetAsset? Set)> files = new(StringComparer.Ordinal);
+
+    /// <summary>An edit of one set reaches every instance of its layers in another, open in a session of its own.</summary>
+    void CatchUp(StackSession changed) {
+        foreach (var other in table.All) {
+            if (other != changed && other.ReadsOtherSets) {
+                other.Evaluate();
+            }
+        }
     }
 
     public void Close(StackSession session) => table.Close(session);

@@ -49,6 +49,10 @@ public sealed record StackChannel(string Usage, IReadOnlyList<float> Default);
 ///     Whether this is a group flattened into a canvas: it composites that canvas, and its children are kept, unread,
 ///     as the way back.
 /// </param>
+/// <param name="Instance">
+///     For an instance layer, the layer it stands for. It keeps its own name, switch, opacity, blend and anchor point,
+///     and its own mask entries narrow the source's mask; everything else is the source's.
+/// </param>
 public sealed record StackLayer(
     string Id,
     string Name,
@@ -74,8 +78,14 @@ public sealed record StackLayer(
     string AnchorPoint = "",
     StackAnchorRef? Anchor = null,
     IReadOnlyDictionary<string, StackAnchorRef>? Inputs = null,
-    bool Flattened = false
+    bool Flattened = false,
+    StackInstanceRef? Instance = null
 );
+
+/// <summary>The layer an instance stands for.</summary>
+/// <param name="Layer">The source layer's id.</param>
+/// <param name="Set">The texture set it is in, by name, or empty for the instance's own.</param>
+public sealed record StackInstanceRef(string Layer, string Set = "");
 
 /// <summary>A reference to an anchor point, by its name, in one channel.</summary>
 /// <param name="Anchor">The anchor point's name.</param>
@@ -384,6 +394,7 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackSetHeightNormal), "setHeightNormal")]
 [JsonDerivedType(typeof(StackAddMaskLayer), "addMaskLayer"), JsonDerivedType(typeof(StackRemoveMaskLayer), "removeMaskLayer")]
 [JsonDerivedType(typeof(StackMoveMaskLayer), "moveMaskLayer"), JsonDerivedType(typeof(StackSetMaskLayer), "setMaskLayer")]
+[JsonDerivedType(typeof(StackAddInstance), "addInstance"), JsonDerivedType(typeof(StackSetInstance), "setInstance")]
 public abstract record StackCommand;
 
 /// <summary>Adds a layer at the top of the stack.</summary>
@@ -520,7 +531,11 @@ public sealed record StackDuplicateLayers(IReadOnlyList<string> Layers) : StackC
 /// </summary>
 /// <param name="Clip">What <c>POST /stacks/{id}/clip</c> answered.</param>
 /// <param name="Above">The layer they go just above, or null for the top of the stack.</param>
-public sealed record StackPasteLayers(string Clip, string? Above = null) : StackCommand;
+/// <param name="AsInstances">
+///     Whether each comes in as an instance of the layer that was copied rather than as a copy, so that an edit to the
+///     original shows in it. The original has to be in this stack or another texture set of its model.
+/// </param>
+public sealed record StackPasteLayers(string Clip, string? Above = null, bool AsInstances = false) : StackCommand;
 
 /// <summary>
 ///     Flattens a group into a canvas that composites what its children did, keeping them, unread, as the way back. The
@@ -543,6 +558,19 @@ public sealed record StackUnflattenLayer(string Layer) : StackCommand;
 /// <param name="Generator">The compound, for a generator entry, or null for the first the vocabulary offers.</param>
 public sealed record StackAddMaskLayer(string Layer, string Source, int? Index = null, string? Generator = null)
     : StackCommand;
+
+/// <summary>
+///     Adds an instance of a layer just above the chosen place: a layer that stands for the source, in this texture set
+///     or another of the model, so that an edit to the source shows in it.
+/// </summary>
+/// <param name="Source">The layer it stands for, in this texture set or another.</param>
+/// <param name="Above">The layer it goes just above, or null for the top of the stack.</param>
+public sealed record StackAddInstance(StackInstanceRef Source, string? Above = null) : StackCommand;
+
+/// <summary>Points an instance at another layer, which it then stands for.</summary>
+/// <param name="Layer">The instance.</param>
+/// <param name="Source">The layer it stands for from now on, in this texture set or another.</param>
+public sealed record StackSetInstance(string Layer, StackInstanceRef Source) : StackCommand;
 
 /// <summary>Removes an entry from a layer's mask stack.</summary>
 /// <param name="Layer">The layer whose mask it is.</param>

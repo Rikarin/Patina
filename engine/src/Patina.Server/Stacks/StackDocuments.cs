@@ -354,7 +354,8 @@ public static class StackDocuments {
             layer.AnchorPoint,
             Wire(layer.Anchor),
             Wire(layer.Inputs),
-            layer.Flattened
+            layer.Flattened,
+            layer.Kind == LayerKind.Instance ? new(layer.Instance.Layer, layer.Instance.Set) : null
         );
 
     static Dictionary<string, IReadOnlyList<float>> Numbers(Dictionary<string, float[]> numbers) =>

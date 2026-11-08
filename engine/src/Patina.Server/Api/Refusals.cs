@@ -79,6 +79,12 @@ public static class Refusals {
     /// <summary>A brush on a mask layer that is not painted. Values: <c>layer</c>, <c>source</c>.</summary>
     public const string MaskLayerNotPaint = "mask-layer-not-paint";
 
+    /// <summary>An instance of a layer that is not there. Values: <c>layer</c>, <c>set</c>.</summary>
+    public const string InstanceSourceMissing = "instance-source-missing";
+
+    /// <summary>An instance that would stand, through instances, for itself. Values: <c>layer</c>.</summary>
+    public const string InstanceCycle = "instance-cycle";
+
     /// <summary>A refusal with its code and the values its detail was written from.</summary>
     public static ProblemHttpResult Problem(
         string detail,

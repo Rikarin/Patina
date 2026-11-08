@@ -38,6 +38,7 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     bool forced;
     bool closed;
     StackEvaluation? evaluation;
+    volatile LayerStackAsset published;
 
     /// <param name="path">Its file.</param>
     /// <param name="text">The document as text.</param>
@@ -47,6 +48,7 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         Path = path;
         fileHash = Hash(text);
         editor = new(path, StackDocuments.Parse(text));
+        published = editor.Document;
         this.wake = wake;
         MeshMaps = DocumentBakes.OfFile(path);
         foreach (var paint in PaintFiles.Where(paint => File.Exists(System.IO.Path.GetFullPath(paint, Folder!)))) {
@@ -102,6 +104,27 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
             return (text, count, canvases, editor.Document.BaseWidth, editor.Document.BaseHeight);
         }
     }
+
+    /// <summary>
+    ///     This session's texture set as the last edit left it, read without the lock: what an instance in another
+    ///     session's set reads of it, from under that session's own lock.
+    /// </summary>
+    public TextureSetAsset? Published => LayerStackEdit.SetFor(published, string.Empty);
+
+    /// <summary>The model's other texture sets, by name, which instances here may stand for layers of (#108).</summary>
+    public Func<string, TextureSetAsset?> Siblings {
+        set {
+            lock (Changing) {
+                editor.Sibling = value;
+            }
+        }
+    }
+
+    /// <summary>Told after every edit, undo or redo, so that instances of this set's layers elsewhere catch up.</summary>
+    public Action<StackSession>? Changed { get; set; }
+
+    /// <summary>Whether a layer here stands for a layer of another texture set.</summary>
+    public bool ReadsOtherSets => Foreign(published).Count > 0;
 
     /// <summary>The texture set this session paints.</summary>
     public string Set {
@@ -248,6 +271,7 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         }
 
         wake();
+        Changed?.Invoke(this);
         return result;
     }
 
@@ -338,13 +362,60 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
 
     /// <summary>What the evaluation loop should do next, or null.</summary>
     public StackWork? Pending() {
+        StackWork work;
+        Func<string, TextureSetAsset?> siblings;
         lock (Changing) {
             if (closed || (settled == revision && !forced)) {
                 return null;
             }
 
-            return new(revision, StackDocuments.Text(editor.Document), editor.Standing, [..editor.Forgotten], forced);
+            work = new(revision, string.Empty, editor.Standing, [..editor.Forgotten], forced);
+            siblings = editor.Sibling;
+            var document = editor.Document;
+            work = work with { Document = StackDocuments.Text(Composed(document, siblings)) };
         }
+
+        return work;
+    }
+
+    /// <summary>
+    ///     The document with every other texture set its instances read, transitively, after its own: what the Worker
+    ///     compiles, so that it resolves an instance across sets from the set as it stands in its own session (#108).
+    /// </summary>
+    static LayerStackAsset Composed(LayerStackAsset document, Func<string, TextureSetAsset?> siblings) {
+        if (Foreign(document).Count == 0) {
+            return document;
+        }
+
+        List<TextureSetAsset> sets = [..document.Sets];
+        Queue<string> wanted = new(Foreign(document));
+        while (wanted.TryDequeue(out var name)) {
+            if (sets.Exists(set => set.Name == name) || siblings(name) is not { } sibling) {
+                continue;
+            }
+
+            sets.Add(sibling);
+            foreach (var next in Foreign(document with { Sets = [sibling] })) {
+                wanted.Enqueue(next);
+            }
+        }
+
+        return document with { Sets = sets };
+    }
+
+    /// <summary>The other texture sets a document's instances name.</summary>
+    static HashSet<string> Foreign(LayerStackAsset document) {
+        HashSet<string> named = new(StringComparer.Ordinal);
+        foreach (var set in document.Sets) {
+            foreach (var layer in StackEditor.Flattened(set.Layers)) {
+                if (layer.Kind == LayerKind.Instance && layer.Instance.Set.Length > 0 && layer.Instance.Set != set.Name) {
+                    named.Add(layer.Instance.Set);
+                }
+            }
+        }
+
+        named.ExceptWith(document.Sets.Select(static set => set.Name));
+        return named;
     }
 
     /// <summary>
@@ -476,10 +547,12 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         }
 
         wake();
+        Changed?.Invoke(this);
         return result;
     }
 
     StackEditResult Announce(GraphEventKind kind, string? label, IReadOnlyList<StackPainted>? painted) {
+        published = editor.Document;
         if (painted is not null) {
             revision++;
         }

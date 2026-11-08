@@ -64,6 +64,12 @@ public sealed class StackEditor : ILayerStackDocument {
     /// <summary>What a paste finds a copy by, or nothing when it has gone.</summary>
     public Func<string, StackClipContents?> Clip { get; set; } = static _ => null;
 
+    /// <summary>
+    ///     The texture set of that name among the model's others, as it stands, or null. What an instance of a layer in
+    ///     another set reads. Never this session's own set.
+    /// </summary>
+    public Func<string, TextureSetAsset?> Sibling { get; set; } = static _ => null;
+
     /// <summary>Whether a material brought compounds with it since this was last cleared.</summary>
     public bool CompoundsArrived { get; set; }
 
@@ -208,11 +214,14 @@ public sealed class StackEditor : ILayerStackDocument {
             StackSetHeightNormal => "Height to normal",
             StackStroke => "Stroke",
             StackDuplicateLayers => "Duplicate layers",
+            StackPasteLayers { AsInstances: true } => "Paste as instances",
             StackPasteLayers => "Paste layers",
             StackFlattenLayer { Layer: null } => "Flatten stack",
             StackFlattenLayer => "Flatten folder",
             StackUnflattenLayer => "Unflatten folder",
             StackAddMaskLayer add => $"Add {Terms.InStack([add.Source])[0].Label} to mask",
+            StackAddInstance => "Add instance",
+            StackSetInstance => "Change instance source",
             StackRemoveMaskLayer => "Remove mask layer",
             StackMoveMaskLayer => "Move mask layer",
             StackSetMaskLayer => "Change mask layer",
@@ -326,6 +335,12 @@ public sealed class StackEditor : ILayerStackDocument {
             case StackUnflattenLayer unflatten:
                 Unflatten(unflatten.Layer, set, Do);
                 break;
+            case StackAddInstance instance:
+                Do(AddInstance(instance.Source, instance.Above, set).Command);
+                break;
+            case StackSetInstance repoint:
+                Do(Repointed(repoint, set));
+                break;
             case StackAddMaskLayer or StackRemoveMaskLayer or StackMoveMaskLayer or StackSetMaskLayer:
                 Do(MaskLayers(command, set));
                 break;
@@ -346,8 +361,12 @@ public sealed class StackEditor : ILayerStackDocument {
     }
 
     AddLayerCommand Add(StackAddLayer add, string set) {
-        if (!Enum.TryParse<LayerKind>(add.Kind, true, out var kind)) {
-            throw new StackEditRefusedException($"'{add.Kind}' is not a kind of layer.");
+        if (!Enum.TryParse<LayerKind>(add.Kind, true, out var kind) || kind == LayerKind.Instance) {
+            throw new StackEditRefusedException(
+                kind == LayerKind.Instance
+                    ? "An instance names the layer it stands for: use addInstance."
+                    : $"'{add.Kind}' is not a kind of layer."
+            );
         }
 
         var id = LayerStackEdit.FreeId(
@@ -908,6 +927,11 @@ public sealed class StackEditor : ILayerStackDocument {
     void Paste(StackPasteLayers paste, UndoStep step, string set, Action<IAuthoringCommand> run) {
         var clip = Clip(paste.Clip)
             ?? throw new StackEditRefusedException("That copy has gone, with the Server that held it. Copy again.");
+        if (paste.AsInstances) {
+            PasteInstances(clip, paste.Above, set, run);
+            return;
+        }
+
         var layers = LayerStackYaml.Read(clip.Text).Sets[0].Layers;
         var same = string.Equals(clip.Stack, AssetPath, StringComparison.Ordinal);
         if (Canvases(layers).Any() && (clip.Width, clip.Height) != (Document.BaseWidth, Document.BaseHeight)) {
@@ -939,6 +963,96 @@ public sealed class StackEditor : ILayerStackDocument {
 
         Journal(copies, step);
     }
+
+    /// <summary>
+    ///     An instance of each layer a copy holds at its top, in order, over the chosen layer or at the top. The copy
+    ///     names the stack it came from, and that stack's texture set is the one each instance reads.
+    /// </summary>
+    void PasteInstances(StackClipContents clip, string? above, string set, Action<IAuthoringCommand> run) {
+        var copied = LayerStackYaml.Read(clip.Text).Sets[0].Layers;
+        var from = string.Equals(clip.Stack, AssetPath, StringComparison.Ordinal) ? string.Empty : clip.Set;
+        foreach (var layer in copied) {
+            var (made, id) = AddInstance(new(layer.Id, from), above, set);
+            run(made);
+            above = id;
+        }
+    }
+
+    /// <summary>An instance pointed at another source, which is refused when it would stand for itself.</summary>
+    SetLayerCommand Repointed(StackSetInstance repoint, string set) {
+        var layer = Require(repoint.Layer);
+        if (layer.Kind != LayerKind.Instance) {
+            throw new StackEditRefusedException($"'{layer.Name}' is not an instance.");
+        }
+
+        var (reference, _) = Source(repoint.Source, set);
+        if (LayerStackInstances.Cycles(WithSiblings(reference.Set), set, layer.Id, reference)) {
+            throw new StackEditRefusedException(
+                $"'{layer.Name}' would stand, through instances, for itself.",
+                Api.Refusals.InstanceCycle,
+                new Dictionary<string, string> { ["layer"] = layer.Name }
+            );
+        }
+
+        return new(this, new(set, layer.Id), layer, layer with { Instance = reference }, "Change instance source");
+    }
+
+    /// <summary>A reference to a source as a file holds it, and the source.</summary>
+    /// <exception cref="StackEditRefusedException">The source is not there.</exception>
+    (InstanceReference Reference, LayerAsset Found) Source(StackInstanceRef source, string set) {
+        var reference = new InstanceReference {
+            Set = source.Set == set ? string.Empty : source.Set, Layer = source.Layer
+        };
+        var origin = reference.Set.Length > 0 ? reference.Set : set;
+        return LayerStackEdit.Find(WithSiblings(reference.Set), new(origin, reference.Layer)) is { } found
+            ? (reference, found)
+            : throw new StackEditRefusedException(
+                $"Texture set '{origin}' has no layer '{reference.Layer}' to stand for.",
+                Api.Refusals.InstanceSourceMissing,
+                new Dictionary<string, string> { ["layer"] = reference.Layer, ["set"] = origin }
+            );
+    }
+
+    /// <summary>An instance of a layer, named after it, just above another or at the top.</summary>
+    /// <exception cref="StackEditRefusedException">The source is not there, or it would stand for itself.</exception>
+    (AddLayerCommand Command, string Id) AddInstance(StackInstanceRef source, string? above, string set) {
+        var (reference, found) = Source(source, set);
+        var stack = WithSiblings(reference.Set);
+        var id = LayerStackEdit.FreeId(Set, found.Id.Length > 0 ? $"{found.Id}-instance" : "instance");
+        if (LayerStackInstances.Cycles(stack, set, id, reference)) {
+            throw new StackEditRefusedException(
+                $"An instance of '{found.Name}' here would stand, through instances, for itself.",
+                Api.Refusals.InstanceCycle,
+                new Dictionary<string, string> { ["layer"] = found.Name }
+            );
+        }
+
+        var slot = Top(set, null);
+        if (above is not null) {
+            Require(above);
+            var at = LayerStackEdit.SlotOf(Document, new(set, above))!.Value;
+            slot = at with { Index = at.Index + 1 };
+        }
+
+        return (
+            new(
+                this,
+                slot,
+                new() {
+                    Id = id,
+                    Name = FreeName($"{(found.Name.Length > 0 ? found.Name : found.Id)} Instance"),
+                    Kind = LayerKind.Instance,
+                    Instance = reference
+                },
+                "Add instance"
+            ), id);
+    }
+
+    /// <summary>The document with another texture set beside its own, which is what an instance across sets reads.</summary>
+    LayerStackAsset WithSiblings(string set) =>
+        set.Length == 0 || Document.SetNamed(set) is not null || Sibling(set) is not { } sibling
+            ? Document
+            : Document with { Sets = [..Document.Sets, sibling] };
 
     /// <summary>
     ///     A name no other layer publishes, or the empty one. Taking one away that something reads is refused: the

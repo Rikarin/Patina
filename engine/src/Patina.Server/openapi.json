@@ -11409,6 +11409,12 @@
           },
           {
             "$ref": "#/components/schemas/StackCommandStackSetMaskLayer"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackAddInstance"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackSetInstance"
           }
         ],
         "description": "One edit of a stack. A batch of these is one undo step.",
@@ -11432,7 +11438,9 @@
             "addMaskLayer": "#/components/schemas/StackCommandStackAddMaskLayer",
             "removeMaskLayer": "#/components/schemas/StackCommandStackRemoveMaskLayer",
             "moveMaskLayer": "#/components/schemas/StackCommandStackMoveMaskLayer",
-            "setMaskLayer": "#/components/schemas/StackCommandStackSetMaskLayer"
+            "setMaskLayer": "#/components/schemas/StackCommandStackSetMaskLayer",
+            "addInstance": "#/components/schemas/StackCommandStackAddInstance",
+            "setInstance": "#/components/schemas/StackCommandStackSetInstance"
           }
         }
       },
@@ -11477,6 +11485,32 @@
           }
         },
         "description": "Adds a channel to the stack, so that layers can write it and a preset can export it."
+      },
+      "StackCommandStackAddInstance": {
+        "required": [
+          "source",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "addInstance"
+            ],
+            "type": "string"
+          },
+          "source": {
+            "description": "The layer it stands for, in this texture set or another.",
+            "$ref": "#/components/schemas/StackInstanceRef"
+          },
+          "above": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The layer it goes just above, or null for the top of the stack."
+          }
+        },
+        "description": "Adds an instance of a layer just above the chosen place: a layer that stands for the source, in this texture set\nor another of the model, so that an edit to the source shows in it."
       },
       "StackCommandStackAddLayer": {
         "required": [
@@ -11711,7 +11745,8 @@
       "StackCommandStackPasteLayers": {
         "required": [
           "clip",
-          "op"
+          "op",
+          "asInstances"
         ],
         "properties": {
           "op": {
@@ -11730,6 +11765,11 @@
               "string"
             ],
             "description": "The layer they go just above, or null for the top of the stack."
+          },
+          "asInstances": {
+            "type": "boolean",
+            "description": "Whether each comes in as an instance of the layer that was copied rather than as a copy, so that an edit to the\noriginal shows in it. The original has to be in this stack or another texture set of its model.",
+            "default": false
           }
         },
         "description": "Pastes what a copy holds, as new layers with canvases of their own, in this stack or another. Limits to named\nmeshes stay only in the stack they were made for."
@@ -11796,6 +11836,30 @@
           }
         },
         "description": "Says how the texture set\u0027s height becomes the normal its surface is lit with."
+      },
+      "StackCommandStackSetInstance": {
+        "required": [
+          "layer",
+          "source",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "setInstance"
+            ],
+            "type": "string"
+          },
+          "layer": {
+            "type": "string",
+            "description": "The instance."
+          },
+          "source": {
+            "description": "The layer it stands for from now on, in this texture set or another.",
+            "$ref": "#/components/schemas/StackInstanceRef"
+          }
+        },
+        "description": "Points an instance at another layer, which it then stands for."
       },
       "StackCommandStackSetLayer": {
         "required": [
@@ -12634,6 +12698,25 @@
         },
         "description": "The colours of a stack\u0027s id map, and the one at a place on it if one was asked about."
       },
+      "StackInstanceRef": {
+        "required": [
+          "layer",
+          "set"
+        ],
+        "type": "object",
+        "properties": {
+          "layer": {
+            "type": "string",
+            "description": "The source layer\u0027s id."
+          },
+          "set": {
+            "type": "string",
+            "description": "The texture set it is in, by name, or empty for the instance\u0027s own.",
+            "default": ""
+          }
+        },
+        "description": "The layer an instance stands for."
+      },
       "StackLayer": {
         "required": [
           "id",
@@ -12813,6 +12896,17 @@
             "type": "boolean",
             "description": "Whether this is a group flattened into a canvas: it composites that canvas, and its children are kept, unread,\nas the way back.",
             "default": false
+          },
+          "instance": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "For an instance layer, the layer it stands for. It keeps its own name, switch, opacity, blend and anchor point,\nand its own mask entries narrow the source\u0027s mask; everything else is the source\u0027s.",
+                "$ref": "#/components/schemas/StackInstanceRef"
+              }
+            ]
           }
         },
         "description": "One layer, without its pixels."
