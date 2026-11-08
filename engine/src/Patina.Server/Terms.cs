@@ -54,7 +54,9 @@ public static class Terms {
         ["diffusion"] = "Dilation + diffusion"
     };
 
-    /// <summary>What a brush calls the words of its settings and of a symmetry, where a capital is not enough.</summary>
+    /// <summary>
+    ///     What a brush calls the words of its settings and of a symmetry, where a capital is not enough.
+    /// </summary>
     static readonly Dictionary<string, string> InBrushes = new(StringComparer.Ordinal) {
         ["along"] = "Follow Stroke",
         ["both"] = "Both Axes",
@@ -103,13 +105,16 @@ public static class Terms {
     ];
 
     /// <summary>Values of a brush's settings with their labels, or of what a symmetry passes through.</summary>
-    public static IReadOnlyList<StackTerm> InBrush(IEnumerable<string> values, bool centres = false) => [
-        ..values.Select(value => new StackTerm(
-                value,
-                (centres ? InCentres : InBrushes).TryGetValue(value, out var named) ? named : Label(value)
+    public static IReadOnlyList<StackTerm> InBrush(IEnumerable<string> values, bool centres = false) {
+        var names = centres ? InCentres : InBrushes;
+        return [
+            ..values.Select(value => new StackTerm(
+                    value,
+                    names.TryGetValue(value, out var named) ? named : Label(value)
+                )
             )
-        )
-    ];
+        ];
+    }
 
     /// <summary>Values of an export's settings with their labels.</summary>
     public static IReadOnlyList<StackTerm> InExport(IEnumerable<string> values) => [

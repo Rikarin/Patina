@@ -501,9 +501,13 @@ public sealed record StackView(
 ///     How much longer than wide a stamp is, 1 to 16; 1 is round. It keeps the area of the round stamp, so a longer one
 ///     is narrower.
 /// </param>
-/// <param name="AspectAngle">Which way the long side points, in radians, on the picture or the map it is made on.</param>
+/// <param name="AspectAngle">
+///     Which way the long side points, in radians, on the picture or the map it is made on.
+/// </param>
 /// <param name="FlowJitter">How much of its flow a stamp can lose, 0 to 1.</param>
-/// <param name="ScatterAxis">Which way <paramref name="PositionJitter" /> moves a stamp: both, or across the stroke only.</param>
+/// <param name="ScatterAxis">
+///     Which way <paramref name="PositionJitter" /> moves a stamp: both, or across the stroke only.
+/// </param>
 /// <param name="Accumulate">
 ///     Whether stamps build up where they overlap, to the opacity. Off, a place keeps the strongest stamp to reach it,
 ///     so a slow drag paints what a fast one does.

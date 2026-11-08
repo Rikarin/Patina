@@ -73,7 +73,9 @@ public static class BrushShelf {
         BrushPresets.Write(full, request.Preset);
         var owner = OwnerOf(request.Source);
         return new(
-            owner is null ? Path.GetFileNameWithoutExtension(full) : Named(library, owner, request.Source)
+            owner is null
+                ? Path.GetFileNameWithoutExtension(full)
+                : Named(library, owner, request.Source)
                 ?? Path.GetFileNameWithoutExtension(full),
             request.Source,
             owner == request.Project ? Own : Elsewhere,
@@ -132,7 +134,7 @@ public static class BrushShelf {
                 IReadOnlyList<BrushPresetInfo> presets;
                 try {
                     presets = [..Of(library, summary.Path, Elsewhere, words)];
-                } catch (Exception e) when (e is LibraryFormatException or IOException or FileNotFoundException) {
+                } catch (Exception e) when (e is LibraryFormatException or IOException) {
                     continue;
                 }
 

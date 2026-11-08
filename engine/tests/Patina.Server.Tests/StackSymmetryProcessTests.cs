@@ -9,7 +9,8 @@ public sealed partial class StackProcessTests {
     /// <summary>
     ///     A stroke on the housing mirrored through its centre paints about twice what it does alone, and four copies
     ///     round its up axis about four times: each copy is a camera moved with it, so none is hidden behind the model.
-    ///     The housing is centred on its origin, so the model's centre against the origin is Vixen's PaintSymmetryTests'.
+    ///     The housing is centred on its origin, so the model's centre against the origin is Vixen's
+    ///     PaintSymmetryTests'.
     /// </summary>
     [Fact]
     public async Task A_symmetric_stroke_on_the_mesh_paints_each_of_its_copies() {
@@ -52,15 +53,27 @@ public sealed partial class StackProcessTests {
         using var frames = await WearAsync(instance, state.Id, deadline.Token);
         var near = await ZoomedAsync(1.05, deadline.Token);
         var far = await ZoomedAsync(2.1, deadline.Token);
-        StackStroke Dab(StackView view, string space) =>
-            new("dab", "paint", "baseColor", new(24f, SizeSpace: space), Red, [new(Picture / 2f, Picture / 2f)], View: view);
+
+        static StackStroke Dab(StackView view, string space) =>
+            new(
+                "dab",
+                "paint",
+                "baseColor",
+                new(24f, SizeSpace: space),
+                Red,
+                [new(Picture / 2f, Picture / 2f)],
+                View: view
+            );
 
         var screenNear = await RedAfterAsync(state.Id, "screen-near", Dab(near, "screen"), deadline.Token);
         var screenFar = await RedAfterAsync(state.Id, "screen-far", Dab(far, "screen"), deadline.Token);
         var modelNear = await RedAfterAsync(state.Id, "model-near", Dab(near, "model"), deadline.Token);
         var modelFar = await RedAfterAsync(state.Id, "model-far", Dab(far, "model"), deadline.Token);
 
-        Assert.True(screenFar > 2.5 * screenNear, $"{screenNear} texels near and {screenFar} far, in the screen's units.");
+        Assert.True(
+            screenFar > 2.5 * screenNear,
+            $"{screenNear} texels near and {screenFar} far, in the screen's units."
+        );
         Assert.InRange(modelFar, modelNear * 0.8, modelNear * 1.25);
     }
 
@@ -71,7 +84,7 @@ public sealed partial class StackProcessTests {
         var file = PngCodec.Decode(File.ReadAllBytes(exported.Single(static map => map.Usage == "baseColor").File!));
         var red = 0;
         for (var at = 0; at < file.Width * file.Height; at++) {
-            red += file.Pixels[at * 4] - file.Pixels[(at * 4) + 1] > 100 ? 1 : 0;
+            red += file.Pixels[at * 4] - file.Pixels[at * 4 + 1] > 100 ? 1 : 0;
         }
 
         await ActAsync(id, "undo", token);

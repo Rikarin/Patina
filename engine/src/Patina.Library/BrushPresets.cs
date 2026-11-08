@@ -23,7 +23,7 @@ public static class BrushPresets {
         var preset = YamlRecords.Read(
             fields,
             LibraryTreeJsonContext.Default.BrushPreset,
-            new BrushPreset("brush", StackBrushes.Default)
+            new("brush", StackBrushes.Default)
         );
         return preset.Problem() is { } problem ? throw fields.Problem(problem) : preset;
     }

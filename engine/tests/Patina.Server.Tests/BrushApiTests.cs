@@ -44,7 +44,8 @@ public sealed class BrushApiTests : IAsyncLifetime {
 
     /// <summary>
     ///     Recent colours, a palette, the brush and the symmetry go in the project's file and come back with its
-    ///     contents, so they survive a restart; a colour that is not one is refused, with a code, before anything is kept.
+    ///     contents, so they survive a restart; a colour that is not one is refused, with a code, before anything is
+    ///     kept.
     /// </summary>
     [Fact]
     public async Task A_project_keeps_its_colours_brush_and_symmetry() {
@@ -55,7 +56,11 @@ public sealed class BrushApiTests : IAsyncLifetime {
             Symmetry = new("radial", "y", Count: 6)
         };
 
-        using var kept = await client.PutAsJsonAsync("/api/v1/library/project/paint", new ProjectPaintRequest("crate", paint), Token);
+        using var kept = await client.PutAsJsonAsync(
+            "/api/v1/library/project/paint",
+            new ProjectPaintRequest("crate", paint),
+            Token
+        );
         using var refused = await client.PutAsJsonAsync(
             "/api/v1/library/project/paint",
             new ProjectPaintRequest("crate", paint with { Palette = ["red"] }),
@@ -67,7 +72,8 @@ public sealed class BrushApiTests : IAsyncLifetime {
         Assert.Equal("stroke-brush-refused", await CodeAsync(refused));
         Assert.Contains("paint:", ProjectYaml, StringComparison.Ordinal);
 
-        var back = (await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=crate", Token))!.Paint!;
+        var back = (await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=crate", Token))!
+            .Paint!;
         Assert.Equal(paint.RecentColours, back.RecentColours);
         Assert.Equal(paint.Palette, back.Palette);
         Assert.Equal(paint.Brush, back.Brush);
@@ -129,7 +135,10 @@ public sealed class BrushApiTests : IAsyncLifetime {
         Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
     }
 
-    /// <summary>A shipped preset cannot change, so favouriting one keeps a copy in the project, and it is the copy that is first.</summary>
+    /// <summary>
+    ///     A shipped preset cannot change, so favouriting one keeps a copy in the project, and it is the copy that is
+    ///     first.
+    /// </summary>
     [Fact]
     public async Task Favouriting_a_shipped_preset_keeps_a_copy_in_the_project() {
         var chalk = (await ShelfAsync()).Single(static preset => preset.Source == "starter:Chalk");

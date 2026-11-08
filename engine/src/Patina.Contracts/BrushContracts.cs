@@ -21,7 +21,9 @@ public sealed record StackSymmetry(
     int Count = 2
 );
 
-/// <summary>What a brush's fields take and how a new brush starts, so a client keeps no list or default of its own.</summary>
+/// <summary>
+///     What a brush's fields take and how a new brush starts, so a client keeps no list or default of its own.
+/// </summary>
 /// <param name="Default">A new brush, which Reset to Default goes back to.</param>
 /// <param name="Falloffs">How an edge can fall away.</param>
 /// <param name="Rotations">How stamps can turn.</param>
@@ -81,7 +83,7 @@ public sealed record ProjectPaintSettings {
             return $"A project keeps {RecentLimit} recent colours and {PaletteLimit} in its palette.";
         }
 
-        if (RecentColours.Concat(Palette).FirstOrDefault(colour => !IsColour(colour)) is { } wrong) {
+        if (RecentColours.Concat(Palette).FirstOrDefault(static colour => !IsColour(colour)) is { } wrong) {
             return $"'{wrong}' is not a colour written #rrggbb.";
         }
 
@@ -115,7 +117,9 @@ public sealed record BrushPreset(string Tool, StackBrush Brush, string? Colour =
 
 /// <summary>A preset on the shelf.</summary>
 /// <param name="Name">What it is called.</param>
-/// <param name="Source">What names it to the routes: <c>starter:</c> and a name, or its file's path in the library.</param>
+/// <param name="Source">
+///     What names it to the routes: <c>starter:</c> and a name, or its file's path in the library.
+/// </param>
 /// <param name="Origin"><c>shipped</c>, <c>project</c>, or <c>library</c> for another project.</param>
 /// <param name="Preset">What it holds.</param>
 /// <param name="Project">The project it lives in, when that is another one.</param>
@@ -186,7 +190,34 @@ public static class StackBrushes {
 
     /// <summary>What is wrong with a brush, or null when a Worker can stroke with it.</summary>
     /// <param name="brush">The brush.</param>
-    public static string? Problem(this StackBrush brush) {
+    public static string? Problem(this StackBrush brush) => OutOfRange(brush) ?? Unknown(brush);
+
+    /// <summary>What is wrong with a symmetry, or null when a Worker can copy a stroke with it.</summary>
+    /// <param name="symmetry">The symmetry.</param>
+    public static string? Problem(this StackSymmetry symmetry) {
+        if (!Symmetries.Contains(symmetry.Kind)) {
+            return $"'{symmetry.Kind}' is not a kind of symmetry.";
+        }
+
+        if (!Axes.Contains(symmetry.Axis)) {
+            return $"'{symmetry.Axis}' is not an axis.";
+        }
+
+        if (!Centres.Contains(symmetry.Centre)) {
+            return $"'{symmetry.Centre}' is not something a symmetry passes through.";
+        }
+
+        if (symmetry.Offset is < -1f or > 1f or float.NaN) {
+            return "A plane moves at most one bounding radius either way.";
+        }
+
+        return symmetry.Kind == "radial" && symmetry.Count is < 2 or > MaximumCount
+            ? $"A radial symmetry makes 2 to {MaximumCount} strokes."
+            : null;
+    }
+
+    /// <summary>A number of a brush that no stroke could take, or null.</summary>
+    static string? OutOfRange(StackBrush brush) {
         if (!(brush.Radius > 0f) || brush.Radius > MaximumRadius) {
             return $"A brush's radius is above 0 and at most {MaximumRadius:0}.";
         }
@@ -207,25 +238,23 @@ public static class StackBrushes {
             brush.Flow, brush.Opacity, brush.Falloff, brush.Angle, brush.PositionJitter, brush.AngleJitter,
             brush.SizeJitter, brush.PressureSize, brush.PressureFlow, brush.AspectAngle, brush.FlowJitter
         ];
-        if (!numbers.All(float.IsFinite)) {
-            return "A brush's settings are numbers.";
-        }
-
-        return !Rotations.Contains(brush.Rotation) ? $"'{brush.Rotation}' is not a way for a brush to turn."
-            : !Falloffs.Contains(brush.Curve) ? $"'{brush.Curve}' is not a falloff curve."
-            : !ScatterAxes.Contains(brush.ScatterAxis) ? $"'{brush.ScatterAxis}' is not a way for a stamp to scatter."
-            : !SizeSpaces.Contains(brush.SizeSpace) ? $"'{brush.SizeSpace}' is not what a size is measured in."
-            : null;
+        return numbers.All(float.IsFinite) ? null : "A brush's settings are numbers.";
     }
 
-    /// <summary>What is wrong with a symmetry, or null when a Worker can copy a stroke with it.</summary>
-    /// <param name="symmetry">The symmetry.</param>
-    public static string? Problem(this StackSymmetry symmetry) =>
-        !Symmetries.Contains(symmetry.Kind) ? $"'{symmetry.Kind}' is not a kind of symmetry."
-        : !Axes.Contains(symmetry.Axis) ? $"'{symmetry.Axis}' is not an axis."
-        : !Centres.Contains(symmetry.Centre) ? $"'{symmetry.Centre}' is not something a symmetry passes through."
-        : symmetry.Offset is < -1f or > 1f or float.NaN ? "A plane moves at most one bounding radius either way."
-        : symmetry.Kind == "radial" && symmetry.Count is < 2 or > MaximumCount
-            ? $"A radial symmetry makes 2 to {MaximumCount} strokes."
-            : null;
+    /// <summary>A word of a brush the Server does not know, or null.</summary>
+    static string? Unknown(StackBrush brush) {
+        if (!Rotations.Contains(brush.Rotation)) {
+            return $"'{brush.Rotation}' is not a way for a brush to turn.";
+        }
+
+        if (!Falloffs.Contains(brush.Curve)) {
+            return $"'{brush.Curve}' is not a falloff curve.";
+        }
+
+        if (!ScatterAxes.Contains(brush.ScatterAxis)) {
+            return $"'{brush.ScatterAxis}' is not a way for a stamp to scatter.";
+        }
+
+        return SizeSpaces.Contains(brush.SizeSpace) ? null : $"'{brush.SizeSpace}' is not what a size is measured in.";
+    }
 }
