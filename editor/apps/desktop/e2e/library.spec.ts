@@ -61,8 +61,11 @@ test('browses, searches and shows the impact of a material', async () => {
   await window.getByTestId('library-tags').getByRole('button').first().click();
   await expect(count()).toHaveText(`${Projects} projects`);
 
+  // A row is a placeholder until its page comes, and clicking one selects nothing, so it waits for the search's rows.
   await window.getByTestId('library-search').fill('a');
+  await expect(rows().first()).toContainText(/a/i);
   await rows().first().click();
+  await expect(rows().first()).toHaveAttribute('aria-selected', 'true');
   await expect(window.getByTestId('inspector-title')).not.toBeEmpty();
   await window.getByTestId('library-list').press('ArrowDown');
   await expect(rows().nth(1)).toHaveAttribute('aria-selected', 'true');
