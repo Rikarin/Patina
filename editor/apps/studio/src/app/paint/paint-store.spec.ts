@@ -30,6 +30,8 @@ const PickedView = {
 function layer(id: string, kind: string, children: StackLayer[] = []): StackLayer {
   return {
     filterNode: '',
+    anchorPoint: '',
+    flattened: false,
     id,
     name: id,
     kind,
@@ -47,7 +49,7 @@ function layer(id: string, kind: string, children: StackLayer[] = []): StackLaye
     planarAxis: 'Y',
     filter: 'Levels',
     settings: {},
-    mask: { source: 'None', value: 1, asset: '', anchor: '', generator: '', map: '', tolerance: 0.02, softness: 0 }
+    mask: { source: 'None', value: 1, asset: '', generator: '', map: '', tolerance: 0.02, softness: 0 }
   };
 }
 
@@ -423,6 +425,35 @@ describe('PaintStore', () => {
       ['b', 1],
       ['a', 1],
       ['base', 0]
+    ]);
+  });
+
+  it('shows a flattened folder as its canvas, with its layers kept out of sight', () => {
+    const folder = { ...layer('group', 'group', [layer('a', 'paint')]), flattened: true, painted: true };
+    expect(rowsOf([layer('base', 'fill'), folder]).map(row => row.layer.id)).toEqual(['group', 'base']);
+  });
+
+  it('offers a brush on a flattened folder, whose canvas is its picture', async () => {
+    const { store } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    const folder = { ...layer('group', 'group', [layer('a', 'fill')]), flattened: true, painted: true };
+    store.state.update(state => (state ? { ...state, layers: [folder] } : state));
+    store.layer.set('group');
+    expect(store.canPaint()).toBe(true);
+    store.state.update(state => (state ? { ...state, layers: [{ ...folder, flattened: false }] } : state));
+    expect(store.canPaint()).toBe(false);
+  });
+
+  it('flattens a folder, the whole stack, and back, each as one command', async () => {
+    const { store, bodies } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    await store.flatten('group');
+    await store.flatten();
+    await store.unflatten('group');
+    expect(bodies.slice(-3)).toEqual([
+      { commands: [{ op: 'flattenLayer', layer: 'group' }] },
+      { commands: [{ op: 'flattenLayer', layer: null }] },
+      { commands: [{ op: 'unflattenLayer', layer: 'group' }] }
     ]);
   });
 

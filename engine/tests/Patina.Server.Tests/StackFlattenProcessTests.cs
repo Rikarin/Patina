@@ -26,6 +26,7 @@ public sealed partial class StackProcessTests {
             new StackSetLayer(folder, Opacity: 0.8f)
         );
         var rust = Layer(await StateAsync(state.Id, deadline.Token), folder).Children[0].Id;
+        Assert.Equal("Base", Assert.Single((await StateAsync(state.Id, deadline.Token)).Anchors!).Name);
         await EditAsync(
             state.Id,
             deadline.Token,

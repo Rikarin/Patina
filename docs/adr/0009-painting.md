@@ -74,6 +74,11 @@ replay makes the same bytes.
   that file painted the stroke twice. `stack.load` names the files this session's strokes created, and a new Worker starts those
   blank. `A_worker_lost_after_a_save_undoes_to_before_the_file_existed` was red before that.
 - **A Server that dies loses unsaved strokes**, as it loses unsaved graph edits. The journal is in memory. S5 is about the Worker.
+- **A canvas can be made by something other than a brush, and the journal still says how** (#106, #107). A duplicate's canvas is an
+  entry naming the canvas it copies; a flattened folder's is an entry carrying the stack as text as it stood when it was flattened,
+  and the folder to capture from it (`LayerStackGraph.Capture`, the folder's own composite before its mask). The Worker evaluates it
+  in its turn, so a replay after a lost Worker writes the same canvas from the same document, whatever was edited since. Pixels never
+  cross: the entry is a few kilobytes of YAML. Undone, the canvas is empty again and the folder reads its layers.
 
 `A_worker_killed_mid_stroke_loses_nothing` kills the Worker with `SIGKILL` between two parts of a drag, sends a third with nobody
 there, and starts a new one. The pixels were back 0.8 to 2.8 s later on a 1024² stack, cold process and first evaluation included,

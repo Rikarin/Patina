@@ -70,11 +70,12 @@ export function rowsOf(
   parent: string | null = null,
   effect = false
 ): LayerRow[] {
+  // A flattened folder is its canvas, and its layers are kept out of sight as the way back (#107).
   return [...layers]
     .reverse()
     .flatMap(layer => [
       { layer, depth, parent, effect },
-      ...rowsOf(layer.children, depth + 1, layer.id, layer.kind !== 'group')
+      ...(layer.flattened ? [] : rowsOf(layer.children, depth + 1, layer.id, layer.kind !== 'group'))
     ]);
 }
 
@@ -204,7 +205,7 @@ export class PaintStore {
 
     return this.masking()
       ? FlatMasks.has(layer.mask.source)
-      : layer.kind === 'paint' && writesChannel(layer, this.channel());
+      : (layer.kind === 'paint' || layer.flattened) && writesChannel(layer, this.channel());
   });
 
   /** Whether one would land on the mesh, which also takes a mesh: a layered material's sphere is only a preview. */
@@ -505,6 +506,17 @@ export class PaintStore {
     }
 
     await this.added({ op: 'pasteLayers', clip: clip.id, above: this.layer() });
+  }
+
+  /** Flattens a folder into a canvas, keeping its layers as the way back, or the whole stack when none is named. */
+  async flatten(layer?: string): Promise<void> {
+    await this.edit({ op: 'flattenLayer', layer: layer ?? null });
+    this.masking.set(false);
+  }
+
+  /** Takes a flattened folder back to its layers. */
+  async unflatten(layer: string): Promise<void> {
+    await this.edit({ op: 'unflattenLayer', layer });
   }
 
   /** Duplicates the selected layers, each just above itself, with pixels of its own, and chooses the copies. */
@@ -990,8 +1002,10 @@ export class PaintStore {
     }
 
     if (event.delta) {
-      const layers = event.delta.layers;
-      this.state.update(state => (state ? { ...state, layers: [...layers] } : state));
+      const { layers, anchors } = event.delta;
+      this.state.update(state =>
+        state ? { ...state, layers: [...layers], anchors: anchors ? [...anchors] : (state.anchors ?? null) } : state
+      );
     }
   }
 

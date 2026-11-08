@@ -285,7 +285,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
           [attr.aria-level]="row.depth + 1"
           [attr.draggable]="sliding() !== row.layer.id"
           [attr.aria-selected]="store.selection().has(row.layer.id)"
-          [attr.aria-expanded]="row.layer.kind === 'group' ? !closed().has(row.layer.id) : null"
+          [attr.aria-expanded]="row.layer.kind === 'group' && !row.layer.flattened ? !closed().has(row.layer.id) : null"
           [attr.data-testid]="'paint-layer-' + row.layer.id"
           [attr.data-layer]="row.layer.id"
           [attr.tabindex]="row.layer.id === (store.layer() ?? rows()[0]?.layer?.id) ? 0 : -1"
@@ -333,6 +333,19 @@ const MaskMarks: Readonly<Record<string, string>> = {
             <span class="text-foreground-muted grid size-5 shrink-0 place-items-center text-xs" data-testid="layer-effect-mark">
               {{ mark(row.layer) }}
             </span>
+          } @else if (row.layer.flattened) {
+            <span class="size-4 shrink-0"></span>
+            <svg
+              viewBox="0 0 16 16"
+              class="text-foreground-muted size-8 shrink-0"
+              role="img"
+              aria-label="Flattened folder"
+              data-testid="layer-flattened"
+            >
+              <title>Flattened folder: its layers are kept, and Unflatten brings them back</title>
+              <path d="M1.5 3.5h5l1.5 2h6.5v7.5h-13z" fill="currentColor" fill-opacity="0.9" />
+              <path class="text-background" d="M4 9.5h8M4 11.5h8" stroke="currentColor" stroke-width="1" />
+            </svg>
           } @else if (row.layer.kind === 'group') {
             <button
               type="button"
@@ -743,6 +756,15 @@ const MaskMarks: Readonly<Record<string, string>> = {
             {{ store.masking() ? 'Add Filter to Mask' : 'Add Filter' }}
           </button>
           <xui-menu-divider />
+          @if (layer.flattened) {
+            <button type="button" xuiMenuItem data-testid="layer-menu-unflatten" (triggered)="store.unflatten(layer.id)">
+              Unflatten Folder
+            </button>
+          } @else if (layer.kind === 'group') {
+            <button type="button" xuiMenuItem data-testid="layer-menu-flatten" (triggered)="store.flatten(layer.id)">
+              Flatten Folder
+            </button>
+          }
           <button type="button" xuiMenuItem data-testid="layer-menu-group" (triggered)="groupSelected()">
             Group Layers <span menuItemLabel>{{ keys.mod }}G</span>
           </button>
@@ -774,6 +796,15 @@ const MaskMarks: Readonly<Record<string, string>> = {
           (triggered)="store.pasteLayers()"
         >
           Paste <span menuItemLabel>{{ keys.mod }}V</span>
+        </button>
+        <button
+          type="button"
+          xuiMenuItem
+          data-testid="layer-menu-flatten-stack"
+          [disabled]="(store.state()?.layers?.length ?? 0) === 0"
+          (triggered)="store.flatten()"
+        >
+          Flatten Stack
         </button>
         @if (menuLayer(); as layer) {
           <xui-menu-divider />
