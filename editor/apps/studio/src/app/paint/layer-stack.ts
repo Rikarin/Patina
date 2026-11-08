@@ -48,7 +48,7 @@ const QuickSteps: readonly { node: string; name: string }[] = [
   { node: 'Colour/Invert', name: 'Invert' }
 ];
 
-const KindMarks: Readonly<Record<string, string>> = { paint: 'P', fill: 'F', filter: 'Fx', group: '' };
+const KindMarks: Readonly<Record<string, string>> = { paint: 'P', fill: 'F', filter: 'Fx', group: '', instance: 'In' };
 
 /** What a mask's stack can have added to it, in the order its menu offers them. */
 const MaskLayerSources: readonly { value: string; label: string }[] = [
@@ -1003,6 +1003,9 @@ const MaskMarks: Readonly<Record<string, string>> = {
           <button type="button" xuiMenuItem data-testid="layer-menu-group" (triggered)="groupSelected()">
             Group Layers <span menuItemLabel>{{ commands.keyText('groupLayers') }}</span>
           </button>
+          <button type="button" xuiMenuItem data-testid="layer-menu-instance" (triggered)="store.addInstance(layer.id)">
+            {{ commands.label('createInstance') }}
+          </button>
           <button type="button" xuiMenuItem data-testid="layer-menu-duplicate" (triggered)="store.duplicateLayers()">
             Duplicate Layers <span menuItemLabel>{{ commands.keyText('duplicate') }}</span>
           </button>
@@ -1031,6 +1034,15 @@ const MaskMarks: Readonly<Record<string, string>> = {
           (triggered)="store.pasteLayers()"
         >
           Paste <span menuItemLabel>{{ commands.keyText('paste') }}</span>
+        </button>
+        <button
+          type="button"
+          xuiMenuItem
+          data-testid="layer-menu-paste-instance"
+          [disabled]="!store.clip()"
+          (triggered)="store.pasteAsInstances()"
+        >
+          {{ commands.label('pasteAsInstance') }}
         </button>
         <button
           type="button"
@@ -1376,6 +1388,11 @@ export class LayerStack {
       return layer ? this.store.unflatten(layer.id) : undefined;
     });
     handle('flattenStack', () => open() && (this.store.state()?.layers.length ?? 0) > 0, () => this.store.flatten());
+    handle('createInstance', () => chosen() !== null, () => {
+      const layer = chosen();
+      return layer ? this.store.addInstance(layer.id) : undefined;
+    });
+    handle('pasteAsInstance', () => here() && this.store.clip() !== null, () => this.store.pasteAsInstances());
     handle('openMaskStack', () => (chosen()?.mask.source ?? 'None') !== 'None', () => {
       const layer = chosen();
       if (layer) {

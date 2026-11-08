@@ -585,8 +585,26 @@ export class PaintStore {
       return;
     }
 
-    await this.added({ op: 'pasteLayers', clip: clip.id, above: this.layer() });
+    await this.added({ op: 'pasteLayers', clip: clip.id, above: this.layer(), asInstances: false });
   }
+
+  /** Pastes the last copy as instances of what was copied, which follow every edit to it (#108). */
+  async pasteAsInstances(): Promise<void> {
+    const clip = this.clip();
+    if (!clip) {
+      return;
+    }
+
+    await this.added({ op: 'pasteLayers', clip: clip.id, above: this.layer(), asInstances: true });
+  }
+
+  /** An instance of a layer just above it, chosen as it arrives. */
+  async addInstance(layer: string, set = ''): Promise<void> {
+    await this.added({ op: 'addInstance', source: { layer, set }, above: set ? null : layer });
+  }
+
+  /** The layer to choose once the texture set it is in opens, for Go to Source across sets. */
+  readonly arriving = signal<string | null>(null);
 
   /** Flattens a folder into a canvas, keeping its layers as the way back, or the whole stack when none is named. */
   async flatten(layer?: string): Promise<void> {
@@ -1042,7 +1060,11 @@ export class PaintStore {
       state.channels.some(c => c.usage === channel) ? channel : (state.channels[0]?.usage ?? channel)
     );
     const rows = rowsOf(state.layers);
-    if (!rows.some(row => row.layer.id === this.layer())) {
+    const arriving = this.arriving();
+    if (arriving !== null && rows.some(row => row.layer.id === arriving)) {
+      this.arriving.set(null);
+      this.layer.set(arriving);
+    } else if (!rows.some(row => row.layer.id === this.layer())) {
       this.layer.set(rows.find(row => row.layer.kind === 'paint')?.layer.id ?? null);
     }
 

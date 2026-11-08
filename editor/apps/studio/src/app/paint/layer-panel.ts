@@ -4,6 +4,7 @@ import type {
   MaterialInfo,
   StackAnchorRef,
   StackFilterKind,
+  StackInstanceRef,
   StackLayer,
   StackMask,
   StackMaskEffect
@@ -120,6 +121,31 @@ export function hexOf(colour: readonly number[] | undefined): string {
             }
           </ul>
         }
+        @if (layer.instance; as source) {
+          <p class="section-label mt-1">Instance</p>
+          <div class="flex items-center gap-2" data-testid="paint-instance">
+            <span class="min-w-0 flex-1 truncate text-xs" data-testid="paint-instance-source">
+              Stands for {{ sourceName(source) }}{{ source.set ? ' in ' + source.set : '' }}
+            </span>
+            <button type="button" xuiButton size="sm" variant="ghost" data-testid="paint-instance-go" (click)="goToSource(source)">
+              Go to Source
+            </button>
+          </div>
+          <p class="text-foreground-muted text-xs">
+            Its name, eye, opacity, blend and anchor are its own; everything else follows the source.
+          </p>
+        } @else if (instancesOf(layer); as instances) {
+          <p class="section-label mt-1">Instances</p>
+          <ul class="flex flex-col gap-0.5" data-testid="paint-instances">
+            @for (instance of instances; track instance.id) {
+              <li class="flex items-center gap-2">
+                <span class="min-w-0 flex-1 truncate text-xs">{{ instance.name }}</span>
+                <button type="button" xuiButton size="sm" variant="ghost" (click)="store.layer.set(instance.id)">Go</button>
+              </li>
+            }
+          </ul>
+        }
+        @if (!layer.instance) {
         <p class="section-label mt-1">Material Channels</p>
         <div class="flex flex-wrap items-center gap-1">
           @for (channel of store.state()?.channels ?? []; track channel.usage) {
@@ -141,6 +167,8 @@ export function hexOf(colour: readonly number[] | undefined): string {
           </p>
         }
 
+        }
+        @if (!layer.instance) {
         <p class="section-label mt-1">Content</p>
         @switch (layer.kind) {
           @case ('fill') {
@@ -425,6 +453,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
           </div>
         }
 
+        }
         @if (maskEntry(); as entry) {
           <p class="section-label mt-1">Mask Layer</p>
           <div class="flex flex-col gap-1.5" data-testid="paint-mask-layer">
@@ -516,6 +545,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
           </div>
         }
 
+        @if (!layer.instance) {
         <p class="section-label mt-1">Mask</p>
         <div class="flex items-center gap-2">
           <span class="text-foreground-muted w-16 shrink-0 text-xs">Mask</span>
@@ -713,6 +743,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
               </div>
             }
           }
+        }
         }
       </div>
 
@@ -1149,6 +1180,36 @@ export class LayerPanel {
 
   protected setMask(layer: StackLayer, change: Partial<StackMask>): void {
     void this.store.setMask(layer, { ...layer.mask, ...change });
+  }
+
+  /** A source's name in this set, or its id when it is in another, which this client has not read. */
+  protected sourceName(source: StackInstanceRef): string {
+    return source.set ? source.layer : this.layerName(source.layer);
+  }
+
+  /** The instances of a layer in this set, or null when there are none. */
+  protected instancesOf(layer: StackLayer): readonly StackLayer[] | null {
+    const found = this.store
+      .layers()
+      .map(row => row.layer)
+      .filter(held => held.instance && !held.instance.set && held.instance.layer === layer.id);
+    return found.length > 0 ? found : null;
+  }
+
+  /** Chooses the source: here, or in its texture set, which opens and then chooses it. */
+  protected goToSource(source: StackInstanceRef): void {
+    if (!source.set) {
+      this.store.layer.set(source.layer);
+      this.store.masking.set(false);
+      return;
+    }
+
+    const set = this.project.textureSets().find(held => held.material === source.set);
+    const project = this.project.current();
+    if (set && project) {
+      this.store.arriving.set(source.layer);
+      void this.project.openDocument(project.path, set.path);
+    }
   }
 
   /** The entry of the chosen layer's mask stack in front of the brush, with its place counted from the bottom. */

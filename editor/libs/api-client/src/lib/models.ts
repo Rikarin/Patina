@@ -95,6 +95,7 @@ export type BrushPreset = components['schemas']['BrushPreset'];
 export type BrushPresetInfo = components['schemas']['BrushPresetInfo'];
 export type StackMask = components['schemas']['StackMask'];
 export type StackMaskLayer = components['schemas']['StackMaskLayer'];
+export type StackInstanceRef = components['schemas']['StackInstanceRef'];
 export type StackAnchor = components['schemas']['StackAnchor'];
 export type StackAnchorRef = components['schemas']['StackAnchorRef'];
 export type StackVocabulary = components['schemas']['StackVocabulary'];

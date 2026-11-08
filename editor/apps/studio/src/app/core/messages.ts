@@ -18,7 +18,11 @@ const Words: Readonly<Record<string, string>> = {
   'anchor-taken': 'Another layer is already the anchor “{anchor}”. Choose another name.',
   'anchor-in-use': '{layer} reads the anchor “{anchor}”. Point it elsewhere before taking the anchor away.',
   'flatten-refused': '{layer} can’t be flattened. {reason}',
-  'not-flattened': '{layer} isn’t flattened.'
+  'not-flattened': '{layer} isn’t flattened.',
+  'mask-layer-missing': 'The mask of {layer} has changed since that was asked. Try again.',
+  'mask-layer-not-paint': 'That layer of the mask of {layer} is not painted, so a brush can’t reach it. Add a Paint layer to the mask.',
+  'instance-source-missing': 'The layer to make an instance of is no longer in {set}.',
+  'instance-cycle': 'An instance of {layer} there would stand for itself. Choose another layer.'
 };
 
 const KindWords: Readonly<Record<string, string>> = { Fill: 'fill', Filter: 'filter', Group: 'folder', Paint: 'paint' };

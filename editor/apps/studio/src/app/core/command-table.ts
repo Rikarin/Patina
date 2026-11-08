@@ -116,6 +116,14 @@ export const CommandTable: readonly CommandSpec[] = [
   { id: 'unflattenFolder', label: 'Unflatten Folder', section: 'Layers', area: 'stack' },
   { id: 'flattenStack', label: 'Flatten Stack', section: 'Layers', area: 'stack' },
   {
+    id: 'createInstance',
+    label: 'Create Instance',
+    section: 'Layers',
+    area: 'stack',
+    hint: 'A layer that stands for the chosen one and follows every edit to it'
+  },
+  { id: 'pasteAsInstance', label: 'Paste as Instance', section: 'Layers', area: 'stack' },
+  {
     id: 'findLayer',
     label: 'Find Layer Under Cursor',
     section: 'Layers',
@@ -266,6 +274,9 @@ export const MenuBar: readonly {
       'flattenFolder',
       'unflattenFolder',
       'flattenStack',
+      '-',
+      'createInstance',
+      'pasteAsInstance',
       '-',
       'findLayer',
       'openMaskStack'

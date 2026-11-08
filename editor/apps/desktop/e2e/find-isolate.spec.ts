@@ -137,3 +137,86 @@ test('a texture set shows alone in the viewport, and the whole model comes back'
   await expect.poll(quads, { timeout: 30_000 }).toBeGreaterThan(whole * 0.9);
   await viewport.screenshot({ path: join(shots, 'isolate-3-whole-again.png') });
 });
+
+/** Drags across the 2D view, as fractions of it, and waits for the stack to catch up. */
+async function stroke(from: [number, number], to: [number, number]): Promise<void> {
+  const picture = window.getByTestId('paint-picture');
+  const before = await picture.getAttribute('src');
+  const box = await picture.boundingBox();
+  if (!box) {
+    throw new Error('The picture has no box.');
+  }
+
+  await window.mouse.move(box.x + box.width * from[0], box.y + box.height * from[1]);
+  await window.mouse.down();
+  await window.mouse.move(box.x + box.width * to[0], box.y + box.height * to[1], { steps: 12 });
+  await window.mouse.up();
+  await expect(picture).not.toHaveAttribute('src', before ?? '', { timeout: 30_000 });
+  await settled();
+}
+
+async function settled(): Promise<void> {
+  await expect(window.getByTestId('layers-evaluation')).not.toContainText('Evaluating', { timeout: 30_000 });
+  await window.waitForTimeout(1_000);
+}
+
+test('an instance in another texture set shows its source and follows an unsaved edit to it', async () => {
+  test.setTimeout(180_000);
+  const corners = [
+    ...['0 0 0', '1 0 0', '1 1 0', '0 1 0', '1.2 0 0', '2.2 0 0', '2.2 1 0', '1.2 1 0'].map(v => `v ${v}`),
+    ...['0 0', '1 0', '1 1', '0 1'].map(t => `vt ${t}`),
+    'usemtl metal',
+    'f 1/1 2/2 3/3 4/4',
+    'usemtl wood',
+    'f 5/1 6/2 7/3 8/4'
+  ];
+  writeFileSync(join(scratch, 'sets.obj'), corners.join('\n'));
+  await newProject(app, window, 'Sets', join(scratch, 'sets.obj'));
+  await expect(window.getByTestId('texture-sets')).toBeVisible({ timeout: 60_000 });
+  const picture = window.getByTestId('paint-picture');
+  await expect(picture).toBeVisible({ timeout: 60_000 });
+
+  // A stroke on metal's paint layer, copied and saved, so that the copy names it and its canvas is on disk.
+  await window.getByTestId('texture-set-metal').click();
+  await expect(window.getByTestId('texture-set-metal')).toHaveAttribute('aria-selected', 'true');
+  const paint = window.getByTestId('paint-layer-paint');
+  await expect(paint).toBeVisible({ timeout: 30_000 });
+  await paint.click();
+  await stroke([0.1, 0.5], [0.9, 0.5]);
+  await paint.click({ button: 'right' });
+  await window.getByTestId('layer-menu-copy').click();
+  await window.getByTestId('paint-save').click();
+  await expect(window.getByTestId('paint-save')).toBeDisabled({ timeout: 30_000 });
+
+  // Wood shows none of it, until its instance does.
+  await window.getByTestId('texture-set-wood').click();
+  await expect(window.getByTestId('texture-set-wood')).toHaveAttribute('aria-selected', 'true');
+  await expect(window.getByTestId('paint-layer-paint')).toBeVisible({ timeout: 30_000 });
+  await settled();
+  const bare = await picture.getAttribute('src');
+  await window.screenshot({ path: join(shots, 'instance-1-wood-bare.png') });
+  await window.getByTestId('paint-layer-paint').click({ button: 'right' });
+  await window.getByTestId('layer-menu-paste-instance').click();
+  const instance = window.locator('[data-testid^=paint-layer-paint-instance]');
+  await expect(instance).toBeVisible({ timeout: 30_000 });
+  await expect(picture).not.toHaveAttribute('src', bare ?? '', { timeout: 30_000 });
+  await settled();
+  const shown = await picture.getAttribute('src');
+  await expect(window.getByTestId('paint-instance-source')).toContainText('in metal');
+  await expect(window.getByTestId('paint-undo')).toHaveAttribute('aria-label', 'Undo Paste as instances');
+  await window.screenshot({ path: join(shots, 'instance-2-wood-instance.png') });
+
+  // A black mask on the source in metal, unsaved, hides it in wood too.
+  await window.getByTestId('texture-set-metal').click();
+  await expect(window.getByTestId('texture-set-metal')).toHaveAttribute('aria-selected', 'true');
+  await expect(paint).toBeVisible({ timeout: 30_000 });
+  await paint.click({ button: 'right' });
+  await window.getByTestId('layer-menu-mask-black').click();
+  await settled();
+  await window.getByTestId('texture-set-wood').click();
+  await expect(window.getByTestId('texture-set-wood')).toHaveAttribute('aria-selected', 'true');
+  await expect(instance).toBeVisible({ timeout: 30_000 });
+  await expect(picture).not.toHaveAttribute('src', shown ?? '', { timeout: 30_000 });
+  await settled();
+  await window.screenshot({ path: join(shots, 'instance-3-source-masked.png') });
+});

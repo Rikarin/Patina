@@ -4059,7 +4059,9 @@ export interface components {
       | components['schemas']['StackCommandStackAddMaskLayer']
       | components['schemas']['StackCommandStackRemoveMaskLayer']
       | components['schemas']['StackCommandStackMoveMaskLayer']
-      | components['schemas']['StackCommandStackSetMaskLayer'];
+      | components['schemas']['StackCommandStackSetMaskLayer']
+      | components['schemas']['StackCommandStackAddInstance']
+      | components['schemas']['StackCommandStackSetInstance'];
     /** @description Edits applied whole or not at all, as one undo step. */
     StackCommandBatch: {
       /** @description The edits, in order. */
@@ -4073,6 +4075,18 @@ export interface components {
       op: 'addChannel';
       /** @description Which, one of the vocabulary's usages. */
       usage: string;
+    };
+    /**
+     * @description Adds an instance of a layer just above the chosen place: a layer that stands for the source, in this texture set
+     *     or another of the model, so that an edit to the source shows in it.
+     */
+    StackCommandStackAddInstance: {
+      /** @enum {string} */
+      op: 'addInstance';
+      /** @description The layer it stands for, in this texture set or another. */
+      source: components['schemas']['StackInstanceRef'];
+      /** @description The layer it goes just above, or null for the top of the stack. */
+      above?: null | string;
     };
     /** @description Adds a layer at the top of the stack. */
     StackCommandStackAddLayer: {
@@ -4189,6 +4203,12 @@ export interface components {
       clip: string;
       /** @description The layer they go just above, or null for the top of the stack. */
       above?: null | string;
+      /**
+       * @description Whether each comes in as an instance of the layer that was copied rather than as a copy, so that an edit to the
+       *     original shows in it. The original has to be in this stack or another texture set of its model.
+       * @default false
+       */
+      asInstances: boolean;
     };
     /** @description Removes a layer. */
     StackCommandStackRemoveLayer: {
@@ -4218,6 +4238,15 @@ export interface components {
        *                 hides an eight-bit height's steps.
        */
       method: string;
+    };
+    /** @description Points an instance at another layer, which it then stands for. */
+    StackCommandStackSetInstance: {
+      /** @enum {string} */
+      op: 'setInstance';
+      /** @description The instance. */
+      layer: string;
+      /** @description The layer it stands for from now on, in this texture set or another. */
+      source: components['schemas']['StackInstanceRef'];
     };
     /** @description Changes what a layer's row shows. What is null stays. */
     StackCommandStackSetLayer: {
@@ -4556,6 +4585,16 @@ export interface components {
       /** @description The colour at the place asked about, or null. */
       at?: null | number[];
     };
+    /** @description The layer an instance stands for. */
+    StackInstanceRef: {
+      /** @description The source layer's id. */
+      layer: string;
+      /**
+       * @description The texture set it is in, by name, or empty for the instance's own.
+       * @default
+       */
+      set: string;
+    };
     /** @description One layer, without its pixels. */
     StackLayer: {
       /** @description Its identifier, stable across renames. */
@@ -4632,6 +4671,7 @@ export interface components {
        * @default false
        */
       flattened: boolean;
+      instance?: null | components['schemas']['StackInstanceRef'];
     };
     /** @description What decides where a layer shows. */
     StackMask: {

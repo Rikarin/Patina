@@ -232,7 +232,7 @@ describe('PaintStore copies', () => {
     await store.duplicateLayers();
 
     expect(bodies.slice(1)).toEqual([
-      { commands: [{ op: 'pasteLayers', clip: 'c1', above: 'paint' }] },
+      { commands: [{ op: 'pasteLayers', clip: 'c1', above: 'paint', asInstances: false }] },
       { commands: [{ op: 'duplicateLayers', layers: ['paint'] }] }
     ]);
   });
