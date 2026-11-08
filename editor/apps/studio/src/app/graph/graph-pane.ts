@@ -75,6 +75,8 @@ const MinimapRoom = 480;
 const portTypes = xuiGraphChartPortTypes(['Image', 'Float', 'Int', 'Bool']);
 /** How wide a reroute dot's card is: room for its two connectors and nothing else. */
 const RerouteWidth = 28;
+/** How far below a reroute card's top its connectors are. */
+const RerouteConnectorDepth = 20;
 const none: ReadonlySet<string> = new Set();
 
 interface PortView {
@@ -1023,7 +1025,8 @@ export class GraphCanvas {
     }
 
     const at = this.graph().store.toGraphPoint(press.x, press.y);
-    void this.store.insertReroute(wire, { x: at.x - RerouteWidth / 2, y: at.y - RerouteWidth / 2 });
+    // The connectors sit below the top of the card by the ports row's padding and half its height.
+    void this.store.insertReroute(wire, { x: at.x - RerouteWidth / 2, y: at.y - RerouteConnectorDepth });
   }
 
   /** A right-click on a node acts on it, and on the selection it belongs to. */

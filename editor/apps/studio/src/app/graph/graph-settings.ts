@@ -208,7 +208,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
                 (change)="rename(parameter, $event)"
               />
               <xui-select
-                class="w-20 shrink-0"
+                class="w-28 min-w-0 shrink-0"
                 ariaLabel="Parameter kind"
                 [disabled]="!store.editable()"
                 [itemText]="kindName"
@@ -256,7 +256,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
                     (change)="describe(parameter, { group: valueOf($event) })"
                   />
                   <xui-select
-                    class="w-24 shrink-0"
+                    class="w-28 min-w-0 shrink-0"
                     ariaLabel="Parameter widget"
                     [attr.data-testid]="'parameter-widget-' + parameter.name"
                     [disabled]="!store.editable()"
@@ -322,7 +322,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
                   />
                   @if (parameter.visibleIf; as condition) {
                     <xui-select
-                      class="w-16 shrink-0"
+                      class="w-20 min-w-0 shrink-0"
                       ariaLabel="Comparison"
                       [disabled]="!store.editable()"
                       [items]="comparisons"
@@ -330,7 +330,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
                       (valueChange)="setCondition(parameter, { negated: $event === 'is not' })"
                     />
                     <input
-                      class="w-16 shrink-0"
+                      class="w-20 min-w-0 shrink-0"
                       xuiInput
                       size="sm"
                       aria-label="Shown while value"
@@ -357,7 +357,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
                     (valueChange)="setNumber(parameter, $event)"
                   />
                   <xui-numeric-input
-                    class="w-24 shrink-0"
+                    class="w-28 min-w-0 shrink-0"
                     size="sm"
                     [ariaLabel]="parameter.name + ' default value'"
                     [disabled]="!store.editable()"
@@ -413,7 +413,6 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
                   xuiButton
                   size="sm"
                   [active]="store.parameterDefault(parameter) === 'true'"
-                  [attr.aria-pressed]="store.parameterDefault(parameter) === 'true'"
                   [disabled]="!store.editable()"
                   (click)="setDefault(parameter, store.parameterDefault(parameter) === 'true' ? 'false' : 'true')"
                 >
@@ -614,7 +613,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
           <div class="flex flex-col gap-1" data-testid="group-row">
           <div class="flex items-center gap-1">
             <xui-select
-              class="w-16 shrink-0"
+              class="w-28 min-w-0 shrink-0"
               ariaLabel="Frame colour"
               data-testid="group-colour"
               [disabled]="!store.editable()"
@@ -827,6 +826,7 @@ export class GraphSettings {
     parameter: GraphSettingDefinition,
     change: Partial<Pick<GraphSettingDefinition, 'label' | 'group' | 'summary'>>
   ): void {
+    parameter = this.latest(parameter);
     const next = { ...parameter, ...change };
     if (next.label !== parameter.label || next.group !== parameter.group || next.summary !== parameter.summary) {
       this.store.editParameter(parameter.name, next);
@@ -834,6 +834,7 @@ export class GraphSettings {
   }
 
   protected setWidget(parameter: GraphSettingDefinition, widget: string | null): void {
+    parameter = this.latest(parameter);
     const next = widget === null || widget === 'Default' ? null : widget;
     if (next !== (parameter.widget ?? null)) {
       this.store.editParameter(parameter.name, { ...parameter, widget: next });
@@ -841,6 +842,7 @@ export class GraphSettings {
   }
 
   protected setRange(parameter: GraphSettingDefinition, end: 'minimum' | 'maximum', value: number | null): void {
+    parameter = this.latest(parameter);
     const next = value !== null && Number.isFinite(value) ? value : null;
     if (next !== (parameter[end] ?? null)) {
       const widened = { ...parameter, [end]: next };
@@ -851,6 +853,7 @@ export class GraphSettings {
   }
 
   protected setChoices(parameter: GraphSettingDefinition, event: Event): void {
+    parameter = this.latest(parameter);
     const accepted = this.valueOf(event)
       .split(',')
       .map(choice => choice.trim())
@@ -866,9 +869,15 @@ export class GraphSettings {
   }
 
   protected setCondition(parameter: GraphSettingDefinition, change: Partial<GraphSettingCondition>): void {
+    parameter = this.latest(parameter);
     const held = parameter.visibleIf ?? { setting: '', value: 'true', negated: false };
     const next = { ...held, ...change };
     this.store.editParameter(parameter.name, { ...parameter, visibleIf: next.setting === '' ? null : next });
+  }
+
+  /** The parameter as this client last asked for it, so that two quick edits do not undo each other. */
+  private latest(parameter: GraphSettingDefinition): GraphSettingDefinition {
+    return this.store.parameter(parameter.name) ?? parameter;
   }
 
   protected presetSummary(preset: GraphPresetState): string {
@@ -913,6 +922,7 @@ export class GraphSettings {
   }
 
   protected rename(parameter: GraphSettingDefinition, event: Event): void {
+    parameter = this.latest(parameter);
     const name = (event.target as HTMLInputElement).value.trim();
     if (name !== parameter.name) {
       this.store.editParameter(parameter.name, { ...parameter, name });
@@ -920,6 +930,7 @@ export class GraphSettings {
   }
 
   protected setKind(parameter: GraphSettingDefinition, kind: string | null): void {
+    parameter = this.latest(parameter);
     if (kind !== null && kind !== parameter.kind) {
       const { minimum, maximum, ...rest } = parameter;
       this.store.editParameter(parameter.name, {

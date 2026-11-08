@@ -248,7 +248,6 @@ export function keptLanes(held: readonly number[], picked: readonly number[]): r
                       xuiButton
                       size="sm"
                       [active]="isOn(field)"
-                      [attr.aria-pressed]="isOn(field)"
                       [disabled]="!store.editable()"
                       (click)="setOn(field, !isOn(field))"
                     >

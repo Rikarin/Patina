@@ -805,6 +805,20 @@ describe('what a graph holds besides its nodes', () => {
     });
   });
 
+  it('starts a second quick edit of a parameter from the first, not from a document that is behind', async () => {
+    const test = await opened(state({ parameters: [wear] }));
+    test.store.reviseParameter('Wear', { label: 'Wear amount' });
+    test.store.reviseParameter('Wear', { group: 'Rust' });
+    await vi.waitFor(() => {
+      expect(sent(test)).toHaveLength(2);
+    });
+    expect(sent(test)[1]).toMatchObject({
+      op: 'setParameter',
+      name: 'Wear',
+      parameter: { label: 'Wear amount', group: 'Rust' }
+    });
+  });
+
   it('keeps presets from the state and from a delta', async () => {
     const test = await opened(state({ presets: [{ name: 'A', values: {} }] }));
     expect(test.store.document()?.presets.map(preset => preset.name)).toEqual(['A']);

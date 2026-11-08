@@ -151,6 +151,8 @@ export class GraphStore {
   private gesture: string | null = null;
   /** The nodes of the drag in progress. */
   private readonly moving = new Map<number, GraphPoint>();
+  /** What {@link parameter} answers with while the document is behind, and the revision that will hold it. */
+  private readonly sentParameters = new Map<string, { parameter: GraphSettingDefinition; revision: number | null }>();
   private moveScheduled = false;
   private evaluateAsked = false;
   private stopped = false;
@@ -485,9 +487,41 @@ export class GraphStore {
     void this.apply([{ op: 'addParameter', parameter }], null);
   }
 
+  /**
+   * A parameter as this client last asked for it, until the document has caught up with that edit. Two quick edits of
+   * one parameter, such as its label and then its group, each send the whole parameter, so the second has to start
+   * from the first and not from a document that has not heard of it yet.
+   */
+  parameter(name: string): GraphSettingDefinition | undefined {
+    const sent = this.sentParameters.get(name);
+    const document = this.mutableDocument();
+    if (sent && (sent.revision === null || (document?.revision ?? 0) < sent.revision)) {
+      return sent.parameter;
+    }
+
+    return document?.parameters.find(parameter => parameter.name === name);
+  }
+
   /** Changes a parameter in one step, which may rename it. */
   editParameter(name: string, parameter: GraphSettingDefinition): void {
-    void this.apply([{ op: 'setParameter', name, parameter }], null);
+    const sent = { parameter, revision: null as number | null };
+    this.sentParameters.delete(name);
+    this.sentParameters.set(parameter.name, sent);
+    void this.apply([{ op: 'setParameter', name, parameter }], null).then(result => {
+      if (result) {
+        sent.revision = result.revision;
+      } else {
+        this.sentParameters.clear();
+      }
+    });
+  }
+
+  /** Changes some of what a parameter says, keeping the rest as this client last asked for it. */
+  reviseParameter(name: string, change: Partial<GraphSettingDefinition>): void {
+    const held = this.parameter(name);
+    if (held) {
+      this.editParameter(name, { ...held, ...change });
+    }
   }
 
   /** Sets a parameter's default. Live: a slider sends this on every step. */
@@ -496,7 +530,7 @@ export class GraphStore {
     this.sendDraft(key, key, value, {
       op: 'setParameter',
       name: parameter.name,
-      parameter: { ...parameter, default: value }
+      parameter: { ...(this.parameter(parameter.name) ?? parameter), default: value }
     });
   }
 
