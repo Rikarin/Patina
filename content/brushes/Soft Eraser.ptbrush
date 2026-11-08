@@ -1,0 +1,5 @@
+# A brush preset that ships with Patina. CC0: see content/README.md.
+tool: eraser
+brush:
+  radius: 32
+  falloff: 0.8

@@ -54,6 +54,20 @@ public static class Terms {
         ["diffusion"] = "Dilation + diffusion"
     };
 
+    /// <summary>What a brush calls the words of its settings and of a symmetry, where a capital is not enough.</summary>
+    static readonly Dictionary<string, string> InBrushes = new(StringComparer.Ordinal) {
+        ["along"] = "Follow Stroke",
+        ["both"] = "Both Axes",
+        ["across"] = "Across the Stroke",
+        ["texture"] = "Texture Texels",
+        ["model"] = "Model Size"
+    };
+
+    /// <summary>What a symmetry's plane or axis passes through.</summary>
+    static readonly Dictionary<string, string> InCentres = new(StringComparer.Ordinal) {
+        ["model"] = "Model Centre", ["origin"] = "Mesh Origin"
+    };
+
     /// <summary>
     ///     What a person calls a value: its own name if it has one, or the value split into capitalised words.
     /// </summary>
@@ -84,6 +98,15 @@ public static class Terms {
         ..values.Select(static value => new StackTerm(
                 value,
                 InStacks.TryGetValue(value, out var named) ? named : Label(value)
+            )
+        )
+    ];
+
+    /// <summary>Values of a brush's settings with their labels, or of what a symmetry passes through.</summary>
+    public static IReadOnlyList<StackTerm> InBrush(IEnumerable<string> values, bool centres = false) => [
+        ..values.Select(value => new StackTerm(
+                value,
+                (centres ? InCentres : InBrushes).TryGetValue(value, out var named) ? named : Label(value)
             )
         )
     ];

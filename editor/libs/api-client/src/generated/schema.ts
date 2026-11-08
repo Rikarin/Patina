@@ -487,6 +487,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/project/paint': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Keeps how a project's painting was left, in its project.yaml: the colours strokes last used, its palette, the brush and the symmetry, so they survive a restart and any client starts from them. */
+    put: operations['SetProjectPaint'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/project/settings': {
     parameters: {
       query?: never;
@@ -720,6 +737,25 @@ export interface paths {
     put?: never;
     /** Brings a project's layers up to edits saved in the graphs they read. */
     post: operations['RefreshMaterials'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/brushes': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The brush and tool presets a project can use: the shipped ones, its own and other projects', favourites first. */
+    get: operations['GetBrushPresets'];
+    /** Rewrites a preset: from the brush as it stands, or as a favourite or not. A shipped preset keeps a copy in the project instead. */
+    put: operations['UpdateBrushPreset'];
+    /** Saves a brush as a new preset, a document of the project. */
+    post: operations['CreateBrushPreset'];
     delete?: never;
     options?: never;
     head?: never;
@@ -1706,6 +1742,62 @@ export interface components {
     BakeThicknessOptions: {
       /** @description Whether the map is divided by its largest value, so the thickest texel reads white. */
       normalised: boolean;
+    };
+    /**
+     * @description A brush or tool preset: what the pointer paints as and with. It is a document of a project, a `.ptbrush`
+     *     file, and the file is the truth.
+     */
+    BrushPreset: {
+      /** @description What the pointer does: brush, eraser, line or path. */
+      tool: string;
+      /** @description The brush, its size among it. */
+      brush: components['schemas']['StackBrush'];
+      /** @description The colour it paints, as `#rrggbb`, or null to keep the colour chosen. */
+      colour?: null | string;
+      /**
+       * @description Whether it is one of the favourites, which a shelf shows first.
+       * @default false
+       */
+      favourite: boolean;
+    };
+    /** @description The body of `POST /api/v1/library/brushes`, which saves a new preset in a project. */
+    BrushPresetCreateRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /** @description What to call it, which names its file. */
+      name: string;
+      /** @description What it holds: usually the brush as it stands. */
+      preset: components['schemas']['BrushPreset'];
+    };
+    /** @description A preset on the shelf. */
+    BrushPresetInfo: {
+      /** @description What it is called. */
+      name: string;
+      /** @description What names it to the routes: `starter:` and a name, or its file's path in the library. */
+      source: string;
+      /** @description `shipped`, `project`, or `library` for another project. */
+      origin: string;
+      /** @description What it holds. */
+      preset: components['schemas']['BrushPreset'];
+      /** @description The project it lives in, when that is another one. */
+      project?: null | string;
+    };
+    /** @description The presets a project can use: the shipped ones, its own, and other projects'. */
+    BrushPresetList: {
+      /** @description Them, favourites first, then by origin and name. */
+      items: components['schemas']['BrushPresetInfo'][];
+    };
+    /**
+     * @description The body of `PUT /api/v1/library/brushes`, which rewrites a preset: from the brush as it stands, or to make
+     *     it a favourite or not. A shipped preset cannot change, so changing one keeps a copy in the project instead.
+     */
+    BrushPresetUpdateRequest: {
+      /** @description The project a shipped preset's copy goes in. */
+      project: string;
+      /** @description Which preset, as the shelf names it. */
+      source: string;
+      /** @description What it holds now. */
+      preset: components['schemas']['BrushPreset'];
     };
     /**
      * @description What a build would do, from the build keys and with nothing run. int BuildPreview.Rebuilds and
@@ -3173,6 +3265,7 @@ export interface components {
       /** @description How its bakes run, which texture sets they make maps for, and what they read beyond its mesh. */
       bake: components['schemas']['ProjectBakeSettings'];
       viewport?: null | components['schemas']['ViewportDisplay'];
+      paint?: null | components['schemas']['ProjectPaintSettings'];
     };
     /** @description The body of `POST /api/v1/library/projects`. */
     ProjectCreateRequest: {
@@ -3393,6 +3486,25 @@ export interface components {
        */
       limit: number;
     };
+    /** @description The body of `PUT /api/v1/library/project/paint`. */
+    ProjectPaintRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /** @description How its painting stands now. */
+      paint: components['schemas']['ProjectPaintSettings'];
+    };
+    /**
+     * @description How a project's painting was left: the colours last used and kept, the brush and the symmetry. A project keeps
+     *     it in its `project.yaml`, so it survives a restart and any client starts from it.
+     */
+    ProjectPaintSettings: {
+      /** @description The colours strokes last used, newest first, as `#rrggbb`. */
+      recentColours: string[];
+      /** @description Colours kept on purpose, in the order they were added, as `#rrggbb`. */
+      palette: string[];
+      brush?: null | components['schemas']['StackBrush'];
+      symmetry?: null | components['schemas']['StackSymmetry'];
+    };
     /** @description A picture a project now holds. */
     ProjectPicture: {
       /** @description Its path below the library, which a layer or a mask reads. */
@@ -3501,7 +3613,8 @@ export interface components {
     StackBrush: {
       /**
        * Format: float
-       * @description In texels, or in the units of the picture for a stroke with a view.
+       * @description In SizeSpace: by default texels for a stroke with no view and the units of the picture for
+       *     one with a view. Above zero and at most float StackBrushes.MaximumRadius.
        */
       radius: number;
       /**
@@ -3578,6 +3691,84 @@ export interface components {
        * @default 0
        */
       lazy: number;
+      /**
+       * @description How its edge falls away: smooth, linear, spherical or tip.
+       * @default smooth
+       */
+      curve: string;
+      /**
+       * Format: float
+       * @description How much longer than wide a stamp is, 1 to 16; 1 is round. It keeps the area of the round stamp, so a longer one
+       *     is narrower.
+       * @default 1
+       */
+      aspect: number;
+      /**
+       * Format: float
+       * @description Which way the long side points, in radians, on the picture or the map it is made on.
+       * @default 0
+       */
+      aspectAngle: number;
+      /**
+       * Format: float
+       * @description How much of its flow a stamp can lose, 0 to 1.
+       * @default 0
+       */
+      flowJitter: number;
+      /**
+       * @description Which way PositionJitter moves a stamp: both, or across the stroke only.
+       * @default both
+       */
+      scatterAxis: string;
+      /**
+       * @description Whether stamps build up where they overlap, to the opacity. Off, a place keeps the strongest stamp to reach it,
+       *     so a slow drag paints what a fast one does.
+       * @default true
+       */
+      accumulate: boolean;
+      /**
+       * @description What the radius is measured in: `screen`, the stroke's own picture or map; `texture`, texels of the
+       *     map whatever the view; or `model`, thousandths of the model's size (its bounds' diagonal), which needs a
+       *     mesh. A size other than screen is measured where the stroke starts and kept for the whole of it.
+       * @default screen
+       */
+      sizeSpace: string;
+    };
+    /** @description What a brush's fields take and how a new brush starts, so a client keeps no list or default of its own. */
+    StackBrushTerms: {
+      /** @description A new brush, which Reset to Default goes back to. */
+      default: components['schemas']['StackBrush'];
+      /** @description How an edge can fall away. */
+      falloffs: components['schemas']['StackTerm'][];
+      /** @description How stamps can turn. */
+      rotations: components['schemas']['StackTerm'][];
+      /** @description What a radius can be measured in. */
+      sizeSpaces: components['schemas']['StackTerm'][];
+      /** @description Which way scatter can move a stamp. */
+      scatterAxes: components['schemas']['StackTerm'][];
+      /** @description The kinds of symmetry. */
+      symmetries: components['schemas']['StackTerm'][];
+      /** @description The axes a symmetry can use. */
+      axes: components['schemas']['StackTerm'][];
+      /** @description What a symmetry's plane or axis can pass through. */
+      centres: components['schemas']['StackTerm'][];
+      /** @description What a preset can hold the pointer as. */
+      tools: components['schemas']['StackTerm'][];
+      /**
+       * Format: float
+       * @description The largest radius a stroke takes, in its own units.
+       */
+      maximumRadius: number;
+      /**
+       * Format: float
+       * @description The longest a stamp can be, against its width.
+       */
+      maximumAspect: number;
+      /**
+       * Format: int32
+       * @description The most strokes a radial symmetry makes.
+       */
+      maximumCount: number;
     };
     /** @description A channel a stack writes. */
     StackChannel: {
@@ -3822,8 +4013,7 @@ export interface components {
        * @default free
        */
       curve: string;
-      /** @description x, y or z mirrors a stroke on the mesh through that plane of the mesh, or null. */
-      mirror?: null | string;
+      symmetry?: null | components['schemas']['StackSymmetry'];
     };
     /** @description Creates a layer stack: one base fill, and one paint layer over it. */
     StackCreateRequest: {
@@ -4313,6 +4503,41 @@ export interface components {
       /** @description Whether it has edits no file holds. */
       dirty: boolean;
     };
+    /**
+     * @description How a stroke on a mesh copies itself: through a plane, or round an axis. The plane or the axis passes through
+     *     the model's centre or the mesh's own origin, so a model that is not centred on its origin still mirrors onto
+     *     itself.
+     */
+    StackSymmetry: {
+      /**
+       * @description `mirror` through a plane, or `radial` round an axis.
+       * @default mirror
+       */
+      kind: string;
+      /**
+       * @description `x`, `y` or `z`: the plane's normal, or the axis copies turn round.
+       * @default x
+       */
+      axis: string;
+      /**
+       * @description `model`, the centre of the model's bounds, or `origin`, the mesh's own.
+       * @default model
+       */
+      centre: string;
+      /**
+       * Format: float
+       * @description How far a mirror's plane moves along its axis from that centre, as a share of the model's bounding radius, -1
+       *     to 1. A radial symmetry turns round a line along its axis, which moving along that axis does not change.
+       * @default 0
+       */
+      offset: number;
+      /**
+       * Format: int32
+       * @description How many strokes a radial symmetry makes, the stroke among them: 2 to 64.
+       * @default 2
+       */
+      count: number;
+    };
     /** @description A word a stack's field takes, and what a person calls it. */
     StackTerm: {
       /** @description What a file and a command hold. */
@@ -4387,6 +4612,8 @@ export interface components {
       generatorParameters: {
         [key: string]: components['schemas']['GraphSettingDefinition'][];
       };
+      /** @description What a brush's fields take, and the brush a new one starts as. */
+      brush: components['schemas']['StackBrushTerms'];
     };
     /** @description The reply to `GET /api/v1/system`. */
     SystemInfo: {
@@ -6314,6 +6541,57 @@ export interface operations {
       };
     };
   };
+  SetProjectPaint: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectPaintRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   SetProjectSettings: {
     parameters: {
       query?: never;
@@ -7043,6 +7321,158 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['MaterialList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetBrushPresets: {
+    parameters: {
+      query?: {
+        project?: string;
+        search?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['BrushPresetList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  UpdateBrushPreset: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['BrushPresetUpdateRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['BrushPresetInfo'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  CreateBrushPreset: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['BrushPresetCreateRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['BrushPresetInfo'];
         };
       };
       /** @description Bad Request */

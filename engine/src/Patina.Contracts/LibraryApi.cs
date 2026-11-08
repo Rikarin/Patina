@@ -150,6 +150,9 @@ public sealed record ProjectContents(
 
     /// <summary>How the viewport was left in this project, for a client to put back, or null for as it opens.</summary>
     public ViewportDisplay? Viewport { get; init; }
+
+    /// <summary>How its painting was left: recent colours, palette, brush and symmetry, or null for none yet.</summary>
+    public ProjectPaintSettings? Paint { get; init; }
 }
 
 /// <summary>The body of <c>POST /api/v1/library/project/meshes</c>.</summary>

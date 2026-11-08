@@ -69,7 +69,7 @@ public sealed class StackJournalEntry(
 
     public string Curve { get; } = first.Curve;
 
-    public string? Mirror { get; } = first.Mirror;
+    public StackSymmetry? Symmetry { get; } = first.Symmetry;
 
     public List<StackStamp> Stamps { get; } = [..first.Stamps];
 
@@ -623,16 +623,8 @@ public sealed class StackEditor : ILayerStackDocument {
 
     void Stroke(StackStroke stroke, Step step, string set, Action<IAuthoringCommand> run) {
         var layer = Require(stroke.Layer);
-        if (stroke.Brush.Radius <= 0f) {
-            throw new StackEditRefusedException("A brush has a radius.");
-        }
-
-        if (stroke.Brush.Spacing <= 0f) {
-            throw new StackEditRefusedException("A brush's stamps are some distance apart.");
-        }
-
-        if (stroke.Brush.Lazy is < 0f or float.NaN or float.PositiveInfinity) {
-            throw new StackEditRefusedException("A lazy mouse trails the pointer by a distance of 0 or more.");
+        if (stroke.Brush.Problem() is { } problem) {
+            throw new StackEditRefusedException(problem, Api.Refusals.BrushRefused);
         }
 
         if (!stroke.Mask) {
@@ -885,26 +877,18 @@ public sealed class StackEditor : ILayerStackDocument {
             throw new StackEditRefusedException($"'{stroke.Curve}' is not a kind of stroke.");
         }
 
-        if (stroke.Mirror is not (null or "x" or "y" or "z")) {
-            throw new StackEditRefusedException($"'{stroke.Mirror}' is not a plane to mirror through.");
+        if (stroke.Symmetry?.Problem() is { } problem) {
+            throw new StackEditRefusedException(problem, Api.Refusals.BrushRefused);
         }
 
-        if (stroke.Brush.Rotation is not ("fixed" or "along" or "random")) {
-            throw new StackEditRefusedException($"'{stroke.Brush.Rotation}' is not a way for a brush to turn.");
+        // A symmetry, a view and a size in the model's units are all on the mesh.
+        var onMesh = stroke.View is not null || stroke.Symmetry is not null || stroke.Brush.SizeSpace == "model";
+        if (onMesh && Document.Model.Trim().Length == 0) {
+            throw new StackEditRefusedException("This stack has no mesh to paint on.", Api.Refusals.NoMesh);
         }
 
         if (stroke.View is not { } view) {
-            if (stroke.Mirror is not null) {
-                throw new StackEditRefusedException(
-                    "Only a stroke with a view can be mirrored: a mirror is on the mesh."
-                );
-            }
-
             return;
-        }
-
-        if (Document.Model.Trim().Length == 0) {
-            throw new StackEditRefusedException("This stack has no mesh to paint on.", Api.Refusals.NoMesh);
         }
 
         if (view is not { Eye.Count: 3, Right.Count: 3, Up.Count: 3, Forward.Count: 3, Width: > 0, Height: > 0 }) {

@@ -50,7 +50,21 @@ public static class StackDocuments {
         Terms.InStack(PaintAlphas.Names),
         MaskEffects(),
         Terms.InStack(Usages()),
-        GeneratorParameters()
+        GeneratorParameters(),
+        new(
+            StackBrushes.Default,
+            Terms.InBrush(StackBrushes.Falloffs),
+            Terms.InBrush(StackBrushes.Rotations),
+            Terms.InBrush(StackBrushes.SizeSpaces),
+            Terms.InBrush(StackBrushes.ScatterAxes),
+            Terms.InBrush(StackBrushes.Symmetries),
+            Terms.InBrush(StackBrushes.Axes),
+            Terms.InBrush(StackBrushes.Centres, true),
+            Terms.InBrush(StackBrushes.Tools),
+            StackBrushes.MaximumRadius,
+            StackBrushes.MaximumAspect,
+            StackBrushes.MaximumCount
+        )
     );
 
     /// <summary>The stack a new file starts as: a base, and somewhere to paint.</summary>

@@ -1,0 +1,8 @@
+# A brush preset that ships with Patina. CC0: see content/README.md.
+tool: brush
+brush:
+  radius: 18
+  falloff: 0.1
+  aspect: 5
+  aspectAngle: 0.7854
+  spacing: 0.08

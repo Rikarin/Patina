@@ -1,0 +1,231 @@
+namespace Patina.Contracts;
+
+/// <summary>
+///     How a stroke on a mesh copies itself: through a plane, or round an axis. The plane or the axis passes through
+///     the model's centre or the mesh's own origin, so a model that is not centred on its origin still mirrors onto
+///     itself.
+/// </summary>
+/// <param name="Kind"><c>mirror</c> through a plane, or <c>radial</c> round an axis.</param>
+/// <param name="Axis"><c>x</c>, <c>y</c> or <c>z</c>: the plane's normal, or the axis copies turn round.</param>
+/// <param name="Centre"><c>model</c>, the centre of the model's bounds, or <c>origin</c>, the mesh's own.</param>
+/// <param name="Offset">
+///     How far a mirror's plane moves along its axis from that centre, as a share of the model's bounding radius, -1
+///     to 1. A radial symmetry turns round a line along its axis, which moving along that axis does not change.
+/// </param>
+/// <param name="Count">How many strokes a radial symmetry makes, the stroke among them: 2 to 64.</param>
+public sealed record StackSymmetry(
+    string Kind = "mirror",
+    string Axis = "x",
+    string Centre = "model",
+    float Offset = 0f,
+    int Count = 2
+);
+
+/// <summary>What a brush's fields take and how a new brush starts, so a client keeps no list or default of its own.</summary>
+/// <param name="Default">A new brush, which Reset to Default goes back to.</param>
+/// <param name="Falloffs">How an edge can fall away.</param>
+/// <param name="Rotations">How stamps can turn.</param>
+/// <param name="SizeSpaces">What a radius can be measured in.</param>
+/// <param name="ScatterAxes">Which way scatter can move a stamp.</param>
+/// <param name="Symmetries">The kinds of symmetry.</param>
+/// <param name="Axes">The axes a symmetry can use.</param>
+/// <param name="Centres">What a symmetry's plane or axis can pass through.</param>
+/// <param name="Tools">What a preset can hold the pointer as.</param>
+/// <param name="MaximumRadius">The largest radius a stroke takes, in its own units.</param>
+/// <param name="MaximumAspect">The longest a stamp can be, against its width.</param>
+/// <param name="MaximumCount">The most strokes a radial symmetry makes.</param>
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field.
+#pragma warning disable SK7005
+public sealed record StackBrushTerms(
+    StackBrush Default,
+    IReadOnlyList<StackTerm> Falloffs,
+    IReadOnlyList<StackTerm> Rotations,
+    IReadOnlyList<StackTerm> SizeSpaces,
+    IReadOnlyList<StackTerm> ScatterAxes,
+    IReadOnlyList<StackTerm> Symmetries,
+    IReadOnlyList<StackTerm> Axes,
+    IReadOnlyList<StackTerm> Centres,
+    IReadOnlyList<StackTerm> Tools,
+    float MaximumRadius,
+    float MaximumAspect,
+    int MaximumCount
+);
+#pragma warning restore SK7005
+
+/// <summary>
+///     How a project's painting was left: the colours last used and kept, the brush and the symmetry. A project keeps
+///     it in its <c>project.yaml</c>, so it survives a restart and any client starts from it.
+/// </summary>
+public sealed record ProjectPaintSettings {
+    /// <summary>The most recent colours kept.</summary>
+    public const int RecentLimit = 16;
+
+    /// <summary>The most colours a palette holds.</summary>
+    public const int PaletteLimit = 64;
+
+    /// <summary>The colours strokes last used, newest first, as <c>#rrggbb</c>.</summary>
+    public IReadOnlyList<string> RecentColours { get; init; } = [];
+
+    /// <summary>Colours kept on purpose, in the order they were added, as <c>#rrggbb</c>.</summary>
+    public IReadOnlyList<string> Palette { get; init; } = [];
+
+    /// <summary>The brush last painted with, or null for a new one.</summary>
+    public StackBrush? Brush { get; init; }
+
+    /// <summary>The symmetry strokes are copied with, or null for none.</summary>
+    public StackSymmetry? Symmetry { get; init; }
+
+    /// <summary>What is wrong with these settings, or null when a project can keep them.</summary>
+    public string? Problem() {
+        if (RecentColours.Count > RecentLimit || Palette.Count > PaletteLimit) {
+            return $"A project keeps {RecentLimit} recent colours and {PaletteLimit} in its palette.";
+        }
+
+        if (RecentColours.Concat(Palette).FirstOrDefault(colour => !IsColour(colour)) is { } wrong) {
+            return $"'{wrong}' is not a colour written #rrggbb.";
+        }
+
+        return Brush?.Problem() ?? Symmetry?.Problem();
+    }
+
+    /// <summary>Whether text is a colour written <c>#rrggbb</c>.</summary>
+    public static bool IsColour(string text) => text is ['#', _, _, _, _, _, _] && text[1..].All(char.IsAsciiHexDigit);
+}
+
+/// <summary>The body of <c>PUT /api/v1/library/project/paint</c>.</summary>
+/// <param name="Project">The project, below <c>projects/</c>.</param>
+/// <param name="Paint">How its painting stands now.</param>
+public sealed record ProjectPaintRequest(string Project, ProjectPaintSettings Paint);
+
+/// <summary>
+///     A brush or tool preset: what the pointer paints as and with. It is a document of a project, a <c>.ptbrush</c>
+///     file, and the file is the truth.
+/// </summary>
+/// <param name="Tool">What the pointer does: brush, eraser, line or path.</param>
+/// <param name="Brush">The brush, its size among it.</param>
+/// <param name="Colour">The colour it paints, as <c>#rrggbb</c>, or null to keep the colour chosen.</param>
+/// <param name="Favourite">Whether it is one of the favourites, which a shelf shows first.</param>
+public sealed record BrushPreset(string Tool, StackBrush Brush, string? Colour = null, bool Favourite = false) {
+    /// <summary>What is wrong with it, or null when it can be kept.</summary>
+    public string? Problem() =>
+        !StackBrushes.Tools.Contains(Tool) ? $"'{Tool}' is not a tool a preset holds."
+        : Colour is not null && !ProjectPaintSettings.IsColour(Colour) ? $"'{Colour}' is not a colour written #rrggbb."
+        : Brush.Problem();
+}
+
+/// <summary>A preset on the shelf.</summary>
+/// <param name="Name">What it is called.</param>
+/// <param name="Source">What names it to the routes: <c>starter:</c> and a name, or its file's path in the library.</param>
+/// <param name="Origin"><c>shipped</c>, <c>project</c>, or <c>library</c> for another project.</param>
+/// <param name="Preset">What it holds.</param>
+/// <param name="Project">The project it lives in, when that is another one.</param>
+public sealed record BrushPresetInfo(
+    string Name,
+    string Source,
+    string Origin,
+    BrushPreset Preset,
+    string? Project = null
+);
+
+/// <summary>The presets a project can use: the shipped ones, its own, and other projects'.</summary>
+/// <param name="Items">Them, favourites first, then by origin and name.</param>
+public sealed record BrushPresetList(IReadOnlyList<BrushPresetInfo> Items);
+
+/// <summary>The body of <c>POST /api/v1/library/brushes</c>, which saves a new preset in a project.</summary>
+/// <param name="Project">The project, below <c>projects/</c>.</param>
+/// <param name="Name">What to call it, which names its file.</param>
+/// <param name="Preset">What it holds: usually the brush as it stands.</param>
+public sealed record BrushPresetCreateRequest(string Project, string Name, BrushPreset Preset);
+
+/// <summary>
+///     The body of <c>PUT /api/v1/library/brushes</c>, which rewrites a preset: from the brush as it stands, or to make
+///     it a favourite or not. A shipped preset cannot change, so changing one keeps a copy in the project instead.
+/// </summary>
+/// <param name="Project">The project a shipped preset's copy goes in.</param>
+/// <param name="Source">Which preset, as the shelf names it.</param>
+/// <param name="Preset">What it holds now.</param>
+public sealed record BrushPresetUpdateRequest(string Project, string Source, BrushPreset Preset);
+
+/// <summary>The words and limits of a brush, which the Server checks a stroke and a preset against.</summary>
+public static class StackBrushes {
+    /// <summary>The largest radius, in a stroke's own units: a stamp this big is a fill, and still a stamp.</summary>
+    public const float MaximumRadius = 4096f;
+
+    /// <summary>The longest a stamp can be against its width, which is Vixen's cap on a stretched stamp.</summary>
+    public const float MaximumAspect = 16f;
+
+    /// <summary>The most strokes a radial symmetry makes, the stroke among them.</summary>
+    public const int MaximumCount = 64;
+
+    /// <summary>The falloff curves.</summary>
+    public static IReadOnlyList<string> Falloffs { get; } = ["smooth", "linear", "spherical", "tip"];
+
+    /// <summary>How stamps turn: at a fixed angle, along the stroke, or at random.</summary>
+    public static IReadOnlyList<string> Rotations { get; } = ["fixed", "along", "random"];
+
+    /// <summary>What a radius is measured in.</summary>
+    public static IReadOnlyList<string> SizeSpaces { get; } = ["screen", "texture", "model"];
+
+    /// <summary>Which way scatter moves a stamp.</summary>
+    public static IReadOnlyList<string> ScatterAxes { get; } = ["both", "across"];
+
+    /// <summary>The kinds of symmetry.</summary>
+    public static IReadOnlyList<string> Symmetries { get; } = ["mirror", "radial"];
+
+    /// <summary>The axes of the mesh's own space.</summary>
+    public static IReadOnlyList<string> Axes { get; } = ["x", "y", "z"];
+
+    /// <summary>What a symmetry passes through.</summary>
+    public static IReadOnlyList<string> Centres { get; } = ["model", "origin"];
+
+    /// <summary>What a preset holds the pointer as: the tools that paint with a brush.</summary>
+    public static IReadOnlyList<string> Tools { get; } = ["brush", "eraser", "line", "path"];
+
+    /// <summary>A new brush: round and soft, laying all of its flow, its size following a pen's pressure.</summary>
+    public static StackBrush Default { get; } = new(24f, Alpha: "Round", PressureSize: 1f);
+
+    /// <summary>What is wrong with a brush, or null when a Worker can stroke with it.</summary>
+    /// <param name="brush">The brush.</param>
+    public static string? Problem(this StackBrush brush) {
+        if (!(brush.Radius > 0f) || brush.Radius > MaximumRadius) {
+            return $"A brush's radius is above 0 and at most {MaximumRadius:0}.";
+        }
+
+        if (!(brush.Spacing > 0f) || !float.IsFinite(brush.Spacing)) {
+            return "A brush's stamps are some distance apart.";
+        }
+
+        if (brush.Lazy is < 0f or float.NaN or float.PositiveInfinity) {
+            return "A lazy mouse trails the pointer by a distance of 0 or more.";
+        }
+
+        if (!(brush.Aspect >= 1f) || brush.Aspect > MaximumAspect) {
+            return $"A stamp is 1 to {MaximumAspect:0} times as long as it is wide.";
+        }
+
+        float[] numbers = [
+            brush.Flow, brush.Opacity, brush.Falloff, brush.Angle, brush.PositionJitter, brush.AngleJitter,
+            brush.SizeJitter, brush.PressureSize, brush.PressureFlow, brush.AspectAngle, brush.FlowJitter
+        ];
+        if (!numbers.All(float.IsFinite)) {
+            return "A brush's settings are numbers.";
+        }
+
+        return !Rotations.Contains(brush.Rotation) ? $"'{brush.Rotation}' is not a way for a brush to turn."
+            : !Falloffs.Contains(brush.Curve) ? $"'{brush.Curve}' is not a falloff curve."
+            : !ScatterAxes.Contains(brush.ScatterAxis) ? $"'{brush.ScatterAxis}' is not a way for a stamp to scatter."
+            : !SizeSpaces.Contains(brush.SizeSpace) ? $"'{brush.SizeSpace}' is not what a size is measured in."
+            : null;
+    }
+
+    /// <summary>What is wrong with a symmetry, or null when a Worker can copy a stroke with it.</summary>
+    /// <param name="symmetry">The symmetry.</param>
+    public static string? Problem(this StackSymmetry symmetry) =>
+        !Symmetries.Contains(symmetry.Kind) ? $"'{symmetry.Kind}' is not a kind of symmetry."
+        : !Axes.Contains(symmetry.Axis) ? $"'{symmetry.Axis}' is not an axis."
+        : !Centres.Contains(symmetry.Centre) ? $"'{symmetry.Centre}' is not something a symmetry passes through."
+        : symmetry.Offset is < -1f or > 1f or float.NaN ? "A plane moves at most one bounding radius either way."
+        : symmetry.Kind == "radial" && symmetry.Count is < 2 or > MaximumCount
+            ? $"A radial symmetry makes 2 to {MaximumCount} strokes."
+            : null;
+}

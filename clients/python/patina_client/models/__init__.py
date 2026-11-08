@@ -12,6 +12,11 @@ from .bake_request import BakeRequest
 from .bake_result import BakeResult
 from .bake_thickness_options import BakeThicknessOptions
 from .baked_map_file import BakedMapFile
+from .brush_preset import BrushPreset
+from .brush_preset_create_request import BrushPresetCreateRequest
+from .brush_preset_info import BrushPresetInfo
+from .brush_preset_list import BrushPresetList
+from .brush_preset_update_request import BrushPresetUpdateRequest
 from .build_preview import BuildPreview
 from .build_preview_project import BuildPreviewProject
 from .build_request import BuildRequest
@@ -148,6 +153,8 @@ from .project_mesh_change import ProjectMeshChange
 from .project_mesh_info import ProjectMeshInfo
 from .project_mesh_request import ProjectMeshRequest
 from .project_page import ProjectPage
+from .project_paint_request import ProjectPaintRequest
+from .project_paint_settings import ProjectPaintSettings
 from .project_picture import ProjectPicture
 from .project_picture_request import ProjectPictureRequest
 from .project_rename_request import ProjectRenameRequest
@@ -157,6 +164,7 @@ from .project_settings_request import ProjectSettingsRequest
 from .project_summary import ProjectSummary
 from .project_viewport_request import ProjectViewportRequest
 from .stack_brush import StackBrush
+from .stack_brush_terms import StackBrushTerms
 from .stack_channel import StackChannel
 from .stack_clip import StackClip
 from .stack_clip_request import StackClipRequest
@@ -223,6 +231,7 @@ from .stack_problem import StackProblem
 from .stack_stamp import StackStamp
 from .stack_state import StackState
 from .stack_summary import StackSummary
+from .stack_symmetry import StackSymmetry
 from .stack_term import StackTerm
 from .stack_thumbnail import StackThumbnail
 from .stack_thumbnails import StackThumbnails
@@ -260,6 +269,11 @@ __all__ = (
     "BakeRequest",
     "BakeResult",
     "BakeThicknessOptions",
+    "BrushPreset",
+    "BrushPresetCreateRequest",
+    "BrushPresetInfo",
+    "BrushPresetList",
+    "BrushPresetUpdateRequest",
     "BuildPreview",
     "BuildPreviewProject",
     "BuildRequest",
@@ -396,6 +410,8 @@ __all__ = (
     "ProjectMeshInfo",
     "ProjectMeshRequest",
     "ProjectPage",
+    "ProjectPaintRequest",
+    "ProjectPaintSettings",
     "ProjectPicture",
     "ProjectPictureRequest",
     "ProjectRenameRequest",
@@ -405,6 +421,7 @@ __all__ = (
     "ProjectSummary",
     "ProjectViewportRequest",
     "StackBrush",
+    "StackBrushTerms",
     "StackChannel",
     "StackClip",
     "StackClipRequest",
@@ -471,6 +488,7 @@ __all__ = (
     "StackStamp",
     "StackState",
     "StackSummary",
+    "StackSymmetry",
     "StackTerm",
     "StackThumbnail",
     "StackThumbnails",

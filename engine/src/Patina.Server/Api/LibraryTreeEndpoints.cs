@@ -44,6 +44,7 @@ static class LibraryTreeEndpoints {
 
         MapProjectRoutes(library);
         library.MapMaterialRoutes();
+        library.MapBrushRoutes();
     }
 
     static void MapProjectRoutes(RouteGroupBuilder library) {

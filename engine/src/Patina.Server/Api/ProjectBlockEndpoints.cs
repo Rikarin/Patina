@@ -5,7 +5,8 @@ using Patina.Library;
 namespace Patina.Server.Api;
 
 /// <summary>
-///     A project's settings blocks in its <c>project.yaml</c>: how it exports, how it bakes and how its viewport opens.
+///     A project's settings blocks in its <c>project.yaml</c>: how it exports, how it bakes, how its viewport opens and
+///     how its painting was left.
 ///     Each is written whole by a PUT of the project and the block, checked first, kept in the file, and answered with
 ///     the project's contents, so any client starts from where another left it.
 /// </summary>
@@ -28,7 +29,18 @@ static class ProjectBlockEndpoints {
                 "Keeps how the viewport is to open in a project, in its project.yaml. It is kept, not shown: "
                 + "PUT /viewport/display shows it."
             );
+        library.MapPut("/project/paint", SetPaint)
+            .Described(
+                "SetProjectPaint",
+                "Keeps how a project's painting was left, in its project.yaml: the colours strokes last used, its "
+                + "palette, the brush and the symmetry, so they survive a restart and any client starts from them."
+            );
     }
+
+    static Results<Ok<ProjectContents>, ProblemHttpResult> SetPaint(LibraryHost host, ProjectPaintRequest request) =>
+        request.Paint.Problem() is { } problem
+            ? Refusals.Problem(problem, StatusCodes.Status400BadRequest, Refusals.BrushRefused)
+            : Keep(host, request.Project, null, library => library.SetPaint(request.Project, request.Paint));
 
     static Results<Ok<ProjectContents>, ProblemHttpResult> SetExport(LibraryHost host, ProjectExportRequest request) =>
         Keep(host, request.Project, null, library => library.SetExport(request.Project, request.Export));

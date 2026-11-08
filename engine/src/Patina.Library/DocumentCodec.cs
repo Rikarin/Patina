@@ -26,6 +26,7 @@ public static class DocumentCodec {
     const string UnwrapKey = "unwrap";
     const string BakeKey = "bake";
     const string ViewportKey = "viewport";
+    const string PaintKey = "paint";
     const string UnwrappedKey = "unwrapped";
     const string ExportKey = "export";
     const string DocumentsKey = "documents";
@@ -79,6 +80,7 @@ public static class DocumentCodec {
                     ),
                     ..Block(BakeKey, document.Bake, LibraryTreeJsonContext.Default.ProjectBakeSettings),
                     ..Block(ViewportKey, document.Viewport, LibraryTreeJsonContext.Default.ViewportDisplay),
+                    ..Block(PaintKey, document.Paint, LibraryTreeJsonContext.Default.ProjectPaintSettings),
                     Pair(ReferencesKey, References(document.References)),
                     Pair(
                         OutputsKey,
@@ -148,6 +150,11 @@ public static class DocumentCodec {
     static ProjectBakeSettings? ReadBake(YamlFields fields) {
         var bake = ReadBlock(fields, BakeKey, LibraryTreeJsonContext.Default.ProjectBakeSettings, new());
         return bake?.Options.Problem() is { } problem ? throw fields.Problem($"'{BakeKey}': {problem}") : bake;
+    }
+
+    static ProjectPaintSettings? ReadPaint(YamlFields fields) {
+        var paint = ReadBlock(fields, PaintKey, LibraryTreeJsonContext.Default.ProjectPaintSettings, new());
+        return paint?.Problem() is { } problem ? throw fields.Problem($"'{PaintKey}': {problem}") : paint;
     }
 
     static YamlMappingNode Unwrap(UnwrapOptions options) =>
@@ -300,7 +307,8 @@ public static class DocumentCodec {
                     Unwrap = ReadUnwrap(fields.TextMap(UnwrapKey), fields),
                     Export = ReadBlock(fields, ExportKey, LibraryTreeJsonContext.Default.ProjectExportSettings, new()),
                     Bake = ReadBake(fields),
-                    Viewport = ReadBlock(fields, ViewportKey, LibraryTreeJsonContext.Default.ViewportDisplay, new())
+                    Viewport = ReadBlock(fields, ViewportKey, LibraryTreeJsonContext.Default.ViewportDisplay, new()),
+                    Paint = ReadPaint(fields)
                 };
             }
         );

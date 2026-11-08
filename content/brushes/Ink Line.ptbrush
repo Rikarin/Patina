@@ -1,0 +1,6 @@
+# A brush preset that ships with Patina. CC0: see content/README.md.
+tool: line
+brush:
+  radius: 3
+  falloff: 0.1
+  pressureSize: 1

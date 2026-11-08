@@ -291,6 +291,29 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
+    /// <summary>Keeps how a project's painting was left: its colours, its brush and its symmetry.</summary>
+    /// <exception cref="FileNotFoundException">The project is not there.</exception>
+    public void SetPaint(string path, ProjectPaintSettings paint) {
+        lock (createGate) {
+            ProjectFiles.SetPaint(RootPath, path, paint);
+            Interlocked.Increment(ref unscannedWrites);
+        }
+    }
+
+    /// <summary>Saves a new brush preset in a project, as a document of it.</summary>
+    /// <returns>Its path below the library.</returns>
+    /// <exception cref="ProjectExistsException">The project has a file of that name.</exception>
+    /// <exception cref="ProjectRefusedException">The name cannot name a file.</exception>
+    public string CreateBrushPreset(string path, string name, BrushPreset preset) {
+        lock (createGate) {
+            var file = ProjectFiles.NewFile(RootPath, path, name, BrushPresets.Extension);
+            BrushPresets.Write(ProjectFile(path, file), preset);
+            ProjectFiles.AddDocument(RootPath, path, DocumentKinds.BrushPreset, file, name, null);
+            Interlocked.Increment(ref unscannedWrites);
+            return $"{LibraryLayout.ProjectsFolder}/{path.Trim('/')}/{file}";
+        }
+    }
+
     /// <summary>A new document with another's content.</summary>
     public ProjectItem CopyDocument(string path, AssetId document, string name) {
         lock (createGate) {

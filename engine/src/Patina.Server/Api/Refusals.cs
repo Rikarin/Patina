@@ -31,6 +31,9 @@ public static class Refusals {
     /// <summary>A batch that paints one channel of a layer twice.</summary>
     public const string RepeatedChannel = "stroke-repeated-channel";
 
+    /// <summary>A stroke whose brush or symmetry is out of range or names no setting the Server knows.</summary>
+    public const string BrushRefused = "stroke-brush-refused";
+
     /// <summary>A stack command that cannot apply, for a reason no client is expected to explain.</summary>
     public const string StackRefused = "stack-refused";
 
