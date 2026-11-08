@@ -13,6 +13,7 @@ from typing import cast
 
 if TYPE_CHECKING:
   from ..models.graph_history_state import GraphHistoryState
+  from ..models.stack_anchor import StackAnchor
   from ..models.stack_channel import StackChannel
   from ..models.stack_evaluation import StackEvaluation
   from ..models.stack_layer import StackLayer
@@ -51,6 +52,7 @@ class StackState:
                 height channel, and then it writes a normal whether or not it declares one. Default: 'Smooth'.
             evaluation (None | StackEvaluation | Unset):
             mesh_maps (None | str | Unset): The bake its generators read, or null.
+            anchors (list[StackAnchor] | None | Unset): The anchor points its set publishes, by name, and who reads each.
      """
 
     id: str
@@ -71,6 +73,7 @@ class StackState:
     height_normal: str = 'Smooth'
     evaluation: None | StackEvaluation | Unset = UNSET
     mesh_maps: None | str | Unset = UNSET
+    anchors: list[StackAnchor] | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -79,6 +82,7 @@ class StackState:
 
     def to_dict(self) -> dict[str, Any]:
         from ..models.graph_history_state import GraphHistoryState # noqa: PLC0415
+        from ..models.stack_anchor import StackAnchor # noqa: PLC0415
         from ..models.stack_channel import StackChannel # noqa: PLC0415
         from ..models.stack_evaluation import StackEvaluation # noqa: PLC0415
         from ..models.stack_layer import StackLayer # noqa: PLC0415
@@ -144,6 +148,19 @@ class StackState:
         else:
             mesh_maps = self.mesh_maps
 
+        anchors: list[dict[str, Any]] | None | Unset
+        if isinstance(self.anchors, Unset):
+            anchors = UNSET
+        elif isinstance(self.anchors, list):
+            anchors = []
+            for anchors_type_1_item_data in self.anchors:
+                anchors_type_1_item = anchors_type_1_item_data.to_dict()
+                anchors.append(anchors_type_1_item)
+
+
+        else:
+            anchors = self.anchors
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -169,6 +186,8 @@ class StackState:
             field_dict["evaluation"] = evaluation
         if mesh_maps is not UNSET:
             field_dict["meshMaps"] = mesh_maps
+        if anchors is not UNSET:
+            field_dict["anchors"] = anchors
 
         return field_dict
 
@@ -177,6 +196,7 @@ class StackState:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.graph_history_state import GraphHistoryState # noqa: PLC0415
+        from ..models.stack_anchor import StackAnchor # noqa: PLC0415
         from ..models.stack_channel import StackChannel # noqa: PLC0415
         from ..models.stack_evaluation import StackEvaluation # noqa: PLC0415
         from ..models.stack_layer import StackLayer # noqa: PLC0415
@@ -271,6 +291,31 @@ class StackState:
         mesh_maps = _parse_mesh_maps(d.pop("meshMaps", UNSET))
 
 
+        def _parse_anchors(data: object) -> list[StackAnchor] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                anchors_type_1 = []
+                _anchors_type_1 = data
+                for anchors_type_1_item_data in (_anchors_type_1):
+                    anchors_type_1_item = StackAnchor.from_dict(anchors_type_1_item_data)
+
+
+
+                    anchors_type_1.append(anchors_type_1_item)
+
+                return anchors_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[StackAnchor] | None | Unset, data)
+
+        anchors = _parse_anchors(d.pop("anchors", UNSET))
+
+
         stack_state = cls(
             id=id,
             path=path,
@@ -290,6 +335,7 @@ class StackState:
             height_normal=height_normal,
             evaluation=evaluation,
             mesh_maps=mesh_maps,
+            anchors=anchors,
         )
 
 

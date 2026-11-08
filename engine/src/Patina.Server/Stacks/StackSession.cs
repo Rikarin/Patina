@@ -218,7 +218,8 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                     editor.Document.Model,
                     MeshMaps,
                     editor.Document.Seed,
-                    set.HeightNormal.ToString()
+                    set.HeightNormal.ToString(),
+                    StackDocuments.Anchors(set)
                 );
             }
         }
@@ -370,7 +371,8 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                         entry.Curve,
                         entry.Mirror,
                         entry.Start,
-                        entry.From
+                        entry.From,
+                        entry.Capture is { } capture ? new(capture.Document, capture.Layer, capture.Backdrop) : null
                     )
                 );
                 sent[entry.Id] = (entry.Stamps.Count, entry.Open);
@@ -460,7 +462,9 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
             revision++;
         }
 
-        var delta = painted is null ? null : new StackDelta(StackDocuments.Layers(editor.Set.Layers), painted);
+        var delta = painted is null
+            ? null
+            : new StackDelta(StackDocuments.Layers(editor.Set.Layers), painted, StackDocuments.Anchors(editor.Set));
         var history = editor.History;
         Log.Append(new(Log.Sequence + 1, kind, revision, history, label, delta));
         return new(revision, Log.Sequence, history);

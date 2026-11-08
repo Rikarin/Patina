@@ -8,9 +8,11 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
+from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
+  from ..models.stack_anchor import StackAnchor
   from ..models.stack_layer import StackLayer
   from ..models.stack_painted import StackPainted
 
@@ -29,10 +31,12 @@ class StackDelta:
         Attributes:
             layers (list[StackLayer]): The stack's layers now.
             painted (list[StackPainted]): Each channel a stroke touched, as layer and usage.
+            anchors (list[StackAnchor] | None | Unset): The anchor points its set publishes now, and who reads each.
      """
 
     layers: list[StackLayer]
     painted: list[StackPainted]
+    anchors: list[StackAnchor] | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -40,6 +44,7 @@ class StackDelta:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.stack_anchor import StackAnchor # noqa: PLC0415
         from ..models.stack_layer import StackLayer # noqa: PLC0415
         from ..models.stack_painted import StackPainted # noqa: PLC0415
         layers = []
@@ -56,6 +61,19 @@ class StackDelta:
 
 
 
+        anchors: list[dict[str, Any]] | None | Unset
+        if isinstance(self.anchors, Unset):
+            anchors = UNSET
+        elif isinstance(self.anchors, list):
+            anchors = []
+            for anchors_type_1_item_data in self.anchors:
+                anchors_type_1_item = anchors_type_1_item_data.to_dict()
+                anchors.append(anchors_type_1_item)
+
+
+        else:
+            anchors = self.anchors
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -63,6 +81,8 @@ class StackDelta:
             "layers": layers,
             "painted": painted,
         })
+        if anchors is not UNSET:
+            field_dict["anchors"] = anchors
 
         return field_dict
 
@@ -70,6 +90,7 @@ class StackDelta:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.stack_anchor import StackAnchor # noqa: PLC0415
         from ..models.stack_layer import StackLayer # noqa: PLC0415
         from ..models.stack_painted import StackPainted # noqa: PLC0415
         d = dict(src_dict)
@@ -93,9 +114,35 @@ class StackDelta:
             painted.append(painted_item)
 
 
+        def _parse_anchors(data: object) -> list[StackAnchor] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                anchors_type_1 = []
+                _anchors_type_1 = data
+                for anchors_type_1_item_data in (_anchors_type_1):
+                    anchors_type_1_item = StackAnchor.from_dict(anchors_type_1_item_data)
+
+
+
+                    anchors_type_1.append(anchors_type_1_item)
+
+                return anchors_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[StackAnchor] | None | Unset, data)
+
+        anchors = _parse_anchors(d.pop("anchors", UNSET))
+
+
         stack_delta = cls(
             layers=layers,
             painted=painted,
+            anchors=anchors,
         )
 
 

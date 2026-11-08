@@ -30,7 +30,7 @@ public sealed record StackChannel(string Usage, IReadOnlyList<float> Default);
 /// <param name="Channels">Which channels it writes. Empty means all of them.</param>
 /// <param name="Painted">Whether it names a paint file yet.</param>
 /// <param name="Children">What a group holds.</param>
-/// <param name="Fill">What a fill reads: Constant, Texture or Graph.</param>
+/// <param name="Fill">What a fill reads: Constant, Texture, Graph or Anchor.</param>
 /// <param name="Values">What a constant fill writes to each channel.</param>
 /// <param name="Textures">What a texture fill reads for each channel.</param>
 /// <param name="Graph">The graph a graph fill reads.</param>
@@ -42,6 +42,13 @@ public sealed record StackChannel(string Usage, IReadOnlyList<float> Default);
 /// <param name="Placement">Where a fill sits on the surface.</param>
 /// <param name="Parameters">What a graph fill sets the graph's knobs to, as text.</param>
 /// <param name="FilterNode">The node or compound a filter layer runs, whichever way the file names it.</param>
+/// <param name="AnchorPoint">The name of the anchor point this layer publishes, or empty for none.</param>
+/// <param name="Anchor">The anchor point an Anchor fill reads.</param>
+/// <param name="Inputs">The image inputs of a graph fill or a filter that anchor points feed, by port.</param>
+/// <param name="Flattened">
+///     Whether this is a group flattened into a canvas: it composites that canvas, and its children are kept, unread,
+///     as the way back.
+/// </param>
 public sealed record StackLayer(
     string Id,
     string Name,
@@ -63,14 +70,37 @@ public sealed record StackLayer(
     string PlanarAxis = "Y",
     StackPlacement? Placement = null,
     IReadOnlyDictionary<string, string>? Parameters = null,
-    string FilterNode = ""
+    string FilterNode = "",
+    string AnchorPoint = "",
+    StackAnchorRef? Anchor = null,
+    IReadOnlyDictionary<string, StackAnchorRef>? Inputs = null,
+    bool Flattened = false
 );
+
+/// <summary>A reference to an anchor point, by its name, in one channel.</summary>
+/// <param name="Anchor">The anchor point's name.</param>
+/// <param name="Channel">
+///     The channel read, by usage. Empty, for a fill or a filter's input only, means the channel being written.
+/// </param>
+public sealed record StackAnchorRef(string Anchor, string Channel = "");
+
+/// <summary>An anchor point and every place that reads it.</summary>
+/// <param name="Name">The anchor point's name.</param>
+/// <param name="Layer">The id of the layer that publishes it.</param>
+/// <param name="Uses">Who reads it, and in which channel.</param>
+public sealed record StackAnchor(string Name, string Layer, IReadOnlyList<StackAnchorUse> Uses);
+
+/// <summary>One place a stack reads an anchor point.</summary>
+/// <param name="Layer">The id of the layer that reads it.</param>
+/// <param name="Where">What part of that layer: fill, mask, mask entry 2, or an input's port.</param>
+/// <param name="Channel">The channel it reads, or empty for the channel being written.</param>
+public sealed record StackAnchorUse(string Layer, string Where, string Channel);
 
 /// <summary>What decides where a layer shows.</summary>
 /// <param name="Source">None, Constant, Texture, Anchor, Generator, Bake or Paint.</param>
 /// <param name="Value">A constant mask's value.</param>
 /// <param name="Asset">The image a texture mask reads.</param>
-/// <param name="Anchor">The layer an anchor mask reads.</param>
+/// <param name="Anchor">The anchor point an anchor mask reads, and the channel it reads it in.</param>
 /// <param name="Generator">The compound a generator runs, such as Generators/Dirt.</param>
 /// <param name="Map">The mesh map a bake mask reads.</param>
 /// <param name="Colour">The colour a bake mask selects from its map, as three numbers, or null for all of it.</param>
@@ -79,11 +109,12 @@ public sealed record StackLayer(
 /// <param name="Effects">What runs on the mask, in order, or null to keep them.</param>
 /// <param name="Parameters">What a generator's knobs are set to, as text, or null to keep them.</param>
 /// <param name="MeshParts">The named meshes the layer is limited to, or null for the whole model.</param>
+/// <param name="Inputs">The image inputs of a generator that anchor points feed, by port, or null to keep them.</param>
 public sealed record StackMask(
     string Source,
     float Value = 1f,
     string Asset = "",
-    string Anchor = "",
+    StackAnchorRef? Anchor = null,
     string Generator = "",
     string Map = "",
     IReadOnlyList<float>? Colour = null,
@@ -91,7 +122,8 @@ public sealed record StackMask(
     float Softness = 0f,
     IReadOnlyList<StackMaskEffect>? Effects = null,
     IReadOnlyDictionary<string, string>? Parameters = null,
-    IReadOnlyList<string>? MeshParts = null
+    IReadOnlyList<string>? MeshParts = null,
+    IReadOnlyDictionary<string, StackAnchorRef>? Inputs = null
 );
 
 /// <summary>Limits a layer to some of the model's named meshes, on top of any mask it has.</summary>
@@ -113,11 +145,13 @@ public sealed record StackMeshParts(IReadOnlyList<string> Parts, string? Asset =
 /// <param name="Enabled">Whether it runs.</param>
 /// <param name="Values">Its numbers, by port.</param>
 /// <param name="Texts">Its settings, by name.</param>
+/// <param name="Inputs">Its other image inputs, by port, each fed by an anchor point. The mask goes into the one left.</param>
 public sealed record StackMaskEffect(
     string Node,
     bool Enabled = true,
     IReadOnlyDictionary<string, IReadOnlyList<float>>? Values = null,
-    IReadOnlyDictionary<string, string>? Texts = null
+    IReadOnlyDictionary<string, string>? Texts = null,
+    IReadOnlyDictionary<string, StackAnchorRef>? Inputs = null
 );
 
 /// <summary>One colour of a stack's id map.</summary>
@@ -252,6 +286,7 @@ public sealed record StackEvaluation(
 ///     How a height channel becomes the set's normal: <c>Sharp</c> or <c>Smooth</c>. Read only when the set has a
 ///     height channel, and then it writes a normal whether or not it declares one.
 /// </param>
+/// <param name="Anchors">The anchor points its set publishes, by name, and who reads each.</param>
 public sealed record StackState(
     string Id,
     string Path,
@@ -270,7 +305,8 @@ public sealed record StackState(
     string Model,
     string? MeshMaps = null,
     uint Seed = 0,
-    string HeightNormal = "Smooth"
+    string HeightNormal = "Smooth",
+    IReadOnlyList<StackAnchor>? Anchors = null
 );
 #pragma warning restore SK7005
 
@@ -291,7 +327,8 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackStroke), "stroke"), JsonDerivedType(typeof(StackSetModel), "setModel")]
 [JsonDerivedType(typeof(StackAddChannel), "addChannel"), JsonDerivedType(typeof(StackNestLayer), "nestLayer")]
 [JsonDerivedType(typeof(StackSetSeed), "setSeed"), JsonDerivedType(typeof(StackDuplicateLayers), "duplicateLayers")]
-[JsonDerivedType(typeof(StackPasteLayers), "pasteLayers")]
+[JsonDerivedType(typeof(StackPasteLayers), "pasteLayers"), JsonDerivedType(typeof(StackFlattenLayer), "flattenLayer")]
+[JsonDerivedType(typeof(StackUnflattenLayer), "unflattenLayer")]
 [JsonDerivedType(typeof(StackSetHeightNormal), "setHeightNormal")]
 public abstract record StackCommand;
 
@@ -360,6 +397,12 @@ public sealed record StackMoveLayer(string Layer, int Delta) : StackCommand;
 /// <param name="Placement">Where a fill sits on the surface, which replaces where it sat.</param>
 /// <param name="Parameters">What a graph fill sets the graph's knobs to, replacing what these names held.</param>
 /// <param name="FilterNode">The node or compound a filter runs, or empty to go back to the named filter.</param>
+/// <param name="AnchorPoint">
+///     The anchor point it publishes, or empty for none. A new name rewrites every reference to the old one, in the same
+///     step.
+/// </param>
+/// <param name="Anchor">The anchor point an Anchor fill reads.</param>
+/// <param name="Inputs">The image inputs of a graph fill or a filter that anchor points feed, replacing all of them.</param>
 public sealed record StackSetLayer(
     string Layer,
     string? Name = null,
@@ -379,7 +422,10 @@ public sealed record StackSetLayer(
     string? PlanarAxis = null,
     StackPlacement? Placement = null,
     IReadOnlyDictionary<string, string>? Parameters = null,
-    string? FilterNode = null
+    string? FilterNode = null,
+    string? AnchorPoint = null,
+    StackAnchorRef? Anchor = null,
+    IReadOnlyDictionary<string, StackAnchorRef>? Inputs = null
 ) : StackCommand;
 #pragma warning restore SK7005
 
@@ -419,6 +465,17 @@ public sealed record StackDuplicateLayers(IReadOnlyList<string> Layers) : StackC
 /// <param name="Clip">What <c>POST /stacks/{id}/clip</c> answered.</param>
 /// <param name="Above">The layer they go just above, or null for the top of the stack.</param>
 public sealed record StackPasteLayers(string Clip, string? Above = null) : StackCommand;
+
+/// <summary>
+///     Flattens a group into a canvas that composites what its children did, keeping them, unread, as the way back. The
+///     whole stack is flattened by gathering every layer into one group first. Undoing it takes the canvas away.
+/// </summary>
+/// <param name="Layer">The group, or null for the whole stack.</param>
+public sealed record StackFlattenLayer(string? Layer = null) : StackCommand;
+
+/// <summary>Takes a flattened group back to its children, which composite again.</summary>
+/// <param name="Layer">The group.</param>
+public sealed record StackUnflattenLayer(string Layer) : StackCommand;
 
 /// <summary>Copies layers out of a stack, with their pixels as they stand now.</summary>
 /// <param name="Layers">Which. A layer inside another of them goes with that one.</param>
@@ -562,7 +619,12 @@ public sealed record StackEditResult(long Revision, long Sequence, GraphHistoryS
 /// <summary>What an edit changed, so that a client need not read the whole stack again.</summary>
 /// <param name="Layers">The stack's layers now.</param>
 /// <param name="Painted">Each channel a stroke touched, as layer and usage.</param>
-public sealed record StackDelta(IReadOnlyList<StackLayer> Layers, IReadOnlyList<StackPainted> Painted);
+/// <param name="Anchors">The anchor points its set publishes now, and who reads each.</param>
+public sealed record StackDelta(
+    IReadOnlyList<StackLayer> Layers,
+    IReadOnlyList<StackPainted> Painted,
+    IReadOnlyList<StackAnchor>? Anchors = null
+);
 
 /// <summary>A channel a stroke touched.</summary>
 /// <param name="Layer">The layer.</param>

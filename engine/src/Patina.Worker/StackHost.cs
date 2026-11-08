@@ -650,6 +650,11 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
 
         Applied Begin(StackPaintPart part) {
             var file = LibraryLayout.Beside(folder, part.Paint);
+            if (part.Capture is { } capture) {
+                touched.Add(part.Paint);
+                return known[part.Id] = new(part.Id, null, null) { Copy = new CanvasCapture(this, file, capture) };
+            }
+
             if (part.From is { } from) {
                 touched.Add(part.Paint);
                 CanvasCopy copy = new(
@@ -896,6 +901,71 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
 
                 PaintCanvas made = new(width, height);
                 canvases.Adopt(target, made);
+                return made;
+            }
+
+            public bool TryMergeWith(
+                IAuthoringCommand previous,
+                [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out IAuthoringCommand? merged
+            ) {
+                merged = null;
+                return false;
+            }
+        }
+
+        /// <summary>
+        ///     A canvas made what one group of a document composites, which is what a flattened group shows. ⚠ Into the
+        ///     canvas object that is there, for <see cref="CanvasCopy" />'s reason, and from the document the journal holds
+        ///     rather than the one standing now: a replay after this Worker is lost has to write the canvas the artist saw.
+        /// </summary>
+        sealed class CanvasCapture(Session session, string target, StackCapture capture) : IAuthoringCommand {
+            public string Name => "Flatten";
+
+            public void Do(ICommandContext context) {
+                var document = LayerStackYaml.Read(capture.Document);
+                var into = Target(document.BaseWidth, document.BaseHeight);
+                foreach (var usage in into.Channels) {
+                    into.Channel(usage).Fill(0u);
+                }
+
+                if (LayerStackEdit.SetFor(document, session.set) is not { } set) {
+                    return;
+                }
+
+                // A draft, as the picture the artist was looking at is one; a refusal leaves the canvas empty, which the
+                // stack's own problems will already be saying.
+                using LayerStackEvaluator run = new(session.evaluator, session.canvases, session.path, session.fill) {
+                    Draft = true, Capture = capture.Layer, Backdrop = capture.Backdrop
+                };
+                if (run.Prepare(document, set, session.compounds.Registry, session.compounds.Source).Count > 0) {
+                    return;
+                }
+
+                using var bake = run.Evaluate();
+                foreach (var output in run.Outputs) {
+                    var map = bake.Read(output.Image);
+                    if (map.Width == into.Width && map.Height == into.Height) {
+                        into.Channel(output.Usage).CopyFrom(map.Pixels);
+                    }
+                }
+            }
+
+            /// <summary>Back to what a new canvas holds, which nothing reads once the group is not flattened.</summary>
+            public void Undo(ICommandContext context) {
+                if (session.canvases.Open(target) is { } held) {
+                    foreach (var usage in held.Channels) {
+                        held.Channel(usage).Fill(0u);
+                    }
+                }
+            }
+
+            PaintCanvas Target(int width, int height) {
+                if (session.canvases.Open(target) is { } held) {
+                    return held;
+                }
+
+                PaintCanvas made = new(width, height);
+                session.canvases.Adopt(target, made);
                 return made;
             }
 

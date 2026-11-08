@@ -311,7 +311,7 @@ public sealed class StackEditorPropertyTests {
                 random.Next(4) == 0 ? "Triplanar" : null,
                 random.Next(4) == 0 ? "Blur" : null,
                 null,
-                random.Next(3) == 0 ? new("Anchor", Anchor: id) : null
+                random.Next(3) == 0 ? new("Anchor", Anchor: new(id, "baseColor")) : null
             ),
             _ => new StackStroke(
                 $"s{random.Next(3)}",
@@ -342,7 +342,8 @@ public sealed class StackEditorPropertyTests {
         var folder = editor.Set.Layers[^2].Id;
         var inner = editor.Set.Layers[^1].Id;
         editor.Apply(new([new StackNestLayer(inner, folder), new StackNestLayer("paint", folder)]));
-        editor.Apply(new([new StackSetLayer(inner, Mask: new("Anchor", Anchor: "paint"))]));
+        editor.Apply(new([new StackSetLayer("paint", AnchorPoint: "Paint")]));
+        editor.Apply(new([new StackSetLayer(inner, Mask: new("Anchor", Anchor: new("Paint", "baseColor")))]));
 
         editor.Apply(new([new StackDuplicateLayers([folder, "paint"])]));
 
@@ -353,7 +354,8 @@ public sealed class StackEditorPropertyTests {
         var original = editor.Set.Layers[^2].Children[1];
         Assert.NotEqual(original.Paint, copiedPaint.Paint);
         Assert.NotEqual(original.Mask.Paint, copiedPaint.Mask.Paint);
-        Assert.Equal(copiedPaint.Id, copiedInner.Mask.Anchor);
+        Assert.Equal("Paint 2", copiedPaint.AnchorPoint);
+        Assert.Equal("Paint 2", copiedInner.Mask.Anchor.Anchor);
         Assert.Equal(
             [(original.Mask.Paint, copiedPaint.Mask.Paint), (original.Paint, copiedPaint.Paint)],
             editor.Standing.Where(static entry => entry.From is not null)

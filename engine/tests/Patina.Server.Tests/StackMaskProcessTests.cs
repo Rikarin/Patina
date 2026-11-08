@@ -179,7 +179,13 @@ public sealed partial class StackProcessTests {
         var (_, state) = await StartAsync("Picture.vxlayers", deadline.Token);
         var fill = await MaskedFillAsync(
             state.Id,
-            new(source, Asset: "any.png", Anchor: "paint", Generator: "Generators/Dirt", Map: "curvature"),
+            new(
+                source,
+                Asset: "any.png",
+                Anchor: new("Paint", "baseColor"),
+                Generator: "Generators/Dirt",
+                Map: "curvature"
+            ),
             deadline.Token
         );
 
@@ -214,8 +220,12 @@ public sealed partial class StackProcessTests {
         var fill = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
         var before = await PixelsAsync(state.Id, true, deadline.Token);
 
-        // "paint" is unpainted, so an anchor onto it has nothing to read.
-        var set = await EditAsync(state.Id, deadline.Token, new StackSetLayer(fill, Mask: new(source, Anchor: anchor)));
+        // No layer publishes an anchor point named "paint", so an anchor onto it has nothing to read.
+        var set = await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(fill, Mask: new(source, Anchor: anchor.Length > 0 ? new(anchor, "roughness") : null))
+        );
 
         var evaluation = await EvaluatedAsync(socket, set.Revision, deadline.Token);
         var problem = Assert.Single(evaluation.Problems, problem => problem.Layer == fill);
@@ -269,7 +279,8 @@ public sealed partial class StackProcessTests {
         var set = await EditAsync(
             state.Id,
             deadline.Token,
-            new StackSetLayer("base", Mask: new("Anchor", Anchor: top))
+            new StackSetLayer(top, AnchorPoint: "Top"),
+            new StackSetLayer("base", Mask: new("Anchor", Anchor: new("Top", "baseColor")))
         );
 
         var evaluation = await EvaluatedAsync(socket, set.Revision, deadline.Token);

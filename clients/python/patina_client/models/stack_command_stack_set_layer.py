@@ -13,6 +13,8 @@ from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
+  from ..models.stack_anchor_ref import StackAnchorRef
+  from ..models.stack_command_stack_set_layer_inputs_type_1 import StackCommandStackSetLayerInputsType1
   from ..models.stack_command_stack_set_layer_parameters_type_1 import StackCommandStackSetLayerParametersType1
   from ..models.stack_command_stack_set_layer_settings_type_1 import StackCommandStackSetLayerSettingsType1
   from ..models.stack_command_stack_set_layer_textures_type_1 import StackCommandStackSetLayerTexturesType1
@@ -58,6 +60,12 @@ class StackCommandStackSetLayer:
             parameters (None | StackCommandStackSetLayerParametersType1 | Unset): What a graph fill sets the graph's knobs
                 to, replacing what these names held.
             filter_node (None | str | Unset): The node or compound a filter runs, or empty to go back to the named filter.
+            anchor_point (None | str | Unset): The anchor point it publishes, or empty for none. A new name rewrites every
+                reference to the old one, in the same
+                step.
+            anchor (None | StackAnchorRef | Unset):
+            inputs (None | StackCommandStackSetLayerInputsType1 | Unset): The image inputs of a graph fill or a filter that
+                anchor points feed, replacing all of them.
      """
 
     op: StackCommandStackSetLayerOp
@@ -80,6 +88,9 @@ class StackCommandStackSetLayer:
     placement: None | StackPlacement | Unset = UNSET
     parameters: None | StackCommandStackSetLayerParametersType1 | Unset = UNSET
     filter_node: None | str | Unset = UNSET
+    anchor_point: None | str | Unset = UNSET
+    anchor: None | StackAnchorRef | Unset = UNSET
+    inputs: None | StackCommandStackSetLayerInputsType1 | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -87,6 +98,8 @@ class StackCommandStackSetLayer:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.stack_anchor_ref import StackAnchorRef # noqa: PLC0415
+        from ..models.stack_command_stack_set_layer_inputs_type_1 import StackCommandStackSetLayerInputsType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_layer_parameters_type_1 import StackCommandStackSetLayerParametersType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_layer_settings_type_1 import StackCommandStackSetLayerSettingsType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_layer_textures_type_1 import StackCommandStackSetLayerTexturesType1 # noqa: PLC0415
@@ -224,6 +237,28 @@ class StackCommandStackSetLayer:
         else:
             filter_node = self.filter_node
 
+        anchor_point: None | str | Unset
+        if isinstance(self.anchor_point, Unset):
+            anchor_point = UNSET
+        else:
+            anchor_point = self.anchor_point
+
+        anchor: dict[str, Any] | None | Unset
+        if isinstance(self.anchor, Unset):
+            anchor = UNSET
+        elif isinstance(self.anchor, StackAnchorRef):
+            anchor = self.anchor.to_dict()
+        else:
+            anchor = self.anchor
+
+        inputs: dict[str, Any] | None | Unset
+        if isinstance(self.inputs, Unset):
+            inputs = UNSET
+        elif isinstance(self.inputs, StackCommandStackSetLayerInputsType1):
+            inputs = self.inputs.to_dict()
+        else:
+            inputs = self.inputs
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -267,6 +302,12 @@ class StackCommandStackSetLayer:
             field_dict["parameters"] = parameters
         if filter_node is not UNSET:
             field_dict["filterNode"] = filter_node
+        if anchor_point is not UNSET:
+            field_dict["anchorPoint"] = anchor_point
+        if anchor is not UNSET:
+            field_dict["anchor"] = anchor
+        if inputs is not UNSET:
+            field_dict["inputs"] = inputs
 
         return field_dict
 
@@ -274,6 +315,8 @@ class StackCommandStackSetLayer:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.stack_anchor_ref import StackAnchorRef # noqa: PLC0415
+        from ..models.stack_command_stack_set_layer_inputs_type_1 import StackCommandStackSetLayerInputsType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_layer_parameters_type_1 import StackCommandStackSetLayerParametersType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_layer_settings_type_1 import StackCommandStackSetLayerSettingsType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_layer_textures_type_1 import StackCommandStackSetLayerTexturesType1 # noqa: PLC0415
@@ -547,6 +590,56 @@ class StackCommandStackSetLayer:
         filter_node = _parse_filter_node(d.pop("filterNode", UNSET))
 
 
+        def _parse_anchor_point(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        anchor_point = _parse_anchor_point(d.pop("anchorPoint", UNSET))
+
+
+        def _parse_anchor(data: object) -> None | StackAnchorRef | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                anchor_type_1 = StackAnchorRef.from_dict(data)
+
+
+
+                return anchor_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackAnchorRef | Unset, data)
+
+        anchor = _parse_anchor(d.pop("anchor", UNSET))
+
+
+        def _parse_inputs(data: object) -> None | StackCommandStackSetLayerInputsType1 | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                inputs_type_1 = StackCommandStackSetLayerInputsType1.from_dict(data)
+
+
+
+                return inputs_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackCommandStackSetLayerInputsType1 | Unset, data)
+
+        inputs = _parse_inputs(d.pop("inputs", UNSET))
+
+
         stack_command_stack_set_layer = cls(
             op=op,
             layer=layer,
@@ -568,6 +661,9 @@ class StackCommandStackSetLayer:
             placement=placement,
             parameters=parameters,
             filter_node=filter_node,
+            anchor_point=anchor_point,
+            anchor=anchor,
+            inputs=inputs,
         )
 
 

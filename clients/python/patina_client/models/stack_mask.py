@@ -12,7 +12,9 @@ from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
+  from ..models.stack_anchor_ref import StackAnchorRef
   from ..models.stack_mask_effect import StackMaskEffect
+  from ..models.stack_mask_inputs_type_1 import StackMaskInputsType1
   from ..models.stack_mask_parameters_type_1 import StackMaskParametersType1
 
 
@@ -31,31 +33,34 @@ class StackMask:
             source (str): None, Constant, Texture, Anchor, Generator, Bake or Paint.
             value (float): A constant mask's value. Default: 1.0.
             asset (str): The image a texture mask reads. Default: ''.
-            anchor (str): The layer an anchor mask reads. Default: ''.
             generator (str): The compound a generator runs, such as Generators/Dirt. Default: ''.
             map_ (str): The mesh map a bake mask reads. Default: ''.
             tolerance (float): How far from that colour still counts. Default: 0.02.
             softness (float): How much further the mask takes to reach nothing. Default: 0.0.
+            anchor (None | StackAnchorRef | Unset):
             colour (list[float] | None | Unset): The colour a bake mask selects from its map, as three numbers, or null for
                 all of it.
             effects (list[StackMaskEffect] | None | Unset): What runs on the mask, in order, or null to keep them.
             parameters (None | StackMaskParametersType1 | Unset): What a generator's knobs are set to, as text, or null to
                 keep them.
             mesh_parts (list[str] | None | Unset): The named meshes the layer is limited to, or null for the whole model.
+            inputs (None | StackMaskInputsType1 | Unset): The image inputs of a generator that anchor points feed, by port,
+                or null to keep them.
      """
 
     source: str
     value: float = 1.0
     asset: str = ''
-    anchor: str = ''
     generator: str = ''
     map_: str = ''
     tolerance: float = 0.02
     softness: float = 0.0
+    anchor: None | StackAnchorRef | Unset = UNSET
     colour: list[float] | None | Unset = UNSET
     effects: list[StackMaskEffect] | None | Unset = UNSET
     parameters: None | StackMaskParametersType1 | Unset = UNSET
     mesh_parts: list[str] | None | Unset = UNSET
+    inputs: None | StackMaskInputsType1 | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -63,15 +68,15 @@ class StackMask:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.stack_anchor_ref import StackAnchorRef # noqa: PLC0415
         from ..models.stack_mask_effect import StackMaskEffect # noqa: PLC0415
+        from ..models.stack_mask_inputs_type_1 import StackMaskInputsType1 # noqa: PLC0415
         from ..models.stack_mask_parameters_type_1 import StackMaskParametersType1 # noqa: PLC0415
         source = self.source
 
         value = self.value
 
         asset = self.asset
-
-        anchor = self.anchor
 
         generator = self.generator
 
@@ -80,6 +85,14 @@ class StackMask:
         tolerance = self.tolerance
 
         softness = self.softness
+
+        anchor: dict[str, Any] | None | Unset
+        if isinstance(self.anchor, Unset):
+            anchor = UNSET
+        elif isinstance(self.anchor, StackAnchorRef):
+            anchor = self.anchor.to_dict()
+        else:
+            anchor = self.anchor
 
         colour: list[float] | None | Unset
         if isinstance(self.colour, Unset):
@@ -122,6 +135,14 @@ class StackMask:
         else:
             mesh_parts = self.mesh_parts
 
+        inputs: dict[str, Any] | None | Unset
+        if isinstance(self.inputs, Unset):
+            inputs = UNSET
+        elif isinstance(self.inputs, StackMaskInputsType1):
+            inputs = self.inputs.to_dict()
+        else:
+            inputs = self.inputs
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -129,12 +150,13 @@ class StackMask:
             "source": source,
             "value": value,
             "asset": asset,
-            "anchor": anchor,
             "generator": generator,
             "map": map_,
             "tolerance": tolerance,
             "softness": softness,
         })
+        if anchor is not UNSET:
+            field_dict["anchor"] = anchor
         if colour is not UNSET:
             field_dict["colour"] = colour
         if effects is not UNSET:
@@ -143,6 +165,8 @@ class StackMask:
             field_dict["parameters"] = parameters
         if mesh_parts is not UNSET:
             field_dict["meshParts"] = mesh_parts
+        if inputs is not UNSET:
+            field_dict["inputs"] = inputs
 
         return field_dict
 
@@ -150,7 +174,9 @@ class StackMask:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.stack_anchor_ref import StackAnchorRef # noqa: PLC0415
         from ..models.stack_mask_effect import StackMaskEffect # noqa: PLC0415
+        from ..models.stack_mask_inputs_type_1 import StackMaskInputsType1 # noqa: PLC0415
         from ..models.stack_mask_parameters_type_1 import StackMaskParametersType1 # noqa: PLC0415
         d = dict(src_dict)
         source = d.pop("source")
@@ -159,8 +185,6 @@ class StackMask:
 
         asset = d.pop("asset")
 
-        anchor = d.pop("anchor")
-
         generator = d.pop("generator")
 
         map_ = d.pop("map")
@@ -168,6 +192,26 @@ class StackMask:
         tolerance = d.pop("tolerance")
 
         softness = d.pop("softness")
+
+        def _parse_anchor(data: object) -> None | StackAnchorRef | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                anchor_type_1 = StackAnchorRef.from_dict(data)
+
+
+
+                return anchor_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackAnchorRef | Unset, data)
+
+        anchor = _parse_anchor(d.pop("anchor", UNSET))
+
 
         def _parse_colour(data: object) -> list[float] | None | Unset:
             if data is None:
@@ -250,19 +294,40 @@ class StackMask:
         mesh_parts = _parse_mesh_parts(d.pop("meshParts", UNSET))
 
 
+        def _parse_inputs(data: object) -> None | StackMaskInputsType1 | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                inputs_type_1 = StackMaskInputsType1.from_dict(data)
+
+
+
+                return inputs_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackMaskInputsType1 | Unset, data)
+
+        inputs = _parse_inputs(d.pop("inputs", UNSET))
+
+
         stack_mask = cls(
             source=source,
             value=value,
             asset=asset,
-            anchor=anchor,
             generator=generator,
             map_=map_,
             tolerance=tolerance,
             softness=softness,
+            anchor=anchor,
             colour=colour,
             effects=effects,
             parameters=parameters,
             mesh_parts=mesh_parts,
+            inputs=inputs,
         )
 
 

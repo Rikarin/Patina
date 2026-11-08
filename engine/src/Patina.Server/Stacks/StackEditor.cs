@@ -94,7 +94,32 @@ public sealed class StackJournalEntry(
             model,
             null
         ) { From = from };
+
+    /// <summary>
+    ///     What this entry makes <see cref="Paint" /> hold instead of strokes: one group of a document, composited, which
+    ///     is how a group is flattened. The document is the one that stood then, so a Worker that replays it later
+    ///     writes the same canvas. Null for a stroke.
+    /// </summary>
+    public StackCaptureEntry? Capture { get; private init; }
+
+    /// <summary>A canvas that starts as what one group of a document composites: a flattened group's cache.</summary>
+    public static StackJournalEntry Captured(long id, string paint, StackCaptureEntry capture, string model) =>
+        new(
+            id,
+            new(string.Empty, string.Empty, string.Empty, new(1f), [0f, 0f, 0f, 0f], []),
+            paint,
+            string.Empty,
+            0u,
+            model,
+            null
+        ) { Capture = capture };
 }
+
+/// <summary>What a flattened group's canvas is made of.</summary>
+/// <param name="Document">The stack as text, as it stood when the group was flattened.</param>
+/// <param name="Layer">The group.</param>
+/// <param name="Backdrop">Whether the canvas holds what is beneath the group, which only the whole stack's does.</param>
+public sealed record StackCaptureEntry(string Document, string Layer, bool Backdrop);
 
 /// <summary>
 ///     One layer stack and its undo history. The document is Vixen's and so are the commands. Strokes are not pixels
@@ -195,7 +220,7 @@ public sealed class StackEditor : ILayerStackDocument {
         Forgotten.AddRange(redoable.SelectMany(static undone => undone.Strokes).Select(static entry => entry.Id));
         redoable.Clear();
         return [
-            ..step.Strokes.Where(static stroke => stroke.From is null)
+            ..step.Strokes.Where(static stroke => stroke is { From: null, Capture: null })
                 .Select(static stroke => new StackPainted(stroke.Layer, stroke.Usage))
         ];
     }
@@ -263,6 +288,9 @@ public sealed class StackEditor : ILayerStackDocument {
             StackStroke => "Stroke",
             StackDuplicateLayers => "Duplicate layers",
             StackPasteLayers => "Paste layers",
+            StackFlattenLayer { Layer: null } => "Flatten stack",
+            StackFlattenLayer => "Flatten folder",
+            StackUnflattenLayer => "Unflatten folder",
             _ => "Edit"
         };
 
@@ -336,7 +364,12 @@ public sealed class StackEditor : ILayerStackDocument {
                 Do(new MoveLayerCommand(this, new(set, move.Layer), move.Delta, "Move layer"));
                 break;
             case StackSetLayer change:
+                var renamed = Require(change.Layer).AnchorPoint;
                 Do(Change(change, set));
+                if (change.AnchorPoint is { } point && point != renamed && renamed.Length > 0 && point.Length > 0) {
+                    Do(Reanchored(renamed, point));
+                }
+
                 break;
             case StackNestLayer nest:
                 Nest(nest, set, Do);
@@ -361,6 +394,12 @@ public sealed class StackEditor : ILayerStackDocument {
                 break;
             case StackPasteLayers paste:
                 Paste(paste, step, set, Do);
+                break;
+            case StackFlattenLayer flatten:
+                Flatten(flatten.Layer, step, set, Do);
+                break;
+            case StackUnflattenLayer unflatten:
+                Unflatten(unflatten.Layer, set, Do);
                 break;
             default:
                 throw new StackEditRefusedException($"Unknown command '{command.GetType().Name}'.");
@@ -491,9 +530,11 @@ public sealed class StackEditor : ILayerStackDocument {
                 Source = source,
                 Value = mask.Value,
                 Asset = mask.Asset,
-                Anchor = mask.Anchor,
+                Anchor = StackDocuments.Reference(mask.Anchor),
                 Generator = mask.Generator,
                 GeneratorTexts = GeneratorKnobs(held, mask),
+                GeneratorInputs = StackDocuments.References(mask.Inputs)
+                    ?? (mask.Generator != held.Generator ? [] : held.GeneratorInputs),
                 Map = mask.Map,
                 Effects = StackDocuments.WithSelection(held.Effects, mask)
             };
@@ -512,6 +553,8 @@ public sealed class StackEditor : ILayerStackDocument {
         }
 
         var filter = Parsed(change.Filter, layer.Filter, "filter");
+        var point = change.AnchorPoint?.Trim() ?? layer.AnchorPoint;
+        Published(layer, point);
         var filterNode = change.FilterNode ?? layer.FilterNode;
 
         // Another filter has other numbers, so what was set for the last one does not follow. It would only be refused.
@@ -531,6 +574,9 @@ public sealed class StackEditor : ILayerStackDocument {
                 Values = Merged(layer.Values, Copied(change.Values)),
                 Textures = Merged(layer.Textures, change.Textures),
                 Graph = change.Graph ?? layer.Graph,
+                AnchorPoint = point,
+                Anchor = change.Anchor is { } anchor ? StackDocuments.Reference(anchor) : layer.Anchor,
+                Inputs = StackDocuments.References(change.Inputs) ?? layer.Inputs,
                 Projection = Parsed(change.Projection, layer.Projection, "projection"),
                 PlanarAxis = Parsed(change.PlanarAxis, layer.PlanarAxis, "axis"),
                 Placement = change.Placement is { } placement ? Placed(placement) : layer.Placement,
@@ -659,8 +705,9 @@ public sealed class StackEditor : ILayerStackDocument {
 
     /// <summary>Refuses a stroke on a layer's own pixels that would land nowhere, or nowhere that shows.</summary>
     void Writable(StackStroke stroke, LayerAsset layer) {
-        // A mask is any layer's, and only a paint layer has pixels of its own besides.
-        if (layer.Kind != LayerKind.Paint) {
+        // A mask is any layer's, and only a paint layer has pixels of its own besides — or a flattened group, whose canvas
+        // is its picture until it is unflattened.
+        if (layer.Kind != LayerKind.Paint && !layer.Flattened) {
             var kind = layer.Kind.ToString().ToLowerInvariant();
             throw new StackEditRefusedException(
                 $"Only a paint layer can be painted, and '{layer.Name}' is a {kind} layer.",
@@ -871,6 +918,95 @@ public sealed class StackEditor : ILayerStackDocument {
         }
 
         Journal(copies, step);
+    }
+
+    /// <summary>
+    ///     A name no other layer publishes, or the empty one. Taking one away that something reads is refused: the
+    ///     reference would read nothing, and a rename is what keeps it.
+    /// </summary>
+    void Published(LayerAsset layer, string point) {
+        if (point == layer.AnchorPoint) {
+            return;
+        }
+
+        if (point.Length > 0 && LayerStackEdit.AnchorPoints(Set).ContainsKey(point)) {
+            throw new StackEditRefusedException(
+                $"Another layer publishes the anchor point '{point}'.",
+                Api.Refusals.AnchorTaken,
+                new Dictionary<string, string> { ["anchor"] = point }
+            );
+        }
+
+        if (point.Length == 0
+            && layer.AnchorPoint.Length > 0
+            && LayerStackEdit.AnchorUses(Set).FirstOrDefault(use => use.Reference.Anchor == layer.AnchorPoint) is
+                { } use) {
+            throw new StackEditRefusedException(
+                $"'{use.Layer}' reads the anchor point '{layer.AnchorPoint}'.",
+                Api.Refusals.AnchorInUse,
+                new Dictionary<string, string> {
+                    ["anchor"] = layer.AnchorPoint, ["layer"] = Require(use.Layer).Name
+                }
+            );
+        }
+    }
+
+    /// <summary>Every reference to one anchor point pointed at its new name, as one more command of the same step.</summary>
+    SetDocumentCommand Reanchored(string from, string to) {
+        var set = Set;
+        var moved = set with { Layers = LayerStackEdit.Reanchored(set.Layers, from, to) };
+        return new(
+            this,
+            Document with { Sets = [..Document.Sets.Select(held => held == set ? moved : held)] },
+            "Rename anchor point"
+        );
+    }
+
+    /// <summary>
+    ///     A group flattened into a canvas, or the whole stack gathered into a group and flattened. The canvas is a
+    ///     journal entry the Worker writes in its turn, from the document as it stood, so a replay writes the same one.
+    /// </summary>
+    void Flatten(string? id, Step step, string set, Action<IAuthoringCommand> run) {
+        if (id is null) {
+            var layers = Set.Layers;
+            if (layers.Count == 0) {
+                throw new StackEditRefusedException("This stack has no layers to flatten.");
+            }
+
+            id = LayerStackEdit.FreeId(Set, "flattened");
+            var whole = Set with {
+                Layers = [new() { Id = id, Name = FreeName("Flattened"), Kind = LayerKind.Group, Children = [..layers] }]
+            };
+            run(new SetDocumentCommand(this, Document with { Sets = [..Document.Sets.Select(held => held.Name == set ? whole : held)] }, "Flatten stack"));
+        }
+
+        var group = Require(id);
+        if (!LayerStackEdit.CanFlatten(Set, id, out var backdrop, out var reason)) {
+            throw new StackEditRefusedException(
+                reason,
+                Api.Refusals.FlattenRefused,
+                new Dictionary<string, string> { ["layer"] = group.Name, ["reason"] = reason }
+            );
+        }
+
+        var capture = new StackCaptureEntry(StackDocuments.Text(Document), id, backdrop);
+        var paint = FreeCanvas(Path.GetFileNameWithoutExtension(AssetPath), set, id, false, new HashSet<string>());
+        run(new SetLayerCommand(this, new(set, id), group, group with { Paint = paint }, "Flatten folder"));
+        step.Strokes.Add(StackJournalEntry.Captured(nextEntry++, paint, capture, Document.Model));
+    }
+
+    /// <summary>A flattened group back to its children. Its canvas stays in the history, for an undo to bring back.</summary>
+    void Unflatten(string id, string set, Action<IAuthoringCommand> run) {
+        var group = Require(id);
+        if (!group.Flattened) {
+            throw new StackEditRefusedException(
+                $"'{group.Name}' is not flattened.",
+                Api.Refusals.NotFlattened,
+                new Dictionary<string, string> { ["layer"] = group.Name }
+            );
+        }
+
+        run(new SetLayerCommand(this, new(set, id), group, group with { Paint = string.Empty }, "Unflatten folder"));
     }
 
     void Journal(StackLayerCopies copies, Step step) {

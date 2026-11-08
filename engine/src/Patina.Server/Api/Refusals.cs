@@ -34,6 +34,21 @@ public static class Refusals {
     /// <summary>A stack command that cannot apply, for a reason no client is expected to explain.</summary>
     public const string StackRefused = "stack-refused";
 
+    /// <summary>Another layer publishes that anchor point name. Values: <c>anchor</c>.</summary>
+    public const string AnchorTaken = "anchor-taken";
+
+    /// <summary>An anchor point something reads cannot be taken away. Values: <c>anchor</c>, <c>layer</c>.</summary>
+    public const string AnchorInUse = "anchor-in-use";
+
+    /// <summary>
+    ///     A group whose picture no canvas could hold, or that is not a group. Values: <c>layer</c>, <c>reason</c>, which
+    ///     is the Server's own sentence.
+    /// </summary>
+    public const string FlattenRefused = "flatten-refused";
+
+    /// <summary>Unflattening a group that is not flattened. Values: <c>layer</c>.</summary>
+    public const string NotFlattened = "not-flattened";
+
     /// <summary>A refusal with its code and the values its detail was written from.</summary>
     public static ProblemHttpResult Problem(
         string detail,

@@ -367,7 +367,8 @@ public sealed partial class StackProcessTests : IDisposable {
                 Settings: new Dictionary<string, IReadOnlyList<float>> { ["Saturation"] = [0.2f] }
             ),
             new StackSetLayer(fill, Mask: new("Constant", 0.6f)),
-            new StackSetLayer(group, Mask: new("Anchor", Anchor: "paint"))
+            new StackSetLayer("paint", AnchorPoint: "Paint"),
+            new StackSetLayer(group, Mask: new("Anchor", Anchor: new("Paint", "baseColor")))
         );
         var painted = await EditAsync(
             state.Id,
