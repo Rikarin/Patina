@@ -183,13 +183,14 @@ export function template(actions: MenuActions, menus: MenuModel, starting = fals
                 ? // A key without the command key is shown, not taken: a text field has to keep typing it.
                   { accelerator: item.accelerator, registerAccelerator: item.registered === true }
                 : {}),
-              click: (_menuItem, _window, event) => {
+              // A click from code (menuItem.click()) has no event.
+              click: (_menuItem, _window, event: Electron.KeyboardEvent | undefined) => {
                 if (starting && item.id === 'newLibrary') {
                   void actions.newLibrary();
                 } else if (starting && item.id === 'openLibrary') {
                   void actions.openLibrary();
                 } else {
-                  actions.command(item.id, event.triggeredByAccelerator === true);
+                  actions.command(item.id, event?.triggeredByAccelerator === true);
                 }
               }
             }

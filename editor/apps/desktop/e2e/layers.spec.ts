@@ -260,12 +260,12 @@ test('layers are selected together, deleted by key, and a material drags in wher
   await expect(rows).toHaveCount(count - selected);
 
   await rows.first().click();
-  await window.keyboard.press('Meta+Backspace');
+  await window.keyboard.press('Backspace');
   await expect(rows).toHaveCount(count - selected - 1);
 
   // Cmd+Z on a Mac reaches the menu and never the page, so it is the menu item that has to undo.
   await app.evaluate(({ Menu }) => {
-    Menu.getApplicationMenu()?.getMenuItemById('edit-undo')?.click();
+    Menu.getApplicationMenu()?.getMenuItemById('undo')?.click();
   });
   await expect(rows).toHaveCount(count - selected);
 });
@@ -289,7 +289,7 @@ test('a mask runs effects, and they stay in order', async () => {
 test('a layer duplicates, copies, cuts and pastes, and each undoes as one step', async () => {
   const undo = () =>
     app.evaluate(({ Menu }) => {
-      Menu.getApplicationMenu()?.getMenuItemById('edit-undo')?.click();
+      Menu.getApplicationMenu()?.getMenuItemById('undo')?.click();
     });
   const rows = names();
   const count = await rows.count();
@@ -314,7 +314,7 @@ test('a layer duplicates, copies, cuts and pastes, and each undoes as one step',
 
   // Edit > Paste reaches the stack as well, and a paste is new layers every time.
   await app.evaluate(({ Menu }) => {
-    Menu.getApplicationMenu()?.getMenuItemById('edit-paste')?.click();
+    Menu.getApplicationMenu()?.getMenuItemById('paste')?.click();
   });
   await expect(rows).toHaveCount(count + 1);
   await undo();

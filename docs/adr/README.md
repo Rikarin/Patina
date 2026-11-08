@@ -18,3 +18,4 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0013](0013-paths.md): accepted: names in library files stay inside their folder, and API paths are the caller's.
 - [0014](0014-graph-size.md): accepted: a graph's size is separate from what it is authored at, with one list of sides.
 - [0015](0015-words.md): accepted: the API sends labels with its words and codes with its refusals, and each client words them.
+- [0016](0016-commands.md): accepted: one command table that the menus, the keys, the shortcuts dialog and tooltips read.

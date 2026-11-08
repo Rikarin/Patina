@@ -65,7 +65,7 @@ describe('menus from the studio', () => {
     const tools = built.find(menu => menu.label === 'Tools')?.submenu as {
       id: string;
       registerAccelerator: boolean;
-      click: (item: unknown, window: unknown, event: { triggeredByAccelerator?: boolean }) => void;
+      click: (item: unknown, window: unknown, event: { triggeredByAccelerator?: boolean } | undefined) => void;
     }[];
 
     expect(tools.map(item => [item.id, item.registerAccelerator])).toEqual([
@@ -73,7 +73,7 @@ describe('menus from the studio', () => {
       ['save', true]
     ]);
     tools[1]?.click(null, null, { triggeredByAccelerator: true });
-    tools[0]?.click(null, null, {});
+    tools[0]?.click(null, null, undefined); // as menuItem.click() from code sends it
     expect(sent.sent).toEqual([
       ['save', true],
       ['brushTool', false]
