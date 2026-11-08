@@ -4957,6 +4957,11 @@ export interface components {
       v: number;
       /** @description Where on the mesh, in its own space: three numbers. */
       position?: null | number[];
+      /**
+       * @description The box the mesh fits inside, in its own space: the least corner's three numbers, then the greatest's. A
+       *     symmetry's model centre is its middle, and a client draws a symmetry's plane across it.
+       */
+      bounds?: null | number[];
     };
     /** @description Asks what is under a position in the viewport. */
     ViewportPickRequest: {

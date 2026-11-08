@@ -35,6 +35,9 @@ class ViewportPick:
             u (float): The texture coordinate across. Default: 0.0.
             v (float): The texture coordinate down. Default: 0.0.
             position (list[float] | None | Unset): Where on the mesh, in its own space: three numbers.
+            bounds (list[float] | None | Unset): The box the mesh fits inside, in its own space: the least corner's three
+                numbers, then the greatest's. A
+                symmetry's model centre is its middle, and a client draws a symmetry's plane across it.
      """
 
     found: bool
@@ -43,6 +46,7 @@ class ViewportPick:
     u: float = 0.0
     v: float = 0.0
     position: list[float] | None | Unset = UNSET
+    bounds: list[float] | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -71,6 +75,16 @@ class ViewportPick:
         else:
             position = self.position
 
+        bounds: list[float] | None | Unset
+        if isinstance(self.bounds, Unset):
+            bounds = UNSET
+        elif isinstance(self.bounds, list):
+            bounds = self.bounds
+
+
+        else:
+            bounds = self.bounds
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -83,6 +97,8 @@ class ViewportPick:
         })
         if position is not UNSET:
             field_dict["position"] = position
+        if bounds is not UNSET:
+            field_dict["bounds"] = bounds
 
         return field_dict
 
@@ -123,6 +139,24 @@ class ViewportPick:
         position = _parse_position(d.pop("position", UNSET))
 
 
+        def _parse_bounds(data: object) -> list[float] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                bounds_type_1 = cast(list[float], data)
+
+                return bounds_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[float] | None | Unset, data)
+
+        bounds = _parse_bounds(d.pop("bounds", UNSET))
+
+
         viewport_pick = cls(
             found=found,
             view=view,
@@ -130,6 +164,7 @@ class ViewportPick:
             u=u,
             v=v,
             position=position,
+            bounds=bounds,
         )
 
 

@@ -680,12 +680,12 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
                 new(
                     canvas.Channel(part.Usage),
                     surface?.Coverage ?? PaintCoverage.Everywhere(canvas.Width, canvas.Height),
-                    Brush(part.Brush) with { Radius = Radius(part, surface) },
+                    Brush(part.Brush) with { Radius = Radius(part, surface, Bounds(part.Model)) },
                     part.Colour,
                     surface is null ? 0 : Gutter,
                     // A line or a path runs through its points, and a brush trailing them would stop short of the last.
                     part.Curve == "free" ? part.Brush.Lazy : 0f,
-                    placement: Placement(part, surface)
+                    placement: Placement(part, surface, Bounds(part.Model))
                 ),
                 part.Curve == "free" ? null : new()
             );
@@ -694,8 +694,15 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
         }
 
         /// <summary>Where a stroke's stamps land besides under themselves, which only a mesh can say.</summary>
-        static IPaintPlacement? Placement(StackPaintPart part, PaintMeshSurface? surface) {
-            var symmetry = surface is null ? null : Symmetry(part.Symmetry, surface.Projection.Bounds);
+        /// <summary>
+        ///     The whole model's box, every texture set of it, or null with no model. ⚠ Not the set's own: a symmetry's
+        ///     centre and a size in the model's units are the model's, and one set of a character is half of it.
+        /// </summary>
+        BoundingBox? Bounds(string model) =>
+            model.Trim().Length == 0 ? null : meshes.Of(Path.GetFullPath(model, folder)).Projection.Bounds;
+
+        static IPaintPlacement? Placement(StackPaintPart part, PaintMeshSurface? surface, BoundingBox? bounds) {
+            var symmetry = bounds is { } box ? Symmetry(part.Symmetry, box) : null;
             if (part.View is not { } view) {
                 return surface?.AcrossSeams(symmetry);
             }
@@ -742,14 +749,13 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
         ///     The radius in the stroke's own units: the picture's for a stroke with a view, texels for one without.
         ///     A size in texels or in the model's units is measured where the stroke starts, and the stroke keeps it.
         /// </summary>
-        static float Radius(StackPaintPart part, PaintMeshSurface? surface) {
+        static float Radius(StackPaintPart part, PaintMeshSurface? surface, BoundingBox? model) {
             var brush = part.Brush;
-            if (brush.SizeSpace == "screen" || surface is null || part.Stamps.Count == 0) {
+            if (brush.SizeSpace == "screen" || surface is null || model is not { } bounds || part.Stamps.Count == 0) {
                 return brush.Radius;
             }
 
             var space = brush.SizeSpace == "model" ? PaintSizeSpace.Model : PaintSizeSpace.Texels;
-            var bounds = surface.Projection.Bounds;
 
             // A model size is thousandths of the bounds' diagonal, so it means the same on a model in metres or in
             // centimetres.

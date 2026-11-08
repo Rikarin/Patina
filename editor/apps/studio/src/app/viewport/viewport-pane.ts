@@ -20,6 +20,7 @@ import { ViewOptions } from '../core/view-options';
 import { GraphStore } from '../graph/graph-store';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore, pressureOf } from '../paint/paint-store';
+import { symmetryGuide } from '../paint/symmetry-guide';
 import { StrokeGesture } from '../paint/stroke-gesture';
 import { FramePainter } from './frame-painter';
 import type { ViewportFrame } from './frame-transport';
@@ -218,6 +219,15 @@ const PickLook = '…';
             [style.width.px]="cursor() * 2"
           ></div>
         }
+        @if (guide(); as points) {
+          <svg class="pointer-events-none absolute inset-0 size-full" data-testid="viewport-symmetry" aria-hidden="true">
+            @if (paint.symmetry()?.kind === 'radial') {
+              <polyline class="fill-none stroke-sky-300/80" stroke-dasharray="6 4" stroke-width="1.5" [attr.points]="points" />
+            } @else {
+              <polygon class="fill-sky-300/10 stroke-sky-300/80" stroke-dasharray="6 4" stroke-width="1.5" [attr.points]="points" />
+            }
+          </svg>
+        }
         @if (gesture.points().length > 1) {
           <svg class="pointer-events-none absolute inset-0 size-full" data-testid="viewport-curve">
             <polyline class="fill-none stroke-white/70" [attr.points]="curve()" />
@@ -266,6 +276,22 @@ export class ViewportPane implements AfterViewInit {
    * the model's units is only measured where a stroke starts, so until then the ring is a small mark, never a wrong one.
    */
   protected readonly cursor = computed(() => (this.paint.brush().sizeSpace === 'screen' ? this.paint.radius() : 3));
+
+  /** The camera and model box the symmetry guide was last drawn from, asked of the Worker as the view settles. */
+  private readonly looked = signal<{ key: string; pick: Awaited<ReturnType<PaintStore['look']>> } | null>(null);
+  private looking: ReturnType<typeof setTimeout> | undefined;
+
+  /** The symmetry's plane or axis over the picture, where the Worker will put it, or null with none to show. */
+  protected readonly guide = computed(() => {
+    const symmetry = this.paint.symmetry();
+    const looked = this.looked();
+    const bounds = looked?.key === this.view() ? looked.pick.bounds : null;
+    if (!symmetry || !looked || !bounds) {
+      return null;
+    }
+
+    return symmetryGuide(symmetry, looked.pick.view, bounds);
+  });
   /** Whether a press does something at the point under it, which is what the cursor says. */
   protected readonly aiming = computed(
     () => this.paints() || this.paint.picking() !== null || (this.paint.worn() && this.paint.tool() === 'picker')
@@ -320,6 +346,22 @@ export class ViewportPane implements AfterViewInit {
       if (followed && document?.id === followed && revision !== undefined) {
         void this.viewport.showGraph(followed);
       }
+    });
+    // The guide follows the camera once it rests, since each look is a round trip to the Worker.
+    effect(() => {
+      const key = this.view();
+      if (!this.paints() || !this.paint.symmetry()) {
+        return;
+      }
+
+      clearTimeout(this.looking);
+      this.looking = setTimeout(() => {
+        void this.paint
+          .look(this.aim())
+          .then(pick => this.looked.set({ key, pick }))
+          // A guide is a help: without one the strokes still copy where they would.
+          .catch(() => undefined);
+      }, 150);
     });
     // What the viewport shows changed from elsewhere, and the label needs telling.
     effect(() => {

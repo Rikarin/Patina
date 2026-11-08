@@ -20,6 +20,7 @@ import {
   type StackView,
   type StackVocabulary,
   type ViewportCameraState,
+  type ViewportPick,
   unwrap
 } from '@patina/api-client';
 import { learnTerms } from '../core/labels';
@@ -781,6 +782,13 @@ export class PaintStore {
     if (this.stroke) {
       this.flush(true);
     }
+  }
+
+  /** What is at the middle of a picture through a camera: the view a stroke would carry, and the model's box. */
+  async look(aim: Aim): Promise<ViewportPick> {
+    const client = await this.api();
+    const { width, height, camera } = aim;
+    return unwrap(await client.POST('/api/v1/viewport/pick', { body: { x: 0.5, y: 0.5, camera, width, height } }));
   }
 
   private async pick(stamp: StackStamp, aim: Aim): Promise<StackView> {

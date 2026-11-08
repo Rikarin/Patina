@@ -13120,6 +13120,17 @@
               "format": "float"
             },
             "description": "Where on the mesh, in its own space: three numbers."
+          },
+          "bounds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The box the mesh fits inside, in its own space: the least corner\u0027s three numbers, then the greatest\u0027s. A\nsymmetry\u0027s model centre is its middle, and a client draws a symmetry\u0027s plane across it."
           }
         },
         "description": "What a position in the viewport landed on."

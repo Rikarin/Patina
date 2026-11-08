@@ -80,11 +80,13 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
         );
         var ray = view.RayAt(new((float)(pick.X * pick.Width), (float)(pick.Y * pick.Height)));
         var found = shelf.Projection.TryHit(ray, out var hit);
+        var box = shelf.Projection.Bounds;
+        IReadOnlyList<float> extent = [..Numbers(box.Minimum), ..Numbers(box.Maximum)];
         return new() {
             Type = IpcTypes.Ok,
             Picked = found
-                ? new(true, wire, hit.Triangle, hit.Coordinate.X, hit.Coordinate.Y, Numbers(hit.Point))
-                : new(false, wire)
+                ? new(true, wire, hit.Triangle, hit.Coordinate.X, hit.Coordinate.Y, Numbers(hit.Point), extent)
+                : new(false, wire, Bounds: extent)
         };
     }
 

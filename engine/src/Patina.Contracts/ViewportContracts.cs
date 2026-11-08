@@ -163,13 +163,18 @@ public sealed record ViewportPickRequest(
 /// <param name="U">The texture coordinate across.</param>
 /// <param name="V">The texture coordinate down.</param>
 /// <param name="Position">Where on the mesh, in its own space: three numbers.</param>
+/// <param name="Bounds">
+///     The box the mesh fits inside, in its own space: the least corner's three numbers, then the greatest's. A
+///     symmetry's model centre is its middle, and a client draws a symmetry's plane across it.
+/// </param>
 public sealed record ViewportPick(
     bool Found,
     StackView View,
     int Triangle = -1,
     float U = 0f,
     float V = 0f,
-    IReadOnlyList<float>? Position = null
+    IReadOnlyList<float>? Position = null,
+    IReadOnlyList<float>? Bounds = null
 );
 
 /// <summary>Asks the viewport to wear a stack: its mesh, and its maps as the strokes leave them.</summary>

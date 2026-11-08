@@ -476,12 +476,19 @@ test('a preset takes up its brush, a radial symmetry paints its copies, and the 
   await settled();
   await window.getByRole('combobox', { name: 'Symmetry', exact: true }).selectOption('radial');
   await window.getByRole('combobox', { name: 'Symmetry axis' }).selectOption('y');
+  // The axis the copies turn round is drawn over the picture, where the Worker puts it.
+  await expect(window.getByTestId('viewport-symmetry')).toBeVisible({ timeout: 10_000 });
+  await window.mouse.move(0, 0);
   const plain = await shot();
   await drag(0.42, 0.42, 0.46, 0.44);
   await settled();
   // Four copies round the up axis, of which the camera sees two or three: more than one stroke's worth either way.
   expect(await changed(plain, await shot())).toBeGreaterThan(one * 1.5);
   await window.screenshot({ path: join(shots, 'paint-radial.png') });
+  await window.getByRole('combobox', { name: 'Symmetry', exact: true }).selectOption('mirror');
+  await window.getByRole('combobox', { name: 'Symmetry axis' }).selectOption('x');
+  await expect(window.getByTestId('viewport-symmetry').locator('polygon')).toBeVisible();
+  await window.screenshot({ path: join(shots, 'paint-mirror-plane.png') });
 
   await window.getByTestId('paint-keep-colour').click();
   await expect(window.getByTestId('paint-palette').locator('button')).toHaveCount(1);
