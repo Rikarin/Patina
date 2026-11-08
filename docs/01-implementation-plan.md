@@ -125,6 +125,7 @@ patina/
 │  │  ├─ Patina.Ipc/               # Server <-> Worker protocol
 │  │  ├─ Patina.Library/           # library, projects, references, index, build keys. No GPU
 │  │  ├─ Patina.Graphs/            # what a graph's references mean, for the Worker and `patina bake`
+│  │  ├─ Patina.Content/           # the CC0 compounds under content/compounds, as shipped node types
 │  │  ├─ Patina.Jobs/              # persistent job queue, batch rebuilds, impact analysis
 │  │  ├─ Patina.Export/            # export presets, channel packing, naming templates
 │  │  ├─ Patina.Viewport/          # small PBR forward renderer, environment, tonemap

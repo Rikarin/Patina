@@ -1,0 +1,92 @@
+version: 1
+name: Drip Paint
+nodes:
+  - id: 1
+    type: Source/Noise
+    x: 0
+    y: 0
+    values:
+      'Scale Y': [0.15]
+      Octaves: [2]
+      Gain: [0.35]
+    texts:
+      'Basis': 'Gradient'
+      '=Scale': '24f + scale * 48f'
+  - id: 2
+    type: Colour/Threshold
+    x: 300
+    y: 0
+    values:
+      Softness: [0.04]
+    texts:
+      '=Level': '0.74f - amount * 0.12f'
+  - id: 3
+    type: Source/Noise
+    x: 0
+    y: 300
+    values:
+      Octaves: [3]
+    texts:
+      'Basis': 'Gradient'
+      '=Scale': '8f'
+  - id: 4
+    type: Filters/Directional Warp
+    x: 600
+    y: 0
+    values:
+      Intensity: [3]
+      Angle: [0]
+    texts: {}
+  - id: 5
+    type: Filters/Directional Blur
+    x: 900
+    y: 0
+    values:
+      Angle: [1.5707964]
+      Length: [6]
+    texts: {}
+  - id: 6
+    type: Colour/Levels
+    x: 1200
+    y: 0
+    values:
+      'Input Black': [0.05]
+      'Input White': [0.6]
+    texts: {}
+  - id: 99
+    type: Sub-graph/Output
+    x: 1600
+    y: 0
+    values: {}
+    texts: {}
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Warp }
+  - { fromNode: 4, fromPort: Out, toNode: 5, toPort: Input }
+  - { fromNode: 5, fromPort: Out, toNode: 6, toPort: Input }
+  - { fromNode: 6, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'Runs of paint dripping down, thin and long, some reaching further than others. White is paint.'
+settings: { baseWidth: '1024', baseHeight: '1024', seed: '1' }
+parameters:
+  - name: scale
+    default: '0.5'
+    summary: 'How large the features are: low is fewer, bigger ones, high is many small ones.'
+    kind: Float
+    minimum: 0
+    maximum: 1
+    group: Grunge
+  - name: amount
+    default: '0.5'
+    summary: 'How much of the surface the grunge covers.'
+    kind: Float
+    minimum: 0
+    maximum: 1
+    group: Grunge

@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../../src/Patina.Content/Patina.Content.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Tools/Vixen.TextureGraph/Vixen.TextureGraph.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Tools/Vixen.NodeGraph/Vixen.NodeGraph.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Core/Vixen.Core.Yaml/Vixen.Core.Yaml.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Core/Vixen.Core.Imaging/Vixen.Core.Imaging.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Platform/Vixen.Graphics.Vulkan/Vixen.Graphics.Vulkan.csproj"/>
+  </ItemGroup>
+</Project>

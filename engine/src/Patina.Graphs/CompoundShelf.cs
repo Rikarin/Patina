@@ -1,3 +1,4 @@
+using Patina.Content;
 using Vixen.NodeGraph;
 using Vixen.TextureGraph;
 
@@ -19,6 +20,9 @@ public sealed class CompoundShelf {
     readonly Dictionary<string, (string Stamp, PublishedCompounds Published)> folders = new(StringComparer.Ordinal);
 
     public PublishedCompounds Of(string? folder) {
+        // Patina's own compounds publish beside Vixen's, for every caller that reaches a graph through here.
+        FactoryCompounds.Register();
+
         var key = folder ?? string.Empty;
         var stamp = Stamp(folder);
         if (folders.TryGetValue(key, out var held) && string.Equals(held.Stamp, stamp, StringComparison.Ordinal)) {

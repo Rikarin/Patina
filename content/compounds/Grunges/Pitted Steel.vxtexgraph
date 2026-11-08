@@ -1,0 +1,122 @@
+version: 1
+name: Pitted Steel
+nodes:
+  - id: 1
+    type: Source/Noise
+    x: 0
+    y: 0
+    values:
+      Octaves: [2]
+      Gain: [0.35]
+    texts:
+      'Basis': 'Worley'
+      '=Scale': '12f + scale * 40f'
+  - id: 2
+    type: Colour/Levels
+    x: 300
+    y: 0
+    values: {}
+    texts:
+      '=Input White': '0.12f + amount * 0.18f'
+      '=Gamma': '0.6f + contrast * 1.4f'
+  - id: 3
+    type: Colour/Invert
+    x: 600
+    y: 0
+    values: {}
+    texts: {}
+  - id: 4
+    type: Source/Noise
+    x: 0
+    y: 300
+    values:
+      Octaves: [4]
+      Gain: [0.55]
+    texts:
+      'Basis': 'Gradient'
+      '=Scale': '3f + scale * 3f'
+  - id: 5
+    type: Colour/Levels
+    x: 300
+    y: 300
+    values: {}
+    texts:
+      '=Input Black': '0.62f - amount * 0.3f'
+      '=Input White': '0.72f - amount * 0.25f'
+  - id: 6
+    type: Colour/Blend
+    x: 900
+    y: 0
+    values: {}
+    texts:
+      'Mode': 'Multiply'
+  - id: 7
+    type: Source/Noise
+    x: 600
+    y: 500
+    values:
+      Octaves: [1]
+    texts:
+      'Basis': 'White'
+      '=Scale': '256f'
+  - id: 8
+    type: Colour/Levels
+    x: 900
+    y: 500
+    values:
+      'Output White': [0.12]
+    texts: {}
+  - id: 9
+    type: Colour/Blend
+    x: 1200
+    y: 0
+    values: {}
+    texts:
+      'Mode': 'Lighten'
+  - id: 99
+    type: Sub-graph/Output
+    x: 1600
+    y: 0
+    values: {}
+    texts: {}
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Input }
+  - { fromNode: 4, fromPort: Out, toNode: 5, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 6, toPort: Background }
+  - { fromNode: 5, fromPort: Out, toNode: 6, toPort: Foreground }
+  - { fromNode: 7, fromPort: Out, toNode: 8, toPort: Input }
+  - { fromNode: 6, fromPort: Out, toNode: 9, toPort: Background }
+  - { fromNode: 8, fromPort: Out, toNode: 9, toPort: Foreground }
+  - { fromNode: 9, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'Small round pits gathered in clusters, as corrosion leaves steel. White is a pit.'
+settings: { baseWidth: '1024', baseHeight: '1024', seed: '1' }
+parameters:
+  - name: scale
+    default: '0.5'
+    summary: 'How large the features are: low is fewer, bigger ones, high is many small ones.'
+    kind: Float
+    minimum: 0
+    maximum: 1
+    group: Grunge
+  - name: amount
+    default: '0.5'
+    summary: 'How much of the surface the grunge covers.'
+    kind: Float
+    minimum: 0
+    maximum: 1
+    group: Grunge
+  - name: contrast
+    default: '0.5'
+    summary: 'How hard its edges are: low is soft and faint, high is crisp.'
+    kind: Float
+    minimum: 0
+    maximum: 1
+    group: Grunge

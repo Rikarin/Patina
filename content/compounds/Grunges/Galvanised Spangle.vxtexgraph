@@ -1,0 +1,96 @@
+version: 1
+name: Galvanised Spangle
+nodes:
+  - id: 2
+    type: Noise/Cell Walls
+    x: 0
+    y: 200
+    values: {}
+    texts:
+      'width': '0.04'
+  - id: 3
+    type: Colour/Invert
+    x: 300
+    y: 200
+    values: {}
+    texts: {}
+  - id: 4
+    type: Analysis/Flood Fill
+    x: 600
+    y: 200
+    values:
+      Iterations: [128]
+    texts:
+      'Kind': 'Random'
+  - id: 5
+    type: Source/Noise
+    x: 300
+    y: 450
+    values:
+      'Scale Y': [0.08]
+      Octaves: [3]
+    texts:
+      'Basis': 'Gradient'
+      '=Scale': '64f + scale * 64f'
+  - id: 6
+    type: Filters/Directional Warp
+    x: 600
+    y: 450
+    values:
+      Intensity: [40]
+    texts: {}
+  - id: 7
+    type: Colour/Blend
+    x: 900
+    y: 200
+    values:
+      Opacity: [0.25]
+    texts:
+      'Mode': 'Overlay'
+  - id: 8
+    type: Colour/Levels
+    x: 1200
+    y: 200
+    values: {}
+    texts:
+      '=Input Black': 'contrast * 0.25f'
+      '=Input White': '1f - contrast * 0.25f'
+  - id: 99
+    type: Sub-graph/Output
+    x: 1600
+    y: 0
+    values: {}
+    texts: {}
+edges:
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Mask }
+  - { fromNode: 5, fromPort: Out, toNode: 6, toPort: Input }
+  - { fromNode: 4, fromPort: Out, toNode: 6, toPort: Warp }
+  - { fromNode: 4, fromPort: Out, toNode: 7, toPort: Background }
+  - { fromNode: 6, fromPort: Out, toNode: 7, toPort: Foreground }
+  - { fromNode: 7, fromPort: Out, toNode: 8, toPort: Input }
+  - { fromNode: 8, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'The crystal flakes of hot-dip galvanised zinc: a tone per flake, feathered along a grain.'
+settings: { baseWidth: '1024', baseHeight: '1024', seed: '1' }
+parameters:
+  - name: scale
+    default: '0.5'
+    summary: 'How large the features are: low is fewer, bigger ones, high is many small ones.'
+    kind: Float
+    minimum: 0
+    maximum: 1
+    group: Grunge
+  - name: contrast
+    default: '0.5'
+    summary: 'How hard its edges are: low is soft and faint, high is crisp.'
+    kind: Float
+    minimum: 0
+    maximum: 1
+    group: Grunge

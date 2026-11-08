@@ -1,0 +1,94 @@
+version: 1
+name: Water Stains
+nodes:
+  - id: 1
+    type: Source/Shape
+    x: 0
+    y: 0
+    values:
+      Inner: [0.78]
+      Falloff: [0.18]
+      Scale: [0.9]
+    texts:
+      'Kind': 'Ring'
+  - id: 2
+    type: Source/Shape
+    x: 0
+    y: 200
+    values:
+      Falloff: [0.5]
+      Scale: [0.85]
+    texts:
+      'Kind': 'Disc'
+  - id: 3
+    type: Colour/Blend
+    x: 300
+    y: 0
+    values:
+      Opacity: [0.25]
+    texts:
+      'Mode': 'Lighten'
+  - id: 4
+    type: Placement/Splatter
+    x: 600
+    y: 0
+    values:
+      'Scale Jitter': [0.85]
+    texts:
+      'Accumulation': 'Max'
+      '=Count': '12f + amount * 48f'
+      '=Scale': '0.3f - scale * 0.18f'
+  - id: 5
+    type: Source/Noise
+    x: 300
+    y: 350
+    values:
+      Octaves: [2]
+      Gain: [0.5]
+    texts:
+      'Basis': 'Gradient'
+      '=Scale': '4f'
+  - id: 6
+    type: Filters/Warp
+    x: 900
+    y: 0
+    values:
+      Intensity: [3]
+    texts: {}
+  - id: 99
+    type: Sub-graph/Output
+    x: 1600
+    y: 0
+    values: {}
+    texts: {}
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 3, toPort: Background }
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Foreground }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Pattern }
+  - { fromNode: 4, fromPort: Out, toNode: 6, toPort: Input }
+  - { fromNode: 5, fromPort: Out, toNode: 6, toPort: Warp }
+  - { fromNode: 6, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'Rings left by dried drops and puddles, darker at the rim than in the middle. White is the stain.'
+settings: { baseWidth: '1024', baseHeight: '1024', seed: '1' }
+parameters:
+  - name: scale
+    default: '0.5'
+    summary: 'How large the features are: low is fewer, bigger ones, high is many small ones.'
+    kind: Float
+    minimum: 0
+    maximum: 1
+    group: Grunge
+  - name: amount
+    default: '0.5'
+    summary: 'How much of the surface the grunge covers.'
+    kind: Float
+    minimum: 0
+    maximum: 1
+    group: Grunge
