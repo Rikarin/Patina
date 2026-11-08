@@ -10,6 +10,7 @@ const Words: Readonly<Record<string, string>> = {
   'renderer-missing': 'The GPU engine is not running yet, so nothing could be drawn. It starts again on its own.',
   'library-none': 'No library is open. Open one, or make a new one, from the start page.',
   'graph-not-open': 'That graph was closed elsewhere. Open it again from the Library.',
+  'stack-not-open': 'That document is not open in the engine any more. Open it again from the Library.',
   'stroke-not-paint-layer': '{layer} is a {kind} layer, with nothing of its own to paint. Choose a paint layer, or paint its mask.',
   'stack-no-mesh': 'There is no mesh to paint on. Choose one in Project Settings.',
   'stroke-repeated-channel': 'That stroke could not be painted. Try it again.',

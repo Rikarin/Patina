@@ -17,6 +17,7 @@ import {
   unwrap
 } from '@patina/api-client';
 import { desktop } from '../core/desktop';
+import { RestartedNotice, SessionReturn } from '../core/session-return';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { LibrarySelection } from '../library/library-selection';
 import { DraftLayer } from './draft-layer';
@@ -76,8 +77,6 @@ export const GRAPH_SOCKET = new InjectionToken<(url: string) => GraphSocket>('GR
 });
 
 const PasteOffset = 40;
-const FirstRetryMs = 250;
-const LastRetryMs = 4_000;
 
 type DraftValue = readonly number[] | string;
 
@@ -142,10 +141,29 @@ export class GraphStore {
   private currentConnection: Connection | null = null;
   private client: PatinaClient | null = null;
   private socket: GraphSocket | null = null;
-  private retry: ReturnType<typeof setTimeout> | null = null;
-  private retryMs = FirstRetryMs;
   /** Goes up with each session, so that what an old one was waiting for lands nowhere. */
   private epoch = 0;
+  /** Brings the session back after a drop, by the epoch it dropped in (#226). */
+  private readonly comeback = new SessionReturn<number>({
+    probe: async epoch => {
+      const document = this.mutableDocument();
+      if (document && epoch === this.epoch && !this.stopped) {
+        const client = await this.reconnect();
+        unwrap(await client.GET('/api/v1/graphs/{id}', { params: { path: { id: document.id } } }));
+      }
+    },
+    follow: epoch => {
+      this.follow(epoch);
+    },
+    reopen: epoch => this.reopenLost(epoch),
+    lost: (epoch, error) => {
+      const document = this.mutableDocument();
+      if (document && epoch === this.epoch) {
+        this.endSession();
+        this.mutableSession.set({ kind: 'failed', path: document.path, reason: error.message });
+      }
+    }
+  });
   private reloading = false;
   private held: GraphEvent[] = [];
   /** The live edit in progress, whose batches after the first fold into one undo step. */
@@ -1275,7 +1293,7 @@ export class GraphStore {
     this.socket = socket;
     socket.onopen = () => {
       if (socket === this.socket) {
-        this.retryMs = FirstRetryMs;
+        this.comeback.opened();
         this.mutableLink.set('live');
       }
     };
@@ -1288,67 +1306,27 @@ export class GraphStore {
       if (socket === this.socket) {
         this.socket = null;
         this.mutableLink.set('reconnecting');
-        this.scheduleRetry(epoch);
+        if (!this.stopped && epoch === this.epoch) {
+          this.comeback.dropped(epoch);
+        }
       }
     };
   }
 
-  private scheduleRetry(epoch: number): void {
-    if (this.stopped || epoch !== this.epoch || this.retry !== null) {
-      return;
-    }
-
-    this.retry = setTimeout(() => {
-      this.retry = null;
-      void this.resume(epoch);
-    }, this.retryMs);
-    this.retryMs = Math.min(this.retryMs * 2, LastRetryMs);
-  }
-
-  /**
-   * Back after a dropped socket. Asking for the session first tells a Server that is down from one that restarted and
-   * has no such session, which a failed WebSocket handshake cannot say.
-   */
-  private async resume(epoch: number): Promise<void> {
-    const document = this.mutableDocument();
-    if (!document) {
-      return;
-    }
-
-    try {
-      const client = await this.reconnect();
-      unwrap(await client.GET('/api/v1/graphs/{id}', { params: { path: { id: document.id } } }));
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
-        await this.reopenLost(document, epoch);
-        return;
-      }
-
-      this.scheduleRetry(epoch);
-      return;
-    }
-
-    this.follow(epoch);
-  }
-
   /** The Server restarted, and edits it had not saved went with it. The file is the truth (plan §3.1). */
-  private async reopenLost(document: GraphDocument, epoch: number): Promise<void> {
-    try {
-      const state = unwrap(await this.api().POST('/api/v1/graphs', { body: { path: document.path } }));
-      if (document.history.dirty) {
-        this.mutableNotice.set('Patina restarted its engine. Edits since the last save are gone.');
-      }
-
-      this.edits.clear(new Error('The session ended.'));
-      await this.adopt(state, epoch);
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
-        this.endSession();
-        this.mutableSession.set({ kind: 'failed', path: document.path, reason: error.message });
-      } else {
-        this.scheduleRetry(epoch);
-      }
+  private async reopenLost(epoch: number): Promise<void> {
+    const document = this.mutableDocument();
+    if (!document || epoch !== this.epoch) {
+      return;
     }
+
+    const state = unwrap(await this.api().POST('/api/v1/graphs', { body: { path: document.path } }));
+    if (document.history.dirty) {
+      this.mutableNotice.set(RestartedNotice);
+    }
+
+    this.edits.clear(new Error('The session ended.'));
+    await this.adopt(state, epoch);
   }
 
   private arrive(event: GraphEvent): void {
@@ -1539,10 +1517,7 @@ export class GraphStore {
   }
 
   private stopFollowing(): void {
-    if (this.retry !== null) {
-      clearTimeout(this.retry);
-      this.retry = null;
-    }
+    this.comeback.cancel();
 
     const socket = this.socket;
     this.socket = null;

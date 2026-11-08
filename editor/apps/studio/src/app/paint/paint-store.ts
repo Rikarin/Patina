@@ -28,6 +28,7 @@ import { learnTerms } from '../core/labels';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
 import { messageOf } from '../core/messages';
+import { RestartedNotice, SessionReturn } from '../core/session-return';
 
 /** The most recent colours a project keeps, which is the Server's limit. */
 const RecentColours = 16;
@@ -60,7 +61,6 @@ export const NewBrush: StackBrush = {
   sizeSpace: 'screen'
 };
 
-const ReconnectMs = 1_000;
 const ThumbnailQuiet = 400;
 
 /** How many stamp-to-frame times are kept, which is what the readout and the bench read. */
@@ -139,7 +139,25 @@ export class PaintStore {
   private readonly sockets = inject(GRAPH_SOCKET);
   private client: PatinaClient | null = null;
   private socket: GraphSocket | null = null;
-  private reconnect: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * Brings the stack back after its socket drops, by the session it dropped in: the same session if the Server kept
+   * it, or the file opened again if the Server restarted (#226), as a graph does.
+   */
+  private readonly comeback = new SessionReturn<string>({
+    probe: async id => {
+      if (this.state()?.id === id && !this.stopped) {
+        const client = await this.api();
+        unwrap(await client.GET('/api/v1/stacks/{id}', { params: { path: { id } } }));
+      }
+    },
+    follow: id => (this.state()?.id === id ? this.follow() : undefined),
+    reopen: id => this.reopenLost(id),
+    lost: (id, error) => {
+      if (this.state()?.id === id) {
+        this.failure.set(messageOf(error));
+      }
+    }
+  });
   private sequence = 0;
   private stopped = false;
   private stroke: string | null = null;
@@ -157,6 +175,8 @@ export class PaintStore {
 
   readonly state = signal<StackState | null>(null);
   readonly failure = signal<string | null>(null);
+  /** Something the person should know that went right enough, such as edits lost when the engine restarted. */
+  readonly notice = signal<string | null>(null);
 
   /** Told as something new starts, for whoever keeps a failure of its own. */
   onAction: () => void = () => undefined;
@@ -267,9 +287,7 @@ export class PaintStore {
     inject(DestroyRef).onDestroy(() => {
       this.stopped = true;
       this.socket?.close();
-      if (this.reconnect !== null) {
-        clearTimeout(this.reconnect);
-      }
+      this.comeback.cancel();
 
       if (this.shownUrl) {
         URL.revokeObjectURL(this.shownUrl);
@@ -280,6 +298,7 @@ export class PaintStore {
   /** Opens a stack, and writes a new one first when asked. Throws nothing: the pane shows the failure. */
   async open(path: string, create: boolean): Promise<void> {
     this.failure.set(null);
+    this.comeback.cancel();
     try {
       const client = await this.api();
       const state = unwrap(
@@ -398,6 +417,8 @@ export class PaintStore {
 
   /** Lets go of the stack, which stays open on the Server with its edits and history, to come back to. */
   detach(): void {
+    this.comeback.cancel();
+    this.notice.set(null);
     this.state.set(null);
     this.worn.set(false);
     this.picture.set(null);
@@ -1049,14 +1070,49 @@ export class PaintStore {
     this.socket?.close();
     const socket = this.sockets(stackSocketUrl(await this.connection(), id, this.sequence));
     this.socket = socket;
+    socket.onopen = () => {
+      if (this.socket === socket) {
+        this.comeback.opened();
+      }
+    };
     socket.onmessage = message => {
       this.hear(JSON.parse(String(message.data)) as StackEvent);
     };
     socket.onclose = () => {
       if (!this.stopped && this.socket === socket) {
-        this.reconnect = setTimeout(() => void this.follow(), ReconnectMs);
+        this.socket = null;
+        this.comeback.dropped(id);
       }
     };
+  }
+
+  /**
+   * The Server restarted, and the stack's session went with it: the stack opens again from its file, which is the
+   * truth (plan §3.1). The layer chosen, the channel and what the viewport wore stay as they were, as far as the file
+   * still has them, and the person is told if edits that were not saved are gone.
+   */
+  private async reopenLost(id: string): Promise<void> {
+    const lost = this.state();
+    if (lost?.id !== id || this.stopped) {
+      return;
+    }
+
+    const client = await this.api();
+    const state = unwrap(await client.POST('/api/v1/stacks', { body: { path: lost.path } }));
+    if (this.state()?.id !== id) {
+      return; // another document came to the front while this one was opened
+    }
+
+    this.failure.set(null);
+    if (lost.history.dirty) {
+      this.notice.set(RestartedNotice);
+    }
+
+    this.adopt(state);
+    await this.follow();
+    if (this.worn()) {
+      await this.wear();
+    }
   }
 
   private hear(event: StackEvent): void {

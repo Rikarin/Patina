@@ -168,6 +168,14 @@ export class ProjectStore {
     effect(() => {
       this.unsaved.report('documents', this.unsavedTabs().length > 0);
     });
+    // A stack the Server opened again after it restarted is a new session of the tab in front, which closing must end.
+    effect(() => {
+      const tab = this.active();
+      const session = this.paint.state()?.id ?? null;
+      if (tab && !isGraph(tab) && !this.switching && session !== null && tab.session !== session) {
+        untracked(() => this.update(tab.path, { session }));
+      }
+    });
 
     // A graph can open from anywhere, and it comes here as a tab.
     effect(() => {

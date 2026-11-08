@@ -78,6 +78,8 @@ export class ViewportClient {
   private readonly sentAt = new Map<number, number>();
   private latest = 0;
   private painted: number[] = [];
+  /** How many times the input socket has opened, so a reopen can be told from the first. */
+  private opens = 0;
   private size: { width: number; height: number } | null = null;
 
   readonly mesh = signal<string | null>(null);
@@ -279,6 +281,13 @@ export class ViewportClient {
         () => {
           if (this.size) {
             this.resize(this.size.width, this.size.height);
+          }
+
+          // Open again after a drop: a Server that restarted starts from its defaults, so the view is told again
+          // where it looked and how it was shown (#226). A Server that kept them hears what it has.
+          if (this.opens++ > 0) {
+            this.send({ camera: this.camera(), interacting: false });
+            this.sendDisplay(this.display());
           }
         }
       );
