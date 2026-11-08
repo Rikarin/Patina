@@ -5249,7 +5249,7 @@
           },
           "palette": {
             "type": "string",
-            "description": "How labels become colours: \u0060random\u0060, \u0060hue\u0060 or \u0060grey\u0060. Colours stay as they are."
+            "description": "How labels become colours: \u0060random\u0060, \u0060hue\u0060 or \u0060grey\u0060. Colours stay colours."
           }
         },
         "description": "What an ID map labels, and how it colours the labels."

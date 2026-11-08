@@ -26,7 +26,7 @@ class BakeIdOptions:
             source (str): `auto`: vertex colours, else materials when there are several, else connected shells. Or one of
                             `material`, `material-colour` (each material's base colour), `vertex-colour`, `mesh`
                             (each named part) and `shell`.
-            palette (str): How labels become colours: `random`, `hue` or `grey`. Colours stay as they are.
+            palette (str): How labels become colours: `random`, `hue` or `grey`. Colours stay colours.
      """
 
     source: str

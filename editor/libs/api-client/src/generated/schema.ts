@@ -1530,7 +1530,7 @@ export interface components {
        *                 (each named part) and `shell`.
        */
       source: string;
-      /** @description How labels become colours: `random`, `hue` or `grey`. Colours stay as they are. */
+      /** @description How labels become colours: `random`, `hue` or `grey`. Colours stay colours. */
       palette: string;
     };
     /** @description The occlusion rays, which ambient occlusion, the bent normal and thickness share. */
