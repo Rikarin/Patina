@@ -43,7 +43,7 @@ sealed class BuildRunner(LibraryHost libraries, ToolCatalog tools) {
         Func<Task> yield,
         CancellationToken cancellationToken
     ) {
-        var library = libraries.Library ?? throw new BuildRefusedException("This Server has no library.");
+        var library = libraries.Library ?? throw new BuildRefusedException("The Server was started with no library.");
         var ticket = new BakeTicket(job.Id, job.Attempts);
         var pipeline = new BuildPipeline(library, new Executor(this, connection, ticket), tools);
         var journal = new BuildJournal(FolderOf(library.RootPath, job.Id), job.Id, job.Created);

@@ -159,7 +159,7 @@ static class BuildEndpoints {
     static string Safe(string id) => id.All(char.IsAsciiHexDigit) ? id : "-";
 
     static ProblemHttpResult NoLibrary() =>
-        TypedResults.Problem("This Server has no library.", statusCode: StatusCodes.Status404NotFound);
+        Refusals.NoLibraryOpen();
 
     static ProblemHttpResult NoReport(string id) =>
         TypedResults.Problem($"Build '{id}' has no report.", statusCode: StatusCodes.Status404NotFound);

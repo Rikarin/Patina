@@ -97,7 +97,8 @@ public static class GraphDocuments {
             Bound(parameter.Minimum),
             Bound(parameter.Maximum),
             parameter.Group,
-            parameter.Accepted
+            parameter.Accepted,
+            Terms.LabelsOf(parameter.Accepted)
         );
 
     public static GraphDiagnostic Diagnostic(NodeDiagnostic diagnostic) =>
@@ -139,7 +140,8 @@ public static class GraphDocuments {
             Bound(setting.Minimum),
             Bound(setting.Maximum),
             setting.Group,
-            setting.Accepted
+            setting.Accepted,
+            Terms.LabelsOf(setting.Accepted)
         );
 
     static GraphPortRange? RangeOf(PortDefinition port) {

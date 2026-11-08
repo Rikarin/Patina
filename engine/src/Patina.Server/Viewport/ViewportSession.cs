@@ -352,7 +352,7 @@ public sealed class ViewportSession(
         try {
             connection = await worker.ConnectionAsync(patience.Token);
         } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            throw new TimeoutException("No Worker is connected.");
+            throw new RendererMissingException();
         }
 
         var reply = await connection.SendAsync(

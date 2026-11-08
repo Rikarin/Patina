@@ -34,6 +34,10 @@ public sealed record GraphEdgeState(int FromNode, string FromPort, int ToNode, s
 /// <param name="Maximum">Its upper bound, or null for none.</param>
 /// <param name="Group">The heading it sits under.</param>
 /// <param name="Accepted">The values it may take; empty for any.</param>
+/// <param name="Labels">
+///     What a person calls each of <paramref name="Accepted" />, in its order. The Server fills it in; a client that
+///     sends a definition leaves it out.
+/// </param>
 public sealed record GraphSettingDefinition(
     string Name,
     string Default,
@@ -42,7 +46,8 @@ public sealed record GraphSettingDefinition(
     float? Minimum,
     float? Maximum,
     string Group,
-    IReadOnlyList<string> Accepted
+    IReadOnlyList<string> Accepted,
+    IReadOnlyList<string>? Labels = null
 );
 
 /// <summary>One port of a node type.</summary>

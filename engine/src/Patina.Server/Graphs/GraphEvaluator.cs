@@ -57,7 +57,7 @@ public sealed class GraphEvaluator(
             );
             return reply.GraphFullImage!;
         } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            throw new TimeoutException("No Worker is connected.");
+            throw new RendererMissingException();
         }
     }
 

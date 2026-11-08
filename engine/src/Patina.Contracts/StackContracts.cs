@@ -149,10 +149,17 @@ public sealed record StackFilterKind(
     IReadOnlyList<GraphSettingDefinition> Settings
 );
 
-/// <summary>The words a stack's fields take, so that a client holds no list of its own.</summary>
+/// <summary>A word a stack's field takes, and what a person calls it.</summary>
+/// <param name="Value">What a file and a command hold.</param>
+/// <param name="Label">What to show. A client shows this, never the value.</param>
+public sealed record StackTerm(string Value, string Label);
+
+/// <summary>The words a stack's fields take, each with its label, so that a client holds no list of its own.</summary>
 /// <param name="Blends">The sixteen blend modes.</param>
 /// <param name="Filters">The filters a layer can be.</param>
 /// <param name="Masks">The mask sources.</param>
+/// <param name="Fills">What a fill layer reads.</param>
+/// <param name="Projections">How a fill's pictures land on the mesh.</param>
 /// <param name="Generators">The compounds that read a mesh's bakes.</param>
 /// <param name="MeshMaps">The maps a bake mask or a generator can read.</param>
 /// <param name="Alphas">The named brush alphas.</param>
@@ -160,14 +167,16 @@ public sealed record StackFilterKind(
 /// <param name="Usages">The channels a stack can have.</param>
 /// <param name="GeneratorParameters">The knobs each generator has, by its path.</param>
 public sealed record StackVocabulary(
-    IReadOnlyList<string> Blends,
+    IReadOnlyList<StackTerm> Blends,
     IReadOnlyList<StackFilterKind> Filters,
-    IReadOnlyList<string> Masks,
-    IReadOnlyList<string> Generators,
-    IReadOnlyList<string> MeshMaps,
-    IReadOnlyList<string> Alphas,
+    IReadOnlyList<StackTerm> Masks,
+    IReadOnlyList<StackTerm> Fills,
+    IReadOnlyList<StackTerm> Projections,
+    IReadOnlyList<StackTerm> Generators,
+    IReadOnlyList<StackTerm> MeshMaps,
+    IReadOnlyList<StackTerm> Alphas,
     IReadOnlyList<StackFilterKind> MaskEffects,
-    IReadOnlyList<string> Usages,
+    IReadOnlyList<StackTerm> Usages,
     IReadOnlyDictionary<string, IReadOnlyList<GraphSettingDefinition>> GeneratorParameters
 );
 

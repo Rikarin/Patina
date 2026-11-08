@@ -37,20 +37,18 @@ public static class StackDocuments {
 
     /// <summary>The words a stack's fields take, from the enumerations and libraries that mean them.</summary>
     public static StackVocabulary Vocabulary { get; } = new(
-        Enum.GetNames<LayerBlendMode>(),
+        Terms.InStack(Enum.GetNames<LayerBlendMode>()),
         Filters(),
-        Enum.GetNames<LayerMaskSource>(),
-        [
-            ..TextureCompoundLibrary.Shipped.Where(static path => path.StartsWith(
-                    "Generators/",
-                    StringComparison.Ordinal
-                )
-            )
-        ],
-        TextureNodeLibrary.MeshMaps,
-        PaintAlphas.Names,
+        Terms.InStack(Enum.GetNames<LayerMaskSource>()),
+        Terms.InStack(Enum.GetNames<LayerFillSource>()),
+        Terms.InStack(Enum.GetNames<LayerProjection>()),
+        Terms.InStack(
+            TextureCompoundLibrary.Shipped.Where(static path => path.StartsWith("Generators/", StringComparison.Ordinal))
+        ),
+        Terms.InStack(TextureNodeLibrary.MeshMaps),
+        Terms.InStack(PaintAlphas.Names),
         MaskEffects(),
-        Usages(),
+        Terms.InStack(Usages()),
         GeneratorParameters()
     );
 

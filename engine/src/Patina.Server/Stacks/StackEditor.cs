@@ -8,13 +8,31 @@ using Vixen.Texturing.Painting;
 
 namespace Patina.Server.Stacks;
 
-/// <summary>A command that cannot be applied, with the reason a client can show. Nothing has changed.</summary>
+/// <summary>
+///     A command that cannot be applied, with a neutral reason and a stable code a client says in its own words
+///     (<see cref="Api.Refusals" />). Nothing has changed.
+/// </summary>
 public sealed class StackEditRefusedException : Exception {
     public StackEditRefusedException() { }
 
     public StackEditRefusedException(string message) : base(message) { }
 
     public StackEditRefusedException(string message, Exception innerException) : base(message, innerException) { }
+
+    /// <param name="message">The reason, for a reader of the API.</param>
+    /// <param name="code">What a client tells it apart by.</param>
+    /// <param name="values">What the reason was written from, by name.</param>
+    public StackEditRefusedException(string message, string code, IReadOnlyDictionary<string, string>? values = null)
+        : base(message) {
+        Code = code;
+        Values = values ?? new Dictionary<string, string>();
+    }
+
+    /// <summary>What a client tells this refusal apart by.</summary>
+    public string Code { get; } = Api.Refusals.StackRefused;
+
+    /// <summary>The values the reason was written from.</summary>
+    public IReadOnlyDictionary<string, string> Values { get; } = new Dictionary<string, string>();
 }
 
 /// <summary>A stroke as the journal holds it: where the brush went, in order, which is all a Worker needs.</summary>
@@ -552,7 +570,7 @@ public sealed class StackEditor : ILayerStackDocument {
         };
 
     SetDocumentCommand AddChannel(string usage) {
-        if (!StackDocuments.Vocabulary.Usages.Contains(usage)) {
+        if (!StackDocuments.Vocabulary.Usages.Any(term => term.Value == usage)) {
             throw new StackEditRefusedException($"'{usage}' is not a channel.");
         }
 
@@ -628,7 +646,10 @@ public sealed class StackEditor : ILayerStackDocument {
         // ⚠ Live, two strokes of one batch take turns; replayed, they run one after the other. Where they meet in one
         // channel that is two pictures, and a journal has to be one.
         if (step.Strokes.Exists(other => other.Paint == paint && other.Usage == Channel(stroke))) {
-            throw new StackEditRefusedException("One batch paints one channel of a layer once.");
+            throw new StackEditRefusedException(
+                "A batch paints each channel of a layer once.",
+                Api.Refusals.RepeatedChannel
+            );
         }
 
         step.Strokes.Add(
@@ -641,7 +662,9 @@ public sealed class StackEditor : ILayerStackDocument {
         // A mask is any layer's, and only a paint layer has pixels of its own besides.
         if (layer.Kind != LayerKind.Paint) {
             throw new StackEditRefusedException(
-                $"'{layer.Name}' is a {layer.Kind} layer, and only a paint layer takes a brush."
+                $"Only a paint layer can be painted, and '{layer.Name}' is a {layer.Kind.ToString().ToLowerInvariant()} layer.",
+                Api.Refusals.NotPaintLayer,
+                new Dictionary<string, string> { ["layer"] = layer.Name, ["kind"] = layer.Kind.ToString() }
             );
         }
 
@@ -880,7 +903,7 @@ public sealed class StackEditor : ILayerStackDocument {
         }
 
         if (Document.Model.Trim().Length == 0) {
-            throw new StackEditRefusedException("This stack has no mesh to paint on. Bind one first.");
+            throw new StackEditRefusedException("This stack has no mesh to paint on.", Api.Refusals.NoMesh);
         }
 
         if (view is not { Eye.Count: 3, Right.Count: 3, Up.Count: 3, Forward.Count: 3, Width: > 0, Height: > 0 }) {

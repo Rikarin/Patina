@@ -120,7 +120,7 @@ public sealed class ShelfThumbnails(WorkerLink worker, PreviewStore store) : IDi
             );
             return reply.ThumbnailHash;
         } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            throw new TimeoutException("No Worker is connected.");
+            throw new RendererMissingException();
         } catch (IpcException) {
             // A material that cannot draw shows its name alone, as it did before there were pictures.
             return null;

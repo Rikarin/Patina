@@ -1,16 +1,11 @@
 using Patina.Contracts;
 using Patina.Server.Stacks;
-using System.Text.RegularExpressions;
 using Vixen.Texturing.Layers;
 
 namespace Patina.Server.Tests;
 
-/// <summary>The words a client is sent, held to what the editor calls them and to what a channel starts as.</summary>
-public sealed partial class StackVocabularyTests {
-    static readonly string Labels = File.ReadAllText(
-        Path.Combine(Engine.Root, "..", "editor", "apps", "studio", "src", "app", "core", "labels.ts")
-    );
-
+/// <summary>The words a client is sent, each with what a person calls it, and what a channel starts as.</summary>
+public sealed class StackVocabularyTests {
     /// <summary>What leaves a material alone, which for most channels is not black.</summary>
     [Theory]
     [InlineData("occlusion", 1f)]
@@ -22,9 +17,23 @@ public sealed partial class StackVocabularyTests {
         Assert.Equal(red, StackEditor.DefaultOf(usage)[0]);
     }
 
-    public static TheoryData<string> Usages => [..StackDocuments.Vocabulary.Usages];
+    public static TheoryData<string> Usages => [..StackDocuments.Vocabulary.Usages.Select(static term => term.Value)];
 
-    public static TheoryData<string> Blends => [..StackDocuments.Vocabulary.Blends];
+    /// <summary>Every word of every list a client shows.</summary>
+    public static TheoryData<string, string> Words {
+        get {
+            var vocabulary = StackDocuments.Vocabulary;
+            TheoryData<string, string> words = [];
+            foreach (var term in new[] {
+                         vocabulary.Blends, vocabulary.Masks, vocabulary.Fills, vocabulary.Projections,
+                         vocabulary.Generators, vocabulary.MeshMaps, vocabulary.Alphas, vocabulary.Usages
+                     }.SelectMany(static list => list)) {
+                words.Add(term.Value, term.Label);
+            }
+
+            return words;
+        }
+    }
 
     /// <summary>A word with no arm is refused by name, so one the engine adds cannot quietly start black.</summary>
     [Theory]
@@ -47,24 +56,61 @@ public sealed partial class StackVocabularyTests {
         Assert.Equal(StackEditor.DefaultOf(usage), editor.Set.Channels[^1].Default);
     }
 
+    /// <summary>
+    ///     A label is words: capitalised, with no camel case, no path and no enum spelling, so nothing raw reaches a
+    ///     person (#198).
+    /// </summary>
     [Theory]
-    [MemberData(nameof(Usages))]
-    public void Every_usage_has_a_label(string usage) {
-        Assert.Contains(usage, KeysOf("Channels"));
+    [MemberData(nameof(Words))]
+    public void Every_word_has_a_label_a_person_reads(string value, string label) {
+        Assert.False(string.IsNullOrWhiteSpace(label), value);
+        Assert.Matches(@"^[A-Z0-9]", label);
+        Assert.DoesNotMatch("[a-z][A-Z]", label);
+        Assert.DoesNotContain('/', label);
+    }
+
+    /// <summary>The words a painting tool uses, where the engine's would be wrong or raw.</summary>
+    [Theory]
+    [InlineData("Copy", "Normal")]
+    [InlineData("ColourDodge", "Color Dodge")]
+    [InlineData("ColourBurn", "Color Burn")]
+    [InlineData("SignedAdd", "Signed Add")]
+    [InlineData("HardLight", "Hard Light")]
+    public void A_blend_reads_as_a_painting_tool_names_it(string blend, string label) {
+        Assert.Equal(label, StackDocuments.Vocabulary.Blends.Single(term => term.Value == blend).Label);
     }
 
     [Theory]
-    [MemberData(nameof(Blends))]
-    public void Every_blend_has_a_label(string blend) {
-        Assert.Contains(blend, KeysOf("Blends"));
+    [InlineData("ao", "Ambient Occlusion")]
+    [InlineData("bent", "Bent Normal")]
+    [InlineData("world", "World Normal")]
+    [InlineData("id", "ID")]
+    public void A_mesh_map_reads_as_what_it_is(string map, string label) {
+        Assert.Equal(label, StackDocuments.Vocabulary.MeshMaps.Single(term => term.Value == map).Label);
     }
 
-    /// <summary>The other way: a key no word reads is the mistake these tests are here for.</summary>
     [Fact]
-    public void Every_label_is_for_a_word_that_exists() {
-        Assert.Empty(KeysOf("Channels").Except(StackDocuments.Vocabulary.Usages));
-        Assert.Empty(KeysOf("Blends").Except(StackDocuments.Vocabulary.Blends));
-        Assert.Equal(Enum.GetNames<LayerBlendMode>().Order(), KeysOf("Blends").Order());
+    public void A_generator_reads_as_its_name_and_not_its_path() {
+        Assert.Contains(StackDocuments.Vocabulary.Generators, static term => term.Value == "Generators/Dirt" && term.Label == "Dirt");
+    }
+
+    [Fact]
+    public void Every_list_holds_every_word_of_its_enumeration_once() {
+        var vocabulary = StackDocuments.Vocabulary;
+        Assert.Equal(Enum.GetNames<LayerBlendMode>(), vocabulary.Blends.Select(static term => term.Value));
+        Assert.Equal(Enum.GetNames<LayerMaskSource>(), vocabulary.Masks.Select(static term => term.Value));
+        Assert.Equal(Enum.GetNames<LayerFillSource>(), vocabulary.Fills.Select(static term => term.Value));
+        Assert.Equal(Enum.GetNames<LayerProjection>(), vocabulary.Projections.Select(static term => term.Value));
+    }
+
+    /// <summary>A setting's choices carry labels too, in their order, and a free one carries none.</summary>
+    [Fact]
+    public void A_setting_with_choices_says_what_each_is_called() {
+        var usage = Graphs.GraphDocuments.Definition(
+            new Vixen.NodeGraph.SettingDefinition("Usage", "baseColor", Accepted: ["baseColor", "metalness", "ao"])
+        );
+        Assert.Equal(["Base Color", "Metallic", "Ambient Occlusion"], usage.Labels);
+        Assert.Null(Graphs.GraphDocuments.Definition(new Vixen.NodeGraph.SettingDefinition("Name", "")).Labels);
     }
 
     /// <summary>A number a client shows until it is set has to be the one the filter runs with.</summary>
@@ -211,6 +257,37 @@ public sealed partial class StackVocabularyTests {
         );
     }
 
+    /// <summary>
+    ///     A refusal a client explains carries a code and the names it was written from, so the client words it, and
+    ///     the API's own text can say it plainly for anyone else.
+    /// </summary>
+    [Fact]
+    public void A_brush_on_a_fill_is_refused_with_a_code_and_the_layer() {
+        var editor = new StackEditor(
+            "/tmp/Filled.vxlayers",
+            new() {
+                Name = "Filled",
+                Sets = [
+                    new() {
+                        Name = "Body",
+                        Channels = [new() { Usage = "baseColor" }],
+                        Layers = [new() { Id = "fill", Name = "Rust", Kind = LayerKind.Fill }]
+                    }
+                ]
+            }
+        );
+
+        var refusal = Assert.Throws<StackEditRefusedException>(() =>
+            editor.Apply(
+                new([new StackStroke("a", "fill", "baseColor", new(4f), [1f, 1f, 1f, 1f], [new(1f, 1f)])])
+            )
+        );
+
+        Assert.Equal(Api.Refusals.NotPaintLayer, refusal.Code);
+        Assert.Equal("Rust", refusal.Values["layer"]);
+        Assert.DoesNotContain("takes a brush", refusal.Message, StringComparison.Ordinal);
+    }
+
     /// <summary>A lazy mouse is a distance: one behind the pointer by less than nothing means nothing.</summary>
     [Theory]
     [InlineData(-1f)]
@@ -237,12 +314,4 @@ public sealed partial class StackVocabularyTests {
             )
         );
     }
-
-    static List<string> KeysOf(string table) {
-        var body = Regex.Match(Labels, $@"const {table}:[^=]*= \{{(?<body>[^}}]*)\}}").Groups["body"].Value;
-        return [..Key().Matches(body).Select(static match => match.Groups[1].Value)];
-    }
-
-    [GeneratedRegex(@"^\s*(\w+):", RegexOptions.Multiline)]
-    private static partial Regex Key();
 }

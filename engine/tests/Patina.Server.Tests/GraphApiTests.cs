@@ -857,6 +857,9 @@ public sealed partial class GraphApiTests : IDisposable {
 
             using var refused = await client.DeleteAsync($"/api/v1/graphs/{state.Id}", Token);
             Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+            // A client tells the refusal apart by its code, and says it in its own words.
+            using var problem = JsonDocument.Parse(await refused.Content.ReadAsStringAsync(Token));
+            Assert.Equal("document-unsaved", problem.RootElement.GetProperty("code").GetString());
             using var discarded = await client.DeleteAsync($"/api/v1/graphs/{state.Id}?discard=true", Token);
             Assert.Equal(HttpStatusCode.NoContent, discarded.StatusCode);
             Assert.Equal(before, await File.ReadAllTextAsync(state.Path, Token));

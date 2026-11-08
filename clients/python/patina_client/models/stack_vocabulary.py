@@ -12,6 +12,7 @@ from typing import cast
 
 if TYPE_CHECKING:
   from ..models.stack_filter_kind import StackFilterKind
+  from ..models.stack_term import StackTerm
   from ..models.stack_vocabulary_generator_parameters import StackVocabularyGeneratorParameters
 
 
@@ -24,28 +25,32 @@ T = TypeVar("T", bound="StackVocabulary")
 
 @_attrs_define
 class StackVocabulary:
-    """ The words a stack's fields take, so that a client holds no list of its own.
+    """ The words a stack's fields take, each with its label, so that a client holds no list of its own.
 
         Attributes:
-            blends (list[str]): The sixteen blend modes.
+            blends (list[StackTerm]): The sixteen blend modes.
             filters (list[StackFilterKind]): The filters a layer can be.
-            masks (list[str]): The mask sources.
-            generators (list[str]): The compounds that read a mesh's bakes.
-            mesh_maps (list[str]): The maps a bake mask or a generator can read.
-            alphas (list[str]): The named brush alphas.
+            masks (list[StackTerm]): The mask sources.
+            fills (list[StackTerm]): What a fill layer reads.
+            projections (list[StackTerm]): How a fill's pictures land on the mesh.
+            generators (list[StackTerm]): The compounds that read a mesh's bakes.
+            mesh_maps (list[StackTerm]): The maps a bake mask or a generator can read.
+            alphas (list[StackTerm]): The named brush alphas.
             mask_effects (list[StackFilterKind]): The steps a mask can run.
-            usages (list[str]): The channels a stack can have.
+            usages (list[StackTerm]): The channels a stack can have.
             generator_parameters (StackVocabularyGeneratorParameters): The knobs each generator has, by its path.
      """
 
-    blends: list[str]
+    blends: list[StackTerm]
     filters: list[StackFilterKind]
-    masks: list[str]
-    generators: list[str]
-    mesh_maps: list[str]
-    alphas: list[str]
+    masks: list[StackTerm]
+    fills: list[StackTerm]
+    projections: list[StackTerm]
+    generators: list[StackTerm]
+    mesh_maps: list[StackTerm]
+    alphas: list[StackTerm]
     mask_effects: list[StackFilterKind]
-    usages: list[str]
+    usages: list[StackTerm]
     generator_parameters: StackVocabularyGeneratorParameters
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -55,8 +60,12 @@ class StackVocabulary:
 
     def to_dict(self) -> dict[str, Any]:
         from ..models.stack_filter_kind import StackFilterKind # noqa: PLC0415
+        from ..models.stack_term import StackTerm # noqa: PLC0415
         from ..models.stack_vocabulary_generator_parameters import StackVocabularyGeneratorParameters # noqa: PLC0415
-        blends = self.blends
+        blends = []
+        for blends_item_data in self.blends:
+            blends_item = blends_item_data.to_dict()
+            blends.append(blends_item)
 
 
 
@@ -67,19 +76,45 @@ class StackVocabulary:
 
 
 
-        masks = self.masks
+        masks = []
+        for masks_item_data in self.masks:
+            masks_item = masks_item_data.to_dict()
+            masks.append(masks_item)
 
 
 
-        generators = self.generators
+        fills = []
+        for fills_item_data in self.fills:
+            fills_item = fills_item_data.to_dict()
+            fills.append(fills_item)
 
 
 
-        mesh_maps = self.mesh_maps
+        projections = []
+        for projections_item_data in self.projections:
+            projections_item = projections_item_data.to_dict()
+            projections.append(projections_item)
 
 
 
-        alphas = self.alphas
+        generators = []
+        for generators_item_data in self.generators:
+            generators_item = generators_item_data.to_dict()
+            generators.append(generators_item)
+
+
+
+        mesh_maps = []
+        for mesh_maps_item_data in self.mesh_maps:
+            mesh_maps_item = mesh_maps_item_data.to_dict()
+            mesh_maps.append(mesh_maps_item)
+
+
+
+        alphas = []
+        for alphas_item_data in self.alphas:
+            alphas_item = alphas_item_data.to_dict()
+            alphas.append(alphas_item)
 
 
 
@@ -90,7 +125,10 @@ class StackVocabulary:
 
 
 
-        usages = self.usages
+        usages = []
+        for usages_item_data in self.usages:
+            usages_item = usages_item_data.to_dict()
+            usages.append(usages_item)
 
 
 
@@ -103,6 +141,8 @@ class StackVocabulary:
             "blends": blends,
             "filters": filters,
             "masks": masks,
+            "fills": fills,
+            "projections": projections,
             "generators": generators,
             "meshMaps": mesh_maps,
             "alphas": alphas,
@@ -118,9 +158,17 @@ class StackVocabulary:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.stack_filter_kind import StackFilterKind # noqa: PLC0415
+        from ..models.stack_term import StackTerm # noqa: PLC0415
         from ..models.stack_vocabulary_generator_parameters import StackVocabularyGeneratorParameters # noqa: PLC0415
         d = dict(src_dict)
-        blends = cast(list[str], d.pop("blends"))
+        blends = []
+        _blends = d.pop("blends")
+        for blends_item_data in (_blends):
+            blends_item = StackTerm.from_dict(blends_item_data)
+
+
+
+            blends.append(blends_item)
 
 
         filters = []
@@ -133,16 +181,64 @@ class StackVocabulary:
             filters.append(filters_item)
 
 
-        masks = cast(list[str], d.pop("masks"))
+        masks = []
+        _masks = d.pop("masks")
+        for masks_item_data in (_masks):
+            masks_item = StackTerm.from_dict(masks_item_data)
 
 
-        generators = cast(list[str], d.pop("generators"))
+
+            masks.append(masks_item)
 
 
-        mesh_maps = cast(list[str], d.pop("meshMaps"))
+        fills = []
+        _fills = d.pop("fills")
+        for fills_item_data in (_fills):
+            fills_item = StackTerm.from_dict(fills_item_data)
 
 
-        alphas = cast(list[str], d.pop("alphas"))
+
+            fills.append(fills_item)
+
+
+        projections = []
+        _projections = d.pop("projections")
+        for projections_item_data in (_projections):
+            projections_item = StackTerm.from_dict(projections_item_data)
+
+
+
+            projections.append(projections_item)
+
+
+        generators = []
+        _generators = d.pop("generators")
+        for generators_item_data in (_generators):
+            generators_item = StackTerm.from_dict(generators_item_data)
+
+
+
+            generators.append(generators_item)
+
+
+        mesh_maps = []
+        _mesh_maps = d.pop("meshMaps")
+        for mesh_maps_item_data in (_mesh_maps):
+            mesh_maps_item = StackTerm.from_dict(mesh_maps_item_data)
+
+
+
+            mesh_maps.append(mesh_maps_item)
+
+
+        alphas = []
+        _alphas = d.pop("alphas")
+        for alphas_item_data in (_alphas):
+            alphas_item = StackTerm.from_dict(alphas_item_data)
+
+
+
+            alphas.append(alphas_item)
 
 
         mask_effects = []
@@ -155,7 +251,14 @@ class StackVocabulary:
             mask_effects.append(mask_effects_item)
 
 
-        usages = cast(list[str], d.pop("usages"))
+        usages = []
+        _usages = d.pop("usages")
+        for usages_item_data in (_usages):
+            usages_item = StackTerm.from_dict(usages_item_data)
+
+
+
+            usages.append(usages_item)
 
 
         generator_parameters = StackVocabularyGeneratorParameters.from_dict(d.pop("generatorParameters"))
@@ -167,6 +270,8 @@ class StackVocabulary:
             blends=blends,
             filters=filters,
             masks=masks,
+            fills=fills,
+            projections=projections,
             generators=generators,
             mesh_maps=mesh_maps,
             alphas=alphas,

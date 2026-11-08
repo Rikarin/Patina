@@ -126,7 +126,7 @@ public sealed class StackEvaluator(
         try {
             return await worker.ConnectionAsync(patience.Token);
         } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            throw new TimeoutException("No Worker is connected.");
+            throw new RendererMissingException();
         }
     }
 
@@ -142,7 +142,7 @@ public sealed class StackEvaluator(
                 sequence = session.Sequence;
             }
         } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            throw new TimeoutException("No Worker reached this stack.");
+            throw new RendererMissingException("No GPU process reached this stack.");
         }
     }
 
@@ -211,7 +211,7 @@ public sealed class StackEvaluator(
             );
             return reply.StackLayerThumbnails ?? [];
         } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            throw new TimeoutException("No Worker is connected.");
+            throw new RendererMissingException();
         }
     }
 

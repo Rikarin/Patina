@@ -61,7 +61,7 @@ static class MaterialEndpoints {
                 new MaterialThumbnails(await thumbnails.DrawAsync(library, request.Sources, cancellationToken))
             );
         } catch (TimeoutException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+            return Refusals.Of(e, StatusCodes.Status503ServiceUnavailable);
         }
     }
 
