@@ -220,7 +220,8 @@ public sealed class BakeInputsTests : IDisposable {
                 With(
                     Request(),
                     options => options with {
-                        Maps = ["normal", map], Occlusion = options.Occlusion with { Minimum = minimum, Distance = distance }
+                        Maps = ["normal", map],
+                        Occlusion = options.Occlusion with { Minimum = minimum, Distance = distance }
                     }
                 )
             )
@@ -231,11 +232,13 @@ public sealed class BakeInputsTests : IDisposable {
         Assert.Equal(distance.ToString(CultureInfo.InvariantCulture), refusal.Values["distance"]);
         Assert.Null(
             With(
-                Request(),
-                options => options with {
-                    Maps = ["normal", "thickness"], Occlusion = options.Occlusion with { Minimum = minimum, Distance = distance }
-                }
-            ).Options.Problem()
+                    Request(),
+                    options => options with {
+                        Maps = ["normal", "thickness"],
+                        Occlusion = options.Occlusion with { Minimum = minimum, Distance = distance }
+                    }
+                )
+                .Options.Problem()
         );
     }
 

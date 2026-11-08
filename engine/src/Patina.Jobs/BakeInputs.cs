@@ -12,7 +12,7 @@ public sealed class BakeRefusedException : Exception {
 
     public BakeRefusedException(string message, Exception innerException) : base(message, innerException) { }
 
-    /// <summary>Refused for options a client can explain in its own words, by <paramref name="refusal" />'s code.</summary>
+    /// <summary>Refused for options a client says in its own words, by <paramref name="refusal" />'s code.</summary>
     public BakeRefusedException(BakeOptionsRefusal refusal) : base(refusal?.Detail) {
         ArgumentNullException.ThrowIfNull(refusal);
         Code = refusal.Code;

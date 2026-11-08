@@ -6,14 +6,15 @@ using System.Text.Json;
 
 namespace Patina.Server.Tests;
 
-/// <summary>Bake options no bake should run with are refused with a code, before anything is kept or queued (#228).</summary>
+/// <summary>Bake options no bake should run with are refused with a code, before anything is kept or queued.</summary>
+/// <remarks>#228.</remarks>
 public sealed class BakeRefusalApiTests : IAsyncLifetime {
     readonly ServerFixture server = new();
     HttpClient client = null!;
 
     CancellationToken Token => TestContext.Current.CancellationToken;
 
-    /// <summary>Occlusion whose minimum occluder distance is the occlusion distance: every ray would start past its reach.</summary>
+    /// <summary>A minimum occluder distance at the occlusion distance: every ray would start past its reach.</summary>
     static BakeOptions White => new() { Maps = ["normal", "ao"], Occlusion = new() { Distance = 0.2, Minimum = 0.2 } };
 
     public async ValueTask InitializeAsync() {
@@ -55,7 +56,10 @@ public sealed class BakeRefusalApiTests : IAsyncLifetime {
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
         var (code, values) = await RefusalAsync(refused);
         Assert.Equal(Refusals.BakeOccluderMinimum, code);
-        Assert.Equal(("0.2", "0.2"), (values.GetProperty("minimum").GetString(), values.GetProperty("distance").GetString()));
+        Assert.Equal(
+            ("0.2", "0.2"),
+            (values.GetProperty("minimum").GetString(), values.GetProperty("distance").GetString())
+        );
 
         // Without occlusion or the bent normal nothing reads the minimum, so it is kept as it is.
         using var kept = await client.PutAsJsonAsync(
@@ -67,10 +71,10 @@ public sealed class BakeRefusalApiTests : IAsyncLifetime {
     }
 
     [Fact]
-    public async Task A_bake_with_a_minimum_occluder_distance_past_the_occlusion_distance_is_refused_before_it_queues() {
+    public async Task A_bake_with_a_minimum_past_the_occlusion_distance_is_refused_before_it_queues() {
         using var refused = await client.PostAsJsonAsync(
             "/api/v1/jobs/bakes",
-            new BakeRequest {
+            new() {
                 High = ["high.glb"],
                 Low = "low.glb",
                 Output = "out",

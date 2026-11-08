@@ -95,7 +95,7 @@ public sealed record BakeOptions {
     /// <summary>What is wrong with these options, or null when a bake can use them.</summary>
     public string? Problem() => Refusal()?.Detail;
 
-    /// <summary>What is wrong with these options, with a code when a client is expected to explain it, or null.</summary>
+    /// <summary>What is wrong with these options, with a code when a client explains it, or null.</summary>
     public BakeOptionsRefusal? Refusal() {
         if (Check() is { } problem) {
             return new(problem, null, new Dictionary<string, string>());
@@ -130,7 +130,7 @@ public sealed record BakeOptions {
     }
 }
 
-/// <summary>Why bake options cannot be used: the neutral sentence, and a stable code with the values it names, or none.</summary>
+/// <summary>Why bake options cannot be used: the neutral sentence, and a code with its values, or none.</summary>
 /// <param name="Detail">What is wrong, in the Server's words.</param>
 /// <param name="Code">A code a client can say in its own words, or null for one it is not expected to explain.</param>
 /// <param name="Values">The values the detail was written from, by name.</param>
