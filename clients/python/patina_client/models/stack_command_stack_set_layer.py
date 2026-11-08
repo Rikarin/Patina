@@ -61,8 +61,8 @@ class StackCommandStackSetLayer:
                 to, replacing what these names held.
             filter_node (None | str | Unset): The node or compound a filter runs, or empty to go back to the named filter.
             anchor_point (None | str | Unset): The anchor point it publishes, or empty for none. A new name rewrites every
-                reference to the old one, in the same
-                step.
+                reference to the old one, in the
+                same step.
             anchor (None | StackAnchorRef | Unset):
             inputs (None | StackCommandStackSetLayerInputsType1 | Unset): The image inputs of a graph fill or a filter that
                 anchor points feed, replacing all of them.

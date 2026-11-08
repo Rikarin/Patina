@@ -35,92 +35,6 @@ public sealed class StackEditRefusedException : Exception {
     public IReadOnlyDictionary<string, string> Values { get; } = new Dictionary<string, string>();
 }
 
-/// <summary>A stroke as the journal holds it: where the brush went, in order, which is all a Worker needs.</summary>
-public sealed class StackJournalEntry(
-    long id,
-    StackStroke first,
-    string paint,
-    string usage,
-    uint colour,
-    string model,
-    uint? start
-) {
-    public long Id { get; } = id;
-
-    public string Stroke { get; } = first.Stroke;
-
-    public string Layer { get; } = first.Layer;
-
-    public string Paint { get; } = paint;
-
-    public string Usage { get; } = usage;
-
-    public StackBrush Brush { get; } = first.Brush;
-
-    public uint Colour { get; } = colour;
-
-    /// <summary>The mesh that stood when this was painted: a later binding must not move it.</summary>
-    public string Model { get; } = model;
-
-    /// <summary>What a canvas this stroke was the first on starts as, or null to leave it as it is.</summary>
-    public uint? Start { get; } = start;
-
-    public StackView? View { get; } = first.View;
-
-    public string Curve { get; } = first.Curve;
-
-    public string? Mirror { get; } = first.Mirror;
-
-    public List<StackStamp> Stamps { get; } = [..first.Stamps];
-
-    public bool Open { get; set; } = first.Open;
-
-    /// <summary>
-    ///     The canvas this entry makes <see cref="Paint" /> a copy of, relative to the stack or absolute, or null for a
-    ///     stroke. In the journal so that a Worker copies it after the strokes that made it and before any on the copy.
-    /// </summary>
-    public string? From { get; private init; }
-
-    /// <summary>
-    ///     A canvas that starts as a copy of another, which is how a duplicate or a paste gets pixels of its own.
-    /// </summary>
-    public static StackJournalEntry Copy(long id, string paint, string from, string model) =>
-        new(
-            id,
-            new(string.Empty, string.Empty, string.Empty, new(1f), [0f, 0f, 0f, 0f], []),
-            paint,
-            string.Empty,
-            0u,
-            model,
-            null
-        ) { From = from };
-
-    /// <summary>
-    ///     What this entry makes <see cref="Paint" /> hold instead of strokes: one group of a document, composited, which
-    ///     is how a group is flattened. The document is the one that stood then, so a Worker that replays it later
-    ///     writes the same canvas. Null for a stroke.
-    /// </summary>
-    public StackCaptureEntry? Capture { get; private init; }
-
-    /// <summary>A canvas that starts as what one group of a document composites: a flattened group's cache.</summary>
-    public static StackJournalEntry Captured(long id, string paint, StackCaptureEntry capture, string model) =>
-        new(
-            id,
-            new(string.Empty, string.Empty, string.Empty, new(1f), [0f, 0f, 0f, 0f], []),
-            paint,
-            string.Empty,
-            0u,
-            model,
-            null
-        ) { Capture = capture };
-}
-
-/// <summary>What a flattened group's canvas is made of.</summary>
-/// <param name="Document">The stack as text, as it stood when the group was flattened.</param>
-/// <param name="Layer">The group.</param>
-/// <param name="Backdrop">Whether the canvas holds what is beneath the group, which only the whole stack's does.</param>
-public sealed record StackCaptureEntry(string Document, string Layer, bool Backdrop);
-
 /// <summary>
 ///     One layer stack and its undo history. The document is Vixen's and so are the commands. Strokes are not pixels
 ///     here: the Server keeps where each brush went, and that journal is what the pixels are a function of, so a Worker
@@ -533,12 +447,17 @@ public sealed class StackEditor : ILayerStackDocument {
                 Anchor = StackDocuments.Reference(mask.Anchor),
                 Generator = mask.Generator,
                 GeneratorTexts = GeneratorKnobs(held, mask),
-                GeneratorInputs = StackDocuments.References(mask.Inputs)
-                    ?? (mask.Generator != held.Generator ? [] : held.GeneratorInputs),
+                GeneratorInputs = GeneratorFeeds(held, mask),
                 Map = mask.Map,
                 Effects = StackDocuments.WithSelection(held.Effects, mask)
             };
     }
+
+    /// <summary>Another generator has other image inputs, so what fed the last one does not follow.</summary>
+    static Dictionary<string, AnchorReference> GeneratorFeeds(MaskAsset held, StackMask mask) =>
+        StackDocuments.References(mask.Inputs) is { } chosen ? chosen
+        : mask.Generator != held.Generator ? []
+        : held.GeneratorInputs;
 
     /// <summary>Another generator has other knobs, so what was set for the last one does not follow.</summary>
     static Dictionary<string, string> GeneratorKnobs(MaskAsset held, StackMask mask) =>
@@ -705,8 +624,8 @@ public sealed class StackEditor : ILayerStackDocument {
 
     /// <summary>Refuses a stroke on a layer's own pixels that would land nowhere, or nowhere that shows.</summary>
     void Writable(StackStroke stroke, LayerAsset layer) {
-        // A mask is any layer's, and only a paint layer has pixels of its own besides — or a flattened group, whose canvas
-        // is its picture until it is unflattened.
+        // A mask is any layer's, and only a paint layer has pixels of its own besides — or a flattened group, whose
+        // canvas is its picture until it is unflattened.
         if (layer.Kind != LayerKind.Paint && !layer.Flattened) {
             var kind = layer.Kind.ToString().ToLowerInvariant();
             throw new StackEditRefusedException(
@@ -939,19 +858,17 @@ public sealed class StackEditor : ILayerStackDocument {
 
         if (point.Length == 0
             && layer.AnchorPoint.Length > 0
-            && LayerStackEdit.AnchorUses(Set).FirstOrDefault(use => use.Reference.Anchor == layer.AnchorPoint) is
-                { } use) {
+            && LayerStackEdit.AnchorUses(Set)
+                .FirstOrDefault(use => use.Reference.Anchor == layer.AnchorPoint) is { } use) {
             throw new StackEditRefusedException(
                 $"'{use.Layer}' reads the anchor point '{layer.AnchorPoint}'.",
                 Api.Refusals.AnchorInUse,
-                new Dictionary<string, string> {
-                    ["anchor"] = layer.AnchorPoint, ["layer"] = Require(use.Layer).Name
-                }
+                new Dictionary<string, string> { ["anchor"] = layer.AnchorPoint, ["layer"] = Require(use.Layer).Name }
             );
         }
     }
 
-    /// <summary>Every reference to one anchor point pointed at its new name, as one more command of the same step.</summary>
+    /// <summary>Every reference to one anchor point pointed at its new name, as one more command of the step.</summary>
     SetDocumentCommand Reanchored(string from, string to) {
         var set = Set;
         var moved = set with { Layers = LayerStackEdit.Reanchored(set.Layers, from, to) };
@@ -975,9 +892,17 @@ public sealed class StackEditor : ILayerStackDocument {
 
             id = LayerStackEdit.FreeId(Set, "flattened");
             var whole = Set with {
-                Layers = [new() { Id = id, Name = FreeName("Flattened"), Kind = LayerKind.Group, Children = [..layers] }]
+                Layers = [
+                    new() { Id = id, Name = FreeName("Flattened"), Kind = LayerKind.Group, Children = [..layers] }
+                ]
             };
-            run(new SetDocumentCommand(this, Document with { Sets = [..Document.Sets.Select(held => held.Name == set ? whole : held)] }, "Flatten stack"));
+            run(
+                new SetDocumentCommand(
+                    this,
+                    Document with { Sets = [..Document.Sets.Select(held => held.Name == set ? whole : held)] },
+                    "Flatten stack"
+                )
+            );
         }
 
         var group = Require(id);
@@ -995,7 +920,7 @@ public sealed class StackEditor : ILayerStackDocument {
         step.Strokes.Add(StackJournalEntry.Captured(nextEntry++, paint, capture, Document.Model));
     }
 
-    /// <summary>A flattened group back to its children. Its canvas stays in the history, for an undo to bring back.</summary>
+    /// <summary>A flattened group back to its children. Its canvas stays in the history, for an undo.</summary>
     void Unflatten(string id, string set, Action<IAuthoringCommand> run) {
         var group = Require(id);
         if (!group.Flattened) {

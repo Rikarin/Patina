@@ -145,7 +145,9 @@ public sealed record StackMeshParts(IReadOnlyList<string> Parts, string? Asset =
 /// <param name="Enabled">Whether it runs.</param>
 /// <param name="Values">Its numbers, by port.</param>
 /// <param name="Texts">Its settings, by name.</param>
-/// <param name="Inputs">Its other image inputs, by port, each fed by an anchor point. The mask goes into the one left.</param>
+/// <param name="Inputs">
+///     Its other image inputs, by port, each fed by an anchor point. The mask goes into the one left.
+/// </param>
 public sealed record StackMaskEffect(
     string Node,
     bool Enabled = true,
@@ -398,11 +400,13 @@ public sealed record StackMoveLayer(string Layer, int Delta) : StackCommand;
 /// <param name="Parameters">What a graph fill sets the graph's knobs to, replacing what these names held.</param>
 /// <param name="FilterNode">The node or compound a filter runs, or empty to go back to the named filter.</param>
 /// <param name="AnchorPoint">
-///     The anchor point it publishes, or empty for none. A new name rewrites every reference to the old one, in the same
-///     step.
+///     The anchor point it publishes, or empty for none. A new name rewrites every reference to the old one, in the
+///     same step.
 /// </param>
 /// <param name="Anchor">The anchor point an Anchor fill reads.</param>
-/// <param name="Inputs">The image inputs of a graph fill or a filter that anchor points feed, replacing all of them.</param>
+/// <param name="Inputs">
+///     The image inputs of a graph fill or a filter that anchor points feed, replacing all of them.
+/// </param>
 public sealed record StackSetLayer(
     string Layer,
     string? Name = null,

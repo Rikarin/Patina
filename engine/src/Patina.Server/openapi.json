@@ -10640,7 +10640,7 @@
               "null",
               "string"
             ],
-            "description": "The anchor point it publishes, or empty for none. A new name rewrites every reference to the old one, in the same\nstep."
+            "description": "The anchor point it publishes, or empty for none. A new name rewrites every reference to the old one, in the\nsame step."
           },
           "anchor": {
             "oneOf": [

@@ -3,11 +3,11 @@ using Vixen.Core.Imaging;
 
 namespace Patina.Server.Tests;
 
-/// <summary>Flattening with a real Worker: the canvas is the picture the folder made, and the journal makes it again.</summary>
+/// <summary>Flattening with a real Worker: the canvas is the folder's picture, and the journal makes it anew.</summary>
 public sealed partial class StackProcessTests {
     /// <summary>
-    ///     A folder flattened exports what it exported before, to a canvas's rounding; a Worker that dies writes the same
-    ///     canvas from the journal; unflattening and undoing are the picture before, exactly.
+    ///     A folder flattened exports what it exported before, to a canvas's rounding; a Worker that dies writes the
+    ///     same canvas from the journal; unflattening and undoing are the picture before, exactly.
     /// </summary>
     [Fact]
     public async Task A_flattened_folder_exports_what_its_layers_did() {
@@ -64,11 +64,12 @@ public sealed partial class StackProcessTests {
         );
     }
 
-    /// <summary>Each map's file, within the rounding a canvas adds, and different from nothing.</summary>
+    /// <summary>Each map's file, within the rounding a canvas adds.</summary>
     static void Close(IReadOnlyList<StackPixels> before, IReadOnlyList<StackPixels> after) {
+        var files = after.ToDictionary(static map => map.Usage, static map => map.File!);
         foreach (var map in before) {
             var expected = PngCodec.Decode(File.ReadAllBytes(map.File!)).Pixels;
-            var actual = PngCodec.Decode(File.ReadAllBytes(after.Single(other => other.Usage == map.Usage).File!)).Pixels;
+            var actual = PngCodec.Decode(File.ReadAllBytes(files[map.Usage])).Pixels;
             var worst = expected.Zip(actual, static (a, b) => Math.Abs(a - b)).Max();
             Assert.True(worst <= 3, $"'{map.Usage}' is {worst} of 255 away from what the folder's layers made.");
         }

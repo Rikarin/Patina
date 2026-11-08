@@ -41,8 +41,8 @@ public static class Refusals {
     public const string AnchorInUse = "anchor-in-use";
 
     /// <summary>
-    ///     A group whose picture no canvas could hold, or that is not a group. Values: <c>layer</c>, <c>reason</c>, which
-    ///     is the Server's own sentence.
+    ///     A group whose picture no canvas could hold, or that is not a group. Values: <c>layer</c>, and
+    ///     <c>reason</c>, which is the Server's own sentence.
     /// </summary>
     public const string FlattenRefused = "flatten-refused";
 

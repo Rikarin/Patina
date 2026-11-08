@@ -33,7 +33,7 @@ public sealed class StackAnchorFlattenTests {
 
         Assert.Equal(("Base", "base"), (anchor.Name, anchor.Layer));
         Assert.Equal(
-            [new StackAnchorUse("over", "fill", ""), new StackAnchorUse("over", "mask", "roughness")],
+            [new StackAnchorUse("over", "fill", string.Empty), new StackAnchorUse("over", "mask", "roughness")],
             anchor.Uses
         );
     }
@@ -50,7 +50,7 @@ public sealed class StackAnchorFlattenTests {
         Assert.Equal(Refusals.AnchorTaken, taken.Code);
 
         var read = Assert.Throws<StackEditRefusedException>(() =>
-            editor.Apply(new([new StackSetLayer("base", AnchorPoint: "")]))
+            editor.Apply(new([new StackSetLayer("base", AnchorPoint: string.Empty)]))
         );
         Assert.Equal(Refusals.AnchorInUse, read.Code);
         Assert.Equal("Over", read.Values["layer"]);
@@ -64,8 +64,10 @@ public sealed class StackAnchorFlattenTests {
 
         var points = LayerStackEdit.AnchorPoints(editor.Set);
         Assert.Equal(["Base", "Base 2"], points.Keys);
-        var copy = editor.Set.Layers.Single(layer => layer.Id != "over" && layer.Mask.Anchor.Anchor.Length > 0
-            && layer.Id.StartsWith("over", StringComparison.Ordinal));
+        var copy = editor.Set.Layers.Single(static layer => layer.Id != "over"
+            && layer.Mask.Anchor.Anchor.Length > 0
+            && layer.Id.StartsWith("over", StringComparison.Ordinal)
+        );
         Assert.Equal("Base 2", copy.Mask.Anchor.Anchor);
     }
 
@@ -77,7 +79,7 @@ public sealed class StackAnchorFlattenTests {
 
         var folder = Layer(editor, "folder");
         Assert.True(folder.Flattened);
-        Assert.True(StackDocuments.Layers(editor.Set.Layers).Single(layer => layer.Id == "folder").Flattened);
+        Assert.True(StackDocuments.Layers(editor.Set.Layers).Single(static layer => layer.Id == "folder").Flattened);
         var entry = Assert.Single(editor.Standing, static entry => entry.Capture is not null);
         Assert.Equal(folder.Paint, entry.Paint);
         Assert.Equal(("folder", false), (entry.Capture!.Layer, entry.Capture.Backdrop));
@@ -145,26 +147,30 @@ public sealed class StackAnchorFlattenTests {
     static StackEditor Anchored() {
         var editor = new StackEditor("/tmp/Anchored.vxlayers", Sample());
         editor.Apply(
-            new([
-                new StackSetLayer("base", AnchorPoint: "Base"),
-                new StackAddLayer("fill", "Over")
-            ])
+            new(
+                [
+                    new StackSetLayer("base", AnchorPoint: "Base"),
+                    new StackAddLayer("fill", "Over")
+                ]
+            )
         );
         var over = editor.Set.Layers[^1].Id;
         Assert.Equal("over-1", over);
         editor.Apply(
-            new([
-                new StackSetLayer(
-                    over,
-                    Fill: "Anchor",
-                    Anchor: new("Base"),
-                    Mask: new("Anchor", Anchor: new("Base", "roughness"))
-                )
-            ])
+            new(
+                [
+                    new StackSetLayer(
+                        over,
+                        Fill: "Anchor",
+                        Anchor: new("Base"),
+                        Mask: new("Anchor", Anchor: new("Base", "roughness"))
+                    )
+                ]
+            )
         );
 
         // An id a reader can name, so the asserts read as the stack does.
-        editor.Apply(new([new StackSetLayer(over, Name: "Over")]));
+        editor.Apply(new([new StackSetLayer(over, "Over")]));
         return Renamed(editor, over, "over");
     }
 

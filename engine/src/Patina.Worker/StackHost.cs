@@ -914,9 +914,9 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
         }
 
         /// <summary>
-        ///     A canvas made what one group of a document composites, which is what a flattened group shows. ⚠ Into the
-        ///     canvas object that is there, for <see cref="CanvasCopy" />'s reason, and from the document the journal holds
-        ///     rather than the one standing now: a replay after this Worker is lost has to write the canvas the artist saw.
+        ///     A canvas made what one group of a document composites, which is what a flattened group shows. ⚠ Into
+        ///     the canvas object that is there, for <see cref="CanvasCopy" />'s reason, and from the document the
+        ///     journal holds rather than the one standing now: a replay after a lost Worker writes what the artist saw.
         /// </summary>
         sealed class CanvasCapture(Session session, string target, StackCapture capture) : IAuthoringCommand {
             public string Name => "Flatten";
@@ -932,8 +932,8 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
                     return;
                 }
 
-                // A draft, as the picture the artist was looking at is one; a refusal leaves the canvas empty, which the
-                // stack's own problems will already be saying.
+                // A draft, as the picture the artist was looking at is one; a refusal leaves the canvas empty, which
+                // the stack's own problems will already be saying.
                 using LayerStackEvaluator run = new(session.evaluator, session.canvases, session.path, session.fill) {
                     Draft = true, Capture = capture.Layer, Backdrop = capture.Backdrop
                 };

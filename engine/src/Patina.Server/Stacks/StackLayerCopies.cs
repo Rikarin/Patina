@@ -52,8 +52,8 @@ sealed class StackLayerCopies(StackEditor editor, string set) {
     }
 
     /// <summary>
-    ///     A reference to an anchor point that came along now reads the copy of it, and any other stays. A copy's anchor
-    ///     point takes a name nothing in the stack publishes, so no copy's name is another's original.
+    ///     A reference to an anchor point that came along now reads the copy of it, and any other stays. A copy's
+    ///     anchor point takes a name nothing in the stack publishes, so no copy's name is another's original.
     /// </summary>
     public LayerAsset Reanchored(LayerAsset layer) =>
         renamed.Aggregate(layer, static (held, move) => LayerStackEdit.Reanchored([held], move.Key, move.Value)[0]);

@@ -3809,8 +3809,8 @@ export interface components {
       /** @description The node or compound a filter runs, or empty to go back to the named filter. */
       filterNode?: null | string;
       /**
-       * @description The anchor point it publishes, or empty for none. A new name rewrites every reference to the old one, in the same
-       *     step.
+       * @description The anchor point it publishes, or empty for none. A new name rewrites every reference to the old one, in the
+       *     same step.
        */
       anchorPoint?: null | string;
       anchor?: null | components['schemas']['StackAnchorRef'];

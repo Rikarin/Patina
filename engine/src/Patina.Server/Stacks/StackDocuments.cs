@@ -135,7 +135,9 @@ public static class StackDocuments {
         reference is null ? new() : new() { Anchor = reference.Anchor, Channel = reference.Channel };
 
     /// <summary>Anchor point references by port, as a file holds them, or null when none were given.</summary>
-    public static Dictionary<string, AnchorReference>? References(IReadOnlyDictionary<string, StackAnchorRef>? inputs) =>
+    public static Dictionary<string, AnchorReference>? References(
+        IReadOnlyDictionary<string, StackAnchorRef>? inputs
+    ) =>
         inputs?.ToDictionary(static pair => pair.Key, static pair => Reference(pair.Value), StringComparer.Ordinal);
 
     static StackAnchorRef? Wire(AnchorReference reference) =>
