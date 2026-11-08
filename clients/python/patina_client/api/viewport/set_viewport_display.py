@@ -9,7 +9,7 @@ from ...types import Response, UNSET
 from ... import errors
 
 from ...models.problem_details import ProblemDetails
-from ...models.viewport_look_request import ViewportLookRequest
+from ...models.viewport_display import ViewportDisplay
 from ...models.viewport_state import ViewportState
 from typing import cast
 
@@ -17,7 +17,7 @@ from typing import cast
 
 def _get_kwargs(
     *,
-    body: ViewportLookRequest,
+    body: ViewportDisplay,
 
 ) -> dict[str, Any]:
     headers: dict[str, Any] = {}
@@ -29,7 +29,7 @@ def _get_kwargs(
 
     _kwargs: dict[str, Any] = {
         "method": "put",
-        "url": "/api/v1/viewport/look",
+        "url": "/api/v1/viewport/display",
     }
 
     _kwargs["json"] = body.to_dict()
@@ -56,6 +56,13 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Res
 
         return response_404
 
+    if response.status_code == 422:
+        response_422 = ProblemDetails.from_dict(response.json())
+
+
+
+        return response_422
+
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
     else:
@@ -74,14 +81,18 @@ def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Res
 def sync_detailed(
     *,
     client: AuthenticatedClient | Client,
-    body: ViewportLookRequest,
+    body: ViewportDisplay,
 
 ) -> Response[ProblemDetails | ViewportState]:
-    """ Views frames through a .cube table. No export sees it. A null path views without one.
+    """ Sets how the model is lit, shown and finished: environment, light, exposure, curve, look, view, lens
+    and effects. No export sees any of it.
 
     Args:
-        body (ViewportLookRequest): Views the frame through a table, which changes what is shown
-            and nothing that is exported.
+        body (ViewportDisplay): How the viewport is lit, shown and finished. None of it reaches a
+            file that is exported; a project keeps it, so
+            it opens as it was left. Angles are radians and exposure is in stops; an effect at zero is
+            off. A field left out
+            of a request is the one the viewport opens with.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -106,14 +117,18 @@ def sync_detailed(
 def sync(
     *,
     client: AuthenticatedClient | Client,
-    body: ViewportLookRequest,
+    body: ViewportDisplay,
 
 ) -> ProblemDetails | ViewportState | None:
-    """ Views frames through a .cube table. No export sees it. A null path views without one.
+    """ Sets how the model is lit, shown and finished: environment, light, exposure, curve, look, view, lens
+    and effects. No export sees any of it.
 
     Args:
-        body (ViewportLookRequest): Views the frame through a table, which changes what is shown
-            and nothing that is exported.
+        body (ViewportDisplay): How the viewport is lit, shown and finished. None of it reaches a
+            file that is exported; a project keeps it, so
+            it opens as it was left. Angles are radians and exposure is in stops; an effect at zero is
+            off. A field left out
+            of a request is the one the viewport opens with.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -133,14 +148,18 @@ body=body,
 async def asyncio_detailed(
     *,
     client: AuthenticatedClient | Client,
-    body: ViewportLookRequest,
+    body: ViewportDisplay,
 
 ) -> Response[ProblemDetails | ViewportState]:
-    """ Views frames through a .cube table. No export sees it. A null path views without one.
+    """ Sets how the model is lit, shown and finished: environment, light, exposure, curve, look, view, lens
+    and effects. No export sees any of it.
 
     Args:
-        body (ViewportLookRequest): Views the frame through a table, which changes what is shown
-            and nothing that is exported.
+        body (ViewportDisplay): How the viewport is lit, shown and finished. None of it reaches a
+            file that is exported; a project keeps it, so
+            it opens as it was left. Angles are radians and exposure is in stops; an effect at zero is
+            off. A field left out
+            of a request is the one the viewport opens with.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -165,14 +184,18 @@ async def asyncio_detailed(
 async def asyncio(
     *,
     client: AuthenticatedClient | Client,
-    body: ViewportLookRequest,
+    body: ViewportDisplay,
 
 ) -> ProblemDetails | ViewportState | None:
-    """ Views frames through a .cube table. No export sees it. A null path views without one.
+    """ Sets how the model is lit, shown and finished: environment, light, exposure, curve, look, view, lens
+    and effects. No export sees any of it.
 
     Args:
-        body (ViewportLookRequest): Views the frame through a table, which changes what is shown
-            and nothing that is exported.
+        body (ViewportDisplay): How the viewport is lit, shown and finished. None of it reaches a
+            file that is exported; a project keeps it, so
+            it opens as it was left. Angles are radians and exposure is in stops; an effect at zero is
+            off. A field left out
+            of a request is the one the viewport opens with.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.

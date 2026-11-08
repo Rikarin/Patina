@@ -8,6 +8,7 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
+from ..types import UNSET, Unset
 from typing import cast
 from uuid import UUID
 
@@ -16,6 +17,7 @@ if TYPE_CHECKING:
   from ..models.project_file import ProjectFile
   from ..models.project_mesh_info import ProjectMeshInfo
   from ..models.unwrap_options import UnwrapOptions
+  from ..models.viewport_display import ViewportDisplay
 
 
 
@@ -41,6 +43,7 @@ class ProjectContents:
             auto_unwrap (bool): Whether a mesh with no UV layout is given one when it is set.
             preserve_paint (bool): Whether paint moves to a new mesh's layout.
             unwrap (UnwrapOptions): How Auto Unwrap lays out a mesh. Each texture set gets an atlas of its own.
+            viewport (None | Unset | ViewportDisplay):
      """
 
     id: UUID
@@ -54,6 +57,7 @@ class ProjectContents:
     auto_unwrap: bool
     preserve_paint: bool
     unwrap: UnwrapOptions
+    viewport: None | Unset | ViewportDisplay = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -65,6 +69,7 @@ class ProjectContents:
         from ..models.project_file import ProjectFile # noqa: PLC0415
         from ..models.project_mesh_info import ProjectMeshInfo # noqa: PLC0415
         from ..models.unwrap_options import UnwrapOptions # noqa: PLC0415
+        from ..models.viewport_display import ViewportDisplay # noqa: PLC0415
         id = str(self.id)
 
         name = self.name
@@ -107,6 +112,14 @@ class ProjectContents:
 
         unwrap = self.unwrap.to_dict()
 
+        viewport: dict[str, Any] | None | Unset
+        if isinstance(self.viewport, Unset):
+            viewport = UNSET
+        elif isinstance(self.viewport, ViewportDisplay):
+            viewport = self.viewport.to_dict()
+        else:
+            viewport = self.viewport
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -123,6 +136,8 @@ class ProjectContents:
             "preservePaint": preserve_paint,
             "unwrap": unwrap,
         })
+        if viewport is not UNSET:
+            field_dict["viewport"] = viewport
 
         return field_dict
 
@@ -134,6 +149,7 @@ class ProjectContents:
         from ..models.project_file import ProjectFile # noqa: PLC0415
         from ..models.project_mesh_info import ProjectMeshInfo # noqa: PLC0415
         from ..models.unwrap_options import UnwrapOptions # noqa: PLC0415
+        from ..models.viewport_display import ViewportDisplay # noqa: PLC0415
         d = dict(src_dict)
         id = UUID(d.pop("id"))
 
@@ -195,6 +211,26 @@ class ProjectContents:
 
 
 
+        def _parse_viewport(data: object) -> None | Unset | ViewportDisplay:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                viewport_type_1 = ViewportDisplay.from_dict(data)
+
+
+
+                return viewport_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | Unset | ViewportDisplay, data)
+
+        viewport = _parse_viewport(d.pop("viewport", UNSET))
+
+
         project_contents = cls(
             id=id,
             name=name,
@@ -207,6 +243,7 @@ class ProjectContents:
             auto_unwrap=auto_unwrap,
             preserve_paint=preserve_paint,
             unwrap=unwrap,
+            viewport=viewport,
         )
 
 

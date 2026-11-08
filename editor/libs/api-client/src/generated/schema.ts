@@ -124,7 +124,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/v1/viewport/environment': {
+  '/api/v1/viewport/display': {
     parameters: {
       query?: never;
       header?: never;
@@ -132,25 +132,8 @@ export interface paths {
       cookie?: never;
     };
     get?: never;
-    /** Chooses what lights the model: a built-in room, or an .hdr or .exr panorama. */
-    put: operations['SetViewportEnvironment'];
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/viewport/look': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    /** Views frames through a .cube table. No export sees it. A null path views without one. */
-    put: operations['SetViewportLook'];
+    /** Sets how the model is lit, shown and finished: environment, light, exposure, curve, look, view, lens and effects. No export sees any of it. */
+    put: operations['SetViewportDisplay'];
     post?: never;
     delete?: never;
     options?: never;
@@ -2899,6 +2882,7 @@ export interface components {
       preservePaint: boolean;
       /** @description How Auto Unwrap lays a mesh out. */
       unwrap: components['schemas']['UnwrapOptions'];
+      viewport?: null | components['schemas']['ViewportDisplay'];
     };
     /** @description The body of `POST /api/v1/library/projects`. */
     ProjectCreateRequest: {
@@ -3161,6 +3145,7 @@ export interface components {
        */
       preservePaint?: null | boolean;
       unwrap?: null | components['schemas']['UnwrapOptions'];
+      viewport?: null | components['schemas']['ViewportDisplay'];
     };
     /** @description One project as the browser shows it. The project itself loads on open. */
     ProjectSummary: {
@@ -4194,7 +4179,7 @@ export interface components {
       /** @description The bake's job. */
       job: string;
     };
-    /** @description The viewport's camera: an orbit around the model. */
+    /** @description The viewport's camera: an orbit around the model. Its lens is in ViewportDisplay. */
     ViewportCameraState: {
       /**
        * Format: double
@@ -4208,7 +4193,8 @@ export interface components {
       pitch: number;
       /**
        * Format: double
-       * @description From the point it circles, in bounding radii.
+       * @description From the point it circles, in framings: at one, the sphere round the model's bounds just fits the picture's
+       *     narrower side, whatever its shape and the field of view. double ViewportCameraState.Framed shows the whole model.
        */
       distance: number;
       /**
@@ -4229,33 +4215,125 @@ export interface components {
        * @default 0
        */
       panZ: number;
+    };
+    /**
+     * @description How the viewport is lit, shown and finished. None of it reaches a file that is exported; a project keeps it, so
+     *     it opens as it was left. Angles are radians and exposure is in stops; an effect at zero is off. A field left out
+     *     of a request is the one the viewport opens with.
+     */
+    ViewportDisplay: {
+      /**
+       * @description A built-in room (studio, overcast or sunset), or the path of an `.hdr` or `.exr` panorama.
+       * @default studio
+       */
+      environment: string;
       /**
        * Format: double
-       * @description How bright the picture is, where one is as it comes.
+       * @description How far the environment has turned around the model, which the light does not follow.
+       * @default 0
+       */
+      environmentRotation: number;
+      /**
+       * Format: double
+       * @description How blurred the background is, 0 sharp to 1 a haze. Lighting is not blurred.
+       * @default 0.66
+       */
+      backgroundBlur: number;
+      /**
+       * Format: double
+       * @description How much of the environment shows behind the model, 0 none (black) to 1 all.
        * @default 1
+       */
+      backgroundOpacity: number;
+      /**
+       * Format: double
+       * @description How far the light has turned around the model.
+       * @default 0
+       */
+      lightRotation: number;
+      /**
+       * Format: double
+       * @description Stops above or below the picture as it comes.
+       * @default 0
        */
       exposure: number;
       /**
        * Format: double
-       * @description How far the light has turned around the model, in radians.
+       * @description How dark the model's shadow is, 0 none to 1 no direct light.
+       * @default 1
+       */
+      shadows: number;
+      /**
+       * @description One of IReadOnlyList&lt;string&gt; ViewportToneMappings.All.
+       * @default aces
+       */
+      toneMapping: string;
+      /** @description A `.cube` table the frame is viewed through after the curve, or null. */
+      look?: null | string;
+      /**
+       * @description One of IReadOnlyList&lt;string&gt; ViewportViews.All.
+       * @default lit
+       */
+      view: string;
+      /** @description The picture the `picture` view shows on the mesh, on the Server's machine, or null. */
+      picture?: null | string;
+      /**
+       * @description Whether the triangles' edges are drawn over the model.
+       * @default false
+       */
+      wireframe: boolean;
+      /**
+       * @description Whether parallel lines stay parallel. It keeps the size the picture has at the point the camera circles.
+       * @default false
+       */
+      orthographic: boolean;
+      /**
+       * Format: double
+       * @description The vertical field of view, from 0.1 to 2.6.
+       * @default 0.7
+       */
+      fieldOfView: number;
+      /**
+       * Format: double
+       * @description Contrast about middle grey, 0 to 2, where one leaves it alone.
+       * @default 1
+       */
+      contrast: number;
+      /**
+       * Format: double
+       * @description Colour, 0 grey to 2, where one leaves it alone.
+       * @default 1
+       */
+      saturation: number;
+      /**
+       * Format: double
+       * @description How dark the corners go, 0 to 1.
        * @default 0
        */
-      lightRotation: number;
-    };
-    /** @description Chooses what lights the model. */
-    ViewportEnvironmentRequest: {
-      /** @description A built-in room (studio, overcast or sunset), or the path of an `.hdr` or `.exr` panorama. */
-      source: string;
+      vignette: number;
+      /**
+       * Format: double
+       * @description Film grain, 0 to 1.
+       * @default 0
+       */
+      grain: number;
+      /**
+       * Format: double
+       * @description How far red and blue part towards the edges, 0 to 1.
+       * @default 0
+       */
+      aberration: number;
+      /**
+       * Format: double
+       * @description Contrast-adaptive sharpening, 0 to 1.
+       * @default 0
+       */
+      sharpen: number;
     };
     /** @description Asks the viewport to lay a graph's Output nodes over the mesh it is showing, as they stand now. */
     ViewportGraphRequest: {
       /** @description The graph's session. */
       graph: string;
-    };
-    /** @description Views the frame through a table, which changes what is shown and nothing that is exported. */
-    ViewportLookRequest: {
-      /** @description A `.cube` file, or null to view without one. */
-      path?: null | string;
     };
     /**
      * @description Pictures to lay over the mesh's own materials, on every part. Each is a path on the Server's machine, and a slot
@@ -4274,8 +4352,6 @@ export interface components {
       metallic?: null | string;
       /** @description Ambient occlusion. */
       occlusion?: null | string;
-      /** @description The viewing table, which `PUT /viewport/look` sets and pictures do not touch. */
-      look?: null | string;
       /** @description Light the surface gives off. */
       emissive?: null | string;
       /** @description What the surface covers, read from red and shown as cut out or not. */
@@ -4372,13 +4448,10 @@ export interface components {
       frames: number;
       /** @description Why the last command failed, or null. */
       error?: null | string;
+      /** @description How the model is lit, shown and finished. */
+      display: components['schemas']['ViewportDisplay'];
       /** @description The stack session it is wearing, or null. */
       stack?: null | string;
-      /**
-       * @description What lights the model: a built-in room, or the path of a panorama.
-       * @default studio
-       */
-      environment: string;
     };
     /** @description The Worker as the Server sees it. All but `Connected` are null while there is none. */
     WorkerStatus: {
@@ -4641,7 +4714,7 @@ export interface operations {
       };
     };
   };
-  SetViewportEnvironment: {
+  SetViewportDisplay: {
     parameters: {
       query?: never;
       header?: never;
@@ -4650,7 +4723,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ViewportEnvironmentRequest'];
+        'application/json': components['schemas']['ViewportDisplay'];
       };
     };
     responses: {
@@ -4674,39 +4747,6 @@ export interface operations {
       };
       /** @description Unprocessable Entity */
       422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-    };
-  };
-  SetViewportLook: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['ViewportLookRequest'];
-      };
-    };
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ViewportState'];
-        };
-      };
-      /** @description Not Found */
-      404: {
         headers: {
           [name: string]: unknown;
         };

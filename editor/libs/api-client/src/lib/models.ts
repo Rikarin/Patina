@@ -24,6 +24,7 @@ export type TagCount = components['schemas']['TagCount'];
 export type TagPage = components['schemas']['TagPage'];
 export type ViewportState = components['schemas']['ViewportState'];
 export type ViewportCameraState = components['schemas']['ViewportCameraState'];
+export type ViewportDisplay = components['schemas']['ViewportDisplay'];
 export type GraphState = components['schemas']['GraphState'];
 export type GraphNodeState = components['schemas']['GraphNodeState'];
 export type GraphEdgeState = components['schemas']['GraphEdgeState'];

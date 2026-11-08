@@ -220,9 +220,8 @@ from .unwrap_report import UnwrapReport
 from .unwrap_set import UnwrapSet
 from .viewport_bake_request import ViewportBakeRequest
 from .viewport_camera_state import ViewportCameraState
-from .viewport_environment_request import ViewportEnvironmentRequest
+from .viewport_display import ViewportDisplay
 from .viewport_graph_request import ViewportGraphRequest
-from .viewport_look_request import ViewportLookRequest
 from .viewport_map_paths import ViewportMapPaths
 from .viewport_mesh_request import ViewportMeshRequest
 from .viewport_pick import ViewportPick
@@ -452,9 +451,8 @@ __all__ = (
     "UnwrapSet",
     "ViewportBakeRequest",
     "ViewportCameraState",
-    "ViewportEnvironmentRequest",
+    "ViewportDisplay",
     "ViewportGraphRequest",
-    "ViewportLookRequest",
     "ViewportMapPaths",
     "ViewportMeshRequest",
     "ViewportPick",

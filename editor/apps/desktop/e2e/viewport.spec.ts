@@ -1,5 +1,5 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { leave, newLibrary, newProject } from './projects';
@@ -127,6 +127,51 @@ test('the viewport turns, pans and zooms from the keyboard', async () => {
     await window.keyboard.press(key);
     await expect.poll(frames, { message: key }).toBeGreaterThan(before);
   }
+});
+
+/** The project's file, which keeps the viewport as it was left. */
+function projectFile(): string {
+  const projects = join(scratch, 'Game.ptlib', 'projects');
+  const found = readdirSync(projects, { recursive: true, encoding: 'utf8' }).find(path =>
+    path.endsWith('project.yaml')
+  );
+  if (!found) {
+    throw new Error('The library has no project.');
+  }
+
+  return join(projects, found);
+}
+
+test('the display settings change the picture, and the project keeps them', async () => {
+  await openMesh();
+  await expect.poll(frames, { timeout: 30_000 }).toBeGreaterThan(0);
+  const lit = await colours();
+
+  // Clay is the shape in grey: the gold goes.
+  await window.getByTestId('viewport-view').selectOption('clay');
+  await expect.poll(async () => (await colours()).gold).toBeLessThan(lit.gold / 10);
+  await window.screenshot({ path: join(shots, 'viewport-clay.png'), scale: 'css' });
+  await window.getByTestId('viewport-view').selectOption('lit');
+  await expect.poll(async () => (await colours()).gold).toBeGreaterThan(lit.gold / 2);
+
+  await window.getByRole('button', { name: 'Maximize Preview' }).click();
+  await window.getByTestId('viewport-display-toggle').click();
+  await expect(window.getByTestId('viewport-display')).toBeVisible();
+  const before = await frames();
+  await window.getByTestId('viewport-tonemap').selectOption('agx');
+  await window.getByTestId('viewport-projection').getByText('Orthographic').click();
+  await window.getByTestId('viewport-wireframe').click();
+  await expect.poll(frames).toBeGreaterThan(before);
+  await window.screenshot({ path: join(shots, 'viewport-display.png'), scale: 'css' });
+
+  // The front view looks along the model's z axis.
+  const snapping = await frames();
+  await window.getByTestId('viewport-snap-front').click();
+  await expect.poll(frames).toBeGreaterThan(snapping);
+
+  await expect
+    .poll(() => readFileSync(projectFile(), 'utf8'), { timeout: 10_000 })
+    .toMatch(/toneMapping: agx[\s\S]*wireframe: true[\s\S]*orthographic: true/u);
 });
 
 test('killing the Worker keeps the view, and frames come back from its successor', async () => {

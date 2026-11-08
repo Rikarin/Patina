@@ -365,6 +365,15 @@ function handleIpc(): void {
     const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
     return picked.canceled ? null : (picked.filePaths[0] ?? null);
   });
+  handle('patina:openLook', async () => {
+    const options: OpenDialogOptions = {
+      title: 'Choose a Look',
+      properties: ['openFile'],
+      filters: [{ name: 'Viewing tables', extensions: ['cube'] }]
+    };
+    const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
+    return picked.canceled ? null : (picked.filePaths[0] ?? null);
+  });
   handle('patina:openImage', async (_event, formats: unknown) => {
     const options: OpenDialogOptions = {
       properties: ['openFile'],
