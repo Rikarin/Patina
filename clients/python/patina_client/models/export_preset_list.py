@@ -13,6 +13,7 @@ from typing import cast
 if TYPE_CHECKING:
   from ..models.export_format_info import ExportFormatInfo
   from ..models.export_preset_info import ExportPresetInfo
+  from ..models.stack_term import StackTerm
 
 
 
@@ -30,15 +31,15 @@ class ExportPresetList:
             presets (list[ExportPresetInfo]): The presets.
             problems (list[str]): One line per file that is not a preset.
             formats (list[ExportFormatInfo]): The file formats there are, for a client that offers another one.
-            paddings (list[str]): The padding modes there are, in order.
-            filters (list[str]): The resize filters there are.
+            paddings (list[StackTerm]): The padding modes there are, in order, each with what a person calls it.
+            filters (list[StackTerm]): The resize filters there are, each with what a person calls it.
      """
 
     presets: list[ExportPresetInfo]
     problems: list[str]
     formats: list[ExportFormatInfo]
-    paddings: list[str]
-    filters: list[str]
+    paddings: list[StackTerm]
+    filters: list[StackTerm]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -48,6 +49,7 @@ class ExportPresetList:
     def to_dict(self) -> dict[str, Any]:
         from ..models.export_format_info import ExportFormatInfo # noqa: PLC0415
         from ..models.export_preset_info import ExportPresetInfo # noqa: PLC0415
+        from ..models.stack_term import StackTerm # noqa: PLC0415
         presets = []
         for presets_item_data in self.presets:
             presets_item = presets_item_data.to_dict()
@@ -66,11 +68,17 @@ class ExportPresetList:
 
 
 
-        paddings = self.paddings
+        paddings = []
+        for paddings_item_data in self.paddings:
+            paddings_item = paddings_item_data.to_dict()
+            paddings.append(paddings_item)
 
 
 
-        filters = self.filters
+        filters = []
+        for filters_item_data in self.filters:
+            filters_item = filters_item_data.to_dict()
+            filters.append(filters_item)
 
 
 
@@ -93,6 +101,7 @@ class ExportPresetList:
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.export_format_info import ExportFormatInfo # noqa: PLC0415
         from ..models.export_preset_info import ExportPresetInfo # noqa: PLC0415
+        from ..models.stack_term import StackTerm # noqa: PLC0415
         d = dict(src_dict)
         presets = []
         _presets = d.pop("presets")
@@ -117,10 +126,24 @@ class ExportPresetList:
             formats.append(formats_item)
 
 
-        paddings = cast(list[str], d.pop("paddings"))
+        paddings = []
+        _paddings = d.pop("paddings")
+        for paddings_item_data in (_paddings):
+            paddings_item = StackTerm.from_dict(paddings_item_data)
 
 
-        filters = cast(list[str], d.pop("filters"))
+
+            paddings.append(paddings_item)
+
+
+        filters = []
+        _filters = d.pop("filters")
+        for filters_item_data in (_filters):
+            filters_item = StackTerm.from_dict(filters_item_data)
+
+
+
+            filters.append(filters_item)
 
 
         export_preset_list = cls(

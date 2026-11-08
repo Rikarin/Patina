@@ -1955,10 +1955,10 @@ export interface components {
       problems: string[];
       /** @description The file formats there are, for a client that offers another one. */
       formats: components['schemas']['ExportFormatInfo'][];
-      /** @description The padding modes there are, in order. */
-      paddings: string[];
-      /** @description The resize filters there are. */
-      filters: string[];
+      /** @description The padding modes there are, in order, each with what a person calls it. */
+      paddings: components['schemas']['StackTerm'][];
+      /** @description The resize filters there are, each with what a person calls it. */
+      filters: components['schemas']['StackTerm'][];
     };
     /** @description One preset in a project's report. */
     ExportReport: {

@@ -67,8 +67,8 @@ static class BuildEndpoints {
                         )
                     )
                 ],
-                Paddings = ExportPadding.Names,
-                Filters = ExportFilters.All
+                Paddings = Terms.InExport(ExportPadding.Names),
+                Filters = Terms.InExport(ExportFilters.All)
             }
         );
     }

@@ -1,5 +1,6 @@
 import { DestroyRef, Injectable, computed, inject, linkedSignal, signal } from '@angular/core';
 import type { BakeOptions, BakeRequest, ProjectBakeSettings, ProjectMeshInfo } from '@patina/api-client';
+import { messageOf } from '../core/messages';
 import { SystemStatus } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
 import { BakeStore } from './bake-store';
@@ -188,7 +189,7 @@ export class BakeSettings {
       await this.project.setBake(pending.project, pending.bake);
       this.failure.set(null);
     } catch (error) {
-      this.failure.set(error instanceof Error ? error.message : String(error));
+      this.failure.set(messageOf(error));
     } finally {
       if (this.pending === pending) {
         this.pending = null;
@@ -232,7 +233,7 @@ export class BakeSettings {
       await this.bakes.startAll(this.requests());
       return true;
     } catch (error) {
-      this.refused.set(error instanceof Error ? error.message : String(error));
+      this.refused.set(messageOf(error));
       return false;
     }
   }

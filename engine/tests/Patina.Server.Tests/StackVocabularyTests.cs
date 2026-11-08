@@ -106,6 +106,17 @@ public sealed class StackVocabularyTests {
         Assert.Equal(Enum.GetNames<LayerProjection>(), vocabulary.Projections.Select(static term => term.Value));
     }
 
+    /// <summary>An export's padding modes and filters go out with labels too, every one of them, in their order.</summary>
+    [Fact]
+    public void An_exports_paddings_and_filters_say_what_each_is_called() {
+        var paddings = Terms.InExport(Patina.Export.Presets.ExportPadding.Names);
+        var filters = Terms.InExport(Patina.Export.Presets.ExportFilters.All);
+
+        Assert.Equal(Patina.Export.Presets.ExportPadding.Names, paddings.Select(static term => term.Value));
+        Assert.Equal("Dilation + transparent", paddings.Single(static term => term.Value == "transparent").Label);
+        Assert.Equal(["Box", "Bilinear", "Nearest"], filters.Select(static term => term.Label));
+    }
+
     /// <summary>A setting's choices carry labels too, in their order, and a free one carries none.</summary>
     [Fact]
     public void A_setting_with_choices_says_what_each_is_called() {

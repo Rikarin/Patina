@@ -65,6 +65,7 @@ function contents(documents: ProjectDocumentInfo[], bake = defaults): ProjectCon
     autoUnwrap: true,
     preservePaint: true,
     unwrap: { resolution: 2048, margin: 4, quality: 'outlines', rotations: 4, texelDensity: 0, overflow: 'shrink' },
+    exportSets: [],
     bake
   };
 }

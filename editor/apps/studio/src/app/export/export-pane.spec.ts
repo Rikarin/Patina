@@ -96,8 +96,18 @@ function setup(routes: Record<string, (request: Request) => Response> = {}) {
         presets: [unreal],
         problems: [],
         formats,
-        paddings: ['none', 'infinite', 'transparent', 'colour', 'diffusion'],
-        filters: ['box', 'bilinear', 'nearest']
+        paddings: [
+          { value: 'none', label: 'None' },
+          { value: 'infinite', label: 'Dilation, infinite' },
+          { value: 'transparent', label: 'Dilation + transparent' },
+          { value: 'colour', label: 'Dilation + colour' },
+          { value: 'diffusion', label: 'Dilation + diffusion' }
+        ],
+        filters: [
+          { value: 'box', label: 'Box' },
+          { value: 'bilinear', label: 'Bilinear' },
+          { value: 'nearest', label: 'Nearest' }
+        ]
       }),
     'POST builds': () => Response.json(build, { status: 202 }),
     'GET builds/b1/report': () => Response.json(report),

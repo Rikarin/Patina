@@ -14,6 +14,7 @@ import {
 import { XuiButtonImports } from '@xui/button';
 import { BakeStore } from '../bake/bake-store';
 import { desktop } from '../core/desktop';
+import { termName } from '../core/labels';
 import { SystemStatus } from '../core/system-status';
 import { ViewOptions } from '../core/view-options';
 import { GraphStore } from '../graph/graph-store';
@@ -32,18 +33,23 @@ const Rooms: readonly { value: string; label: string }[] = [
   { value: 'sunset', label: 'Sunset' }
 ];
 
-/** The views, in the order V steps through them. A picture is chosen from the mesh maps, so V passes it by. */
-const Views: readonly { value: string; label: string }[] = [
-  { value: 'lit', label: 'Lit' },
-  { value: 'clay', label: 'Clay' },
-  { value: 'unlit', label: 'Unlit' },
-  { value: 'baseColor', label: 'Base colour' },
-  { value: 'roughness', label: 'Roughness' },
-  { value: 'metallic', label: 'Metallic' },
-  { value: 'normal', label: 'Normal' },
-  { value: 'occlusion', label: 'Occlusion' },
-  { value: 'emissive', label: 'Emissive' },
-  { value: 'opacity', label: 'Opacity' }
+/**
+ * The views, in the order V steps through them: the whole picture, then each stored channel, which goes by the label
+ * the stack vocabulary gives it. A picture is chosen from the mesh maps, so V passes it by.
+ */
+const ViewNames: Readonly<Record<string, string>> = { lit: 'Lit', clay: 'Clay', unlit: 'Unlit' };
+
+const Views: readonly string[] = [
+  'lit',
+  'clay',
+  'unlit',
+  'baseColor',
+  'roughness',
+  'metallic',
+  'normal',
+  'occlusion',
+  'emissive',
+  'opacity'
 ];
 
 /** What a value of the view list means when it is a mesh map rather than a view. */
@@ -104,8 +110,8 @@ const PickLook = '…';
         data-testid="viewport-view"
         (change)="chooseView($event)"
       >
-        @for (view of views; track view.value) {
-          <option [value]="view.value" [selected]="view.value === display().view">{{ view.label }}</option>
+        @for (view of views; track view) {
+          <option [value]="view" [selected]="view === display().view">{{ viewName(view) }}</option>
         }
         @if (meshMaps().length > 0 || shownPicture()) {
           <optgroup label="Mesh maps">
@@ -336,6 +342,7 @@ export class ViewportPane implements AfterViewInit {
 
   protected readonly rooms = Rooms;
   protected readonly views = Views;
+  protected readonly viewName = (view: string): string => ViewNames[view] ?? termName(view);
   protected readonly mapPrefix = MapPrefix;
   protected readonly noLook = NoLook;
   protected readonly pickLook = PickLook;
@@ -353,7 +360,7 @@ export class ViewportPane implements AfterViewInit {
   });
   /** The maps of the last bake, which the view list offers on the mesh as they are stored. */
   protected readonly meshMaps = computed(() =>
-    (this.bakes.current()?.result?.maps ?? []).map(map => ({ path: map.path, label: mapName(map.map) }))
+    (this.bakes.current()?.result?.maps ?? []).map(map => ({ path: map.path, label: termName(map.map) }))
   );
   /** The picture on view when it is none of the last bake's maps, such as one a project kept. */
   protected readonly shownPicture = computed(() => {
@@ -504,9 +511,9 @@ export class ViewportPane implements AfterViewInit {
 
     if (event.key === 'v' || event.key === 'V') {
       event.preventDefault();
-      const at = Views.findIndex(view => view.value === this.display().view);
+      const at = Views.indexOf(this.display().view);
       const next = Views[(at + (event.shiftKey ? Views.length - 1 : 1) + Views.length) % Views.length];
-      this.viewport.setDisplay({ view: next?.value ?? 'lit', picture: null });
+      this.viewport.setDisplay({ view: next ?? 'lit', picture: null });
       return;
     }
 
@@ -584,7 +591,3 @@ function fileName(path: string): string {
 }
 
 /** A bake's map as the view list names it: <code>ao</code> as Ao would read badly. */
-function mapName(map: string): string {
-  const named: Readonly<Record<string, string>> = { ao: 'Ambient occlusion', normal: 'Normal (baked)' };
-  return named[map] ?? map.charAt(0).toUpperCase() + map.slice(1);
-}

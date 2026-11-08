@@ -126,7 +126,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - Every slider has its number beside it, and a share reads as a percentage with %, an angle in degrees: layer opacity, mask value, colour tolerance and softness, and the mask grey. The brush angle steps a degree at a time, and the brush size says what it measures.
-- Lists show names, never the engine's words: blend modes, mask and fill sources, generators, mesh maps, channels, a setting's choices, port kinds and anchor layers. Delete Project and Delete Folder are red, and folder colours have names.
+- Lists show names, never the engine's words: blend modes, mask and fill sources, generators, mesh maps, channels, a setting's choices, port kinds and anchor layers, and in the Export, Bake and viewport panes the padding modes, filters, maps and channel views. Export offers the Server's texture sizes. Delete Project and Delete Folder are red, and folder colours have names.
 - Messages say what happened in plain words. A compiler problem shows its first sentence, with its code and the rest behind Details.
 - A brush can paint several channels at once, one undo step, and a stack can add height, normal, emissive and the rest. There is an
   Eraser and a colour Picker, and painting has rebindable keys, with `[` and `]` for size and Esc to end a path.

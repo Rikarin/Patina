@@ -17,7 +17,9 @@ import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { desktop } from '../core/desktop';
-import { jobStateName } from '../core/labels';
+import { labelIn, jobStateName, termName } from '../core/labels';
+import { messageOf } from '../core/messages';
+import { SystemStatus } from '../core/system-status';
 import { LibrarySelection } from '../library/library-selection';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore } from '../paint/paint-store';
@@ -33,22 +35,6 @@ import {
 } from './export-store';
 
 const SaveDelay = 400;
-const Sizes = ['native', '256', '512', '1024', '2048', '4096', '8192'];
-
-const PaddingNames: Readonly<Record<string, string>> = {
-  none: 'None',
-  infinite: 'Dilation, infinite',
-  transparent: 'Dilation + transparent',
-  colour: 'Dilation + colour',
-  diffusion: 'Dilation + diffusion'
-};
-
-const FilterNames: Readonly<Record<string, string>> = {
-  box: 'Box',
-  bilinear: 'Bilinear',
-  nearest: 'Nearest'
-};
-
 const StatusNames: Readonly<Record<string, string>> = {
   built: 'written',
   reused: 'copied from an earlier export',
@@ -56,24 +42,6 @@ const StatusNames: Readonly<Record<string, string>> = {
   failed: 'failed'
 };
 
-const MapNames: Readonly<Record<string, string>> = {
-  baseColor: 'Base Color',
-  normal: 'Normal',
-  roughness: 'Roughness',
-  metalness: 'Metallic',
-  occlusion: 'Ambient Occlusion',
-  height: 'Height',
-  emissive: 'Emissive',
-  opacity: 'Opacity',
-  mask: 'Mask',
-  curvature: 'Curvature',
-  thickness: 'Thickness',
-  id: 'ID',
-  position: 'Position',
-  world: 'World Normal',
-  bent: 'Bent Normal',
-  coverage: 'Coverage'
-};
 
 /** A colour as the colour picker holds it, from lanes 0 to 1. */
 function hexOf(colour: readonly number[]): string {
@@ -192,7 +160,7 @@ function lanesOf(hex: string): number[] {
               data-testid="export-size"
               [filterable]="false"
               [itemText]="sizeName"
-              [items]="sizes"
+              [items]="sizes()"
               [value]="settings().size === null ? 'native' : '' + settings().size"
               (valueChange)="chooseSize($event)"
             />
@@ -575,13 +543,15 @@ export class ExportPane implements OnInit {
   protected readonly paint = inject(PaintStore);
   protected readonly project = inject(ProjectStore);
   private readonly selection = inject(LibrarySelection);
+  private readonly status = inject(SystemStatus);
 
   /** The scope chosen by hand, which holds until it stops being possible. */
   private readonly picked = signal<ExportScope | null>(null);
   protected readonly settings = signal<ExportSettings>(settingsFor(null));
   protected readonly error = signal<string | null>(null);
   protected readonly confirming = signal(false);
-  protected readonly sizes = Sizes;
+  /** The Server's texture sides, after the maps' own size. */
+  protected readonly sizes = computed(() => ['native', ...this.status.textureSides().map(String)]);
 
   protected readonly presetIds = computed(() => this.store.presets().map(preset => preset.id));
   protected readonly chosen = computed<ExportPresetInfo | null>(
@@ -596,8 +566,8 @@ export class ExportPane implements OnInit {
   protected readonly presetName = (id: string): string =>
     this.store.presets().find(preset => preset.id === id)?.name ?? id;
   protected readonly sizeName = (size: string): string => (size === 'native' ? 'Maps’ size' : `${size} px`);
-  protected readonly filterName = (filter: string): string => FilterNames[filter] ?? filter;
-  protected readonly paddingName = (mode: string): string => PaddingNames[mode] ?? mode;
+  protected readonly filterName = (filter: string): string => labelIn(this.store.filterTerms(), filter);
+  protected readonly paddingName = (mode: string): string => labelIn(this.store.paddingTerms(), mode);
   protected readonly formatName = (format: string): string =>
     this.store.formats().find(known => known.id === format)?.label ?? format;
   protected readonly lanes = lanesOf;
@@ -768,7 +738,7 @@ export class ExportPane implements OnInit {
   }
 
   protected mapsOf(file: ExportPresetFile): string {
-    return file.maps.map(map => MapNames[map] ?? map).join(', ') || 'Constants';
+    return file.maps.map(termName).join(', ') || 'Constants';
   }
 
   protected choiceOf(file: ExportPresetFile): FileChoice {
@@ -939,7 +909,7 @@ export class ExportPane implements OnInit {
     try {
       await work();
     } catch (error) {
-      this.error.set(error instanceof Error ? error.message : String(error));
+      this.error.set(messageOf(error));
     }
   }
 }

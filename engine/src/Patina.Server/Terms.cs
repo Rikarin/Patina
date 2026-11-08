@@ -46,6 +46,14 @@ public static class Terms {
         ["Copy"] = "Normal", ["Constant"] = "Uniform", ["Texture"] = "Bitmap", ["Bake"] = "Mesh Map"
     };
 
+    /// <summary>What an export calls its padding modes, which say how the background of a layout is filled.</summary>
+    static readonly Dictionary<string, string> InExports = new(StringComparer.Ordinal) {
+        ["infinite"] = "Dilation, infinite",
+        ["transparent"] = "Dilation + transparent",
+        ["colour"] = "Dilation + colour",
+        ["diffusion"] = "Dilation + diffusion"
+    };
+
     /// <summary>
     ///     What a person calls a value: its own name if it has one, or the value split into capitalised words.
     /// </summary>
@@ -76,6 +84,15 @@ public static class Terms {
         ..values.Select(static value => new StackTerm(
                 value,
                 InStacks.TryGetValue(value, out var named) ? named : Label(value)
+            )
+        )
+    ];
+
+    /// <summary>Values of an export's settings with their labels.</summary>
+    public static IReadOnlyList<StackTerm> InExport(IEnumerable<string> values) => [
+        ..values.Select(static value => new StackTerm(
+                value,
+                InExports.TryGetValue(value, out var named) ? named : Label(value)
             )
         )
     ];

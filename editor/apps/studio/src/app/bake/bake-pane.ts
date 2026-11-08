@@ -9,7 +9,9 @@ import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { desktop } from '../core/desktop';
-import { bakeMapName, imageFormatName, jobStateName } from '../core/labels';
+import { imageFormatName, jobStateName, termName } from '../core/labels';
+import { messageOf } from '../core/messages';
+import { percent } from '../core/numbers';
 import { SystemStatus } from '../core/system-status';
 import { GraphStore } from '../graph/graph-store';
 import { ProjectStore } from '../library/project-store';
@@ -381,7 +383,7 @@ type Section = string;
                 [value]="Math.round(options.rays.skew * 100)"
                 (valueChange)="setRays({ skew: $event / 100 })"
               />
-              <span class="readout w-12 shrink-0 text-end text-xs">{{ Math.round(options.rays.skew * 100) }} %</span>
+              <span class="readout w-12 shrink-0 text-end text-xs">{{ share(options.rays.skew) }}</span>
             </div>
             <label class="flex items-center justify-between gap-2 text-sm">
               Match parts by name
@@ -817,7 +819,9 @@ export class BakePane {
   protected readonly idSources = IdSources;
   protected readonly formatName = imageFormatName;
   protected readonly stateName = jobStateName;
-  protected readonly label = bakeMapName;
+  /** A map by the label the stack vocabulary gives it, as a bake mask names it. */
+  protected readonly label = termName;
+  protected readonly share = percent;
   protected readonly falloffName = (value: string) => FalloffNames[value] ?? value;
   protected readonly idSourceName = (value: string) => IdSourceNames[value] ?? value;
   protected readonly sideName = (value: string) => `${value} × ${value}`;
@@ -1018,7 +1022,7 @@ export class BakePane {
     try {
       await this.store.showOnMesh(job);
     } catch (error) {
-      this.refused.set(error instanceof Error ? error.message : String(error));
+      this.refused.set(messageOf(error));
     }
   }
 }

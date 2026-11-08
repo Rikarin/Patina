@@ -4,6 +4,7 @@ import { XuiButtonImports } from '@xui/button';
 import { type XuiSegmentedOption, XuiSegmentedControlImports } from '@xui/segmented-control';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
+import { degrees, percent } from '../core/numbers';
 import type { AxisView } from './orbit';
 import { DefaultDisplay, ViewportClient } from './viewport-client';
 
@@ -21,8 +22,6 @@ interface Slider {
   /** What the readout says: angles in degrees, exposure in stops, the rest as shares. */
   unit: 'degrees' | 'stops' | 'share';
 }
-
-const Degrees = 180 / Math.PI;
 
 const Lighting: readonly Slider[] = [
   { key: 'exposure', label: 'Exposure', title: 'How bright the picture is', min: -5, max: 5, step: 0.1, unit: 'stops' },
@@ -246,19 +245,17 @@ export class ViewportDisplayPanel {
     return (event.target as HTMLSelectElement).value;
   }
 
-  protected degrees(radians: number): string {
-    return `${Math.round(radians * Degrees)}°`;
-  }
+  protected readonly degrees = degrees;
 
   protected shown(slider: Slider): string {
     const value = this.display()[slider.key];
     switch (slider.unit) {
       case 'degrees':
-        return this.degrees(value);
+        return degrees(value);
       case 'stops':
         return `${value > 0 ? '+' : ''}${value.toFixed(1)} stops`;
       default:
-        return `${Math.round(value * 100)}%`;
+        return percent(value);
     }
   }
 

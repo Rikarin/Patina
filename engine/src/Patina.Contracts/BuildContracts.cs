@@ -172,11 +172,11 @@ public sealed record ExportPresetList(IReadOnlyList<ExportPresetInfo> Presets, I
     /// <summary>The file formats there are, for a client that offers another one.</summary>
     public IReadOnlyList<ExportFormatInfo> Formats { get; init; } = [];
 
-    /// <summary>The padding modes there are, in order.</summary>
-    public IReadOnlyList<string> Paddings { get; init; } = [];
+    /// <summary>The padding modes there are, in order, each with what a person calls it.</summary>
+    public IReadOnlyList<StackTerm> Paddings { get; init; } = [];
 
-    /// <summary>The resize filters there are.</summary>
-    public IReadOnlyList<string> Filters { get; init; } = [];
+    /// <summary>The resize filters there are, each with what a person calls it.</summary>
+    public IReadOnlyList<StackTerm> Filters { get; init; } = [];
 }
 
 /// <summary>What to build.</summary>

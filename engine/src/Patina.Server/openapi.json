@@ -6181,16 +6181,16 @@
           "paddings": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/StackTerm"
             },
-            "description": "The padding modes there are, in order."
+            "description": "The padding modes there are, in order, each with what a person calls it."
           },
           "filters": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/StackTerm"
             },
-            "description": "The resize filters there are."
+            "description": "The resize filters there are, each with what a person calls it."
           }
         },
         "description": "Every preset a library can use, and the files in its folder that are not presets."

@@ -9,6 +9,7 @@ import {
   type PatinaClient,
   type ProjectExportSettings,
   type ProjectReport,
+  type StackTerm,
   unwrap
 } from '@patina/api-client';
 import { BakeStore } from '../bake/bake-store';
@@ -190,8 +191,11 @@ export class ExportStore {
   readonly exported = signal<readonly string[]>([]);
   readonly presets = signal<readonly ExportPresetInfo[]>([]);
   readonly formats = signal<readonly ExportFormatInfo[]>([]);
-  readonly paddings = signal<readonly string[]>([]);
-  readonly filters = signal<readonly string[]>([]);
+  /** The padding modes and resize filters, each with the label the Server gives it. */
+  readonly paddingTerms = signal<readonly StackTerm[]>([]);
+  readonly filterTerms = signal<readonly StackTerm[]>([]);
+  readonly paddings = computed(() => this.paddingTerms().map(term => term.value));
+  readonly filters = computed(() => this.filterTerms().map(term => term.value));
   readonly problems = signal<readonly string[]>([]);
   readonly preview = signal<BuildPreview | null>(null);
   readonly report = signal<LibraryReport | null>(null);
@@ -219,8 +223,8 @@ export class ExportStore {
     this.presets.set(list.presets);
     this.problems.set(list.problems);
     this.formats.set(list.formats);
-    this.paddings.set(list.paddings);
-    this.filters.set(list.filters);
+    this.paddingTerms.set(list.paddings);
+    this.filterTerms.set(list.filters);
   }
 
   /** Asks what a build would do. Nothing runs. */

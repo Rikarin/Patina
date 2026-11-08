@@ -2,6 +2,7 @@ import { DestroyRef, Injectable, InjectionToken, effect, inject, signal, untrack
 import type { ViewportCameraState, ViewportDisplay, ViewportInput } from '@patina/api-client';
 import { unwrap } from '@patina/api-client';
 import { BakeStore } from '../bake/bake-store';
+import { messageOf } from '../core/messages';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
 import {
@@ -124,7 +125,7 @@ export class ViewportClient {
       await this.bakes.showGraphOnMesh(graph);
       this.error.set(null);
     } catch (error) {
-      this.error.set(error instanceof Error ? error.message : String(error));
+      this.error.set(messageOf(error));
     }
   }
 
@@ -135,7 +136,7 @@ export class ViewportClient {
       this.mesh.set(state.mesh ?? null);
       this.error.set(null);
     } catch (error) {
-      this.error.set(error instanceof Error ? error.message : String(error));
+      this.error.set(messageOf(error));
     }
   }
 
@@ -181,7 +182,7 @@ export class ViewportClient {
       this.error.set(null);
     } catch (error) {
       // A file the project kept may have gone: what the Server still shows is what the controls say.
-      this.error.set(error instanceof Error ? error.message : String(error));
+      this.error.set(messageOf(error));
       await this.refresh().catch(() => undefined);
     }
   }
@@ -282,7 +283,7 @@ export class ViewportClient {
         }
       );
     } catch (error) {
-      this.error.set(error instanceof Error ? error.message : String(error));
+      this.error.set(messageOf(error));
     }
   }
 }
