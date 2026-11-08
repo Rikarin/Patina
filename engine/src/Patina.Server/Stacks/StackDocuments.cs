@@ -64,7 +64,8 @@ public static class StackDocuments {
             StackBrushes.MaximumRadius,
             StackBrushes.MaximumAspect,
             StackBrushes.MaximumCount
-        )
+        ),
+        Terms.InStack(Enum.GetNames<LayerMaskLane>())
     );
 
     /// <summary>The stack a new file starts as: a base, and somewhere to paint.</summary>
@@ -339,7 +340,8 @@ public static class StackDocuments {
                 layer.Mask.GeneratorTexts,
                 MeshPartsOf(layer.Mask),
                 Wire(layer.Mask.GeneratorInputs),
-                StackMaskLayers.Wire(layer.Mask)
+                StackMaskLayers.Wire(layer.Mask),
+                layer.Mask.Lane.ToString()
             ),
             layer.PlanarAxis.ToString(),
             new(

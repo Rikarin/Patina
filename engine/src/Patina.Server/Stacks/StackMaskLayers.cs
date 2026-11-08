@@ -33,7 +33,8 @@ static class StackMaskLayers {
                     entry.Paint.Trim().Length > 0,
                     entry.Blend.ToString(),
                     entry.Opacity,
-                    entry.Enabled
+                    entry.Enabled,
+                    entry.Lane.ToString()
                 )
             )
     ];

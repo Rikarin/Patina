@@ -505,6 +505,14 @@ export function hexOf(colour: readonly number[] | undefined): string {
                   [value]="entry.layer.map"
                   (valueChange)="setEntry(layer, entry.index, { map: $event ?? '' })"
                 />
+                <xui-select
+                  aria-label="Mask layer lane"
+                  data-testid="paint-mask-layer-lane"
+                  [itemText]="termName"
+                  [items]="lanes()"
+                  [value]="entry.layer.lane"
+                  (valueChange)="setEntry(layer, entry.index, { lane: $event ?? 'Red' })"
+                />
               }
               @case ('Texture') {
                 <div class="flex items-center gap-2">
@@ -671,6 +679,18 @@ export function hexOf(colour: readonly number[] | undefined): string {
               [value]="layer.mask.map"
               (valueChange)="setMask(layer, { map: $event ?? '' })"
             />
+            <div class="flex items-center gap-2">
+              <span class="text-foreground-muted w-16 shrink-0 text-xs" title="Which lane of the map the mask reads">Lane</span>
+              <xui-select
+                class="min-w-0 flex-1"
+                aria-label="Mask lane"
+                data-testid="paint-mask-lane"
+                [itemText]="termName"
+                [items]="lanes()"
+                [value]="layer.mask.lane"
+                (valueChange)="setMask(layer, { lane: $event ?? 'Red' })"
+              />
+            </div>
             @if (layer.mask.map === 'id') {
               <div class="flex flex-col gap-1.5" data-testid="paint-colour-selection">
                 <div class="flex flex-wrap items-center gap-1" role="group" aria-label="Colours in the id map">
@@ -838,6 +858,8 @@ export class LayerPanel {
   protected readonly masks = computed(() => this.store.vocabulary()?.masks.map(term => term.value) ?? []);
   protected readonly generators = computed(() => this.store.vocabulary()?.generators.map(term => term.value) ?? []);
   protected readonly meshMaps = computed(() => this.store.vocabulary()?.meshMaps.map(term => term.value) ?? []);
+  /** The lanes of a picture a mask can read, which a direction's mesh map holds its axes in. */
+  protected readonly lanes = computed(() => this.store.vocabulary()?.lanes?.map(term => term.value) ?? ['Red']);
   protected readonly termName = termName;
   protected readonly choiceName = choiceName;
   /** A layer by its name, which is what the anchor list offers rather than its id. */

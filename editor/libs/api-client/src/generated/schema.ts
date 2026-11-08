@@ -4347,6 +4347,8 @@ export interface components {
       opacity?: null | number;
       /** @description Whether it composites. */
       enabled?: null | boolean;
+      /** @description Which lane of its picture it reads: Red, Green, Blue or Alpha. */
+      lane?: null | string;
     };
     /** @description Names the mesh a stack is painted on, which is undone like any other edit. */
     StackCommandStackSetModel: {
@@ -4730,6 +4732,12 @@ export interface components {
        *     a painted canvas stays with its entry.
        */
       layers?: null | components['schemas']['StackMaskLayer'][];
+      /**
+       * @description Which lane of its picture the base reads: Red, Green, Blue or Alpha. A mesh map that measures a direction keeps
+       *     its X, Y and Z in the first three.
+       * @default Red
+       */
+      lane: string;
     };
     /** @description One step run on a mask. */
     StackMaskEffect: {
@@ -4811,6 +4819,11 @@ export interface components {
        * @default true
        */
       enabled: boolean;
+      /**
+       * @description Which lane of its picture it reads: Red, Green, Blue or Alpha.
+       * @default Red
+       */
+      lane: string;
     };
     /** @description Chooses the bake a stack's generators and bake masks read. */
     StackMeshMapsRequest: {
@@ -5135,6 +5148,8 @@ export interface components {
       };
       /** @description What a brush's fields take, and the brush a new one starts as. */
       brush: components['schemas']['StackBrushTerms'];
+      /** @description The lanes of a picture a mask can read. */
+      lanes?: null | components['schemas']['StackTerm'][];
     };
     /** @description The reply to `GET /api/v1/system`. */
     SystemInfo: {

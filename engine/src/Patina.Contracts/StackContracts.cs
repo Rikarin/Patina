@@ -124,6 +124,10 @@ public sealed record StackAnchorUse(string Layer, string Where, string Channel);
 ///     The mask's own stack over this base, bottom first. Ignored in a change: the mask layer commands edit it, so that
 ///     a painted canvas stays with its entry.
 /// </param>
+/// <param name="Lane">
+///     Which lane of its picture the base reads: Red, Green, Blue or Alpha. A mesh map that measures a direction keeps
+///     its X, Y and Z in the first three.
+/// </param>
 public sealed record StackMask(
     string Source,
     float Value = 1f,
@@ -138,7 +142,8 @@ public sealed record StackMask(
     IReadOnlyDictionary<string, string>? Parameters = null,
     IReadOnlyList<string>? MeshParts = null,
     IReadOnlyDictionary<string, StackAnchorRef>? Inputs = null,
-    IReadOnlyList<StackMaskLayer>? Layers = null
+    IReadOnlyList<StackMaskLayer>? Layers = null,
+    string Lane = "Red"
 );
 
 /// <summary>
@@ -157,6 +162,7 @@ public sealed record StackMask(
 /// <param name="Blend">How it composites over what is beneath it.</param>
 /// <param name="Opacity">How much of it composites, 0 to 1.</param>
 /// <param name="Enabled">Whether it composites at all.</param>
+/// <param name="Lane">Which lane of its picture it reads: Red, Green, Blue or Alpha.</param>
 public sealed record StackMaskLayer(
     string Source,
     float Value = 1f,
@@ -169,7 +175,8 @@ public sealed record StackMaskLayer(
     bool Painted = false,
     string Blend = "Copy",
     float Opacity = 1f,
-    bool Enabled = true
+    bool Enabled = true,
+    string Lane = "Red"
 );
 
 /// <summary>Limits a layer to some of the model's named meshes, on top of any mask it has.</summary>
@@ -249,6 +256,7 @@ public sealed record StackTerm(string Value, string Label);
 /// <param name="Usages">The channels a stack can have.</param>
 /// <param name="GeneratorParameters">The knobs each generator has, by its path.</param>
 /// <param name="Brush">What a brush's fields take, and the brush a new one starts as.</param>
+/// <param name="Lanes">The lanes of a picture a mask can read.</param>
 public sealed record StackVocabulary(
     IReadOnlyList<StackTerm> Blends,
     IReadOnlyList<StackFilterKind> Filters,
@@ -261,7 +269,8 @@ public sealed record StackVocabulary(
     IReadOnlyList<StackFilterKind> MaskEffects,
     IReadOnlyList<StackTerm> Usages,
     IReadOnlyDictionary<string, IReadOnlyList<GraphSettingDefinition>> GeneratorParameters,
-    StackBrushTerms Brush
+    StackBrushTerms Brush,
+    IReadOnlyList<StackTerm>? Lanes = null
 );
 
 /// <summary>What a layer looks like alone.</summary>
@@ -599,6 +608,7 @@ public sealed record StackMoveMaskLayer(string Layer, int Index, int Delta) : St
 /// <param name="Blend">How it composites.</param>
 /// <param name="Opacity">How much of it composites, 0 to 1.</param>
 /// <param name="Enabled">Whether it composites.</param>
+/// <param name="Lane">Which lane of its picture it reads: Red, Green, Blue or Alpha.</param>
 public sealed record StackSetMaskLayer(
     string Layer,
     int Index,
@@ -611,7 +621,8 @@ public sealed record StackSetMaskLayer(
     IReadOnlyDictionary<string, string>? Parameters = null,
     string? Blend = null,
     float? Opacity = null,
-    bool? Enabled = null
+    bool? Enabled = null,
+    string? Lane = null
 ) : StackCommand;
 #pragma warning restore SK7005
 

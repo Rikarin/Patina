@@ -99,6 +99,24 @@ public sealed class StackMaskStackTests {
         Assert.Empty(editor.Standing);
     }
 
+    /// <summary>A mesh-map mask and a mask entry read the lane they are given, and the vocabulary offers the lanes (#110).</summary>
+    [Fact]
+    public void A_mask_and_its_entries_read_the_lane_they_are_given() {
+        var editor = Generated();
+
+        editor.Apply(new([new StackSetLayer("paint", Mask: new("Bake", Map: "world", Lane: "Green"))]));
+        editor.Apply(new([new StackAddMaskLayer("paint", "Bake"), new StackSetMaskLayer("paint", 0, Map: "normal", Lane: "Blue")]));
+
+        Assert.Equal(LayerMaskLane.Green, Layer(editor).Mask.Lane);
+        Assert.Equal(LayerMaskLane.Blue, Layer(editor).Mask.Layers[0].Lane);
+        var wire = StackDocuments.Layers([Layer(editor)])[0].Mask;
+        Assert.Equal(("Green", "Blue"), (wire.Lane, wire.Layers![0].Lane));
+        Assert.Contains(StackDocuments.Vocabulary.Lanes!, static term => term is { Value: "Blue", Label: "Blue (Z)" });
+        Assert.Throws<StackEditRefusedException>(() =>
+            editor.Apply(new([new StackSetMaskLayer("paint", 0, Lane: "Purple")]))
+        );
+    }
+
     static StackStroke Stroke(int entry) =>
         new("s", "paint", "baseColor", new(4f), White, [new(10f, 10f)], Mask: true, MaskLayer: entry);
 

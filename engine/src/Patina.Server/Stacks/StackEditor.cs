@@ -482,6 +482,7 @@ public sealed class StackEditor : ILayerStackDocument {
                 GeneratorTexts = GeneratorKnobs(held, mask),
                 GeneratorInputs = GeneratorFeeds(held, mask),
                 Map = mask.Map,
+                Lane = Parsed(mask.Lane, held.Lane, "lane"),
                 Effects = StackDocuments.WithSelection(held.Effects, mask)
             };
     }
@@ -796,7 +797,8 @@ public sealed class StackEditor : ILayerStackDocument {
             Map = change.Map ?? held.Map,
             Blend = Parsed(change.Blend, held.Blend, "blend mode"),
             Opacity = change.Opacity ?? held.Opacity,
-            Enabled = change.Enabled ?? held.Enabled
+            Enabled = change.Enabled ?? held.Enabled,
+            Lane = Parsed(change.Lane, held.Lane, "lane")
         };
     }
 

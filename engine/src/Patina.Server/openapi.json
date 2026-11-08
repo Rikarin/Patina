@@ -12158,6 +12158,13 @@
               "boolean"
             ],
             "description": "Whether it composites."
+          },
+          "lane": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Which lane of its picture it reads: Red, Green, Blue or Alpha."
           }
         },
         "description": "Changes an entry of a layer\u0027s mask stack. What is null stays."
@@ -12919,7 +12926,8 @@
           "generator",
           "map",
           "tolerance",
-          "softness"
+          "softness",
+          "lane"
         ],
         "type": "object",
         "properties": {
@@ -13031,6 +13039,11 @@
               "$ref": "#/components/schemas/StackMaskLayer"
             },
             "description": "The mask\u0027s own stack over this base, bottom first. Ignored in a change: the mask layer commands edit it, so that\na painted canvas stays with its entry."
+          },
+          "lane": {
+            "type": "string",
+            "description": "Which lane of its picture the base reads: Red, Green, Blue or Alpha. A mesh map that measures a direction keeps\nits X, Y and Z in the first three.",
+            "default": "Red"
           }
         },
         "description": "What decides where a layer shows."
@@ -13098,7 +13111,8 @@
           "painted",
           "blend",
           "opacity",
-          "enabled"
+          "enabled",
+          "lane"
         ],
         "type": "object",
         "properties": {
@@ -13178,6 +13192,11 @@
             "type": "boolean",
             "description": "Whether it composites at all.",
             "default": true
+          },
+          "lane": {
+            "type": "string",
+            "description": "Which lane of its picture it reads: Red, Green, Blue or Alpha.",
+            "default": "Red"
           }
         },
         "description": "One entry of a mask\u0027s own stack: a source, composited over the base and the entries beneath it with its own blend\nand opacity. Paint over a generator is a Paint entry over a Generator base."
@@ -13867,6 +13886,16 @@
           "brush": {
             "description": "What a brush\u0027s fields take, and the brush a new one starts as.",
             "$ref": "#/components/schemas/StackBrushTerms"
+          },
+          "lanes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "The lanes of a picture a mask can read."
           }
         },
         "description": "The words a stack\u0027s fields take, each with its label, so that a client holds no list of its own."
