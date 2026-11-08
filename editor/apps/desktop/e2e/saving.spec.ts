@@ -71,12 +71,15 @@ const open = () => window.locator('[data-testid=tree-row][data-path="crate"]').d
 /** Paints, waits for autosave, and goes without saving, as a crash would. */
 async function crashWithUnsavedWork(): Promise<{ saved: string | undefined; painted: string | undefined }> {
   await launch();
-  const pictures = await paint();
+  const { saved } = await paint();
   await expect.poll(autosaves, { timeout: 30_000 }).toBeGreaterThan(0);
+  // What the autosave holds is what a restore brings back. The picture as it first changed can be a stroke whose last
+  // stamps had not been drawn yet, and a restore of the whole stroke then reads as one that lost nothing but differs.
+  const painted = await pictureHash();
   await leave(app);
   await launch(library);
   await expect(window.getByTestId('app-recovery')).toBeVisible({ timeout: 60_000 });
-  return pictures;
+  return { saved, painted };
 }
 
 test.beforeEach(() => {
