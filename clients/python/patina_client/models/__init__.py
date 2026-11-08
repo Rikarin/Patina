@@ -140,8 +140,8 @@ from .project_document_mesh_request import ProjectDocumentMeshRequest
 from .project_document_request import ProjectDocumentRequest
 from .project_document_role_request import ProjectDocumentRoleRequest
 from .project_duplicate_request import ProjectDuplicateRequest
+from .project_export_request import ProjectExportRequest
 from .project_export_settings import ProjectExportSettings
-from .project_export_settings_request import ProjectExportSettingsRequest
 from .project_file import ProjectFile
 from .project_file_request import ProjectFileRequest
 from .project_mesh_change import ProjectMeshChange
@@ -155,6 +155,7 @@ from .project_report import ProjectReport
 from .project_report_page import ProjectReportPage
 from .project_settings_request import ProjectSettingsRequest
 from .project_summary import ProjectSummary
+from .project_viewport_request import ProjectViewportRequest
 from .stack_brush import StackBrush
 from .stack_channel import StackChannel
 from .stack_clip import StackClip
@@ -387,8 +388,8 @@ __all__ = (
     "ProjectDocumentRequest",
     "ProjectDocumentRoleRequest",
     "ProjectDuplicateRequest",
+    "ProjectExportRequest",
     "ProjectExportSettings",
-    "ProjectExportSettingsRequest",
     "ProjectFile",
     "ProjectFileRequest",
     "ProjectMeshChange",
@@ -402,6 +403,7 @@ __all__ = (
     "ProjectReportPage",
     "ProjectSettingsRequest",
     "ProjectSummary",
+    "ProjectViewportRequest",
     "StackBrush",
     "StackChannel",
     "StackClip",

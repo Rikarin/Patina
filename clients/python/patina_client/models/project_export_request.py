@@ -17,24 +17,24 @@ if TYPE_CHECKING:
 
 
 
-T = TypeVar("T", bound="ProjectExportSettingsRequest")
+T = TypeVar("T", bound="ProjectExportRequest")
 
 
 
 @_attrs_define
-class ProjectExportSettingsRequest:
-    """ The body of `PUT /api/v1/library/project/export-settings`.
+class ProjectExportRequest:
+    """ The body of `PUT /api/v1/library/project/export`.
 
         Attributes:
             project (str): The project, below `projects/`.
-            settings (ProjectExportSettings): A project's export settings, kept in its `project.yaml` so they travel with
-                the library: what a client's
+            export (ProjectExportSettings): A project's export settings, kept in its `project.yaml` so they travel with the
+                library: what a client's
                 export starts from next time. Any client reads and writes them; a build reads only what a request sends, so
                 keeping them changes no key.
      """
 
     project: str
-    settings: ProjectExportSettings
+    export: ProjectExportSettings
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -45,14 +45,14 @@ class ProjectExportSettingsRequest:
         from ..models.project_export_settings import ProjectExportSettings # noqa: PLC0415
         project = self.project
 
-        settings = self.settings.to_dict()
+        export = self.export.to_dict()
 
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update({
             "project": project,
-            "settings": settings,
+            "export": export,
         })
 
         return field_dict
@@ -65,19 +65,19 @@ class ProjectExportSettingsRequest:
         d = dict(src_dict)
         project = d.pop("project")
 
-        settings = ProjectExportSettings.from_dict(d.pop("settings"))
+        export = ProjectExportSettings.from_dict(d.pop("export"))
 
 
 
 
-        project_export_settings_request = cls(
+        project_export_request = cls(
             project=project,
-            settings=settings,
+            export=export,
         )
 
 
-        project_export_settings_request.additional_properties = d
-        return project_export_settings_request
+        project_export_request.additional_properties = d
+        return project_export_request
 
     @property
     def additional_keys(self) -> list[str]:

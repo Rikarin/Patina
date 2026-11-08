@@ -185,18 +185,13 @@ public sealed record ProjectFileRequest(string Project, string File);
 ///     How Auto Unwrap lays a mesh out. A mesh it already wrote is unwrapped again with these, from the file it came
 ///     from, and its paint moves across as a new mesh's would.
 /// </param>
-/// <param name="Viewport">
-///     How the viewport is to open in this project from now on. It is kept, not applied: <c>PUT /viewport/display</c>
-///     shows it.
-/// </param>
 public sealed record ProjectSettingsRequest(
     string Project,
     string? Mesh,
     string? High,
     bool? AutoUnwrap,
     bool? PreservePaint = null,
-    UnwrapOptions? Unwrap = null,
-    ViewportDisplay? Viewport = null
+    UnwrapOptions? Unwrap = null
 );
 
 /// <summary>One preset file as a project's export last had it.</summary>
@@ -237,10 +232,18 @@ public sealed record ProjectExportSettings {
     public IReadOnlyList<ExportFileSetting> Files { get; init; } = [];
 }
 
-/// <summary>The body of <c>PUT /api/v1/library/project/export-settings</c>.</summary>
+/// <summary>The body of <c>PUT /api/v1/library/project/export</c>.</summary>
 /// <param name="Project">The project, below <c>projects/</c>.</param>
-/// <param name="Settings">What its export is set to now.</param>
-public sealed record ProjectExportSettingsRequest(string Project, ProjectExportSettings Settings);
+/// <param name="Export">What its export is set to now.</param>
+public sealed record ProjectExportRequest(string Project, ProjectExportSettings Export);
+
+/// <summary>The body of <c>PUT /api/v1/library/project/viewport</c>.</summary>
+/// <param name="Project">The project, below <c>projects/</c>.</param>
+/// <param name="Viewport">
+///     How the viewport is to open in this project from now on. It is kept, not applied: <c>PUT /viewport/display</c>
+///     shows it.
+/// </param>
+public sealed record ProjectViewportRequest(string Project, ViewportDisplay Viewport);
 
 /// <summary>The body of <c>POST /api/v1/library/project/documents</c>.</summary>
 /// <param name="Project">The project, below <c>projects/</c>.</param>

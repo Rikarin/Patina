@@ -331,6 +331,30 @@ public sealed class LibraryFolderTests : IDisposable {
     }
 
     /// <summary>
+    ///     A project's export, bake and viewport settings sit side by side in its project.yaml, and a library opened
+    ///     again after its cache is deleted reads all three back: the file is the truth.
+    /// </summary>
+    [Fact]
+    public void A_projects_export_bake_and_viewport_settings_outlive_the_cache_together() {
+        var made = library.CreateProject(new("Lamp"));
+        ProjectExportSettings export = new() { Preset = "unreal", Folder = "/out", Skipped = ["Shade"] };
+        ProjectBakeSettings bake = new() { Cage = "/art/cage.fbx", Options = new() { Resolution = 512 } };
+        var viewport = new ViewportDisplay(ToneMapping: "agx", Orthographic: true);
+
+        library.SetExport(made.Path, export);
+        library.SetBake(made.Path, bake);
+        library.SetViewport(made.Path, viewport);
+        library.Dispose();
+        Directory.Delete(Path.Combine(root, LibraryLayout.CacheFolder), true);
+        using var again = OpenLibrary.Open(root);
+        var contents = again.Contents(made.Path);
+
+        Assert.Equal(("unreal", "/out", "Shade"), (contents.Export!.Preset, contents.Export.Folder, contents.Export.Skipped[0]));
+        Assert.Equal(("/art/cage.fbx", 512), (contents.Bake.Cage, contents.Bake.Options.Resolution));
+        Assert.Equal(viewport, contents.Viewport);
+    }
+
+    /// <summary>
     ///     A project keeps how its viewport was left, every setting of it, through its file: a project that never set
     ///     one has none, and its file says nothing about the viewport.
     /// </summary>

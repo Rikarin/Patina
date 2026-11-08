@@ -1,6 +1,6 @@
 using Patina.Contracts;
 using System.Globalization;
-using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using YamlDotNet.RepresentationModel;
 
 namespace Patina.Library;
@@ -72,9 +72,9 @@ public static class DocumentCodec {
                     ..document.AutoUnwrap ? [] : new[] { Pair(AutoUnwrapKey, YamlText.Plain("false")) },
                     ..document.PreservePaint ? [] : new[] { Pair(PreservePaintKey, YamlText.Plain("false")) },
                     ..Named(UnwrapKey, document.Unwrap != new UnwrapOptions(), Unwrap(document.Unwrap)),
-                    ..Named(ExportKey, document.Export is not null, ExportOf(document.Export)),
-                    ..Bake(document.Bake),
-                    ..Named(ViewportKey, document.Viewport is not null, Viewport(document.Viewport)),
+                    ..Block(ExportKey, Canonical(document.Export), LibraryTreeJsonContext.Default.ProjectExportSettings),
+                    ..Block(BakeKey, document.Bake, LibraryTreeJsonContext.Default.ProjectBakeSettings),
+                    ..Block(ViewportKey, document.Viewport, LibraryTreeJsonContext.Default.ViewportDisplay),
                     Pair(ReferencesKey, References(document.References)),
                     Pair(
                         OutputsKey,
@@ -85,9 +85,6 @@ public static class DocumentCodec {
                 ]
             )
         );
-
-    static YamlMappingNode ExportOf(ProjectExportSettings? settings) =>
-        settings is null ? new YamlMappingNode() : ExportCodec.Write(settings);
 
     static KeyValuePair<YamlNode, YamlNode>[] Named(string key, bool present, YamlNode value) =>
         present ? [Pair(key, value)] : [];
@@ -112,103 +109,39 @@ public static class DocumentCodec {
             ]
         );
 
-    /// <summary>The project's bake settings, whole, when it has any.</summary>
+    /// <summary>
+    ///     A settings block of a project, whole, when it has one: <c>export</c>, <c>bake</c> or <c>viewport</c>. Each is
+    ///     its record as the API sends it (<see cref="YamlRecords" />), so no block has a codec of its own.
+    /// </summary>
     /// <remarks>
     ///     Written whole rather than as what differs from the defaults, so a default that moves in a later version
-    ///     does not move a project's bakes with it.
+    ///     does not move a project's bakes or its viewport with it.
     /// </remarks>
-    static KeyValuePair<YamlNode, YamlNode>[] Bake(ProjectBakeSettings? bake) =>
-        bake is null
-            ? []
-            : [
-                Pair(
-                    BakeKey,
-                    YamlRecords.Write(
-                        JsonSerializer.SerializeToNode(bake, LibraryTreeJsonContext.Default.ProjectBakeSettings)!
-                            .AsObject()
-                    )
-                )
-            ];
+    static KeyValuePair<YamlNode, YamlNode>[] Block<T>(string key, T? value, JsonTypeInfo<T> type) where T : class =>
+        value is null ? [] : [Pair(key, YamlRecords.Write(value, type))];
+
+    /// <summary>A settings block read back, what it leaves out taken from <paramref name="defaults" />, or null.</summary>
+    static T? ReadBlock<T>(YamlFields fields, string key, JsonTypeInfo<T> type, T defaults) where T : class =>
+        fields.Map(key) is { } map ? YamlRecords.Read(map, type, defaults) : null;
+
+    /// <summary>
+    ///     Export settings with their sets and files in one order, so saving the same settings changes no byte
+    ///     however a client listed them.
+    /// </summary>
+    static ProjectExportSettings? Canonical(ProjectExportSettings? export) =>
+        export is null
+            ? null
+            : export with {
+                Skipped = [..export.Skipped.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
+                Files = [
+                    ..export.Files.OrderBy(static f => f.Preset, StringComparer.Ordinal)
+                        .ThenBy(static f => f.Template, StringComparer.Ordinal)
+                ]
+            };
 
     static ProjectBakeSettings? ReadBake(YamlFields fields) {
-        if (fields.Map(BakeKey) is not { } map) {
-            return null;
-        }
-
-        var shape = JsonSerializer.SerializeToNode(
-            new(),
-            LibraryTreeJsonContext.Default.ProjectBakeSettings
-        )!
-            .AsObject();
-        var bake = YamlRecords.Read(map, shape).Deserialize(LibraryTreeJsonContext.Default.ProjectBakeSettings)!;
-        return bake.Options.Problem() is { } problem ? throw fields.Problem($"'{BakeKey}': {problem}") : bake;
-    }
-
-    /// <summary>The viewport's settings as a flat map, every one of them, so a project file has one shape.</summary>
-    static YamlMappingNode Viewport(ViewportDisplay? display) {
-        if (display is null) {
-            return new();
-        }
-
-        (string Key, double Value)[] numbers = [
-            ("environmentRotation", display.EnvironmentRotation), ("backgroundBlur", display.BackgroundBlur),
-            ("backgroundOpacity", display.BackgroundOpacity), ("lightRotation", display.LightRotation),
-            ("exposure", display.Exposure), ("shadows", display.Shadows), ("fieldOfView", display.FieldOfView),
-            ("contrast", display.Contrast), ("saturation", display.Saturation), ("vignette", display.Vignette),
-            ("grain", display.Grain), ("aberration", display.Aberration), ("sharpen", display.Sharpen)
-        ];
-        return new(
-            [
-                Pair("environment", YamlText.Text(display.Environment)),
-                Pair("toneMapping", YamlText.Text(display.ToneMapping)),
-                ..Present("look", display.Look),
-                Pair("view", YamlText.Text(display.View)),
-                ..Present("picture", display.Picture),
-                Pair("wireframe", Flag(display.Wireframe)),
-                Pair("orthographic", Flag(display.Orthographic)),
-                ..numbers.Select(static number => Pair(number.Key, YamlText.Plain(number.Value)))
-            ]
-        );
-    }
-
-    static YamlScalarNode Flag(bool on) => YamlText.Plain(on ? "true" : "false");
-
-    /// <summary>A setting left out is the viewport's own, and one that is not a number is refused.</summary>
-    static ViewportDisplay? ReadViewport(IReadOnlyDictionary<string, string> map, YamlFields fields) {
-        if (map.Count == 0) {
-            return null;
-        }
-
-        var defaults = new ViewportDisplay();
-        return new() {
-            Environment = map.GetValueOrDefault("environment", defaults.Environment),
-            EnvironmentRotation = Number("environmentRotation", defaults.EnvironmentRotation),
-            BackgroundBlur = Number("backgroundBlur", defaults.BackgroundBlur),
-            BackgroundOpacity = Number("backgroundOpacity", defaults.BackgroundOpacity),
-            LightRotation = Number("lightRotation", defaults.LightRotation),
-            Exposure = Number("exposure", defaults.Exposure),
-            Shadows = Number("shadows", defaults.Shadows),
-            ToneMapping = map.GetValueOrDefault("toneMapping", defaults.ToneMapping),
-            Look = map.GetValueOrDefault("look"),
-            View = map.GetValueOrDefault("view", defaults.View),
-            Picture = map.GetValueOrDefault("picture"),
-            Wireframe = Flag("wireframe"),
-            Orthographic = Flag("orthographic"),
-            FieldOfView = Number("fieldOfView", defaults.FieldOfView),
-            Contrast = Number("contrast", defaults.Contrast),
-            Saturation = Number("saturation", defaults.Saturation),
-            Vignette = Number("vignette", defaults.Vignette),
-            Grain = Number("grain", defaults.Grain),
-            Aberration = Number("aberration", defaults.Aberration),
-            Sharpen = Number("sharpen", defaults.Sharpen)
-        };
-
-        double Number(string key, double fallback) =>
-            !map.TryGetValue(key, out var text) ? fallback
-            : double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value
-            : throw fields.Problem($"'{ViewportKey}.{key}' is not a number.");
-
-        bool Flag(string key) => map.GetValueOrDefault(key) == "true";
+        var bake = ReadBlock(fields, BakeKey, LibraryTreeJsonContext.Default.ProjectBakeSettings, new());
+        return bake?.Options.Problem() is { } problem ? throw fields.Problem($"'{BakeKey}': {problem}") : bake;
     }
 
     static YamlMappingNode Unwrap(UnwrapOptions options) =>
@@ -359,9 +292,9 @@ public static class DocumentCodec {
                     AutoUnwrap = fields.Optional(AutoUnwrapKey) != "false",
                     PreservePaint = fields.Optional(PreservePaintKey) != "false",
                     Unwrap = ReadUnwrap(fields.TextMap(UnwrapKey), fields),
-                    Export = fields.Map(ExportKey) is { } export ? ExportCodec.Read(export) : null,
+                    Export = ReadBlock(fields, ExportKey, LibraryTreeJsonContext.Default.ProjectExportSettings, new()),
                     Bake = ReadBake(fields),
-                    Viewport = ReadViewport(fields.TextMap(ViewportKey), fields)
+                    Viewport = ReadBlock(fields, ViewportKey, LibraryTreeJsonContext.Default.ViewportDisplay, new())
                 };
             }
         );

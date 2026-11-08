@@ -268,7 +268,7 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
 
     /// <summary>Keeps what a project's export is set to, so any client's next export of it starts there.</summary>
     /// <exception cref="FileNotFoundException">The project is not there.</exception>
-    public void SetExportSettings(string path, ProjectExportSettings settings) {
+    public void SetExport(string path, ProjectExportSettings settings) {
         lock (createGate) {
             ProjectFiles.SetExport(RootPath, path, settings);
             Interlocked.Increment(ref unscannedWrites);

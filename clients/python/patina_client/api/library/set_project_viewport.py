@@ -10,14 +10,14 @@ from ... import errors
 
 from ...models.problem_details import ProblemDetails
 from ...models.project_contents import ProjectContents
-from ...models.project_export_settings_request import ProjectExportSettingsRequest
+from ...models.project_viewport_request import ProjectViewportRequest
 from typing import cast
 
 
 
 def _get_kwargs(
     *,
-    body: ProjectExportSettingsRequest,
+    body: ProjectViewportRequest,
 
 ) -> dict[str, Any]:
     headers: dict[str, Any] = {}
@@ -29,7 +29,7 @@ def _get_kwargs(
 
     _kwargs: dict[str, Any] = {
         "method": "put",
-        "url": "/api/v1/library/project/export-settings",
+        "url": "/api/v1/library/project/viewport",
     }
 
     _kwargs["json"] = body.to_dict()
@@ -88,14 +88,14 @@ def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Res
 def sync_detailed(
     *,
     client: AuthenticatedClient | Client,
-    body: ProjectExportSettingsRequest,
+    body: ProjectViewportRequest,
 
 ) -> Response[ProblemDetails | ProjectContents]:
-    """ Keeps what a project's export is set to in its project.yaml, where any client's next export starts.
+    """ Keeps how the viewport is to open in a project, in its project.yaml. It is kept, not shown: PUT
+    /viewport/display shows it.
 
     Args:
-        body (ProjectExportSettingsRequest): The body of `PUT /api/v1/library/project/export-
-            settings`.
+        body (ProjectViewportRequest): The body of `PUT /api/v1/library/project/viewport`.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -120,14 +120,14 @@ def sync_detailed(
 def sync(
     *,
     client: AuthenticatedClient | Client,
-    body: ProjectExportSettingsRequest,
+    body: ProjectViewportRequest,
 
 ) -> ProblemDetails | ProjectContents | None:
-    """ Keeps what a project's export is set to in its project.yaml, where any client's next export starts.
+    """ Keeps how the viewport is to open in a project, in its project.yaml. It is kept, not shown: PUT
+    /viewport/display shows it.
 
     Args:
-        body (ProjectExportSettingsRequest): The body of `PUT /api/v1/library/project/export-
-            settings`.
+        body (ProjectViewportRequest): The body of `PUT /api/v1/library/project/viewport`.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -147,14 +147,14 @@ body=body,
 async def asyncio_detailed(
     *,
     client: AuthenticatedClient | Client,
-    body: ProjectExportSettingsRequest,
+    body: ProjectViewportRequest,
 
 ) -> Response[ProblemDetails | ProjectContents]:
-    """ Keeps what a project's export is set to in its project.yaml, where any client's next export starts.
+    """ Keeps how the viewport is to open in a project, in its project.yaml. It is kept, not shown: PUT
+    /viewport/display shows it.
 
     Args:
-        body (ProjectExportSettingsRequest): The body of `PUT /api/v1/library/project/export-
-            settings`.
+        body (ProjectViewportRequest): The body of `PUT /api/v1/library/project/viewport`.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -179,14 +179,14 @@ async def asyncio_detailed(
 async def asyncio(
     *,
     client: AuthenticatedClient | Client,
-    body: ProjectExportSettingsRequest,
+    body: ProjectViewportRequest,
 
 ) -> ProblemDetails | ProjectContents | None:
-    """ Keeps what a project's export is set to in its project.yaml, where any client's next export starts.
+    """ Keeps how the viewport is to open in a project, in its project.yaml. It is kept, not shown: PUT
+    /viewport/display shows it.
 
     Args:
-        body (ProjectExportSettingsRequest): The body of `PUT /api/v1/library/project/export-
-            settings`.
+        body (ProjectViewportRequest): The body of `PUT /api/v1/library/project/viewport`.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.

@@ -242,7 +242,7 @@ describe('ExportPane settings', () => {
     };
     const { fixture, selection } = setup({
       'GET library/project': () => Response.json({ id: 'p', name: 'Crate', path: 'crate', export: kept }),
-      'PUT library/project/export-settings': request => {
+      'PUT library/project/export': request => {
         void request.json().then(body => puts.push(body));
         return Response.json({ id: 'p', name: 'Crate', path: 'crate' });
       }
@@ -265,7 +265,7 @@ describe('ExportPane settings', () => {
     expect(puts).toHaveLength(1);
     expect(puts[0]).toMatchObject({
       project: 'crate',
-      settings: {
+      export: {
         preset: 'unreal',
         folder: '/out',
         size: 1024,
@@ -277,7 +277,7 @@ describe('ExportPane settings', () => {
   it('keeps nothing for a library export, which belongs to no project', async () => {
     const puts: unknown[] = [];
     const { fixture } = setup({
-      'PUT library/project/export-settings': () => {
+      'PUT library/project/export': () => {
         puts.push(1);
         return Response.json({});
       }

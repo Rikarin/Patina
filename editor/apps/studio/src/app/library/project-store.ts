@@ -847,9 +847,7 @@ export class ProjectStore {
     try {
       const client = await this.library.api();
       const contents = unwrap(
-        await client.PATCH('/api/v1/library/project/settings', {
-          body: { project: path, mesh: null, high: null, autoUnwrap: null, viewport }
-        })
+        await client.PUT('/api/v1/library/project/viewport', { body: { project: path, viewport } })
       );
       this.mutableContents.update(all => new Map(all).set(path, contents));
     } catch {

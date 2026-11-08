@@ -275,8 +275,8 @@ export class ExportStore {
   async keep(project: string, settings: ExportSettings): Promise<void> {
     const client = await this.api();
     unwrap(
-      await client.PUT('/api/v1/library/project/export-settings', {
-        body: { project, settings: storedOf(settings) }
+      await client.PUT('/api/v1/library/project/export', {
+        body: { project, export: storedOf(settings) }
       })
     );
   }

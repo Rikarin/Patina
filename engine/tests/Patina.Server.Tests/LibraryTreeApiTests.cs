@@ -158,8 +158,8 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
         };
 
         using var kept = await client.PutAsJsonAsync(
-            "/api/v1/library/project/export-settings",
-            new ProjectExportSettingsRequest("crate", settings),
+            "/api/v1/library/project/export",
+            new ProjectExportRequest("crate", settings),
             Token
         );
 
@@ -497,14 +497,14 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
         await MakeCrateAsync();
         var left = new ViewportDisplay(Exposure: 1.5, View: "clay", Wireframe: true, ToneMapping: "agx");
 
-        using var kept = await client.PatchAsJsonAsync(
-            "/api/v1/library/project/settings",
-            new ProjectSettingsRequest("crate", null, null, null, Viewport: left),
+        using var kept = await client.PutAsJsonAsync(
+            "/api/v1/library/project/viewport",
+            new ProjectViewportRequest("crate", left),
             Token
         );
-        using var refused = await client.PatchAsJsonAsync(
-            "/api/v1/library/project/settings",
-            new ProjectSettingsRequest("crate", null, null, null, Viewport: left with { View = "x-ray" }),
+        using var refused = await client.PutAsJsonAsync(
+            "/api/v1/library/project/viewport",
+            new ProjectViewportRequest("crate", left with { View = "x-ray" }),
             Token
         );
 

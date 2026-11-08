@@ -293,6 +293,64 @@ public sealed class DocumentCodecTests {
             }
         );
 
+    /// <summary>
+    ///     A project.yaml holds its export, bake and viewport blocks side by side, each written by the one record
+    ///     mechanism, and all three come back whole, with nothing unread and no byte changed by a second save.
+    /// </summary>
+    [Fact]
+    public void Export_bake_and_viewport_blocks_survive_the_round_trip_together() {
+        var project = TestLibrary.Project("Crate") with {
+            Export = new() {
+                Preset = "godot",
+                Size = 512,
+                Padding = new("diffusion", 8, [0.25f, 0.5f, 1f, 1f]),
+                Dither = false,
+                Skipped = ["Strap"],
+                Files = [new("godot", "{project}_albedo", true, "tga")]
+            },
+            Bake = new() {
+                Sets = ["Body"],
+                High = ["/art/crate_high.fbx"],
+                Options = new() { Resolution = 1024, Maps = ["ao", "id"], Occlusion = new() { Rays = 32 } }
+            },
+            Viewport = new(Exposure: -1.25, View: "picture", Picture: "/bakes/ao.png", Wireframe: true, Look: null)
+        };
+
+        var text = DocumentCodec.Write(project);
+        var read = DocumentCodec.ReadProject(text, File);
+
+        Assert.Empty(read.UnknownKeys);
+        Assert.Equal(text, DocumentCodec.Write(read.Document));
+        Assert.Equal(Json(project.Bake), Json(read.Document.Bake));
+        Assert.Equal(project.Viewport, read.Document.Viewport);
+        var export = read.Document.Export!;
+        Assert.Equal(("godot", 512, false), (export.Preset, export.Size, export.Dither));
+        Assert.Equal([0.25f, 0.5f, 1f, 1f], export.Padding!.Colour);
+        Assert.Equal("tga", Assert.Single(export.Files).Format);
+        Assert.Null(export.Folder);
+        Assert.DoesNotContain("look:", text, StringComparison.Ordinal);
+    }
+
+    /// <summary>A value of the wrong type is refused in any block, and a record in a list needs every field it has.</summary>
+    [Theory]
+    [InlineData("exposure: -1.25", "exposure: bright")]
+    [InlineData("size: 512", "size: 512.5")]
+    [InlineData("dither: false", "dither: no")]
+    [InlineData("format: tga", "")]
+    public void A_block_value_of_the_wrong_type_or_missing_is_refused(string written, string edited) {
+        var text = DocumentCodec.Write(
+            TestLibrary.Project("Crate") with {
+                Export = new() { Size = 512, Dither = false, Files = [new("godot", "{project}_albedo", true, "tga")] },
+                Viewport = new(Exposure: -1.25)
+            }
+        );
+
+        var wrong = text.Replace(written, edited, StringComparison.Ordinal);
+
+        Assert.NotEqual(text, wrong);
+        Assert.Throws<LibraryFormatException>(() => DocumentCodec.ReadProject(wrong, File));
+    }
+
     /// <summary>A project with no bake settings writes none, and reads back as having none.</summary>
     [Fact]
     public void A_project_with_no_bake_settings_writes_none() {

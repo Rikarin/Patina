@@ -68,9 +68,9 @@ static class LibraryTreeEndpoints {
                 "Sets a project's mesh, detailed mesh and auto unwrap. A mesh goes under all its texturing documents."
             );
 
-        library.MapPut("/project/export-settings", SetExportSettings)
+        library.MapPut("/project/export", SetExport)
             .Described(
-                "SetProjectExportSettings",
+                "SetProjectExport",
                 "Keeps what a project's export is set to in its project.yaml, where any client's next export starts."
             );
 
@@ -91,6 +91,13 @@ static class LibraryTreeEndpoints {
                 "SetProjectBake",
                 "Keeps how a project's bakes run, which texture sets they make maps for and the files they read "
                 + "beyond its mesh, in the project's own file."
+            );
+
+        library.MapPut("/project/viewport", SetViewport)
+            .Described(
+                "SetProjectViewport",
+                "Keeps how the viewport is to open in a project, in its project.yaml. It is kept, not shown: "
+                + "PUT /viewport/display shows it."
             );
 
         library.MapPatch("/project/document/role", SetDocumentRole)
@@ -324,27 +331,44 @@ static class LibraryTreeEndpoints {
             }
         );
 
-    static Results<Ok<ProjectContents>, ProblemHttpResult> SetExportSettings(
-        LibraryHost host,
-        ProjectExportSettingsRequest request
-    ) =>
-        Guarded(
-            host,
-            library => {
-                library.SetExportSettings(request.Project, request.Settings);
-                return TypedResults.Ok(library.Contents(request.Project));
-            }
-        );
+    // A project's export, bake and viewport blocks are each written whole by a PUT of {project, block}: checked first,
+    // kept in project.yaml, and answered with the project's contents.
+    static Results<Ok<ProjectContents>, ProblemHttpResult> SetExport(LibraryHost host, ProjectExportRequest request) =>
+        Keep(host, request.Project, null, library => library.SetExport(request.Project, request.Export));
 
     static Results<Ok<ProjectContents>, ProblemHttpResult> SetBake(LibraryHost host, ProjectBakeRequest request) =>
-        request.Bake.Options.Problem() is { } problem
+        Keep(
+            host,
+            request.Project,
+            request.Bake.Options.Problem(),
+            library => library.SetBake(request.Project, request.Bake)
+        );
+
+    static Results<Ok<ProjectContents>, ProblemHttpResult> SetViewport(
+        LibraryHost host,
+        ProjectViewportRequest request
+    ) =>
+        Keep(
+            host,
+            request.Project,
+            request.Viewport.Problem(),
+            library => library.SetViewport(request.Project, request.Viewport)
+        );
+
+    static Results<Ok<ProjectContents>, ProblemHttpResult> Keep(
+        LibraryHost host,
+        string project,
+        string? problem,
+        Action<OpenLibrary> keep
+    ) =>
+        problem is not null
             ? TypedResults.Problem(problem, statusCode: StatusCodes.Status400BadRequest)
             : Guarded(
                 host,
                 library => {
-                    library.SetBake(request.Project, request.Bake);
+                    keep(library);
                     host.RequestRescan();
-                    return TypedResults.Ok(library.Contents(request.Project));
+                    return TypedResults.Ok(library.Contents(project));
                 }
             );
 

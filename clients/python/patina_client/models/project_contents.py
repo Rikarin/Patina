@@ -19,6 +19,7 @@ if TYPE_CHECKING:
   from ..models.project_file import ProjectFile
   from ..models.project_mesh_info import ProjectMeshInfo
   from ..models.unwrap_options import UnwrapOptions
+  from ..models.viewport_display import ViewportDisplay
 
 
 
@@ -47,10 +48,11 @@ class ProjectContents:
                 project of one unnamed set.
             preserve_paint (bool): Whether paint moves to a new mesh's layout.
             unwrap (UnwrapOptions): How Auto Unwrap lays out a mesh. Each texture set gets an atlas of its own.
-            export (None | ProjectExportSettings | Unset):
             bake (ProjectBakeSettings): What a project keeps about baking, in its own file: the options, which texture sets
                 to bake, and the files
                 beyond the project's mesh that a bake reads.
+            export (None | ProjectExportSettings | Unset):
+            viewport (None | Unset | ViewportDisplay):
      """
 
     id: UUID
@@ -65,8 +67,9 @@ class ProjectContents:
     export_sets: list[str]
     preserve_paint: bool
     unwrap: UnwrapOptions
-    export: None | ProjectExportSettings | Unset = UNSET
     bake: ProjectBakeSettings
+    export: None | ProjectExportSettings | Unset = UNSET
+    viewport: None | Unset | ViewportDisplay = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -80,6 +83,7 @@ class ProjectContents:
         from ..models.project_file import ProjectFile # noqa: PLC0415
         from ..models.project_mesh_info import ProjectMeshInfo # noqa: PLC0415
         from ..models.unwrap_options import UnwrapOptions # noqa: PLC0415
+        from ..models.viewport_display import ViewportDisplay # noqa: PLC0415
         id = str(self.id)
 
         name = self.name
@@ -126,6 +130,8 @@ class ProjectContents:
 
         unwrap = self.unwrap.to_dict()
 
+        bake = self.bake.to_dict()
+
         export: dict[str, Any] | None | Unset
         if isinstance(self.export, Unset):
             export = UNSET
@@ -133,7 +139,14 @@ class ProjectContents:
             export = self.export.to_dict()
         else:
             export = self.export
-        bake = self.bake.to_dict()
+
+        viewport: dict[str, Any] | None | Unset
+        if isinstance(self.viewport, Unset):
+            viewport = UNSET
+        elif isinstance(self.viewport, ViewportDisplay):
+            viewport = self.viewport.to_dict()
+        else:
+            viewport = self.viewport
 
 
         field_dict: dict[str, Any] = {}
@@ -155,6 +168,8 @@ class ProjectContents:
         })
         if export is not UNSET:
             field_dict["export"] = export
+        if viewport is not UNSET:
+            field_dict["viewport"] = viewport
 
         return field_dict
 
@@ -168,6 +183,7 @@ class ProjectContents:
         from ..models.project_file import ProjectFile # noqa: PLC0415
         from ..models.project_mesh_info import ProjectMeshInfo # noqa: PLC0415
         from ..models.unwrap_options import UnwrapOptions # noqa: PLC0415
+        from ..models.viewport_display import ViewportDisplay # noqa: PLC0415
         d = dict(src_dict)
         id = UUID(d.pop("id"))
 
@@ -232,6 +248,11 @@ class ProjectContents:
 
 
 
+        bake = ProjectBakeSettings.from_dict(d.pop("bake"))
+
+
+
+
         def _parse_export(data: object) -> None | ProjectExportSettings | Unset:
             if data is None:
                 return data
@@ -251,9 +272,25 @@ class ProjectContents:
 
         export = _parse_export(d.pop("export", UNSET))
 
-        bake = ProjectBakeSettings.from_dict(d.pop("bake"))
+
+        def _parse_viewport(data: object) -> None | Unset | ViewportDisplay:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                viewport_type_1 = ViewportDisplay.from_dict(data)
 
 
+
+                return viewport_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | Unset | ViewportDisplay, data)
+
+        viewport = _parse_viewport(d.pop("viewport", UNSET))
 
 
         project_contents = cls(
@@ -269,8 +306,9 @@ class ProjectContents:
             export_sets=export_sets,
             preserve_paint=preserve_paint,
             unwrap=unwrap,
-            export=export,
             bake=bake,
+            export=export,
+            viewport=viewport,
         )
 
 

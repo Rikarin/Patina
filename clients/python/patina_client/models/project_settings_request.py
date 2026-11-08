@@ -13,7 +13,6 @@ from typing import cast
 
 if TYPE_CHECKING:
   from ..models.unwrap_options import UnwrapOptions
-  from ..models.viewport_display import ViewportDisplay
 
 
 
@@ -39,7 +38,6 @@ class ProjectSettingsRequest:
                 surface. Open documents have to be closed
                 first, as it rewrites their paint files.
             unwrap (None | Unset | UnwrapOptions):
-            viewport (None | Unset | ViewportDisplay):
      """
 
     project: str
@@ -48,7 +46,6 @@ class ProjectSettingsRequest:
     auto_unwrap: bool | None | Unset = UNSET
     preserve_paint: bool | None | Unset = UNSET
     unwrap: None | Unset | UnwrapOptions = UNSET
-    viewport: None | Unset | ViewportDisplay = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -57,7 +54,6 @@ class ProjectSettingsRequest:
 
     def to_dict(self) -> dict[str, Any]:
         from ..models.unwrap_options import UnwrapOptions # noqa: PLC0415
-        from ..models.viewport_display import ViewportDisplay # noqa: PLC0415
         project = self.project
 
         mesh: None | str | Unset
@@ -92,14 +88,6 @@ class ProjectSettingsRequest:
         else:
             unwrap = self.unwrap
 
-        viewport: dict[str, Any] | None | Unset
-        if isinstance(self.viewport, Unset):
-            viewport = UNSET
-        elif isinstance(self.viewport, ViewportDisplay):
-            viewport = self.viewport.to_dict()
-        else:
-            viewport = self.viewport
-
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -116,8 +104,6 @@ class ProjectSettingsRequest:
             field_dict["preservePaint"] = preserve_paint
         if unwrap is not UNSET:
             field_dict["unwrap"] = unwrap
-        if viewport is not UNSET:
-            field_dict["viewport"] = viewport
 
         return field_dict
 
@@ -126,7 +112,6 @@ class ProjectSettingsRequest:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.unwrap_options import UnwrapOptions # noqa: PLC0415
-        from ..models.viewport_display import ViewportDisplay # noqa: PLC0415
         d = dict(src_dict)
         project = d.pop("project")
 
@@ -190,26 +175,6 @@ class ProjectSettingsRequest:
         unwrap = _parse_unwrap(d.pop("unwrap", UNSET))
 
 
-        def _parse_viewport(data: object) -> None | Unset | ViewportDisplay:
-            if data is None:
-                return data
-            if isinstance(data, Unset):
-                return data
-            try:
-                if not isinstance(data, dict):
-                    raise TypeError()
-                viewport_type_1 = ViewportDisplay.from_dict(data)
-
-
-
-                return viewport_type_1
-            except (TypeError, ValueError, AttributeError, KeyError):
-                pass
-            return cast(None | Unset | ViewportDisplay, data)
-
-        viewport = _parse_viewport(d.pop("viewport", UNSET))
-
-
         project_settings_request = cls(
             project=project,
             mesh=mesh,
@@ -217,7 +182,6 @@ class ProjectSettingsRequest:
             auto_unwrap=auto_unwrap,
             preserve_paint=preserve_paint,
             unwrap=unwrap,
-            viewport=viewport,
         )
 
 
