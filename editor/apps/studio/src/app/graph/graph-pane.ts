@@ -883,7 +883,7 @@ export class GraphCanvas {
         },
         { capture: true }
       );
-      // Ahead of xUI's own Delete: with Ctrl or Cmd held, a delete keeps the chain joined.
+      // Ahead of xUI's own Delete, which would take Delete and Relink's keys for a plain delete.
       element.addEventListener(
         'keydown',
         event => {
