@@ -222,6 +222,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   right way up on the mesh in every tool. Maps baked before this are in another basis and upside down; the bake key changed,
   so they bake again.
 - `.glb` files written by `patina-bench` no longer turn `v` over.
+- The app loads less before its first picture: the panes and dialogs a start page does not show load the first time they are
+  shown, so the first bundle is 792 kB where it was 1.23 MB.
 
 ### Added
 
