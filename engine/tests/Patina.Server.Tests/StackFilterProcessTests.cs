@@ -91,8 +91,8 @@ public sealed partial class StackProcessTests {
     }
 
     /// <summary>
-    ///     Filters whose whole point is to leave a step where it is, so a mask of hard-edged strokes at two values comes
-    ///     through them unchanged however they are set. Each is held to moving a soft picture on the layer side.
+    ///     Filters whose whole point is to leave a step where it is, so a mask of hard-edged strokes at two values
+    ///     comes through them unchanged however they are set. Each is held to moving a soft picture on the layer side.
     /// </summary>
     static readonly HashSet<string> KeepsAHardEdge = ["Filters/Median", "Filters/Painterly Smooth"];
 
