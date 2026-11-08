@@ -13,13 +13,18 @@ public sealed record GraphOpenRequest(string Path);
 /// <param name="Y">Its position on the canvas.</param>
 /// <param name="Values">The numbers set on its inputs, by port. An input left out takes the type's default.</param>
 /// <param name="Texts">The text settings set on it, by name.</param>
+/// <param name="Bypassed">
+///     True when it is switched off: what feeds its first input of an output's kind passes straight through, and a
+///     node with no such input passes nothing.
+/// </param>
 public sealed record GraphNodeState(
     int Id,
     string Type,
     float X,
     float Y,
     IReadOnlyDictionary<string, float[]> Values,
-    IReadOnlyDictionary<string, string> Texts
+    IReadOnlyDictionary<string, string> Texts,
+    bool Bypassed = false
 );
 
 /// <summary>One wire, from an output to an input.</summary>
@@ -38,6 +43,12 @@ public sealed record GraphEdgeState(int FromNode, string FromPort, int ToNode, s
 ///     What a person calls each of <paramref name="Accepted" />, in its order. The Server fills it in; a client that
 ///     sends a definition leaves it out.
 /// </param>
+/// <param name="Label">What a person calls it, apart from <paramref name="Name" />, which expressions write. Null or empty for the name.</param>
+/// <param name="Widget">
+///     The control an inspector draws: <c>Default</c>, <c>Slider</c> (a number with a range), <c>Angle</c> (a number
+///     in degrees) or <c>Toggle</c> (a flag). Null for <c>Default</c>.
+/// </param>
+/// <param name="VisibleIf">When it is shown, or null for always. Hiding never changes its value.</param>
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field, so fewer parameters means a new API.
 #pragma warning disable SK7005
 public sealed record GraphSettingDefinition(
@@ -49,9 +60,25 @@ public sealed record GraphSettingDefinition(
     float? Maximum,
     string Group,
     IReadOnlyList<string> Accepted,
-    IReadOnlyList<string>? Labels = null
+    IReadOnlyList<string>? Labels = null,
+    string? Label = null,
+    string? Widget = null,
+    GraphSettingCondition? VisibleIf = null
 );
 #pragma warning restore SK7005
+
+/// <summary>When a parameter or a setting is shown: while another one of the same graph or node holds a value.</summary>
+/// <param name="Setting">The other one, by name.</param>
+/// <param name="Value">
+///     What it is compared with, as text. Numbers compare as numbers and anything else as a name, ignoring case.
+/// </param>
+/// <param name="Negated">True to show it while the other one does not hold the value.</param>
+public sealed record GraphSettingCondition(string Setting, string Value, bool Negated = false);
+
+/// <summary>A named set of values for a graph's parameters, kept in the graph's file.</summary>
+/// <param name="Name">What it is called. Unique within the graph.</param>
+/// <param name="Values">What each parameter is set to, by parameter name, as text.</param>
+public sealed record GraphPresetState(string Name, IReadOnlyDictionary<string, string> Values);
 
 /// <summary>One port of a node type.</summary>
 /// <param name="Name">What an edge calls it.</param>
@@ -84,6 +111,7 @@ public sealed record GraphPortRange(float? Minimum, float? Maximum, float? SoftM
 /// <param name="HasPreview">Whether the type declares that its picture is worth showing.</param>
 /// <param name="Ports">Its inputs and outputs.</param>
 /// <param name="Settings">Its text settings, set with <see cref="GraphSetText" />.</param>
+/// <param name="Presets">A compound's presets, which set its settings; empty for every other node.</param>
 public sealed record GraphNodeType(
     string Path,
     string Title,
@@ -91,7 +119,8 @@ public sealed record GraphNodeType(
     string Summary,
     bool HasPreview,
     IReadOnlyList<GraphPortDefinition> Ports,
-    IReadOnlyList<GraphSettingDefinition> Settings
+    IReadOnlyList<GraphSettingDefinition> Settings,
+    IReadOnlyList<GraphPresetState>? Presets = null
 );
 
 /// <summary>The nodes a search found.</summary>
@@ -102,7 +131,15 @@ public sealed record GraphNodeMatches(IReadOnlyList<string> Paths);
 /// <param name="Id">What a command names it by. It never changes and is never reused while a session lasts.</param>
 /// <param name="Title">What it is called.</param>
 /// <param name="Nodes">Its members.</param>
-public sealed record GraphGroupState(int Id, string Title, IReadOnlyList<int> Nodes);
+/// <param name="Color">The CSS colour its frame is drawn in, or empty for the client's own choice.</param>
+/// <param name="Description">What its nodes do together.</param>
+public sealed record GraphGroupState(
+    int Id,
+    string Title,
+    IReadOnlyList<int> Nodes,
+    string Color = "",
+    string Description = ""
+);
 
 /// <summary>A note on the canvas.</summary>
 /// <param name="Id">What a command names it by. It never changes and is never reused while a session lasts.</param>
@@ -196,6 +233,7 @@ public sealed record GraphEvaluation(
 /// <param name="Edges">The wires, by the input they arrive at.</param>
 /// <param name="Settings">Its settings: <c>baseWidth</c>, <c>baseHeight</c>, <c>seed</c> and any others.</param>
 /// <param name="Parameters">The parameters the graph exposes.</param>
+/// <param name="Presets">Named sets of values for them.</param>
 /// <param name="Interface">The ports it has when another graph holds it.</param>
 /// <param name="Groups">Its group frames, in file order.</param>
 /// <param name="Comments">Its notes, in file order.</param>
@@ -217,6 +255,7 @@ public sealed record GraphState(
     IReadOnlyList<GraphEdgeState> Edges,
     IReadOnlyDictionary<string, string> Settings,
     IReadOnlyList<GraphSettingDefinition> Parameters,
+    IReadOnlyList<GraphPresetState> Presets,
     IReadOnlyList<GraphInterfacePort> Interface,
     IReadOnlyList<GraphGroupState> Groups,
     IReadOnlyList<GraphCommentState> Comments,
@@ -254,10 +293,15 @@ public sealed record GraphSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(GraphAddComment), "addComment")]
 [JsonDerivedType(typeof(GraphSetComment), "setComment")]
 [JsonDerivedType(typeof(GraphRemoveComment), "removeComment")]
+[JsonDerivedType(typeof(GraphSetBypass), "setBypass")]
+[JsonDerivedType(typeof(GraphArrange), "arrange")]
+[JsonDerivedType(typeof(GraphSavePreset), "savePreset")]
+[JsonDerivedType(typeof(GraphRemovePreset), "removePreset")]
+[JsonDerivedType(typeof(GraphApplyPreset), "applyPreset")]
 public abstract record GraphCommand;
 
 /// <summary>Adds a node.</summary>
-/// <param name="Type">The node type's path.</param>
+/// <param name="Type">The node type's path, or <c>Reroute</c> for a dot that only bends a wire.</param>
 /// <param name="X">Where it goes.</param>
 /// <param name="Y">Where it goes.</param>
 /// <param name="Ref">
@@ -267,7 +311,37 @@ public abstract record GraphCommand;
 public sealed record GraphAddNode(string Type, float X, float Y, int? Ref = null) : GraphCommand;
 
 /// <summary>Removes nodes, and the wires that touch them.</summary>
-public sealed record GraphRemoveNodes(IReadOnlyList<int> Nodes) : GraphCommand;
+/// <param name="Nodes">The nodes.</param>
+/// <param name="Relink">
+///     True to keep the chain joined: each input a removed node fed is wired to what fed that node's first input of
+///     the same kind, the way a bypassed node passes it on.
+/// </param>
+public sealed record GraphRemoveNodes(IReadOnlyList<int> Nodes, bool Relink = false) : GraphCommand;
+
+/// <summary>Switches nodes off or back on. A switched-off node keeps its wires and values; see <see cref="GraphNodeState" />.</summary>
+public sealed record GraphSetBypass(IReadOnlyList<int> Nodes, bool Bypassed) : GraphCommand;
+
+/// <summary>Lays nodes out in columns, left to right in the order data flows, with Vixen's layout.</summary>
+/// <param name="Nodes">
+///     The nodes, which keep their top-left corner as a block and are laid out among themselves; empty for the whole
+///     graph.
+/// </param>
+public sealed record GraphArrange(IReadOnlyList<int> Nodes) : GraphCommand;
+
+/// <summary>Saves a preset, replacing one of the same name where it stands.</summary>
+/// <param name="Name">What it is called.</param>
+/// <param name="Values">What each parameter is set to, by name; null for every parameter's default as it is now.</param>
+public sealed record GraphSavePreset(string Name, IReadOnlyDictionary<string, string>? Values = null) : GraphCommand;
+
+/// <summary>Takes a preset away.</summary>
+public sealed record GraphRemovePreset(string Name) : GraphCommand;
+
+/// <summary>
+///     Sets the parameters a preset names to its values, as their defaults. A value a parameter cannot hold, or a
+///     name the graph no longer declares, is left out. A compound's preset on a node of another graph is that node's
+///     settings, which <see cref="GraphSetText" /> sets.
+/// </summary>
+public sealed record GraphApplyPreset(string Name) : GraphCommand;
 
 /// <summary>Where one node goes.</summary>
 public sealed record GraphNodePosition(int Node, float X, float Y);
@@ -336,7 +410,15 @@ public sealed record GraphAddGroup(string Title, IReadOnlyList<int> Nodes, int? 
 /// <param name="Id">The group.</param>
 /// <param name="Title">Its new title.</param>
 /// <param name="Nodes">Its new members.</param>
-public sealed record GraphSetGroup(int Id, string? Title = null, IReadOnlyList<int>? Nodes = null) : GraphCommand;
+/// <param name="Color">Its frame's CSS colour, or empty for the client's own choice.</param>
+/// <param name="Description">What its nodes do together.</param>
+public sealed record GraphSetGroup(
+    int Id,
+    string? Title = null,
+    IReadOnlyList<int>? Nodes = null,
+    string? Color = null,
+    string? Description = null
+) : GraphCommand;
 
 /// <summary>Takes a group frame away. Its nodes stay.</summary>
 public sealed record GraphRemoveGroup(int Id) : GraphCommand;
@@ -415,6 +497,7 @@ public sealed record GraphEditResult(
 /// <param name="Interface">The whole list of interface ports, or null when it did not change.</param>
 /// <param name="Groups">The whole list of groups, or null when it did not change.</param>
 /// <param name="Comments">The whole list of notes, or null when it did not change.</param>
+/// <param name="Presets">The whole list of presets, or null when it did not change.</param>
 public sealed record GraphDelta(
     IReadOnlyList<GraphNodeState> Nodes,
     IReadOnlyList<int> RemovedNodes,
@@ -425,7 +508,8 @@ public sealed record GraphDelta(
     IReadOnlyList<GraphSettingDefinition>? Parameters = null,
     IReadOnlyList<GraphGroupState>? Groups = null,
     IReadOnlyList<GraphCommentState>? Comments = null,
-    IReadOnlyList<GraphInterfacePort>? Interface = null
+    IReadOnlyList<GraphInterfacePort>? Interface = null,
+    IReadOnlyList<GraphPresetState>? Presets = null
 );
 #pragma warning restore SK7005
 

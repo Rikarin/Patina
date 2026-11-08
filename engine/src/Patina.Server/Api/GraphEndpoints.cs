@@ -190,7 +190,10 @@ static class GraphEndpoints {
             ? TypedResults.Ok<IReadOnlyList<GraphNodeType>>(
                 [
                     ..session.NodeTypes.OrderBy(static type => type.Path, StringComparer.Ordinal)
-                        .Select(GraphDocuments.Definition)
+                        .Select(type => GraphDocuments.Definition(type) with {
+                                Presets = GraphSessions.PresetsOf(session.Registry, type.Path)
+                            }
+                        )
                 ]
             )
             : NoSession(id);

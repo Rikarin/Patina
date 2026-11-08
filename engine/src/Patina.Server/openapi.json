@@ -6444,6 +6444,21 @@
           },
           {
             "$ref": "#/components/schemas/GraphCommandGraphRemoveComment"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphSetBypass"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphArrange"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphSavePreset"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphRemovePreset"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphApplyPreset"
           }
         ],
         "description": "One edit. Commands in a batch run in order, and every command sees the ones before it.",
@@ -6470,7 +6485,12 @@
             "removeGroup": "#/components/schemas/GraphCommandGraphRemoveGroup",
             "addComment": "#/components/schemas/GraphCommandGraphAddComment",
             "setComment": "#/components/schemas/GraphCommandGraphSetComment",
-            "removeComment": "#/components/schemas/GraphCommandGraphRemoveComment"
+            "removeComment": "#/components/schemas/GraphCommandGraphRemoveComment",
+            "setBypass": "#/components/schemas/GraphCommandGraphSetBypass",
+            "arrange": "#/components/schemas/GraphCommandGraphArrange",
+            "savePreset": "#/components/schemas/GraphCommandGraphSavePreset",
+            "removePreset": "#/components/schemas/GraphCommandGraphRemovePreset",
+            "applyPreset": "#/components/schemas/GraphCommandGraphApplyPreset"
           }
         }
       },
@@ -6610,7 +6630,7 @@
           },
           "type": {
             "type": "string",
-            "description": "The node type\u0027s path."
+            "description": "The node type\u0027s path, or \u0060Reroute\u0060 for a dot that only bends a wire."
           },
           "x": {
             "type": "number",
@@ -6668,6 +6688,47 @@
           }
         },
         "description": "Gives the graph a new port. Its boundary node shows it at once, and a holding graph after a save."
+      },
+      "GraphCommandGraphApplyPreset": {
+        "required": [
+          "name",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "applyPreset"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "description": "Sets the parameters a preset names to its values, as their defaults. A value a parameter cannot hold, or a\nname the graph no longer declares, is left out. A compound\u0027s preset on a node of another graph is that node\u0027s\nsettings, which GraphSetText sets."
+      },
+      "GraphCommandGraphArrange": {
+        "required": [
+          "nodes",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "arrange"
+            ],
+            "type": "string"
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "The nodes, which keep their top-left corner as a block and are laid out among themselves; empty for the whole\ngraph."
+          }
+        },
+        "description": "Lays nodes out in columns, left to right in the order data flows, with Vixen\u0027s layout."
       },
       "GraphCommandGraphConnect": {
         "required": [
@@ -6786,7 +6847,8 @@
       "GraphCommandGraphRemoveNodes": {
         "required": [
           "nodes",
-          "op"
+          "op",
+          "relink"
         ],
         "properties": {
           "op": {
@@ -6800,7 +6862,13 @@
             "items": {
               "type": "integer",
               "format": "int32"
-            }
+            },
+            "description": "The nodes."
+          },
+          "relink": {
+            "type": "boolean",
+            "description": "True to keep the chain joined: each input a removed node fed is wired to what fed that node\u0027s first input of\nthe same kind, the way a bypassed node passes it on.",
+            "default": false
           }
         },
         "description": "Removes nodes, and the wires that touch them."
@@ -6844,6 +6912,79 @@
           }
         },
         "description": "Takes a port away, with the wires on its boundary node. Undoing it puts them back."
+      },
+      "GraphCommandGraphRemovePreset": {
+        "required": [
+          "name",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "removePreset"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "description": "Takes a preset away."
+      },
+      "GraphCommandGraphSavePreset": {
+        "required": [
+          "name",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "savePreset"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "What it is called."
+          },
+          "values": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "What each parameter is set to, by name; null for every parameter\u0027s default as it is now."
+          }
+        },
+        "description": "Saves a preset, replacing one of the same name where it stands."
+      },
+      "GraphCommandGraphSetBypass": {
+        "required": [
+          "nodes",
+          "bypassed",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "setBypass"
+            ],
+            "type": "string"
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          "bypassed": {
+            "type": "boolean"
+          }
+        },
+        "description": "Switches nodes off or back on. A switched-off node keeps its wires and values; see GraphNodeState."
       },
       "GraphCommandGraphSetComment": {
         "required": [
@@ -6938,6 +7079,20 @@
               "format": "int32"
             },
             "description": "Its new members."
+          },
+          "color": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its frame\u0027s CSS colour, or empty for the client\u0027s own choice."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What its nodes do together."
           }
         },
         "description": "Changes a group: anything left null stays as it is."
@@ -7365,6 +7520,16 @@
               "$ref": "#/components/schemas/GraphInterfacePort"
             },
             "description": "The whole list of interface ports, or null when it did not change."
+          },
+          "presets": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/GraphPresetState"
+            },
+            "description": "The whole list of presets, or null when it did not change."
           }
         },
         "description": "What changed in the document, the same for an edit, an undo and a redo."
@@ -7683,7 +7848,9 @@
         "required": [
           "id",
           "title",
-          "nodes"
+          "nodes",
+          "color",
+          "description"
         ],
         "type": "object",
         "properties": {
@@ -7703,6 +7870,16 @@
               "format": "int32"
             },
             "description": "Its members."
+          },
+          "color": {
+            "type": "string",
+            "description": "The CSS colour its frame is drawn in, or empty for the client\u0027s own choice.",
+            "default": ""
+          },
+          "description": {
+            "type": "string",
+            "description": "What its nodes do together.",
+            "default": ""
           }
         },
         "description": "A frame round some nodes. It holds no geometry: a client draws it from where its nodes are."
@@ -7884,7 +8061,8 @@
           "x",
           "y",
           "values",
-          "texts"
+          "texts",
+          "bypassed"
         ],
         "type": "object",
         "properties": {
@@ -7924,6 +8102,11 @@
               "type": "string"
             },
             "description": "The text settings set on it, by name."
+          },
+          "bypassed": {
+            "type": "boolean",
+            "description": "True when it is switched off: what feeds its first input of an output\u0027s kind passes straight through, and a\nnode with no such input passes nothing.",
+            "default": false
           }
         },
         "description": "A node as a document holds it."
@@ -7973,6 +8156,16 @@
               "$ref": "#/components/schemas/GraphSettingDefinition"
             },
             "description": "Its text settings, set with GraphSetText."
+          },
+          "presets": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/GraphPresetState"
+            },
+            "description": "A compound\u0027s presets, which set its settings; empty for every other node."
           }
         },
         "description": "A node a client can add, for a palette."
@@ -8076,6 +8269,27 @@
         },
         "description": "What an input port says about its numbers. Any end may be open, as null."
       },
+      "GraphPresetState": {
+        "required": [
+          "name",
+          "values"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "What it is called. Unique within the graph."
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "What each parameter is set to, by parameter name, as text."
+          }
+        },
+        "description": "A named set of values for a graph\u0027s parameters, kept in the graph\u0027s file."
+      },
       "GraphPreview": {
         "required": [
           "node",
@@ -8111,6 +8325,30 @@
           }
         },
         "description": "Where a node\u0027s picture is: \u0060GET /api/v1/previews/{hash}\u0060. Pixels never cross JSON."
+      },
+      "GraphSettingCondition": {
+        "required": [
+          "setting",
+          "value",
+          "negated"
+        ],
+        "type": "object",
+        "properties": {
+          "setting": {
+            "type": "string",
+            "description": "The other one, by name."
+          },
+          "value": {
+            "type": "string",
+            "description": "What it is compared with, as text. Numbers compare as numbers and anything else as a name, ignoring case."
+          },
+          "negated": {
+            "type": "boolean",
+            "description": "True to show it while the other one does not hold the value.",
+            "default": false
+          }
+        },
+        "description": "When a parameter or a setting is shown: while another one of the same graph or node holds a value."
       },
       "GraphSettingDefinition": {
         "required": [
@@ -8175,6 +8413,31 @@
               "type": "string"
             },
             "description": "What a person calls each of Accepted, in its order. The Server fills it in; a client that\nsends a definition leaves it out."
+          },
+          "label": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What a person calls it, apart from Name, which expressions write. Null or empty for the name."
+          },
+          "widget": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The control an inspector draws: \u0060Default\u0060, \u0060Slider\u0060 (a number with a range), \u0060Angle\u0060 (a number\nin degrees) or \u0060Toggle\u0060 (a flag). Null for \u0060Default\u0060."
+          },
+          "visibleIf": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "When it is shown, or null for always. Hiding never changes its value.",
+                "$ref": "#/components/schemas/GraphSettingCondition"
+              }
+            ]
           }
         },
         "description": "A value a node type or a graph lets an author set."
@@ -8191,6 +8454,7 @@
           "edges",
           "settings",
           "parameters",
+          "presets",
           "interface",
           "groups",
           "comments",
@@ -8254,6 +8518,13 @@
               "$ref": "#/components/schemas/GraphSettingDefinition"
             },
             "description": "The parameters the graph exposes."
+          },
+          "presets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphPresetState"
+            },
+            "description": "Named sets of values for them."
           },
           "interface": {
             "type": "array",

@@ -75,12 +75,17 @@ public static class GraphDocuments {
         };
 
     public static GraphNodeState State(GraphNodeAsset node) =>
-        new(node.Id, node.Type, node.X, node.Y, node.Values, node.Texts);
+        new(node.Id, node.Type, node.X, node.Y, node.Values, node.Texts, node.Bypassed);
 
     public static GraphEdgeState State(GraphEdgeAsset edge) =>
         new(edge.FromNode, edge.FromPort, edge.ToNode, edge.ToPort);
 
-    public static GraphGroupState State(GraphGroupAsset group) => new(group.Id, group.Title, group.Nodes);
+    public static GraphGroupState State(GraphGroupAsset group) =>
+        new(group.Id, group.Title, group.Nodes, group.Color, group.Description);
+
+    public static GraphPresetState State(GraphPresetAsset preset) => new(preset.Name, preset.Values);
+
+    public static GraphPresetState State(GraphPreset preset) => new(preset.Name, preset.Values);
 
     public static GraphCommentState State(GraphCommentAsset comment) =>
         new(comment.Id, comment.Text, comment.X, comment.Y, comment.Width, comment.Height);
@@ -98,7 +103,12 @@ public static class GraphDocuments {
             Bound(parameter.Maximum),
             parameter.Group,
             parameter.Accepted,
-            Terms.LabelsOf(parameter.Accepted)
+            Terms.LabelsOf(parameter.Accepted),
+            parameter.Label.Length > 0 ? parameter.Label : null,
+            parameter.Widget == SettingWidget.Default ? null : parameter.Widget.ToString(),
+            parameter.VisibleIf.Length > 0
+                ? new(parameter.VisibleIf, parameter.VisibleValue, parameter.VisibleNegated)
+                : null
         );
 
     public static GraphDiagnostic Diagnostic(NodeDiagnostic diagnostic) =>
@@ -141,7 +151,10 @@ public static class GraphDocuments {
             Bound(setting.Maximum),
             setting.Group,
             setting.Accepted,
-            Terms.LabelsOf(setting.Accepted)
+            Terms.LabelsOf(setting.Accepted),
+            setting.Label.Length > 0 ? setting.Label : null,
+            setting.Widget == SettingWidget.Default ? null : setting.Widget.ToString(),
+            setting.VisibleIf is { } condition ? new(condition.Setting, condition.Value, condition.Negated) : null
         );
 
     static GraphPortRange? RangeOf(PortDefinition port) {
@@ -176,7 +189,8 @@ public static class GraphDocuments {
             before.Comments.AsSpan().SequenceEqual(after.Comments)
                 ? null
                 : [..after.Comments.Select(static comment => State(comment))],
-            SameInterface(before, after) ? null : [..after.Interface.Select(static port => State(port))]
+            SameInterface(before, after) ? null : [..after.Interface.Select(static port => State(port))],
+            SamePresets(before, after) ? null : [..after.Presets.Select(static preset => State(preset))]
         );
     }
 
@@ -196,8 +210,10 @@ public static class GraphDocuments {
         List<GraphValue> values = [];
         for (var i = 0; i < now.Nodes.Length; i++) {
             var (was, node) = (told.Nodes[i], now.Nodes[i]);
+            // Switching a node off changes the graph the compiler walks, so it is never a number.
             if (was.Id != node.Id
                 || !string.Equals(was.Type, node.Type, StringComparison.Ordinal)
+                || was.Bypassed != node.Bypassed
                 || LostAText(was, node)) {
                 return null;
             }
@@ -249,11 +265,21 @@ public static class GraphDocuments {
         && a.Groups.Zip(b.Groups)
             .All(static pair => pair.First.Id == pair.Second.Id
                 && string.Equals(pair.First.Title, pair.Second.Title, StringComparison.Ordinal)
+                && string.Equals(pair.First.Color, pair.Second.Color, StringComparison.Ordinal)
+                && string.Equals(pair.First.Description, pair.Second.Description, StringComparison.Ordinal)
                 && pair.First.Nodes.AsSpan().SequenceEqual(pair.Second.Nodes)
+            );
+
+    static bool SamePresets(NodeGraphAsset a, NodeGraphAsset b) =>
+        a.Presets.Length == b.Presets.Length
+        && a.Presets.Zip(b.Presets)
+            .All(static pair => string.Equals(pair.First.Name, pair.Second.Name, StringComparison.Ordinal)
+                && SameTexts(pair.First.Values, pair.Second.Values)
             );
 
     static bool SameNode(GraphNodeAsset a, GraphNodeAsset b) =>
         string.Equals(a.Type, b.Type, StringComparison.Ordinal)
+        && a.Bypassed == b.Bypassed
         && a.X.Equals(b.X)
         && a.Y.Equals(b.Y)
         && SameTexts(a.Texts, b.Texts)

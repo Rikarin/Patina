@@ -27,11 +27,15 @@ class GraphGroupState:
             id (int): What a command names it by. It never changes and is never reused while a session lasts.
             title (str): What it is called.
             nodes (list[int]): Its members.
+            color (str): The CSS colour its frame is drawn in, or empty for the client's own choice. Default: ''.
+            description (str): What its nodes do together. Default: ''.
      """
 
     id: int
     title: str
     nodes: list[int]
+    color: str = ''
+    description: str = ''
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -47,6 +51,10 @@ class GraphGroupState:
 
 
 
+        color = self.color
+
+        description = self.description
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -54,6 +62,8 @@ class GraphGroupState:
             "id": id,
             "title": title,
             "nodes": nodes,
+            "color": color,
+            "description": description,
         })
 
         return field_dict
@@ -70,10 +80,16 @@ class GraphGroupState:
         nodes = cast(list[int], d.pop("nodes"))
 
 
+        color = d.pop("color")
+
+        description = d.pop("description")
+
         graph_group_state = cls(
             id=id,
             title=title,
             nodes=nodes,
+            color=color,
+            description=description,
         )
 
 

@@ -62,6 +62,7 @@ public sealed class GraphEditorPropertyTests {
                         [..editor.Document.Comments.Select(GraphDocuments.State)];
                     IReadOnlyList<GraphInterfacePort> ports =
                         [..editor.Document.Interface.Select(GraphDocuments.State)];
+                    IReadOnlyList<GraphPresetState> presets = [..editor.Document.Presets.Select(GraphDocuments.State)];
                     foreach (var seed in batches) {
                         var random = new Random(seed);
                         var before = editor.Document;
@@ -87,22 +88,27 @@ public sealed class GraphEditorPropertyTests {
                         edges.ExceptWith(delta.RemovedEdges);
                         edges.UnionWith(delta.Edges);
                         Assert.Equal(
-                            editor.Document.Nodes.Select(static node => (node.Id, node.Type, node.X, node.Y)),
+                            editor.Document.Nodes.Select(static node => (node.Id, node.Type, node.X, node.Y, node.Bypassed)),
                             nodes.Values.OrderBy(static node => node.Id)
-                                .Select(static node => (node.Id, node.Type, node.X, node.Y))
+                                .Select(static node => (node.Id, node.Type, node.X, node.Y, node.Bypassed))
                         );
                         Assert.True(edges.SetEquals(editor.Document.Edges.Select(GraphDocuments.State)));
                         parameters = delta.Parameters ?? parameters;
                         groups = delta.Groups ?? groups;
                         comments = delta.Comments ?? comments;
                         ports = delta.Interface ?? ports;
+                        presets = delta.Presets ?? presets;
+                        Assert.Equal(
+                            editor.Document.Presets.Select(static p => $"{p.Name}:{string.Join(',', p.Values.Select(static v => $"{v.Key}={v.Value}"))}"),
+                            presets.Select(static p => $"{p.Name}:{string.Join(',', p.Values.Select(static v => $"{v.Key}={v.Value}"))}")
+                        );
                         Assert.Equal(
                             editor.Document.Parameters.Select(static p => (p.Name, p.Default, p.Kind.ToString())),
                             parameters.Select(static p => (p.Name, p.Default, p.Kind))
                         );
                         Assert.Equal(
-                            editor.Document.Groups.Select(static g => $"{g.Title}:{string.Join(',', g.Nodes)}"),
-                            groups.Select(static g => $"{g.Title}:{string.Join(',', g.Nodes)}")
+                            editor.Document.Groups.Select(static g => $"{g.Title}:{string.Join(',', g.Nodes)}:{g.Color}:{g.Description}"),
+                            groups.Select(static g => $"{g.Title}:{string.Join(',', g.Nodes)}:{g.Color}:{g.Description}")
                         );
                         Assert.Equal(editor.Document.Comments.Select(GraphDocuments.State), comments);
                         Assert.Equal(
@@ -153,7 +159,7 @@ public sealed class GraphEditorPropertyTests {
         new(name, value.ToString(CultureInfo.InvariantCulture), string.Empty, "Float", 0f, 1f, string.Empty, []);
 
     static GraphCommand RandomCommand(Random random, NodeGraphAsset document) {
-        return random.Next(24) switch {
+        return random.Next(32) switch {
             0 => new GraphAddNode(Types[random.Next(Types.Length)], random.Next(100), random.Next(100)),
             1 => new GraphRemoveNodes([Node()]),
             2 => new GraphMoveNodes([new(Node(), random.Next(1000), random.Next(1000))]),
@@ -182,6 +188,14 @@ public sealed class GraphEditorPropertyTests {
             20 => new GraphRemovePort($"Port{random.Next(3)}", Direction()),
             21 => new GraphAddNode(random.Next(2) == 0 ? SubGraphs.InputType : SubGraphs.OutputType, 10, 10),
             22 => new GraphConnect(Node(), $"Port{random.Next(3)}", Node(), $"Port{random.Next(3)}"),
+            24 => new GraphSetBypass([Node()], random.Next(2) == 0),
+            25 => new GraphRemoveNodes([Node()], Relink: true),
+            26 => new GraphAddNode(Reroutes.Type, random.Next(100), random.Next(100)),
+            27 => new GraphConnect(Node(), random.Next(2) == 0 ? "Out" : Reroutes.Out, Node(), random.Next(2) == 0 ? Reroutes.In : "Input"),
+            28 => new GraphArrange(random.Next(2) == 0 ? [] : [Node(), Node()]),
+            29 => new GraphSavePreset($"Preset{random.Next(3)}"),
+            30 => random.Next(2) == 0 ? new GraphApplyPreset($"Preset{random.Next(3)}") : new GraphRemovePreset($"Preset{random.Next(3)}"),
+            31 => new GraphSetGroup(Group(), Color: random.Next(2) == 0 ? "" : "var(--color-chart-2)", Description: $"D{random.Next(3)}"),
             _ => new GraphSetText(Node(), "=Hue", "Wear * 2")
         };
         int Node() => document.Nodes.Length == 0 ? 1 : document.Nodes[random.Next(document.Nodes.Length)].Id;

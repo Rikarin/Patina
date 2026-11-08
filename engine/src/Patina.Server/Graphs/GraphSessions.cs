@@ -1,6 +1,7 @@
 using Patina.Contracts;
 using Patina.Library;
 using Patina.Server.Sessions;
+using System.Runtime.CompilerServices;
 using Vixen.NodeGraph;
 using Vixen.TextureGraph;
 
@@ -133,9 +134,18 @@ public sealed class GraphSessions(ServerIdentity identity) : IDisposable {
     static NodeTypeRegistry Types(string? folder) {
         NodeTypeRegistry registry = new();
         NodeTypes.Register(registry);
-        TextureCompoundLibrary.Publish(registry, folder, out _);
+        PublishedWith.AddOrUpdate(registry, TextureCompoundLibrary.Publish(registry, folder, out _));
         return registry;
     }
+
+    /// <summary>The graphs behind the compounds a registry was published with, which hold their presets.</summary>
+    static readonly ConditionalWeakTable<NodeTypeRegistry, ISubGraphSource> PublishedWith = [];
+
+    /// <summary>Each compound's presets, by node type, for the node types a session offers.</summary>
+    public static IReadOnlyList<GraphPresetState> PresetsOf(NodeTypeRegistry registry, string type) =>
+        PublishedWith.TryGetValue(registry, out var source) && source.TryGet(type, out var graph)
+            ? [..graph.Presets.Select(GraphDocuments.State)]
+            : [];
 
     GraphSession OpenShipped(string path) {
         var type = path[ShippedPrefix.Length..];

@@ -17,6 +17,8 @@ if TYPE_CHECKING:
   from ..models.graph_command_graph_add_node import GraphCommandGraphAddNode
   from ..models.graph_command_graph_add_parameter import GraphCommandGraphAddParameter
   from ..models.graph_command_graph_add_port import GraphCommandGraphAddPort
+  from ..models.graph_command_graph_apply_preset import GraphCommandGraphApplyPreset
+  from ..models.graph_command_graph_arrange import GraphCommandGraphArrange
   from ..models.graph_command_graph_connect import GraphCommandGraphConnect
   from ..models.graph_command_graph_disconnect import GraphCommandGraphDisconnect
   from ..models.graph_command_graph_move_nodes import GraphCommandGraphMoveNodes
@@ -25,6 +27,9 @@ if TYPE_CHECKING:
   from ..models.graph_command_graph_remove_nodes import GraphCommandGraphRemoveNodes
   from ..models.graph_command_graph_remove_parameter import GraphCommandGraphRemoveParameter
   from ..models.graph_command_graph_remove_port import GraphCommandGraphRemovePort
+  from ..models.graph_command_graph_remove_preset import GraphCommandGraphRemovePreset
+  from ..models.graph_command_graph_save_preset import GraphCommandGraphSavePreset
+  from ..models.graph_command_graph_set_bypass import GraphCommandGraphSetBypass
   from ..models.graph_command_graph_set_comment import GraphCommandGraphSetComment
   from ..models.graph_command_graph_set_group import GraphCommandGraphSetGroup
   from ..models.graph_command_graph_set_parameter import GraphCommandGraphSetParameter
@@ -48,19 +53,21 @@ class GraphCommandBatch:
 
         Attributes:
             commands (list[GraphCommandGraphAddComment | GraphCommandGraphAddGroup | GraphCommandGraphAddNode |
-                GraphCommandGraphAddParameter | GraphCommandGraphAddPort | GraphCommandGraphConnect |
-                GraphCommandGraphDisconnect | GraphCommandGraphMoveNodes | GraphCommandGraphRemoveComment |
-                GraphCommandGraphRemoveGroup | GraphCommandGraphRemoveNodes | GraphCommandGraphRemoveParameter |
-                GraphCommandGraphRemovePort | GraphCommandGraphSetComment | GraphCommandGraphSetGroup |
-                GraphCommandGraphSetParameter | GraphCommandGraphSetPort | GraphCommandGraphSetSetting |
-                GraphCommandGraphSetText | GraphCommandGraphSetValue | GraphCommandGraphWire]): What to do, in order.
+                GraphCommandGraphAddParameter | GraphCommandGraphAddPort | GraphCommandGraphApplyPreset |
+                GraphCommandGraphArrange | GraphCommandGraphConnect | GraphCommandGraphDisconnect | GraphCommandGraphMoveNodes |
+                GraphCommandGraphRemoveComment | GraphCommandGraphRemoveGroup | GraphCommandGraphRemoveNodes |
+                GraphCommandGraphRemoveParameter | GraphCommandGraphRemovePort | GraphCommandGraphRemovePreset |
+                GraphCommandGraphSavePreset | GraphCommandGraphSetBypass | GraphCommandGraphSetComment |
+                GraphCommandGraphSetGroup | GraphCommandGraphSetParameter | GraphCommandGraphSetPort |
+                GraphCommandGraphSetSetting | GraphCommandGraphSetText | GraphCommandGraphSetValue | GraphCommandGraphWire]):
+                What to do, in order.
             merge (bool): True to fold this batch into the last one when both change the same things, so that a whole drag
                 is one undo.
                 A client leaves it false on the first batch of a drag. Default: False.
             label (None | str | Unset): What the undo history calls it, or null for a name from the commands.
      """
 
-    commands: list[GraphCommandGraphAddComment | GraphCommandGraphAddGroup | GraphCommandGraphAddNode | GraphCommandGraphAddParameter | GraphCommandGraphAddPort | GraphCommandGraphConnect | GraphCommandGraphDisconnect | GraphCommandGraphMoveNodes | GraphCommandGraphRemoveComment | GraphCommandGraphRemoveGroup | GraphCommandGraphRemoveNodes | GraphCommandGraphRemoveParameter | GraphCommandGraphRemovePort | GraphCommandGraphSetComment | GraphCommandGraphSetGroup | GraphCommandGraphSetParameter | GraphCommandGraphSetPort | GraphCommandGraphSetSetting | GraphCommandGraphSetText | GraphCommandGraphSetValue | GraphCommandGraphWire]
+    commands: list[GraphCommandGraphAddComment | GraphCommandGraphAddGroup | GraphCommandGraphAddNode | GraphCommandGraphAddParameter | GraphCommandGraphAddPort | GraphCommandGraphApplyPreset | GraphCommandGraphArrange | GraphCommandGraphConnect | GraphCommandGraphDisconnect | GraphCommandGraphMoveNodes | GraphCommandGraphRemoveComment | GraphCommandGraphRemoveGroup | GraphCommandGraphRemoveNodes | GraphCommandGraphRemoveParameter | GraphCommandGraphRemovePort | GraphCommandGraphRemovePreset | GraphCommandGraphSavePreset | GraphCommandGraphSetBypass | GraphCommandGraphSetComment | GraphCommandGraphSetGroup | GraphCommandGraphSetParameter | GraphCommandGraphSetPort | GraphCommandGraphSetSetting | GraphCommandGraphSetText | GraphCommandGraphSetValue | GraphCommandGraphWire]
     merge: bool = False
     label: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -75,6 +82,8 @@ class GraphCommandBatch:
         from ..models.graph_command_graph_add_node import GraphCommandGraphAddNode # noqa: PLC0415
         from ..models.graph_command_graph_add_parameter import GraphCommandGraphAddParameter # noqa: PLC0415
         from ..models.graph_command_graph_add_port import GraphCommandGraphAddPort # noqa: PLC0415
+        from ..models.graph_command_graph_apply_preset import GraphCommandGraphApplyPreset # noqa: PLC0415
+        from ..models.graph_command_graph_arrange import GraphCommandGraphArrange # noqa: PLC0415
         from ..models.graph_command_graph_connect import GraphCommandGraphConnect # noqa: PLC0415
         from ..models.graph_command_graph_disconnect import GraphCommandGraphDisconnect # noqa: PLC0415
         from ..models.graph_command_graph_move_nodes import GraphCommandGraphMoveNodes # noqa: PLC0415
@@ -83,6 +92,9 @@ class GraphCommandBatch:
         from ..models.graph_command_graph_remove_nodes import GraphCommandGraphRemoveNodes # noqa: PLC0415
         from ..models.graph_command_graph_remove_parameter import GraphCommandGraphRemoveParameter # noqa: PLC0415
         from ..models.graph_command_graph_remove_port import GraphCommandGraphRemovePort # noqa: PLC0415
+        from ..models.graph_command_graph_remove_preset import GraphCommandGraphRemovePreset # noqa: PLC0415
+        from ..models.graph_command_graph_save_preset import GraphCommandGraphSavePreset # noqa: PLC0415
+        from ..models.graph_command_graph_set_bypass import GraphCommandGraphSetBypass # noqa: PLC0415
         from ..models.graph_command_graph_set_comment import GraphCommandGraphSetComment # noqa: PLC0415
         from ..models.graph_command_graph_set_group import GraphCommandGraphSetGroup # noqa: PLC0415
         from ..models.graph_command_graph_set_parameter import GraphCommandGraphSetParameter # noqa: PLC0415
@@ -134,6 +146,16 @@ class GraphCommandBatch:
                 commands_item = commands_item_data.to_dict()
             elif isinstance(commands_item_data, GraphCommandGraphSetComment):
                 commands_item = commands_item_data.to_dict()
+            elif isinstance(commands_item_data, GraphCommandGraphRemoveComment):
+                commands_item = commands_item_data.to_dict()
+            elif isinstance(commands_item_data, GraphCommandGraphSetBypass):
+                commands_item = commands_item_data.to_dict()
+            elif isinstance(commands_item_data, GraphCommandGraphArrange):
+                commands_item = commands_item_data.to_dict()
+            elif isinstance(commands_item_data, GraphCommandGraphSavePreset):
+                commands_item = commands_item_data.to_dict()
+            elif isinstance(commands_item_data, GraphCommandGraphRemovePreset):
+                commands_item = commands_item_data.to_dict()
             else:
                 commands_item = commands_item_data.to_dict()
 
@@ -170,6 +192,8 @@ class GraphCommandBatch:
         from ..models.graph_command_graph_add_node import GraphCommandGraphAddNode # noqa: PLC0415
         from ..models.graph_command_graph_add_parameter import GraphCommandGraphAddParameter # noqa: PLC0415
         from ..models.graph_command_graph_add_port import GraphCommandGraphAddPort # noqa: PLC0415
+        from ..models.graph_command_graph_apply_preset import GraphCommandGraphApplyPreset # noqa: PLC0415
+        from ..models.graph_command_graph_arrange import GraphCommandGraphArrange # noqa: PLC0415
         from ..models.graph_command_graph_connect import GraphCommandGraphConnect # noqa: PLC0415
         from ..models.graph_command_graph_disconnect import GraphCommandGraphDisconnect # noqa: PLC0415
         from ..models.graph_command_graph_move_nodes import GraphCommandGraphMoveNodes # noqa: PLC0415
@@ -178,6 +202,9 @@ class GraphCommandBatch:
         from ..models.graph_command_graph_remove_nodes import GraphCommandGraphRemoveNodes # noqa: PLC0415
         from ..models.graph_command_graph_remove_parameter import GraphCommandGraphRemoveParameter # noqa: PLC0415
         from ..models.graph_command_graph_remove_port import GraphCommandGraphRemovePort # noqa: PLC0415
+        from ..models.graph_command_graph_remove_preset import GraphCommandGraphRemovePreset # noqa: PLC0415
+        from ..models.graph_command_graph_save_preset import GraphCommandGraphSavePreset # noqa: PLC0415
+        from ..models.graph_command_graph_set_bypass import GraphCommandGraphSetBypass # noqa: PLC0415
         from ..models.graph_command_graph_set_comment import GraphCommandGraphSetComment # noqa: PLC0415
         from ..models.graph_command_graph_set_group import GraphCommandGraphSetGroup # noqa: PLC0415
         from ..models.graph_command_graph_set_parameter import GraphCommandGraphSetParameter # noqa: PLC0415
@@ -190,7 +217,7 @@ class GraphCommandBatch:
         commands = []
         _commands = d.pop("commands")
         for commands_item_data in (_commands):
-            def _parse_commands_item(data: object) -> GraphCommandGraphAddComment | GraphCommandGraphAddGroup | GraphCommandGraphAddNode | GraphCommandGraphAddParameter | GraphCommandGraphAddPort | GraphCommandGraphConnect | GraphCommandGraphDisconnect | GraphCommandGraphMoveNodes | GraphCommandGraphRemoveComment | GraphCommandGraphRemoveGroup | GraphCommandGraphRemoveNodes | GraphCommandGraphRemoveParameter | GraphCommandGraphRemovePort | GraphCommandGraphSetComment | GraphCommandGraphSetGroup | GraphCommandGraphSetParameter | GraphCommandGraphSetPort | GraphCommandGraphSetSetting | GraphCommandGraphSetText | GraphCommandGraphSetValue | GraphCommandGraphWire:
+            def _parse_commands_item(data: object) -> GraphCommandGraphAddComment | GraphCommandGraphAddGroup | GraphCommandGraphAddNode | GraphCommandGraphAddParameter | GraphCommandGraphAddPort | GraphCommandGraphApplyPreset | GraphCommandGraphArrange | GraphCommandGraphConnect | GraphCommandGraphDisconnect | GraphCommandGraphMoveNodes | GraphCommandGraphRemoveComment | GraphCommandGraphRemoveGroup | GraphCommandGraphRemoveNodes | GraphCommandGraphRemoveParameter | GraphCommandGraphRemovePort | GraphCommandGraphRemovePreset | GraphCommandGraphSavePreset | GraphCommandGraphSetBypass | GraphCommandGraphSetComment | GraphCommandGraphSetGroup | GraphCommandGraphSetParameter | GraphCommandGraphSetPort | GraphCommandGraphSetSetting | GraphCommandGraphSetText | GraphCommandGraphSetValue | GraphCommandGraphWire:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
@@ -391,13 +418,63 @@ class GraphCommandBatch:
                     return componentsschemas_graph_command_type_19
                 except (TypeError, ValueError, AttributeError, KeyError):
                     pass
+                try:
+                    if not isinstance(data, dict):
+                        raise TypeError()
+                    componentsschemas_graph_command_type_20 = GraphCommandGraphRemoveComment.from_dict(data)
+
+
+
+                    return componentsschemas_graph_command_type_20
+                except (TypeError, ValueError, AttributeError, KeyError):
+                    pass
+                try:
+                    if not isinstance(data, dict):
+                        raise TypeError()
+                    componentsschemas_graph_command_type_21 = GraphCommandGraphSetBypass.from_dict(data)
+
+
+
+                    return componentsschemas_graph_command_type_21
+                except (TypeError, ValueError, AttributeError, KeyError):
+                    pass
+                try:
+                    if not isinstance(data, dict):
+                        raise TypeError()
+                    componentsschemas_graph_command_type_22 = GraphCommandGraphArrange.from_dict(data)
+
+
+
+                    return componentsschemas_graph_command_type_22
+                except (TypeError, ValueError, AttributeError, KeyError):
+                    pass
+                try:
+                    if not isinstance(data, dict):
+                        raise TypeError()
+                    componentsschemas_graph_command_type_23 = GraphCommandGraphSavePreset.from_dict(data)
+
+
+
+                    return componentsschemas_graph_command_type_23
+                except (TypeError, ValueError, AttributeError, KeyError):
+                    pass
+                try:
+                    if not isinstance(data, dict):
+                        raise TypeError()
+                    componentsschemas_graph_command_type_24 = GraphCommandGraphRemovePreset.from_dict(data)
+
+
+
+                    return componentsschemas_graph_command_type_24
+                except (TypeError, ValueError, AttributeError, KeyError):
+                    pass
                 if not isinstance(data, dict):
                     raise TypeError()
-                componentsschemas_graph_command_type_20 = GraphCommandGraphRemoveComment.from_dict(data)
+                componentsschemas_graph_command_type_25 = GraphCommandGraphApplyPreset.from_dict(data)
 
 
 
-                return componentsschemas_graph_command_type_20
+                return componentsschemas_graph_command_type_25
 
             commands_item = _parse_commands_item(commands_item_data)
 

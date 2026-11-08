@@ -30,12 +30,16 @@ class GraphCommandGraphSetGroup:
             id (int): The group.
             title (None | str | Unset): Its new title.
             nodes (list[int] | None | Unset): Its new members.
+            color (None | str | Unset): Its frame's CSS colour, or empty for the client's own choice.
+            description (None | str | Unset): What its nodes do together.
      """
 
     op: GraphCommandGraphSetGroupOp
     id: int
     title: None | str | Unset = UNSET
     nodes: list[int] | None | Unset = UNSET
+    color: None | str | Unset = UNSET
+    description: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -63,6 +67,18 @@ class GraphCommandGraphSetGroup:
         else:
             nodes = self.nodes
 
+        color: None | str | Unset
+        if isinstance(self.color, Unset):
+            color = UNSET
+        else:
+            color = self.color
+
+        description: None | str | Unset
+        if isinstance(self.description, Unset):
+            description = UNSET
+        else:
+            description = self.description
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -74,6 +90,10 @@ class GraphCommandGraphSetGroup:
             field_dict["title"] = title
         if nodes is not UNSET:
             field_dict["nodes"] = nodes
+        if color is not UNSET:
+            field_dict["color"] = color
+        if description is not UNSET:
+            field_dict["description"] = description
 
         return field_dict
 
@@ -117,11 +137,33 @@ class GraphCommandGraphSetGroup:
         nodes = _parse_nodes(d.pop("nodes", UNSET))
 
 
+        def _parse_color(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        color = _parse_color(d.pop("color", UNSET))
+
+
+        def _parse_description(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        description = _parse_description(d.pop("description", UNSET))
+
+
         graph_command_graph_set_group = cls(
             op=op,
             id=id,
             title=title,
             nodes=nodes,
+            color=color,
+            description=description,
         )
 
 
