@@ -349,7 +349,10 @@ public sealed class LibraryFolderTests : IDisposable {
         using var again = OpenLibrary.Open(root);
         var contents = again.Contents(made.Path);
 
-        Assert.Equal(("unreal", "/out", "Shade"), (contents.Export!.Preset, contents.Export.Folder, contents.Export.Skipped[0]));
+        Assert.Equal(
+            ("unreal", "/out", "Shade"),
+            (contents.Export!.Preset, contents.Export.Folder, contents.Export.Skipped[0])
+        );
         Assert.Equal(("/art/cage.fbx", 512), (contents.Bake.Cage, contents.Bake.Options.Resolution));
         Assert.Equal(viewport, contents.Viewport);
     }

@@ -106,7 +106,9 @@ public sealed class StackVocabularyTests {
         Assert.Equal(Enum.GetNames<LayerProjection>(), vocabulary.Projections.Select(static term => term.Value));
     }
 
-    /// <summary>An export's padding modes and filters go out with labels too, every one of them, in their order.</summary>
+    /// <summary>
+    ///     An export's padding modes and filters go out with labels too, every one of them, in their order.
+    /// </summary>
     [Fact]
     public void An_exports_paddings_and_filters_say_what_each_is_called() {
         var paddings = Terms.InExport(Patina.Export.Presets.ExportPadding.Names);

@@ -331,7 +331,9 @@ public sealed class DocumentCodecTests {
         Assert.DoesNotContain("look:", text, StringComparison.Ordinal);
     }
 
-    /// <summary>A value of the wrong type is refused in any block, and a record in a list needs every field it has.</summary>
+    /// <summary>
+    ///     A value of the wrong type is refused in any block, and a record in a list needs every field it has.
+    /// </summary>
     [Theory]
     [InlineData("exposure: -1.25", "exposure: bright")]
     [InlineData("size: 512", "size: 512.5")]

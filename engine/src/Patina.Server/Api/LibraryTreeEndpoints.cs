@@ -62,16 +62,12 @@ static class LibraryTreeEndpoints {
                 "Whether a mesh file differs from the one the project already has, so that reloading has work to do."
             );
 
+        library.MapProjectBlocks();
+
         library.MapPatch("/project/settings", ProjectSettingsEndpoint.SetAsync)
             .Described(
                 "SetProjectSettings",
                 "Sets a project's mesh, detailed mesh and auto unwrap. A mesh goes under all its texturing documents."
-            );
-
-        library.MapPut("/project/export", SetExport)
-            .Described(
-                "SetProjectExport",
-                "Keeps what a project's export is set to in its project.yaml, where any client's next export starts."
             );
 
         library.MapPost("/project/documents", AddDocument)
@@ -85,20 +81,6 @@ static class LibraryTreeEndpoints {
 
         library.MapPatch("/project/document", SetDocumentMesh)
             .Described("SetDocumentMesh", "Puts a texturing document on another mesh of its project.");
-
-        library.MapPut("/project/bake", SetBake)
-            .Described(
-                "SetProjectBake",
-                "Keeps how a project's bakes run, which texture sets they make maps for and the files they read "
-                + "beyond its mesh, in the project's own file."
-            );
-
-        library.MapPut("/project/viewport", SetViewport)
-            .Described(
-                "SetProjectViewport",
-                "Keeps how the viewport is to open in a project, in its project.yaml. It is kept, not shown: "
-                + "PUT /viewport/display shows it."
-            );
 
         library.MapPatch("/project/document/role", SetDocumentRole)
             .Described("SetDocumentRole", "Says what a graph is for: a material, a mask, a brush or a filter.");
@@ -330,47 +312,6 @@ static class LibraryTreeEndpoints {
                 return TypedResults.Ok(contents);
             }
         );
-
-    // A project's export, bake and viewport blocks are each written whole by a PUT of {project, block}: checked first,
-    // kept in project.yaml, and answered with the project's contents.
-    static Results<Ok<ProjectContents>, ProblemHttpResult> SetExport(LibraryHost host, ProjectExportRequest request) =>
-        Keep(host, request.Project, null, library => library.SetExport(request.Project, request.Export));
-
-    static Results<Ok<ProjectContents>, ProblemHttpResult> SetBake(LibraryHost host, ProjectBakeRequest request) =>
-        Keep(
-            host,
-            request.Project,
-            request.Bake.Options.Problem(),
-            library => library.SetBake(request.Project, request.Bake)
-        );
-
-    static Results<Ok<ProjectContents>, ProblemHttpResult> SetViewport(
-        LibraryHost host,
-        ProjectViewportRequest request
-    ) =>
-        Keep(
-            host,
-            request.Project,
-            request.Viewport.Problem(),
-            library => library.SetViewport(request.Project, request.Viewport)
-        );
-
-    static Results<Ok<ProjectContents>, ProblemHttpResult> Keep(
-        LibraryHost host,
-        string project,
-        string? problem,
-        Action<OpenLibrary> keep
-    ) =>
-        problem is not null
-            ? TypedResults.Problem(problem, statusCode: StatusCodes.Status400BadRequest)
-            : Guarded(
-                host,
-                library => {
-                    keep(library);
-                    host.RequestRescan();
-                    return TypedResults.Ok(library.Contents(project));
-                }
-            );
 
     static Results<Ok<ProjectContents>, ProblemHttpResult> SetDocumentRole(
         LibraryHost host,

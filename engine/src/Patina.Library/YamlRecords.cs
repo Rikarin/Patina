@@ -25,8 +25,12 @@ static class YamlRecords {
     public static YamlMappingNode Write<T>(T value, JsonTypeInfo<T> type) =>
         Write(JsonSerializer.SerializeToNode(value, type)!.AsObject());
 
-    /// <summary>A mapping read back into a record, taking what it leaves out from <paramref name="defaults" />.</summary>
-    /// <exception cref="LibraryFormatException">A value is not of the type the record gives it, or is missing.</exception>
+    /// <summary>
+    ///     A mapping read back into a record, taking what it leaves out from <paramref name="defaults" />.
+    /// </summary>
+    /// <exception cref="LibraryFormatException">
+    ///     A value is not of the type the record gives it, or is missing.
+    /// </exception>
     public static T Read<T>(YamlFields fields, JsonTypeInfo<T> type, T defaults) {
         var shape = JsonSerializer.SerializeToNode(defaults, type)!.AsObject();
         return Record(fields, type, shape).Deserialize(type)!;
@@ -51,7 +55,9 @@ static class YamlRecords {
             _ => YamlText.Plain(string.Empty)
         };
 
-    /// <summary>The record's JSON from the mapping, with <paramref name="shape" />'s value for each key left out.</summary>
+    /// <summary>
+    ///     The record's JSON from the mapping, with <paramref name="shape" />'s value for each key left out.
+    /// </summary>
     static JsonObject Record(YamlFields fields, JsonTypeInfo type, JsonObject? shape) {
         var made = new JsonObject();
         foreach (var property in type.Properties) {

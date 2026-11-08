@@ -1700,18 +1700,18 @@
         }
       }
     },
-    "/api/v1/library/project/settings": {
-      "patch": {
+    "/api/v1/library/project/export": {
+      "put": {
         "tags": [
           "Library"
         ],
-        "summary": "Sets a project\u0027s mesh, detailed mesh and auto unwrap. A mesh goes under all its texturing documents.",
-        "operationId": "SetProjectSettings",
+        "summary": "Keeps what a project\u0027s export is set to in its project.yaml, where any client\u0027s next export starts.",
+        "operationId": "SetProjectExport",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ProjectSettingsRequest"
+                "$ref": "#/components/schemas/ProjectExportRequest"
               }
             }
           },
@@ -1761,18 +1761,140 @@
         }
       }
     },
-    "/api/v1/library/project/export": {
+    "/api/v1/library/project/bake": {
       "put": {
         "tags": [
           "Library"
         ],
-        "summary": "Keeps what a project\u0027s export is set to in its project.yaml, where any client\u0027s next export starts.",
-        "operationId": "SetProjectExport",
+        "summary": "Keeps how a project\u0027s bakes run, which texture sets they make maps for and the files they read beyond its mesh, in the project\u0027s own file.",
+        "operationId": "SetProjectBake",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ProjectExportRequest"
+                "$ref": "#/components/schemas/ProjectBakeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project/viewport": {
+      "put": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Keeps how the viewport is to open in a project, in its project.yaml. It is kept, not shown: PUT /viewport/display shows it.",
+        "operationId": "SetProjectViewport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectViewportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project/settings": {
+      "patch": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Sets a project\u0027s mesh, detailed mesh and auto unwrap. A mesh goes under all its texturing documents.",
+        "operationId": "SetProjectSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectSettingsRequest"
               }
             }
           },
@@ -2017,128 +2139,6 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ProjectDocumentMeshRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProjectContents"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/library/project/bake": {
-      "put": {
-        "tags": [
-          "Library"
-        ],
-        "summary": "Keeps how a project\u0027s bakes run, which texture sets they make maps for and the files they read beyond its mesh, in the project\u0027s own file.",
-        "operationId": "SetProjectBake",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProjectBakeRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProjectContents"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/library/project/viewport": {
-      "put": {
-        "tags": [
-          "Library"
-        ],
-        "summary": "Keeps how the viewport is to open in a project, in its project.yaml. It is kept, not shown: PUT /viewport/display shows it.",
-        "operationId": "SetProjectViewport",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProjectViewportRequest"
               }
             }
           },

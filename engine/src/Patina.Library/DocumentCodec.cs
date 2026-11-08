@@ -72,7 +72,11 @@ public static class DocumentCodec {
                     ..document.AutoUnwrap ? [] : new[] { Pair(AutoUnwrapKey, YamlText.Plain("false")) },
                     ..document.PreservePaint ? [] : new[] { Pair(PreservePaintKey, YamlText.Plain("false")) },
                     ..Named(UnwrapKey, document.Unwrap != new UnwrapOptions(), Unwrap(document.Unwrap)),
-                    ..Block(ExportKey, Canonical(document.Export), LibraryTreeJsonContext.Default.ProjectExportSettings),
+                    ..Block(
+                        ExportKey,
+                        Canonical(document.Export),
+                        LibraryTreeJsonContext.Default.ProjectExportSettings
+                    ),
                     ..Block(BakeKey, document.Bake, LibraryTreeJsonContext.Default.ProjectBakeSettings),
                     ..Block(ViewportKey, document.Viewport, LibraryTreeJsonContext.Default.ViewportDisplay),
                     Pair(ReferencesKey, References(document.References)),
@@ -110,8 +114,8 @@ public static class DocumentCodec {
         );
 
     /// <summary>
-    ///     A settings block of a project, whole, when it has one: <c>export</c>, <c>bake</c> or <c>viewport</c>. Each is
-    ///     its record as the API sends it (<see cref="YamlRecords" />), so no block has a codec of its own.
+    ///     A settings block of a project, whole, when it has one: <c>export</c>, <c>bake</c> or <c>viewport</c>.
+    ///     Each is its record as the API sends it (<see cref="YamlRecords" />), so no block has a codec of its own.
     /// </summary>
     /// <remarks>
     ///     Written whole rather than as what differs from the defaults, so a default that moves in a later version
@@ -120,7 +124,9 @@ public static class DocumentCodec {
     static KeyValuePair<YamlNode, YamlNode>[] Block<T>(string key, T? value, JsonTypeInfo<T> type) where T : class =>
         value is null ? [] : [Pair(key, YamlRecords.Write(value, type))];
 
-    /// <summary>A settings block read back, what it leaves out taken from <paramref name="defaults" />, or null.</summary>
+    /// <summary>
+    ///     A settings block read back, what it leaves out taken from <paramref name="defaults" />, or null.
+    /// </summary>
     static T? ReadBlock<T>(YamlFields fields, string key, JsonTypeInfo<T> type, T defaults) where T : class =>
         fields.Map(key) is { } map ? YamlRecords.Read(map, type, defaults) : null;
 
