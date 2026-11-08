@@ -450,8 +450,8 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
     }
 
     /// <summary>
-    ///     A project keeps how its viewport was left and gives it back when it opens, without touching the mesh; settings
-    ///     that could not be shown are refused before anything is kept.
+    ///     A project keeps how its viewport was left and gives it back when it opens, without touching the mesh;
+    ///     settings that could not be shown are refused before anything is kept.
     /// </summary>
     [Fact]
     public async Task A_project_keeps_its_viewport_and_refuses_one_that_cannot_be_shown() {

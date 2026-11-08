@@ -52,7 +52,7 @@ public sealed class ViewportDisplayTests : IDisposable {
         return (pixels[at], pixels[at + 1], pixels[at + 2]);
     }
 
-    /// <summary>A square facing the camera at yaw zero, filling the middle of a frame, with tangents for a normal map.</summary>
+    /// <summary>A square facing the camera at yaw zero, filling the frame, with tangents for a normal map.</summary>
     string Square() {
         var path = In("square.glb");
         ModelWriter.Write(
@@ -187,9 +187,8 @@ public sealed class ViewportDisplayTests : IDisposable {
     }
 
     /// <summary>
-    ///     Each of Vixen's curves draws its own picture of about the same brightness, a stop of exposure brightens, and with
-    ///     no curve anything over
-    ///     white clips, which a curve exists to stop.
+    ///     Each of Vixen's curves draws its own picture of about the same brightness, a stop of exposure brightens,
+    ///     and with no curve anything over white clips, which a curve exists to stop.
     /// </summary>
     [Fact]
     public void Each_curve_and_each_stop_of_exposure_draws_its_own_picture() {
@@ -228,9 +227,9 @@ public sealed class ViewportDisplayTests : IDisposable {
     }
 
     /// <summary>
-    ///     The wireframe draws the edges the eye can see and not those behind the model. A small square stands in front
-    ///     of a large one whose diagonal runs the other way: the large one's diagonal shows outside the small one and is
-    ///     hidden inside it, where the small one's own diagonal shows.
+    ///     The wireframe draws the edges the eye can see and not those behind the model. A small square stands in
+    ///     front of a large one whose diagonal runs the other way: the large one's diagonal shows outside the small one
+    ///     and is hidden inside it, where the small one's own diagonal shows.
     /// </summary>
     [Fact]
     public void The_wireframe_draws_the_edges_in_sight_and_hides_the_rest() {
@@ -255,7 +254,7 @@ public sealed class ViewportDisplayTests : IDisposable {
         Assert.Equal(0, Darkened(behindInside));
     }
 
-    /// <summary>A unit square half a unit in front of a square twice its size, split along the other diagonal.</summary>
+    /// <summary>A unit square half a unit in front of one twice its size, split along the other diagonal.</summary>
     string Layered() {
         var path = In("layered.glb");
         ModelWriter.Write(

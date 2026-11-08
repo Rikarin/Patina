@@ -61,7 +61,7 @@ public static class ViewportToneMappings {
 /// <param name="Environment">
 ///     A built-in room (studio, overcast or sunset), or the path of an <c>.hdr</c> or <c>.exr</c> panorama.
 /// </param>
-/// <param name="EnvironmentRotation">How far the environment has turned around the model, which the light does not follow.</param>
+/// <param name="EnvironmentRotation">How far the environment has turned around the model. The light stays.</param>
 /// <param name="BackgroundBlur">How blurred the background is, 0 sharp to 1 a haze. Lighting is not blurred.</param>
 /// <param name="BackgroundOpacity">How much of the environment shows behind the model, 0 none (black) to 1 all.</param>
 /// <param name="LightRotation">How far the light has turned around the model.</param>
@@ -70,7 +70,7 @@ public static class ViewportToneMappings {
 /// <param name="ToneMapping">One of <see cref="ViewportToneMappings.All" />.</param>
 /// <param name="Look">A <c>.cube</c> table the frame is viewed through after the curve, or null.</param>
 /// <param name="View">One of <see cref="ViewportViews.All" />.</param>
-/// <param name="Picture">The picture the <c>picture</c> view shows on the mesh, on the Server's machine, or null.</param>
+/// <param name="Picture">The picture the <c>picture</c> view shows, on the Server's machine, or null.</param>
 /// <param name="Wireframe">Whether the triangles' edges are drawn over the model.</param>
 /// <param name="Orthographic">
 ///     Whether parallel lines stay parallel. It keeps the size the picture has at the point the camera circles.

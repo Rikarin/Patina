@@ -159,7 +159,7 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
         return IpcMessage.Ok(request.Id);
     }
 
-    /// <summary>The renderer's settings from the wire's: names become Vixen's numbers, in the order the lists give.</summary>
+    /// <summary>The renderer's settings from the wire's: names become numbers, in the order the lists give.</summary>
     static ViewportShading Shading(ViewportDisplay settings) =>
         new() {
             Exposure = (float)settings.Exposure,

@@ -31,16 +31,13 @@ sealed class ViewportShadows : IDisposable {
         PixelFormat depthFormat
     ) {
         this.device = device;
-        var location = (uint)effect.VertexInputs
-            .First(static input => input.Name.EndsWith("position", StringComparison.Ordinal))
-            .Location;
         pipeline = device.CreateGraphicsPipeline(
             new(
                 vertex,
                 fragment,
                 effect.Layout,
                 [new(Format, BlendState.Opaque)],
-                [new(ViewportMesh.FloatsPerVertex * sizeof(float), [new(location, VertexFormat.Float32X3, 0)])],
+                [ViewportMesh.Layout(effect)],
                 Rasterizer: RasterizerState.TwoSided,
                 DepthStencil: DepthStencilState.Default,
                 DepthFormat: depthFormat,

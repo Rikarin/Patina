@@ -13,7 +13,7 @@ namespace Patina.Viewport;
 /// <param name="Pitch">Radians above the horizon.</param>
 /// <param name="Distance">From the point it circles, in framings.</param>
 /// <param name="Pan">How far the point it circles has moved off the model's centre, in bounding radii.</param>
-/// <param name="FieldOfView">The vertical field of view in radians, which an orthographic view keeps the size of.</param>
+/// <param name="FieldOfView">The vertical field of view in radians. An orthographic view keeps its size.</param>
 /// <param name="Orthographic">
 ///     Whether lines that are parallel on the model stay parallel. It is drawn through <see cref="OrthographicLens" />
 ///     from far off rather than with a parallel projection, so that picking, painting and the picture share one kind
@@ -33,7 +33,7 @@ public readonly record struct OrbitCamera(
     /// <summary>The field of view an orthographic view is drawn through, in radians: about half a degree.</summary>
     public const float OrthographicLens = 0.01f;
 
-    /// <summary>How far a camera opens and F goes back to, in framings: the model with a little room round it.</summary>
+    /// <summary>How far a camera opens and F goes back to, in framings: the model with room round it.</summary>
     public const float Framed = 1.05f;
 
     /// <summary>Three-quarters from above: the view a turntable opens on.</summary>

@@ -419,8 +419,7 @@ public sealed class ViewportSession(
                     maps,
                     display,
                     Lens(camera, display.Display),
-                    (width, height),
-                    scale.Value,
+                    (width, height, scale.Value),
                     interacting,
                     lastInput
                 ),
@@ -469,7 +468,7 @@ public sealed class ViewportSession(
             1d,
             Math.Min((double)FrameMemory.MaxWidth / work.Size.Width, (double)FrameMemory.MaxHeight / work.Size.Height)
         );
-        var factor = fit * work.Scale;
+        var factor = fit * work.Size.Scale;
         return (Math.Max(2, (int)(work.Size.Width * factor) & ~1), Math.Max(2, (int)(work.Size.Height * factor) & ~1));
     }
 
@@ -544,8 +543,7 @@ public sealed class ViewportSession(
         ViewportMapSet Maps,
         ViewportDisplaySet Display,
         ViewportCamera Camera,
-        (int Width, int Height) Size,
-        double Scale,
+        (int Width, int Height, double Scale) Size,
         bool Interacting,
         uint Input
     );

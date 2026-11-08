@@ -21,7 +21,7 @@ sealed class ViewportEnvironment {
     const int Levels = 7;
     const int Samples = 64;
 
-    /// <summary>How wide a panorama is read at: four texels across for each of a face's, about a face texel's size.</summary>
+    /// <summary>How wide a panorama is read at: four texels for each of a face's, about a face texel's size.</summary>
     const int PanoramaWidth = Size * 4;
 
     ViewportEnvironment(TextureData prefiltered, SphericalHarmonicsL2 irradiance) {
@@ -85,7 +85,7 @@ sealed class ViewportEnvironment {
     }
 
     static Vector3 Texel(float[] pixels, int width, int row, int column) {
-        var at = (row * width + ((column % width) + width) % width) * 4;
+        var at = (row * width + (column % width + width) % width) * 4;
         return new(pixels[at], pixels[at + 1], pixels[at + 2]);
     }
 

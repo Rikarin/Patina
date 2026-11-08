@@ -218,8 +218,8 @@ public sealed class ViewportProcessTests : IDisposable {
     }
 
     /// <summary>
-    ///     The display settings are the Server's: clay reaches the frames, and a Worker started after a crash is told it
-    ///     again, so the gold fixture stays grey.
+    ///     The display settings are the Server's: clay reaches the frames, and a Worker started after a crash is told
+    ///     it again, so the gold fixture stays grey.
     /// </summary>
     [Fact]
     public async Task Display_settings_reach_the_frames_and_outlive_the_worker() {
@@ -235,7 +235,7 @@ public sealed class ViewportProcessTests : IDisposable {
 
         using (var request = Authorised(HttpMethod.Put, instance, "/api/v1/viewport/display")) {
             request.Content = JsonContent.Create(
-                new ViewportDisplay(View: ViewportViews.Clay),
+                new(View: ViewportViews.Clay),
                 ContractsJsonContext.Default.ViewportDisplay
             );
             using var response = await Http.SendAsync(request, deadline.Token);

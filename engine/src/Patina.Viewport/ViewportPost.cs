@@ -8,9 +8,9 @@ using Vixen.Shaders;
 namespace Patina.Viewport;
 
 /// <summary>
-///     What follows the forward pass: Vixen's curve to the screen, then its lens pass (vignette, lateral aberration and
-///     grain) and its sharpening, each a full-screen draw from one picture into the next. A variant is compiled the first
-///     time it is asked for, and the frame only pays for the effects that are on.
+///     What follows the forward pass: Vixen's curve to the screen, then its lens pass (vignette, lateral aberration
+///     and grain) and its sharpening, each a full-screen draw from one picture into the next. A variant is compiled the
+///     first time it is asked for, and the frame only pays for the effects that are on.
 /// </summary>
 sealed class ViewportPost : IDisposable {
     /// <summary>What the viewport opens with, and what the curve is scaled by: a touch under one.</summary>
@@ -26,6 +26,9 @@ sealed class ViewportPost : IDisposable {
     readonly SamplerHandle point;
     readonly BufferHandle meteredExposure;
     readonly Dictionary<string, Stage> stages = new(StringComparer.Ordinal);
+
+    /// <summary>The stages the next frame runs, which <see cref="Plan" /> chose.</summary>
+    List<Stage> planned = [];
 
     public ViewportPost(
         VulkanDevice device,
@@ -45,8 +48,8 @@ sealed class ViewportPost : IDisposable {
         device.Write(meteredExposure, 0, BitConverter.GetBytes(1f));
     }
 
-    /// <summary>The stages a frame runs after the forward pass, in order, with their numbers written.</summary>
-    public IReadOnlyList<Stage> Plan(ViewportShading shading, int width, int height) {
+    /// <summary>Chooses the stages the next frame runs after the forward pass and writes their numbers.</summary>
+    public void Plan(ViewportShading shading, int width, int height) {
         var data = shading.ShowsData;
         var tonemap = Get(
             $"tonemap {(data ? ViewportToneMapping.None : shading.ToneMapping)}",
@@ -74,7 +77,8 @@ sealed class ViewportPost : IDisposable {
             .Set("filmicToeDenominator", 0.3f);
         List<Stage> plan = [tonemap];
         if (data) {
-            return Written(plan);
+            Written(plan);
+            return;
         }
 
         var (vignette, aberration, grain) = (shading.Vignette > 0f, shading.Aberration > 0f, shading.Grain > 0f);
@@ -107,15 +111,47 @@ sealed class ViewportPost : IDisposable {
             plan.Add(sharpen);
         }
 
-        return Written(plan);
+        Written(plan);
     }
 
-    List<Stage> Written(List<Stage> plan) {
+    void Written(List<Stage> plan) {
         foreach (var stage in plan) {
             device.Write(stage.Constants, 0, stage.Block.Bytes);
         }
 
-        return plan;
+        planned = plan;
+    }
+
+    /// <summary>
+    ///     Draws the stages after the forward pass. Each reads the last picture and writes the other of the two the
+    ///     frame has, however many run.
+    /// </summary>
+    /// <returns>The picture the last stage wrote, as a colour target.</returns>
+    public TextureHandle Record(ICommandList commands, ViewportTargets target) {
+        var (reading, readingView) = (target.Hdr, target.HdrView);
+        for (var at = 0; at < planned.Count; at++) {
+            var stage = planned[at];
+            var (writing, writingView) =
+                at % 2 == 0 ? (target.Output, target.OutputView) : (target.Spare, target.SpareView);
+            commands.Barrier(
+                new BarrierGroup(
+                    [],
+                    [
+                        new(reading, ResourceState.ColourTarget, ResourceState.ShaderRead),
+                        new(writing, ResourceState.Undefined, ResourceState.ColourTarget)
+                    ]
+                )
+            );
+            commands.BeginRenderPass(new([new(writingView, LoadAction.DontCare)], name: "viewport post"));
+            ViewportShadows.Cover(commands, target.Width, target.Height);
+            commands.BindPipeline(stage.Pipeline);
+            commands.BindDescriptorSet(DescriptorSetSlot.PerMaterial, stage.Reading(readingView));
+            commands.Draw(3);
+            commands.EndRenderPass();
+            (reading, readingView) = (writing, writingView);
+        }
+
+        return reading;
     }
 
     /// <summary>Lets go of every set that reads a picture of the old size.</summary>

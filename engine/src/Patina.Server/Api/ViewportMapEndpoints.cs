@@ -88,7 +88,8 @@ static class ViewportMapEndpoints {
         if (!Rooms.Contains(request.Environment)) {
             if (!PictureFormats.IsEnvironment(request.Environment)) {
                 return TypedResults.Problem(
-                    $"'{request.Environment}' is no room and no {string.Join(" or ", PictureFormats.Environments)} file.",
+                    $"'{request.Environment}' is no room and no "
+                    + $"{string.Join(" or ", PictureFormats.Environments)} file.",
                     statusCode: Refused
                 );
             }

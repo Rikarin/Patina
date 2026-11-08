@@ -147,8 +147,8 @@ public sealed class ViewportLiveMapTests : IDisposable {
 
     /// <summary>
     ///     A camera's axes are worked out away from the matrix that draws, so they are held to the picture: a small
-    ///     square off to one side, above the middle, must be where the arithmetic says. A flip of either axis fails, and
-    ///     so does an orthographic view drawn through any lens but the one a stroke is told.
+    ///     square off to one side, above the middle, must be where the arithmetic says. A flip of either axis fails,
+    ///     and so does an orthographic view drawn through any lens but the one a stroke is told.
     /// </summary>
     [Fact]
     public void The_axes_of_the_camera_put_a_point_where_the_picture_shows_it() {

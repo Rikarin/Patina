@@ -106,6 +106,9 @@ public sealed record ViewportShading {
     /// <summary>Contrast-adaptive sharpening, 0 to 1.</summary>
     public float Sharpen { get; init; }
 
-    /// <summary>Whether this shows a stored value rather than a picture, so no curve, look or effect touches it.</summary>
+    /// <summary>The view as the forward shader numbers it, in the order of <see cref="ViewportView" />.</summary>
+    public float ViewNumber => (float)View;
+
+    /// <summary>Whether this shows a stored value and not a picture, so no curve, look or effect touches it.</summary>
     public bool ShowsData => View is not (ViewportView.Lit or ViewportView.Clay);
 }

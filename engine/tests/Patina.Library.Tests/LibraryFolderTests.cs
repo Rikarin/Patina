@@ -365,8 +365,9 @@ public sealed class LibraryFolderTests : IDisposable {
         library.SetViewport(made.Path, left);
 
         Assert.Equal(left, library.Contents(made.Path).Viewport);
-        library.SetViewport(made.Path, new());
-        Assert.Equal(new ViewportDisplay(), library.Contents(made.Path).Viewport);
+        var opening = new ViewportDisplay();
+        library.SetViewport(made.Path, opening);
+        Assert.Equal(opening, library.Contents(made.Path).Viewport);
     }
 
     [Fact]

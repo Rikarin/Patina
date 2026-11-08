@@ -124,28 +124,22 @@ public static class DocumentCodec {
                 ..Present("look", display.Look),
                 Pair("view", YamlText.Text(display.View)),
                 ..Present("picture", display.Picture),
-                Pair("wireframe", YamlText.Plain(display.Wireframe ? "true" : "false")),
-                Pair("orthographic", YamlText.Plain(display.Orthographic ? "true" : "false")),
+                Pair("wireframe", Flag(display.Wireframe)),
+                Pair("orthographic", Flag(display.Orthographic)),
                 ..numbers.Select(static number => Pair(number.Key, YamlText.Plain(number.Value)))
             ]
         );
     }
 
-    /// <summary>A setting left out is the one the viewport opens with, and one that is not a number is refused.</summary>
+    static YamlScalarNode Flag(bool on) => YamlText.Plain(on ? "true" : "false");
+
+    /// <summary>A setting left out is the viewport's own, and one that is not a number is refused.</summary>
     static ViewportDisplay? ReadViewport(IReadOnlyDictionary<string, string> map, YamlFields fields) {
         if (map.Count == 0) {
             return null;
         }
 
         var defaults = new ViewportDisplay();
-
-        double Number(string key, double fallback) =>
-            !map.TryGetValue(key, out var text) ? fallback
-            : double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value
-            : throw fields.Problem($"'{ViewportKey}.{key}' is not a number.");
-
-        bool Flag(string key) => map.GetValueOrDefault(key) == "true";
-
         return new() {
             Environment = map.GetValueOrDefault("environment", defaults.Environment),
             EnvironmentRotation = Number("environmentRotation", defaults.EnvironmentRotation),
@@ -168,6 +162,13 @@ public static class DocumentCodec {
             Aberration = Number("aberration", defaults.Aberration),
             Sharpen = Number("sharpen", defaults.Sharpen)
         };
+
+        double Number(string key, double fallback) =>
+            !map.TryGetValue(key, out var text) ? fallback
+            : double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value
+            : throw fields.Problem($"'{ViewportKey}.{key}' is not a number.");
+
+        bool Flag(string key) => map.GetValueOrDefault(key) == "true";
     }
 
     static YamlMappingNode Unwrap(UnwrapOptions options) =>
