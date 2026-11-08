@@ -146,9 +146,9 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
     /// <summary>
     ///     Export settings are the project's, kept in its project.yaml by the Server for any client: what one client
     ///     sets, another reads back from the project's contents. That they outlive the cache is the library's test
-    ///     (<c>A_projects_export_bake_and_viewport_settings_outlive_the_cache_together</c>), which closes the library
-    ///     before it deletes <c>.ptcache</c>: a running Server holds <c>index.sqlite</c> open, and Windows will not
-    ///     delete an open file.
+    ///     (<c>A_projects_export_bake_viewport_and_paint_settings_outlive_the_cache_together</c>), which closes the
+    ///     library before it deletes <c>.ptcache</c>: a running Server holds <c>index.sqlite</c> open, and Windows will
+    ///     not delete an open file.
     /// </summary>
     [Fact]
     public async Task A_projects_export_settings_are_kept_in_its_file_and_read_back() {
