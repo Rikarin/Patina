@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 using System.Collections.Immutable;
+using System.Globalization;
 using Vixen.Shaders;
 
 namespace Patina.Viewport;
 
 /// <summary>
-///     The viewport's four shaders, through the disk cache. Patina's forward pass is compiled beside the Vixen library
+///     The viewport's shaders, through the disk cache. Patina's forward pass is compiled beside the Vixen library
 ///     files it imports; the sky and the tonemap are the library's own. A compilation binds every file it is given, so
 ///     each set holds only what its shader's imports reach.
 /// </summary>
@@ -44,11 +45,45 @@ sealed class ViewportShaders(ShaderCache cache) {
             [..PostFx, ..Read(static name => name.EndsWith("PostFx.Sky.rvn", StringComparison.Ordinal))]
         );
 
-    public EffectData Tonemap() =>
+    /// <summary>Lines over the model.</summary>
+    public EffectData Wire() =>
         cache.Get(
-            EffectKey.Of("Tonemap", [new("EncodeSrgb", "true")]),
+            EffectKey.Of("ViewportWire"),
+            [..Core, ..Read(static name => name.EndsWith("Shaders.ViewportWire.rvn", StringComparison.Ordinal))]
+        );
+
+    /// <summary>The curve to the screen, one variant per operator, in the order Vixen numbers them.</summary>
+    public EffectData Tonemap(ViewportToneMapping curve) =>
+        cache.Get(
+            EffectKey.Of(
+                "Tonemap",
+                [new("EncodeSrgb", "true"), new("Operator", ((int)curve).ToString(CultureInfo.InvariantCulture))]
+            ),
             [..PostFx, ..Read(static name => name.EndsWith("PostFx.Tonemap.rvn", StringComparison.Ordinal))]
         );
+
+    /// <summary>Vixen's lens pass with only the effects asked for, since a zero vignette is not no vignette.</summary>
+    public EffectData Lens(bool vignette, bool aberration, bool grain) =>
+        cache.Get(
+            EffectKey.Of(
+                "Vignette",
+                [
+                    new("UseVignette", Flag(vignette)),
+                    new("UseChromaticAberration", Flag(aberration)),
+                    new("UseGrain", Flag(grain))
+                ]
+            ),
+            [..PostFx, ..Read(static name => name.EndsWith("PostFx.Vignette.rvn", StringComparison.Ordinal))]
+        );
+
+    /// <summary>AMD's contrast-adaptive sharpening.</summary>
+    public EffectData Sharpen() =>
+        cache.Get(
+            EffectKey.Of("Sharpen"),
+            [..PostFx, ..Read(static name => name.EndsWith("PostFx.Sharpen.rvn", StringComparison.Ordinal))]
+        );
+
+    static string Flag(bool on) => on ? "true" : "false";
 
     static ImmutableArray<(string Name, string Text)> Read(Func<string, bool> wanted) {
         var assembly = typeof(ViewportShaders).Assembly;

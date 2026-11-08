@@ -23,8 +23,16 @@ static class ProjectSettingsEndpoint {
             return TypedResults.Problem(wrong, statusCode: StatusCodes.Status400BadRequest);
         }
 
+        if (request.Viewport?.Problem() is { } unshown) {
+            return TypedResults.Problem(unshown, statusCode: StatusCodes.Status400BadRequest);
+        }
+
         var project = request.Project;
         try {
+            if (request.Viewport is { } viewport) {
+                library.SetViewport(project, viewport);
+            }
+
             var options = library.Contents(project).Unwrap;
             library.SetMeshHandling(project, request.AutoUnwrap, request.PreservePaint, request.Unwrap);
 

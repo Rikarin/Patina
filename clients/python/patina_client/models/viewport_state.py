@@ -13,6 +13,7 @@ from typing import cast
 
 if TYPE_CHECKING:
   from ..models.viewport_camera_state import ViewportCameraState
+  from ..models.viewport_display import ViewportDisplay
   from ..models.viewport_map_paths import ViewportMapPaths
 
 
@@ -33,12 +34,15 @@ class ViewportState:
                 left null keeps what the material asks for. A filled slot replaces the material's factor too, so what shows
                 is the picture. Roughness is read from green, metallic from blue and occlusion from red, so one packed file or
                 three grey ones both work. PNG, JPEG and EXR are read, base colour as sRGB and the rest as linear.
-            camera (ViewportCameraState): The viewport's camera: an orbit around the model.
+            camera (ViewportCameraState): The viewport's camera: an orbit around the model. Its lens is in ViewportDisplay.
             width (int): The size clients asked for, in pixels.
             height (int): The size clients asked for, in pixels.
             render_scale (float): The share of that size frames are rendered at, which drops while a client cannot keep up.
             frames (int): How many frames this Server has published.
-            environment (str): What lights the model: a built-in room, or the path of a panorama. Default: 'studio'.
+            display (ViewportDisplay): How the viewport is lit, shown and finished. None of it reaches a file that is
+                exported; a project keeps it, so
+                it opens as it was left. Angles are radians and exposure is in stops; an effect at zero is off. A field left out
+                of a request is the one the viewport opens with.
             mesh (None | str | Unset): The mesh's path, or null when none is open.
             error (None | str | Unset): Why the last command failed, or null.
             stack (None | str | Unset): The stack session it is wearing, or null.
@@ -50,7 +54,7 @@ class ViewportState:
     height: int
     render_scale: float
     frames: int
-    environment: str = 'studio'
+    display: ViewportDisplay
     mesh: None | str | Unset = UNSET
     error: None | str | Unset = UNSET
     stack: None | str | Unset = UNSET
@@ -62,6 +66,7 @@ class ViewportState:
 
     def to_dict(self) -> dict[str, Any]:
         from ..models.viewport_camera_state import ViewportCameraState # noqa: PLC0415
+        from ..models.viewport_display import ViewportDisplay # noqa: PLC0415
         from ..models.viewport_map_paths import ViewportMapPaths # noqa: PLC0415
         maps = self.maps.to_dict()
 
@@ -75,7 +80,7 @@ class ViewportState:
 
         frames = self.frames
 
-        environment = self.environment
+        display = self.display.to_dict()
 
         mesh: None | str | Unset
         if isinstance(self.mesh, Unset):
@@ -105,7 +110,7 @@ class ViewportState:
             "height": height,
             "renderScale": render_scale,
             "frames": frames,
-            "environment": environment,
+            "display": display,
         })
         if mesh is not UNSET:
             field_dict["mesh"] = mesh
@@ -121,6 +126,7 @@ class ViewportState:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.viewport_camera_state import ViewportCameraState # noqa: PLC0415
+        from ..models.viewport_display import ViewportDisplay # noqa: PLC0415
         from ..models.viewport_map_paths import ViewportMapPaths # noqa: PLC0415
         d = dict(src_dict)
         maps = ViewportMapPaths.from_dict(d.pop("maps"))
@@ -141,7 +147,10 @@ class ViewportState:
 
         frames = d.pop("frames")
 
-        environment = d.pop("environment")
+        display = ViewportDisplay.from_dict(d.pop("display"))
+
+
+
 
         def _parse_mesh(data: object) -> None | str | Unset:
             if data is None:
@@ -180,7 +189,7 @@ class ViewportState:
             height=height,
             render_scale=render_scale,
             frames=frames,
-            environment=environment,
+            display=display,
             mesh=mesh,
             error=error,
             stack=stack,

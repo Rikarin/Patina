@@ -21,8 +21,8 @@ sealed class ViewportEnvironment {
     const int Levels = 7;
     const int Samples = 64;
 
-    /// <summary>A sun in a panorama is thousands of times the sky, which 64 samples would show as speckle.</summary>
-    const float BrightestTexel = 64f;
+    /// <summary>How wide a panorama is read at: four texels for each of a face's, about a face texel's size.</summary>
+    const int PanoramaWidth = Size * 4;
 
     ViewportEnvironment(TextureData prefiltered, SphericalHarmonicsL2 irradiance) {
         Prefiltered = prefiltered;
@@ -56,21 +56,70 @@ sealed class ViewportEnvironment {
         return new(EnvironmentPrefilter.Specular(cube, Levels, Samples), SphericalHarmonicsL2.Project(cube));
     }
 
-    /// <summary>Reads a panorama: its left edge is behind the model and its middle row the horizon.</summary>
+    /// <summary>
+    ///     Reads a panorama: its left edge is behind the model and its middle row the horizon. Nothing is clamped,
+    ///     because a sun is most of a sky's light, and Vixen's prefilter reads it as wide as each sample reaches rather
+    ///     than as speckle. The picture is first averaged down to about a face texel's size and then read between four
+    ///     texels, since a 4K panorama read nearest into a 128 cube hits a small sun one time in twenty.
+    /// </summary>
     static Func<Vector3, Vector3> Panorama(string path) {
-        var (pixels, width, height) = Radiance(path);
+        var (pixels, width, height) = Shrunk(Radiance(path));
         return direction => {
             var across = MathF.Atan2(direction.X, -direction.Z) / MathF.Tau + 0.5f;
             var down = MathF.Acos(Math.Clamp(direction.Y, -1f, 1f)) / MathF.PI;
-            var column = Math.Clamp((int)(across * width), 0, width - 1);
-            var row = Math.Clamp((int)(down * height), 0, height - 1);
-            var at = (row * width + column) * 4;
-            return new(
-                MathF.Min(pixels[at], BrightestTexel),
-                MathF.Min(pixels[at + 1], BrightestTexel),
-                MathF.Min(pixels[at + 2], BrightestTexel)
-            );
+            return Bilinear(pixels, width, height, across * width - 0.5f, down * height - 0.5f);
         };
+    }
+
+    /// <summary>Four texels around a point, wrapping round the panorama's sides and stopping at its poles.</summary>
+    static Vector3 Bilinear(float[] pixels, int width, int height, float x, float y) {
+        var row = Math.Clamp(y, 0f, height - 1);
+        var top = (int)row;
+        var bottom = Math.Min(top + 1, height - 1);
+        var left = (int)MathF.Floor(x);
+        var across = x - left;
+        var down = row - top;
+        var upper = Vector3.Lerp(Texel(pixels, width, top, left), Texel(pixels, width, top, left + 1), across);
+        var lower = Vector3.Lerp(Texel(pixels, width, bottom, left), Texel(pixels, width, bottom, left + 1), across);
+        return Vector3.Lerp(upper, lower, down);
+    }
+
+    static Vector3 Texel(float[] pixels, int width, int row, int column) {
+        var at = (row * width + (column % width + width) % width) * 4;
+        return new(pixels[at], pixels[at + 1], pixels[at + 2]);
+    }
+
+    /// <summary>A panorama averaged down by a whole factor to about <see cref="PanoramaWidth" /> across.</summary>
+    static (float[] Pixels, int Width, int Height) Shrunk((float[] Pixels, int Width, int Height) picture) {
+        var factor = (picture.Width + PanoramaWidth - 1) / PanoramaWidth;
+        if (factor <= 1) {
+            return picture;
+        }
+
+        var width = (picture.Width + factor - 1) / factor;
+        var height = Math.Max(1, (picture.Height + factor - 1) / factor);
+        var shrunk = new float[width * height * 4];
+        Parallel.For(
+            0,
+            height,
+            row => {
+                for (var column = 0; column < width; column++) {
+                    var sum = Vector3.Zero;
+                    var count = 0;
+                    for (var y = row * factor; y < Math.Min((row + 1) * factor, picture.Height); y++) {
+                        for (var x = column * factor; x < Math.Min((column + 1) * factor, picture.Width); x++) {
+                            sum += Texel(picture.Pixels, picture.Width, y, x);
+                            count++;
+                        }
+                    }
+
+                    var mean = sum / Math.Max(count, 1);
+                    var at = (row * width + column) * 4;
+                    (shrunk[at], shrunk[at + 1], shrunk[at + 2]) = (mean.X, mean.Y, mean.Z);
+                }
+            }
+        );
+        return (shrunk, width, height);
     }
 
     /// <summary>A panorama's numbers, four to a texel.</summary>

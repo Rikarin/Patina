@@ -78,6 +78,9 @@ public sealed record ProjectDocument(
 
     /// <summary>How its bakes run, or null for the defaults, which writes nothing.</summary>
     public ProjectBakeSettings? Bake { get; init; }
+
+    /// <summary>How the viewport was left in this project, or null for as it opens.</summary>
+    public ViewportDisplay? Viewport { get; init; }
 }
 
 /// <summary>A mesh a project owns.</summary>

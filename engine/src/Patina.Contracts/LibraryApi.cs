@@ -147,6 +147,9 @@ public sealed record ProjectContents(
 
     /// <summary>How its bakes run, which texture sets they make maps for, and what they read beyond its mesh.</summary>
     public ProjectBakeSettings Bake { get; init; } = new();
+
+    /// <summary>How the viewport was left in this project, for a client to put back, or null for as it opens.</summary>
+    public ViewportDisplay? Viewport { get; init; }
 }
 
 /// <summary>The body of <c>POST /api/v1/library/project/meshes</c>.</summary>
@@ -182,13 +185,18 @@ public sealed record ProjectFileRequest(string Project, string File);
 ///     How Auto Unwrap lays a mesh out. A mesh it already wrote is unwrapped again with these, from the file it came
 ///     from, and its paint moves across as a new mesh's would.
 /// </param>
+/// <param name="Viewport">
+///     How the viewport is to open in this project from now on. It is kept, not applied: <c>PUT /viewport/display</c>
+///     shows it.
+/// </param>
 public sealed record ProjectSettingsRequest(
     string Project,
     string? Mesh,
     string? High,
     bool? AutoUnwrap,
     bool? PreservePaint = null,
-    UnwrapOptions? Unwrap = null
+    UnwrapOptions? Unwrap = null,
+    ViewportDisplay? Viewport = null
 );
 
 /// <summary>One preset file as a project's export last had it.</summary>

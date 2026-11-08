@@ -72,7 +72,8 @@ def sync_detailed(
     """ Moves the viewport's camera.
 
     Args:
-        body (ViewportCameraState): The viewport's camera: an orbit around the model.
+        body (ViewportCameraState): The viewport's camera: an orbit around the model. Its lens is
+            in ViewportDisplay.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -103,7 +104,8 @@ def sync(
     """ Moves the viewport's camera.
 
     Args:
-        body (ViewportCameraState): The viewport's camera: an orbit around the model.
+        body (ViewportCameraState): The viewport's camera: an orbit around the model. Its lens is
+            in ViewportDisplay.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -129,7 +131,8 @@ async def asyncio_detailed(
     """ Moves the viewport's camera.
 
     Args:
-        body (ViewportCameraState): The viewport's camera: an orbit around the model.
+        body (ViewportCameraState): The viewport's camera: an orbit around the model. Its lens is
+            in ViewportDisplay.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -160,7 +163,8 @@ async def asyncio(
     """ Moves the viewport's camera.
 
     Args:
-        body (ViewportCameraState): The viewport's camera: an orbit around the model.
+        body (ViewportCameraState): The viewport's camera: an orbit around the model. Its lens is
+            in ViewportDisplay.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.

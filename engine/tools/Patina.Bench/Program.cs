@@ -99,12 +99,27 @@ switch (args) {
             int.Parse(width, CultureInfo.InvariantCulture),
             int.Parse(height, CultureInfo.InvariantCulture),
             Option(options, "--bake="),
-            Option(options, "--yaw=") is { } yaw
-                ? OrbitCamera.Default with {
-                    Yaw = float.Parse(yaw, CultureInfo.InvariantCulture),
-                    Pitch = float.Parse(Option(options, "--pitch=") ?? "0.35", CultureInfo.InvariantCulture)
-                }
-                : null
+            OrbitCamera.Default with {
+                Yaw = Real(options, "--yaw=", OrbitCamera.Default.Yaw),
+                Pitch = Real(options, "--pitch=", OrbitCamera.Default.Pitch),
+                Distance = Real(options, "--distance=", OrbitCamera.Default.Distance),
+                Orthographic = options.Contains("--orthographic"),
+                FieldOfView = Real(options, "--fov=", OrbitCamera.DefaultFieldOfView)
+            },
+            new() {
+                View = Enum.Parse<ViewportView>(Option(options, "--view=") ?? "Lit", true),
+                ToneMapping = Enum.Parse<ViewportToneMapping>(Option(options, "--curve=") ?? "Aces", true),
+                Exposure = Real(options, "--exposure=", 0f),
+                EnvironmentRotation = Real(options, "--environment-rotation=", 0f),
+                LightRotation = Real(options, "--light-rotation=", 0f),
+                BackgroundBlur = Real(options, "--blur=", 0.66f),
+                Wireframe = options.Contains("--wireframe"),
+                Vignette = Real(options, "--vignette=", 0f),
+                Grain = Real(options, "--grain=", 0f),
+                Aberration = Real(options, "--aberration=", 0f),
+                Sharpen = Real(options, "--sharpen=", 0f)
+            },
+            Option(options, "--environment=")
         );
     default:
         await Console.Error.WriteLineAsync(
@@ -118,6 +133,10 @@ switch (args) {
                    patina-bench s4 [resolution] [layers] [channels] [stamps] [radius] [painted layer]
                        [--whole] [--every-channel] [--blur]
                    patina-bench render <mesh> <out.png> <width> <height> [--bake=<folder>] [--yaw=<r>] [--pitch=<r>]
+                       [--distance=<framings>] [--orthographic] [--fov=<r>] [--view=<view>] [--curve=<curve>]
+                       [--exposure=<stops>] [--environment=<room or panorama>] [--environment-rotation=<r>]
+                       [--light-rotation=<r>] [--blur=<0..1>] [--wireframe] [--vignette=<0..1>] [--grain=<0..1>]
+                       [--aberration=<0..1>] [--sharpen=<0..1>]
                    patina-bench generate <path> <projects> [seed]
                    patina-bench s6 <path> [projects] [seed]
             """
@@ -129,6 +148,9 @@ static int Number(string[] values, int index, int fallback) =>
     values.Length > index && int.TryParse(values[index], CultureInfo.InvariantCulture, out var number)
         ? number
         : fallback;
+
+static float Real(string[] options, string prefix, float fallback) =>
+    Option(options, prefix) is { } text ? float.Parse(text, CultureInfo.InvariantCulture) : fallback;
 
 static string? Option(string[] options, string prefix) =>
     options.FirstOrDefault(o => o.StartsWith(prefix, StringComparison.Ordinal))?[prefix.Length..];

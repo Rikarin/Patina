@@ -3,9 +3,15 @@ import type { ViewportCameraState } from '@patina/api-client';
 const RadiansPerPixel = 0.008;
 const ZoomPerWheelPixel = 0.001;
 const MaxPitch = 1.5;
-const MinDistance = 0.05;
-const PanPerPixel = 0.0012;
-const MaxDistance = 12;
+/** Distances are in framings: one is the whole model just inside the pane, whatever its shape. */
+const MinDistance = 0.02;
+/** A pan is in bounding radii and a distance in framings, about three radii at the opening lens. */
+const PanPerPixel = 0.0035;
+const MaxDistance = 6;
+/** The distance the Server opens at and F goes back to, with a little room round the model. */
+export const Framed = 1.05;
+/** Straight down or up, short of the pole by a hair, where an orbit that keeps up level has no direction. */
+const Pole = Math.PI / 2 - 0.001;
 
 const PixelsPerKey = 24;
 const WheelPixelsPerKey = 120;
@@ -19,17 +25,34 @@ const ArrowSteps: Readonly<Record<string, readonly [number, number]>> = {
 export const DefaultCamera: ViewportCameraState = {
   yaw: 0.6,
   pitch: 0.35,
-  distance: 2.2,
+  distance: Framed,
   panX: 0,
   panY: 0,
-  panZ: 0,
-  exposure: 1,
-  lightRotation: 0
+  panZ: 0
 };
+
+/** The views a key or a button snaps to: yaw and pitch, with the model's front facing +z. */
+export const AxisViews = {
+  front: { yaw: 0, pitch: 0 },
+  back: { yaw: Math.PI, pitch: 0 },
+  right: { yaw: Math.PI / 2, pitch: 0 },
+  left: { yaw: -Math.PI / 2, pitch: 0 },
+  top: { yaw: 0, pitch: Pole },
+  bottom: { yaw: 0, pitch: -Pole }
+} as const;
+
+export type AxisView = keyof typeof AxisViews;
+
+/** Looks along an axis at the whole model, as Blender's number pad does. */
+export function snapped(camera: ViewportCameraState, view: AxisView): ViewportCameraState {
+  return { ...framed(camera), ...AxisViews[view] };
+}
 
 /** A drag turns the model under the pointer: right spins it right, down tips it towards the viewer. */
 export function orbit(camera: ViewportCameraState, dx: number, dy: number): ViewportCameraState {
-  const pitch = Math.max(-MaxPitch, Math.min(MaxPitch, camera.pitch + dy * RadiansPerPixel));
+  // A snapped top view sits past the drag's limit, and the first drag should not jump it back.
+  const limit = Math.max(MaxPitch, Math.abs(camera.pitch));
+  const pitch = Math.max(-limit, Math.min(limit, camera.pitch + dy * RadiansPerPixel));
   return { ...camera, yaw: camera.yaw - dx * RadiansPerPixel, pitch };
 }
 
@@ -74,7 +97,21 @@ export function nudge(camera: ViewportCameraState, key: string, shift: boolean):
   }
 }
 
-/** Back to the whole model, where the view started. */
-export function framed(): ViewportCameraState {
-  return DefaultCamera;
+/** The whole model in the pane, looked at from where the camera is: the distance and the pan go back, the angle stays. */
+export function framed(camera: ViewportCameraState = DefaultCamera): ViewportCameraState {
+  return { ...camera, distance: Framed, panX: 0, panY: 0, panZ: 0 };
+}
+
+/** What a key on the number pad snaps to, as in Blender: 1 front, 3 right, 7 top, and Ctrl for the opposite side. */
+export function padView(code: string, opposite: boolean): AxisView | undefined {
+  switch (code) {
+    case 'Numpad1':
+      return opposite ? 'back' : 'front';
+    case 'Numpad3':
+      return opposite ? 'left' : 'right';
+    case 'Numpad7':
+      return opposite ? 'bottom' : 'top';
+    default:
+      return undefined;
+  }
 }

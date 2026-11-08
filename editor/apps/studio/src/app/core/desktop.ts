@@ -37,6 +37,8 @@ export interface DesktopBridge {
   openFile(pictures?: readonly string[]): Promise<string | null>;
   /** Asks for a panorama of these formats. */
   openEnvironment(formats?: readonly string[]): Promise<string | null>;
+  /** Asks for a <code>.cube</code> table to view the viewport through. */
+  openLook(): Promise<string | null>;
   /** Where a file dropped on the window is. */
   pathOf(file: File): string;
 

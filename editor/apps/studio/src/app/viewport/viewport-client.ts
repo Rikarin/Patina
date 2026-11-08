@@ -1,8 +1,9 @@
-import { DestroyRef, Injectable, InjectionToken, effect, inject, signal } from '@angular/core';
-import type { ViewportCameraState, ViewportInput } from '@patina/api-client';
+import { DestroyRef, Injectable, InjectionToken, effect, inject, signal, untracked } from '@angular/core';
+import type { ViewportCameraState, ViewportDisplay, ViewportInput } from '@patina/api-client';
 import { unwrap } from '@patina/api-client';
 import { BakeStore } from '../bake/bake-store';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
+import { ProjectStore } from '../library/project-store';
 import {
   type FrameTransport,
   type FrameTransportFactory,
@@ -15,6 +16,33 @@ import { DefaultCamera } from './orbit';
 export const FRAME_TRANSPORT_FACTORY = new InjectionToken<FrameTransportFactory>('FRAME_TRANSPORT_FACTORY', {
   factory: () => (connection, onFrame, onOpen) => new StreamFrameTransport(connection, onFrame, onOpen)
 });
+
+/** How the viewport opens, which the Server says too: a project that kept nothing gets this. */
+export const DefaultDisplay: ViewportDisplay = {
+  environment: 'studio',
+  environmentRotation: 0,
+  backgroundBlur: 0.66,
+  backgroundOpacity: 1,
+  lightRotation: 0,
+  exposure: 0,
+  shadows: 1,
+  toneMapping: 'aces',
+  look: null,
+  view: 'lit',
+  picture: null,
+  wireframe: false,
+  orthographic: false,
+  fieldOfView: 0.7,
+  contrast: 1,
+  saturation: 1,
+  vignette: 0,
+  grain: 0,
+  aberration: 0,
+  sharpen: 0
+};
+
+/** How long the display waits after the last change before the project keeps it. */
+const KeepAfterMs = 600;
 
 /** What a pane shows beside the picture. */
 export interface ViewportStats {
@@ -37,7 +65,14 @@ export class ViewportClient {
   private readonly createClient = inject(API_CLIENT_FACTORY);
   private readonly createTransport = inject(FRAME_TRANSPORT_FACTORY);
   private readonly bakes = inject(BakeStore);
+  private readonly projects = inject(ProjectStore);
   private transport: FrameTransport | null = null;
+  /** The project whose display is on the viewport, which a change is kept in. */
+  private adopted: string | null = null;
+  private keeping: ReturnType<typeof setTimeout> | null = null;
+  /** Settings sent while others were on their way, of which only the newest goes. */
+  private queued: ViewportDisplay | null = null;
+  private sending = false;
   private inputNumber = 0;
   private readonly sentAt = new Map<number, number>();
   private latest = 0;
@@ -45,8 +80,8 @@ export class ViewportClient {
   private size: { width: number; height: number } | null = null;
 
   readonly mesh = signal<string | null>(null);
-  /** What lights the model, as the Server has it. */
-  readonly environment = signal('studio');
+  /** How the model is lit, shown and finished, as the Server has it or as it was just asked for. */
+  readonly display = signal<ViewportDisplay>(DefaultDisplay);
   readonly error = signal<string | null>(null);
   readonly stats = signal<ViewportStats | null>(null);
   readonly camera = signal<ViewportCameraState>(DefaultCamera);
@@ -55,13 +90,32 @@ export class ViewportClient {
   onFrame: ((frame: ViewportFrame) => void) | null = null;
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => this.transport?.close());
+    inject(DestroyRef).onDestroy(() => {
+      this.transport?.close();
+      this.keepNow();
+    });
     void this.start();
     effect(() => {
       if (this.bakes.viewportChanged() > 0) {
         void this.refresh();
       }
     });
+    // A project opens its viewport as it was left, once its contents have been read. Only a change of project puts
+    // it back, not a save.
+    effect(() => {
+      const project = this.projects.active()?.project ?? null;
+      if (this.projects.current() !== null) {
+        untracked(() => this.adopt(project));
+      }
+    });
+  }
+
+  /** Changes some of the display settings: the frames show it at once, and the project keeps it a moment later. */
+  setDisplay(change: Partial<ViewportDisplay>): void {
+    const next = { ...this.display(), ...change };
+    this.display.set(next);
+    this.sendDisplay(next);
+    this.keepLater();
   }
 
   /** Lays a graph's outputs over the mesh on screen. */
@@ -85,15 +139,71 @@ export class ViewportClient {
     }
   }
 
-  /** Lights the model with a built-in room, or a panorama at a path. */
-  async setEnvironment(source: string): Promise<void> {
+  /** Puts back how a project left the viewport, or how it opens, when another project comes to the front. */
+  private adopt(project: string | null): void {
+    if (project === this.adopted || project === null) {
+      return;
+    }
+
+    this.keepNow();
+    this.adopted = project;
+    const kept = this.projects.current()?.viewport ?? DefaultDisplay;
+    this.display.set(kept);
+    this.sendDisplay(kept);
+  }
+
+  /** Sends settings, one request at a time: a slider moves faster than a reply comes back. */
+  private sendDisplay(display: ViewportDisplay): void {
+    if (this.sending) {
+      this.queued = display;
+      return;
+    }
+
+    this.sending = true;
+    void this.put(display).finally(() => {
+      this.sending = false;
+      const next = this.queued;
+      this.queued = null;
+      if (next) {
+        this.sendDisplay(next);
+      }
+    });
+  }
+
+  private async put(display: ViewportDisplay): Promise<void> {
     try {
       const client = this.createClient(await this.connection());
-      const state = unwrap(await client.PUT('/api/v1/viewport/environment', { body: { source } }));
-      this.environment.set(state.environment);
+      const state = unwrap(await client.PUT('/api/v1/viewport/display', { body: display }));
+      if (!this.queued) {
+        this.display.set(state.display);
+      }
+
       this.error.set(null);
     } catch (error) {
+      // A file the project kept may have gone: what the Server still shows is what the controls say.
       this.error.set(error instanceof Error ? error.message : String(error));
+      await this.refresh().catch(() => undefined);
+    }
+  }
+
+  private keepLater(): void {
+    if (this.keeping !== null) {
+      clearTimeout(this.keeping);
+    }
+
+    this.keeping = setTimeout(() => this.keepNow(), KeepAfterMs);
+  }
+
+  /** The project keeps the settings now, if a change is waiting. */
+  private keepNow(): void {
+    if (this.keeping === null) {
+      return;
+    }
+
+    clearTimeout(this.keeping);
+    this.keeping = null;
+    if (this.adopted !== null) {
+      void this.projects.keepViewport(this.adopted, this.display());
     }
   }
 
@@ -141,7 +251,7 @@ export class ViewportClient {
   private async refresh(): Promise<void> {
     const state = unwrap(await this.createClient(await this.connection()).GET('/api/v1/viewport'));
     this.mesh.set(state.mesh ?? null);
-    this.environment.set(state.environment);
+    this.display.set(state.display);
     this.error.set(state.error ?? null);
   }
 
@@ -157,6 +267,10 @@ export class ViewportClient {
       const state = unwrap(await this.createClient(connection).GET('/api/v1/viewport'));
       this.mesh.set(state.mesh ?? null);
       this.camera.set(state.camera);
+      if (this.adopted === null) {
+        this.display.set(state.display);
+      }
+
       this.error.set(state.error ?? null);
       this.transport = this.createTransport(
         connection,

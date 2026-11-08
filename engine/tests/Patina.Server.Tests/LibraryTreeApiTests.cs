@@ -488,6 +488,32 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
         Assert.True(await MeshChangedAsync(source));
     }
 
+    /// <summary>
+    ///     A project keeps how its viewport was left and gives it back when it opens, without touching the mesh;
+    ///     settings that could not be shown are refused before anything is kept.
+    /// </summary>
+    [Fact]
+    public async Task A_project_keeps_its_viewport_and_refuses_one_that_cannot_be_shown() {
+        await MakeCrateAsync();
+        var left = new ViewportDisplay(Exposure: 1.5, View: "clay", Wireframe: true, ToneMapping: "agx");
+
+        using var kept = await client.PatchAsJsonAsync(
+            "/api/v1/library/project/settings",
+            new ProjectSettingsRequest("crate", null, null, null, Viewport: left),
+            Token
+        );
+        using var refused = await client.PatchAsJsonAsync(
+            "/api/v1/library/project/settings",
+            new ProjectSettingsRequest("crate", null, null, null, Viewport: left with { View = "x-ray" }),
+            Token
+        );
+
+        Assert.Equal(HttpStatusCode.OK, kept.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        var contents = await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=crate", Token);
+        Assert.Equal(left, contents!.Viewport);
+    }
+
     [Fact]
     public async Task Another_file_of_a_different_name_is_a_change_even_with_the_same_bytes() {
         var (source, _) = await MakeProjectOnMeshAsync();

@@ -11,9 +11,8 @@ import {
   untracked,
   viewChild
 } from '@angular/core';
-import type { ViewportCameraState } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
-import { XuiSliderImports } from '@xui/slider';
+import { BakeStore } from '../bake/bake-store';
 import { desktop } from '../core/desktop';
 import { SystemStatus } from '../core/system-status';
 import { ViewOptions } from '../core/view-options';
@@ -23,8 +22,9 @@ import { PaintStore, pressureOf } from '../paint/paint-store';
 import { StrokeGesture } from '../paint/stroke-gesture';
 import { FramePainter } from './frame-painter';
 import type { ViewportFrame } from './frame-transport';
-import { framed, nudge, orbit, pan, zoom } from './orbit';
+import { type AxisView, framed, nudge, orbit, padView, pan, snapped, zoom } from './orbit';
 import { ViewportClient } from './viewport-client';
+import { ViewportDisplayPanel } from './viewport-display';
 
 const Rooms: readonly { value: string; label: string }[] = [
   { value: 'studio', label: 'Studio' },
@@ -32,10 +32,30 @@ const Rooms: readonly { value: string; label: string }[] = [
   { value: 'sunset', label: 'Sunset' }
 ];
 
+/** The views, in the order V steps through them. A picture is chosen from the mesh maps, so V passes it by. */
+const Views: readonly { value: string; label: string }[] = [
+  { value: 'lit', label: 'Lit' },
+  { value: 'clay', label: 'Clay' },
+  { value: 'unlit', label: 'Unlit' },
+  { value: 'baseColor', label: 'Base colour' },
+  { value: 'roughness', label: 'Roughness' },
+  { value: 'metallic', label: 'Metallic' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'occlusion', label: 'Occlusion' },
+  { value: 'emissive', label: 'Emissive' },
+  { value: 'opacity', label: 'Opacity' }
+];
+
+/** What a value of the view list means when it is a mesh map rather than a view. */
+const MapPrefix = 'map:';
+/** What the look list means by none, and by asking for a file. */
+const NoLook = '';
+const PickLook = '…';
+
 /** The docked viewport: frames from the Worker on a canvas, and orbit input going the other way. */
 @Component({
   selector: 'ptn-viewport',
-  imports: [XuiSliderImports, XuiButtonImports],
+  imports: [XuiButtonImports, ViewportDisplayPanel],
   providers: [ViewportClient],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -44,7 +64,7 @@ const Rooms: readonly { value: string; label: string }[] = [
     '(document:keydown.f)': 'frame($event)'
   },
   template: `
-    <div class="chrome-bar flex h-9 shrink-0 items-center gap-2 px-2">
+    <div class="chrome-bar flex min-h-9 shrink-0 flex-wrap items-center gap-x-2 gap-y-1 px-2 py-1">
       @if (!paint.worn()) {
         <button type="button" xuiButton size="sm" [disabled]="!canOpen" (click)="open()">Open mesh…</button>
       }
@@ -79,49 +99,69 @@ const Rooms: readonly { value: string; label: string }[] = [
       <span class="flex-1"></span>
       <select
         class="well h-6 max-w-28 px-1 text-xs"
+        aria-label="View"
+        title="What the model shows: lit, its shape, or one stored channel as the file holds it (V steps through them)"
+        data-testid="viewport-view"
+        (change)="chooseView($event)"
+      >
+        @for (view of views; track view.value) {
+          <option [value]="view.value" [selected]="view.value === display().view">{{ view.label }}</option>
+        }
+        @if (meshMaps().length > 0 || shownPicture()) {
+          <optgroup label="Mesh maps">
+            @for (map of meshMaps(); track map.path) {
+              <option [value]="mapPrefix + map.path" [selected]="isShown(map.path)">{{ map.label }}</option>
+            }
+            @if (shownPicture(); as file) {
+              <option [value]="mapPrefix + display().picture" selected>{{ file }}</option>
+            }
+          </optgroup>
+        }
+      </select>
+      <select
+        class="well h-6 max-w-28 px-1 text-xs"
         aria-label="Environment"
         title="What lights the model"
         data-testid="viewport-environment"
         (change)="chooseEnvironment($event)"
       >
         @for (room of rooms; track room.value) {
-          <option [value]="room.value" [selected]="room.value === viewport.environment()">{{ room.label }}</option>
+          <option [value]="room.value" [selected]="room.value === display().environment">{{ room.label }}</option>
         }
         @if (panorama(); as file) {
-          <option [value]="viewport.environment()" selected>{{ file }}</option>
+          <option [value]="display().environment" selected>{{ file }}</option>
         }
         @if (canPick) {
           <option value="">From a file…</option>
         }
       </select>
-      <label class="flex items-center gap-1 text-xs" title="How bright the picture is">
-        Exposure
-        <xui-slider
-          class="w-20"
-          labelStepSize="0"
-          aria-label="Exposure"
-          data-testid="viewport-exposure"
-          [max]="4"
-          [min]="0.1"
-          [stepSize]="0.05"
-          [value]="viewport.camera().exposure"
-          (valueChange)="light({ exposure: $event })"
-        />
-      </label>
-      <label class="flex items-center gap-1 text-xs" title="Turns the light around the model">
-        Light
-        <xui-slider
-          class="w-20"
-          labelStepSize="0"
-          aria-label="Light rotation"
-          data-testid="viewport-light"
-          [max]="3.14"
-          [min]="-3.14"
-          [stepSize]="0.02"
-          [value]="viewport.camera().lightRotation"
-          (valueChange)="light({ lightRotation: $event })"
-        />
-      </label>
+      <select
+        class="well h-6 max-w-28 px-1 text-xs"
+        aria-label="Look"
+        title="A .cube table the picture is viewed through. Nothing that is exported sees it."
+        data-testid="viewport-look"
+        (change)="chooseLook($event)"
+      >
+        <option [value]="noLook" [selected]="display().look === null">No look</option>
+        @if (lookName(); as file) {
+          <option [value]="display().look" selected>{{ file }}</option>
+        }
+        @if (canPick) {
+          <option [value]="pickLook">From a file…</option>
+        }
+      </select>
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        data-testid="viewport-display-toggle"
+        title="The camera, light and finish of the view"
+        [variant]="showDisplay() ? 'default' : 'ghost'"
+        [attr.aria-expanded]="showDisplay()"
+        (click)="showDisplay.set(!showDisplay())"
+      >
+        Display
+      </button>
       @if (stampMs() !== null) {
         <span
           class="readout"
@@ -143,7 +183,7 @@ const Rooms: readonly { value: string; label: string }[] = [
         #canvas
         class="absolute inset-0 size-full touch-none"
         aria-label="Viewport"
-        aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Shift+ArrowLeft Shift+ArrowRight Shift+ArrowUp Shift+ArrowDown + - F"
+        aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Shift+ArrowLeft Shift+ArrowRight Shift+ArrowUp Shift+ArrowDown + - F V Shift+V"
         role="application"
         tabindex="0"
         [attr.data-frames]="viewport.frames()"
@@ -180,12 +220,17 @@ const Rooms: readonly { value: string; label: string }[] = [
       @if (message(); as text) {
         <p class="text-foreground-muted absolute inset-x-0 top-1/2 text-center">{{ text }}</p>
       }
+      @if (showDisplay()) {
+        <ptn-viewport-display class="absolute inset-y-2 end-2 max-w-[calc(100%-1rem)]" (snap)="snap($event)" />
+      }
     </div>
   `
 })
 export class ViewportPane implements AfterViewInit {
   private readonly status = inject(SystemStatus);
   protected readonly viewport = inject(ViewportClient);
+  protected readonly display = this.viewport.display;
+  private readonly bakes = inject(BakeStore);
   protected readonly graph = inject(GraphStore);
   protected readonly paint = inject(PaintStore);
   protected readonly project = inject(ProjectStore);
@@ -290,11 +335,32 @@ export class ViewportPane implements AfterViewInit {
   }
 
   protected readonly rooms = Rooms;
+  protected readonly views = Views;
+  protected readonly mapPrefix = MapPrefix;
+  protected readonly noLook = NoLook;
+  protected readonly pickLook = PickLook;
   protected readonly canPick = desktop() !== undefined;
+  /** Whether the display settings are open beside the picture. */
+  protected readonly showDisplay = signal(false);
   /** The file lighting the model, when it is not a built-in room. */
   protected readonly panorama = computed(() => {
-    const source = this.viewport.environment();
-    return Rooms.some(room => room.value === source) ? null : source.split(/[/\\]/u).pop();
+    const source = this.display().environment;
+    return Rooms.some(room => room.value === source) ? null : fileName(source);
+  });
+  protected readonly lookName = computed(() => {
+    const look = this.display().look;
+    return look ? fileName(look) : null;
+  });
+  /** The maps of the last bake, which the view list offers on the mesh as they are stored. */
+  protected readonly meshMaps = computed(() =>
+    (this.bakes.current()?.result?.maps ?? []).map(map => ({ path: map.path, label: mapName(map.map) }))
+  );
+  /** The picture on view when it is none of the last bake's maps, such as one a project kept. */
+  protected readonly shownPicture = computed(() => {
+    const { view, picture } = this.display();
+    return view === 'picture' && picture && !this.meshMaps().some(map => map.path === picture)
+      ? fileName(picture)
+      : null;
   });
 
   /** The graph on the mesh, which follows its evaluations until asked to stop. */
@@ -308,10 +374,40 @@ export class ViewportPane implements AfterViewInit {
     const select = event.target as HTMLSelectElement;
     const source = select.value || (await desktop()?.openEnvironment(this.status.environments()));
     if (source) {
-      await this.viewport.setEnvironment(source);
+      this.viewport.setDisplay({ environment: source });
     } else {
-      select.value = this.viewport.environment();
+      select.value = this.display().environment;
     }
+  }
+
+  protected async chooseLook(event: Event): Promise<void> {
+    const select = event.target as HTMLSelectElement;
+    const chosen = select.value === PickLook ? await desktop()?.openLook() : select.value || null;
+    if (chosen === undefined || (chosen === null && select.value === PickLook)) {
+      select.value = this.display().look ?? NoLook;
+      return;
+    }
+
+    this.viewport.setDisplay({ look: chosen });
+  }
+
+  protected chooseView(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    this.viewport.setDisplay(
+      value.startsWith(MapPrefix)
+        ? { view: 'picture', picture: value.slice(MapPrefix.length) }
+        : { view: value, picture: null }
+    );
+  }
+
+  protected isShown(path: string): boolean {
+    const { view, picture } = this.display();
+    return view === 'picture' && picture === path;
+  }
+
+  /** Looks along an axis at the whole model. */
+  protected snap(view: AxisView): void {
+    this.viewport.moveCamera(snapped(this.viewport.camera(), view), false);
   }
 
   protected async open(): Promise<void> {
@@ -325,15 +421,10 @@ export class ViewportPane implements AfterViewInit {
     return (event.target as HTMLInputElement).value;
   }
 
-  protected light(change: Partial<ViewportCameraState>): void {
-    this.viewport.moveCamera({ ...this.viewport.camera(), ...change }, false);
-  }
-
-  /** F brings the whole model back, as it does in every 3D tool. */
+  /** F brings the whole model back into the pane, from where the camera looks, as it does in every 3D tool. */
   protected frame(event: Event): void {
     if (!(event.target as Element).closest('input, textarea, select, [contenteditable=true]')) {
-      const { exposure, lightRotation } = this.viewport.camera();
-      this.viewport.moveCamera({ ...framed(), exposure, lightRotation }, false);
+      this.viewport.moveCamera(framed(this.viewport.camera()), false);
     }
   }
 
@@ -399,8 +490,26 @@ export class ViewportPane implements AfterViewInit {
     this.viewport.moveCamera(zoom(this.viewport.camera(), event.deltaY), false);
   }
 
-  /** The keyboard does what the pointer does, so the view needs no mouse. */
+  /**
+   * The keyboard does what the pointer does, so the view needs no mouse. The number pad snaps to an axis as Blender's
+   * does, and V steps through the views, Shift-V back.
+   */
   protected key(event: KeyboardEvent): void {
+    const axis = padView(event.code, event.ctrlKey || event.metaKey);
+    if (axis) {
+      event.preventDefault();
+      this.snap(axis);
+      return;
+    }
+
+    if (event.key === 'v' || event.key === 'V') {
+      event.preventDefault();
+      const at = Views.findIndex(view => view.value === this.display().view);
+      const next = Views[(at + (event.shiftKey ? Views.length - 1 : 1) + Views.length) % Views.length];
+      this.viewport.setDisplay({ view: next?.value ?? 'lit', picture: null });
+      return;
+    }
+
     const moved = nudge(this.viewport.camera(), event.key, event.shiftKey);
     if (moved) {
       event.preventDefault();
@@ -468,4 +577,14 @@ export class ViewportPane implements AfterViewInit {
       this.viewport.resize(width, height);
     }
   }
+}
+
+function fileName(path: string): string {
+  return path.split(/[/\\]/u).pop() ?? path;
+}
+
+/** A bake's map as the view list names it: <code>ao</code> as Ao would read badly. */
+function mapName(map: string): string {
+  const named: Readonly<Record<string, string>> = { ao: 'Ambient occlusion', normal: 'Normal (baked)' };
+  return named[map] ?? map.charAt(0).toUpperCase() + map.slice(1);
 }

@@ -10,15 +10,19 @@ using Vixen.Shaders;
 namespace Patina.Viewport;
 
 /// <summary>
-///     The whole viewport: a forward pass over the sky at 4x MSAA in HDR, a tonemap, and a readback into caller memory.
-///     It holds a device and things derived from a file, and all of it can be rebuilt, which is why a Worker may die.
+///     The whole viewport: a forward pass over the sky at 4x MSAA in HDR, the triangles' edges if asked, a tonemap and
+///     the post effects that are on, and a readback into caller memory. It holds a device and things derived from a
+///     file, and all of it can be rebuilt, which is why a Worker may die.
 /// </summary>
 public sealed class ViewportRenderer : IDisposable {
-    const PixelFormat HdrFormat = PixelFormat.Rgba16Float;
-    const PixelFormat DepthFormat = PixelFormat.Depth32Float;
-    const PixelFormat OutputFormat = PixelFormat.Rgba8UNorm;
-    const int Samples = 4;
-    const float Exposure = 0.9f;
+    const PixelFormat HdrFormat = ViewportTargets.HdrFormat;
+    const PixelFormat DepthFormat = ViewportTargets.DepthFormat;
+    const PixelFormat OutputFormat = ViewportTargets.OutputFormat;
+    const int Samples = ViewportTargets.Samples;
+
+    /// <summary>How bright the background is at full opacity, against the light it gives the model.</summary>
+    const float SkyIntensity = 0.55f;
+
     const int SettleWidth = 320;
     const int SettleHeight = 200;
     const int SettledFrames = 8;
@@ -30,23 +34,23 @@ public sealed class ViewportRenderer : IDisposable {
     readonly List<Action> cleanup = [];
     readonly Pass forward;
     readonly Pass sky;
-    readonly Pass tonemap;
     readonly SamplerHandle sampler;
     readonly SamplerHandle mapSampler;
     readonly ViewportTextures textures;
     TextureViewHandle environmentView;
+    TextureViewHandle pictureView;
+    ViewportMapFile? picture;
     readonly ViewportShadows shadows;
+    readonly ViewportPost post;
     readonly BufferHandle frameConstants;
     readonly BufferHandle skyConstants;
-    readonly BufferHandle tonemapConstants;
-    readonly BufferHandle meteredExposure;
-    readonly ConstantBlock toneBlock;
     readonly DescriptorSetHandle frameSet;
     readonly DescriptorSetHandle skySet;
     readonly ConstantBlock frameBlock;
     readonly ConstantBlock skyBlock;
+    readonly ViewportWire wire;
     Geometry? geometry;
-    Targets? targets;
+    ViewportTargets? targets;
     string? meshFolder;
     ViewportMaps maps = ViewportMaps.None;
 
@@ -69,6 +73,7 @@ public sealed class ViewportRenderer : IDisposable {
         textures = new(device);
         cleanup.Add(textures.Dispose);
         environmentView = textures.UploadCube(environment.Prefiltered, cleanup);
+        pictureView = textures.Black;
 
         var shadowEffect = loader.Load(shaders.Shadow());
         shadows = new(
@@ -83,14 +88,33 @@ public sealed class ViewportRenderer : IDisposable {
         var hdr = new[] { new ColourTargetState(HdrFormat, BlendState.Opaque) };
         forward = Pipeline(shaders.Forward(), hdr, Samples, DepthStencilState.Default, DepthFormat, true);
         sky = Pipeline(shaders.Sky(), hdr, Samples, DepthStencilState.Disabled, DepthFormat, false);
-        tonemap = Pipeline(
-            shaders.Tonemap(),
-            [new(OutputFormat, BlendState.Opaque)],
-            1,
-            DepthStencilState.Disabled,
-            PixelFormat.Undefined,
-            false
+        var wireEffect = loader.Load(shaders.Wire());
+        wire = new(
+            device,
+            wireEffect,
+            Module(wireEffect, ShaderStage.Vertex),
+            Module(wireEffect, ShaderStage.Fragment),
+            HdrFormat,
+            DepthFormat,
+            Samples
         );
+        cleanup.Add(wire.Dispose);
+        post = new(
+            device,
+            shaders,
+            data => {
+                var pass = Pipeline(
+                    data,
+                    [new(OutputFormat, BlendState.Opaque)],
+                    1,
+                    DepthStencilState.Disabled,
+                    PixelFormat.Undefined,
+                    false
+                );
+                return (pass.Effect, pass.Pipeline);
+            }
+        );
+        cleanup.Add(post.Dispose);
 
         frameBlock = new(forward.Effect.BlockOf(DescriptorSetSlot.PerFrame));
         skyBlock = new(sky.Effect.BlockOf(DescriptorSetSlot.PerMaterial));
@@ -101,31 +125,16 @@ public sealed class ViewportRenderer : IDisposable {
             frameSet,
             [
                 DescriptorWrite.Texture(forward.Effect.BindingOf("shadowMap")!.Value.Binding, shadows.MapView),
-                DescriptorWrite.SamplerAt(forward.Effect.BindingOf("shadowSampler")!.Value.Binding, shadows.Sampler)
+                DescriptorWrite.SamplerAt(forward.Effect.BindingOf("shadowSampler")!.Value.Binding, shadows.Sampler),
+                DescriptorWrite.Texture(forward.Effect.BindingOf("picture")!.Value.Binding, pictureView),
+                DescriptorWrite.SamplerAt(forward.Effect.BindingOf("pictureSampler")!.Value.Binding, mapSampler)
             ]
         );
         skySet = BindEnvironment(sky, DescriptorSetSlot.PerMaterial, skyConstants);
-
-        toneBlock = new(tonemap.Effect.BlockOf(DescriptorSetSlot.PerMaterial));
-        var neutral = new Vector3(1f, 1f, 1f);
-        toneBlock.Set("exposure", Exposure)
-            .Set("whitePoint", 4f)
-            .Set("contrast", 1f)
-            .Set("saturation", 1f)
-            .Set("whiteBalance", neutral)
-            .Set("colorFilter", neutral)
-            .Set("shadowTint", neutral)
-            .Set("highlightTint", neutral);
-        tonemapConstants = Constants(toneBlock.Bytes.Length, "viewport tonemap");
-        device.Write(tonemapConstants, 0, toneBlock.Bytes);
-
-        // Raven keeps the auto-exposure binding in this variant although the permutation that reads it is off.
-        meteredExposure = device.CreateBuffer(
-            new(sizeof(float), BufferUsage.Storage, MemoryAccess.HostUpload, "viewport metered exposure")
-        );
-        device.Write(meteredExposure, 0, BitConverter.GetBytes(Exposure));
-        cleanup.Add(() => device.Destroy(meteredExposure));
     }
+
+    /// <summary>How the model is lit, shown and finished, from the next frame on.</summary>
+    public ViewportShading Shading { get; set; } = new();
 
 
     /// <summary>The adapter's name, for logs.</summary>
@@ -255,9 +264,6 @@ public sealed class ViewportRenderer : IDisposable {
                 ? whole
                 : new ViewportLiveMap?[Enum.GetValues<ViewportSlot>().Length];
 
-    /// <summary>How dark a shadow is, from none at zero to no direct light at one.</summary>
-    public float ShadowStrength { get; set; } = 1f;
-
     /// <summary>Lights the model with a built-in room by name, or the <c>.hdr</c> at a path.</summary>
     /// <exception cref="InvalidDataException">The file cannot be read as a picture.</exception>
     public void SetEnvironment(string source) {
@@ -267,6 +273,23 @@ public sealed class ViewportRenderer : IDisposable {
         environmentView = textures.UploadCube(next.Prefiltered, cleanup);
         Rebind(forward, frameSet);
         Rebind(sky, skySet);
+    }
+
+    /// <summary>
+    ///     The picture <see cref="ViewportView.Picture" /> shows on the mesh, read as stored: a bake's mesh map, or a
+    ///     mask. Null shows black.
+    /// </summary>
+    /// <exception cref="InvalidDataException">It is not a picture this reads.</exception>
+    /// <exception cref="IOException">It cannot be read.</exception>
+    public void SetPicture(ViewportMapFile? file) {
+        var next = file is null ? textures.Black : textures.Of(file, MapMeaning.Measurement);
+        device.WaitIdle();
+        picture = file;
+        pictureView = next;
+        device.UpdateDescriptorSet(
+            frameSet,
+            [DescriptorWrite.Texture(forward.Effect.BindingOf("picture")!.Value.Binding, pictureView)]
+        );
     }
 
     void Rebind(Pass pass, DescriptorSetHandle set) =>
@@ -283,13 +306,20 @@ public sealed class ViewportRenderer : IDisposable {
 
         if (targets is not { } current || current.Width != width || current.Height != height) {
             targets?.Dispose();
-            current = targets = new(device, tonemap, sampler, tonemapConstants, meteredExposure, width, height);
+            post.Forget();
+            current = targets = new(device, width, height);
         }
 
-        WriteFrame(camera, scene.Mesh.Bounds, (float)width / height);
+        var shading = Shading;
+        WriteFrame(camera, shading, scene.Mesh.Bounds, (float)width / height);
+        post.Plan(shading, width, height);
+        if (shading.Wireframe) {
+            scene.EnsureEdges();
+        }
+
         device.BeginFrame();
         using (var commands = device.BeginCommandList(QueueKind.Graphics, "viewport")) {
-            Record(commands, current, scene);
+            Record(commands, current, scene, shading.Wireframe);
             commands.Finish();
             device.GraphicsQueue.Submit([commands]);
         }
@@ -331,6 +361,11 @@ public sealed class ViewportRenderer : IDisposable {
         }
 
         geometry.Use(sets);
+        if (picture is not null) {
+            // The picture on view is no material's, and must outlive the materials' sweep.
+            textures.Of(picture, MapMeaning.Measurement);
+        }
+
         textures.EndUse();
     }
 
@@ -442,31 +477,37 @@ public sealed class ViewportRenderer : IDisposable {
         return new(0.6f * cos + 0.5f * sin, 0.7f, 0.5f * cos - 0.6f * sin);
     }
 
-    void WriteFrame(OrbitCamera camera, BoundingBox bounds, float aspectRatio) {
+    void WriteFrame(OrbitCamera camera, ViewportShading shading, BoundingBox bounds, float aspectRatio) {
         var viewProjection = camera.ViewProjection(bounds, aspectRatio);
-        var light = Vector3.Normalize(LightFrom(camera.LightRotation));
+        var eye = camera.Eye(bounds, aspectRatio);
+        var radius = Math.Max(bounds.Extent.Length(), 1e-4f);
+        var light = Vector3.Normalize(LightFrom(shading.LightRotation));
         var lightView = ViewportShadows.LightViewProjection(bounds, light);
         shadows.Write(lightView);
         frameBlock.Set("viewProjection", viewProjection)
-            .Set("cameraPosition", camera.Eye(bounds))
+            .Set("cameraPosition", eye)
             .Set("lightDirection", light)
             .Set("lightViewProjection", lightView)
             .Set("shadowTexel", 1f / ViewportShadows.Size)
-            .Set("shadowOffset", Math.Max(bounds.Extent.Length(), 1e-4f) * 0.006f)
-            .Set("shadowStrength", ShadowStrength)
+            .Set("shadowOffset", radius * 0.006f)
+            .Set("shadowStrength", Math.Clamp(shading.Shadows, 0f, 1f))
             .Set("lightColor", new Vector3(1.2f, 1.15f, 1.1f))
-            .Set("environmentYaw", camera.LightRotation)
-            .Set("environmentMipCount", (float)environment.Prefiltered.LevelCount);
+            .Set("environmentYaw", shading.EnvironmentRotation)
+            .Set("environmentMipCount", (float)environment.Prefiltered.LevelCount)
+            .Set("view", shading.ViewNumber);
         WriteIrradiance();
         device.Write(frameConstants, 0, frameBlock.Bytes);
-        toneBlock.Set("exposure", Exposure * camera.Exposure);
-        device.Write(tonemapConstants, 0, toneBlock.Bytes);
 
-        Matrix4x4.Invert(camera.SkyViewProjection(bounds, aspectRatio), out var inverse);
+        Matrix4x4.Invert(camera.SkyViewProjection(aspectRatio, shading.EnvironmentRotation), out var inverse);
+        // A view of stored numbers has no curve, so the sky would clip: it is dimmed to stay behind the model.
+        var intensity = SkyIntensity * Math.Clamp(shading.BackgroundOpacity, 0f, 1f) * (shading.ShowsData ? 0.3f : 1f);
         skyBlock.Set("inverseViewProjection", inverse)
             .Set("environmentMipCount", (float)environment.Prefiltered.LevelCount)
-            .Set("intensity", 0.55f);
+            .Set("softness", Math.Clamp(shading.BackgroundBlur, 0f, 1f))
+            .Set("intensity", intensity);
         device.Write(skyConstants, 0, skyBlock.Bytes);
+
+        wire.Write(viewProjection, eye, radius);
     }
 
     /// <summary>In <c>ShCoefficients</c>' order, which is the basis's: l00, then m from -l to l in each band.</summary>
@@ -478,7 +519,12 @@ public sealed class ViewportRenderer : IDisposable {
         }
     }
 
-    void Record(ICommandList commands, Targets target, Geometry scene) {
+    void Record(
+        ICommandList commands,
+        ViewportTargets target,
+        Geometry scene,
+        bool wireframe
+    ) {
         shadows.Record(commands, scene.Vertices, scene.Indices, scene.Mesh.Parts);
         commands.Barrier(
             new BarrierGroup(
@@ -511,26 +557,15 @@ public sealed class ViewportRenderer : IDisposable {
             commands.DrawIndexed(part.IndexCount, firstIndex: part.FirstIndex);
         }
 
+        if (wireframe && scene.Edges is { } edges) {
+            wire.Record(commands, scene.Vertices, edges, scene.EdgeIndexCount);
+        }
+
         commands.EndRenderPass();
-        commands.Barrier(
-            new BarrierGroup(
-                [],
-                [
-                    new(target.Hdr, ResourceState.ColourTarget, ResourceState.ShaderRead),
-                    new(target.Output, ResourceState.Undefined, ResourceState.ColourTarget)
-                ]
-            )
-        );
-        commands.BeginRenderPass(new([new(target.OutputView, LoadAction.DontCare)], name: "viewport tonemap"));
-        ViewportShadows.Cover(commands, target.Width, target.Height);
-        commands.BindPipeline(tonemap.Pipeline);
-        commands.BindDescriptorSet(DescriptorSetSlot.PerMaterial, target.ToneSet);
-        commands.Draw(3);
-        commands.EndRenderPass();
-        commands.Barrier(
-            new BarrierGroup([], [new(target.Output, ResourceState.ColourTarget, ResourceState.CopySource)])
-        );
-        commands.CopyTextureToBuffer(new(target.Output), new(target.Width, target.Height, 1), target.Readback, 0);
+
+        var reading = post.Record(commands, target);
+        commands.Barrier(new BarrierGroup([], [new(reading, ResourceState.ColourTarget, ResourceState.CopySource)]));
+        commands.CopyTextureToBuffer(new(reading), new(target.Width, target.Height, 1), target.Readback, 0);
     }
 
     Pass Pipeline(
@@ -550,7 +585,7 @@ public sealed class ViewportRenderer : IDisposable {
                 fragment,
                 effect.Layout,
                 colour,
-                hasVertices ? [VerticesOf(effect)] : [],
+                hasVertices ? [ViewportMesh.Layout(effect)] : [],
                 Rasterizer: hasVertices ? RasterizerState.Default : RasterizerState.TwoSided,
                 DepthStencil: depth,
                 DepthFormat: depthFormat,
@@ -560,22 +595,6 @@ public sealed class ViewportRenderer : IDisposable {
         );
         cleanup.Add(() => device.Destroy(pipeline));
         return new(effect, pipeline);
-    }
-
-    /// <summary>Raven numbers a shader's inputs, so the mesh's attributes are found by name.</summary>
-    static VertexBufferLayout VerticesOf(Effect effect) {
-        return new(
-            ViewportMesh.FloatsPerVertex * sizeof(float),
-            [
-                new(Location("position"), VertexFormat.Float32X3, 0),
-                new(Location("normal"), VertexFormat.Float32X3, 3 * sizeof(float)),
-                new(Location("texCoord"), VertexFormat.Float32X2, 6 * sizeof(float)),
-                new(Location("tangent"), VertexFormat.Float32X4, 8 * sizeof(float))
-            ]
-        );
-
-        uint Location(string name) =>
-            (uint)effect.VertexInputs.First(input => input.Name.EndsWith(name, StringComparison.Ordinal)).Location;
     }
 
     ShaderHandle Module(Effect effect, ShaderStage stage) {
@@ -653,6 +672,22 @@ public sealed class ViewportRenderer : IDisposable {
 
         public DescriptorSetHandle SetOf(ViewportPart part) => sets[Math.Clamp(part.Material, 0, sets.Length - 1)];
 
+        /// <summary>Each edge of the triangles once, as pairs of corners, or null until a wireframe asks.</summary>
+        public BufferHandle? Edges { get; private set; }
+
+        public int EdgeIndexCount { get; private set; }
+
+        /// <summary>Finds the edges the first time a wireframe is drawn: a mesh never seen so pays nothing.</summary>
+        public void EnsureEdges() {
+            if (Edges is not null) {
+                return;
+            }
+
+            var pairs = Mesh.Edges();
+            EdgeIndexCount = pairs.Length;
+            Edges = Upload(pairs, BufferUsage.Index, "viewport edges");
+        }
+
         /// <summary>Makes a set for every material, for <see cref="Use" /> to swap in once it is all there.</summary>
         public List<(DescriptorSetHandle Set, BufferHandle Constants)> Bind(
             Pass forward,
@@ -677,6 +712,9 @@ public sealed class ViewportRenderer : IDisposable {
             Release();
             device.Destroy(vertices);
             device.Destroy(indices);
+            if (Edges is { } edges) {
+                device.Destroy(edges);
+            }
         }
 
         void Release() {
@@ -726,93 +764,5 @@ public sealed class ViewportRenderer : IDisposable {
             device.Write(buffer, 0, bytes);
             return buffer;
         }
-    }
-
-    /// <summary>Everything whose size is the frame's.</summary>
-    sealed class Targets : IDisposable {
-        readonly VulkanDevice device;
-
-        public Targets(
-            VulkanDevice device,
-            Pass tonemap,
-            SamplerHandle sampler,
-            BufferHandle constants,
-            BufferHandle exposure,
-            int width,
-            int height
-        ) {
-            this.device = device;
-            Width = width;
-            Height = height;
-            HdrSamples = Texture(HdrFormat, TextureUsage.ColourTarget, Samples, "viewport hdr samples");
-            Hdr = Texture(HdrFormat, TextureUsage.ColourTarget | TextureUsage.Sampled, 1, "viewport hdr");
-            Depth = Texture(DepthFormat, TextureUsage.DepthStencilTarget, Samples, "viewport depth");
-            Output = Texture(OutputFormat, TextureUsage.ColourTarget | TextureUsage.CopySource, 1, "viewport output");
-            HdrSamplesView = device.CreateTextureView(HdrSamples);
-            HdrView = device.CreateTextureView(Hdr);
-            DepthView = device.CreateTextureView(Depth);
-            OutputView = device.CreateTextureView(Output);
-            Readback = device.CreateBuffer(
-                new(
-                    FrameBytes(width, height),
-                    BufferUsage.CopyDestination,
-                    MemoryAccess.HostReadback,
-                    "viewport readback"
-                )
-            );
-            ToneSet = device.CreateDescriptorSet(
-                tonemap.Effect.SetLayouts[(int)DescriptorSetSlot.PerMaterial],
-                "viewport tonemap"
-            );
-            device.UpdateDescriptorSet(
-                ToneSet,
-                [
-                    DescriptorWrite.Uniform(tonemap.Effect.BlockOf(DescriptorSetSlot.PerMaterial).Binding, constants),
-                    DescriptorWrite.Texture(tonemap.Effect.BindingOf("source")!.Value.Binding, HdrView),
-                    DescriptorWrite.SamplerAt(tonemap.Effect.BindingOf("sourceSampler")!.Value.Binding, sampler),
-                    DescriptorWrite.Storage(tonemap.Effect.BindingOf("exposureBuffer")!.Value.Binding, exposure)
-                ]
-            );
-        }
-
-        public int Width { get; }
-
-        public int Height { get; }
-
-        public TextureHandle HdrSamples { get; }
-
-        public TextureHandle Hdr { get; }
-
-        public TextureHandle Depth { get; }
-
-        public TextureHandle Output { get; }
-
-        public TextureViewHandle HdrSamplesView { get; }
-
-        public TextureViewHandle HdrView { get; }
-
-        public TextureViewHandle DepthView { get; }
-
-        public TextureViewHandle OutputView { get; }
-
-        public BufferHandle Readback { get; }
-
-        public DescriptorSetHandle ToneSet { get; }
-
-        public void Dispose() {
-            device.WaitIdle();
-            device.Destroy(ToneSet);
-            device.Destroy(Readback);
-            foreach (var view in new[] { HdrSamplesView, HdrView, DepthView, OutputView }) {
-                device.Destroy(view);
-            }
-
-            foreach (var texture in new[] { HdrSamples, Hdr, Depth, Output }) {
-                device.Destroy(texture);
-            }
-        }
-
-        TextureHandle Texture(PixelFormat format, TextureUsage usage, int samples, string name) =>
-            device.CreateTexture(new(format, Width, Height, usage, SampleCount: samples, Name: name));
     }
 }

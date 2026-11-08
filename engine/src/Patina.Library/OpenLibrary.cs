@@ -283,6 +283,14 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
+    /// <summary>Keeps how the viewport is to open in a project.</summary>
+    public void SetViewport(string path, ViewportDisplay viewport) {
+        lock (createGate) {
+            ProjectFiles.SetViewport(RootPath, path, viewport);
+            Interlocked.Increment(ref unscannedWrites);
+        }
+    }
+
     /// <summary>A new document with another's content.</summary>
     public ProjectItem CopyDocument(string path, AssetId document, string name) {
         lock (createGate) {

@@ -135,6 +135,13 @@ test('height painted on the mesh lights it as a bump, sharp or smooth', async ()
   // lights each move more pixels than this counts, and a test that counted them passed on a build where height
   // reached nothing.
   const away = () => window.mouse.move(2, 2);
+  // The opening view fits the whole model in the pane. Three steps in bring it to where the stroke below was drawn
+  // for, about 2.2 bounding radii away, so the bump covers as much of the picture as it did.
+  await canvas().focus();
+  for (let step = 0; step < 3; step++) {
+    await window.keyboard.press('+');
+  }
+
   await away();
   await settled();
   const before = await inner();

@@ -4,7 +4,9 @@ using Patina.Contracts;
 
 using Vixen.Core.Mathematics;
 using Vixen.Geometry;
+using Vixen.Graphics;
 using Vixen.Interchange;
+using Vixen.Shaders;
 
 namespace Patina.Viewport;
 
@@ -114,6 +116,54 @@ sealed class ViewportMesh {
 
     /// <summary>Whether a material in the file brings a normal map of its own.</summary>
     public bool WantsTangents => Materials.Any(static material => material.Textures.Normal is not null);
+
+    /// <summary>
+    ///     How a shader reads these vertices. Raven numbers a shader's inputs, so the attributes are found by name, and
+    ///     a shader that reads only some of them, as the shadow and the wire passes do, gets only those.
+    /// </summary>
+    public static VertexBufferLayout Layout(Effect effect) {
+        (string Name, VertexFormat Format, int Offset)[] attributes = [
+            ("position", VertexFormat.Float32X3, 0),
+            ("normal", VertexFormat.Float32X3, 3 * sizeof(float)),
+            ("texCoord", VertexFormat.Float32X2, 6 * sizeof(float)),
+            ("tangent", VertexFormat.Float32X4, 8 * sizeof(float))
+        ];
+        List<VertexElement> elements = [];
+        foreach (var (name, format, offset) in attributes) {
+            foreach (var input in effect.VertexInputs) {
+                if (input.Name.EndsWith(name, StringComparison.Ordinal)) {
+                    elements.Add(new((uint)input.Location, format, offset));
+                    break;
+                }
+            }
+        }
+
+        return new(FloatsPerVertex * sizeof(float), [..elements]);
+    }
+
+    /// <summary>
+    ///     Each edge of the triangles once, as pairs of corners, for a wireframe. A mesh with none gives one empty
+    ///     line, so there is always something to bind.
+    /// </summary>
+    public uint[] Edges() {
+        HashSet<ulong> seen = [];
+        List<uint> edges = [];
+        for (var corner = 0; corner + 2 < Indices.Length; corner += 3) {
+            Add(Indices[corner], Indices[corner + 1]);
+            Add(Indices[corner + 1], Indices[corner + 2]);
+            Add(Indices[corner + 2], Indices[corner]);
+        }
+
+        return edges.Count == 0 ? [0u, 0u] : [..edges];
+
+        void Add(uint from, uint to) {
+            var (low, high) = from < to ? (from, to) : (to, from);
+            if (seen.Add(((ulong)low << 32) | high)) {
+                edges.Add(low);
+                edges.Add(high);
+            }
+        }
+    }
 
     /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
     public static ViewportMesh Read(string path) {

@@ -1,0 +1,270 @@
+import { ChangeDetectionStrategy, Component, inject, output } from '@angular/core';
+import type { ViewportDisplay } from '@patina/api-client';
+import { XuiButtonImports } from '@xui/button';
+import { type XuiSegmentedOption, XuiSegmentedControlImports } from '@xui/segmented-control';
+import { XuiSliderImports } from '@xui/slider';
+import { XuiSwitchImports } from '@xui/switch';
+import type { AxisView } from './orbit';
+import { DefaultDisplay, ViewportClient } from './viewport-client';
+
+type NumberSetting = {
+  [K in keyof ViewportDisplay]-?: ViewportDisplay[K] extends number ? K : never;
+}[keyof ViewportDisplay];
+
+interface Slider {
+  key: NumberSetting;
+  label: string;
+  title: string;
+  min: number;
+  max: number;
+  step: number;
+  /** What the readout says: angles in degrees, exposure in stops, the rest as shares. */
+  unit: 'degrees' | 'stops' | 'share';
+}
+
+const Degrees = 180 / Math.PI;
+
+const Lighting: readonly Slider[] = [
+  { key: 'exposure', label: 'Exposure', title: 'How bright the picture is', min: -5, max: 5, step: 0.1, unit: 'stops' },
+  {
+    key: 'environmentRotation',
+    label: 'Environment',
+    title: 'Turns the environment around the model, and not the light',
+    min: -Math.PI,
+    max: Math.PI,
+    step: Math.PI / 180,
+    unit: 'degrees'
+  },
+  {
+    key: 'lightRotation',
+    label: 'Light',
+    title: 'Turns the light around the model, and not the environment',
+    min: -Math.PI,
+    max: Math.PI,
+    step: Math.PI / 180,
+    unit: 'degrees'
+  },
+  { key: 'shadows', label: 'Shadows', title: 'How dark the model’s shadow is', min: 0, max: 1, step: 0.01, unit: 'share' },
+  {
+    key: 'backgroundOpacity',
+    label: 'Background',
+    title: 'How much of the environment shows behind the model',
+    min: 0,
+    max: 1,
+    step: 0.01,
+    unit: 'share'
+  },
+  {
+    key: 'backgroundBlur',
+    label: 'Blur',
+    title: 'How blurred the background is. The light on the model is not blurred.',
+    min: 0,
+    max: 1,
+    step: 0.01,
+    unit: 'share'
+  }
+];
+
+const Finish: readonly Slider[] = [
+  { key: 'contrast', label: 'Contrast', title: 'Contrast about middle grey', min: 0, max: 2, step: 0.01, unit: 'share' },
+  { key: 'saturation', label: 'Saturation', title: 'How much colour', min: 0, max: 2, step: 0.01, unit: 'share' },
+  { key: 'vignette', label: 'Vignette', title: 'Darkens the corners', min: 0, max: 1, step: 0.01, unit: 'share' },
+  { key: 'grain', label: 'Grain', title: 'Film grain', min: 0, max: 1, step: 0.01, unit: 'share' },
+  {
+    key: 'aberration',
+    label: 'Aberration',
+    title: 'Parts red and blue towards the edges, as a lens does',
+    min: 0,
+    max: 1,
+    step: 0.01,
+    unit: 'share'
+  },
+  { key: 'sharpen', label: 'Sharpen', title: 'Contrast-adaptive sharpening', min: 0, max: 1, step: 0.01, unit: 'share' }
+];
+
+const Projections: readonly XuiSegmentedOption[] = [
+  { value: 'perspective', label: 'Perspective' },
+  { value: 'orthographic', label: 'Orthographic' }
+];
+
+export const ToneMappings: readonly { value: string; label: string }[] = [
+  { value: 'aces', label: 'ACES' },
+  { value: 'agx', label: 'AgX' },
+  { value: 'filmic', label: 'Filmic (Hable)' },
+  { value: 'reinhard', label: 'Reinhard' },
+  { value: 'none', label: 'None (clip)' }
+];
+
+const Snaps: readonly { view: AxisView; label: string; key: string }[] = [
+  { view: 'front', label: 'Front', key: 'Numpad 1' },
+  { view: 'back', label: 'Back', key: 'Ctrl Numpad 1' },
+  { view: 'right', label: 'Right', key: 'Numpad 3' },
+  { view: 'left', label: 'Left', key: 'Ctrl Numpad 3' },
+  { view: 'top', label: 'Top', key: 'Numpad 7' },
+  { view: 'bottom', label: 'Bottom', key: 'Ctrl Numpad 7' }
+];
+
+/**
+ * The viewport's display settings beside the picture: the camera's lens and the views it snaps to, the light and the
+ * environment, and the finish. The Server holds every one of them, and the open project keeps them.
+ */
+@Component({
+  selector: 'ptn-viewport-display',
+  imports: [XuiButtonImports, XuiSegmentedControlImports, XuiSliderImports, XuiSwitchImports],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { class: 'pane flex w-64 flex-col gap-2 overflow-y-auto p-2', 'data-testid': 'viewport-display' },
+  template: `
+    <span class="section-label">Camera</span>
+    <xui-segmented-control
+      size="sm"
+      ariaLabel="Projection"
+      data-testid="viewport-projection"
+      [options]="projections"
+      [value]="display().orthographic ? 'orthographic' : 'perspective'"
+      (valueChange)="viewport.setDisplay({ orthographic: $event === 'orthographic' })"
+    />
+    <div class="flex items-center gap-2" title="How wide the lens is, top to bottom. Orthographic keeps the size.">
+      <span class="text-foreground-muted w-20 shrink-0 text-xs">Field of view</span>
+      <xui-slider
+        class="min-w-0 flex-1"
+        labelStepSize="0"
+        aria-label="Field of view"
+        data-testid="viewport-fov"
+        [max]="2.6"
+        [min]="0.1"
+        [stepSize]="0.01"
+        [value]="display().fieldOfView"
+        (valueChange)="viewport.setDisplay({ fieldOfView: $event })"
+      />
+      <span class="readout w-16 shrink-0 text-end text-xs">{{ degrees(display().fieldOfView) }}</span>
+    </div>
+    <div class="grid grid-cols-3 gap-1">
+      @for (axis of snaps; track axis.view) {
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          [attr.data-testid]="'viewport-snap-' + axis.view"
+          [title]="'Looks at the model from the ' + axis.view + ' (' + axis.key + ')'"
+          (click)="snap.emit(axis.view)"
+        >
+          {{ axis.label }}
+        </button>
+      }
+    </div>
+
+    <span class="section-label mt-1">Light</span>
+    @for (slider of lighting; track slider.key) {
+      <div class="flex items-center gap-2" [title]="slider.title">
+        <span class="text-foreground-muted w-20 shrink-0 text-xs">{{ slider.label }}</span>
+        <xui-slider
+          class="min-w-0 flex-1"
+          labelStepSize="0"
+          [attr.aria-label]="slider.label"
+          [attr.data-testid]="'viewport-' + slider.key"
+          [max]="slider.max"
+          [min]="slider.min"
+          [stepSize]="slider.step"
+          [value]="display()[slider.key]"
+          (valueChange)="set(slider.key, $event)"
+        />
+        <span class="readout w-16 shrink-0 text-end text-xs">{{ shown(slider) }}</span>
+      </div>
+    }
+
+    <span class="section-label mt-1">Finish</span>
+    <div class="flex items-center gap-2" title="The curve that takes the light to the screen">
+      <span class="text-foreground-muted w-20 shrink-0 text-xs">Tone map</span>
+      <select
+        class="well h-7 min-w-0 flex-1 px-1 text-sm"
+        aria-label="Tone mapping"
+        data-testid="viewport-tonemap"
+        (change)="viewport.setDisplay({ toneMapping: text($event) })"
+      >
+        @for (curve of curves; track curve.value) {
+          <option [value]="curve.value" [selected]="curve.value === display().toneMapping">{{ curve.label }}</option>
+        }
+      </select>
+    </div>
+    @for (slider of finish; track slider.key) {
+      <div class="flex items-center gap-2" [title]="slider.title">
+        <span class="text-foreground-muted w-20 shrink-0 text-xs">{{ slider.label }}</span>
+        <xui-slider
+          class="min-w-0 flex-1"
+          labelStepSize="0"
+          [attr.aria-label]="slider.label"
+          [attr.data-testid]="'viewport-' + slider.key"
+          [max]="slider.max"
+          [min]="slider.min"
+          [stepSize]="slider.step"
+          [value]="display()[slider.key]"
+          (valueChange)="set(slider.key, $event)"
+        />
+        <span class="readout w-16 shrink-0 text-end text-xs">{{ shown(slider) }}</span>
+      </div>
+    }
+    <div class="flex items-center gap-2" title="Draws the triangles' edges over the model (W)">
+      <span class="text-foreground-muted w-20 shrink-0 text-xs">Wireframe</span>
+      <xui-switch
+        ariaLabel="Wireframe"
+        data-testid="viewport-wireframe"
+        [checked]="display().wireframe"
+        (checkedChange)="viewport.setDisplay({ wireframe: $event })"
+      />
+    </div>
+    <button
+      type="button"
+      xuiButton
+      size="sm"
+      variant="ghost"
+      class="mt-1 self-start"
+      data-testid="viewport-display-reset"
+      title="Puts every setting here back as the viewport opens, but the environment, look and view"
+      (click)="reset()"
+    >
+      Reset
+    </button>
+  `
+})
+export class ViewportDisplayPanel {
+  protected readonly viewport = inject(ViewportClient);
+  protected readonly display = this.viewport.display;
+  protected readonly projections = Projections;
+  protected readonly lighting = Lighting;
+  protected readonly finish = Finish;
+  protected readonly curves = ToneMappings;
+  protected readonly snaps = Snaps;
+  /** A snap moves the camera, which is the pane's. */
+  readonly snap = output<AxisView>();
+
+  protected set(key: NumberSetting, value: number): void {
+    this.viewport.setDisplay({ [key]: value });
+  }
+
+  protected text(event: Event): string {
+    return (event.target as HTMLSelectElement).value;
+  }
+
+  protected degrees(radians: number): string {
+    return `${Math.round(radians * Degrees)}°`;
+  }
+
+  protected shown(slider: Slider): string {
+    const value = this.display()[slider.key];
+    switch (slider.unit) {
+      case 'degrees':
+        return this.degrees(value);
+      case 'stops':
+        return `${value > 0 ? '+' : ''}${value.toFixed(1)} stops`;
+      default:
+        return `${Math.round(value * 100)}%`;
+    }
+  }
+
+  /** Back to how the viewport opens, but for what it is lit by, looked through and showing, which are choices. */
+  protected reset(): void {
+    const { environment, look = null, view, picture = null } = this.display();
+    this.viewport.setDisplay({ ...DefaultDisplay, environment, look, view, picture });
+  }
+}

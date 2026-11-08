@@ -62,7 +62,8 @@ static class ProjectFiles {
                     .Where(static set => set.Length > 0)
                     .Distinct(StringComparer.Ordinal)
             ],
-            Bake = document.Bake ?? new()
+            Bake = document.Bake ?? new(),
+            Viewport = document.Viewport
         };
     }
 
@@ -292,6 +293,12 @@ static class ProjectFiles {
     public static void SetBake(string root, string path, ProjectBakeSettings bake) {
         var (_, document) = Project(root, path);
         LibraryFiles.WriteProject(root, path, document with { Bake = bake });
+    }
+
+    /// <summary>Keeps how the viewport is to open in a project.</summary>
+    public static void SetViewport(string root, string path, ViewportDisplay viewport) {
+        var (_, document) = Project(root, path);
+        LibraryFiles.WriteProject(root, path, document with { Viewport = viewport });
     }
 
     /// <summary>Puts a texturing document on another mesh.</summary>

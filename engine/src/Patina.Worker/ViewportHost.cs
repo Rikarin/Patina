@@ -50,8 +50,8 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
             (float)camera.Pitch,
             (float)camera.Distance,
             new((float)camera.PanX, (float)camera.PanY, (float)camera.PanZ),
-            (float)camera.Exposure,
-            (float)camera.LightRotation
+            (float)camera.FieldOfView,
+            camera.Orthographic
         );
 
     public IpcMessage Pick(IpcMessage request) {
@@ -59,13 +59,13 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
         var shelf = meshes.Of(pick.Mesh);
         var orbit = Orbit(pick.Camera);
         var bounds = shelf.Geometry.Bounds;
-        var (right, up, forward) = orbit.Axes(bounds);
+        var (right, up, forward) = orbit.Axes();
         var view = new PaintView(
-            orbit.Eye(bounds),
+            orbit.Eye(bounds, (float)pick.Width / Math.Max(pick.Height, 1)),
             right,
             up,
             forward,
-            OrbitCamera.FieldOfView,
+            orbit.Lens,
             pick.Width,
             pick.Height
         );
@@ -108,6 +108,7 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
     }
 
     string environment = "studio";
+    Viewport.ViewportMapFile? picture;
 
     public IpcMessage SetMaps(IpcMessage request) {
         var maps = request.Maps ?? throw new IpcException("viewport.maps names no maps.");
@@ -124,21 +125,72 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
                     maps.GreenDown
                 )
             );
-        SetEnvironment(maps.Environment);
-        try {
-            SetLook(maps.Look?.Path, maps.Look?.Hash);
-        } catch (FormatException e) {
-            throw new IpcException($"'{maps.Look?.Path}' is not a viewing table: {e.Message}");
-        }
-
         return IpcMessage.Ok(request.Id);
-
-        static Viewport.ViewportMapFile? File(Ipc.ViewportMapFile? file) =>
-            file is null ? null : new(file.Path, file.Hash);
     }
 
-    void SetEnvironment(string? source) {
-        if (source is null || source == environment) {
+    static Viewport.ViewportMapFile? File(Ipc.ViewportMapFile? file) => file is null ? null : new(file.Path, file.Hash);
+
+    /// <summary>
+    ///     Lights, shows and finishes frames as the Server says. A file is read once for its hash, so moving a slider
+    ///     reads nothing.
+    /// </summary>
+    public IpcMessage SetDisplay(IpcMessage request) {
+        var told = request.Display ?? throw new IpcException("viewport.display says nothing.");
+        var settings = told.Display;
+        var renderer = Renderer();
+        SetEnvironment(settings.Environment);
+        try {
+            SetLook(told.Look?.Path, told.Look?.Hash);
+        } catch (FormatException e) {
+            throw new IpcException($"'{told.Look?.Path}' is not a viewing table: {e.Message}");
+        }
+
+        var shown = File(told.Picture);
+        if (shown != picture) {
+            try {
+                renderer.SetPicture(shown);
+                picture = shown;
+            } catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException) {
+                throw new IpcException($"'{shown?.Path}' cannot be shown on the mesh: {e.Message}");
+            }
+        }
+
+        renderer.Shading = Shading(settings);
+        return IpcMessage.Ok(request.Id);
+    }
+
+    /// <summary>The renderer's settings from the wire's: names become numbers, in the order the lists give.</summary>
+    static ViewportShading Shading(ViewportDisplay settings) =>
+        new() {
+            Exposure = (float)settings.Exposure,
+            LightRotation = (float)settings.LightRotation,
+            EnvironmentRotation = (float)settings.EnvironmentRotation,
+            BackgroundBlur = (float)settings.BackgroundBlur,
+            BackgroundOpacity = (float)settings.BackgroundOpacity,
+            Shadows = (float)settings.Shadows,
+            View = (ViewportView)Math.Max(0, IndexOf(ViewportViews.All, settings.View)),
+            Wireframe = settings.Wireframe,
+            ToneMapping = (ViewportToneMapping)Math.Max(0, IndexOf(ViewportToneMappings.All, settings.ToneMapping)),
+            Contrast = (float)settings.Contrast,
+            Saturation = (float)settings.Saturation,
+            Vignette = (float)settings.Vignette,
+            Grain = (float)settings.Grain,
+            Aberration = (float)settings.Aberration,
+            Sharpen = (float)settings.Sharpen
+        };
+
+    static int IndexOf(IReadOnlyList<string> names, string name) {
+        for (var at = 0; at < names.Count; at++) {
+            if (names[at] == name) {
+                return at;
+            }
+        }
+
+        return -1;
+    }
+
+    void SetEnvironment(string source) {
+        if (source == environment) {
             return;
         }
 
@@ -154,7 +206,7 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
     /// <exception cref="FormatException">It is not a 3D table.</exception>
     void SetLook(string? path, string? hash) {
         if (path != lookPath || hash != lookHash) {
-            look = path is null ? null : ViewportLook.Parse(File.ReadAllText(path));
+            look = path is null ? null : ViewportLook.Parse(System.IO.File.ReadAllText(path));
             lookPath = path;
             lookHash = hash;
         }
@@ -179,8 +231,13 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
 
         Map(render.SharedMemory);
         var start = Stopwatch.GetTimestamp();
-        Renderer().Render(camera, render.Width, render.Height, new(memory + render.Offset, bytes));
-        look?.Apply(memory + render.Offset, render.Width, render.Height);
+        var renderer = Renderer();
+        renderer.Render(camera, render.Width, render.Height, new(memory + render.Offset, bytes));
+        if (!renderer.Shading.ShowsData) {
+            // A table is a look, and a view of stored numbers has none.
+            look?.Apply(memory + render.Offset, render.Width, render.Height);
+        }
+
         var elapsed = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
         return new() { Type = IpcTypes.Ok, Frame = new(render.Width, render.Height, elapsed) };
     }

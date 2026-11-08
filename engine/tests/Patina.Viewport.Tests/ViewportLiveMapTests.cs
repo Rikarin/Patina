@@ -15,8 +15,9 @@ public sealed class ViewportLiveMapTests : IDisposable {
     const int Height = 240;
     const int Map = 256;
 
-    static readonly OrbitCamera Near = new(0f, 0f, 1.4f);
-    static readonly OrbitCamera Far = new(0f, 0f, 12f);
+    // 1.4 and 12 bounding radii away, in framings: the field of view's half is the narrower side's in a wide frame.
+    static readonly OrbitCamera Near = new(0f, 0f, 0.48f);
+    static readonly OrbitCamera Far = new(0f, 0f, 4.1f);
 
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-live-");
 
@@ -146,16 +147,21 @@ public sealed class ViewportLiveMapTests : IDisposable {
 
     /// <summary>
     ///     A camera's axes are worked out away from the matrix that draws, so they are held to the picture: a small
-    ///     square off to one side, above the middle, must be where the arithmetic says. A flip of either axis fails.
+    ///     square off to one side, above the middle, must be where the arithmetic says. A flip of either axis fails,
+    ///     and so does an orthographic view drawn through any lens but the one a stroke is told.
     /// </summary>
     [Fact]
     public void The_axes_of_the_camera_put_a_point_where_the_picture_shows_it() {
         using var renderer = Open();
-        renderer.ShadowStrength = 0f; // the speck's shadow would pull the centroid away from the speck
+        renderer.Shading = new() { Shadows = 0f }; // the speck's shadow would pull the centroid away from the speck
         var centre = new Vector3(0.7f, 0.45f, 0.2f);
         var bounds = new BoundingBox(new(-1f, -1f, 0f), new(1f, 1f, 0f));
 
-        foreach (var camera in new OrbitCamera[] { new(0f, 0f, 3f), new(0.8f, 0.5f, 3f), new(-1.2f, -0.4f, 2.6f) }) {
+        OrbitCamera[] cameras = [
+            new(0f, 0f, 1.03f), new(0.8f, 0.5f, 1.03f), new(-1.2f, -0.4f, 0.89f),
+            new(0.8f, 0.5f, 1.03f, Orthographic: true), new(0.3f, 0.2f, 0.8f, FieldOfView: 1.4f)
+        ];
+        foreach (var camera in cameras) {
             renderer.OpenMesh(Marked("away.glb", new(0.7f, 0.45f, 0.2f), 0.0001f));
             var plain = Render(renderer, camera);
             renderer.OpenMesh(Marked("marked.glb", centre, 0.03f));
@@ -212,9 +218,9 @@ public sealed class ViewportLiveMapTests : IDisposable {
     static (float X, float Y) Project(OrbitCamera camera, BoundingBox bounds, Vector3 point) {
         // The speck stands off the square, so the bounds that frame the picture reach out to it.
         var framed = BoundingBox.Merge(bounds, point);
-        var eye = camera.Eye(framed);
-        var (right, up, forward) = camera.Axes(framed);
-        var tangent = MathF.Tan(OrbitCamera.FieldOfView * 0.5f);
+        var eye = camera.Eye(framed, (float)Width / Height);
+        var (right, up, forward) = camera.Axes();
+        var tangent = MathF.Tan(camera.Lens * 0.5f);
         var offset = point - eye;
         var depth = Vector3.Dot(offset, forward);
         return (

@@ -5,6 +5,7 @@ import {
   type ProjectBakeSettings,
   type ProjectDocumentInfo,
   type UnwrapOptions,
+  type ViewportDisplay,
   unwrap
 } from '@patina/api-client';
 import { BakeStore } from '../bake/bake-store';
@@ -835,6 +836,24 @@ export class ProjectStore {
     if (project !== null) {
       const client = await this.library.api();
       await client.POST('/api/v1/library/materials/refresh', { params: { query: { project } } });
+    }
+  }
+
+  /**
+   * Keeps how the viewport was left in a project, so it opens that way again. A project that has gone keeps nothing,
+   * and saying so would only interrupt.
+   */
+  async keepViewport(path: string, viewport: ViewportDisplay): Promise<void> {
+    try {
+      const client = await this.library.api();
+      const contents = unwrap(
+        await client.PATCH('/api/v1/library/project/settings', {
+          body: { project: path, mesh: null, high: null, autoUnwrap: null, viewport }
+        })
+      );
+      this.mutableContents.update(all => new Map(all).set(path, contents));
+    } catch {
+      // The viewport shows the settings either way; only reopening the project would miss them.
     }
   }
 

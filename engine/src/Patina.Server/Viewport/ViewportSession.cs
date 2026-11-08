@@ -59,7 +59,8 @@ public sealed class ViewportSession(
     long painted;
     string? toldStack;
     ViewportMapSet maps = new();
-    ViewportCameraState camera = new(0.6, 0.35, 2.2);
+    ViewportCameraState camera = new(0.6, 0.35, ViewportCameraState.Framed);
+    ViewportDisplaySet display = new(new(), null, null);
     int width = DefaultWidth;
     int height = DefaultHeight;
     bool interacting;
@@ -72,8 +73,8 @@ public sealed class ViewportSession(
     IpcConnection? told;
     string? toldMesh;
     ViewportMapSet? toldMaps;
-    string environment = "studio";
-    ViewportCameraState? toldCamera;
+    ViewportDisplaySet? toldDisplay;
+    ViewportCamera? toldCamera;
 
     public ViewportState State {
         get {
@@ -87,8 +88,8 @@ public sealed class ViewportSession(
                     scale.Value,
                     frames,
                     error ?? mapsError,
-                    stack,
-                    environment
+                    display.Display,
+                    stack
                 );
             }
         }
@@ -142,7 +143,7 @@ public sealed class ViewportSession(
             held.UnionWith(opened);
             mesh = path;
             stack = session;
-            maps = new() { Look = maps.Look };
+            maps = new();
             painted = 0;
             error = null;
             mapsError = null;
@@ -173,7 +174,7 @@ public sealed class ViewportSession(
             mesh = path;
             stack = null;
             also = [];
-            maps = pictures with { Look = maps.Look };
+            maps = pictures;
             error = null;
             mapsError = null;
             revision++;
@@ -182,13 +183,13 @@ public sealed class ViewportSession(
         Wake();
     }
 
-    /// <summary>Takes everything off the viewport, as when a project closes. The viewing table stays.</summary>
+    /// <summary>Takes everything off the viewport, as when a project closes. The display settings stay.</summary>
     public void Clear() {
         lock (changing) {
             mesh = null;
             stack = null;
             also = [];
-            maps = new() { Look = maps.Look };
+            maps = new();
             error = null;
             mapsError = null;
             revision++;
@@ -202,7 +203,7 @@ public sealed class ViewportSession(
         lock (changing) {
             stack = null;
             also = [];
-            maps = pictures with { Look = maps.Look };
+            maps = pictures;
             mapsError = null;
             revision++;
         }
@@ -210,21 +211,14 @@ public sealed class ViewportSession(
         Wake();
     }
 
-    /// <summary>Lights the model with a built-in room or a panorama, for a new Worker as well as this one.</summary>
-    public void SetEnvironment(string source) {
+    /// <summary>
+    ///     Lights, shows and finishes frames as these settings say, for a new Worker as well as this one. Whatever is
+    ///     laid on the mesh stays.
+    /// </summary>
+    public void SetDisplay(ViewportDisplaySet settings) {
+        ArgumentNullException.ThrowIfNull(settings);
         lock (changing) {
-            environment = source;
-            mapsError = null;
-            revision++;
-        }
-
-        Wake();
-    }
-
-    /// <summary>Views frames through a table, or without one. Whatever is laid on the mesh stays.</summary>
-    public void SetLook(ViewportMapFile? look) {
-        lock (changing) {
-            maps = maps with { Look = look };
+            display = settings;
             mapsError = null;
             revision++;
         }
@@ -295,13 +289,17 @@ public sealed class ViewportSession(
     async Task DrawAsync(Work work, CancellationToken cancellationToken) {
         var connection = await worker.ConnectionAsync(cancellationToken);
         if (!ReferenceEquals(connection, told) || work.Mesh != toldMesh) {
-            (toldMesh, toldCamera, toldMaps, toldStack) = (null, null, null, null);
+            (toldMesh, toldCamera, toldMaps, toldStack, toldDisplay) = (null, null, null, null, null);
             await connection.SendAsync(new() { Type = IpcTypes.ViewportOpen, Mesh = work.Mesh }, cancellationToken);
             (told, toldMesh, toldMaps) = (connection, work.Mesh, new());
         }
 
         if (work.Maps != toldMaps) {
             await TellMapsAsync(connection, work.Maps, cancellationToken);
+        }
+
+        if (work.Display != toldDisplay) {
+            await TellDisplayAsync(connection, work.Display, cancellationToken);
         }
 
         var wearing = work.Worn.Stack is null ? null : string.Join('|', [work.Worn.Stack, ..work.Worn.Also]);
@@ -314,17 +312,10 @@ public sealed class ViewportSession(
         }
 
         if (work.Camera != toldCamera) {
-            var camera = new ViewportCamera(
-                work.Camera.Yaw,
-                work.Camera.Pitch,
-                work.Camera.Distance,
-                work.Camera.PanX,
-                work.Camera.PanY,
-                work.Camera.PanZ,
-                work.Camera.Exposure,
-                work.Camera.LightRotation
+            await connection.SendAsync(
+                new() { Type = IpcTypes.ViewportCamera, Camera = work.Camera },
+                cancellationToken
             );
-            await connection.SendAsync(new() { Type = IpcTypes.ViewportCamera, Camera = camera }, cancellationToken);
             toldCamera = work.Camera;
         }
 
@@ -335,13 +326,13 @@ public sealed class ViewportSession(
     /// <exception cref="IOException">The Worker went.</exception>
     /// <exception cref="IpcException">No mesh is open, or it cannot be read.</exception>
     public async Task<ViewportPick> PickAsync(ViewportPickRequest request, CancellationToken cancellationToken) {
-        ViewportCameraState look;
+        ViewportCamera look;
         int across;
         int down;
         string path;
         lock (changing) {
             path = mesh ?? throw new IpcException("Open a mesh first: there is nothing to pick.");
-            look = request.Camera ?? camera;
+            look = Lens(request.Camera ?? camera, display.Display);
             across = request.Width ?? width;
             down = request.Height ?? height;
         }
@@ -356,17 +347,7 @@ public sealed class ViewportSession(
         }
 
         var reply = await connection.SendAsync(
-            new() {
-                Type = IpcTypes.ViewportPick,
-                Pick = new(
-                    request.X,
-                    request.Y,
-                    new(look.Yaw, look.Pitch, look.Distance, look.PanX, look.PanY, look.PanZ),
-                    across,
-                    down,
-                    path
-                )
-            },
+            new() { Type = IpcTypes.ViewportPick, Pick = new(request.X, request.Y, look, across, down, path) },
             cancellationToken
         );
         return reply.Picked!;
@@ -390,6 +371,44 @@ public sealed class ViewportSession(
         toldMaps = pictures;
     }
 
+    /// <summary>
+    ///     Settings a Worker cannot use cost the settings and not the view, as a picture does: the error stays on the
+    ///     state and the frame goes on with what the Worker had.
+    /// </summary>
+    async Task TellDisplayAsync(
+        IpcConnection connection,
+        ViewportDisplaySet settings,
+        CancellationToken cancellationToken
+    ) {
+        toldDisplay = null;
+        try {
+            await connection.SendAsync(
+                new() { Type = IpcTypes.ViewportDisplay, Display = settings },
+                cancellationToken
+            );
+        } catch (IpcException e) {
+            ServerLog.ViewportFailed(logger, e.Message);
+            lock (changing) {
+                mapsError = e.Message;
+            }
+        }
+
+        toldDisplay = settings;
+    }
+
+    /// <summary>A camera with the lens the display settings give it.</summary>
+    static ViewportCamera Lens(ViewportCameraState orbit, ViewportDisplay settings) =>
+        new(
+            orbit.Yaw,
+            orbit.Pitch,
+            orbit.Distance,
+            orbit.PanX,
+            orbit.PanY,
+            orbit.PanZ,
+            settings.FieldOfView,
+            settings.Orthographic
+        );
+
     (Work? Work, long Revision) Snapshot() {
         lock (changing) {
             return subscribers.Count == 0
@@ -397,10 +416,10 @@ public sealed class ViewportSession(
                 : (new(
                     mesh,
                     new(stack, also, painted),
-                    maps with { Environment = environment },
-                    camera,
-                    (width, height),
-                    scale.Value,
+                    maps,
+                    display,
+                    Lens(camera, display.Display),
+                    (width, height, scale.Value),
                     interacting,
                     lastInput
                 ),
@@ -449,7 +468,7 @@ public sealed class ViewportSession(
             1d,
             Math.Min((double)FrameMemory.MaxWidth / work.Size.Width, (double)FrameMemory.MaxHeight / work.Size.Height)
         );
-        var factor = fit * work.Scale;
+        var factor = fit * work.Size.Scale;
         return (Math.Max(2, (int)(work.Size.Width * factor) & ~1), Math.Max(2, (int)(work.Size.Height * factor) & ~1));
     }
 
@@ -511,7 +530,6 @@ public sealed class ViewportSession(
             set.Roughness?.Path,
             set.Metallic?.Path,
             set.Occlusion?.Path,
-            set.Look?.Path,
             set.Emissive?.Path,
             set.Opacity?.Path
         );
@@ -523,9 +541,9 @@ public sealed class ViewportSession(
         string? Mesh,
         Wearing Worn,
         ViewportMapSet Maps,
-        ViewportCameraState Camera,
-        (int Width, int Height) Size,
-        double Scale,
+        ViewportDisplaySet Display,
+        ViewportCamera Camera,
+        (int Width, int Height, double Scale) Size,
         bool Interacting,
         uint Input
     );
