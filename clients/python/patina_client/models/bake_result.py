@@ -31,6 +31,7 @@ class BakeResult:
             missed (int): How many found no source and took the closest point instead.
             warnings (list[str]): What could not be baked as asked.
             cached (bool): Whether this was found in the cache and nothing ran.
+            log (list[str]): What the bake read and found, line by line: the meshes, each part's match, the time it took.
      """
 
     maps: list[BakedMapFile]
@@ -38,6 +39,7 @@ class BakeResult:
     missed: int
     warnings: list[str]
     cached: bool
+    log: list[str]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -63,6 +65,10 @@ class BakeResult:
 
         cached = self.cached
 
+        log = self.log
+
+
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -72,6 +78,7 @@ class BakeResult:
             "missed": missed,
             "warnings": warnings,
             "cached": cached,
+            "log": log,
         })
 
         return field_dict
@@ -101,12 +108,16 @@ class BakeResult:
 
         cached = d.pop("cached")
 
+        log = cast(list[str], d.pop("log"))
+
+
         bake_result = cls(
             maps=maps,
             covered=covered,
             missed=missed,
             warnings=warnings,
             cached=cached,
+            log=log,
         )
 
 

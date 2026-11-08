@@ -75,6 +75,9 @@ public sealed record ProjectDocument(
 
     /// <summary>What the project's last export was set to, so the next one starts there, or null.</summary>
     public ProjectExportSettings? Export { get; init; }
+
+    /// <summary>How its bakes run, or null for the defaults, which writes nothing.</summary>
+    public ProjectBakeSettings? Bake { get; init; }
 }
 
 /// <summary>A mesh a project owns.</summary>

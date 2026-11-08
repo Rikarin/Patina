@@ -91,6 +91,9 @@ sealed class YamlFields(YamlMappingNode node, string path, string prefix = "") {
         return result;
     }
 
+    /// <summary>Whether a key is there at all, with any value but an empty one.</summary>
+    public bool Has(string key) => Find(key) is not null;
+
     YamlNode? Find(string key) {
         read.Add(key);
         return node.Children.TryGetValue(key, out var value) && !IsNull(value) ? value : null;

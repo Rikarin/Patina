@@ -2,6 +2,7 @@ import { Injectable, computed, effect, inject, signal, untracked } from '@angula
 import {
   ApiError,
   type ProjectContents,
+  type ProjectBakeSettings,
   type ProjectDocumentInfo,
   type UnwrapOptions,
   unwrap
@@ -91,7 +92,7 @@ export class ProjectStore {
   /** A mesh is being given a UV layout, which can take a while on a large one. */
   readonly unwrapping = this.mutableUnwrapping.asReadonly();
   private readonly mutableBakeAsked = signal(0);
-  private linkedBake: string | null = null;
+  private readonly linkedBakes = new Set<string>();
   private switching = false;
   private restored: string | null = null;
 
@@ -164,12 +165,14 @@ export class ProjectStore {
     });
 
     // A bake of what is open is what its layers were waiting for, the same folder again included.
+    // A bake of several texture sets is a job each, and each links its own set's layers as it finishes.
     effect(() => {
-      const job = this.bakes.current();
-      const folder = job?.bake?.output;
-      if (job?.state === 'done' && folder && job.id !== this.linkedBake) {
-        this.linkedBake = job.id;
-        untracked(() => void this.linkBake(folder, job.bake?.material ?? null));
+      for (const job of this.bakes.batch()) {
+        const folder = job.bake?.output;
+        if (job.state === 'done' && folder && !this.linkedBakes.has(job.id)) {
+          this.linkedBakes.add(job.id);
+          untracked(() => void this.linkBake(folder, job.bake?.material ?? null));
+        }
       }
     });
 
@@ -442,6 +445,16 @@ export class ProjectStore {
     // New unwrap options lay out again a mesh Auto Unwrap wrote, which moves its paint like a new mesh.
     const relaid = !!settings.unwrap && (this.current()?.meshes ?? []).some(mesh => !!mesh.unwrapped);
     return !!settings.mesh || settings.autoUnwrap === true || relaid;
+  }
+
+  /**
+   * Keeps how the project bakes, in its own file, so the next Bake, the next session and another client start from it.
+   * Throws the Server's refusal.
+   */
+  async setBake(project: string, bake: ProjectBakeSettings): Promise<void> {
+    const client = await this.library.api();
+    const contents = unwrap(await client.PUT('/api/v1/library/project/bake', { body: { project, bake } }));
+    this.mutableContents.update(all => new Map(all).set(project, contents));
   }
 
   /** Opens a project if it needs it, then its settings. */

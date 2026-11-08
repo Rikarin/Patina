@@ -3,8 +3,14 @@
 from .asset_impact import AssetImpact
 from .asset_page import AssetPage
 from .asset_summary import AssetSummary
+from .bake_height_options import BakeHeightOptions
+from .bake_id_options import BakeIdOptions
+from .bake_occlusion_options import BakeOcclusionOptions
+from .bake_options import BakeOptions
+from .bake_ray_options import BakeRayOptions
 from .bake_request import BakeRequest
 from .bake_result import BakeResult
+from .bake_thickness_options import BakeThicknessOptions
 from .baked_map_file import BakedMapFile
 from .build_preview import BuildPreview
 from .build_preview_project import BuildPreviewProject
@@ -124,6 +130,8 @@ from .material_use import MaterialUse
 from .material_use_request import MaterialUseRequest
 from .output_report import OutputReport
 from .problem_details import ProblemDetails
+from .project_bake_request import ProjectBakeRequest
+from .project_bake_settings import ProjectBakeSettings
 from .project_contents import ProjectContents
 from .project_create_request import ProjectCreateRequest
 from .project_document_copy_request import ProjectDocumentCopyRequest
@@ -244,8 +252,14 @@ __all__ = (
     "AssetPage",
     "AssetSummary",
     "BakedMapFile",
+    "BakeHeightOptions",
+    "BakeIdOptions",
+    "BakeOcclusionOptions",
+    "BakeOptions",
+    "BakeRayOptions",
     "BakeRequest",
     "BakeResult",
+    "BakeThicknessOptions",
     "BuildPreview",
     "BuildPreviewProject",
     "BuildRequest",
@@ -364,6 +378,8 @@ __all__ = (
     "MaterialUseRequest",
     "OutputReport",
     "ProblemDetails",
+    "ProjectBakeRequest",
+    "ProjectBakeSettings",
     "ProjectContents",
     "ProjectCreateRequest",
     "ProjectDocumentCopyRequest",

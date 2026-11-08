@@ -109,13 +109,12 @@ public sealed class BakeProcessTests : IDisposable {
     BakeRequest Request(int resolution = 64, int rays = 8) {
         BakeFixture.Write(Meshes, 0.02f);
         return new() {
-            High = Path.Combine(Meshes, BakeFixture.HighFile),
+            High = [Path.Combine(Meshes, BakeFixture.HighFile)],
             Low = Path.Combine(Meshes, BakeFixture.LowFile),
             Output = Output,
-            Resolution = resolution,
-            Maps = ["ao"],
-            OcclusionRays = rays,
-            SearchRadius = 0.05
+            Options = new() {
+                Resolution = resolution, Maps = ["normal", "height", "ao"], Occlusion = new() { Rays = rays }
+            }
         };
     }
 
@@ -399,7 +398,8 @@ public sealed class BakeProcessTests : IDisposable {
         StartServer();
         await DiscoverAsync(deadline.Token);
         StartWorker();
-        var request = Request(128) with { Maps = ["ao", "curvature"] };
+        var request = Request(128);
+        request = request with { Options = request.Options with { Maps = ["normal", "height", "ao", "curvature"] } };
         var job = await UntilAsync((await StartAsync(request, deadline.Token)).Id, Over, deadline.Token);
         Assert.Equal(JobStates.Done, job.State);
 
@@ -448,7 +448,7 @@ public sealed class BakeProcessTests : IDisposable {
             deadline.Token,
             "bake-maps",
             "--high",
-            request.High,
+            request.High[0],
             "--low",
             request.Low,
             "--cage",
@@ -859,7 +859,7 @@ public sealed class BakeProcessTests : IDisposable {
         StartServer();
         await DiscoverAsync(deadline.Token);
 
-        var missing = new BakeRequest { High = "/nowhere/high.glb", Low = "/nowhere/low.glb", Output = Output };
+        var missing = new BakeRequest { High = ["/nowhere/high.glb"], Low = "/nowhere/low.glb", Output = Output };
         using var notFound = await http.PostAsJsonAsync(
             "/api/v1/jobs/bakes",
             missing,
@@ -868,7 +868,7 @@ public sealed class BakeProcessTests : IDisposable {
         );
         using var refused = await http.PostAsJsonAsync(
             "/api/v1/jobs/bakes",
-            Request() with { Format = "tga" },
+            Request() with { Options = new() { Format = "tga" } },
             ContractsJsonContext.Default.BakeRequest,
             deadline.Token
         );

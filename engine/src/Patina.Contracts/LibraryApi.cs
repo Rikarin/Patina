@@ -144,6 +144,9 @@ public sealed record ProjectContents(
 
     /// <summary>How Auto Unwrap lays a mesh out.</summary>
     public UnwrapOptions Unwrap { get; init; } = new();
+
+    /// <summary>How its bakes run, which texture sets they make maps for, and what they read beyond its mesh.</summary>
+    public ProjectBakeSettings Bake { get; init; } = new();
 }
 
 /// <summary>The body of <c>POST /api/v1/library/project/meshes</c>.</summary>

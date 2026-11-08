@@ -1,5 +1,6 @@
 using Patina.Contracts;
 using System.Globalization;
+using System.Text.Json;
 using YamlDotNet.RepresentationModel;
 
 namespace Patina.Library;
@@ -23,6 +24,7 @@ public static class DocumentCodec {
     const string HashKey = "hash";
     const string PreservePaintKey = "preservePaint";
     const string UnwrapKey = "unwrap";
+    const string BakeKey = "bake";
     const string UnwrappedKey = "unwrapped";
     const string ExportKey = "export";
     const string DocumentsKey = "documents";
@@ -70,6 +72,7 @@ public static class DocumentCodec {
                     ..document.PreservePaint ? [] : new[] { Pair(PreservePaintKey, YamlText.Plain("false")) },
                     ..Named(UnwrapKey, document.Unwrap != new UnwrapOptions(), Unwrap(document.Unwrap)),
                     ..Named(ExportKey, document.Export is not null, ExportOf(document.Export)),
+                    ..Bake(document.Bake),
                     Pair(ReferencesKey, References(document.References)),
                     Pair(
                         OutputsKey,
@@ -106,6 +109,38 @@ public static class DocumentCodec {
                 ..Named(UnwrappedKey, mesh.Unwrapped is not null, Unwrapped(mesh.Unwrapped))
             ]
         );
+
+    /// <summary>The project's bake settings, whole, when it has any.</summary>
+    /// <remarks>
+    ///     Written whole rather than as what differs from the defaults, so a default that moves in a later version
+    ///     does not move a project's bakes with it.
+    /// </remarks>
+    static KeyValuePair<YamlNode, YamlNode>[] Bake(ProjectBakeSettings? bake) =>
+        bake is null
+            ? []
+            : [
+                Pair(
+                    BakeKey,
+                    YamlRecords.Write(
+                        JsonSerializer.SerializeToNode(bake, LibraryTreeJsonContext.Default.ProjectBakeSettings)!
+                            .AsObject()
+                    )
+                )
+            ];
+
+    static ProjectBakeSettings? ReadBake(YamlFields fields) {
+        if (fields.Map(BakeKey) is not { } map) {
+            return null;
+        }
+
+        var shape = JsonSerializer.SerializeToNode(
+            new(),
+            LibraryTreeJsonContext.Default.ProjectBakeSettings
+        )!
+            .AsObject();
+        var bake = YamlRecords.Read(map, shape).Deserialize(LibraryTreeJsonContext.Default.ProjectBakeSettings)!;
+        return bake.Options.Problem() is { } problem ? throw fields.Problem($"'{BakeKey}': {problem}") : bake;
+    }
 
     static YamlMappingNode Unwrap(UnwrapOptions options) =>
         new(
@@ -255,7 +290,8 @@ public static class DocumentCodec {
                     AutoUnwrap = fields.Optional(AutoUnwrapKey) != "false",
                     PreservePaint = fields.Optional(PreservePaintKey) != "false",
                     Unwrap = ReadUnwrap(fields.TextMap(UnwrapKey), fields),
-                    Export = fields.Map(ExportKey) is { } export ? ExportCodec.Read(export) : null
+                    Export = fields.Map(ExportKey) is { } export ? ExportCodec.Read(export) : null,
+                    Bake = ReadBake(fields)
                 };
             }
         );

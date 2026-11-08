@@ -271,18 +271,29 @@ public sealed class OutputBuilders(
 
 /// <summary>A bake's settings, which an output declares as text.</summary>
 static class MeshMapSettings {
+    /// <summary>The maps every mesh-maps output writes, before the ones it declares.</summary>
+    static readonly string[] Measured = ["normal", "height"];
+
+    /// <summary>The maps an output that declares none asks for beyond those.</summary>
+    static readonly string[] DeclaredByDefault = ["ao"];
+
     public static BakeRequest Request(OutputStep step, string folder) {
         var s = step.Settings;
+        // ⚠ The normal and the height are written whatever the output declares, as they always were: a declared
+        // list names the maps beyond them, and an output that read the normal must not lose it.
+        var declared = s.TryGetValue("maps", out var maps) ? maps.Split(',') : DeclaredByDefault;
         return new() {
             Low = Role(step, "low"),
-            High = Role(step, "high"),
+            High = [Role(step, "high")],
             Cage = s.ContainsKey("cage") ? Role(step, "cage") : null,
             Output = folder,
-            Resolution = Int(s, "resolution", 2048),
-            Format = s.GetValueOrDefault("format", BakeInputs.Png16),
-            OcclusionRays = Int(s, "rays", 64),
-            Supersampling = Int(s, "supersampling", 1),
-            Maps = s.TryGetValue("maps", out var maps) ? maps.Split(',') : ["ao"]
+            Options = new() {
+                Resolution = Int(s, "resolution", 2048),
+                Format = s.GetValueOrDefault("format", BakeInputs.Png16),
+                Occlusion = new() { Rays = Int(s, "rays", 64) },
+                Supersampling = Int(s, "supersampling", 1),
+                Maps = [..Measured.Concat(declared).Distinct(StringComparer.Ordinal)]
+            }
         };
     }
 

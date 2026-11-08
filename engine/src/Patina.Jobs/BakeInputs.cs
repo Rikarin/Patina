@@ -1,6 +1,6 @@
 using Patina.Contracts;
 using Patina.Library;
-using System.Globalization;
+using System.Text.Json;
 
 namespace Patina.Jobs;
 
@@ -20,53 +20,30 @@ public static class BakeInputs {
     public const string Exr16 = "exr16";
     public const string Exr32 = "exr32";
 
-    /// <summary>The largest atlas edge. Larger than the cached maps a laptop can hold, not than a farm can.</summary>
-    const int MaxResolution = 16384;
-
     /// <summary>
     ///     What a map's numbers are relative to, and how its rows run. A bake made before this was a per-triangle
     ///     basis upside down, and a cache hit must not hand one back.
     /// </summary>
     const string TangentBasis = "mikktspace, v down";
 
-    const int MaxSupersampling = 8;
-    const int MaxRays = 8192;
-
     /// <summary>The maps a request may ask for by name, in the order they are reported.</summary>
-    public static IReadOnlyList<string> Maps { get; } =
-        ["ao", "bent", "curvature", "thickness", "position", "world", "id"];
-
-    /// <summary>The maps every bake makes.</summary>
-    public static IReadOnlyList<string> Always { get; } = ["normal", "height"];
+    public static IReadOnlyList<string> Maps => BakeOptions.AllMaps;
 
     /// <summary>The refusal a request earns, or null when it is fine. Files are looked at last.</summary>
     /// <exception cref="BakeRefusedException">It asks for something no bake can do.</exception>
     /// <exception cref="FileNotFoundException">An input file is not there.</exception>
     public static void Check(BakeRequest request) {
-        Require(request.Resolution is >= 16 and <= MaxResolution, $"The resolution must be 16 to {MaxResolution}.");
-        Require(
-            request.Supersampling is >= 1 and <= MaxSupersampling,
-            $"Supersampling must be 1 to {MaxSupersampling}."
-        );
-        Require(request.OcclusionRays is >= 1 and <= MaxRays, $"Occlusion rays must be 1 to {MaxRays}.");
-        Require(request.Gutter is >= 0 and <= 64, "The gutter must be 0 to 64 texels.");
-        Require(request.SearchRadius > 0, "The search radius must be more than nothing.");
-        Require(request.OcclusionRadius >= 0, "The occlusion radius cannot be negative.");
-        Require(request.Skew is >= 0 and <= 1, "The skew must be 0 to 1.");
-        Require(request.Format is Png8 or Png16 or Exr16 or Exr32, $"'{request.Format}' is not a format.");
-        Require(request.Space is "tangent" or "object", $"'{request.Space}' is not a space.");
+        var options = request.Options;
+        if (options.Problem() is { } problem) {
+            throw new BakeRefusedException(problem);
+        }
+
+        Require(request.High.Count > 0, "A bake needs a high mesh, which may be the low mesh itself.");
         Require(request.Output.Length > 0, "A bake needs an output folder.");
         Require(
-            request.SkewMap is not { } skew || PictureFormats.IsPicture(skew),
-            $"'{Path.GetFileName(request.SkewMap)}' is not a picture this reads."
+            options.Rays.SkewMap.Length == 0 || PictureFormats.IsPicture(options.Rays.SkewMap),
+            $"'{Path.GetFileName(options.Rays.SkewMap)}' is not a picture this reads."
         );
-
-        foreach (var map in request.Maps ?? []) {
-            Require(
-                Maps.Contains(map, StringComparer.Ordinal) || Always.Contains(map, StringComparer.Ordinal),
-                $"'{map}' is not a map. The maps are {string.Join(", ", [..Always, ..Maps])}."
-            );
-        }
 
         foreach (var file in Files(request).Values) {
             if (!File.Exists(file)) {
@@ -83,14 +60,18 @@ public static class BakeInputs {
             tools
         );
 
+    /// <summary>The files a bake reads, by their part in it. The high meshes are numbered: order counts.</summary>
     static Dictionary<string, string> Files(BakeRequest request) {
-        Dictionary<string, string> files =
-            new(StringComparer.Ordinal) { ["high"] = request.High, ["low"] = request.Low };
+        Dictionary<string, string> files = new(StringComparer.Ordinal) { ["low"] = request.Low };
+        for (var at = 0; at < request.High.Count; at++) {
+            files[at == 0 ? "high" : $"high{at}"] = request.High[at];
+        }
+
         if (request.Cage is { } cage) {
             files["cage"] = cage;
         }
 
-        if (request.SkewMap is { } skew) {
+        if (request.Options.Rays.SkewMap is { Length: > 0 } skew) {
             files["skew"] = skew;
         }
 
@@ -98,22 +79,18 @@ public static class BakeInputs {
     }
 
     /// <summary>Everything that changes a pixel, and nothing that does not: paths and names stay out.</summary>
+    /// <remarks>
+    ///     ⚠ <b>The options whole, as JSON, rather than a line per setting.</b> A setting added to the options and
+    ///     forgotten here would be a cache that hands back a bake made without it, and nothing would say so. The skew
+    ///     map's path is taken out because its bytes are already one of the key's files.
+    /// </remarks>
     static Dictionary<string, string> Settings(BakeRequest request) {
+        var options = request.Options with {
+            Maps = [..request.Options.Maps.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
+            Rays = request.Options.Rays with { SkewMap = string.Empty }
+        };
         var settings = new Dictionary<string, string>(StringComparer.Ordinal) {
-            ["resolution"] = Text(request.Resolution),
-            ["maps"] = string.Join(
-                ',',
-                (request.Maps ?? []).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)
-            ),
-            ["format"] = request.Format,
-            ["supersampling"] = Text(request.Supersampling),
-            ["rays"] = Text(request.OcclusionRays),
-            ["search"] = Text(request.SearchRadius),
-            ["reach"] = Text(request.OcclusionRadius),
-            ["skew"] = Text(request.Skew),
-            ["match"] = request.MatchByName ? "1" : "0",
-            ["gutter"] = Text(request.Gutter),
-            ["space"] = request.Space,
+            ["options"] = JsonSerializer.Serialize(options, ContractsJsonContext.Default.BakeOptions),
             ["basis"] = TangentBasis
         };
         if (request.Material is { } material) {
@@ -122,10 +99,6 @@ public static class BakeInputs {
 
         return settings;
     }
-
-    static string Text(int value) => value.ToString(CultureInfo.InvariantCulture);
-
-    static string Text(double value) => value.ToString("R", CultureInfo.InvariantCulture);
 
     static void Require(bool condition, string message) {
         if (!condition) {

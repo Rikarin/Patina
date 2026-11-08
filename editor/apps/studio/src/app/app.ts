@@ -5,6 +5,7 @@ import { XuiDialogImports } from '@xui/dialog';
 import { type XuiDockManagerLayout, XuiDockManagerImports } from '@xui/dock-manager';
 import { XuiInputImports } from '@xui/input';
 import { BakePane } from './bake/bake-pane';
+import { BakeSettings } from './bake/bake-settings';
 import { BakeStore } from './bake/bake-store';
 import { desktop } from './core/desktop';
 import { DiagnosticsDialog } from './core/diagnostics-dialog';
@@ -103,6 +104,18 @@ import { ViewportPane } from './viewport/viewport-pane';
       <div class="flex shrink-0 items-center gap-1">
         <button type="button" xuiButton size="sm" variant="ghost" data-testid="open-bake" (click)="baking.set(true)">
           Bake…
+        </button>
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          data-testid="quick-bake"
+          [disabled]="bakeSettings.blocked() !== null"
+          [title]="bakeSettings.blocked() ?? 'Bake with the project’s bake settings, without the dialog'"
+          (click)="quickBake()"
+        >
+          {{ bakes.busy() ? 'Baking ' + bakePercent() + '%' : 'Quick Bake' }}
         </button>
         <button
           type="button"
@@ -382,7 +395,13 @@ import { ViewportPane } from './viewport/viewport-pane';
 export class App {
   protected readonly status = inject(SystemStatus);
   protected readonly project = inject(ProjectStore);
-  private readonly bakes = inject(BakeStore);
+  protected readonly bakes = inject(BakeStore);
+  protected readonly bakeSettings = inject(BakeSettings);
+  /** How far the jobs of the last bake are, together. */
+  protected readonly bakePercent = computed(() => {
+    const jobs = this.bakes.batch();
+    return jobs.length === 0 ? 0 : Math.round((jobs.reduce((sum, job) => sum + job.progress, 0) / jobs.length) * 100);
+  });
   private readonly edit = inject(EditCommands);
   private readonly options = inject(ViewOptions);
   protected readonly shortcuts = inject(Shortcuts);
@@ -392,6 +411,13 @@ export class App {
   /** The one thing that went wrong last, which stays until it is read. */
   protected readonly failure = computed(() => this.paint.failure() ?? this.project.failure());
   protected readonly baking = signal(false);
+
+  /** Bakes with the project's settings. A refusal opens the dialog, which says why. */
+  protected async quickBake(): Promise<void> {
+    if (!(await this.bakeSettings.bake())) {
+      this.baking.set(true);
+    }
+  }
   protected readonly exporting = signal(false);
   /** The layout of what is in front. Each kind of document keeps its own (ADR 0012). */
   protected readonly layout = linkedSignal(() => layoutOf(this.project.workspace()));

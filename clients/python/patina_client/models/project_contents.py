@@ -13,6 +13,7 @@ from typing import cast
 from uuid import UUID
 
 if TYPE_CHECKING:
+  from ..models.project_bake_settings import ProjectBakeSettings
   from ..models.project_document_info import ProjectDocumentInfo
   from ..models.project_export_settings import ProjectExportSettings
   from ..models.project_file import ProjectFile
@@ -47,6 +48,9 @@ class ProjectContents:
             preserve_paint (bool): Whether paint moves to a new mesh's layout.
             unwrap (UnwrapOptions): How Auto Unwrap lays out a mesh. Each texture set gets an atlas of its own.
             export (None | ProjectExportSettings | Unset):
+            bake (ProjectBakeSettings): What a project keeps about baking, in its own file: the options, which texture sets
+                to bake, and the files
+                beyond the project's mesh that a bake reads.
      """
 
     id: UUID
@@ -62,6 +66,7 @@ class ProjectContents:
     preserve_paint: bool
     unwrap: UnwrapOptions
     export: None | ProjectExportSettings | Unset = UNSET
+    bake: ProjectBakeSettings
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -69,6 +74,7 @@ class ProjectContents:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.project_bake_settings import ProjectBakeSettings # noqa: PLC0415
         from ..models.project_document_info import ProjectDocumentInfo # noqa: PLC0415
         from ..models.project_export_settings import ProjectExportSettings # noqa: PLC0415
         from ..models.project_file import ProjectFile # noqa: PLC0415
@@ -127,6 +133,7 @@ class ProjectContents:
             export = self.export.to_dict()
         else:
             export = self.export
+        bake = self.bake.to_dict()
 
 
         field_dict: dict[str, Any] = {}
@@ -144,6 +151,7 @@ class ProjectContents:
             "exportSets": export_sets,
             "preservePaint": preserve_paint,
             "unwrap": unwrap,
+            "bake": bake,
         })
         if export is not UNSET:
             field_dict["export"] = export
@@ -154,6 +162,7 @@ class ProjectContents:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.project_bake_settings import ProjectBakeSettings # noqa: PLC0415
         from ..models.project_document_info import ProjectDocumentInfo # noqa: PLC0415
         from ..models.project_export_settings import ProjectExportSettings # noqa: PLC0415
         from ..models.project_file import ProjectFile # noqa: PLC0415
@@ -242,6 +251,10 @@ class ProjectContents:
 
         export = _parse_export(d.pop("export", UNSET))
 
+        bake = ProjectBakeSettings.from_dict(d.pop("bake"))
+
+
+
 
         project_contents = cls(
             id=id,
@@ -257,6 +270,7 @@ class ProjectContents:
             preserve_paint=preserve_paint,
             unwrap=unwrap,
             export=export,
+            bake=bake,
         )
 
 

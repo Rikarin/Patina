@@ -1,6 +1,6 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { answerOpen, leave, newLibrary, newProject } from './projects';
@@ -108,6 +108,44 @@ test('a bake can be judged on its low mesh in the viewport, with a cage and a sk
   await expect.poll(frames, { timeout: 30_000 }).toBeGreaterThan(before);
   mkdirSync(shots, { recursive: true });
   await window.screenshot({ path: join(shots, 'bake-on-mesh.png') });
+});
+
+test('the bake settings are a section per map and stay in the project', async () => {
+  await window.getByTestId('open-bake').click();
+  await expect(window.getByTestId('bake-low')).toHaveText('housing_low.glb');
+
+  // A map can be turned off, the height included, and each has its own settings.
+  await window.getByTestId('bake-map-height').click();
+  await window.getByTestId('bake-section-ao').click();
+  await expect(window.getByTestId('bake-section-title')).toHaveText('Ambient Occlusion');
+  const rays = window.getByTestId('bake-ao-rays').getByRole('spinbutton');
+  await rays.fill('128');
+  await rays.press('Enter');
+  await window.getByTestId('bake-ao-ground').click();
+  mkdirSync(shots, { recursive: true });
+  await window.screenshot({ path: join(shots, 'bake-sections.png') });
+
+  // The project's own file has them a moment later, so a restart or another client starts from them.
+  const projects = join(scratch, 'Game.ptlib', 'projects');
+  const project = join(
+    projects,
+    readdirSync(projects).find(name => existsSync(join(projects, name, 'project.yaml'))) ?? '',
+    'project.yaml'
+  );
+  await expect
+    .poll(() => (existsSync(project) ? readFileSync(project, 'utf8') : ''), { timeout: 10_000 })
+    .toContain('rays: 128');
+  const kept = readFileSync(project, 'utf8');
+  expect(kept).toContain('groundPlane: true');
+  expect(kept).not.toMatch(/maps:\n(\s+- [a-z]+\n)*\s+- height\n/u);
+
+  await window.keyboard.press('Escape');
+  await window.getByTestId('open-bake').click();
+  await expect(window.getByTestId('bake-map-height')).not.toBeChecked();
+  await window.getByTestId('bake-section-ao').click();
+  await expect(window.getByTestId('bake-ao-rays').getByRole('spinbutton')).toHaveValue('128');
+  await window.getByTestId('bake-section-common').click();
+  await window.screenshot({ path: join(shots, 'bake-common.png') });
 });
 
 test('the panel says why the Server refused a high poly mesh', async () => {

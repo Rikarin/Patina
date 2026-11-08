@@ -61,7 +61,8 @@ static class ProjectFiles {
                     .Select(static output => output.Settings.GetValueOrDefault(ProjectOutputs.SetSetting, string.Empty))
                     .Where(static set => set.Length > 0)
                     .Distinct(StringComparer.Ordinal)
-            ]
+            ],
+            Bake = document.Bake ?? new()
         };
     }
 
@@ -285,6 +286,12 @@ static class ProjectFiles {
                 Unwrap = unwrap ?? document.Unwrap
             }
         );
+    }
+
+    /// <summary>Keeps how a project's bakes run, in its own file.</summary>
+    public static void SetBake(string root, string path, ProjectBakeSettings bake) {
+        var (_, document) = Project(root, path);
+        LibraryFiles.WriteProject(root, path, document with { Bake = bake });
     }
 
     /// <summary>Puts a texturing document on another mesh.</summary>

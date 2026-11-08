@@ -2107,6 +2107,67 @@
         }
       }
     },
+    "/api/v1/library/project/bake": {
+      "put": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Keeps how a project\u0027s bakes run, which texture sets they make maps for and the files they read beyond its mesh, in the project\u0027s own file.",
+        "operationId": "SetProjectBake",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectBakeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/project/document/role": {
       "patch": {
         "tags": [
@@ -5217,27 +5278,246 @@
         },
         "description": "One baked map, as a file."
       },
+      "BakeHeightOptions": {
+        "required": [
+          "range",
+          "scale"
+        ],
+        "type": "object",
+        "properties": {
+          "range": {
+            "type": "string",
+            "description": "\u0060measured\u0060, the largest height found; \u0060rays\u0060, the longer ray distance; or \u0060custom\u0060,\n            double BakeHeightOptions.Scale. The last two are the same for every bake made with them, so their maps agree."
+          },
+          "scale": {
+            "type": "number",
+            "description": "The range for \u0060custom\u0060, in the rays\u0027 units.",
+            "format": "double"
+          }
+        },
+        "description": "The height map\u0027s stored range."
+      },
+      "BakeIdOptions": {
+        "required": [
+          "source",
+          "palette"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "\u0060auto\u0060: vertex colours, else materials when there are several, else connected shells. Or one of\n            \u0060material\u0060, \u0060material-colour\u0060 (each material\u0027s base colour), \u0060vertex-colour\u0060, \u0060mesh\u0060\n            (each named part) and \u0060shell\u0060."
+          },
+          "palette": {
+            "type": "string",
+            "description": "How labels become colours: \u0060random\u0060, \u0060hue\u0060 or \u0060grey\u0060. Colours stay colours."
+          }
+        },
+        "description": "What an ID map labels, and how it colours the labels."
+      },
+      "BakeOcclusionOptions": {
+        "required": [
+          "rays",
+          "distance",
+          "spread",
+          "falloff",
+          "distribution",
+          "minimum",
+          "ignoreBackfaces",
+          "withinPart",
+          "groundPlane",
+          "groundOffset"
+        ],
+        "type": "object",
+        "properties": {
+          "rays": {
+            "type": "integer",
+            "description": "How many rays a texel\u0027s occlusion is estimated with.",
+            "format": "int32"
+          },
+          "distance": {
+            "type": "number",
+            "description": "How far an occluder counts, in the rays\u0027 units.",
+            "format": "double"
+          },
+          "spread": {
+            "type": "number",
+            "description": "The half-angle of the cone the rays fill, in degrees: 90 is the hemisphere.",
+            "format": "double"
+          },
+          "falloff": {
+            "type": "string",
+            "description": "How an occluder counts for less further away: \u0060none\u0060, \u0060linear\u0060 or \u0060smooth\u0060."
+          },
+          "distribution": {
+            "type": "string",
+            "description": "How the rays are spread: \u0060cosine\u0060 or \u0060uniform\u0060."
+          },
+          "minimum": {
+            "type": "number",
+            "description": "How near an occluder may be and not count, in the rays\u0027 units.",
+            "format": "double"
+          },
+          "ignoreBackfaces": {
+            "type": "boolean",
+            "description": "Whether a ray passes through the back of a face."
+          },
+          "withinPart": {
+            "type": "boolean",
+            "description": "Whether only the texel\u0027s own part occludes it, when parts are matched by name."
+          },
+          "groundPlane": {
+            "type": "boolean",
+            "description": "Whether a floor under the high mesh occludes too. Y is up."
+          },
+          "groundOffset": {
+            "type": "number",
+            "description": "How far above the high mesh\u0027s lowest point the floor is, in the rays\u0027 units.",
+            "format": "double"
+          }
+        },
+        "description": "The occlusion rays, which ambient occlusion, the bent normal and thickness share."
+      },
+      "BakeOptions": {
+        "required": [
+          "resolution",
+          "format",
+          "supersampling",
+          "gutter",
+          "maps",
+          "space",
+          "rays",
+          "height",
+          "occlusion",
+          "thickness",
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "resolution": {
+            "type": "integer",
+            "description": "The atlas\u0027s edge, in texels.",
+            "format": "int32"
+          },
+          "format": {
+            "type": "string",
+            "description": "\u0060png8\u0060, \u0060png16\u0060, \u0060exr16\u0060 or \u0060exr32\u0060."
+          },
+          "supersampling": {
+            "type": "integer",
+            "description": "How many samples along each side of a texel.",
+            "format": "int32"
+          },
+          "gutter": {
+            "type": "integer",
+            "description": "How many texels of dilation surround each chart.",
+            "format": "int32"
+          },
+          "maps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Which maps to write: \u0060normal\u0060, \u0060height\u0060, \u0060ao\u0060, \u0060bent\u0060, \u0060curvature\u0060,\n\u0060thickness\u0060, \u0060position\u0060, \u0060world\u0060, \u0060id\u0060. The default is what a project\u0027s masks read."
+          },
+          "space": {
+            "type": "string",
+            "description": "The frame of the normal and bent normal maps: \u0060tangent\u0060 or \u0060object\u0060."
+          },
+          "rays": {
+            "description": "How far the rays look and what they may strike, which every map rests on.",
+            "$ref": "#/components/schemas/BakeRayOptions"
+          },
+          "height": {
+            "description": "The height map\u0027s range.",
+            "$ref": "#/components/schemas/BakeHeightOptions"
+          },
+          "occlusion": {
+            "description": "The occlusion rays, which ambient occlusion, the bent normal and thickness share.",
+            "$ref": "#/components/schemas/BakeOcclusionOptions"
+          },
+          "thickness": {
+            "description": "The thickness map\u0027s own settings.",
+            "$ref": "#/components/schemas/BakeThicknessOptions"
+          },
+          "id": {
+            "description": "What the ID map labels and how it colours them.",
+            "$ref": "#/components/schemas/BakeIdOptions"
+          }
+        },
+        "description": "How a bake runs, with no meshes in it: what a project keeps between bakes and every client sends. Each map\u0027s\nown settings are a part of their own."
+      },
+      "BakeRayOptions": {
+        "required": [
+          "front",
+          "rear",
+          "units",
+          "ignoreBackfaces",
+          "skew",
+          "skewMap",
+          "matchByName",
+          "lowSuffix",
+          "highSuffix"
+        ],
+        "type": "object",
+        "properties": {
+          "front": {
+            "type": "number",
+            "description": "How far a ray looks outward, in front of the low mesh.",
+            "format": "double"
+          },
+          "rear": {
+            "type": "number",
+            "description": "How far a ray looks inward, behind the low mesh, or past it from a cage.",
+            "format": "double"
+          },
+          "units": {
+            "type": "string",
+            "description": "What the distances here and in BakeOcclusionOptions are in: \u0060relative\u0060, fractions of the\nhigh mesh\u0027s bounding-box diagonal, or \u0060absolute\u0060, the model\u0027s own units."
+          },
+          "ignoreBackfaces": {
+            "type": "boolean",
+            "description": "Whether a ray passes through a high face turned away from the low mesh\u0027s facing."
+          },
+          "skew": {
+            "type": "number",
+            "description": "How far rays lean from the smoothed direction towards the low mesh\u0027s own normal, 0 to 1.",
+            "format": "double"
+          },
+          "skewMap": {
+            "type": "string",
+            "description": "A grey image saying where to apply the skew, or empty for everywhere."
+          },
+          "matchByName": {
+            "type": "boolean",
+            "description": "Whether a part of the low mesh only strikes the high part of the same name."
+          },
+          "lowSuffix": {
+            "type": "string",
+            "description": "What a low part\u0027s name ends in, which matching by name takes off."
+          },
+          "highSuffix": {
+            "type": "string",
+            "description": "What a high part\u0027s name ends in, which matching by name takes off."
+          }
+        },
+        "description": "How far a bake\u0027s rays look from the low mesh, and what they may strike."
+      },
       "BakeRequest": {
         "required": [
           "high",
           "low",
           "output",
-          "resolution",
-          "format",
-          "supersampling",
-          "occlusionRays",
-          "searchRadius",
-          "occlusionRadius",
-          "skew",
-          "matchByName",
-          "gutter",
-          "space"
+          "options"
         ],
         "type": "object",
         "properties": {
           "high": {
-            "type": "string",
-            "description": "The detailed mesh."
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The detailed meshes, in order: one is usual, and a model split across files lists them all."
           },
           "low": {
             "type": "string",
@@ -5254,11 +5534,6 @@
             ],
             "description": "A mesh with the low mesh\u0027s faces, moved outward, which the rays start from."
           },
-          "resolution": {
-            "type": "integer",
-            "description": "The atlas\u0027s edge, in texels.",
-            "format": "int32"
-          },
           "material": {
             "type": [
               "null",
@@ -5266,71 +5541,16 @@
             ],
             "description": "The material of the low mesh to bake, for one texture set of a model that has several."
           },
-          "maps": {
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "type": "string"
-            },
-            "description": "What to bake beyond \u0060normal\u0060 and \u0060height\u0060, which are always baked: \u0060ao\u0060, \u0060bent\u0060,\n\u0060curvature\u0060, \u0060thickness\u0060, \u0060position\u0060, \u0060world\u0060, \u0060id\u0060."
-          },
-          "format": {
-            "type": "string",
-            "description": "\u0060png8\u0060, \u0060png16\u0060, \u0060exr16\u0060 or \u0060exr32\u0060."
-          },
-          "supersampling": {
-            "type": "integer",
-            "description": "How many samples along each side of a texel.",
-            "format": "int32"
-          },
-          "occlusionRays": {
-            "type": "integer",
-            "description": "How many rays a texel\u0027s occlusion is estimated with.",
-            "format": "int32"
-          },
-          "searchRadius": {
-            "type": "number",
-            "description": "How far a ray looks, as a fraction of the high mesh\u0027s diagonal.",
-            "format": "double"
-          },
-          "occlusionRadius": {
-            "type": "number",
-            "description": "How far an occluder counts, as a fraction of the diagonal.",
-            "format": "double"
-          },
-          "skew": {
-            "type": "number",
-            "description": "How far rays lean from the smoothed direction towards the low mesh\u0027s own normal, 0 to 1.",
-            "format": "double"
-          },
-          "skewMap": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "A grey image saying where to apply the skew, or null for everywhere."
-          },
-          "matchByName": {
-            "type": "boolean",
-            "description": "Whether a part of the low mesh only strikes the high part of the same name."
-          },
-          "gutter": {
-            "type": "integer",
-            "description": "How many texels of dilation surround each chart.",
-            "format": "int32"
-          },
-          "space": {
-            "type": "string",
-            "description": "\u0060tangent\u0060 or \u0060object\u0060."
-          },
           "name": {
             "type": [
               "null",
               "string"
             ],
             "description": "The stem of each file\u0027s name, or null for the low mesh\u0027s."
+          },
+          "options": {
+            "description": "What to bake and how: the part a project keeps between bakes.",
+            "$ref": "#/components/schemas/BakeOptions"
           }
         },
         "description": "A high-to-low bake. Everything is a path on the Server\u0027s machine, and the results are files there: a client\nsends paths and gets paths, whichever client it is (plan \u00A78)."
@@ -5341,7 +5561,8 @@
           "covered",
           "missed",
           "warnings",
-          "cached"
+          "cached",
+          "log"
         ],
         "type": "object",
         "properties": {
@@ -5372,9 +5593,29 @@
           "cached": {
             "type": "boolean",
             "description": "Whether this was found in the cache and nothing ran."
+          },
+          "log": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What the bake read and found, line by line: the meshes, each part\u0027s match, the time it took."
           }
         },
         "description": "What a finished bake made."
+      },
+      "BakeThicknessOptions": {
+        "required": [
+          "normalised"
+        ],
+        "type": "object",
+        "properties": {
+          "normalised": {
+            "type": "boolean",
+            "description": "Whether the map is divided by its largest value, so the thickest texel reads white."
+          }
+        },
+        "description": "The thickness map\u0027s own settings."
       },
       "BuildPreview": {
         "required": [
@@ -8727,6 +8968,58 @@
           }
         }
       },
+      "ProjectBakeRequest": {
+        "required": [
+          "project",
+          "bake"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "bake": {
+            "description": "Its bake settings from now on.",
+            "$ref": "#/components/schemas/ProjectBakeSettings"
+          }
+        },
+        "description": "The body of \u0060PUT /api/v1/library/project/bake\u0060."
+      },
+      "ProjectBakeSettings": {
+        "required": [
+          "options",
+          "sets",
+          "high",
+          "cage"
+        ],
+        "type": "object",
+        "properties": {
+          "options": {
+            "description": "How its bakes run.",
+            "$ref": "#/components/schemas/BakeOptions"
+          },
+          "sets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The texture sets a bake makes maps for, by material; empty is all of them."
+          },
+          "high": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Detailed meshes after the mesh\u0027s own, in order, as paths on the Server\u0027s machine."
+          },
+          "cage": {
+            "type": "string",
+            "description": "A cage, as a path on the Server\u0027s machine, or empty for none."
+          }
+        },
+        "description": "What a project keeps about baking, in its own file: the options, which texture sets to bake, and the files\nbeyond the project\u0027s mesh that a bake reads."
+      },
       "ProjectContents": {
         "required": [
           "id",
@@ -8740,7 +9033,8 @@
           "autoUnwrap",
           "exportSets",
           "preservePaint",
-          "unwrap"
+          "unwrap",
+          "bake"
         ],
         "type": "object",
         "properties": {
@@ -8818,6 +9112,10 @@
           "unwrap": {
             "description": "How Auto Unwrap lays a mesh out.",
             "$ref": "#/components/schemas/UnwrapOptions"
+          },
+          "bake": {
+            "description": "How its bakes run, which texture sets they make maps for, and what they read beyond its mesh.",
+            "$ref": "#/components/schemas/ProjectBakeSettings"
           }
         },
         "description": "A project as it opens."

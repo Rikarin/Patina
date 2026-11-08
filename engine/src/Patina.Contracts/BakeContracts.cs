@@ -1,68 +1,5 @@
 namespace Patina.Contracts;
 
-/// <summary>
-///     A high-to-low bake. Everything is a path on the Server's machine, and the results are files there: a client
-///     sends paths and gets paths, whichever client it is (plan §8).
-/// </summary>
-public sealed record BakeRequest {
-    /// <summary>The detailed mesh.</summary>
-    public required string High { get; init; }
-
-    /// <summary>The mesh baked onto, which must have texture coordinates.</summary>
-    public required string Low { get; init; }
-
-    /// <summary>The folder the maps are written to.</summary>
-    public required string Output { get; init; }
-
-    /// <summary>A mesh with the low mesh's faces, moved outward, which the rays start from.</summary>
-    public string? Cage { get; init; }
-
-    /// <summary>The atlas's edge, in texels.</summary>
-    public int Resolution { get; init; } = 2048;
-
-    /// <summary>The material of the low mesh to bake, for one texture set of a model that has several.</summary>
-    public string? Material { get; init; }
-
-    /// <summary>
-    ///     What to bake beyond <c>normal</c> and <c>height</c>, which are always baked: <c>ao</c>, <c>bent</c>,
-    ///     <c>curvature</c>, <c>thickness</c>, <c>position</c>, <c>world</c>, <c>id</c>.
-    /// </summary>
-    public IReadOnlyList<string>? Maps { get; init; }
-
-    /// <summary><c>png8</c>, <c>png16</c>, <c>exr16</c> or <c>exr32</c>.</summary>
-    public string Format { get; init; } = "png16";
-
-    /// <summary>How many samples along each side of a texel.</summary>
-    public int Supersampling { get; init; } = 1;
-
-    /// <summary>How many rays a texel's occlusion is estimated with.</summary>
-    public int OcclusionRays { get; init; } = 64;
-
-    /// <summary>How far a ray looks, as a fraction of the high mesh's diagonal.</summary>
-    public double SearchRadius { get; init; } = 0.05;
-
-    /// <summary>How far an occluder counts, as a fraction of the diagonal.</summary>
-    public double OcclusionRadius { get; init; } = 0.5;
-
-    /// <summary>How far rays lean from the smoothed direction towards the low mesh's own normal, 0 to 1.</summary>
-    public double Skew { get; init; }
-
-    /// <summary>A grey image saying where to apply the skew, or null for everywhere.</summary>
-    public string? SkewMap { get; init; }
-
-    /// <summary>Whether a part of the low mesh only strikes the high part of the same name.</summary>
-    public bool MatchByName { get; init; }
-
-    /// <summary>How many texels of dilation surround each chart.</summary>
-    public int Gutter { get; init; } = 4;
-
-    /// <summary><c>tangent</c> or <c>object</c>.</summary>
-    public string Space { get; init; } = "tangent";
-
-    /// <summary>The stem of each file's name, or null for the low mesh's.</summary>
-    public string? Name { get; init; }
-}
-
 /// <summary>One baked map, as a file.</summary>
 /// <param name="Map">What it measures.</param>
 /// <param name="Path">The file.</param>
@@ -85,7 +22,10 @@ public sealed record BakeResult(
     long Missed,
     IReadOnlyList<string> Warnings,
     bool Cached
-);
+) {
+    /// <summary>What the bake read and found, line by line: the meshes, each part's match, the time it took.</summary>
+    public IReadOnlyList<string> Log { get; init; } = [];
+}
 
 /// <summary>Where a job stands.</summary>
 public static class JobStates {

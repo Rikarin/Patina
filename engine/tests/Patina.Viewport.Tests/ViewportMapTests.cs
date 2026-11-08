@@ -399,12 +399,10 @@ public sealed class ViewportMapTests : IDisposable {
         var high = Band("high.glb", 800, 300, 0.01f);
         var low = Band("low.glb", 8, 3, 0f);
         var request = new BakeRequest {
-            High = high,
+            High = [high],
             Low = low,
             Output = In("out"),
-            Resolution = 512,
-            Format = format,
-            SearchRadius = 0.15
+            Options = new() { Resolution = 512, Format = format, Rays = new() { Front = 0.15, Rear = 0.15 } }
         };
         var manifest = MeshMapBakeRun.Run(request, In("bake"), 0, null, TestContext.Current.CancellationToken);
         var normal = manifest.Result.Maps.Single(static map => map.Map == "normal");

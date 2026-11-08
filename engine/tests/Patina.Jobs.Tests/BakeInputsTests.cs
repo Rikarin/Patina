@@ -16,15 +16,18 @@ public sealed class BakeInputsTests : IDisposable {
     }
 
     BakeRequest Request() =>
-        new() { High = File("high.glb", "high"), Low = File("low.glb", "low"), Output = folder.FullName };
+        new() { High = [File("high.glb", "high")], Low = File("low.glb", "low"), Output = folder.FullName };
 
     static string Key(BakeRequest request) => BakeInputs.KeyOf(request, ToolCatalog.Default).Hex;
+
+    static BakeRequest With(BakeRequest request, Func<BakeOptions, BakeOptions> change) =>
+        request with { Options = change(request.Options) };
 
     /// <summary>The file's content is what counts, so moving a mesh does not rebake it.</summary>
     [Fact]
     public void Renaming_a_mesh_or_moving_the_output_keeps_the_key() {
         var request = Request();
-        var moved = request with { High = File("renamed.glb", "high"), Output = "/elsewhere", Name = "other" };
+        var moved = request with { High = [File("renamed.glb", "high")], Output = "/elsewhere", Name = "other" };
 
         Assert.Equal(Key(request), Key(moved));
     }
@@ -33,7 +36,7 @@ public sealed class BakeInputsTests : IDisposable {
     public void Changing_a_mesh_changes_the_key() {
         var request = Request();
 
-        Assert.NotEqual(Key(request), Key(request with { High = File("edited.glb", "high!") }));
+        Assert.NotEqual(Key(request), Key(request with { High = [File("edited.glb", "high!")] }));
     }
 
     /// <summary>A role is part of a file's meaning: the same two files the other way round is another bake.</summary>
@@ -41,7 +44,18 @@ public sealed class BakeInputsTests : IDisposable {
     public void Swapping_the_high_and_the_low_changes_the_key() {
         var request = Request();
 
-        Assert.NotEqual(Key(request), Key(request with { High = request.Low, Low = request.High }));
+        Assert.NotEqual(Key(request), Key(request with { High = [request.Low], Low = request.High[0] }));
+    }
+
+    /// <summary>A second high mesh is an input, and the order of the high meshes is part of the bake.</summary>
+    [Fact]
+    public void A_second_high_mesh_and_the_order_of_the_high_meshes_change_the_key() {
+        var request = Request();
+        var second = File("second.glb", "second");
+        var both = request with { High = [request.High[0], second] };
+
+        Assert.NotEqual(Key(request), Key(both));
+        Assert.NotEqual(Key(both), Key(request with { High = [second, request.High[0]] }));
     }
 
     /// <summary>Every setting that changes a pixel has to reach the key, or the cache serves the wrong bake.</summary>
@@ -50,28 +64,63 @@ public sealed class BakeInputsTests : IDisposable {
     [InlineData("maps")]
     [InlineData("format")]
     [InlineData("supersampling")]
-    [InlineData("rays")]
-    [InlineData("search")]
-    [InlineData("reach")]
-    [InlineData("skew")]
-    [InlineData("match")]
     [InlineData("gutter")]
     [InlineData("space")]
+    [InlineData("front")]
+    [InlineData("rear")]
+    [InlineData("units")]
+    [InlineData("backfaces")]
+    [InlineData("skew")]
+    [InlineData("match")]
+    [InlineData("suffix")]
+    [InlineData("rays")]
+    [InlineData("reach")]
+    [InlineData("spread")]
+    [InlineData("falloff")]
+    [InlineData("distribution")]
+    [InlineData("minimum")]
+    [InlineData("ao-backfaces")]
+    [InlineData("within-part")]
+    [InlineData("ground")]
+    [InlineData("ground-offset")]
+    [InlineData("thickness")]
+    [InlineData("height")]
+    [InlineData("id-source")]
+    [InlineData("id-palette")]
     public void Each_setting_is_in_the_key(string setting) {
         var request = Request();
-        var changed = setting switch {
-            "resolution" => request with { Resolution = 1024 },
-            "maps" => request with { Maps = ["ao"] },
-            "format" => request with { Format = BakeInputs.Exr32 },
-            "supersampling" => request with { Supersampling = 2 },
-            "rays" => request with { OcclusionRays = 8 },
-            "search" => request with { SearchRadius = 0.1 },
-            "reach" => request with { OcclusionRadius = 0.1 },
-            "skew" => request with { Skew = 0.5 },
-            "match" => request with { MatchByName = true },
-            "gutter" => request with { Gutter = 8 },
-            _ => request with { Space = "object" }
-        };
+        var changed = With(
+            request,
+            options => setting switch {
+                "resolution" => options with { Resolution = 1024 },
+                "maps" => options with { Maps = ["ao"] },
+                "format" => options with { Format = BakeInputs.Exr32 },
+                "supersampling" => options with { Supersampling = 2 },
+                "gutter" => options with { Gutter = 8 },
+                "space" => options with { Space = "object" },
+                "front" => options with { Rays = options.Rays with { Front = 0.1 } },
+                "rear" => options with { Rays = options.Rays with { Rear = 0.1 } },
+                "units" => options with { Rays = options.Rays with { Units = "absolute" } },
+                "backfaces" => options with { Rays = options.Rays with { IgnoreBackfaces = true } },
+                "skew" => options with { Rays = options.Rays with { Skew = 0.5 } },
+                "match" => options with { Rays = options.Rays with { MatchByName = true } },
+                "suffix" => options with { Rays = options.Rays with { LowSuffix = "_lp" } },
+                "rays" => options with { Occlusion = options.Occlusion with { Rays = 8 } },
+                "reach" => options with { Occlusion = options.Occlusion with { Distance = 0.1 } },
+                "spread" => options with { Occlusion = options.Occlusion with { Spread = 45 } },
+                "falloff" => options with { Occlusion = options.Occlusion with { Falloff = "smooth" } },
+                "distribution" => options with { Occlusion = options.Occlusion with { Distribution = "uniform" } },
+                "minimum" => options with { Occlusion = options.Occlusion with { Minimum = 0.01 } },
+                "ao-backfaces" => options with { Occlusion = options.Occlusion with { IgnoreBackfaces = true } },
+                "within-part" => options with { Occlusion = options.Occlusion with { WithinPart = true } },
+                "ground" => options with { Occlusion = options.Occlusion with { GroundPlane = true } },
+                "ground-offset" => options with { Occlusion = options.Occlusion with { GroundOffset = 0.2 } },
+                "thickness" => options with { Thickness = new() { Normalised = false } },
+                "height" => options with { Height = new() { Range = "rays" } },
+                "id-source" => options with { Id = options.Id with { Source = "mesh" } },
+                _ => options with { Id = options.Id with { Palette = "grey" } }
+            }
+        );
 
         Assert.NotEqual(Key(request), Key(changed));
     }
@@ -80,7 +129,10 @@ public sealed class BakeInputsTests : IDisposable {
     public void The_order_maps_are_asked_for_in_does_not_change_the_key() {
         var request = Request();
 
-        Assert.Equal(Key(request with { Maps = ["ao", "id"] }), Key(request with { Maps = ["id", "ao"] }));
+        Assert.Equal(
+            Key(With(request, options => options with { Maps = ["ao", "id"] })),
+            Key(With(request, options => options with { Maps = ["id", "ao"] }))
+        );
     }
 
     [Fact]
@@ -90,12 +142,59 @@ public sealed class BakeInputsTests : IDisposable {
         Assert.NotEqual(Key(request), Key(request with { Cage = File("cage.glb", "cage") }));
     }
 
+    /// <summary>The skew map's bytes are in the key, and where it lies is not.</summary>
+    [Fact]
+    public void A_skew_map_is_an_input_by_its_content() {
+        var request = Request();
+        var one = With(request, options => options with { Rays = options.Rays with { SkewMap = File("a.png", "a") } });
+        var moved = With(
+            request,
+            options => options with { Rays = options.Rays with { SkewMap = File("b.png", "a") } }
+        );
+        var other = With(
+            request,
+            options => options with { Rays = options.Rays with { SkewMap = File("c.png", "c") } }
+        );
+
+        Assert.NotEqual(Key(request), Key(one));
+        Assert.Equal(Key(one), Key(moved));
+        Assert.NotEqual(Key(one), Key(other));
+    }
+
     [Theory]
     [InlineData(8, "png16", "tangent")]
     [InlineData(2048, "tga", "tangent")]
     [InlineData(2048, "png16", "sideways")]
     public void A_bake_no_baker_can_do_is_refused(int resolution, string format, string space) {
-        var request = Request() with { Resolution = resolution, Format = format, Space = space };
+        var request = With(
+            Request(),
+            options => options with { Resolution = resolution, Format = format, Space = space }
+        );
+
+        Assert.Throws<BakeRefusedException>(() => BakeInputs.Check(request));
+    }
+
+    [Theory]
+    [InlineData("rays")]
+    [InlineData("units")]
+    [InlineData("spread")]
+    [InlineData("falloff")]
+    [InlineData("height")]
+    [InlineData("id")]
+    [InlineData("no-maps")]
+    public void A_map_setting_out_of_range_is_refused(string setting) {
+        var request = With(
+            Request(),
+            options => setting switch {
+                "rays" => options with { Rays = options.Rays with { Front = 0, Rear = 0 } },
+                "units" => options with { Rays = options.Rays with { Units = "metres" } },
+                "spread" => options with { Occlusion = options.Occlusion with { Spread = 120 } },
+                "falloff" => options with { Occlusion = options.Occlusion with { Falloff = "cubic" } },
+                "height" => options with { Height = new() { Range = "custom", Scale = 0 } },
+                "id" => options with { Id = options.Id with { Source = "uv" } },
+                _ => options with { Maps = [] }
+            }
+        );
 
         Assert.Throws<BakeRefusedException>(() => BakeInputs.Check(request));
     }
@@ -103,16 +202,31 @@ public sealed class BakeInputsTests : IDisposable {
     [Fact]
     public void An_unknown_map_is_refused_and_says_what_the_maps_are() {
         var refusal = Assert.Throws<BakeRefusedException>(() =>
-            BakeInputs.Check(Request() with { Maps = ["occlusion"] })
+            BakeInputs.Check(With(Request(), options => options with { Maps = ["occlusion"] }))
         );
 
         Assert.Contains("ao", refusal.Message, StringComparison.Ordinal);
     }
 
+    /// <summary>A client that leaves the options out, or a part of them, bakes with the defaults.</summary>
+    [Fact]
+    public void A_request_that_leaves_options_out_takes_the_defaults() {
+        var request = System.Text.Json.JsonSerializer.Deserialize(
+            """{ "high": ["a.glb"], "low": "b.glb", "output": "out", "options": { "rays": { "front": 0.2 } } }""",
+            ContractsJsonContext.Default.BakeRequest
+        )!;
+
+        Assert.Equal(0.2, request.Options.Rays.Front);
+        Assert.Equal(0.05, request.Options.Rays.Rear);
+        Assert.NotNull(request.Options.Occlusion);
+        Assert.Equal(new BakeOptions().Maps, request.Options.Maps);
+        Assert.Null(request.Options.Problem());
+    }
+
     [Fact]
     public void A_missing_file_is_named() {
         var refusal = Assert.Throws<FileNotFoundException>(() =>
-            BakeInputs.Check(Request() with { High = "/nowhere.glb" })
+            BakeInputs.Check(Request() with { High = ["/nowhere.glb"] })
         );
 
         Assert.Contains("/nowhere.glb", refusal.Message, StringComparison.Ordinal);

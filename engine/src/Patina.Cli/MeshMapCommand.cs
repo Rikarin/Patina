@@ -13,11 +13,23 @@ namespace Patina.Cli;
 /// </summary>
 internal static class MeshMapCommand {
     public const string Usage =
-        "  patina bake-maps --high <mesh> --low <mesh> --out <folder> [--cage <mesh>] [--resolution <n>]\n"
-        + "        [--maps ao,curvature,...] [--format png8|png16|exr16|exr32] [--supersampling <n>]\n"
-        + "        [--rays <n>] [--search <fraction>] [--reach <fraction>] [--skew <0-1>] [--skew-map <png>]\n"
-        + "        [--match-by-name] [--gutter <n>] [--space tangent|object] [--name <stem>]\n"
+        "  patina bake-maps --high <mesh> [--high <mesh>...] --low <mesh> --out <folder> [--cage <mesh>]\n"
+        + "        [--resolution <n>] [--maps normal,height,ao,curvature,...] [--format png8|png16|exr16|exr32]\n"
+        + "        [--supersampling <n>] [--gutter <n>] [--space tangent|object] [--name <stem>]\n"
+        + "        [--front <distance>] [--rear <distance>] [--units relative|absolute] [--ignore-backfaces]\n"
+        + "        [--skew <0-1>] [--skew-map <png>] [--match-by-name] [--low-suffix <s>] [--high-suffix <s>]\n"
+        + "        [--rays <n>] [--reach <distance>] [--ao-spread <degrees>] [--ao-falloff none|linear|smooth]\n"
+        + "        [--ao-distribution cosine|uniform] [--ao-minimum <distance>] [--ao-ignore-backfaces]\n"
+        + "        [--ao-within-part] [--ground-plane] [--ground-offset <distance>] [--thickness-raw]\n"
+        + "        [--height-range measured|rays|custom] [--height-scale <distance>]\n"
+        + "        [--id-source auto|material|material-colour|vertex-colour|mesh|shell]\n"
+        + "        [--id-palette random|hue|grey]\n"
         + "        [--threads <n>] [--cache <folder>]";
+
+    /// <summary>The options that take no value.</summary>
+    static readonly HashSet<string> Switches = [
+        "match-by-name", "ignore-backfaces", "ao-ignore-backfaces", "ao-within-part", "ground-plane", "thickness-raw"
+    ];
 
     public static int Run(string[] options) {
         BakeRequest request;
@@ -83,19 +95,30 @@ internal static class MeshMapCommand {
         };
     }
 
-    static BakeRequest Parse(string[] options, ref int threads, ref string? cache) {
+    /// <summary>The command line as named values, switches that are on, and the high meshes in order.</summary>
+    static (Dictionary<string, string> Named, HashSet<string> On, List<string> High) Scan(string[] options) {
         Dictionary<string, string> named = new(StringComparer.Ordinal);
-        var match = false;
+        HashSet<string> on = new(StringComparer.Ordinal);
+        List<string> high = [];
 
         for (var at = 0; at < options.Length; at++) {
-            if (options[at] == "--match-by-name") {
-                match = true;
-            } else if (options[at].StartsWith("--", StringComparison.Ordinal) && at + 1 < options.Length) {
-                named[options[at][2..]] = options[++at];
+            var option = options[at];
+            if (option.StartsWith("--", StringComparison.Ordinal) && Switches.Contains(option[2..])) {
+                on.Add(option[2..]);
+            } else if (option == "--high" && at + 1 < options.Length) {
+                high.Add(Path.GetFullPath(options[++at]));
+            } else if (option.StartsWith("--", StringComparison.Ordinal) && at + 1 < options.Length) {
+                named[option[2..]] = options[++at];
             } else {
-                throw new FormatException($"'{options[at]}' is not an option.\n{Usage}");
+                throw new FormatException($"'{option}' is not an option.\n{Usage}");
             }
         }
+
+        return (named, on, high);
+    }
+
+    static BakeRequest Parse(string[] options, ref int threads, ref string? cache) {
+        var (named, on, high) = Scan(options);
 
         string Required(string name) =>
             named.GetValueOrDefault(name) ?? throw new FormatException($"--{name} is required.\n{Usage}");
@@ -106,31 +129,61 @@ internal static class MeshMapCommand {
         double Fraction(string name, double fallback) =>
             named.TryGetValue(name, out var text) ? double.Parse(text, CultureInfo.InvariantCulture) : fallback;
 
+        string Word(string name, string fallback) => named.GetValueOrDefault(name, fallback);
+
         threads = Number("threads", 0);
         cache = named.GetValueOrDefault("cache");
 
+        if (high.Count == 0) {
+            throw new FormatException($"--high is required.\n{Usage}");
+        }
+
+        // The command line's default is the two maps every bake measures, as it always was: a farm asks for more.
         var maps = named.GetValueOrDefault("maps") is { } list
             ? list.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            : null;
+            : ["normal", "height"];
+        var front = Fraction("front", 0.05);
 
         return new() {
-            High = Path.GetFullPath(Required("high")),
+            High = high,
             Low = Path.GetFullPath(Required("low")),
             Output = Path.GetFullPath(Required("out")),
             Cage = named.GetValueOrDefault("cage") is { } cage ? Path.GetFullPath(cage) : null,
-            Resolution = Number("resolution", 2048),
-            Maps = maps,
-            Format = named.GetValueOrDefault("format", "png16"),
-            Supersampling = Number("supersampling", 1),
-            OcclusionRays = Number("rays", 64),
-            SearchRadius = Fraction("search", 0.05),
-            OcclusionRadius = Fraction("reach", 0.5),
-            Skew = Fraction("skew", 0),
-            SkewMap = named.GetValueOrDefault("skew-map") is { } skew ? Path.GetFullPath(skew) : null,
-            MatchByName = match,
-            Gutter = Number("gutter", 4),
-            Space = named.GetValueOrDefault("space", "tangent"),
-            Name = named.GetValueOrDefault("name")
+            Name = named.GetValueOrDefault("name"),
+            Options = new() {
+                Resolution = Number("resolution", 2048),
+                Maps = maps,
+                Format = Word("format", "png16"),
+                Supersampling = Number("supersampling", 1),
+                Gutter = Number("gutter", 4),
+                Space = Word("space", "tangent"),
+                Rays = new() {
+                    Front = front,
+                    Rear = Fraction("rear", front),
+                    Units = Word("units", "relative"),
+                    IgnoreBackfaces = on.Contains("ignore-backfaces"),
+                    Skew = Fraction("skew", 0),
+                    SkewMap = named.GetValueOrDefault("skew-map") is { } skew ? Path.GetFullPath(skew) : string.Empty,
+                    MatchByName = on.Contains("match-by-name"),
+                    LowSuffix = Word("low-suffix", "_low"),
+                    HighSuffix = Word("high-suffix", "_high")
+                },
+                Occlusion = new() {
+                    Rays = Number("rays", 64),
+                    Distance = Fraction("reach", 0.5),
+                    Spread = Fraction("ao-spread", 90),
+                    Falloff = Word("ao-falloff", "none"),
+                    Distribution = Word("ao-distribution", "cosine"),
+                    Minimum = Fraction("ao-minimum", 0),
+                    IgnoreBackfaces = on.Contains("ao-ignore-backfaces"),
+                    WithinPart = on.Contains("ao-within-part"),
+                    GroundPlane = on.Contains("ground-plane"),
+                    GroundOffset = Fraction("ground-offset", 0)
+                },
+                Thickness = new() { Normalised = !on.Contains("thickness-raw") },
+                Height = new() { Range = Word("height-range", "measured"), Scale = Fraction("height-scale", 0.05) },
+                Id = new() { Source = Word("id-source", "auto"), Palette = Word("id-palette", "random") }
+            }
         };
     }
 }

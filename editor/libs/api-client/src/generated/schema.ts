@@ -555,6 +555,23 @@ export interface paths {
     patch: operations['SetDocumentMesh'];
     trace?: never;
   };
+  '/api/v1/library/project/bake': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Keeps how a project's bakes run, which texture sets they make maps for and the files they read beyond its mesh, in the project's own file. */
+    put: operations['SetProjectBake'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/project/document/role': {
     parameters: {
       query?: never;
@@ -1509,31 +1526,78 @@ export interface components {
        */
       scale: number;
     };
+    /** @description The height map's stored range. */
+    BakeHeightOptions: {
+      /**
+       * @description `measured`, the largest height found; `rays`, the longer ray distance; or `custom`,
+       *                 double BakeHeightOptions.Scale. The last two are the same for every bake made with them, so their maps agree.
+       */
+      range: string;
+      /**
+       * Format: double
+       * @description The range for `custom`, in the rays' units.
+       */
+      scale: number;
+    };
+    /** @description What an ID map labels, and how it colours the labels. */
+    BakeIdOptions: {
+      /**
+       * @description `auto`: vertex colours, else materials when there are several, else connected shells. Or one of
+       *                 `material`, `material-colour` (each material's base colour), `vertex-colour`, `mesh`
+       *                 (each named part) and `shell`.
+       */
+      source: string;
+      /** @description How labels become colours: `random`, `hue` or `grey`. Colours stay colours. */
+      palette: string;
+    };
+    /** @description The occlusion rays, which ambient occlusion, the bent normal and thickness share. */
+    BakeOcclusionOptions: {
+      /**
+       * Format: int32
+       * @description How many rays a texel's occlusion is estimated with.
+       */
+      rays: number;
+      /**
+       * Format: double
+       * @description How far an occluder counts, in the rays' units.
+       */
+      distance: number;
+      /**
+       * Format: double
+       * @description The half-angle of the cone the rays fill, in degrees: 90 is the hemisphere.
+       */
+      spread: number;
+      /** @description How an occluder counts for less further away: `none`, `linear` or `smooth`. */
+      falloff: string;
+      /** @description How the rays are spread: `cosine` or `uniform`. */
+      distribution: string;
+      /**
+       * Format: double
+       * @description How near an occluder may be and not count, in the rays' units.
+       */
+      minimum: number;
+      /** @description Whether a ray passes through the back of a face. */
+      ignoreBackfaces: boolean;
+      /** @description Whether only the texel's own part occludes it, when parts are matched by name. */
+      withinPart: boolean;
+      /** @description Whether a floor under the high mesh occludes too. Y is up. */
+      groundPlane: boolean;
+      /**
+       * Format: double
+       * @description How far above the high mesh's lowest point the floor is, in the rays' units.
+       */
+      groundOffset: number;
+    };
     /**
-     * @description A high-to-low bake. Everything is a path on the Server's machine, and the results are files there: a client
-     *     sends paths and gets paths, whichever client it is (plan §8).
+     * @description How a bake runs, with no meshes in it: what a project keeps between bakes and every client sends. Each map's
+     *     own settings are a part of their own.
      */
-    BakeRequest: {
-      /** @description The detailed mesh. */
-      high: string;
-      /** @description The mesh baked onto, which must have texture coordinates. */
-      low: string;
-      /** @description The folder the maps are written to. */
-      output: string;
-      /** @description A mesh with the low mesh's faces, moved outward, which the rays start from. */
-      cage?: null | string;
+    BakeOptions: {
       /**
        * Format: int32
        * @description The atlas's edge, in texels.
        */
       resolution: number;
-      /** @description The material of the low mesh to bake, for one texture set of a model that has several. */
-      material?: null | string;
-      /**
-       * @description What to bake beyond `normal` and `height`, which are always baked: `ao`, `bent`,
-       *     `curvature`, `thickness`, `position`, `world`, `id`.
-       */
-      maps?: null | string[];
       /** @description `png8`, `png16`, `exr16` or `exr32`. */
       format: string;
       /**
@@ -1543,37 +1607,79 @@ export interface components {
       supersampling: number;
       /**
        * Format: int32
-       * @description How many rays a texel's occlusion is estimated with.
+       * @description How many texels of dilation surround each chart.
        */
-      occlusionRays: number;
+      gutter: number;
+      /**
+       * @description Which maps to write: `normal`, `height`, `ao`, `bent`, `curvature`,
+       *     `thickness`, `position`, `world`, `id`. The default is what a project's masks read.
+       */
+      maps: string[];
+      /** @description The frame of the normal and bent normal maps: `tangent` or `object`. */
+      space: string;
+      /** @description How far the rays look and what they may strike, which every map rests on. */
+      rays: components['schemas']['BakeRayOptions'];
+      /** @description The height map's range. */
+      height: components['schemas']['BakeHeightOptions'];
+      /** @description The occlusion rays, which ambient occlusion, the bent normal and thickness share. */
+      occlusion: components['schemas']['BakeOcclusionOptions'];
+      /** @description The thickness map's own settings. */
+      thickness: components['schemas']['BakeThicknessOptions'];
+      /** @description What the ID map labels and how it colours them. */
+      id: components['schemas']['BakeIdOptions'];
+    };
+    /** @description How far a bake's rays look from the low mesh, and what they may strike. */
+    BakeRayOptions: {
       /**
        * Format: double
-       * @description How far a ray looks, as a fraction of the high mesh's diagonal.
+       * @description How far a ray looks outward, in front of the low mesh.
        */
-      searchRadius: number;
+      front: number;
       /**
        * Format: double
-       * @description How far an occluder counts, as a fraction of the diagonal.
+       * @description How far a ray looks inward, behind the low mesh, or past it from a cage.
        */
-      occlusionRadius: number;
+      rear: number;
+      /**
+       * @description What the distances here and in BakeOcclusionOptions are in: `relative`, fractions of the
+       *     high mesh's bounding-box diagonal, or `absolute`, the model's own units.
+       */
+      units: string;
+      /** @description Whether a ray passes through a high face turned away from the low mesh's facing. */
+      ignoreBackfaces: boolean;
       /**
        * Format: double
        * @description How far rays lean from the smoothed direction towards the low mesh's own normal, 0 to 1.
        */
       skew: number;
-      /** @description A grey image saying where to apply the skew, or null for everywhere. */
-      skewMap?: null | string;
+      /** @description A grey image saying where to apply the skew, or empty for everywhere. */
+      skewMap: string;
       /** @description Whether a part of the low mesh only strikes the high part of the same name. */
       matchByName: boolean;
-      /**
-       * Format: int32
-       * @description How many texels of dilation surround each chart.
-       */
-      gutter: number;
-      /** @description `tangent` or `object`. */
-      space: string;
+      /** @description What a low part's name ends in, which matching by name takes off. */
+      lowSuffix: string;
+      /** @description What a high part's name ends in, which matching by name takes off. */
+      highSuffix: string;
+    };
+    /**
+     * @description A high-to-low bake. Everything is a path on the Server's machine, and the results are files there: a client
+     *     sends paths and gets paths, whichever client it is (plan §8).
+     */
+    BakeRequest: {
+      /** @description The detailed meshes, in order: one is usual, and a model split across files lists them all. */
+      high: string[];
+      /** @description The mesh baked onto, which must have texture coordinates. */
+      low: string;
+      /** @description The folder the maps are written to. */
+      output: string;
+      /** @description A mesh with the low mesh's faces, moved outward, which the rays start from. */
+      cage?: null | string;
+      /** @description The material of the low mesh to bake, for one texture set of a model that has several. */
+      material?: null | string;
       /** @description The stem of each file's name, or null for the low mesh's. */
       name?: null | string;
+      /** @description What to bake and how: the part a project keeps between bakes. */
+      options: components['schemas']['BakeOptions'];
     };
     /** @description What a finished bake made. */
     BakeResult: {
@@ -1593,6 +1699,13 @@ export interface components {
       warnings: string[];
       /** @description Whether this was found in the cache and nothing ran. */
       cached: boolean;
+      /** @description What the bake read and found, line by line: the meshes, each part's match, the time it took. */
+      log: string[];
+    };
+    /** @description The thickness map's own settings. */
+    BakeThicknessOptions: {
+      /** @description Whether the map is divided by its largest value, so the thickest texel reads white. */
+      normalised: boolean;
     };
     /**
      * @description What a build would do, from the build keys and with nothing run. int BuildPreview.Rebuilds and
@@ -3003,6 +3116,27 @@ export interface components {
       detail?: null | string;
       instance?: null | string;
     };
+    /** @description The body of `PUT /api/v1/library/project/bake`. */
+    ProjectBakeRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /** @description Its bake settings from now on. */
+      bake: components['schemas']['ProjectBakeSettings'];
+    };
+    /**
+     * @description What a project keeps about baking, in its own file: the options, which texture sets to bake, and the files
+     *     beyond the project's mesh that a bake reads.
+     */
+    ProjectBakeSettings: {
+      /** @description How its bakes run. */
+      options: components['schemas']['BakeOptions'];
+      /** @description The texture sets a bake makes maps for, by material; empty is all of them. */
+      sets: string[];
+      /** @description Detailed meshes after the mesh's own, in order, as paths on the Server's machine. */
+      high: string[];
+      /** @description A cage, as a path on the Server's machine, or empty for none. */
+      cage: string;
+    };
     /** @description A project as it opens. */
     ProjectContents: {
       /**
@@ -3036,6 +3170,8 @@ export interface components {
       preservePaint: boolean;
       /** @description How Auto Unwrap lays a mesh out. */
       unwrap: components['schemas']['UnwrapOptions'];
+      /** @description How its bakes run, which texture sets they make maps for, and what they read beyond its mesh. */
+      bake: components['schemas']['ProjectBakeSettings'];
     };
     /** @description The body of `POST /api/v1/library/projects`. */
     ProjectCreateRequest: {
@@ -6224,6 +6360,57 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': components['schemas']['ProjectDocumentMeshRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetProjectBake: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectBakeRequest'];
       };
     };
     responses: {
