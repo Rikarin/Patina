@@ -74,6 +74,9 @@ test('a bake runs from the panel and its maps show in the Texture pane', async (
 });
 
 test('a bake can be judged on its low mesh in the viewport, with a cage and a skew map through the panel', async () => {
+  // The same bake as the one above, every map the project's masks read at 2048, so the same limits: on CI's
+  // software Vulkan runner it ran out of 120 s twice while the one above, given minutes, did not.
+  test.setTimeout(300_000);
   const output = join(scratch, 'maps');
   const low = join(scratch, 'meshes', 'housing_low.glb');
   const skew = join(scratch, 'skew.png');
@@ -93,7 +96,7 @@ test('a bake can be judged on its low mesh in the viewport, with a cage and a sk
   await choose('skewMap', skew);
   await choose('output', output);
   await window.getByTestId('bake-start').click();
-  await expect(window.getByTestId('bake-state')).toHaveText('Done', { timeout: 120_000 });
+  await expect(window.getByTestId('bake-state')).toHaveText('Done', { timeout: 240_000 });
 
   const frames = () =>
     window
