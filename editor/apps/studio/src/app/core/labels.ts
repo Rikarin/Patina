@@ -60,3 +60,20 @@ export function jobStateName(state: string): string {
 export function imageFormatName(format: string): string {
   return ImageFormats[format] ?? format;
 }
+
+const BakeMaps: Readonly<Record<string, string>> = {
+  normal: 'Normal',
+  height: 'Height',
+  ao: 'Ambient Occlusion',
+  bent: 'Bent Normal',
+  curvature: 'Curvature',
+  thickness: 'Thickness',
+  position: 'Position',
+  world: 'World Space Normal',
+  id: 'ID'
+};
+
+/** What a baked map is called, from the name its file carries. */
+export function bakeMapName(map: string): string {
+  return BakeMaps[map] ?? map;
+}

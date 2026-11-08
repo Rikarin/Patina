@@ -52,6 +52,10 @@ export type GraphEditResult = components['schemas']['GraphEditResult'];
 export type GraphEvent = components['schemas']['GraphEvent'];
 
 export type BakeRequest = components['schemas']['BakeRequest'];
+export type BakeOptions = components['schemas']['BakeOptions'];
+export type BakeRayOptions = components['schemas']['BakeRayOptions'];
+export type BakeOcclusionOptions = components['schemas']['BakeOcclusionOptions'];
+export type ProjectBakeSettings = components['schemas']['ProjectBakeSettings'];
 export type BakeResult = components['schemas']['BakeResult'];
 export type BakedMapFile = components['schemas']['BakedMapFile'];
 export type JobPage = components['schemas']['JobPage'];

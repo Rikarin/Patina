@@ -111,7 +111,7 @@ function harness() {
     providers: [
       { provide: PaintStore, useValue: paint },
       { provide: GraphStore, useValue: graph },
-      { provide: BakeStore, useValue: { viewportChanged: signal(0), current: signal(null) } },
+      { provide: BakeStore, useValue: { viewportChanged: signal(0), current: signal(null), batch: signal([]) } },
       { provide: SystemStatus, useValue: { state: signal({ kind: 'connecting' }) } },
       {
         provide: LibraryStore,

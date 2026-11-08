@@ -124,14 +124,15 @@ public sealed partial class StackProcessTests {
 
         BakeRequest Baking(double reach) =>
             new() {
-                High = Path.Combine(meshes, BakeFixture.HighFile),
+                High = [Path.Combine(meshes, BakeFixture.HighFile)],
                 Low = low,
                 Output = bakes,
-                Resolution = ExportSide,
-                Maps = ["ao"],
-                Format = "png16",
-                OcclusionRays = 16,
-                OcclusionRadius = reach
+                Options = new() {
+                    Resolution = ExportSide,
+                    Maps = ["normal", "height", "ao"],
+                    Format = "png16",
+                    Occlusion = new() { Rays = 16, Distance = reach }
+                }
             };
 
         await BakeAsync(Baking(2), deadline.Token);
@@ -339,13 +340,15 @@ public sealed partial class StackProcessTests {
         var low = Path.Combine(Library, "projects", project, "two.obj");
         await BakeAsync(
             new() {
-                High = low,
+                High = [low],
                 Low = low,
                 Material = "Body",
                 Output = Path.Combine(Library, "projects", project, "bakes", "maps", "Body"),
-                Resolution = ExportSide,
-                Maps = ["ao"],
-                OcclusionRays = 4
+                Options = new() {
+                    Resolution = ExportSide,
+                    Maps = ["normal", "height", "ao"],
+                    Occlusion = new() { Rays = 4 }
+                }
             },
             deadline.Token
         );
@@ -458,13 +461,15 @@ public sealed partial class StackProcessTests {
         var bakes = Path.Combine(Library, "projects", project, "bakes", "maps");
         await BakeAsync(
             new() {
-                High = Path.Combine(meshes, BakeFixture.HighFile),
+                High = [Path.Combine(meshes, BakeFixture.HighFile)],
                 Low = Path.Combine(Library, "projects", project, BakeFixture.LowFile),
                 Output = bakes,
-                Resolution = ExportSide,
-                Maps = ["ao"],
-                Format = "png16",
-                OcclusionRays = 16
+                Options = new() {
+                    Resolution = ExportSide,
+                    Maps = ["normal", "height", "ao"],
+                    Format = "png16",
+                    Occlusion = new() { Rays = 16 }
+                }
             },
             deadline.Token
         );

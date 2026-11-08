@@ -51,7 +51,12 @@ static class ProjectFiles {
                 ..files.Where(IsPicture)
                     .Select(f => new ProjectFile("picture", Path.GetFileName(f), Below(path, f)))
             ]
-        ) { AutoUnwrap = document.AutoUnwrap, PreservePaint = document.PreservePaint, Unwrap = document.Unwrap };
+        ) {
+            AutoUnwrap = document.AutoUnwrap,
+            PreservePaint = document.PreservePaint,
+            Unwrap = document.Unwrap,
+            Bake = document.Bake ?? new()
+        };
     }
 
     /// <summary>Brings a mesh into a project, unless it is in there already, and lists it.</summary>
@@ -266,6 +271,12 @@ static class ProjectFiles {
                 Unwrap = unwrap ?? document.Unwrap
             }
         );
+    }
+
+    /// <summary>Keeps how a project's bakes run, in its own file.</summary>
+    public static void SetBake(string root, string path, ProjectBakeSettings bake) {
+        var (_, document) = Project(root, path);
+        LibraryFiles.WriteProject(root, path, document with { Bake = bake });
     }
 
     /// <summary>Puts a texturing document on another mesh.</summary>

@@ -6,7 +6,7 @@ namespace Patina.Jobs.Tests;
 
 /// <summary>The queue on its own: what survives a Worker and a Server is decided here.</summary>
 public sealed class JobQueueTests : IDisposable {
-    static readonly BakeRequest Bake = new() { High = "high.glb", Low = "low.glb", Output = "out" };
+    static readonly BakeRequest Bake = new() { High = ["high.glb"], Low = "low.glb", Output = "out" };
     static readonly BakeResult Made = new([new("normal", "normal.png", 64, 0)], 10, 0, [], false);
 
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-jobs-");
@@ -234,11 +234,11 @@ public sealed class JobQueueTests : IDisposable {
     [Fact]
     public void A_job_on_disk_is_the_whole_job() {
         var queue = Open();
-        var job = queue.Enqueue("a", Bake with { Resolution = 512 });
+        var job = queue.Enqueue("a", Bake with { Options = new() { Resolution = 512 } });
         var text = File.ReadAllBytes(Path.Combine(folder.FullName, $"{job.Id}.json"));
         var read = JsonSerializer.Deserialize(text, ContractsJsonContext.Default.JobState)!;
 
-        Assert.Equal(512, read.Bake!.Resolution);
+        Assert.Equal(512, read.Bake!.Options.Resolution);
         Assert.Equal("a", read.Key);
     }
 

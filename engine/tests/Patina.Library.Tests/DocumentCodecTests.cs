@@ -1,4 +1,6 @@
 using CsCheck;
+using Patina.Contracts;
+using System.Text.Json;
 using YamlDotNet.RepresentationModel;
 
 namespace Patina.Library.Tests;
@@ -206,6 +208,78 @@ public sealed class DocumentCodecTests {
              """,
             DocumentCodec.Write(project)
         );
+    }
+
+    static readonly Gen<ProjectBakeSettings> Bakes = Gen.Select(
+            Text,
+            Text,
+            Gen.Double[0, 10],
+            Gen.Bool,
+            Gen.Int[16, 4096],
+            Gen.OneOfConst("measured", "rays", "custom"),
+            Text.Array[0, 3]
+        )
+        .Select(static t => new ProjectBakeSettings {
+                Cage = t.Item1,
+                High = t.Item7,
+                Sets = [t.Item2],
+                Options = new() {
+                    Resolution = t.Item5,
+                    Maps = ["ao", "id"],
+                    Rays = new() { Front = t.Item3 + 0.01, LowSuffix = t.Item2, IgnoreBackfaces = t.Item4 },
+                    Occlusion = new() { Spread = 1 + t.Item3 * 8, GroundPlane = !t.Item4 },
+                    Height = new() { Range = t.Item6, Scale = t.Item3 + 0.1 },
+                    Thickness = new() { Normalised = t.Item4 },
+                    Id = new() { Source = "mesh", Palette = "grey" }
+                }
+            }
+        );
+
+    static string Json(ProjectBakeSettings? bake) =>
+        JsonSerializer.Serialize(bake, LibraryTreeJsonContext.Default.ProjectBakeSettings!);
+
+    /// <summary>
+    ///     A project's bake settings live in its own file, so they survive a restart, a copy and a Git checkout, and they
+    ///     come back as they went in, every member of every map's settings with them.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Property")]
+    public void A_projects_bake_settings_survive_the_round_trip() =>
+        Bakes.Sample(static bake => {
+                var project = TestLibrary.Project("Crate") with { Bake = bake };
+                var text = DocumentCodec.Write(project);
+                var read = DocumentCodec.ReadProject(text, File);
+
+                Assert.Empty(read.UnknownKeys);
+                Assert.Equal(Json(bake), Json(read.Document.Bake));
+                Assert.Equal(text, DocumentCodec.Write(read.Document));
+            }
+        );
+
+    /// <summary>A project with no bake settings writes none, and reads back as having none.</summary>
+    [Fact]
+    public void A_project_with_no_bake_settings_writes_none() {
+        var text = DocumentCodec.Write(TestLibrary.Project("Crate"));
+
+        Assert.DoesNotContain("bake:", text, StringComparison.Ordinal);
+        Assert.Null(DocumentCodec.ReadProject(text, File).Document.Bake);
+    }
+
+    /// <summary>A setting a bake cannot use is refused when the file is read, and a key nobody knows is reported.</summary>
+    [Fact]
+    public void A_wrong_bake_setting_is_refused_and_an_unknown_one_reported() {
+        var text = DocumentCodec.Write(TestLibrary.Project("Crate") with { Bake = new() });
+
+        var wrong = text.Replace("spread: 90", "spread: 400", StringComparison.Ordinal);
+        Assert.NotEqual(text, wrong);
+        Assert.Contains("spread", Assert.Throws<LibraryFormatException>(() => DocumentCodec.ReadProject(wrong, File)).Message,
+            StringComparison.Ordinal);
+
+        var typed = text.Replace("gutter: 4", "gutter: four", StringComparison.Ordinal);
+        Assert.Throws<LibraryFormatException>(() => DocumentCodec.ReadProject(typed, File));
+
+        var unknown = text.Replace("    gutter: 4", "    gutter: 4\n    future: 1", StringComparison.Ordinal);
+        Assert.Contains("bake.options.future", DocumentCodec.ReadProject(unknown, File).UnknownKeys);
     }
 
     [Fact]

@@ -4,7 +4,7 @@ import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
 import { BakeStore, jobSocketUrl } from './bake-store';
 
-const bake = { high: '/m/high.glb', low: '/m/low.glb', output: '/out' };
+const bake = { high: ['/m/high.glb'], low: '/m/low.glb', output: '/out', options: { resolution: 2048 } };
 
 function job(overrides: Partial<JobState> = {}): JobState {
   return {
@@ -84,6 +84,29 @@ describe('BakeStore', () => {
     speak(sockets[0], { sequence: 8, job: job({ progress: 0.5 }) });
 
     expect(store.current()?.progress).toBe(0.5);
+  });
+
+  it('starts a job per texture set and follows the first still going, then the last', async () => {
+    let made = 0;
+    const { store, sockets } = setup({
+      ...empty,
+      'POST jobs/bakes': () => Response.json(job({ id: `j${++made}`, state: 'queued' }), { status: 202 })
+    });
+    await settled();
+
+    const jobs = await store.startAll([bake, bake] as never);
+
+    expect(jobs.map(started => started.id)).toEqual(['j1', 'j2']);
+    expect(store.batch().map(started => started.id)).toEqual(['j1', 'j2']);
+    expect(store.current()?.id).toBe('j1');
+    expect(store.busy()).toBe(true);
+
+    speak(sockets[0], { sequence: 8, job: job({ id: 'j1', state: 'done', progress: 1 }) });
+    expect(store.current()?.id).toBe('j2');
+
+    speak(sockets[0], { sequence: 9, job: job({ id: 'j2', state: 'done', progress: 1 }) });
+    expect(store.current()?.id).toBe('j2');
+    expect(store.busy()).toBe(false);
   });
 
   it('keeps following a job another client started without taking the panel over', async () => {

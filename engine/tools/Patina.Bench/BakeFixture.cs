@@ -487,15 +487,16 @@ public static class BakeFixture {
         }
 
         var request = new BakeRequest {
-            High = high,
+            High = [high],
             Low = low,
             Output = folder,
-            Resolution = resolution,
-            Maps = ["ao"],
-            Format = BakeInputs.Png8,
-            OcclusionRays = rays,
-            SearchRadius = 0.2,
-            OcclusionRadius = reach
+            Options = new() {
+                Resolution = resolution,
+                Maps = ["ao"],
+                Format = BakeInputs.Png8,
+                Occlusion = new() { Rays = rays, Distance = reach },
+                Rays = new() { Front = 0.2, Rear = 0.2 }
+            }
         };
 
         var clock = Stopwatch.StartNew();

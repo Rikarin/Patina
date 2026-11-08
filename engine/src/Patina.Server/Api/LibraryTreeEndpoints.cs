@@ -80,6 +80,13 @@ static class LibraryTreeEndpoints {
         library.MapPatch("/project/document", SetDocumentMesh)
             .Described("SetDocumentMesh", "Puts a texturing document on another mesh of its project.");
 
+        library.MapPut("/project/bake", SetBake)
+            .Described(
+                "SetProjectBake",
+                "Keeps how a project's bakes run, which texture sets they make maps for and the files they read beyond its "
+                + "mesh, in the project's own file."
+            );
+
         library.MapPatch("/project/document/role", SetDocumentRole)
             .Described("SetDocumentRole", "Says what a graph is for: a material, a mask, a brush or a filter.");
 
@@ -310,6 +317,18 @@ static class LibraryTreeEndpoints {
                 return TypedResults.Ok(contents);
             }
         );
+
+    static Results<Ok<ProjectContents>, ProblemHttpResult> SetBake(LibraryHost host, ProjectBakeRequest request) =>
+        request.Bake.Options.Problem() is { } problem
+            ? TypedResults.Problem(problem, statusCode: StatusCodes.Status400BadRequest)
+            : Guarded(
+                host,
+                library => {
+                    library.SetBake(request.Project, request.Bake);
+                    host.RequestRescan();
+                    return TypedResults.Ok(library.Contents(request.Project));
+                }
+            );
 
     static Results<Ok<ProjectContents>, ProblemHttpResult> SetDocumentRole(
         LibraryHost host,

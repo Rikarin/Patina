@@ -36,15 +36,19 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
 
     BakeRequest Request(string format = BakeInputs.Png16) =>
         new() {
-            High = pair.High,
+            High = [pair.High],
             Low = pair.Low,
             Output = folder.FullName,
-            Resolution = 128,
-            Format = format,
-            SearchRadius = 0.05,
-            Maps = ["ao"],
-            OcclusionRays = 8
+            Options = new() {
+                Resolution = 128,
+                Format = format,
+                Maps = ["normal", "height", "ao"],
+                Occlusion = new() { Rays = 8 }
+            }
         };
+
+    static BakeRequest With(BakeRequest request, Func<BakeOptions, BakeOptions> change) =>
+        request with { Options = change(request.Options) };
 
     /// <summary>A skew map took a PNG only, and the dialog offered more, so the rest failed after queueing.</summary>
     [Theory]
@@ -64,7 +68,7 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
         );
 
         var manifest = MeshMapBakeRun.Run(
-            Request() with { Skew = 0.5, SkewMap = map },
+            With(Request(), options => options with { Rays = options.Rays with { Skew = 0.5, SkewMap = map } }),
             Into("baked"),
             0,
             null,
@@ -118,7 +122,7 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
         File.WriteAllText(low, TwoTiles);
 
         var refused = Assert.Throws<InvalidDataException>(() => MeshMapBakeRun.Run(
-                Request() with { High = low, Low = low },
+                Request() with { High = [low], Low = low },
                 Into("baked"),
                 0,
                 null,
@@ -142,7 +146,7 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
         Assert.Equal(6, MeshMapBakeRun.Read(low, "Strap").Mesh.CornerCount);
 
         var manifest = MeshMapBakeRun.Run(
-            Request() with { High = low, Low = low, Cage = cage, Material = "Strap" },
+            Request() with { High = [low], Low = low, Cage = cage, Material = "Strap" },
             Into("baked"),
             0,
             null,
@@ -206,7 +210,7 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
     [Fact]
     public void A_sixteen_bit_map_has_more_than_256_levels() {
         var manifest = MeshMapBakeRun.Run(
-            Request() with { Resolution = 256 },
+            With(Request(), static options => options with { Resolution = 256 }),
             Into("bake"),
             0,
             null,
@@ -241,7 +245,7 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
 
         Assert.ThrowsAny<OperationCanceledException>(() =>
             MeshMapBakeRun.Run(
-                Request() with { Resolution = 512, OcclusionRays = 64 },
+                With(Request(), static options => options with { Resolution = 512, Occlusion = new() { Rays = 64 } }),
                 Into("bake"),
                 0,
                 fraction => {
@@ -261,7 +265,13 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
     public void Matching_by_name_keeps_the_strap_out_of_the_body_and_it_shows() {
         BakeManifest Bake(bool match, string name) =>
             MeshMapBakeRun.Run(
-                Request() with { MatchByName = match, SearchRadius = 0.2, Maps = null },
+                With(
+                    Request(),
+                    options => options with {
+                        Rays = options.Rays with { MatchByName = match, Front = 0.2, Rear = 0.2 },
+                        Maps = ["normal", "height"]
+                    }
+                ),
                 Into(name),
                 0,
                 null,
@@ -282,6 +292,113 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
         }
 
         Assert.True(changed > 100, $"Matching changed {changed} samples.");
+    }
+
+    /// <summary>
+    ///     A bake wrote the normal and the height whatever it was asked for, so a bake of an AO map left a normal map in
+    ///     the project. Only the maps asked for are written now.
+    /// </summary>
+    [Fact]
+    public void Only_the_maps_asked_for_are_written() {
+        var manifest = MeshMapBakeRun.Run(
+            With(Request(), static options => options with { Maps = ["ao"] }),
+            Into("bake"),
+            0,
+            null,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(["ao"], manifest.Result.Maps.Select(static map => map.Map));
+        Assert.False(File.Exists(Path.Combine(Into("bake"), "normal.png")));
+    }
+
+    /// <summary>The log names the meshes, each part's match by name, and the time, so a wrong match can be found.</summary>
+    [Fact]
+    public void The_log_says_what_was_read_and_how_each_part_matched() {
+        var manifest = MeshMapBakeRun.Run(
+            With(Request(), static options => options with { Rays = options.Rays with { MatchByName = true } }),
+            Into("bake"),
+            0,
+            null,
+            TestContext.Current.CancellationToken
+        );
+        var log = manifest.Result.Log;
+
+        Assert.Contains(log, static line => line.StartsWith("High: housing_high.glb", StringComparison.Ordinal));
+        Assert.Contains(log, static line => line.StartsWith("Low: housing_low.glb", StringComparison.Ordinal));
+        Assert.Contains(log, static line => line.StartsWith("Part strap:", StringComparison.Ordinal)
+            && line.Contains("strike only", StringComparison.Ordinal));
+        Assert.Contains(log, static line => line.StartsWith("Baked in", StringComparison.Ordinal));
+    }
+
+    /// <summary>A studio's own endings: with the high meshes ending otherwise, nothing matches, and the log says so.</summary>
+    [Fact]
+    public void Name_endings_are_the_ones_the_bake_is_given() {
+        var manifest = MeshMapBakeRun.Run(
+            With(
+                Request(),
+                static options => options with { Rays = options.Rays with { MatchByName = true, HighSuffix = "_hp" } }
+            ),
+            Into("bake"),
+            0,
+            null,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Contains(manifest.Result.Log, static line => line.StartsWith("Part strap: matched no high part", StringComparison.Ordinal));
+        Assert.Contains(manifest.Result.Log, static line => line.Contains("strap_high", StringComparison.Ordinal));
+    }
+
+    /// <summary>Several high files bake as one, in order.</summary>
+    [Fact]
+    public void Several_high_meshes_bake_as_one() {
+        var second = Into("second.glb");
+        File.Copy(pair.High, second);
+
+        var one = MeshMapBakeRun.Run(Request(), Into("one"), 0, null, TestContext.Current.CancellationToken);
+        var two = MeshMapBakeRun.Run(
+            Request() with { High = [pair.High, second] },
+            Into("two"),
+            0,
+            null,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Contains(two.Result.Log, static line => line.StartsWith("High: housing_high.glb, second.glb", StringComparison.Ordinal));
+        Assert.Equal(one.Result.Covered, two.Result.Covered);
+    }
+
+    /// <summary>
+    ///     The fixture's high mesh has one material and two parts. Its ID map was one flat colour, every part lost; by
+    ///     mesh and by shell it has the parts, and by material it is still the one colour asked for.
+    /// </summary>
+    [Theory]
+    [InlineData("auto", 2)]
+    [InlineData("mesh", 2)]
+    [InlineData("shell", 2)]
+    [InlineData("material", 1)]
+    [InlineData("material-colour", 1)]
+    public void The_id_source_decides_what_the_id_map_tells_apart(string source, int colours) {
+        MeshMapBakeRun.Run(
+            With(Request(), options => options with { Maps = ["id"], Id = new() { Source = source } }),
+            Into("bake"),
+            0,
+            null,
+            TestContext.Current.CancellationToken
+        );
+        var picture = PngCodec.Load(Path.Combine(Into("bake"), "id.preview.png"));
+        HashSet<int> seen = [];
+        for (var at = 0; at + 3 < picture.Pixels.Length; at += 4) {
+            var colour = picture.Pixels[at] << 16 | picture.Pixels[at + 1] << 8 | picture.Pixels[at + 2];
+            if (colour != 0) {
+                seen.Add(colour);
+            }
+        }
+
+        Assert.True(seen.Count >= colours, $"{source}: {seen.Count} colours.");
+        if (colours == 1) {
+            Assert.Single(seen);
+        }
     }
 
     [Fact]

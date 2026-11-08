@@ -41,6 +41,7 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(GraphCreated))]
 [JsonSerializable(typeof(ViewportPick), TypeInfoPropertyName = nameof(ViewportPick))]
 [JsonSerializable(typeof(BakeRequest))]
+[JsonSerializable(typeof(BakeOptions))]
 [JsonSerializable(typeof(JobState))]
 [JsonSerializable(typeof(IReadOnlyList<ExportDelivery>))]
 [JsonSerializable(typeof(JobEvent))]

@@ -1,6 +1,8 @@
 using Patina.Contracts;
 using Patina.Jobs;
 using Patina.Library;
+using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json;
 using Vixen.Core.Imaging;
 using Vixen.Geometry;
@@ -13,6 +15,9 @@ namespace Patina.Export;
 public static class MeshMapBakeRun {
     /// <summary>The share of the reported fraction that reading the meshes takes.</summary>
     const double ReadingShare = 0.05;
+
+    /// <summary>How many parts the log names one by one before it only counts the rest.</summary>
+    const int NamedParts = 40;
 
     /// <summary>
     ///     Bakes into a new folder, which appears at <paramref name="folder" /> only when it is whole. A process that
@@ -36,8 +41,17 @@ public static class MeshMapBakeRun {
     ) {
         ArgumentNullException.ThrowIfNull(request);
 
-        var high = Read(request.High);
-        cancellationToken.ThrowIfCancellationRequested();
+        var clock = Stopwatch.StartNew();
+        List<string> log = [];
+        List<string> warnings = [];
+
+        List<ReadModel> files = [];
+        foreach (var file in request.High) {
+            files.Add(Model(file));
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+
+        var high = ModelGeometry.Flatten(files);
         var low = Read(request.Low, request.Material);
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -55,20 +69,37 @@ public static class MeshMapBakeRun {
             throw new InvalidDataException(tiles);
         }
 
+        Describe(request, high, low, log);
+
         var cage = request.Cage is { } path ? Read(path, request.Material).Mesh : null;
+        var (source, colours) = Ids(request.Options.Id.Source, high, files, warnings);
+        var settings = Settings(request, high, low, cage, threads) with { IdSource = source, GroupsAreColours = colours };
+        if (settings.Parts is not null) {
+            Matches(request.Options.Rays, high, low, log);
+        }
+
         progress?.Invoke(ReadingShare);
 
         var maps = MapBaker.Bake(
             high.Mesh,
             low.Mesh,
-            Settings(request, high, low, cage, threads),
+            settings,
             fraction => progress?.Invoke(ReadingShare + (1 - ReadingShare) * fraction),
             cancellationToken
         );
 
+        log.Add(
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"{maps.Covered} texels held a chart, {maps.Missed} of them found no surface and took the nearest "
+                + $"point, and the gutter filled {maps.Dilated} more."
+            )
+        );
+        log.Add(string.Create(CultureInfo.InvariantCulture, $"Baked in {clock.Elapsed.TotalSeconds:F1} s."));
+
         var part = $"{folder}.{Guid.NewGuid():N}.part";
         var name = request.Name ?? Path.GetFileNameWithoutExtension(request.Low);
-        var manifest = Write(maps, request, part, name);
+        var manifest = Write(maps, request, part, name, [..warnings, ..maps.Warnings], log);
 
         Directory.CreateDirectory(Path.GetDirectoryName(folder)!);
         try {
@@ -126,27 +157,64 @@ public static class MeshMapBakeRun {
             }
         );
 
-    static BakeSettings Settings(BakeRequest request, FlatModel high, FlatModel low, EditMesh? cage, int threads) =>
-        new() {
-            Resolution = request.Resolution,
-            Gutter = request.Gutter,
-            Space = request.Space == "object" ? BakeSpace.Object : BakeSpace.Tangent,
-            SearchRadius = (float)request.SearchRadius,
-            Maps = Maps(request.Maps),
-            OcclusionSamples = request.OcclusionRays,
-            OcclusionRadius = (float)request.OcclusionRadius,
-            Supersampling = request.Supersampling,
+    static BakeSettings Settings(BakeRequest request, FlatModel high, FlatModel low, EditMesh? cage, int threads) {
+        var options = request.Options;
+        var rays = options.Rays;
+        var occlusion = options.Occlusion;
+        return new() {
+            Resolution = options.Resolution,
+            Gutter = options.Gutter,
+            Space = options.Space == "object" ? BakeSpace.Object : BakeSpace.Tangent,
+            Units = rays.Units == "absolute" ? BakeUnits.Absolute : BakeUnits.Relative,
+            SearchRadius = (float)rays.Front,
+            RearDistance = (float)rays.Rear,
+            IgnoreBackfaces = rays.IgnoreBackfaces,
+            Maps = Maps(options.Maps),
+            OcclusionSamples = occlusion.Rays,
+            OcclusionRadius = (float)occlusion.Distance,
+            OcclusionSpread = (float)occlusion.Spread,
+            OcclusionFalloff = occlusion.Falloff switch {
+                "linear" => OcclusionFalloff.Linear,
+                "smooth" => OcclusionFalloff.Smooth,
+                _ => OcclusionFalloff.None
+            },
+            OcclusionDistribution = occlusion.Distribution == "uniform"
+                ? OcclusionDistribution.Uniform
+                : OcclusionDistribution.Cosine,
+            OcclusionMinimum = (float)occlusion.Minimum,
+            OcclusionIgnoresBackfaces = occlusion.IgnoreBackfaces,
+            OcclusionWithinPart = occlusion.WithinPart,
+            GroundPlane = occlusion.GroundPlane,
+            GroundOffset = (float)occlusion.GroundOffset,
+            ThicknessNormalised = options.Thickness.Normalised,
+            HeightRange = options.Height.Range switch {
+                "rays" => HeightRange.RayDistance,
+                "custom" => HeightRange.Custom,
+                _ => HeightRange.Measured
+            },
+            HeightScale = (float)options.Height.Scale,
+            IdPalette = options.Id.Palette switch {
+                "hue" => IdPalette.HueShift,
+                "grey" => IdPalette.Grey,
+                _ => IdPalette.Random
+            },
+            Supersampling = options.Supersampling,
             Cage = cage,
-            Skew = (float)request.Skew,
-            SkewMap = request.SkewMap is { } map ? SkewMask(map) : null,
-            Parts = request.MatchByName ? BakeParts.ByName(high.Parts, low.Parts) : null,
-            GroupsAreColours = high.ColouredGroups,
+            Skew = (float)rays.Skew,
+            SkewMap = rays.SkewMap is { Length: > 0 } map ? SkewMask(map) : null,
+            Parts = rays.MatchByName
+                ? BakeParts.ByName(high.Parts, low.Parts, Suffixes(rays.HighSuffix), Suffixes(rays.LowSuffix))
+                : null,
             Threads = threads
         };
+    }
 
-    static MeshMaps Maps(IReadOnlyList<string>? names) {
+    /// <summary>A name ending as the matching takes it: one ending, or none for an empty field.</summary>
+    static string[] Suffixes(string suffix) => suffix.Trim() is { Length: > 0 } trimmed ? [trimmed] : [];
+
+    static MeshMaps Maps(IReadOnlyList<string> names) {
         var maps = MeshMaps.None;
-        foreach (var name in names ?? []) {
+        foreach (var name in names) {
             maps |= name switch {
                 "ao" => MeshMaps.AmbientOcclusion,
                 "bent" => MeshMaps.BentNormal,
@@ -160,6 +228,138 @@ public static class MeshMapBakeRun {
         }
 
         return maps;
+    }
+
+    /// <summary>
+    ///     What the ID map labels, relabelling the high mesh's faces when the source is one Vixen does not know: a
+    ///     material, its colour, or a named part.
+    /// </summary>
+    /// <param name="source">The ID source the request names.</param>
+    /// <param name="high">The high meshes, flattened. Its face groups are rewritten for some sources.</param>
+    /// <param name="files">The files it was flattened from, in order, for each part's material.</param>
+    /// <param name="warnings">Where a source the mesh cannot give is said.</param>
+    /// <returns>What Vixen labels by, and whether the labels are packed colours.</returns>
+    /// <remarks>
+    ///     ⚠ <b>Flattening reads vertex colours into the groups when a file has them, and materials otherwise</b>, so the
+    ///     groups as they come are only ever one of the two. Every other source writes its own.
+    /// </remarks>
+    static (BakeIdSource Source, bool Colours) Ids(
+        string source,
+        FlatModel high,
+        IReadOnlyList<ReadModel> files,
+        List<string> warnings
+    ) {
+        switch (source) {
+            case "shell":
+                return (BakeIdSource.Shells, false);
+            case "vertex-colour" when !high.ColouredGroups:
+                warnings.Add("The high mesh has no vertex colours, so the ID map holds its connected shells.");
+                return (BakeIdSource.Shells, false);
+            case "vertex-colour":
+                return (BakeIdSource.Groups, true);
+            case "material" or "material-colour" or "mesh":
+                var colour = source == "material-colour";
+                var labels = PartLabels(source, high, files);
+                Relabel(high, labels);
+                return (BakeIdSource.Groups, colour);
+            default:
+                return (BakeIdSource.Automatic, high.ColouredGroups);
+        }
+    }
+
+    /// <summary>A label per part of the flattened mesh, in its order.</summary>
+    static List<int> PartLabels(string source, FlatModel high, IReadOnlyList<ReadModel> files) {
+        List<int> labels = [];
+        var at = 0;
+        foreach (var file in files) {
+            foreach (var part in file.Model.Parts) {
+                labels.Add(
+                    source switch {
+                        "mesh" => at,
+                        "material" => high.Materials[at],
+                        _ => ModelGeometry.PackedColour(
+                            part.Material >= 0 && part.Material < file.MaterialFactors.Length
+                                ? file.MaterialFactors[part.Material].BaseColor
+                                : ModelMaterialFactors.Default.BaseColor
+                        )
+                    }
+                );
+                at++;
+            }
+        }
+
+        return labels;
+    }
+
+    static void Relabel(FlatModel high, List<int> labels) {
+        var face = 0;
+        for (var part = 0; part < high.Parts.Count; part++) {
+            for (var end = face + high.Parts[part].Faces; face < end; face++) {
+                high.Mesh.SetGroup(face, labels[part]);
+            }
+        }
+    }
+
+    /// <summary>Says what was read, so a log shows which meshes a bake used.</summary>
+    static void Describe(BakeRequest request, FlatModel high, FlatModel low, List<string> log) {
+        log.Add(
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"High: {string.Join(", ", request.High.Select(Path.GetFileName))}, {high.Mesh.FaceCount} faces in "
+                + $"{high.Parts.Count} part(s)."
+            )
+        );
+        log.Add(
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"Low: {Path.GetFileName(request.Low)}{(request.Material is { } set ? $", texture set {set}" : "")}, "
+                + $"{low.Mesh.FaceCount} faces in {low.Parts.Count} part(s)."
+            )
+        );
+    }
+
+    /// <summary>Says which low part matched which high part by name, and which matched nothing.</summary>
+    /// <remarks>
+    ///     ⚠ <b>The answer to "why is my bolt baked into the plate"</b>: a low part that matched nothing strikes the whole
+    ///     high mesh, and only a log that names it says so.
+    /// </remarks>
+    static void Matches(BakeRayOptions rays, FlatModel high, FlatModel low, List<string> log) {
+        var highSuffixes = Suffixes(rays.HighSuffix);
+        var lowSuffixes = Suffixes(rays.LowSuffix);
+        var highFaces = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var (name, faces) in high.Parts) {
+            var key = BakeParts.Key(name, highSuffixes);
+            highFaces[key] = highFaces.GetValueOrDefault(key) + faces;
+        }
+
+        var lowFaces = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var (name, faces) in low.Parts) {
+            var key = BakeParts.Key(name, lowSuffixes);
+            lowFaces[key] = lowFaces.GetValueOrDefault(key) + faces;
+        }
+
+        foreach (var (key, faces) in lowFaces.Take(NamedParts)) {
+            log.Add(
+                highFaces.TryGetValue(key, out var struck)
+                    ? string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"Part {key}: {faces} low faces strike only its {struck} high faces."
+                    )
+                    : string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"Part {key}: matched no high part, so its {faces} low faces strike all of the high mesh."
+                    )
+            );
+        }
+
+        if (lowFaces.Count > NamedParts) {
+            log.Add(string.Create(CultureInfo.InvariantCulture, $"And {lowFaces.Count - NamedParts} more low parts."));
+        }
+
+        var unmatched = highFaces.Keys.Where(key => !lowFaces.ContainsKey(key)).Order(StringComparer.Ordinal).ToList();
+        if (unmatched.Count > 0) {
+            log.Add($"High parts no low part matched: {string.Join(", ", unmatched.Take(NamedParts))}.");
+        }
     }
 
     /// <summary>A grey image as a mask, its rows the atlas's rows: the first is v = 0, as in every baked map.</summary>
@@ -179,23 +379,40 @@ public static class MeshMapBakeRun {
         return new(picture.Width, values);
     }
 
-    static BakeManifest Write(BakedMaps maps, BakeRequest request, string folder, string name) {
+    /// <summary>Writes the maps the request asked for, and only those, with the manifest that undoes them.</summary>
+    /// <remarks>
+    ///     ⚠ <b>The normal and the height come out of every bake</b>, because they are the ray every other map is
+    ///     measured from. Writing them only when asked is what lets a bake of an AO map leave no normal map behind.
+    /// </remarks>
+    static BakeManifest Write(
+        BakedMaps maps,
+        BakeRequest request,
+        string folder,
+        string name,
+        IReadOnlyList<string> warnings,
+        IReadOnlyList<string> log
+    ) {
         Directory.CreateDirectory(folder);
 
-        var extension = MeshMapFiles.ExtensionOf(request.Format);
+        var wanted = request.Options.Maps.ToHashSet(StringComparer.Ordinal);
+        var extension = MeshMapFiles.ExtensionOf(request.Options.Format);
         List<BakedMapFile> files = [];
         foreach (var plane in MeshMapPlanes.Of(maps)) {
             var map = MeshMapFiles.NameOf(plane.Kind);
+            if (!wanted.Contains(map)) {
+                continue;
+            }
+
             var file = $"{map}{extension}";
-            File.WriteAllBytes(Path.Combine(folder, file), MeshMapFiles.Encode(plane, request.Format));
+            File.WriteAllBytes(Path.Combine(folder, file), MeshMapFiles.Encode(plane, request.Options.Format));
             File.WriteAllBytes(Path.Combine(folder, $"{map}.preview.png"), PngCodec.Encode(MeshMapFiles.Rgba8(plane)));
             files.Add(new(map, file, plane.Resolution, plane.Scale));
         }
 
         var manifest = new BakeManifest(
             name,
-            request.Format,
-            new(files, maps.Covered, maps.Missed, maps.Warnings, false),
+            request.Options.Format,
+            new(files, maps.Covered, maps.Missed, warnings, false) { Log = log },
             LibraryFiles.Digest(request.Low)
         );
         File.WriteAllBytes(

@@ -72,6 +72,9 @@ public sealed record ProjectDocument(
 
     /// <summary>How Auto Unwrap lays a mesh out.</summary>
     public UnwrapOptions Unwrap { get; init; } = new();
+
+    /// <summary>How its bakes run, or null for the defaults, which writes nothing.</summary>
+    public ProjectBakeSettings? Bake { get; init; }
 }
 
 /// <summary>A mesh a project owns.</summary>

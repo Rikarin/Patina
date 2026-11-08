@@ -7,6 +7,11 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- The Bake dialog has a section per map. Every map can be turned off, the normal and the height included, and each has its own settings: the normal map's space, the height map's range (measured, the ray distance, or a number), ambient occlusion's spread, falloff, ray distribution, minimum occluder distance, ignore backfaces, a part's own surface only, and a ground plane, thickness normalised to its thickest point, and the ID map's colour source (vertex colour, material, material colour, mesh part or connected shell) and colours (random, hue shift or grey). The rays have a front and a rear distance apart, in a percentage of the mesh's size or in model units, and can ignore backfaces. Parts match by name with the endings a studio uses.
+- A project keeps its bake settings in its own file: closing the dialog, restarting Patina or opening the project in another client starts from the same settings. A bake makes maps for the texture sets ticked in the dialog, a job each, and a bake from a layered material bakes the project's mesh.
+- A bake can read several high poly meshes, in order, and its result has a log: the meshes it read, how each part matched by name, and how long it took. The dialog says why Bake cannot start, and shows each map by name.
+- Thickness is the depth of the surface behind each point. It was the share of rays that met anything, which reads white inside every closed shape.
+- A single-material mesh's ID map shows its parts as shells again, where it was one flat colour.
 - A lazy mouse: the brush trails the pointer by a distance set in the brush panel, and paints the same however fast the pointer reports. Shift-click draws a straight line on from where the last stroke ended, in the map or on the mesh, and Cmd or Ctrl snaps it to 5°.
 - Layers duplicate (Cmd+D), copy, cut and paste, from the layer menu and from Edit. A copy is the layers and their paint as they stood, so a cut layer still pastes, and it pastes into another texture set or stack of the same size. A duplicated or pasted paint layer and its mask have pixels of their own, never the original's. Each is one undo step.
 - A new paint layer's first stroke no longer shows paint a removed layer of the same name left in its file.

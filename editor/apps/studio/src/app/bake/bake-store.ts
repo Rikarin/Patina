@@ -50,13 +50,24 @@ export class BakeStore {
   private sequence = 0;
   private stopped = false;
 
-  /** The job the panel is looking at: the last one started here, until a newer one is. */
-  private readonly currentId = signal<string | null>(null);
+  /** The jobs the last Bake started, one per texture set, in the order they were asked for. */
+  private readonly batchIds = signal<readonly string[]>([]);
 
+  /** The jobs of the last Bake, as they now stand. */
+  readonly batch = computed(() =>
+    this.batchIds()
+      .map(id => this.byId().get(id))
+      .filter((job): job is JobState => job !== undefined)
+  );
+
+  /** The job the panel is looking at: the first of the last Bake still going, or its last when all are over. */
   readonly current = computed(() => {
-    const id = this.currentId();
-    return id ? (this.byId().get(id) ?? null) : null;
+    const jobs = this.batch();
+    return jobs.find(job => job.state === 'queued' || job.state === 'running') ?? jobs.at(-1) ?? null;
   });
+
+  /** Whether a job of the last Bake is still waiting or running. */
+  readonly busy = computed(() => this.batch().some(job => job.state === 'queued' || job.state === 'running'));
 
   /** The map the Texture pane shows, which a graph selection takes the place of. */
   readonly shown = signal<ShownMap | null>(null);
@@ -91,16 +102,42 @@ export class BakeStore {
 
   /** Asks for a bake. Throws the Server's refusal, which is what the panel shows. */
   async start(request: BakeRequest): Promise<JobState> {
-    const client = await this.api();
-    const job = unwrap(await client.POST('/api/v1/jobs/bakes', { body: request }));
-    this.put(job);
-    this.currentId.set(job.id);
+    const [job] = await this.startAll([request]);
+    if (!job) {
+      throw new Error('The Server made no job of the bake.');
+    }
+
     return job;
+  }
+
+  /**
+   * Asks for several bakes, one per texture set, which the Server runs one after another. A refusal stops the rest,
+   * and the ones asked for before it stay queued: they are bakes somebody asked for.
+   */
+  async startAll(requests: readonly BakeRequest[]): Promise<JobState[]> {
+    const client = await this.api();
+    const jobs: JobState[] = [];
+    this.batchIds.set([]);
+    for (const request of requests) {
+      const job = unwrap(await client.POST('/api/v1/jobs/bakes', { body: request }));
+      this.put(job);
+      jobs.push(job);
+      this.batchIds.update(ids => [...ids, job.id]);
+    }
+
+    return jobs;
   }
 
   async cancel(id: string): Promise<void> {
     const client = await this.api();
     this.put(unwrap(await client.POST('/api/v1/jobs/{id}/cancel', { params: { path: { id } } })));
+  }
+
+  /** Stops every job of the last Bake that has not ended. */
+  async cancelAll(): Promise<void> {
+    for (const job of this.batch().filter(job => job.state === 'queued' || job.state === 'running')) {
+      await this.cancel(job.id);
+    }
   }
 
   /** Makes a graph's Mesh Map nodes read a finished bake. The Server remembers it beside the graph's file. */
@@ -135,7 +172,7 @@ export class BakeStore {
       await client.GET('/api/v1/jobs/{id}/previews/{map}', { params: { path: { id: job.id, map } }, parseAs: 'blob' })
     );
     const url = URL.createObjectURL(blob);
-    const side = job.result?.maps.find(file => file.map === map)?.resolution ?? job.bake?.resolution ?? 0;
+    const side = job.result?.maps.find(file => file.map === map)?.resolution ?? job.bake?.options.resolution ?? 0;
     this.revoke();
     this.shown.set({ job: job.id, map, url, width: side, height: side });
   }

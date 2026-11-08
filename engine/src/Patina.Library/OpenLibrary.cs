@@ -266,6 +266,14 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
+    /// <summary>Keeps how a project's bakes run.</summary>
+    public void SetBake(string path, ProjectBakeSettings bake) {
+        lock (createGate) {
+            ProjectFiles.SetBake(RootPath, path, bake);
+            Interlocked.Increment(ref unscannedWrites);
+        }
+    }
+
     /// <summary>A new document with another's content.</summary>
     public ProjectItem CopyDocument(string path, AssetId document, string name) {
         lock (createGate) {

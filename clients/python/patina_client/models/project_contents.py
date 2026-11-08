@@ -12,6 +12,7 @@ from typing import cast
 from uuid import UUID
 
 if TYPE_CHECKING:
+  from ..models.project_bake_settings import ProjectBakeSettings
   from ..models.project_document_info import ProjectDocumentInfo
   from ..models.project_file import ProjectFile
   from ..models.project_mesh_info import ProjectMeshInfo
@@ -41,6 +42,9 @@ class ProjectContents:
             auto_unwrap (bool): Whether a mesh with no UV layout is given one when it is set.
             preserve_paint (bool): Whether paint moves to a new mesh's layout.
             unwrap (UnwrapOptions): How Auto Unwrap lays out a mesh. Each texture set gets an atlas of its own.
+            bake (ProjectBakeSettings): What a project keeps about baking, in its own file: the options, which texture sets
+                to bake, and the files
+                beyond the project's mesh that a bake reads.
      """
 
     id: UUID
@@ -54,6 +58,7 @@ class ProjectContents:
     auto_unwrap: bool
     preserve_paint: bool
     unwrap: UnwrapOptions
+    bake: ProjectBakeSettings
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -61,6 +66,7 @@ class ProjectContents:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.project_bake_settings import ProjectBakeSettings # noqa: PLC0415
         from ..models.project_document_info import ProjectDocumentInfo # noqa: PLC0415
         from ..models.project_file import ProjectFile # noqa: PLC0415
         from ..models.project_mesh_info import ProjectMeshInfo # noqa: PLC0415
@@ -107,6 +113,8 @@ class ProjectContents:
 
         unwrap = self.unwrap.to_dict()
 
+        bake = self.bake.to_dict()
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -122,6 +130,7 @@ class ProjectContents:
             "autoUnwrap": auto_unwrap,
             "preservePaint": preserve_paint,
             "unwrap": unwrap,
+            "bake": bake,
         })
 
         return field_dict
@@ -130,6 +139,7 @@ class ProjectContents:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.project_bake_settings import ProjectBakeSettings # noqa: PLC0415
         from ..models.project_document_info import ProjectDocumentInfo # noqa: PLC0415
         from ..models.project_file import ProjectFile # noqa: PLC0415
         from ..models.project_mesh_info import ProjectMeshInfo # noqa: PLC0415
@@ -195,6 +205,11 @@ class ProjectContents:
 
 
 
+        bake = ProjectBakeSettings.from_dict(d.pop("bake"))
+
+
+
+
         project_contents = cls(
             id=id,
             name=name,
@@ -207,6 +222,7 @@ class ProjectContents:
             auto_unwrap=auto_unwrap,
             preserve_paint=preserve_paint,
             unwrap=unwrap,
+            bake=bake,
         )
 
 

@@ -1,0 +1,279 @@
+namespace Patina.Contracts;
+
+/// <summary>
+///     A high-to-low bake. Everything is a path on the Server's machine, and the results are files there: a client
+///     sends paths and gets paths, whichever client it is (plan §8).
+/// </summary>
+public sealed record BakeRequest {
+    /// <summary>The detailed meshes, in order: one is usual, and a model split across files lists them all.</summary>
+    public required IReadOnlyList<string> High { get; set; }
+
+    /// <summary>The mesh baked onto, which must have texture coordinates.</summary>
+    public required string Low { get; set; }
+
+    /// <summary>The folder the maps are written to.</summary>
+    public required string Output { get; set; }
+
+    /// <summary>A mesh with the low mesh's faces, moved outward, which the rays start from.</summary>
+    public string? Cage { get; set; }
+
+    /// <summary>The material of the low mesh to bake, for one texture set of a model that has several.</summary>
+    public string? Material { get; set; }
+
+    /// <summary>The stem of each file's name, or null for the low mesh's.</summary>
+    public string? Name { get; set; }
+
+    /// <summary>What to bake and how: the part a project keeps between bakes.</summary>
+    public BakeOptions Options { get; set; } = new();
+}
+
+/// <summary>
+///     How a bake runs, with no meshes in it: what a project keeps between bakes and every client sends. Each map's
+///     own settings are a part of their own.
+/// </summary>
+/// <remarks>
+///     ⚠ <b>Settable rather than init-only, in this file only, and on purpose.</b> The source-generated JSON reader
+///     sets an init-only member the JSON leaves out to zero or null instead of keeping its default, so a client that
+///     sent only the front distance baked with a rear distance of nothing. A settable one is left alone.
+/// </remarks>
+public sealed record BakeOptions {
+    /// <summary>The words <see cref="Format" /> takes.</summary>
+    public static IReadOnlyList<string> Formats { get; } = ["png8", "png16", "exr16", "exr32"];
+
+    /// <summary>The words <see cref="Space" /> takes.</summary>
+    public static IReadOnlyList<string> Spaces { get; } = ["tangent", "object"];
+
+    /// <summary>Every map a bake can write, in the order they are reported.</summary>
+    public static IReadOnlyList<string> AllMaps { get; } =
+        ["normal", "height", "ao", "bent", "curvature", "thickness", "position", "world", "id"];
+
+    /// <summary>The atlas's edge, in texels.</summary>
+    public int Resolution { get; set; } = 2048;
+
+    /// <summary><c>png8</c>, <c>png16</c>, <c>exr16</c> or <c>exr32</c>.</summary>
+    public string Format { get; set; } = "png16";
+
+    /// <summary>How many samples along each side of a texel.</summary>
+    public int Supersampling { get; set; } = 1;
+
+    /// <summary>How many texels of dilation surround each chart.</summary>
+    public int Gutter { get; set; } = 4;
+
+    /// <summary>
+    ///     Which maps to write: <c>normal</c>, <c>height</c>, <c>ao</c>, <c>bent</c>, <c>curvature</c>,
+    ///     <c>thickness</c>, <c>position</c>, <c>world</c>, <c>id</c>. The default is what a project's masks read.
+    /// </summary>
+    public IReadOnlyList<string> Maps { get; set; } =
+        ["normal", "height", "ao", "curvature", "thickness", "position", "world", "id"];
+
+    /// <summary>The frame of the normal and bent normal maps: <c>tangent</c> or <c>object</c>.</summary>
+    public string Space { get; set; } = "tangent";
+
+    /// <summary>How far the rays look and what they may strike, which every map rests on.</summary>
+    public BakeRayOptions Rays { get; set; } = new();
+
+    /// <summary>The height map's range.</summary>
+    public BakeHeightOptions Height { get; set; } = new();
+
+    /// <summary>The occlusion rays, which ambient occlusion, the bent normal and thickness share.</summary>
+    public BakeOcclusionOptions Occlusion { get; set; } = new();
+
+    /// <summary>The thickness map's own settings.</summary>
+    public BakeThicknessOptions Thickness { get; set; } = new();
+
+    /// <summary>What the ID map labels and how it colours them.</summary>
+    public BakeIdOptions Id { get; set; } = new();
+
+    /// <summary>What is wrong with these options, or null when a bake can use them.</summary>
+    public string? Problem() {
+        var unknown = Maps.FirstOrDefault(map => !AllMaps.Contains(map, StringComparer.Ordinal));
+        (bool Wrong, string Why)[] checks = [
+            (Resolution is < 16 or > 16384, $"The resolution must be 16 to 16384, not {Resolution}."),
+            (Supersampling is < 1 or > 8, $"Supersampling must be 1 to 8, not {Supersampling}."),
+            (Gutter is < 0 or > 64, $"The gutter must be 0 to 64 texels, not {Gutter}."),
+            (!Formats.Contains(Format, StringComparer.Ordinal), $"'{Format}' is not a format."),
+            (!Spaces.Contains(Space, StringComparer.Ordinal), $"'{Space}' is not a space."),
+            (unknown is not null, $"'{unknown}' is not a map. The maps are {string.Join(", ", AllMaps)}."),
+            (Maps.Count == 0, "A bake has to write at least one map.")
+        ];
+        return checks.FirstOrDefault(static check => check.Wrong).Why
+            ?? Rays.Problem() ?? Height.Problem() ?? Occlusion.Problem() ?? Id.Problem();
+    }
+}
+
+/// <summary>How far a bake's rays look from the low mesh, and what they may strike.</summary>
+public sealed record BakeRayOptions {
+    /// <summary>The words <see cref="Units" /> takes.</summary>
+    public static IReadOnlyList<string> UnitWords { get; } = ["relative", "absolute"];
+
+    /// <summary>How far a ray looks outward, in front of the low mesh.</summary>
+    public double Front { get; set; } = 0.05;
+
+    /// <summary>How far a ray looks inward, behind the low mesh, or past it from a cage.</summary>
+    public double Rear { get; set; } = 0.05;
+
+    /// <summary>
+    ///     What the distances here and in <see cref="BakeOcclusionOptions" /> are in: <c>relative</c>, fractions of the
+    ///     high mesh's bounding-box diagonal, or <c>absolute</c>, the model's own units.
+    /// </summary>
+    public string Units { get; set; } = "relative";
+
+    /// <summary>Whether a ray passes through a high face turned away from the low mesh's facing.</summary>
+    public bool IgnoreBackfaces { get; set; }
+
+    /// <summary>How far rays lean from the smoothed direction towards the low mesh's own normal, 0 to 1.</summary>
+    public double Skew { get; set; }
+
+    /// <summary>A grey image saying where to apply the skew, or empty for everywhere.</summary>
+    public string SkewMap { get; set; } = "";
+
+    /// <summary>Whether a part of the low mesh only strikes the high part of the same name.</summary>
+    public bool MatchByName { get; set; }
+
+    /// <summary>What a low part's name ends in, which matching by name takes off.</summary>
+    public string LowSuffix { get; set; } = "_low";
+
+    /// <summary>What a high part's name ends in, which matching by name takes off.</summary>
+    public string HighSuffix { get; set; } = "_high";
+
+    /// <summary>What is wrong, or null.</summary>
+    public string? Problem() {
+        (bool Wrong, string Why)[] checks = [
+            (!(Front >= 0 && double.IsFinite(Front)), "The front distance cannot be negative."),
+            (!(Rear >= 0 && double.IsFinite(Rear)), "The rear distance cannot be negative."),
+            (Front <= 0 && Rear <= 0, "The rays must reach some way in front or behind."),
+            (!UnitWords.Contains(Units, StringComparer.Ordinal), $"'{Units}' is not relative or absolute."),
+            (Skew is < 0 or > 1, "The skew must be 0 to 1.")
+        ];
+        return checks.FirstOrDefault(static check => check.Wrong).Why;
+    }
+}
+
+/// <summary>The height map's stored range.</summary>
+public sealed record BakeHeightOptions {
+    /// <summary>The words <see cref="Range" /> takes.</summary>
+    public static IReadOnlyList<string> Ranges { get; } = ["measured", "rays", "custom"];
+
+    /// <summary>
+    ///     <c>measured</c>, the largest height found; <c>rays</c>, the longer ray distance; or <c>custom</c>,
+    ///     <see cref="Scale" />. The last two are the same for every bake made with them, so their maps agree.
+    /// </summary>
+    public string Range { get; set; } = "measured";
+
+    /// <summary>The range for <c>custom</c>, in the rays' units.</summary>
+    public double Scale { get; set; } = 0.05;
+
+    /// <summary>What is wrong, or null.</summary>
+    public string? Problem() =>
+        !Ranges.Contains(Range, StringComparer.Ordinal) ? $"'{Range}' is not a height range."
+        : Range == "custom" && !(Scale > 0 && double.IsFinite(Scale)) ? "A custom height range is more than nothing."
+        : null;
+}
+
+/// <summary>The occlusion rays, which ambient occlusion, the bent normal and thickness share.</summary>
+public sealed record BakeOcclusionOptions {
+    /// <summary>The words <see cref="Falloff" /> takes.</summary>
+    public static IReadOnlyList<string> Falloffs { get; } = ["none", "linear", "smooth"];
+
+    /// <summary>The words <see cref="Distribution" /> takes.</summary>
+    public static IReadOnlyList<string> Distributions { get; } = ["cosine", "uniform"];
+
+    /// <summary>How many rays a texel's occlusion is estimated with.</summary>
+    public int Rays { get; set; } = 64;
+
+    /// <summary>How far an occluder counts, in the rays' units.</summary>
+    public double Distance { get; set; } = 0.5;
+
+    /// <summary>The half-angle of the cone the rays fill, in degrees: 90 is the hemisphere.</summary>
+    public double Spread { get; set; } = 90;
+
+    /// <summary>How an occluder counts for less further away: <c>none</c>, <c>linear</c> or <c>smooth</c>.</summary>
+    public string Falloff { get; set; } = "none";
+
+    /// <summary>How the rays are spread: <c>cosine</c> or <c>uniform</c>.</summary>
+    public string Distribution { get; set; } = "cosine";
+
+    /// <summary>How near an occluder may be and not count, in the rays' units.</summary>
+    public double Minimum { get; set; }
+
+    /// <summary>Whether a ray passes through the back of a face.</summary>
+    public bool IgnoreBackfaces { get; set; }
+
+    /// <summary>Whether only the texel's own part occludes it, when parts are matched by name.</summary>
+    public bool WithinPart { get; set; }
+
+    /// <summary>Whether a floor under the high mesh occludes too. Y is up.</summary>
+    public bool GroundPlane { get; set; }
+
+    /// <summary>How far above the high mesh's lowest point the floor is, in the rays' units.</summary>
+    public double GroundOffset { get; set; }
+
+    /// <summary>What is wrong, or null.</summary>
+    public string? Problem() {
+        (bool Wrong, string Why)[] checks = [
+            (Rays is < 1 or > 8192, "Occlusion rays must be 1 to 8192."),
+            (!(Distance >= 0 && double.IsFinite(Distance)), "The occlusion distance cannot be negative."),
+            (Spread is <= 0 or > 90, "The occlusion spread is more than 0 and at most 90 degrees."),
+            (!Falloffs.Contains(Falloff, StringComparer.Ordinal), $"'{Falloff}' is not a falloff."),
+            (!Distributions.Contains(Distribution, StringComparer.Ordinal), $"'{Distribution}' is not a distribution."),
+            (!(Minimum >= 0 && double.IsFinite(Minimum)), "The minimum occluder distance cannot be negative."),
+            (!double.IsFinite(GroundOffset), "The ground offset is a number.")
+        ];
+        return checks.FirstOrDefault(static check => check.Wrong).Why;
+    }
+}
+
+/// <summary>The thickness map's own settings.</summary>
+public sealed record BakeThicknessOptions {
+    /// <summary>Whether the map is divided by its largest value, so the thickest texel reads white.</summary>
+    public bool Normalised { get; set; } = true;
+}
+
+/// <summary>What an ID map labels, and how it colours the labels.</summary>
+public sealed record BakeIdOptions {
+    /// <summary>The words <see cref="Source" /> takes.</summary>
+    public static IReadOnlyList<string> Sources { get; } =
+        ["auto", "material", "material-colour", "vertex-colour", "mesh", "shell"];
+
+    /// <summary>The words <see cref="Palette" /> takes.</summary>
+    public static IReadOnlyList<string> Palettes { get; } = ["random", "hue", "grey"];
+
+    /// <summary>
+    ///     <c>auto</c>: vertex colours, else materials when there are several, else connected shells. Or one of
+    ///     <c>material</c>, <c>material-colour</c> (each material's base colour), <c>vertex-colour</c>, <c>mesh</c>
+    ///     (each named part) and <c>shell</c>.
+    /// </summary>
+    public string Source { get; set; } = "auto";
+
+    /// <summary>How labels become colours: <c>random</c>, <c>hue</c> or <c>grey</c>. Colours stay as they are.</summary>
+    public string Palette { get; set; } = "random";
+
+    /// <summary>What is wrong, or null.</summary>
+    public string? Problem() =>
+        !Sources.Contains(Source, StringComparer.Ordinal) ? $"'{Source}' is not an ID source."
+        : !Palettes.Contains(Palette, StringComparer.Ordinal) ? $"'{Palette}' is not an ID palette."
+        : null;
+}
+
+/// <summary>
+///     What a project keeps about baking, in its own file: the options, which texture sets to bake, and the files
+///     beyond the project's mesh that a bake reads.
+/// </summary>
+public sealed record ProjectBakeSettings {
+    /// <summary>How its bakes run.</summary>
+    public BakeOptions Options { get; set; } = new();
+
+    /// <summary>The texture sets a bake makes maps for, by material; empty is all of them.</summary>
+    public IReadOnlyList<string> Sets { get; set; } = [];
+
+    /// <summary>Detailed meshes after the mesh's own, in order, as paths on the Server's machine.</summary>
+    public IReadOnlyList<string> High { get; set; } = [];
+
+    /// <summary>A cage, as a path on the Server's machine, or empty for none.</summary>
+    public string Cage { get; set; } = "";
+}
+
+/// <summary>The body of <c>PUT /api/v1/library/project/bake</c>.</summary>
+/// <param name="Project">The project, below <c>projects/</c>.</param>
+/// <param name="Bake">Its bake settings from now on.</param>
+public sealed record ProjectBakeRequest(string Project, ProjectBakeSettings Bake);
