@@ -181,9 +181,9 @@ test('the display settings change the picture, and the project keeps them', asyn
   });
   window = await app.firstWindow();
   await expect(window.getByRole('status', { name: 'Server status' })).toContainText('Game.ptlib', { timeout: 30_000 });
-  if (!(await window.getByTestId('document-tab-name').filter({ hasText: 'Test' }).isVisible())) {
-    await window.locator('[data-testid=tree-row][data-path="test"]').dblclick();
-  }
+  // The library reopens on what was in front, once it has read the project. The tree is no way in meanwhile: Preview
+  // comes back maximized, which takes the Library pane out of the page.
+  await expect(window.getByTestId('document-tab-name').filter({ hasText: 'Test' })).toBeVisible({ timeout: 30_000 });
 
   // The layout comes back too, with Preview still maximized.
   await window.getByTestId('viewport-display-toggle').click();
