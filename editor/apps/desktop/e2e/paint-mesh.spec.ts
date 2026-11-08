@@ -450,10 +450,45 @@ test('a line, a mirrored stroke and an alpha paint through the same journal', as
   const lined = await shot();
 
   await window.getByTestId('paint-tool-brush').click();
-  await window.getByRole('combobox', { name: 'Mirror' }).selectOption('x');
+  await window.getByRole('combobox', { name: 'Symmetry', exact: true }).selectOption('mirror');
   await drag(0.62, 0.55, 0.66, 0.62);
   await expect.poll(async () => changed(lined, await shot()), { timeout: 30_000 }).toBeGreaterThan(200);
   await window.screenshot({ path: join(shots, 'paint-tools.png') });
+});
+
+/** Every file below a folder, for finding the project's own. */
+function filesBelow(folder: string): string[] {
+  return readdirSync(folder, { recursive: true, encoding: 'utf8' }).map(file => join(folder, file));
+}
+
+test('a preset takes up its brush, a radial symmetry paints its copies, and the project keeps the palette', async () => {
+  await openOnMesh();
+  await window.getByTestId('brush-preset-Hard Round').click();
+  await expect(window.getByTestId('paint-size-readout')).toHaveText('16 px');
+
+  const before = await shot();
+  await drag(0.42, 0.42, 0.46, 0.44);
+  await expect.poll(async () => changed(before, await shot()), { timeout: 30_000 }).toBeGreaterThan(40);
+  await settled();
+  const one = await changed(before, await shot());
+
+  await window.getByTestId('paint-undo').click();
+  await settled();
+  await window.getByRole('combobox', { name: 'Symmetry', exact: true }).selectOption('radial');
+  await window.getByRole('combobox', { name: 'Symmetry axis' }).selectOption('y');
+  const plain = await shot();
+  await drag(0.42, 0.42, 0.46, 0.44);
+  await settled();
+  // Four copies round the up axis, of which the camera sees two or three: more than one stroke's worth either way.
+  expect(await changed(plain, await shot())).toBeGreaterThan(one * 1.5);
+  await window.screenshot({ path: join(shots, 'paint-radial.png') });
+
+  await window.getByTestId('paint-keep-colour').click();
+  await expect(window.getByTestId('paint-palette').locator('button')).toHaveCount(1);
+  const project = filesBelow(join(scratch, 'Game.ptlib', 'projects')).find(file => file.endsWith('project.yaml'));
+  expect(project).toBeDefined();
+  await expect.poll(() => readFileSync(project ?? '', 'utf8'), { timeout: 10_000 }).toContain('palette:');
+  expect(readFileSync(project ?? '', 'utf8')).toContain('kind: radial');
 });
 
 test('layers of every kind compose on the mesh', async () => {

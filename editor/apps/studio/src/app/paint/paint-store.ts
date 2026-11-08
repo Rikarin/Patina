@@ -16,6 +16,7 @@ import {
   type StackProblem,
   type StackStamp,
   type StackState,
+  type StackSymmetry,
   type StackView,
   type StackVocabulary,
   type ViewportCameraState,
@@ -26,7 +27,36 @@ import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
 import { messageOf } from '../core/messages';
 
-const RecentColours = 8;
+/** The most recent colours a project keeps, which is the Server's limit. */
+const RecentColours = 16;
+
+/** The most colours a palette holds, which is the Server's limit. */
+const PaletteColours = 64;
+
+/** A new brush until the Server's vocabulary says otherwise: the same as `StackBrushes.Default`. */
+export const NewBrush: StackBrush = {
+  radius: 24,
+  flow: 1,
+  opacity: 1,
+  spacing: 0.15,
+  falloff: 0.5,
+  alpha: 'Round',
+  angle: 0,
+  rotation: 'fixed',
+  positionJitter: 0,
+  angleJitter: 0,
+  sizeJitter: 0,
+  pressureSize: 1,
+  pressureFlow: 0,
+  lazy: 0,
+  curve: 'smooth',
+  aspect: 1,
+  aspectAngle: 0,
+  flowJitter: 0,
+  scatterAxis: 'both',
+  accumulate: true,
+  sizeSpace: 'screen'
+};
 
 const ReconnectMs = 1_000;
 const ThumbnailQuiet = 400;
@@ -38,7 +68,6 @@ const StampTimes = 2048;
 export type BrushSettings = Omit<StackBrush, 'radius'>;
 
 export type PaintTool = 'brush' | 'eraser' | 'line' | 'path' | 'picker';
-export type Mirror = 'none' | 'x' | 'y' | 'z';
 
 /** Where a stroke on the mesh is aimed: a picture of this size through this camera. */
 export interface Aim {
@@ -145,30 +174,24 @@ export class PaintStore {
   /** What else a stroke paints beside {@link channel}: each channel, and the colour it gets. */
   readonly alsoPaints = signal<ReadonlyMap<string, string>>(new Map());
   readonly colour = signal('#d9401a');
-  /** The colours strokes last used, newest first, offered beside the picker. */
+  /** The colours strokes last used, newest first, offered beside the picker. The project keeps them. */
   readonly recentColours = signal<string[]>([]);
+  /** Colours kept on purpose, in the order they were added. The project keeps them. */
+  readonly palette = signal<string[]>([]);
   readonly picture = signal<string | null>(null);
   readonly tool = signal<PaintTool>('brush');
-  readonly mirror = signal<Mirror>('none');
+  /** How strokes copy themselves on the mesh, or null for not at all. Needs a mesh, in either view. */
+  readonly symmetry = signal<StackSymmetry | null>(null);
+  /**
+   * Texels of the map per pixel of the 2D view as it is drawn, so that a size in the screen's units is the same under
+   * the pointer at any zoom. The 2D view sets it as a stroke starts.
+   */
+  readonly atlasScale = signal(1);
   /** Whether strokes go to the chosen layer's mask rather than its channels. */
   readonly masking = signal(false);
   /** What a stroke on a mask lays down, from nothing shown to everything: a mask is one number, not a colour. */
   readonly maskGrey = signal(0);
-  readonly brush = signal<BrushSettings>({
-    flow: 1,
-    opacity: 1,
-    spacing: 0.15,
-    falloff: 0.5,
-    alpha: 'Round',
-    angle: 0,
-    rotation: 'fixed',
-    positionJitter: 0,
-    angleJitter: 0,
-    sizeJitter: 0,
-    pressureSize: 1,
-    pressureFlow: 0,
-    lazy: 0
-  });
+  readonly brush = signal<BrushSettings>(settingsOf(NewBrush));
   readonly vocabulary = signal<StackVocabulary | null>(null);
   /** The layers last copied, from this stack or another. The Server holds them, pixels and all. */
   readonly clip = signal<StackClip | null>(null);
@@ -684,6 +707,30 @@ export class PaintStore {
     this.recentColours.update(colours => [colour, ...colours.filter(other => other !== colour)].slice(0, RecentColours));
   }
 
+  /** Keeps a colour in the palette, once. */
+  keepColour(colour: string): void {
+    this.palette.update(colours => (colours.includes(colour) ? colours : [...colours, colour].slice(0, PaletteColours)));
+  }
+
+  /** Takes a colour out of the palette. */
+  dropColour(colour: string): void {
+    this.palette.update(colours => colours.filter(other => other !== colour));
+  }
+
+  /** The brush as a stroke carries it, its size among it. */
+  readonly wholeBrush = computed<StackBrush>(() => ({ ...this.brush(), radius: this.radius() }));
+
+  /** Takes up a whole brush, its size among it: a preset's, a project's, or a new one. */
+  useBrush(brush: StackBrush): void {
+    this.radius.set(brush.radius);
+    this.brush.set(settingsOf(brush));
+  }
+
+  /** Puts the brush back to the one the Server says a new brush is. The symmetry is not the brush, and stays. */
+  resetBrush(): void {
+    this.useBrush(this.vocabulary()?.brush.default ?? NewBrush);
+  }
+
   move(stamp: StackStamp): void {
     if (this.stroke) {
       if (this.pending.length === 0) {
@@ -784,7 +831,10 @@ export class PaintStore {
     curve: 'free' | 'line' | 'path',
     since: number
   ): Promise<void> {
-    const mirror = this.mirror();
+    const symmetry = this.state()?.model.trim() ? this.symmetry() : null;
+    // A size in the screen's units is pixels of the 2D view as drawn, which the stroke takes as texels of the map.
+    const brush = this.wholeBrush();
+    const radius = !view && brush.sizeSpace === 'screen' ? Math.max(0.5, brush.radius * this.atlasScale()) : brush.radius;
     // A material brush writes every channel it holds, each in the one stroke and the one undo step. A mask has one.
     const grey = this.maskGrey();
     const target = this.layers().find(row => row.layer.id === layer)?.layer;
@@ -802,7 +852,7 @@ export class PaintStore {
         stroke,
         layer,
         channel,
-        brush: { ...this.brush(), radius: this.radius() },
+        brush: { ...brush, radius },
         // A stamp mixes towards its colour, so towards nothing at all takes paint away.
         colour: this.tool() === 'eraser' ? [0, 0, 0, 0] : colour,
         stamps,
@@ -810,7 +860,7 @@ export class PaintStore {
         mask: this.masking(),
         view,
         curve,
-        mirror: view && mirror !== 'none' ? mirror : null
+        symmetry
       }))
     });
     if (revision !== null && revision > this.lastShown) {
@@ -1041,6 +1091,12 @@ export function toggledEffect(effects: readonly StackMaskEffect[], node: string)
   return effects.some(effect => effect.node === node)
     ? effects.filter(effect => effect.node !== node)
     : [...effects, { node, enabled: true }];
+}
+
+/** A brush without its size, which the size slider holds apart. */
+export function settingsOf(brush: StackBrush): BrushSettings {
+  const { radius: _, ...settings } = brush;
+  return settings;
 }
 
 /** A colour swatch's value as the four numbers a stroke carries. */

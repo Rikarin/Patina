@@ -211,10 +211,11 @@ const PickLook = '…';
           <div
             class="pointer-events-none absolute rounded-full border border-white/70 mix-blend-difference"
             data-testid="viewport-brush"
-            [style.height.px]="paint.radius() * 2"
-            [style.left.px]="at.x - paint.radius()"
-            [style.top.px]="at.y - paint.radius()"
-            [style.width.px]="paint.radius() * 2"
+            [attr.data-space]="paint.brush().sizeSpace"
+            [style.height.px]="cursor() * 2"
+            [style.left.px]="at.x - cursor()"
+            [style.top.px]="at.y - cursor()"
+            [style.width.px]="cursor() * 2"
           ></div>
         }
         @if (gesture.points().length > 1) {
@@ -259,6 +260,12 @@ export class ViewportPane implements AfterViewInit {
    */
   protected readonly painting = signal(true);
   protected readonly paints = computed(() => this.paint.worn() && this.painting() && this.paint.canPaintMesh());
+
+  /**
+   * The ring under the pointer, in pixels: the brush's radius when it is in the screen's units. A size in texels or in
+   * the model's units is only measured where a stroke starts, so until then the ring is a small mark, never a wrong one.
+   */
+  protected readonly cursor = computed(() => (this.paint.brush().sizeSpace === 'screen' ? this.paint.radius() : 3));
   /** Whether a press does something at the point under it, which is what the cursor says. */
   protected readonly aiming = computed(
     () => this.paints() || this.paint.picking() !== null || (this.paint.worn() && this.paint.tool() === 'picker')

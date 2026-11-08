@@ -4,6 +4,9 @@ import { PaintStore, type PaintTool } from '../paint/paint-store';
 const StorageKey = 'patina.shortcuts.1';
 const RadiusStep = 1.25;
 
+/** The largest size the slider reaches, which is short of the Server's 4096. */
+export const MaximumRadius = 1024;
+
 /** What a key can do. The Edit commands are the menu's, since a menu takes those keys first. */
 export interface Shortcut {
   id: string;
@@ -74,7 +77,7 @@ export class Shortcuts {
       this.paint.tool.set(tool);
     } else if (id === 'smaller' || id === 'larger') {
       const radius = this.paint.radius() * (id === 'larger' ? RadiusStep : 1 / RadiusStep);
-      this.paint.radius.set(Math.max(1, Math.min(256, Math.round(radius))));
+      this.paint.radius.set(Math.max(1, Math.min(MaximumRadius, Math.round(radius))));
     } else if (id === 'colour-pick') {
       this.paint.picking.set(this.paint.layer());
     }

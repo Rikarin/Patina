@@ -95,7 +95,8 @@ const DocumentKinds: Readonly<Record<string, string>> = {
   texturing: 'Texturing',
   'layered-material': 'Layered Material',
   'image-material': 'Image Material',
-  graph: 'Material Graph'
+  graph: 'Material Graph',
+  'brush-preset': 'Brush Preset'
 };
 
 /** What a person calls a kind of document or asset. */
