@@ -163,6 +163,12 @@ export class Commands {
     return handler?.checked?.();
   }
 
+  /** Whether a key press is one of a command's keys now, for a control that has to catch it before its own handler. */
+  isKeyOf(id: string, event: KeyboardEvent): boolean {
+    const chord = chordOf(event, this.mac);
+    return chord !== null && (this.keys().get(id) ?? []).includes(chord);
+  }
+
   /** A command's first key as a person reads it, or an empty string. */
   keyText(id: string): string {
     const chord = this.keys().get(id)?.[0];

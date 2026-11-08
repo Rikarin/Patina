@@ -1,3 +1,5 @@
+export * from './lib/angle';
+export * from './lib/angle-dial';
 export * from './lib/curve';
 export * from './lib/curve-editor';
 export * from './lib/gradient-ramp';

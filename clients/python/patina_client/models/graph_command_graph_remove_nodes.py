@@ -26,11 +26,15 @@ class GraphCommandGraphRemoveNodes:
 
         Attributes:
             op (GraphCommandGraphRemoveNodesOp):
-            nodes (list[int]):
+            nodes (list[int]): The nodes.
+            relink (bool): True to keep the chain joined: each input a removed node fed is wired to what fed that node's
+                first input of
+                the same kind, the way a bypassed node passes it on. Default: False.
      """
 
     op: GraphCommandGraphRemoveNodesOp
     nodes: list[int]
+    relink: bool = False
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -44,12 +48,15 @@ class GraphCommandGraphRemoveNodes:
 
 
 
+        relink = self.relink
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update({
             "op": op,
             "nodes": nodes,
+            "relink": relink,
         })
 
         return field_dict
@@ -67,9 +74,12 @@ class GraphCommandGraphRemoveNodes:
         nodes = cast(list[int], d.pop("nodes"))
 
 
+        relink = d.pop("relink")
+
         graph_command_graph_remove_nodes = cls(
             op=op,
             nodes=nodes,
+            relink=relink,
         )
 
 

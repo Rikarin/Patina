@@ -9,6 +9,7 @@ import type {
   GraphHistoryState,
   GraphInterfacePort,
   GraphNodeState,
+  GraphPresetState,
   GraphPreview,
   GraphSettingDefinition,
   GraphState
@@ -28,6 +29,8 @@ export interface GraphDocument {
   edges: ReadonlyMap<string, GraphEdgeState>;
   settings: Readonly<Record<string, string>>;
   parameters: readonly GraphSettingDefinition[];
+  /** Named sets of values for the parameters, kept in the file. */
+  presets: readonly GraphPresetState[];
   /** The ports this graph has when another graph holds it. */
   interface: readonly GraphInterfacePort[];
   /** Frames round some nodes. */
@@ -63,6 +66,7 @@ export function documentOf(state: GraphState): GraphDocument {
     edges: new Map(state.edges.map(edge => [edgeKey(edge), edge])),
     settings: state.settings,
     parameters: state.parameters,
+    presets: state.presets,
     interface: state.interface,
     groups: state.groups,
     comments: state.comments,
@@ -158,6 +162,7 @@ function applyDelta(document: GraphDocument, delta: GraphDelta): void {
   document.edges = edges;
   document.settings = withSettings(document.settings, delta);
   document.parameters = delta.parameters ?? document.parameters;
+  document.presets = delta.presets ?? document.presets;
   document.interface = delta.interface ?? document.interface;
   document.groups = delta.groups ?? document.groups;
   document.comments = delta.comments ?? document.comments;

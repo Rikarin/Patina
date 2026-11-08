@@ -1,5 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal } from '@angular/core';
-import type { GraphInterfacePort, GraphSettingDefinition } from '@patina/api-client';
+import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, signal } from '@angular/core';
+import type {
+  GraphInterfacePort,
+  GraphPresetState,
+  GraphSettingCondition,
+  GraphSettingDefinition
+} from '@patina/api-client';
+import { AngleDial } from '@patina/studio-ui';
 import { XuiButtonImports } from '@xui/button';
 import { XuiInputImports } from '@xui/input';
 import { XuiNumericInputImports } from '@xui/numeric-input';
@@ -9,6 +15,7 @@ import { XuiSwitchImports } from '@xui/switch';
 import { choiceName, kindName } from '../core/labels';
 import { SystemStatus } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
+import { controlOf, freePresetName, grouped, holds, titleOf, widgetsFor } from './graph-authoring';
 import { GraphStore } from './graph-store';
 
 const Kinds = ['Float', 'Int', 'Bool', 'Text'];
@@ -18,6 +25,11 @@ const DefaultBitDepth = '16';
 const NoBake = '';
 const MeshMap = 'Source/Mesh Map';
 const SliderSteps = 1000;
+/** A frame's colours: the chart ramp, which follows the theme, and Auto for one picked from its number. */
+const FrameColours = ['', ...[1, 2, 3, 4, 5, 6, 7, 8].map(step => `var(--color-chart-${String(step)})`)];
+const colourNames: Readonly<Record<string, string>> = Object.fromEntries(
+  FrameColours.slice(1).map((colour, index) => [colour, `Colour ${String(index + 1)}`])
+);
 
 /** What a kind's default starts as, which the Server has to accept. */
 function startOf(kind: string): string {
@@ -58,6 +70,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
 @Component({
   selector: 'ptn-graph-settings',
   imports: [
+    AngleDial,
     XuiButtonImports,
     XuiInputImports,
     XuiNumericInputImports,
@@ -172,46 +185,190 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
 
     <p class="section-label mt-4 mb-1">Parameters</p>
     <div class="flex flex-col gap-3">
-      @for (parameter of document?.parameters; track parameter.name) {
-        <div class="well flex flex-col gap-1.5 p-2" [attr.data-testid]="'parameter-' + parameter.name">
-          <div class="flex items-center gap-1">
-            <input
-              class="min-w-0 flex-1"
-              xuiInput
-              size="sm"
-              aria-label="Parameter name"
-              [disabled]="!store.editable()"
-              [value]="parameter.name"
-              (change)="rename(parameter, $event)"
-            />
-            <xui-select
-              class="w-20 shrink-0"
-              ariaLabel="Parameter kind"
-              [disabled]="!store.editable()"
-              [itemText]="kindName"
-              [items]="kinds"
-              [value]="parameter.kind"
-              (valueChange)="setKind(parameter, $event)"
-            />
-          </div>
-          @switch (controlOf(parameter)) {
-            @case ('number') {
-              <div class="flex items-center gap-2">
-                @if (parameter.minimum !== null && parameter.minimum !== undefined && hasRange(parameter)) {
+      @for (section of sections(); track section.group) {
+        @if (section.group) {
+          <p class="text-foreground-muted -mb-1 text-xs font-semibold" data-testid="parameter-group">{{ section.group }}</p>
+        }
+        @for (parameter of section.members; track parameter.name) {
+          <div
+            class="well flex flex-col gap-1.5 p-2"
+            [attr.data-testid]="'parameter-' + parameter.name"
+            [class.opacity-60]="!visible(parameter)"
+            [title]="visible(parameter) ? parameter.summary : 'Hidden while ' + hiddenBecause(parameter)"
+          >
+            <div class="flex items-center gap-1">
+              <input
+                class="min-w-0 flex-1"
+                xuiInput
+                size="sm"
+                aria-label="Parameter name"
+                title="The name expressions write. Renaming it renames it in the file."
+                [disabled]="!store.editable()"
+                [value]="parameter.name"
+                (change)="rename(parameter, $event)"
+              />
+              <xui-select
+                class="w-28 min-w-0 shrink-0"
+                ariaLabel="Parameter kind"
+                [disabled]="!store.editable()"
+                [itemText]="kindName"
+                [items]="kinds"
+                [value]="parameter.kind"
+                (valueChange)="setKind(parameter, $event)"
+              />
+              <button
+                class="shrink-0"
+                type="button"
+                xuiButton
+                size="sm"
+                variant="ghost"
+                title="Describe it: label, group, range, widget and when it shows"
+                [active]="describing().has(parameter.name)"
+                [attr.aria-label]="'Describe ' + parameter.name"
+                [attr.data-testid]="'parameter-describe-' + parameter.name"
+                (click)="toggleDescribing(parameter.name)"
+              >
+                …
+              </button>
+            </div>
+            @if (describing().has(parameter.name)) {
+              <div class="flex flex-col gap-1.5" [attr.data-testid]="'parameter-details-' + parameter.name">
+                <input
+                  xuiInput
+                  size="sm"
+                  aria-label="Parameter label"
+                  [attr.data-testid]="'parameter-label-' + parameter.name"
+                  [disabled]="!store.editable()"
+                  [placeholder]="'Label (' + parameter.name + ')'"
+                  [value]="parameter.label ?? ''"
+                  (change)="describe(parameter, { label: valueOf($event) })"
+                />
+                <div class="flex items-center gap-1">
+                  <input
+                    class="min-w-0 flex-1"
+                    xuiInput
+                    size="sm"
+                    aria-label="Parameter group"
+                    placeholder="Group"
+                    [attr.data-testid]="'parameter-group-' + parameter.name"
+                    [disabled]="!store.editable()"
+                    [value]="parameter.group"
+                    (change)="describe(parameter, { group: valueOf($event) })"
+                  />
+                  <xui-select
+                    class="w-28 min-w-0 shrink-0"
+                    ariaLabel="Parameter widget"
+                    [attr.data-testid]="'parameter-widget-' + parameter.name"
+                    [disabled]="!store.editable()"
+                    [items]="widgetsFor(parameter)"
+                    [value]="parameter.widget ?? 'Default'"
+                    (valueChange)="setWidget(parameter, $event)"
+                  />
+                </div>
+                <input
+                  xuiInput
+                  size="sm"
+                  aria-label="Parameter summary"
+                  placeholder="What it does, in one line"
+                  [disabled]="!store.editable()"
+                  [value]="parameter.summary"
+                  (change)="describe(parameter, { summary: valueOf($event) })"
+                />
+                @if (parameter.kind === 'Float' || parameter.kind === 'Int') {
+                  <div class="flex items-center gap-1" [attr.data-testid]="'parameter-range-' + parameter.name">
+                    <span class="text-foreground-muted w-12 shrink-0 text-xs">Range</span>
+                    <xui-numeric-input
+                      class="min-w-0 flex-1"
+                      size="sm"
+                      buttonPosition="none"
+                      [ariaLabel]="parameter.name + ' minimum'"
+                      [disabled]="!store.editable()"
+                      [value]="parameter.minimum ?? null"
+                      (valueChange)="setRange(parameter, 'minimum', $event)"
+                    />
+                    <xui-numeric-input
+                      class="min-w-0 flex-1"
+                      size="sm"
+                      buttonPosition="none"
+                      [ariaLabel]="parameter.name + ' maximum'"
+                      [disabled]="!store.editable()"
+                      [value]="parameter.maximum ?? null"
+                      (valueChange)="setRange(parameter, 'maximum', $event)"
+                    />
+                  </div>
+                }
+                @if (parameter.kind === 'Text') {
+                  <input
+                    xuiInput
+                    size="sm"
+                    aria-label="Parameter choices"
+                    placeholder="Choices, separated by commas"
+                    [attr.data-testid]="'parameter-choices-' + parameter.name"
+                    [disabled]="!store.editable()"
+                    [value]="parameter.accepted.join(', ')"
+                    (change)="setChoices(parameter, $event)"
+                  />
+                }
+                <div class="flex items-center gap-1" [attr.data-testid]="'parameter-visible-' + parameter.name">
+                  <span class="text-foreground-muted w-12 shrink-0 text-xs">Shown</span>
+                  <xui-select
+                    class="min-w-0 flex-1"
+                    ariaLabel="Shown while"
+                    [disabled]="!store.editable()"
+                    [itemText]="conditionName"
+                    [items]="conditionsFor(parameter)"
+                    [value]="parameter.visibleIf?.setting ?? ''"
+                    (valueChange)="setCondition(parameter, { setting: $event ?? '' })"
+                  />
+                  @if (parameter.visibleIf; as condition) {
+                    <xui-select
+                      class="w-20 min-w-0 shrink-0"
+                      ariaLabel="Comparison"
+                      [disabled]="!store.editable()"
+                      [items]="comparisons"
+                      [value]="condition.negated ? 'is not' : 'is'"
+                      (valueChange)="setCondition(parameter, { negated: $event === 'is not' })"
+                    />
+                    <input
+                      class="w-20 min-w-0 shrink-0"
+                      xuiInput
+                      size="sm"
+                      aria-label="Shown while value"
+                      [disabled]="!store.editable()"
+                      [value]="condition.value"
+                      (change)="setCondition(parameter, { value: valueOf($event) })"
+                    />
+                  }
+                </div>
+              </div>
+            }
+            @switch (controlOf(parameter)) {
+              @case ('slider') {
+                <div class="flex items-center gap-2">
                   <xui-slider
                     class="min-w-0 flex-1"
                     labelStepSize="0"
-                    [attr.aria-label]="parameter.name + ' default'"
+                    [attr.aria-label]="titleOf(parameter) + ' default'"
                     [disabled]="!store.editable()"
                     [max]="parameter.maximum ?? 1"
-                    [min]="parameter.minimum"
+                    [min]="parameter.minimum ?? 0"
                     [stepSize]="stepOf(parameter)"
                     [value]="numberOf(parameter)"
                     (valueChange)="setNumber(parameter, $event)"
                   />
-                }
+                  <xui-numeric-input
+                    class="w-28 min-w-0 shrink-0"
+                    size="sm"
+                    [ariaLabel]="parameter.name + ' default value'"
+                    [disabled]="!store.editable()"
+                    [stepSize]="parameter.kind === 'Int' ? 1 : 0.1"
+                    [value]="numberOf(parameter)"
+                    (valueChange)="setNumber(parameter, $event)"
+                  />
+                </div>
+              }
+              @case ('number') {
                 <xui-numeric-input
-                  class="w-24 shrink-0"
                   size="sm"
                   [ariaLabel]="parameter.name + ' default value'"
                   [disabled]="!store.editable()"
@@ -219,49 +376,83 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
                   [value]="numberOf(parameter)"
                   (valueChange)="setNumber(parameter, $event)"
                 />
-              </div>
+              }
+              @case ('angle') {
+                <div class="flex items-center gap-2" [attr.data-testid]="'parameter-angle-' + parameter.name">
+                  <ptn-angle-dial
+                    [ariaLabel]="titleOf(parameter) + ' default'"
+                    [disabled]="!store.editable()"
+                    [value]="numberOf(parameter)"
+                    (released)="store.endGesture()"
+                    (valueChange)="setNumber(parameter, $event)"
+                  />
+                  <xui-numeric-input
+                    class="min-w-0 flex-1"
+                    size="sm"
+                    [ariaLabel]="parameter.name + ' default value'"
+                    [disabled]="!store.editable()"
+                    [stepSize]="1"
+                    [value]="numberOf(parameter)"
+                    (valueChange)="setNumber(parameter, $event)"
+                  />
+                  <span class="text-foreground-muted text-xs">°</span>
+                </div>
+              }
+              @case ('switch') {
+                <xui-switch
+                  [ariaLabel]="titleOf(parameter) + ' default'"
+                  [checked]="store.parameterDefault(parameter) === 'true'"
+                  [disabled]="!store.editable()"
+                  (checkedChange)="setDefault(parameter, $event ? 'true' : 'false')"
+                />
+              }
+              @case ('toggle') {
+                <button
+                  class="self-start"
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  [active]="store.parameterDefault(parameter) === 'true'"
+                  [disabled]="!store.editable()"
+                  (click)="setDefault(parameter, store.parameterDefault(parameter) === 'true' ? 'false' : 'true')"
+                >
+                  {{ titleOf(parameter) }}
+                </button>
+              }
+              @case ('choice') {
+                <xui-select
+                  [aria-label]="titleOf(parameter) + ' default'"
+                  [disabled]="!store.editable()"
+                  [itemText]="choiceOf(parameter)"
+                  [items]="parameter.accepted"
+                  [value]="store.parameterDefault(parameter)"
+                  (valueChange)="setDefault(parameter, $event ?? parameter.default)"
+                />
+              }
+              @default {
+                <input
+                  xuiInput
+                  size="sm"
+                  [attr.aria-label]="titleOf(parameter) + ' default'"
+                  [disabled]="!store.editable()"
+                  [value]="store.parameterDefault(parameter)"
+                  (change)="setDefaultText(parameter, $event)"
+                />
+              }
             }
-            @case ('switch') {
-              <xui-switch
-                [ariaLabel]="parameter.name + ' default'"
-                [checked]="store.parameterDefault(parameter) === 'true'"
-                [disabled]="!store.editable()"
-                (checkedChange)="setDefault(parameter, $event ? 'true' : 'false')"
-              />
-            }
-            @case ('choice') {
-              <xui-select
-                [aria-label]="parameter.name + ' default'"
-                [disabled]="!store.editable()"
-                [itemText]="choiceOf(parameter)"
-                [items]="parameter.accepted"
-                [value]="store.parameterDefault(parameter)"
-                (valueChange)="setDefault(parameter, $event ?? parameter.default)"
-              />
-            }
-            @default {
-              <input
-                xuiInput
-                size="sm"
-                [attr.aria-label]="parameter.name + ' default'"
-                [disabled]="!store.editable()"
-                [value]="store.parameterDefault(parameter)"
-                (change)="setDefaultText(parameter, $event)"
-              />
-            }
-          }
-          <button
-            class="self-start"
-            type="button"
-            xuiButton
-            size="sm"
-            variant="ghost"
-            [disabled]="!store.editable()"
-            (click)="store.removeParameter(parameter.name)"
-          >
-            Remove
-          </button>
-        </div>
+            <button
+              class="self-start"
+              type="button"
+              xuiButton
+              size="sm"
+              variant="ghost"
+              [disabled]="!store.editable()"
+              (click)="store.removeParameter(parameter.name)"
+            >
+              Remove
+            </button>
+          </div>
+        }
       } @empty {
         <p class="text-foreground-muted text-xs">This graph exposes nothing yet.</p>
       }
@@ -276,6 +467,73 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
       >
         Add parameter
       </button>
+    </div>
+
+    <p class="section-label mt-4 mb-1">Presets</p>
+    <div class="flex flex-col gap-1.5" data-testid="graph-presets">
+      @for (preset of document?.presets; track preset.name) {
+        <div class="flex items-center gap-1" [attr.data-testid]="'preset-' + preset.name">
+          <span class="min-w-0 flex-1 truncate text-xs" [title]="presetSummary(preset)">{{ preset.name }}</span>
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            variant="ghost"
+            title="Set every parameter it names to its value"
+            [attr.data-testid]="'preset-apply-' + preset.name"
+            [disabled]="!store.editable()"
+            (click)="store.applyPreset(preset.name)"
+          >
+            Apply
+          </button>
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            variant="ghost"
+            title="Save the parameters as they are now under this name"
+            [disabled]="!store.editable()"
+            (click)="store.savePreset(preset.name)"
+          >
+            Update
+          </button>
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            variant="ghost"
+            [attr.aria-label]="'Remove preset ' + preset.name"
+            [disabled]="!store.editable()"
+            (click)="store.removePreset(preset.name)"
+          >
+            ×
+          </button>
+        </div>
+      } @empty {
+        <p class="text-foreground-muted text-xs">No presets. Saving one keeps every parameter as it is now.</p>
+      }
+      <div class="flex items-center gap-1">
+        <input
+          #presetName
+          class="min-w-0 flex-1"
+          xuiInput
+          size="sm"
+          aria-label="New preset name"
+          data-testid="preset-name"
+          [disabled]="!store.editable() || !document?.parameters?.length"
+          [placeholder]="freePreset()"
+        />
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          data-testid="preset-save"
+          [disabled]="!store.editable() || !document?.parameters?.length"
+          (click)="savePreset(presetName)"
+        >
+          Save preset
+        </button>
+      </div>
     </div>
 
     @if (isCompound()) {
@@ -352,7 +610,18 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
       <p class="section-label mt-4 mb-1">Groups</p>
       <div class="flex flex-col gap-1.5">
         @for (group of document?.groups; track group.id) {
-          <div class="flex items-center gap-1" data-testid="group-row">
+          <div class="flex flex-col gap-1" data-testid="group-row">
+          <div class="flex items-center gap-1">
+            <xui-select
+              class="w-28 min-w-0 shrink-0"
+              ariaLabel="Frame colour"
+              data-testid="group-colour"
+              [disabled]="!store.editable()"
+              [itemText]="colourName"
+              [items]="frameColours"
+              [value]="group.color"
+              (valueChange)="store.describeGroup(group.id, { color: $event ?? '' })"
+            />
             <input
               class="min-w-0 flex-1"
               xuiInput
@@ -373,6 +642,17 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
             >
               Ungroup
             </button>
+          </div>
+          <input
+            xuiInput
+            size="sm"
+            aria-label="Group description"
+            placeholder="What these nodes do"
+            data-testid="group-description"
+            [disabled]="!store.editable()"
+            [value]="group.description"
+            (change)="store.describeGroup(group.id, { description: valueOf($event) })"
+          />
           </div>
         }
       </div>
@@ -492,20 +772,124 @@ export class GraphSettings {
     }
   }
 
-  protected controlOf(parameter: GraphSettingDefinition): 'number' | 'switch' | 'choice' | 'text' {
-    if (parameter.accepted.length > 0) {
-      return 'choice';
-    }
+  protected readonly controlOf = controlOf;
+  protected readonly titleOf = titleOf;
+  protected readonly widgetsFor = widgetsFor;
+  protected readonly comparisons = ['is', 'is not'];
+  protected readonly frameColours = FrameColours;
+  protected readonly colourName = (colour: string): string => (colour === '' ? 'Auto' : colourNames[colour] ?? colour);
 
-    if (parameter.kind === 'Bool') {
-      return 'switch';
-    }
+  /** The parameters under their group headings. */
+  protected readonly sections = computed(() => grouped(this.store.document()?.parameters ?? []));
 
-    return parameter.kind === 'Float' || parameter.kind === 'Int' ? 'number' : 'text';
+  /** Parameters whose description is open. */
+  protected readonly describing = signal<ReadonlySet<string>>(new Set());
+
+  protected readonly freePreset = computed(() => freePresetName(this.store.document()?.presets ?? []));
+
+  protected toggleDescribing(name: string): void {
+    this.describing.update(open => {
+      const next = new Set(open);
+      if (!next.delete(name)) {
+        next.add(name);
+      }
+
+      return next;
+    });
   }
 
-  protected hasRange(parameter: GraphSettingDefinition): boolean {
-    return parameter.maximum !== null && parameter.maximum !== undefined;
+  protected valueOf(event: Event): string {
+    return (event.target as HTMLInputElement).value;
+  }
+
+  /** Whether a parameter shows to whoever uses the graph, given the defaults as they are now. */
+  protected visible(parameter: GraphSettingDefinition): boolean {
+    const condition = parameter.visibleIf;
+    const other = this.store.document()?.parameters.find(held => held.name === condition?.setting);
+    return holds(condition, other ? this.store.parameterDefault(other) : undefined);
+  }
+
+  protected hiddenBecause(parameter: GraphSettingDefinition): string {
+    const condition = parameter.visibleIf;
+    return condition ? `${condition.setting} ${condition.negated ? 'is' : 'is not'} ${condition.value}` : '';
+  }
+
+  /** Every parameter but this one, as something to show it by, and nothing for always. */
+  protected conditionsFor(parameter: GraphSettingDefinition): readonly string[] {
+    return ['', ...(this.store.document()?.parameters ?? []).map(held => held.name).filter(name => name !== parameter.name)];
+  }
+
+  protected readonly conditionName = (name: string): string => (name === '' ? 'Always' : name);
+
+  /** Changes how a parameter is described, keeping everything else about it. */
+  protected describe(
+    parameter: GraphSettingDefinition,
+    change: Partial<Pick<GraphSettingDefinition, 'label' | 'group' | 'summary'>>
+  ): void {
+    parameter = this.latest(parameter);
+    const next = { ...parameter, ...change };
+    if (next.label !== parameter.label || next.group !== parameter.group || next.summary !== parameter.summary) {
+      this.store.editParameter(parameter.name, next);
+    }
+  }
+
+  protected setWidget(parameter: GraphSettingDefinition, widget: string | null): void {
+    parameter = this.latest(parameter);
+    const next = widget === null || widget === 'Default' ? null : widget;
+    if (next !== (parameter.widget ?? null)) {
+      this.store.editParameter(parameter.name, { ...parameter, widget: next });
+    }
+  }
+
+  protected setRange(parameter: GraphSettingDefinition, end: 'minimum' | 'maximum', value: number | null): void {
+    parameter = this.latest(parameter);
+    const next = value !== null && Number.isFinite(value) ? value : null;
+    if (next !== (parameter[end] ?? null)) {
+      const widened = { ...parameter, [end]: next };
+      // A slider needs both ends, so a range that loses one loses the slider too.
+      const slider = widened.widget === 'Slider' && (widened.minimum === null || widened.maximum === null);
+      this.store.editParameter(parameter.name, slider ? { ...widened, widget: null } : widened);
+    }
+  }
+
+  protected setChoices(parameter: GraphSettingDefinition, event: Event): void {
+    parameter = this.latest(parameter);
+    const accepted = this.valueOf(event)
+      .split(',')
+      .map(choice => choice.trim())
+      .filter(choice => choice !== '');
+    if (accepted.join('\0') !== parameter.accepted.join('\0')) {
+      const current = this.store.parameterDefault(parameter);
+      this.store.editParameter(parameter.name, {
+        ...parameter,
+        accepted,
+        default: accepted.length === 0 || accepted.includes(current) ? current : (accepted[0] ?? '')
+      });
+    }
+  }
+
+  protected setCondition(parameter: GraphSettingDefinition, change: Partial<GraphSettingCondition>): void {
+    parameter = this.latest(parameter);
+    const held = parameter.visibleIf ?? { setting: '', value: 'true', negated: false };
+    const next = { ...held, ...change };
+    this.store.editParameter(parameter.name, { ...parameter, visibleIf: next.setting === '' ? null : next });
+  }
+
+  /** The parameter as this client last asked for it, so that two quick edits do not undo each other. */
+  private latest(parameter: GraphSettingDefinition): GraphSettingDefinition {
+    return this.store.parameter(parameter.name) ?? parameter;
+  }
+
+  protected presetSummary(preset: GraphPresetState): string {
+    return Object.entries(preset.values)
+      .map(([name, value]) => `${name} = ${value}`)
+      .join('\n');
+  }
+
+  protected savePreset(box: HTMLInputElement): void {
+    const name = box.value.trim() || this.freePreset();
+    this.store.savePreset(name);
+    box.value = '';
   }
 
   protected stepOf(parameter: GraphSettingDefinition): number {
@@ -538,6 +922,7 @@ export class GraphSettings {
   }
 
   protected rename(parameter: GraphSettingDefinition, event: Event): void {
+    parameter = this.latest(parameter);
     const name = (event.target as HTMLInputElement).value.trim();
     if (name !== parameter.name) {
       this.store.editParameter(parameter.name, { ...parameter, name });
@@ -545,6 +930,7 @@ export class GraphSettings {
   }
 
   protected setKind(parameter: GraphSettingDefinition, kind: string | null): void {
+    parameter = this.latest(parameter);
     if (kind !== null && kind !== parameter.kind) {
       const { minimum, maximum, ...rest } = parameter;
       this.store.editParameter(parameter.name, {
@@ -552,7 +938,9 @@ export class GraphSettings {
         ...(kind === 'Float' ? { minimum, maximum } : {}),
         kind,
         default: startOf(kind),
-        accepted: []
+        accepted: [],
+        // A widget suits one kind, and the Server refuses one that does not.
+        widget: null
       });
     }
   }

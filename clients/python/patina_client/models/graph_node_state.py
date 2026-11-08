@@ -34,6 +34,9 @@ class GraphNodeState:
             values (GraphNodeStateValues): The numbers set on its inputs, by port. An input left out takes the type's
                 default.
             texts (GraphNodeStateTexts): The text settings set on it, by name.
+            bypassed (bool): True when it is switched off: what feeds its first input of an output's kind passes straight
+                through, and a
+                node with no such input passes nothing. Default: False.
      """
 
     id: int
@@ -42,6 +45,7 @@ class GraphNodeState:
     y: float
     values: GraphNodeStateValues
     texts: GraphNodeStateTexts
+    bypassed: bool = False
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -63,6 +67,8 @@ class GraphNodeState:
 
         texts = self.texts.to_dict()
 
+        bypassed = self.bypassed
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -73,6 +79,7 @@ class GraphNodeState:
             "y": y,
             "values": values,
             "texts": texts,
+            "bypassed": bypassed,
         })
 
         return field_dict
@@ -102,6 +109,8 @@ class GraphNodeState:
 
 
 
+        bypassed = d.pop("bypassed")
+
         graph_node_state = cls(
             id=id,
             type_=type_,
@@ -109,6 +118,7 @@ class GraphNodeState:
             y=y,
             values=values,
             texts=texts,
+            bypassed=bypassed,
         )
 
 

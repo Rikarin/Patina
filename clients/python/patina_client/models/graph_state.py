@@ -20,6 +20,7 @@ if TYPE_CHECKING:
   from ..models.graph_history_state import GraphHistoryState
   from ..models.graph_interface_port import GraphInterfacePort
   from ..models.graph_node_state import GraphNodeState
+  from ..models.graph_preset_state import GraphPresetState
   from ..models.graph_preview import GraphPreview
   from ..models.graph_setting_definition import GraphSettingDefinition
   from ..models.graph_state_settings import GraphStateSettings
@@ -47,6 +48,7 @@ class GraphState:
             edges (list[GraphEdgeState]): The wires, by the input they arrive at.
             settings (GraphStateSettings): Its settings: `baseWidth`, `baseHeight`, `seed` and any others.
             parameters (list[GraphSettingDefinition]): The parameters the graph exposes.
+            presets (list[GraphPresetState]): Named sets of values for them.
             interface (list[GraphInterfacePort]): The ports it has when another graph holds it.
             groups (list[GraphGroupState]): Its group frames, in file order.
             comments (list[GraphCommentState]): Its notes, in file order.
@@ -67,6 +69,7 @@ class GraphState:
     edges: list[GraphEdgeState]
     settings: GraphStateSettings
     parameters: list[GraphSettingDefinition]
+    presets: list[GraphPresetState]
     interface: list[GraphInterfacePort]
     groups: list[GraphGroupState]
     comments: list[GraphCommentState]
@@ -90,6 +93,7 @@ class GraphState:
         from ..models.graph_history_state import GraphHistoryState # noqa: PLC0415
         from ..models.graph_interface_port import GraphInterfacePort # noqa: PLC0415
         from ..models.graph_node_state import GraphNodeState # noqa: PLC0415
+        from ..models.graph_preset_state import GraphPresetState # noqa: PLC0415
         from ..models.graph_preview import GraphPreview # noqa: PLC0415
         from ..models.graph_setting_definition import GraphSettingDefinition # noqa: PLC0415
         from ..models.graph_state_settings import GraphStateSettings # noqa: PLC0415
@@ -125,6 +129,13 @@ class GraphState:
         for parameters_item_data in self.parameters:
             parameters_item = parameters_item_data.to_dict()
             parameters.append(parameters_item)
+
+
+
+        presets = []
+        for presets_item_data in self.presets:
+            presets_item = presets_item_data.to_dict()
+            presets.append(presets_item)
 
 
 
@@ -189,6 +200,7 @@ class GraphState:
             "edges": edges,
             "settings": settings,
             "parameters": parameters,
+            "presets": presets,
             "interface": interface,
             "groups": groups,
             "comments": comments,
@@ -214,6 +226,7 @@ class GraphState:
         from ..models.graph_history_state import GraphHistoryState # noqa: PLC0415
         from ..models.graph_interface_port import GraphInterfacePort # noqa: PLC0415
         from ..models.graph_node_state import GraphNodeState # noqa: PLC0415
+        from ..models.graph_preset_state import GraphPresetState # noqa: PLC0415
         from ..models.graph_preview import GraphPreview # noqa: PLC0415
         from ..models.graph_setting_definition import GraphSettingDefinition # noqa: PLC0415
         from ..models.graph_state_settings import GraphStateSettings # noqa: PLC0415
@@ -266,6 +279,16 @@ class GraphState:
 
 
             parameters.append(parameters_item)
+
+
+        presets = []
+        _presets = d.pop("presets")
+        for presets_item_data in (_presets):
+            presets_item = GraphPresetState.from_dict(presets_item_data)
+
+
+
+            presets.append(presets_item)
 
 
         interface = []
@@ -353,6 +376,7 @@ class GraphState:
             edges=edges,
             settings=settings,
             parameters=parameters,
+            presets=presets,
             interface=interface,
             groups=groups,
             comments=comments,

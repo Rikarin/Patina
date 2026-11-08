@@ -2171,7 +2171,12 @@ export interface components {
       | components['schemas']['GraphCommandGraphRemoveGroup']
       | components['schemas']['GraphCommandGraphAddComment']
       | components['schemas']['GraphCommandGraphSetComment']
-      | components['schemas']['GraphCommandGraphRemoveComment'];
+      | components['schemas']['GraphCommandGraphRemoveComment']
+      | components['schemas']['GraphCommandGraphSetBypass']
+      | components['schemas']['GraphCommandGraphArrange']
+      | components['schemas']['GraphCommandGraphSavePreset']
+      | components['schemas']['GraphCommandGraphRemovePreset']
+      | components['schemas']['GraphCommandGraphApplyPreset'];
     /** @description Some edits, applied whole or not at all, and undone as one step. */
     GraphCommandBatch: {
       /** @description What to do, in order. */
@@ -2235,7 +2240,7 @@ export interface components {
     GraphCommandGraphAddNode: {
       /** @enum {string} */
       op: 'addNode';
-      /** @description The node type's path. */
+      /** @description The node type's path, or `Reroute` for a dot that only bends a wire. */
       type: string;
       /**
        * Format: float
@@ -2265,6 +2270,26 @@ export interface components {
       /** @enum {string} */
       op: 'addPort';
       port: components['schemas']['GraphInterfacePort'];
+    };
+    /**
+     * @description Sets the parameters a preset names to its values, as their defaults. A value a parameter cannot hold, or a
+     *     name the graph no longer declares, is left out. A compound's preset on a node of another graph is that node's
+     *     settings, which GraphSetText sets.
+     */
+    GraphCommandGraphApplyPreset: {
+      /** @enum {string} */
+      op: 'applyPreset';
+      name: string;
+    };
+    /** @description Lays nodes out in columns, left to right in the order data flows, with Vixen's layout. */
+    GraphCommandGraphArrange: {
+      /** @enum {string} */
+      op: 'arrange';
+      /**
+       * @description The nodes, which keep their top-left corner as a block and are laid out among themselves; empty for the whole
+       *     graph.
+       */
+      nodes: number[];
     };
     /** @description Wires an output to an input, replacing what was on that input. */
     GraphCommandGraphConnect: {
@@ -2309,7 +2334,14 @@ export interface components {
     GraphCommandGraphRemoveNodes: {
       /** @enum {string} */
       op: 'removeNodes';
+      /** @description The nodes. */
       nodes: number[];
+      /**
+       * @description True to keep the chain joined: each input a removed node fed is wired to what fed that node's first input of
+       *     the same kind, the way a bypassed node passes it on.
+       * @default false
+       */
+      relink: boolean;
     };
     /** @description Stops exposing a parameter. */
     GraphCommandGraphRemoveParameter: {
@@ -2323,6 +2355,33 @@ export interface components {
       op: 'removePort';
       name: string;
       direction: string;
+    };
+    /** @description Takes a preset away. */
+    GraphCommandGraphRemovePreset: {
+      /** @enum {string} */
+      op: 'removePreset';
+      name: string;
+    };
+    /** @description Saves a preset, replacing one of the same name where it stands. */
+    GraphCommandGraphSavePreset: {
+      /** @enum {string} */
+      op: 'savePreset';
+      /** @description What it is called. */
+      name: string;
+      /** @description What each parameter is set to, by name; null for every parameter's default now. */
+      values?: null | {
+        [key: string]: string;
+      };
+    };
+    /**
+     * @description Switches nodes off or back on. A switched-off node keeps its wires and values; see
+     *     GraphNodeState.
+     */
+    GraphCommandGraphSetBypass: {
+      /** @enum {string} */
+      op: 'setBypass';
+      nodes: number[];
+      bypassed: boolean;
     };
     /** @description Changes a note: anything left null stays as it is. A note moved by hand sends this on every step. */
     GraphCommandGraphSetComment: {
@@ -2369,6 +2428,10 @@ export interface components {
       title?: null | string;
       /** @description Its new members. */
       nodes?: null | number[];
+      /** @description Its frame's CSS colour, or empty for the client's own choice. */
+      color?: null | string;
+      /** @description What its nodes do together. */
+      description?: null | string;
     };
     /** @description Replaces a parameter where it stands. Dragging its default sends this on every step. */
     GraphCommandGraphSetParameter: {
@@ -2547,6 +2610,8 @@ export interface components {
       comments?: null | components['schemas']['GraphCommentState'][];
       /** @description The whole list of interface ports, or null when it did not change. */
       interface?: null | components['schemas']['GraphInterfacePort'][];
+      /** @description The whole list of presets, or null when it did not change. */
+      presets?: null | components['schemas']['GraphPresetState'][];
     };
     /** @description Something a graph's compiler or its file's reader has to say. */
     GraphDiagnostic: {
@@ -2701,6 +2766,16 @@ export interface components {
       title: string;
       /** @description Its members. */
       nodes: number[];
+      /**
+       * @description The CSS colour its frame is drawn in, or empty for the client's own choice.
+       * @default
+       */
+      color: string;
+      /**
+       * @description What its nodes do together.
+       * @default
+       */
+      description: string;
     };
     /** @description What the undo history offers. */
     GraphHistoryState: {
@@ -2805,6 +2880,12 @@ export interface components {
       texts: {
         [key: string]: string;
       };
+      /**
+       * @description True when it is switched off: what feeds its first input of an output's kind passes straight through, and a
+       *     node with no such input passes nothing.
+       * @default false
+       */
+      bypassed: boolean;
     };
     /** @description A node a client can add, for a palette. */
     GraphNodeType: {
@@ -2822,6 +2903,8 @@ export interface components {
       ports: components['schemas']['GraphPortDefinition'][];
       /** @description Its text settings, set with GraphSetText. */
       settings: components['schemas']['GraphSettingDefinition'][];
+      /** @description A compound's presets, which set its settings; empty for every other node. */
+      presets?: null | components['schemas']['GraphPresetState'][];
     };
     /** @description Opens a texture graph for editing. Opening a file that is already open joins its session. */
     GraphOpenRequest: {
@@ -2865,6 +2948,15 @@ export interface components {
        */
       softMaximum?: null | number;
     };
+    /** @description A named set of values for a graph's parameters, kept in the graph's file. */
+    GraphPresetState: {
+      /** @description What it is called. Unique within the graph. */
+      name: string;
+      /** @description What each parameter is set to, by parameter name, as text. */
+      values: {
+        [key: string]: string;
+      };
+    };
     /** @description Where a node's picture is: `GET /api/v1/previews/{hash}`. Pixels never cross JSON. */
     GraphPreview: {
       /**
@@ -2886,6 +2978,18 @@ export interface components {
        * @description The PNG's size in pixels.
        */
       height: number;
+    };
+    /** @description When a parameter or a setting is shown: while another of the same graph or node holds a value. */
+    GraphSettingCondition: {
+      /** @description The other one, by name. */
+      setting: string;
+      /** @description What it is compared with, as text. Numbers compare as numbers and anything else as a name, ignoring case. */
+      value: string;
+      /**
+       * @description True to show it while the other one does not hold the value.
+       * @default false
+       */
+      negated: boolean;
     };
     /** @description A value a node type or a graph lets an author set. */
     GraphSettingDefinition: {
@@ -2916,6 +3020,17 @@ export interface components {
        *     sends a definition leaves it out.
        */
       labels?: null | string[];
+      /**
+       * @description What a person calls it, apart from Name, which expressions write. Null or empty
+       *     for the name.
+       */
+      label?: null | string;
+      /**
+       * @description The control an inspector draws: `Default`, `Slider` (a number with a range), `Angle` (a number
+       *     in degrees) or `Toggle` (a flag). Null for `Default`.
+       */
+      widget?: null | string;
+      visibleIf?: null | components['schemas']['GraphSettingCondition'];
     };
     /** @description The reply to `GET /api/v1/graphs/{id}`: the whole document as the Server holds it. */
     GraphState: {
@@ -2947,6 +3062,8 @@ export interface components {
       };
       /** @description The parameters the graph exposes. */
       parameters: components['schemas']['GraphSettingDefinition'][];
+      /** @description Named sets of values for them. */
+      presets: components['schemas']['GraphPresetState'][];
       /** @description The ports it has when another graph holds it. */
       interface: components['schemas']['GraphInterfacePort'][];
       /** @description Its group frames, in file order. */

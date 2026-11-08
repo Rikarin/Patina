@@ -32,6 +32,7 @@ public sealed class GraphEditor {
     readonly NodeGraphModel graph;
     readonly GraphInterfaceEdits ports;
     readonly GraphParameterEdits parameters;
+    readonly GraphAuthoringEdits authoring;
     readonly List<UndoStep> undoable = [];
     readonly List<UndoStep> redoable = [];
     NodeTypeRegistry registry;
@@ -43,6 +44,7 @@ public sealed class GraphEditor {
         graph = NodeGraphDocument.Load(asset, out var repairs);
         ports = new(graph, TypeOf);
         parameters = new(graph);
+        authoring = new(graph, parameters, this);
         this.registry = registry;
         Repairs = repairs;
         Document = GraphDocuments.Canonical(NodeGraphDocument.Save(graph));
@@ -191,6 +193,9 @@ public sealed class GraphEditor {
     /// <summary>Takes a new list of node types, after a compound changed.</summary>
     public void UseRegistry(NodeTypeRegistry types) => registry = types;
 
+    /// <summary>The node types as they are now.</summary>
+    internal NodeTypeRegistry Registry => registry;
+
     /// <summary>
     ///     Says the document now matches the file. A later drag starts a new undo step rather than merging.
     /// </summary>
@@ -232,7 +237,7 @@ public sealed class GraphEditor {
     IAuthoringCommand? Build(GraphCommand command, Dictionary<int, int> refs) =>
         command switch {
             GraphAddNode add => BuildAdd(add, refs),
-            GraphRemoveNodes remove => BuildRemove(remove, refs),
+            GraphRemoveNodes { Relink: false } remove => BuildRemove(remove, refs),
             GraphMoveNodes move => BuildMove(move, refs),
             GraphConnect connect => BuildConnect(connect, refs),
             GraphWire wire => BuildWire(wire, refs),
@@ -252,11 +257,13 @@ public sealed class GraphEditor {
             GraphAddComment add => BuildAddComment(add),
             GraphSetComment set => BuildSetComment(set),
             GraphRemoveComment remove => new RemoveCommentCommand(graph, CommentOf(remove.Id)),
-            _ => throw new GraphEditRefusedException($"Unknown command '{command.GetType().Name}'.")
+            _ => authoring.Build(command, refs)
         };
 
     AddNodeCommand BuildAdd(GraphAddNode add, Dictionary<int, int> refs) {
-        if (!SubGraphs.IsBoundary(add.Type) && !registry.TryGet(add.Type, out _)) {
+        if (!SubGraphs.IsBoundary(add.Type)
+            && !GraphAuthoringEdits.IsDot(add.Type)
+            && !registry.TryGet(add.Type, out _)) {
             throw new GraphEditRefusedException($"There is no node type '{add.Type}'.");
         }
 
@@ -294,7 +301,8 @@ public sealed class GraphEditor {
         var source = PortOf(from, connect.FromPort, PortDirection.Output);
         var target = PortOf(to, connect.ToPort, PortDirection.Input);
         var filter = new PortFilter(source.Kind, PortDirection.Input);
-        if (!filter.Accepts(target)) {
+        // A reroute dot with nothing at either end carries nothing yet, and takes whatever reaches it first.
+        if (source.Kind != PortKind.None && target.Kind != PortKind.None && !filter.Accepts(target)) {
             throw new GraphEditRefusedException(
                 $"{connect.FromPort} ({source.Kind}) cannot drive {connect.ToPort} ({target.Kind})."
             );
@@ -389,7 +397,7 @@ public sealed class GraphEditor {
 
     SetGroupCommand BuildSetGroup(GraphSetGroup set, Dictionary<int, int> refs) {
         var group = GroupOf(set.Id);
-        return new(group, set.Title ?? group.Title, [..set.Nodes is { } nodes ? Members(nodes, refs) : group.Nodes]);
+        return new(group, set, [..set.Nodes is { } nodes ? Members(nodes, refs) : group.Nodes]);
     }
 
     AddNoteCommand BuildAddComment(GraphAddComment add) {
@@ -426,23 +434,35 @@ public sealed class GraphEditor {
             ? new(width, height)
             : throw new GraphEditRefusedException("A note's size takes positive numbers.");
 
-    GraphNode Find(int id, Dictionary<int, int> refs) {
+    internal GraphNode Find(int id, Dictionary<int, int> refs) {
         var actual = id < 0 && refs.TryGetValue(id, out var created) ? created : id;
         return graph.TryGet(new(actual), out var node)
             ? node
             : throw new GraphEditRefusedException($"There is no node {id}.");
     }
 
-    /// <summary>A node's type. A boundary node's ports are this graph's interface, as it stands now.</summary>
+    /// <summary>
+    ///     A node's type. A boundary node's ports are this graph's interface, as it stands now, and a reroute
+    ///     dot's ports carry whatever is wired to it.
+    /// </summary>
     NodeTypeDefinition TypeOf(GraphNode node) {
         if (SubGraphs.IsBoundary(node.Type)) {
             return SubGraphs.Boundary(graph, node.Type);
+        }
+
+        if (authoring.DotOf(node) is { } dot) {
+            return dot;
         }
 
         return registry.TryGet(node.Type, out var type)
             ? type
             : throw new GraphEditRefusedException($"There is no node type '{node.Type}'.");
     }
+
+    internal NodeTypeDefinition? TypeOrNull(GraphNode node) =>
+        SubGraphs.IsBoundary(node.Type) ? SubGraphs.Boundary(graph, node.Type)
+        : registry.TryGet(node.Type, out var type) ? type
+        : null;
 
     PortDefinition PortOf(GraphNode node, string name, PortDirection direction) =>
         TypeOf(node).Port(name, direction)
@@ -474,21 +494,35 @@ sealed class SetGraphSettingCommand(NodeGraphModel graph, string key, string val
     }
 }
 
-/// <summary>Retitles a group and changes its members. Vixen's own command only retitles.</summary>
-sealed class SetGroupCommand(GraphGroup group, string title, NodeId[] nodes) : IAuthoringCommand {
-    readonly string previousTitle = group.Title;
-    readonly NodeId[] previousNodes = [..group.Nodes];
+/// <summary>What a group frame says and holds.</summary>
+readonly record struct GroupState(string Title, NodeId[] Nodes, string Color, string Description);
+
+/// <summary>Changes a group's title, members, colour and description. Vixen's own command only retitles.</summary>
+/// <param name="group">The group.</param>
+/// <param name="set">What a client asked for: anything it left null stays as it is.</param>
+/// <param name="nodes">Its members, resolved from the client's numbers.</param>
+sealed class SetGroupCommand(GraphGroup group, GraphSetGroup set, NodeId[] nodes) : IAuthoringCommand {
+    readonly GroupState previous = new(group.Title, [..group.Nodes], group.Color, group.Description);
+
+    readonly GroupState next = new(
+        set.Title ?? group.Title,
+        nodes,
+        set.Color?.Trim() ?? group.Color,
+        set.Description ?? group.Description
+    );
 
     public string Name => "Edit Group";
 
-    public void Do(ICommandContext context) => Write(title, nodes);
+    public void Do(ICommandContext context) => Write(next);
 
-    public void Undo(ICommandContext context) => Write(previousTitle, previousNodes);
+    public void Undo(ICommandContext context) => Write(previous);
 
-    void Write(string text, NodeId[] members) {
-        group.Title = text;
+    void Write(GroupState state) {
+        group.Title = state.Title;
         group.Nodes.Clear();
-        group.Nodes.AddRange(members);
+        group.Nodes.AddRange(state.Nodes);
+        group.Color = state.Color;
+        group.Description = state.Description;
     }
 }
 

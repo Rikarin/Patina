@@ -11,6 +11,8 @@ from ..types import UNSET, Unset
 from ..types import UNSET, Unset
 from typing import cast
 
+if TYPE_CHECKING:
+  from ..models.graph_setting_condition import GraphSettingCondition
 
 
 
@@ -36,6 +38,12 @@ class GraphSettingDefinition:
             labels (list[str] | None | Unset): What a person calls each of Accepted, in its order. The Server fills it in; a
                 client that
                 sends a definition leaves it out.
+            label (None | str | Unset): What a person calls it, apart from Name, which expressions write. Null or empty
+                for the name.
+            widget (None | str | Unset): The control an inspector draws: `Default`, `Slider` (a number with a range),
+                `Angle` (a number
+                in degrees) or `Toggle` (a flag). Null for `Default`.
+            visible_if (GraphSettingCondition | None | Unset):
      """
 
     name: str
@@ -47,6 +55,9 @@ class GraphSettingDefinition:
     minimum: float | None | Unset = UNSET
     maximum: float | None | Unset = UNSET
     labels: list[str] | None | Unset = UNSET
+    label: None | str | Unset = UNSET
+    widget: None | str | Unset = UNSET
+    visible_if: GraphSettingCondition | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -54,6 +65,7 @@ class GraphSettingDefinition:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.graph_setting_condition import GraphSettingCondition # noqa: PLC0415
         name = self.name
 
         default = self.default
@@ -90,6 +102,26 @@ class GraphSettingDefinition:
         else:
             labels = self.labels
 
+        label: None | str | Unset
+        if isinstance(self.label, Unset):
+            label = UNSET
+        else:
+            label = self.label
+
+        widget: None | str | Unset
+        if isinstance(self.widget, Unset):
+            widget = UNSET
+        else:
+            widget = self.widget
+
+        visible_if: dict[str, Any] | None | Unset
+        if isinstance(self.visible_if, Unset):
+            visible_if = UNSET
+        elif isinstance(self.visible_if, GraphSettingCondition):
+            visible_if = self.visible_if.to_dict()
+        else:
+            visible_if = self.visible_if
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -107,6 +139,12 @@ class GraphSettingDefinition:
             field_dict["maximum"] = maximum
         if labels is not UNSET:
             field_dict["labels"] = labels
+        if label is not UNSET:
+            field_dict["label"] = label
+        if widget is not UNSET:
+            field_dict["widget"] = widget
+        if visible_if is not UNSET:
+            field_dict["visibleIf"] = visible_if
 
         return field_dict
 
@@ -114,6 +152,7 @@ class GraphSettingDefinition:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.graph_setting_condition import GraphSettingCondition # noqa: PLC0415
         d = dict(src_dict)
         name = d.pop("name")
 
@@ -166,6 +205,46 @@ class GraphSettingDefinition:
         labels = _parse_labels(d.pop("labels", UNSET))
 
 
+        def _parse_label(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        label = _parse_label(d.pop("label", UNSET))
+
+
+        def _parse_widget(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        widget = _parse_widget(d.pop("widget", UNSET))
+
+
+        def _parse_visible_if(data: object) -> GraphSettingCondition | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                visible_if_type_1 = GraphSettingCondition.from_dict(data)
+
+
+
+                return visible_if_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(GraphSettingCondition | None | Unset, data)
+
+        visible_if = _parse_visible_if(d.pop("visibleIf", UNSET))
+
+
         graph_setting_definition = cls(
             name=name,
             default=default,
@@ -176,6 +255,9 @@ class GraphSettingDefinition:
             minimum=minimum,
             maximum=maximum,
             labels=labels,
+            label=label,
+            widget=widget,
+            visible_if=visible_if,
         )
 
 

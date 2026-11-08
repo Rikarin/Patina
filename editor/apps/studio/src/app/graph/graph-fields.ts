@@ -1,8 +1,25 @@
-import type { GraphNodeType, GraphPortDefinition, GraphSettingDefinition } from '@patina/api-client';
+import type {
+  GraphNodeType,
+  GraphPortDefinition,
+  GraphSettingCondition,
+  GraphSettingDefinition
+} from '@patina/api-client';
 import { choiceName } from '../core/labels';
+import { titleOf } from './graph-authoring';
+
+/** What every row has besides its control: what it is called, and when it shows. */
+export interface GraphFieldLook {
+  /** What a person reads: a setting's label, or the name. */
+  title: string;
+  /** When it is shown, from another setting of the same node. */
+  visibleIf: GraphSettingCondition | null;
+  /** The widget a setting asks for: `Angle` and `Toggle` change the control. */
+  widget: string | null;
+}
 
 /** A row of the Inspector: one thing a node lets an author set. */
-export type GraphField =
+export type GraphField = GraphFieldLook &
+  (
   | {
       control: 'number';
       source: 'value';
@@ -38,7 +55,8 @@ export type GraphField =
     }
   | { control: 'text'; source: 'text'; name: string; summary: string; fallback: string }
   | { control: 'curve'; source: 'text'; name: string; summary: string; fallback: string }
-  | { control: 'ramp'; source: 'text'; name: string; summary: string; fallback: string };
+  | { control: 'ramp'; source: 'text'; name: string; summary: string; fallback: string }
+  );
 
 /** The text a port's expression is kept under, in Vixen's spelling. */
 export function expressionKey(port: string): string {
@@ -68,7 +86,15 @@ export function wireFamily(kind: string): string {
 }
 
 export function fieldOfPort(port: GraphPortDefinition): GraphField | null {
-  const base = { source: 'value', name: port.name, summary: port.summary, fallback: port.default } as const;
+  const base = {
+    source: 'value',
+    name: port.name,
+    summary: port.summary,
+    fallback: port.default,
+    title: port.name,
+    visibleIf: null,
+    widget: null
+  } as const;
   const range = {
     minimum: port.range?.softMinimum ?? port.range?.minimum ?? null,
     maximum: port.range?.softMaximum ?? port.range?.maximum ?? null
@@ -88,7 +114,15 @@ export function fieldOfPort(port: GraphPortDefinition): GraphField | null {
 }
 
 function fieldOfSetting(setting: GraphSettingDefinition): GraphField {
-  const base = { source: 'text', name: setting.name, summary: setting.summary, fallback: setting.default } as const;
+  const base = {
+    source: 'text',
+    name: setting.name,
+    summary: setting.summary,
+    fallback: setting.default,
+    title: titleOf(setting),
+    visibleIf: setting.visibleIf ?? null,
+    widget: setting.widget ?? null
+  } as const;
   if (setting.accepted.length > 0) {
     return { ...base, control: 'choice', choices: setting.accepted, label: value => choiceName(setting, value) };
   }

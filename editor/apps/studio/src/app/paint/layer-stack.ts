@@ -1060,6 +1060,16 @@ export class LayerStack {
     handle('addFillLayer', open, () => this.add('fill', 'Fill'));
     handle('addFilterLayer', open, () => this.add('filter', 'Filter', 'Levels'));
     handle('addLayerFolder', open, () => this.add('group', 'Folder'));
+    const chosen = () => (open() ? this.store.chosen() : null);
+    handle('flattenFolder', () => chosen()?.kind === 'group' && !chosen()?.flattened, () => {
+      const layer = chosen();
+      return layer ? this.store.flatten(layer.id) : undefined;
+    });
+    handle('unflattenFolder', () => chosen()?.flattened === true, () => {
+      const layer = chosen();
+      return layer ? this.store.unflatten(layer.id) : undefined;
+    });
+    handle('flattenStack', () => open() && (this.store.state()?.layers.length ?? 0) > 0, () => this.store.flatten());
   }
 
   /** The Delete key takes what is in front: a mask that is, or else the layers. Anything that says layers takes those. */

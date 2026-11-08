@@ -34,8 +34,8 @@ export interface CommandSpec {
  * Every command. **To add one:** add a line here, then `commands.handle('id', …)` where the work is done, and put the id
  * in {@link MenuBar} if it belongs in a menu. The dialog, the key handler, the menu and tooltips follow.
  *
- * Keys others are expected to add: brush settings (#123, #124, #132) as `Painting` in `stack`, graph canvas editing
- * (#181, #182) as `Graph` in `graph`, and layer flatten and anchors (#107, #111) as `Layers` in `stack`.
+ * A key a control would take first, as xUI's graph canvas takes Delete, is caught ahead of it with
+ * {@link Commands.isKeyOf} and handed to {@link Commands.press}, as Delete and Relink's are.
  */
 export const CommandTable: readonly CommandSpec[] = [
   { id: 'newProject', label: 'New Project…', section: 'File', keys: ['Mod+N'] },
@@ -106,9 +106,43 @@ export const CommandTable: readonly CommandSpec[] = [
   { id: 'addLayerFolder', label: 'New Layer Folder', section: 'Layers', area: 'stack' },
   { id: 'groupLayers', label: 'Group into Folder', section: 'Layers', keys: ['Mod+G'], area: 'stack' },
   { id: 'renameLayer', label: 'Rename Layer', section: 'Layers', area: 'stack' },
+  {
+    id: 'flattenFolder',
+    label: 'Flatten Folder',
+    section: 'Layers',
+    area: 'stack',
+    hint: 'Makes the folder one canvas of the picture it made, keeping its layers as the way back'
+  },
+  { id: 'unflattenFolder', label: 'Unflatten Folder', section: 'Layers', area: 'stack' },
+  { id: 'flattenStack', label: 'Flatten Stack', section: 'Layers', area: 'stack' },
 
   { id: 'addNode', label: 'Add Node…', section: 'Graph', keys: ['Space'], area: 'graph' },
   { id: 'groupNodes', label: 'Group Selection', section: 'Graph', keys: ['Mod+G'], area: 'graph' },
+  {
+    id: 'bypassNodes',
+    label: 'Bypass',
+    section: 'Graph',
+    keys: ['Mod+B'],
+    area: 'graph',
+    hint: 'What feeds a node passes straight through'
+  },
+  {
+    id: 'deleteRelink',
+    label: 'Delete and Relink',
+    section: 'Graph',
+    keys: ['Mod+Backspace', 'Mod+Delete'],
+    area: 'graph',
+    hint: 'Joins what fed the nodes to what they fed'
+  },
+  { id: 'arrangeGraph', label: 'Lay Out', section: 'Graph', area: 'graph' },
+  { id: 'alignLeft', label: 'Align Left', section: 'Graph', area: 'graph' },
+  { id: 'alignCentres', label: 'Align Centres', section: 'Graph', area: 'graph' },
+  { id: 'alignRight', label: 'Align Right', section: 'Graph', area: 'graph' },
+  { id: 'alignTop', label: 'Align Top', section: 'Graph', area: 'graph' },
+  { id: 'alignMiddles', label: 'Align Middles', section: 'Graph', area: 'graph' },
+  { id: 'alignBottom', label: 'Align Bottom', section: 'Graph', area: 'graph' },
+  { id: 'distributeHorizontally', label: 'Distribute Horizontally', section: 'Graph', area: 'graph' },
+  { id: 'distributeVertically', label: 'Distribute Vertically', section: 'Graph', area: 'graph' },
 
   { id: 'frameModel', label: 'Frame the Model', section: 'Viewport', keys: ['F'] },
   { id: 'nextView', label: 'Next View', section: 'Viewport', keys: ['V'], area: 'viewport' },
@@ -206,7 +240,19 @@ export const MenuBar: readonly {
   {
     label: 'Layer',
     when: 'stack',
-    items: ['addPaintLayer', 'addFillLayer', 'addFilterLayer', 'addLayerFolder', '-', 'groupLayers', 'renameLayer']
+    items: [
+      'addPaintLayer',
+      'addFillLayer',
+      'addFilterLayer',
+      'addLayerFolder',
+      '-',
+      'groupLayers',
+      'renameLayer',
+      '-',
+      'flattenFolder',
+      'unflattenFolder',
+      'flattenStack'
+    ]
   },
   {
     label: 'Tools',
@@ -225,7 +271,36 @@ export const MenuBar: readonly {
       'largerBrush'
     ]
   },
-  { label: 'Graph', when: 'graph', items: ['addNode', 'groupNodes'] },
+  {
+    label: 'Graph',
+    when: 'graph',
+    items: [
+      'addNode',
+      'groupNodes',
+      '-',
+      'bypassNodes',
+      'deleteRelink',
+      '-',
+      {
+        submenu: 'Arrange',
+        items: [
+          'arrangeGraph',
+          '-',
+          'alignLeft',
+          'alignCentres',
+          'alignRight',
+          'alignTop',
+          'alignMiddles',
+          'alignBottom',
+          '-',
+          'distributeHorizontally',
+          'distributeVertically'
+        ]
+      },
+      '-',
+      'showHistory'
+    ]
+  },
   {
     label: 'Viewport',
     when: 'viewport',
@@ -267,6 +342,7 @@ export const FixedKeys: readonly { readonly section: string; readonly label: str
   { section: 'Graph canvas', label: 'Delete the selection', keys: 'Delete' },
   { section: 'Graph canvas', label: 'Move the selection', keys: 'Arrows, Shift for a grid step' },
   { section: 'Graph canvas', label: 'Clear the selection', keys: 'Escape' },
+  { section: 'Graph canvas', label: 'Bend a wire through a reroute dot', keys: 'Alt+click the wire' },
   { section: 'Text', label: 'Commit or cancel', keys: 'Enter, Escape' }
 ];
 

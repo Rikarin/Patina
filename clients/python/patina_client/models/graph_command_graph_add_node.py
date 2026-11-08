@@ -27,7 +27,7 @@ class GraphCommandGraphAddNode:
 
         Attributes:
             op (GraphCommandGraphAddNodeOp):
-            type_ (str): The node type's path.
+            type_ (str): The node type's path, or `Reroute` for a dot that only bends a wire.
             x (float): Where it goes.
             y (float): Where it goes.
             ref (int | None | Unset): A negative number the client picks. Later commands in this batch may use it wherever

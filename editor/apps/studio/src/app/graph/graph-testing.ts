@@ -5,7 +5,7 @@ export const clean: GraphHistoryState = { canUndo: false, canRedo: false, dirty:
 export const dirty: GraphHistoryState = { canUndo: true, canRedo: false, undoLabel: 'Set Scale', dirty: true };
 
 export function node(id: number, values: Record<string, number[]> = {}): GraphNodeState {
-  return { id, type: 'Source/Noise', x: id * 100, y: 0, values, texts: {} };
+  return { id, type: 'Source/Noise', x: id * 100, y: 0, values, texts: {}, bypassed: false };
 }
 
 export const noiseType: GraphNodeType = {
@@ -33,6 +33,7 @@ export function state(overrides: Partial<GraphState> = {}): GraphState {
     edges: [{ fromNode: 1, fromPort: 'Out', toNode: 2, toPort: 'Input' }],
     settings: { seed: '7' },
     parameters: [],
+    presets: [],
     interface: [],
     groups: [],
     comments: [],

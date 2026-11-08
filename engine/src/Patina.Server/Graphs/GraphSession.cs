@@ -148,6 +148,7 @@ public sealed class GraphSession : FollowedSession<GraphEvent>, IFileSession {
                     [..document.Edges.Select(GraphDocuments.State)],
                     document.Settings,
                     [..document.Parameters.Select(GraphDocuments.Definition)],
+                    [..document.Presets.Select(static preset => GraphDocuments.State(preset))],
                     [..document.Interface.Select(GraphDocuments.State)],
                     [..document.Groups.Select(GraphDocuments.State)],
                     [..document.Comments.Select(GraphDocuments.State)],

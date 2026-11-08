@@ -563,7 +563,7 @@ describe('what a graph holds besides its nodes', () => {
       delta: {
         ...noDelta,
         parameters: [wear],
-        groups: [{ id: 1, title: 'Base', nodes: [1] }],
+        groups: [{ id: 1, title: 'Base', nodes: [1], color: '', description: '' }],
         comments: [{ id: 1, text: 'Hello', x: 1, y: 2, width: 200, height: 100 }]
       }
     });
@@ -574,7 +574,7 @@ describe('what a graph holds besides its nodes', () => {
   });
 
   it('groups the selection, taking its nodes out of the frames they were in', async () => {
-    const test = await opened(state({ groups: [{ id: 7, title: 'Old', nodes: [1, 2] }] }));
+    const test = await opened(state({ groups: [{ id: 7, title: 'Old', nodes: [1, 2], color: '', description: '' }] }));
     test.store.select([1]);
     test.store.groupSelection();
     await vi.waitFor(() => {
@@ -589,8 +589,8 @@ describe('what a graph holds besides its nodes', () => {
     const test = await opened(
       state({
         groups: [
-          { id: 4, title: 'A', nodes: [1] },
-          { id: 9, title: 'B', nodes: [] }
+          { id: 4, title: 'A', nodes: [1], color: '', description: '' },
+          { id: 9, title: 'B', nodes: [], color: '', description: '' }
         ]
       })
     );
@@ -722,6 +722,114 @@ describe('what a graph holds besides its nodes', () => {
     });
     expect(test.store.document()?.path).toBe('/lib/c.vxtexgraph');
     expect(test.store.document()?.readOnly).toBe(false);
+  });
+
+  it('switches the selection off, and back on once every node in it is off', async () => {
+    const test = await opened(state({ nodes: [node(1), { ...node(2), bypassed: true }] }));
+    test.store.toggleBypass([1, 2]);
+    await vi.waitFor(() => {
+      expect(sent(test)).toEqual([{ op: 'setBypass', nodes: [1, 2], bypassed: true }]);
+    });
+    test.store.toggleBypass([2]);
+    await vi.waitFor(() => {
+      expect(sent(test)[1]).toEqual({ op: 'setBypass', nodes: [2], bypassed: false });
+    });
+  });
+
+  it('never asks to switch off a reroute dot', async () => {
+    const test = await opened(state({ nodes: [node(1), { ...node(2), type: 'Reroute' }] }));
+    test.store.toggleBypass([2]);
+    await Promise.resolve();
+    expect(test.commands()).toEqual([]);
+  });
+
+  it('deletes with relinking, lays out and moves as one labelled step', async () => {
+    const test = await opened();
+    test.store.removeRelinking([2]);
+    test.store.arrange([1]);
+    test.store.place(new Map([[1, { x: 5, y: 6 }]]), 'Align Left');
+    await vi.waitFor(() => {
+      expect(sent(test)).toEqual([
+        { op: 'removeNodes', nodes: [2], relink: true },
+        { op: 'arrange', nodes: [] },
+        { op: 'moveNodes', positions: [{ node: 1, x: 5, y: 6 }] }
+      ]);
+    });
+    expect(test.commands()[2]).toMatchObject({ label: 'Align Left' });
+  });
+
+  it('bends a wire through a new reroute dot in one batch', async () => {
+    const test = await opened();
+    await test.store.insertReroute({ fromNode: 1, fromPort: 'Out', toNode: 2, toPort: 'Input' }, { x: 10, y: 20 });
+    expect(sent(test)).toEqual([
+      { op: 'addNode', type: 'Reroute', x: 10, y: 20, ref: -1 },
+      { op: 'connect', fromNode: 1, fromPort: 'Out', toNode: -1, toPort: 'In' },
+      { op: 'connect', fromNode: -1, fromPort: 'Out', toNode: 2, toPort: 'Input' }
+    ]);
+  });
+
+  it('sets a compound node to a preset with its settings, and leaves out what the node does not have', async () => {
+    const compound = {
+      ...noiseType,
+      path: 'Masks/Rust',
+      settings: [{ name: 'Wear', default: '0.5', summary: '', kind: 'Float', group: '', accepted: [] }],
+      presets: [{ name: 'Rusty', values: { Wear: '0.9', Gone: '1' } }]
+    };
+    const test = harness(state({ nodes: [{ ...node(1), type: 'Masks/Rust' }] }));
+    test.routes['GET graphs/g1/node-types'] = () => Response.json([noiseType, compound]);
+    await test.store.open('a.vxtexgraph');
+    test.socket().opened();
+    await vi.waitFor(() => {
+      expect(test.store.types().has('Masks/Rust')).toBe(true);
+    });
+    test.store.applyNodePreset(1, compound.presets[0] ?? { name: '', values: {} });
+    await vi.waitFor(() => {
+      expect(sent(test)).toEqual([{ op: 'setText', node: 1, port: 'Wear', value: '0.9' }]);
+    });
+    expect(test.commands()[0]).toMatchObject({ label: 'Preset Rusty' });
+  });
+
+  it('saves, applies and removes presets and describes a frame', async () => {
+    const test = await opened();
+    test.store.savePreset('Clean');
+    test.store.applyPreset('Clean');
+    test.store.removePreset('Clean');
+    test.store.describeGroup(3, { color: 'var(--color-chart-2)' });
+    await vi.waitFor(() => {
+      expect(sent(test)).toEqual([
+        { op: 'savePreset', name: 'Clean' },
+        { op: 'applyPreset', name: 'Clean' },
+        { op: 'removePreset', name: 'Clean' },
+        { op: 'setGroup', id: 3, color: 'var(--color-chart-2)' }
+      ]);
+    });
+  });
+
+  it('starts a second quick edit of a parameter from the first, not from a document that is behind', async () => {
+    const test = await opened(state({ parameters: [wear] }));
+    test.store.reviseParameter('Wear', { label: 'Wear amount' });
+    test.store.reviseParameter('Wear', { group: 'Rust' });
+    await vi.waitFor(() => {
+      expect(sent(test)).toHaveLength(2);
+    });
+    expect(sent(test)[1]).toMatchObject({
+      op: 'setParameter',
+      name: 'Wear',
+      parameter: { label: 'Wear amount', group: 'Rust' }
+    });
+  });
+
+  it('keeps presets from the state and from a delta', async () => {
+    const test = await opened(state({ presets: [{ name: 'A', values: {} }] }));
+    expect(test.store.document()?.presets.map(preset => preset.name)).toEqual(['A']);
+    test.socket().send({
+      sequence: 1,
+      kind: 'edited',
+      revision: 2,
+      history: dirty,
+      delta: { ...noDelta, presets: [{ name: 'B', values: { Wear: '1' } }] }
+    });
+    expect(test.store.document()?.presets.map(preset => preset.name)).toEqual(['B']);
   });
 
   it('asks for the node types again when a compound was saved', async () => {
