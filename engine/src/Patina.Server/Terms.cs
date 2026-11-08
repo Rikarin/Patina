@@ -43,7 +43,12 @@ public static class Terms {
     ///     where a graph's blend node copies; a mask or a fill is uniform, or a bitmap, or read from a mesh map.
     /// </summary>
     static readonly Dictionary<string, string> InStacks = new(StringComparer.Ordinal) {
-        ["Copy"] = "Normal", ["Constant"] = "Uniform", ["Texture"] = "Bitmap", ["Bake"] = "Mesh Map"
+        ["Copy"] = "Normal",
+        ["Constant"] = "Uniform",
+        ["Texture"] = "Bitmap",
+        ["Bake"] = "Mesh Map",
+        ["Colour"] = "Color",
+        ["Hue"] = "Hue (Tint)"
     };
 
     /// <summary>What an export calls its padding modes, which say how the background of a layout is filled.</summary>

@@ -340,7 +340,7 @@ public sealed partial class StackProcessTests : IDisposable {
             ContractsJsonContext.Default.StackVocabulary,
             deadline.Token
         ))!;
-        Assert.Equal(16, words.Blends.Count);
+        Assert.Equal(30, words.Blends.Count);
         Assert.Contains(words.Generators, static term => term is { Value: "Generators/Dirt", Label: "Dirt" });
         Assert.Contains(words.GeneratorParameters["Generators/Metal Edge Wear"], static knob => knob.Name == "amount");
 

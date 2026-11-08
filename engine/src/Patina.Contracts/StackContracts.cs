@@ -191,7 +191,7 @@ public sealed record StackFilterKind(
 public sealed record StackTerm(string Value, string Label);
 
 /// <summary>The words a stack's fields take, each with its label, so that a client holds no list of its own.</summary>
-/// <param name="Blends">The sixteen blend modes.</param>
+/// <param name="Blends">The thirty blend modes.</param>
 /// <param name="Filters">The filters a layer can be.</param>
 /// <param name="Masks">The mask sources.</param>
 /// <param name="Fills">What a fill layer reads.</param>

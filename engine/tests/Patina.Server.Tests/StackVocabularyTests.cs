@@ -76,6 +76,10 @@ public sealed class StackVocabularyTests {
     [InlineData("ColourBurn", "Color Burn")]
     [InlineData("SignedAdd", "Signed Add")]
     [InlineData("HardLight", "Hard Light")]
+    [InlineData("Colour", "Color")]
+    [InlineData("Hue", "Hue (Tint)")]
+    [InlineData("NormalMapInverseDetail", "Normal Map Inverse Detail")]
+    [InlineData("VividLight", "Vivid Light")]
     public void A_blend_reads_as_a_painting_tool_names_it(string blend, string label) {
         Assert.Equal(label, StackDocuments.Vocabulary.Blends.Single(term => term.Value == blend).Label);
     }
