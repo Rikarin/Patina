@@ -53,6 +53,25 @@ describe('messages', () => {
     );
   });
 
+  it('has words for wave 4’s refusals, with the reason or the names the Server sent', () => {
+    const say = (code: string, values: Record<string, string> = {}) =>
+      messageOf(new ApiError(422, 'Server text.', [], code, values));
+    expect(say('stroke-brush-refused', { reason: 'A brush has a radius.' })).toBe(
+      'That brush can’t be used. A brush has a radius.'
+    );
+    expect(say('anchor-taken', { anchor: 'Ground' })).toBe('Another layer is already the anchor “Ground”. Choose another name.');
+    expect(say('flatten-refused', { layer: 'Folder', reason: 'It passes through.' })).toBe(
+      'Folder can’t be flattened. It passes through.'
+    );
+    expect(say('not-flattened', { layer: 'Folder' })).toBe('Folder isn’t flattened.');
+    expect(say('history-step-gone', { step: '4' })).toBe(
+      'That step is no longer in the history: an edit made since replaced it.'
+    );
+    expect(say('anchor-in-use', { anchor: 'Ground', layer: 'Rust' })).toBe(
+      'Rust reads the anchor “Ground”. Point it elsewhere before taking the anchor away.'
+    );
+  });
+
   it('shows the Server’s text for a refusal it has no words for', () => {
     expect(messageOf(new ApiError(409, 'The file changed.', [], 'something-new'))).toBe('The file changed.');
     expect(messageOf(new Error('Plain.'))).toBe('Plain.');

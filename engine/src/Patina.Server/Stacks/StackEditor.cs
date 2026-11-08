@@ -596,7 +596,7 @@ public sealed class StackEditor : ILayerStackDocument {
     void Stroke(StackStroke stroke, UndoStep step, string set, Action<IAuthoringCommand> run) {
         var layer = Require(stroke.Layer);
         if (stroke.Brush.Problem() is { } problem) {
-            throw new StackEditRefusedException(problem, Api.Refusals.BrushRefused);
+            throw new StackEditRefusedException(problem, Api.Refusals.BrushRefused, Api.Refusals.Reason(problem));
         }
 
         if (!stroke.Mask) {
@@ -946,7 +946,7 @@ public sealed class StackEditor : ILayerStackDocument {
         }
 
         if (stroke.Symmetry?.Problem() is { } problem) {
-            throw new StackEditRefusedException(problem, Api.Refusals.BrushRefused);
+            throw new StackEditRefusedException(problem, Api.Refusals.BrushRefused, Api.Refusals.Reason(problem));
         }
 
         // A symmetry, a view and a size in the model's units are all on the mesh.

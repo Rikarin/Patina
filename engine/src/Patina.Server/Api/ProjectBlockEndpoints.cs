@@ -39,7 +39,12 @@ static class ProjectBlockEndpoints {
 
     static Results<Ok<ProjectContents>, ProblemHttpResult> SetPaint(LibraryHost host, ProjectPaintRequest request) =>
         request.Paint.Problem() is { } problem
-            ? Refusals.Problem(problem, StatusCodes.Status400BadRequest, Refusals.BrushRefused)
+            ? Refusals.Problem(
+                problem,
+                StatusCodes.Status400BadRequest,
+                Refusals.BrushRefused,
+                Refusals.Reason(problem)
+            )
             : Keep(host, request.Project, null, library => library.SetPaint(request.Project, request.Paint));
 
     static Results<Ok<ProjectContents>, ProblemHttpResult> SetExport(LibraryHost host, ProjectExportRequest request) =>

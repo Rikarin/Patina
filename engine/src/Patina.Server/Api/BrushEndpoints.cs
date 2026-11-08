@@ -43,7 +43,12 @@ static class BrushEndpoints {
         BrushPresetCreateRequest request
     ) =>
         request.Preset.Problem() is { } problem
-            ? Refusals.Problem(problem, StatusCodes.Status400BadRequest, Refusals.BrushRefused)
+            ? Refusals.Problem(
+                problem,
+                StatusCodes.Status400BadRequest,
+                Refusals.BrushRefused,
+                Refusals.Reason(problem)
+            )
             : LibraryTreeEndpoints.Guarded(
                 host,
                 library => {
@@ -58,7 +63,12 @@ static class BrushEndpoints {
         BrushPresetUpdateRequest request
     ) =>
         request.Preset.Problem() is { } problem
-            ? Refusals.Problem(problem, StatusCodes.Status400BadRequest, Refusals.BrushRefused)
+            ? Refusals.Problem(
+                problem,
+                StatusCodes.Status400BadRequest,
+                Refusals.BrushRefused,
+                Refusals.Reason(problem)
+            )
             : LibraryTreeEndpoints.Guarded(
                 host,
                 library => {

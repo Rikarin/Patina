@@ -13,6 +13,7 @@ const Words: Readonly<Record<string, string>> = {
   'stroke-not-paint-layer': '{layer} is a {kind} layer, with nothing of its own to paint. Choose a paint layer, or paint its mask.',
   'stack-no-mesh': 'There is no mesh to paint on. Choose one in Project Settings.',
   'stroke-repeated-channel': 'That stroke could not be painted. Try it again.',
+  'stroke-brush-refused': 'That brush can’t be used. {reason}',
   'history-step-gone': 'That step is no longer in the history: an edit made since replaced it.',
   'anchor-taken': 'Another layer is already the anchor “{anchor}”. Choose another name.',
   'anchor-in-use': '{layer} reads the anchor “{anchor}”. Point it elsewhere before taking the anchor away.',

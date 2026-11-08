@@ -33,8 +33,15 @@ public static class Refusals {
     /// <summary>A batch that paints one channel of a layer twice.</summary>
     public const string RepeatedChannel = "stroke-repeated-channel";
 
-    /// <summary>A stroke whose brush or symmetry is out of range or names no setting the Server knows.</summary>
+    /// <summary>
+    ///     A stroke, preset or project whose brush or symmetry is out of range or names no setting the Server knows.
+    ///     Values: <c>reason</c>, which is the Server's own sentence.
+    /// </summary>
     public const string BrushRefused = "stroke-brush-refused";
+
+    /// <summary>The values of a refusal whose detail is the Server's own sentence, as <c>reason</c>.</summary>
+    public static IReadOnlyDictionary<string, string> Reason(string reason) =>
+        new Dictionary<string, string> { ["reason"] = reason };
 
     /// <summary>A stack command that cannot apply, for a reason no client is expected to explain.</summary>
     public const string StackRefused = "stack-refused";
