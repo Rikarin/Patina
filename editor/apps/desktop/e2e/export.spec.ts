@@ -38,10 +38,12 @@ test('a preset is chosen, its impact shown, and the report names what was writte
   await expect(window.getByTestId('export-impact-exports')).toHaveText('1');
 
   await window.getByTestId('export-start').click();
+  await expect(window.getByTestId('export-confirm')).toContainText('every project in the library');
+  await window.getByTestId('export-confirm-yes').click();
   await expect(window.getByTestId('export-state')).toHaveText('Done', { timeout: 120_000 });
   await expect(window.getByTestId('export-report-built')).toHaveText('1');
   await expect(window.getByTestId('export-report-failed')).toHaveText('0');
-  await expect(window.getByTestId('export-report-project')).toContainText('godot');
+  await expect(window.getByTestId('export-report-project')).toContainText('Godot');
 
   expect(existsSync(join(scratch, 'Game.ptlib', 'exports', 'godot', 'crate', 'Crate_normal.png'))).toBe(true);
 });

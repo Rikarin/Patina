@@ -7,6 +7,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Export is a dialog of its own, from File > Export… (Cmd+Shift+E) as well as the title bar. It exports the document in front, its project or the whole library, and asks first for the library. It has texture set checkboxes with Check All, Uncheck All and Invert, an output folder with Reveal, a size with its filter, padding, dithering, and the preset's files with each one on or off and in a format of its own. It warns when a document has unsaved changes, since export reads saved files, shows a progress bar with what it is working on, and keeps its settings per project.
+- Export writes TGA, JPEG, TIFF (8-bit, 16-bit and 32-bit float), lossless WebP and Radiance HDR, from a preset or from the dialog.
+- Export pads: the islands of the mesh's layout grow into the background without end, or by a distance in pixels and then leave it transparent, one colour, or a smooth diffusion. The factory presets pad without end, so mips no longer bleed the background into charts. A preset can also set a size, a filter and 8-bit dithering.
+
 - A lazy mouse: the brush trails the pointer by a distance set in the brush panel, and paints the same however fast the pointer reports. Shift-click draws a straight line on from where the last stroke ended, in the map or on the mesh, and Cmd or Ctrl snaps it to 5°.
 - Layers duplicate (Cmd+D), copy, cut and paste, from the layer menu and from Edit. A copy is the layers and their paint as they stood, so a cut layer still pastes, and it pastes into another texture set or stack of the same size. A duplicated or pasted paint layer and its mask have pixels of their own, never the original's. Each is one undo step.
 - A new paint layer's first stroke no longer shows paint a removed layer of the same name left in its file.

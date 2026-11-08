@@ -42,9 +42,9 @@ const PaddingNames: Readonly<Record<string, string>> = {
 };
 
 const FilterNames: Readonly<Record<string, string>> = {
-  box: 'Box (averages every texel)',
+  box: 'Box',
   bilinear: 'Bilinear',
-  nearest: 'Nearest (no new values)'
+  nearest: 'Nearest'
 };
 
 const StatusNames: Readonly<Record<string, string>> = {
@@ -313,7 +313,6 @@ function lanesOf(hex: string): number[] {
                   type="checkbox"
                   [attr.aria-label]="'Export ' + set"
                   [checked]="!settings().skipped.includes(set)"
-                  [disabled]="scope() === 'document'"
                   (change)="toggleSet(set)"
                 />
                 <span class="truncate">{{ set }}</span>
@@ -588,7 +587,7 @@ export class ExportPane implements OnInit {
 
   protected readonly presetName = (id: string): string =>
     this.store.presets().find(preset => preset.id === id)?.name ?? id;
-  protected readonly sizeName = (size: string): string => (size === 'native' ? 'The maps’ own size' : `${size} px`);
+  protected readonly sizeName = (size: string): string => (size === 'native' ? 'Maps’ size' : `${size} px`);
   protected readonly filterName = (filter: string): string => FilterNames[filter] ?? filter;
   protected readonly paddingName = (mode: string): string => PaddingNames[mode] ?? mode;
   protected readonly formatName = (format: string): string =>
@@ -637,7 +636,7 @@ export class ExportPane implements OnInit {
   protected readonly scopeText = computed(() => {
     switch (this.scope()) {
       case 'document':
-        return `${this.project.document()?.name ?? ''} in ${this.target()?.name ?? ''}`;
+        return `The texture set ${this.documentSet() ?? ''} of ${this.target()?.name ?? ''}`;
       case 'project':
         return `Every texture set of ${this.target()?.name ?? ''}`;
       default: {
@@ -647,13 +646,16 @@ export class ExportPane implements OnInit {
     }
   });
 
-  /** The sets the dialog lists: the project's, when the project is open and has more than one name to choose. */
+  /**
+   * The sets the dialog offers: the project's, for a project export of a project that is open and has more than one.
+   * A document export is its own set, and a library export takes every project's.
+   */
   protected readonly setNames = computed(() => {
-    if (this.scope() === 'library') {
+    if (this.scope() !== 'project') {
       return [];
     }
     const sets = this.project.current()?.id === this.target()?.id ? (this.project.current()?.exportSets ?? []) : [];
-    return this.scope() === 'document' ? sets.filter(set => set === this.documentSet()) : sets;
+    return sets.length > 1 ? sets : [];
   });
 
   protected readonly nothingChosen = computed(
