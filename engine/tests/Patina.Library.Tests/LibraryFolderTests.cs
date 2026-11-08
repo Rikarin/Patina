@@ -343,7 +343,7 @@ public sealed class LibraryFolderTests : IDisposable {
         ProjectPaintSettings paint = new() {
             RecentColours = ["#a03c28", "#ffffff"],
             Palette = ["#102030"],
-            Brush = new(48f, Flow: 0.5f),
+            Brush = new(48f, 0.5f),
             Symmetry = new("radial", "y", "origin", Count: 6)
         };
 
