@@ -18,10 +18,17 @@ const Words: Readonly<Record<string, string>> = {
   'anchor-taken': 'Another layer is already the anchor “{anchor}”. Choose another name.',
   'anchor-in-use': '{layer} reads the anchor “{anchor}”. Point it elsewhere before taking the anchor away.',
   'flatten-refused': '{layer} can’t be flattened. {reason}',
-  'not-flattened': '{layer} isn’t flattened.'
+  'not-flattened': '{layer} isn’t flattened.',
+  'bake-occluder-minimum':
+    'The minimum occluder distance has to be less than the occluder distance, or every ray starts past its reach and the occlusion comes out white.'
 };
 
 const KindWords: Readonly<Record<string, string>> = { Fill: 'fill', Filter: 'filter', Group: 'folder', Paint: 'paint' };
+
+/** This app's words for a refusal code, for a check the app makes itself before the Server would refuse. */
+export function refusalWords(code: string, values: Readonly<Record<string, string>> = {}): string {
+  return fill(Words[code] ?? code, values);
+}
 
 /** What to tell a person about a failure: this app's words for a refusal it knows, and the Server's text otherwise. */
 export function messageOf(failure: unknown): string {

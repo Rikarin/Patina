@@ -516,6 +516,11 @@ type Section = string;
                       (valueChange)="setOcclusion({ minimum: stored($event) })"
                     />
                   </div>
+                  @if (settings.occlusionProblem(); as problem) {
+                    <p class="text-danger col-span-2 text-xs" role="alert" data-testid="bake-ao-minimum-problem">
+                      {{ problem }}
+                    </p>
+                  }
                   <div class="flex min-w-0 flex-col gap-1">
                     <span class="text-foreground-muted text-xs">Falloff</span>
                     <xui-select

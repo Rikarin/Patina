@@ -148,6 +148,19 @@ test('the bake settings are a section per map and stay in the project', async ()
   await expect(window.getByTestId('bake-map-height')).not.toBeChecked();
   await window.getByTestId('bake-section-ao').click();
   await expect(window.getByTestId('bake-ao-rays').getByRole('spinbutton')).toHaveValue('128');
+
+  // A minimum occluder distance at the occluder distance would bake white: the field says so, and nothing bakes (#228).
+  const distance = await window.getByTestId('bake-ao-distance').getByRole('spinbutton').inputValue();
+  const minimum = window.getByTestId('bake-ao-minimum').getByRole('spinbutton');
+  await minimum.fill(distance);
+  await minimum.press('Enter');
+  await expect(window.getByTestId('bake-ao-minimum-problem')).toContainText('less than the occluder distance');
+  await expect(window.getByTestId('bake-start')).toBeDisabled();
+  await window.screenshot({ path: join(shots, 'bake-ao-minimum.png') });
+  await minimum.fill('0');
+  await minimum.press('Enter');
+  await expect(window.getByTestId('bake-ao-minimum-problem')).toHaveCount(0);
+  await expect(window.getByTestId('bake-start')).toBeEnabled();
   await window.getByTestId('bake-section-common').click();
   await window.screenshot({ path: join(shots, 'bake-common.png') });
 });

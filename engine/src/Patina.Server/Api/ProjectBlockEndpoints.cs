@@ -51,12 +51,14 @@ static class ProjectBlockEndpoints {
         Keep(host, request.Project, null, library => library.SetExport(request.Project, request.Export));
 
     static Results<Ok<ProjectContents>, ProblemHttpResult> SetBake(LibraryHost host, ProjectBakeRequest request) =>
-        Keep(
-            host,
-            request.Project,
-            request.Bake.Options.Problem(),
-            library => library.SetBake(request.Project, request.Bake)
-        );
+        request.Bake.Options.Refusal() is { Code: { } code } refusal
+            ? Refusals.Problem(refusal.Detail, StatusCodes.Status400BadRequest, code, refusal.Values)
+            : Keep(
+                host,
+                request.Project,
+                request.Bake.Options.Problem(),
+                library => library.SetBake(request.Project, request.Bake)
+            );
 
     static Results<Ok<ProjectContents>, ProblemHttpResult> SetViewport(
         LibraryHost host,

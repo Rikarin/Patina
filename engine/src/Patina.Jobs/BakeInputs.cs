@@ -11,6 +11,19 @@ public sealed class BakeRefusedException : Exception {
     public BakeRefusedException(string message) : base(message) { }
 
     public BakeRefusedException(string message, Exception innerException) : base(message, innerException) { }
+
+    /// <summary>Refused for options a client can explain in its own words, by <paramref name="refusal" />'s code.</summary>
+    public BakeRefusedException(BakeOptionsRefusal refusal) : base(refusal?.Detail) {
+        ArgumentNullException.ThrowIfNull(refusal);
+        Code = refusal.Code;
+        Values = refusal.Values;
+    }
+
+    /// <summary>A stable code a client can explain, or null for a refusal it shows as it is.</summary>
+    public string? Code { get; }
+
+    /// <summary>The values the message was written from, by name.</summary>
+    public IReadOnlyDictionary<string, string> Values { get; } = new Dictionary<string, string>();
 }
 
 /// <summary>What a bake is allowed to ask for, and the key of what it asks for.</summary>
@@ -34,8 +47,8 @@ public static class BakeInputs {
     /// <exception cref="FileNotFoundException">An input file is not there.</exception>
     public static void Check(BakeRequest request) {
         var options = request.Options;
-        if (options.Problem() is { } problem) {
-            throw new BakeRefusedException(problem);
+        if (options.Refusal() is { } refusal) {
+            throw new BakeRefusedException(refusal);
         }
 
         Require(request.High.Count > 0, "A bake needs a high mesh, which may be the low mesh itself.");

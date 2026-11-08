@@ -154,6 +154,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - F2 only renames. The layouts in Window > Layout moved from F1 to F3 to Cmd or Ctrl+1 to 3.
 - W switches the viewport's wireframe, as the switch's tooltip said, and the Viewport menu has Wireframe.
 - Bake… is off with no project open, and the graph node menu's Delete shows its key.
+- A minimum occluder distance at or past the occluder distance no longer bakes white ambient occlusion and a flat bent normal without
+  a word. The Bake dialog says so under the field and will not bake, and the Server, `patina bake-maps` and the engine refuse it,
+  with the code `bake-occluder-minimum` for clients. Thickness reads only the occluder distance, so it still bakes.
 
 ### Changed
 

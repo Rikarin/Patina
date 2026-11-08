@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Patina.Contracts;
 
 /// <summary>
@@ -84,8 +86,35 @@ public sealed record BakeOptions {
     /// <summary>What the ID map labels and how it colours them.</summary>
     public BakeIdOptions Id { get; set; } = new();
 
+    /// <summary>
+    ///     The code of the refusal of a minimum occluder distance at or past the occlusion distance while occlusion or
+    ///     the bent normal is baked: every ray would start past its reach, and the map come out white (#228).
+    /// </summary>
+    public const string MinimumPastDistance = "bake-occluder-minimum";
+
     /// <summary>What is wrong with these options, or null when a bake can use them.</summary>
-    public string? Problem() {
+    public string? Problem() => Refusal()?.Detail;
+
+    /// <summary>What is wrong with these options, with a code when a client is expected to explain it, or null.</summary>
+    public BakeOptionsRefusal? Refusal() {
+        if (Check() is { } problem) {
+            return new(problem, null, new Dictionary<string, string>());
+        }
+
+        var occluded = Maps.Any(static map => map is "ao" or "bent");
+        return occluded && Occlusion.Minimum >= Occlusion.Distance
+            ? new(
+                "The minimum occluder distance must be less than the occlusion distance.",
+                MinimumPastDistance,
+                new Dictionary<string, string> {
+                    ["minimum"] = Occlusion.Minimum.ToString(CultureInfo.InvariantCulture),
+                    ["distance"] = Occlusion.Distance.ToString(CultureInfo.InvariantCulture)
+                }
+            )
+            : null;
+    }
+
+    string? Check() {
         var unknown = Maps.FirstOrDefault(static map => !AllMaps.Contains(map, StringComparer.Ordinal));
         (bool Wrong, string Why)[] checks = [
             (Resolution is < 16 or > 16384, $"The resolution must be 16 to 16384, not {Resolution}."),
@@ -100,6 +129,12 @@ public sealed record BakeOptions {
             ?? Rays.Problem() ?? Height.Problem() ?? Occlusion.Problem() ?? Id.Problem();
     }
 }
+
+/// <summary>Why bake options cannot be used: the neutral sentence, and a stable code with the values it names, or none.</summary>
+/// <param name="Detail">What is wrong, in the Server's words.</param>
+/// <param name="Code">A code a client can say in its own words, or null for one it is not expected to explain.</param>
+/// <param name="Values">The values the detail was written from, by name.</param>
+public sealed record BakeOptionsRefusal(string Detail, string? Code, IReadOnlyDictionary<string, string> Values);
 
 /// <summary>How far a bake's rays look from the low mesh, and what they may strike.</summary>
 public sealed record BakeRayOptions {
