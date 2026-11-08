@@ -166,6 +166,7 @@ public sealed record StackTerm(string Value, string Label);
 /// <param name="MaskEffects">The steps a mask can run.</param>
 /// <param name="Usages">The channels a stack can have.</param>
 /// <param name="GeneratorParameters">The knobs each generator has, by its path.</param>
+/// <param name="Brush">What a brush's fields take, and the brush a new one starts as.</param>
 public sealed record StackVocabulary(
     IReadOnlyList<StackTerm> Blends,
     IReadOnlyList<StackFilterKind> Filters,
@@ -177,7 +178,8 @@ public sealed record StackVocabulary(
     IReadOnlyList<StackTerm> Alphas,
     IReadOnlyList<StackFilterKind> MaskEffects,
     IReadOnlyList<StackTerm> Usages,
-    IReadOnlyDictionary<string, IReadOnlyList<GraphSettingDefinition>> GeneratorParameters
+    IReadOnlyDictionary<string, IReadOnlyList<GraphSettingDefinition>> GeneratorParameters,
+    StackBrushTerms Brush
 );
 
 /// <summary>What a layer looks like alone.</summary>
@@ -472,7 +474,10 @@ public sealed record StackView(
 #pragma warning disable SK7005
 
 /// <summary>A brush. Everything but the radius has the value a new brush has.</summary>
-/// <param name="Radius">In texels, or in the units of the picture for a stroke with a view.</param>
+/// <param name="Radius">
+///     In <paramref name="SizeSpace" />: by default texels for a stroke with no view and the units of the picture for
+///     one with a view. Above zero and at most <see cref="StackBrushes.MaximumRadius" />.
+/// </param>
 /// <param name="Flow">How much one stamp lays down, 0 to 1.</param>
 /// <param name="Opacity">How much a whole stroke can lay down, 0 to 1.</param>
 /// <param name="Spacing">
@@ -491,6 +496,27 @@ public sealed record StackView(
 ///     How far the brush trails the pointer, in the units of the radius: a lazy mouse. 0 follows it. A line or a path
 ///     takes none, so that it reaches its last point.
 /// </param>
+/// <param name="Curve">How its edge falls away: smooth, linear, spherical or tip.</param>
+/// <param name="Aspect">
+///     How much longer than wide a stamp is, 1 to 16; 1 is round. It keeps the area of the round stamp, so a longer one
+///     is narrower.
+/// </param>
+/// <param name="AspectAngle">
+///     Which way the long side points, in radians, on the picture or the map it is made on.
+/// </param>
+/// <param name="FlowJitter">How much of its flow a stamp can lose, 0 to 1.</param>
+/// <param name="ScatterAxis">
+///     Which way <paramref name="PositionJitter" /> moves a stamp: both, or across the stroke only.
+/// </param>
+/// <param name="Accumulate">
+///     Whether stamps build up where they overlap, to the opacity. Off, a place keeps the strongest stamp to reach it,
+///     so a slow drag paints what a fast one does.
+/// </param>
+/// <param name="SizeSpace">
+///     What the radius is measured in: <c>screen</c>, the stroke's own picture or map; <c>texture</c>, texels of the
+///     map whatever the view; or <c>model</c>, thousandths of the model's size (its bounds' diagonal), which needs a
+///     mesh. A size other than screen is measured where the stroke starts and kept for the whole of it.
+/// </param>
 public sealed record StackBrush(
     float Radius,
     float Flow = 1f,
@@ -505,7 +531,14 @@ public sealed record StackBrush(
     float SizeJitter = 0f,
     float PressureSize = 0f,
     float PressureFlow = 0f,
-    float Lazy = 0f
+    float Lazy = 0f,
+    string Curve = "smooth",
+    float Aspect = 1f,
+    float AspectAngle = 0f,
+    float FlowJitter = 0f,
+    string ScatterAxis = "both",
+    bool Accumulate = true,
+    string SizeSpace = "screen"
 );
 #pragma warning restore SK7005
 
@@ -532,7 +565,10 @@ public sealed record StackBrush(
 ///     surface by the Worker, and it lands wherever the brush's disc falls, seams or no seams. Null paints the atlas.
 /// </param>
 /// <param name="Curve">free follows the stamps; line and path run through them as control points when it ends.</param>
-/// <param name="Mirror">x, y or z mirrors a stroke on the mesh through that plane of the mesh, or null.</param>
+/// <param name="Symmetry">
+///     The copies the stroke makes of itself on the mesh, or null. A stroke in the atlas is copied too, wherever its
+///     place on the surface lands; either way the stack needs a mesh.
+/// </param>
 public sealed record StackStroke(
     string Stroke,
     string Layer,
@@ -544,7 +580,7 @@ public sealed record StackStroke(
     bool Mask = false,
     StackView? View = null,
     string Curve = "free",
-    string? Mirror = null
+    StackSymmetry? Symmetry = null
 ) : StackCommand;
 #pragma warning restore SK7005
 

@@ -137,7 +137,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 9;
+    public const int ProtocolVersion = 10;
 
     public string Type { get; set; } = string.Empty;
 
@@ -502,7 +502,7 @@ public sealed record StackLoad(
 /// <param name="Model">The mesh that stood when it was painted, as the document names it, or empty.</param>
 /// <param name="View">The camera of a stroke on the mesh, or null for one in the atlas.</param>
 /// <param name="Curve">free, line or path.</param>
-/// <param name="Mirror">x, y, z or null.</param>
+/// <param name="Symmetry">The copies the stroke makes of itself on the mesh, or null.</param>
 /// <param name="Start">What a canvas this stroke is the first on starts as, packed like the colour, or null.</param>
 /// <param name="From">
 ///     For no stroke at all: the canvas, relative to the stack or absolute, that <paramref name="Paint" /> becomes a
@@ -519,7 +519,7 @@ public sealed record StackPaintPart(
     string Model,
     StackView? View,
     string Curve,
-    string? Mirror,
+    StackSymmetry? Symmetry,
     uint? Start = null,
     string? From = null
 );

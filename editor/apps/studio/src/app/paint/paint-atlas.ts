@@ -28,11 +28,6 @@ import { StrokeGesture } from './stroke-gesture';
           </option>
         }
       </select>
-      @if (store.mirror() !== 'none' && state.model) {
-        <span class="readout absolute top-3 left-48 z-10 text-xs" data-testid="paint-mirror-mesh">
-          Mirror paints on the mesh, not here
-        </span>
-      }
     }
     @if (tiling()) {
       <button
@@ -167,6 +162,8 @@ export class PaintAtlas {
 
     (event.target as HTMLElement).setPointerCapture(event.pointerId);
     this.painting = true;
+    const box = (event.target as HTMLElement).getBoundingClientRect();
+    this.store.atlasScale.set(this.side()[0] / Math.max(box.width, 1));
     this.gesture.press(this.stamp(event), { line: event.shiftKey, snap: event.ctrlKey || event.metaKey });
   }
 

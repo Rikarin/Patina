@@ -21,6 +21,7 @@ import { ViewOptions } from '../core/view-options';
 import { GraphStore } from '../graph/graph-store';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore, pressureOf } from '../paint/paint-store';
+import { symmetryGuide } from '../paint/symmetry-guide';
 import { StrokeGesture } from '../paint/stroke-gesture';
 import { FramePainter } from './frame-painter';
 import type { ViewportFrame } from './frame-transport';
@@ -228,11 +229,21 @@ const PickLook = '…';
           <div
             class="pointer-events-none absolute rounded-full border border-white/70 mix-blend-difference"
             data-testid="viewport-brush"
-            [style.height.px]="paint.radius() * 2"
-            [style.left.px]="at.x - paint.radius()"
-            [style.top.px]="at.y - paint.radius()"
-            [style.width.px]="paint.radius() * 2"
+            [attr.data-space]="paint.brush().sizeSpace"
+            [style.height.px]="cursor() * 2"
+            [style.left.px]="at.x - cursor()"
+            [style.top.px]="at.y - cursor()"
+            [style.width.px]="cursor() * 2"
           ></div>
+        }
+        @if (guide(); as points) {
+          <svg class="pointer-events-none absolute inset-0 size-full" data-testid="viewport-symmetry" aria-hidden="true">
+            @if (paint.symmetry()?.kind === 'radial') {
+              <polyline class="fill-none stroke-sky-300/80" stroke-dasharray="6 4" stroke-width="1.5" [attr.points]="points" />
+            } @else {
+              <polygon class="fill-sky-300/10 stroke-sky-300/80" stroke-dasharray="6 4" stroke-width="1.5" [attr.points]="points" />
+            }
+          </svg>
         }
         @if (gesture.points().length > 1) {
           <svg class="pointer-events-none absolute inset-0 size-full" data-testid="viewport-curve">
@@ -276,6 +287,28 @@ export class ViewportPane implements AfterViewInit {
    */
   protected readonly painting = signal(true);
   protected readonly paints = computed(() => this.paint.worn() && this.painting() && this.paint.canPaintMesh());
+
+  /**
+   * The ring under the pointer, in pixels: the brush's radius when it is in the screen's units. A size in texels or in
+   * the model's units is only measured where a stroke starts, so until then the ring is a small mark, never a wrong one.
+   */
+  protected readonly cursor = computed(() => (this.paint.brush().sizeSpace === 'screen' ? this.paint.radius() : 3));
+
+  /** The camera and model box the symmetry guide was last drawn from, asked of the Worker as the view settles. */
+  private readonly looked = signal<{ key: string; pick: Awaited<ReturnType<PaintStore['look']>> } | null>(null);
+  private looking: ReturnType<typeof setTimeout> | undefined;
+
+  /** The symmetry's plane or axis over the picture, where the Worker will put it, or null with none to show. */
+  protected readonly guide = computed(() => {
+    const symmetry = this.paint.symmetry();
+    const looked = this.looked();
+    const bounds = looked?.key === this.view() ? looked.pick.bounds : null;
+    if (!symmetry || !looked || !bounds) {
+      return null;
+    }
+
+    return symmetryGuide(symmetry, looked.pick.view, bounds);
+  });
   /** Whether a press does something at the point under it, which is what the cursor says. */
   protected readonly aiming = computed(
     () => this.paints() || this.paint.picking() !== null || (this.paint.worn() && this.paint.tool() === 'picker')
@@ -341,6 +374,22 @@ export class ViewportPane implements AfterViewInit {
       if (followed && document?.id === followed && revision !== undefined) {
         void this.viewport.showGraph(followed);
       }
+    });
+    // The guide follows the camera once it rests, since each look is a round trip to the Worker.
+    effect(() => {
+      const key = this.view();
+      if (!this.paints() || !this.paint.symmetry()) {
+        return;
+      }
+
+      clearTimeout(this.looking);
+      this.looking = setTimeout(() => {
+        void this.paint
+          .look(this.aim())
+          .then(pick => this.looked.set({ key, pick }))
+          // A guide is a help: without one the strokes still copy where they would.
+          .catch(() => undefined);
+      }, 150);
     });
     // What the viewport shows changed from elsewhere, and the label needs telling.
     effect(() => {

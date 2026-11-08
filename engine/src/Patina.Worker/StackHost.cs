@@ -680,12 +680,12 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
                 new(
                     canvas.Channel(part.Usage),
                     surface?.Coverage ?? PaintCoverage.Everywhere(canvas.Width, canvas.Height),
-                    Brush(part.Brush),
+                    Brush(part.Brush) with { Radius = StrokeShapes.Radius(part, surface, Bounds(part.Model)) },
                     part.Colour,
                     surface is null ? 0 : Gutter,
                     // A line or a path runs through its points, and a brush trailing them would stop short of the last.
                     part.Curve == "free" ? part.Brush.Lazy : 0f,
-                    placement: Placement(part, surface)
+                    placement: StrokeShapes.Placement(part, surface, Bounds(part.Model))
                 ),
                 part.Curve == "free" ? null : new()
             );
@@ -694,32 +694,12 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
         }
 
         /// <summary>Where a stroke's stamps land besides under themselves, which only a mesh can say.</summary>
-        static IPaintPlacement? Placement(StackPaintPart part, PaintMeshSurface? surface) {
-            if (part.View is not { } view) {
-                return surface?.AcrossSeams();
-            }
-
-            return (surface ?? throw new IpcException("A stroke with a view needs a mesh."))
-                .Through(
-                    new(
-                        Point(view.Eye),
-                        Point(view.Right),
-                        Point(view.Up),
-                        Point(view.Forward),
-                        view.VerticalFieldOfView,
-                        view.Width,
-                        view.Height
-                    ),
-                    part.Mirror switch {
-                        "x" => PaintSymmetry.X,
-                        "y" => PaintSymmetry.Y,
-                        "z" => PaintSymmetry.Z,
-                        _ => null
-                    }
-                );
-        }
-
-        static Vector3 Point(IReadOnlyList<float> numbers) => new(numbers[0], numbers[1], numbers[2]);
+        /// <summary>
+        ///     The whole model's box, every texture set of it, or null with no model. ⚠ Not the set's own: a symmetry's
+        ///     centre and a size in the model's units are the model's, and one set of a character is half of it.
+        /// </summary>
+        BoundingBox? Bounds(string model) =>
+            model.Trim().Length == 0 ? null : meshes.Of(Path.GetFullPath(model, folder)).Projection.Bounds;
 
         PaintMeshSurface? Surface(string model) {
             if (model.Trim().Length == 0) {
@@ -735,26 +715,7 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
             return surface;
         }
 
-        PaintBrush Brush(StackBrush brush) =>
-            PaintBrush.Default with {
-                Radius = brush.Radius,
-                Flow = brush.Flow,
-                Opacity = brush.Opacity,
-                Spacing = brush.Spacing,
-                Falloff = brush.Falloff,
-                Alpha = Alpha(brush.Alpha),
-                Angle = brush.Angle,
-                Rotation = brush.Rotation switch {
-                    "along" => BrushRotation.AlongStroke,
-                    "random" => BrushRotation.Random,
-                    _ => BrushRotation.Fixed
-                },
-                PositionJitter = brush.PositionJitter,
-                AngleJitter = brush.AngleJitter,
-                SizeJitter = brush.SizeJitter,
-                PressureSize = brush.PressureSize,
-                PressureFlow = brush.PressureFlow
-            };
+        PaintBrush Brush(StackBrush brush) => StrokeShapes.Brush(brush, Alpha(brush.Alpha));
 
         /// <summary>A named alpha, or a picture beside the stack read through its red channel.</summary>
         IBrushMask? Alpha(string? name) {

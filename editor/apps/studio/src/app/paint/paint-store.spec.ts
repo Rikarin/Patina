@@ -6,6 +6,7 @@ import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
 import { hexOf } from './layer-panel';
 import { LiveValue } from './live-value';
 import {
+  NewBrush,
   PaintStore,
   colourOf,
   pressureOf,
@@ -434,7 +435,8 @@ describe('PaintStore', () => {
   it('asks the Worker where a stroke on the mesh is, and every part carries the camera it was given', async () => {
     const { store, bodies, picks } = setup();
     await store.open('/a/Crate.vxlayers', false);
-    store.mirror.set('x');
+    store.state.update(state => (state ? { ...state, model: 'crate.glb' } : state));
+    store.symmetry.set({ kind: 'mirror', axis: 'x', centre: 'model', offset: 0, count: 2 });
     const aim = {
       width: 100,
       height: 100,
@@ -445,10 +447,10 @@ describe('PaintStore', () => {
     store.end();
     await vi.waitFor(() => {
       const parts = bodies.flatMap(
-        body => (body as { commands: { open: boolean; view: unknown; mirror: string }[] }).commands
+        body => (body as { commands: { open: boolean; view: unknown; symmetry: { axis: string } | null }[] }).commands
       );
       expect(parts.at(-1)?.open).toBe(false);
-      expect(parts.every(part => part.mirror === 'x')).toBe(true);
+      expect(parts.every(part => part.symmetry?.axis === 'x')).toBe(true);
       expect(parts.every(part => part.view !== null)).toBe(true);
     });
     expect(picks).toEqual([{ x: 0.5, y: 0.25, camera: aim.camera, width: 100, height: 100 }]);
@@ -468,15 +470,45 @@ describe('PaintStore', () => {
     expect(parts.at(-1)?.open).toBe(false);
   });
 
-  it('never mirrors a stroke on the atlas, since a mirror is on the mesh', async () => {
+  it('copies a stroke on the map too when there is a mesh, and never sends a symmetry with none', async () => {
     const { store, bodies } = setup();
     await store.open('/a/Crate.vxlayers', false);
-    store.mirror.set('x');
+    store.symmetry.set({ kind: 'radial', axis: 'y', centre: 'model', offset: 0, count: 6 });
+    store.begin({ x: 1, y: 2, pressure: 1 });
+    store.end();
+    store.state.update(state => (state ? { ...state, model: 'crate.glb' } : state));
     store.begin({ x: 1, y: 2, pressure: 1 });
     store.end();
     await vi.waitFor(() => {
-      expect(bodies.flatMap(body => (body as { commands: { mirror: unknown }[] }).commands)[0]?.mirror).toBeNull();
+      const parts = bodies.flatMap(body => (body as { commands: { symmetry: { count: number } | null }[] }).commands);
+      expect(parts[0]?.symmetry).toBeNull();
+      expect(parts.length).toBeGreaterThan(1);
+      expect(parts.slice(1).every(part => part.symmetry?.count === 6)).toBe(true);
     });
+  });
+
+  it('sends a size in the screen\'s units on the map as texels of the map as drawn, and one in texels as it is', async () => {
+    const { store, bodies } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    store.radius.set(10);
+    store.atlasScale.set(4);
+    store.begin({ x: 1, y: 2, pressure: 1 });
+    store.end();
+    store.brush.update(brush => ({ ...brush, sizeSpace: 'texture' }));
+    store.begin({ x: 1, y: 2, pressure: 1 });
+    store.end();
+    await vi.waitFor(() => {
+      const parts = bodies.flatMap(body => (body as { commands: { brush: { radius: number } }[] }).commands);
+      expect([parts[0]?.brush.radius, parts.at(-1)?.brush.radius]).toEqual([40, 10]);
+    });
+  });
+
+  it('puts every setting of the brush back to a new one, its size among them', () => {
+    const { store } = setup();
+    store.radius.set(300);
+    store.brush.update(brush => ({ ...brush, aspect: 6, flowJitter: 0.4, accumulate: false }));
+    store.resetBrush();
+    expect(store.wholeBrush()).toEqual(NewBrush);
   });
 
   it('runs a line from press to release as one stroke with two points', async () => {

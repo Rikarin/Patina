@@ -14,6 +14,7 @@ import { SystemStatus } from '../core/system-status';
 import { UnsavedWork } from '../core/unsaved-work';
 import type { WorkspaceName } from '../core/workspaces';
 import { GraphStore } from '../graph/graph-store';
+import { BrushStore } from '../paint/brush-store';
 import { PaintStore } from '../paint/paint-store';
 import { LibraryStore } from './library-store';
 import { messageOf } from '../core/messages';
@@ -35,9 +36,12 @@ function isGraph(tab: DocumentTab | null | undefined): boolean {
   return tab?.kind === 'graph' || tab?.kind === 'image-material';
 }
 
-/** What opening a project means: its texturing, or else whatever it has. */
+/** What opening a project means: its texturing, or else whatever it has that opens. A brush preset opens nothing. */
 function firstOf(documents: readonly ProjectDocumentInfo[]): ProjectDocumentInfo | undefined {
-  return documents.find(document => document.kind === 'texturing') ?? documents[0];
+  return (
+    documents.find(document => document.kind === 'texturing') ??
+    documents.find(document => document.kind !== 'brush-preset')
+  );
 }
 
 /**
@@ -72,6 +76,7 @@ function remember(key: string, value: string | null): void {
 export class ProjectStore {
   private readonly library = inject(LibraryStore);
   private readonly paint = inject(PaintStore);
+  private readonly brushes = inject(BrushStore);
   private readonly graph = inject(GraphStore);
   private readonly bakes = inject(BakeStore);
   private readonly unsaved = inject(UnsavedWork);
@@ -248,6 +253,12 @@ export class ProjectStore {
         return;
       }
 
+      // A preset is taken up by the brush, and has no workspace of its own.
+      if (document.kind === 'brush-preset') {
+        await this.brushes.useFile(project, document.path);
+        return;
+      }
+
       const open = this.mutableTabs().find(tab => tab.path === document.path);
       if (!open) {
         this.mutableTabs.update(tabs => [...tabs, tabOf(document, project)]);
@@ -294,6 +305,9 @@ export class ProjectStore {
       } else {
         await this.refreshMaterials(tab.project);
         await this.paint.open(path, false);
+        if (tab.project !== null) {
+          await this.brushes.adopt(tab.project, this.mutableContents().get(tab.project)?.paint);
+        }
         this.update(path, { session: this.paint.state()?.id ?? null });
         if (tab.kind === 'layered-material') {
           await this.paint.wear();

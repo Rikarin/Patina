@@ -331,19 +331,26 @@ public sealed class LibraryFolderTests : IDisposable {
     }
 
     /// <summary>
-    ///     A project's export, bake and viewport settings sit side by side in its project.yaml, and a library opened
-    ///     again after its cache is deleted reads all three back: the file is the truth.
+    ///     A project's export, bake, viewport and paint settings sit side by side in its project.yaml, and a library
+    ///     opened again after its cache is deleted reads all four back: the file is the truth.
     /// </summary>
     [Fact]
-    public void A_projects_export_bake_and_viewport_settings_outlive_the_cache_together() {
+    public void A_projects_export_bake_viewport_and_paint_settings_outlive_the_cache_together() {
         var made = library.CreateProject(new("Lamp"));
         ProjectExportSettings export = new() { Preset = "unreal", Folder = "/out", Skipped = ["Shade"] };
         ProjectBakeSettings bake = new() { Cage = "/art/cage.fbx", Options = new() { Resolution = 512 } };
         var viewport = new ViewportDisplay(ToneMapping: "agx", Orthographic: true);
+        ProjectPaintSettings paint = new() {
+            RecentColours = ["#a03c28", "#ffffff"],
+            Palette = ["#102030"],
+            Brush = new(48f, Flow: 0.5f),
+            Symmetry = new("radial", "y", "origin", Count: 6)
+        };
 
         library.SetExport(made.Path, export);
         library.SetBake(made.Path, bake);
         library.SetViewport(made.Path, viewport);
+        library.SetPaint(made.Path, paint);
         library.Dispose();
         Directory.Delete(Path.Combine(root, LibraryLayout.CacheFolder), true);
         using var again = OpenLibrary.Open(root);
@@ -355,6 +362,9 @@ public sealed class LibraryFolderTests : IDisposable {
         );
         Assert.Equal(("/art/cage.fbx", 512), (contents.Bake.Cage, contents.Bake.Options.Resolution));
         Assert.Equal(viewport, contents.Viewport);
+        Assert.Equal(paint.RecentColours, contents.Paint!.RecentColours);
+        Assert.Equal(paint.Palette, contents.Paint.Palette);
+        Assert.Equal((paint.Brush, paint.Symmetry), (contents.Paint.Brush, contents.Paint.Symmetry));
     }
 
     /// <summary>

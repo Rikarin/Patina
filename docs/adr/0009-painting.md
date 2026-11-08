@@ -131,6 +131,20 @@ The radius of a stroke with a view is in the units of its picture, the client's 
 the render scale or the chart under it. On the housing at the default camera, 4K and a device pixel ratio of 2, 12 such pixels is about 48
 texels of radius, and 24 about 96.
 
+A brush's size space changes what the radius is in. **Texture** is texels of the map and **model** is thousandths of the model's
+bounding diagonal; either is measured once, where the stroke starts (`PaintMeshSurface.PictureRadius` and `AtlasRadius`), and the
+stroke keeps it, for `PaintProjector`'s reason: a radius worked out again per stamp is a brush whose spacing and footprint change as it
+crosses a chart or a slope. A stroke in the 2D view with a size in the screen's units is sent in texels of the map as drawn.
+
+### Symmetry
+
+A stroke's symmetry (`StackSymmetry`) is a list of rigid copies: a mirror through a plane or two to 64 turns round an axis, through the
+model's bounding centre or the mesh's origin (#132). Each copy of a stroke with a view is its camera moved with it, so a copy is never
+hidden behind the model and needs no raycast of its own on the Server. A stroke in the atlas finds its place on the surface, moves it, and
+paints wherever on the atlas the nearest surface is, weighed in the copy's turned frame so a mirrored alpha stays mirrored. A copy that
+lands off the mesh paints nothing; whether the model is symmetric is the artist's claim, and nothing checks it. Symmetry needs a mesh in
+either view, and a stack without one refuses it with `stack-no-mesh`.
+
 ### Stamp to frame shown
 
 `pnpm exec playwright test --config apps/desktop/e2e/bench.config.ts paint`, in a real Electron window (565×260 layout pixels, 1130×520

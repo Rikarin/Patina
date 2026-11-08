@@ -63,7 +63,8 @@ static class ProjectFiles {
                     .Distinct(StringComparer.Ordinal)
             ],
             Bake = document.Bake ?? new(),
-            Viewport = document.Viewport
+            Viewport = document.Viewport,
+            Paint = document.Paint
         };
     }
 
@@ -299,6 +300,12 @@ static class ProjectFiles {
     public static void SetViewport(string root, string path, ViewportDisplay viewport) {
         var (_, document) = Project(root, path);
         LibraryFiles.WriteProject(root, path, document with { Viewport = viewport });
+    }
+
+    /// <summary>Keeps how a project's painting was left.</summary>
+    public static void SetPaint(string root, string path, ProjectPaintSettings paint) {
+        var (_, document) = Project(root, path);
+        LibraryFiles.WriteProject(root, path, document with { Paint = paint });
     }
 
     /// <summary>Puts a texturing document on another mesh.</summary>
@@ -563,6 +570,8 @@ static class ProjectFiles {
         return string.Equals(extension, StackExtension, StringComparison.OrdinalIgnoreCase) ? DocumentKinds.Texturing
             : string.Equals(extension, LibraryLayout.GraphExtension, StringComparison.OrdinalIgnoreCase) ? DocumentKinds
                 .Graph
+            : string.Equals(extension, BrushPresets.Extension, StringComparison.OrdinalIgnoreCase) ? DocumentKinds
+                .BrushPreset
             : null;
     }
 

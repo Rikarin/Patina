@@ -25,7 +25,8 @@ class StackBrush:
     """ A brush. Everything but the radius has the value a new brush has.
 
         Attributes:
-            radius (float): In texels, or in the units of the picture for a stroke with a view.
+            radius (float): In SizeSpace: by default texels for a stroke with no view and the units of the picture for
+                one with a view. Above zero and at most float StackBrushes.MaximumRadius.
             flow (float): How much one stamp lays down, 0 to 1. Default: 1.0.
             opacity (float): How much a whole stroke can lay down, 0 to 1. Default: 1.0.
             spacing (float): How far apart stamps are, as a share of the radius: above zero, and above 2 leaves gaps.
@@ -41,6 +42,22 @@ class StackBrush:
             lazy (float): How far the brush trails the pointer, in the units of the radius: a lazy mouse. 0 follows it. A
                 line or a path
                 takes none, so that it reaches its last point. Default: 0.0.
+            curve (str): How its edge falls away: smooth, linear, spherical or tip. Default: 'smooth'.
+            aspect (float): How much longer than wide a stamp is, 1 to 16; 1 is round. It keeps the area of the round stamp,
+                so a longer one
+                is narrower. Default: 1.0.
+            aspect_angle (float): Which way the long side points, in radians, on the picture or the map it is made on.
+                Default: 0.0.
+            flow_jitter (float): How much of its flow a stamp can lose, 0 to 1. Default: 0.0.
+            scatter_axis (str): Which way PositionJitter moves a stamp: both, or across the stroke only. Default: 'both'.
+            accumulate (bool): Whether stamps build up where they overlap, to the opacity. Off, a place keeps the strongest
+                stamp to reach it,
+                so a slow drag paints what a fast one does. Default: True.
+            size_space (str): What the radius is measured in: `screen`, the stroke's own picture or map; `texture`, texels
+                of the
+                map whatever the view; or `model`, thousandths of the model's size (its bounds' diagonal), which needs a
+                mesh. A size other than screen is measured where the stroke starts and kept for the whole of it. Default:
+                'screen'.
             alpha (None | str | Unset): A named alpha (Round, Square, Chisel, Cross) or an image relative to the stack, or
                 null.
      """
@@ -58,6 +75,13 @@ class StackBrush:
     pressure_size: float = 0.0
     pressure_flow: float = 0.0
     lazy: float = 0.0
+    curve: str = 'smooth'
+    aspect: float = 1.0
+    aspect_angle: float = 0.0
+    flow_jitter: float = 0.0
+    scatter_axis: str = 'both'
+    accumulate: bool = True
+    size_space: str = 'screen'
     alpha: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -92,6 +116,20 @@ class StackBrush:
 
         lazy = self.lazy
 
+        curve = self.curve
+
+        aspect = self.aspect
+
+        aspect_angle = self.aspect_angle
+
+        flow_jitter = self.flow_jitter
+
+        scatter_axis = self.scatter_axis
+
+        accumulate = self.accumulate
+
+        size_space = self.size_space
+
         alpha: None | str | Unset
         if isinstance(self.alpha, Unset):
             alpha = UNSET
@@ -115,6 +153,13 @@ class StackBrush:
             "pressureSize": pressure_size,
             "pressureFlow": pressure_flow,
             "lazy": lazy,
+            "curve": curve,
+            "aspect": aspect,
+            "aspectAngle": aspect_angle,
+            "flowJitter": flow_jitter,
+            "scatterAxis": scatter_axis,
+            "accumulate": accumulate,
+            "sizeSpace": size_space,
         })
         if alpha is not UNSET:
             field_dict["alpha"] = alpha
@@ -152,6 +197,20 @@ class StackBrush:
 
         lazy = d.pop("lazy")
 
+        curve = d.pop("curve")
+
+        aspect = d.pop("aspect")
+
+        aspect_angle = d.pop("aspectAngle")
+
+        flow_jitter = d.pop("flowJitter")
+
+        scatter_axis = d.pop("scatterAxis")
+
+        accumulate = d.pop("accumulate")
+
+        size_space = d.pop("sizeSpace")
+
         def _parse_alpha(data: object) -> None | str | Unset:
             if data is None:
                 return data
@@ -176,6 +235,13 @@ class StackBrush:
             pressure_size=pressure_size,
             pressure_flow=pressure_flow,
             lazy=lazy,
+            curve=curve,
+            aspect=aspect,
+            aspect_angle=aspect_angle,
+            flow_jitter=flow_jitter,
+            scatter_axis=scatter_axis,
+            accumulate=accumulate,
+            size_space=size_space,
             alpha=alpha,
         )
 

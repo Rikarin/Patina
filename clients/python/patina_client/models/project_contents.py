@@ -18,6 +18,7 @@ if TYPE_CHECKING:
   from ..models.project_export_settings import ProjectExportSettings
   from ..models.project_file import ProjectFile
   from ..models.project_mesh_info import ProjectMeshInfo
+  from ..models.project_paint_settings import ProjectPaintSettings
   from ..models.unwrap_options import UnwrapOptions
   from ..models.viewport_display import ViewportDisplay
 
@@ -53,6 +54,7 @@ class ProjectContents:
                 beyond the project's mesh that a bake reads.
             export (None | ProjectExportSettings | Unset):
             viewport (None | Unset | ViewportDisplay):
+            paint (None | ProjectPaintSettings | Unset):
      """
 
     id: UUID
@@ -70,6 +72,7 @@ class ProjectContents:
     bake: ProjectBakeSettings
     export: None | ProjectExportSettings | Unset = UNSET
     viewport: None | Unset | ViewportDisplay = UNSET
+    paint: None | ProjectPaintSettings | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -82,6 +85,7 @@ class ProjectContents:
         from ..models.project_export_settings import ProjectExportSettings # noqa: PLC0415
         from ..models.project_file import ProjectFile # noqa: PLC0415
         from ..models.project_mesh_info import ProjectMeshInfo # noqa: PLC0415
+        from ..models.project_paint_settings import ProjectPaintSettings # noqa: PLC0415
         from ..models.unwrap_options import UnwrapOptions # noqa: PLC0415
         from ..models.viewport_display import ViewportDisplay # noqa: PLC0415
         id = str(self.id)
@@ -148,6 +152,14 @@ class ProjectContents:
         else:
             viewport = self.viewport
 
+        paint: dict[str, Any] | None | Unset
+        if isinstance(self.paint, Unset):
+            paint = UNSET
+        elif isinstance(self.paint, ProjectPaintSettings):
+            paint = self.paint.to_dict()
+        else:
+            paint = self.paint
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -170,6 +182,8 @@ class ProjectContents:
             field_dict["export"] = export
         if viewport is not UNSET:
             field_dict["viewport"] = viewport
+        if paint is not UNSET:
+            field_dict["paint"] = paint
 
         return field_dict
 
@@ -182,6 +196,7 @@ class ProjectContents:
         from ..models.project_export_settings import ProjectExportSettings # noqa: PLC0415
         from ..models.project_file import ProjectFile # noqa: PLC0415
         from ..models.project_mesh_info import ProjectMeshInfo # noqa: PLC0415
+        from ..models.project_paint_settings import ProjectPaintSettings # noqa: PLC0415
         from ..models.unwrap_options import UnwrapOptions # noqa: PLC0415
         from ..models.viewport_display import ViewportDisplay # noqa: PLC0415
         d = dict(src_dict)
@@ -293,6 +308,26 @@ class ProjectContents:
         viewport = _parse_viewport(d.pop("viewport", UNSET))
 
 
+        def _parse_paint(data: object) -> None | ProjectPaintSettings | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                paint_type_1 = ProjectPaintSettings.from_dict(data)
+
+
+
+                return paint_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | ProjectPaintSettings | Unset, data)
+
+        paint = _parse_paint(d.pop("paint", UNSET))
+
+
         project_contents = cls(
             id=id,
             name=name,
@@ -309,6 +344,7 @@ class ProjectContents:
             bake=bake,
             export=export,
             viewport=viewport,
+            paint=paint,
         )
 
 

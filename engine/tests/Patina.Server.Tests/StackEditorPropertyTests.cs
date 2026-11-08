@@ -232,6 +232,33 @@ public sealed class StackEditorPropertyTests {
         Assert.Equal("a.glb", editor.Standing.Single().Model);
     }
 
+    /// <summary>
+    ///     A symmetry or a size in the model's units is on the mesh, in the atlas as on the picture, and a brush or a
+    ///     symmetry no Worker could stroke with is refused with a code a client can explain, before anything stands.
+    /// </summary>
+    [Fact]
+    public void A_symmetric_or_out_of_range_stroke_is_refused_before_it_stands() {
+        var editor = new StackEditor("/tmp/Crate.vxlayers", Sample());
+        StackStroke flat = new("s", "paint", "baseColor", new(2f), White, [new(1f, 1f)]);
+
+        string Refused(StackStroke stroke) =>
+            Assert.Throws<StackEditRefusedException>(() => editor.Apply(new([stroke]))).Code;
+
+        Assert.Equal(Api.Refusals.NoMesh, Refused(flat with { Symmetry = new() }));
+        Assert.Equal(Api.Refusals.NoMesh, Refused(flat with { Brush = new(2f, SizeSpace: "model") }));
+
+        editor.Apply(new([new StackSetModel("a.glb")]));
+        Assert.Equal(Api.Refusals.BrushRefused, Refused(flat with { Symmetry = new(Axis: "w") }));
+        Assert.Equal(Api.Refusals.BrushRefused, Refused(flat with { Symmetry = new("radial", Count: 65) }));
+        Assert.Equal(Api.Refusals.BrushRefused, Refused(flat with { Brush = new(2f, Aspect: 17f) }));
+        Assert.Equal(Api.Refusals.BrushRefused, Refused(flat with { Brush = new(5000f) }));
+        Assert.Equal(Api.Refusals.BrushRefused, Refused(flat with { Brush = new(2f, Curve: "cubic") }));
+        Assert.Empty(editor.Standing);
+
+        editor.Apply(new([flat with { Symmetry = new("radial", "z", Count: 8), Brush = new(2f, SizeSpace: "model") }]));
+        Assert.Equal(8, editor.Standing.Single().Symmetry!.Count);
+    }
+
     /// <summary>The parts of a drag are one step, and whatever else arrives ends it.</summary>
     [Fact]
     public void The_parts_of_a_drag_are_one_step() {
@@ -363,7 +390,7 @@ public sealed class StackEditorPropertyTests {
                 random.Next(4) == 0,
                 random.Next(3) == 0 ? View : null,
                 random.Next(4) == 0 ? "line" : "free",
-                random.Next(8) == 0 ? "x" : null
+                random.Next(8) == 0 ? new StackSymmetry() : null
             )
         };
     }

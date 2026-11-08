@@ -380,7 +380,7 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                         entry.Model,
                         entry.View,
                         entry.Curve,
-                        entry.Mirror,
+                        entry.Symmetry,
                         entry.Start,
                         entry.From
                     )

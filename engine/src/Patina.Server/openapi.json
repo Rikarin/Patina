@@ -1883,6 +1883,67 @@
         }
       }
     },
+    "/api/v1/library/project/paint": {
+      "put": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Keeps how a project\u0027s painting was left, in its project.yaml: the colours strokes last used, its palette, the brush and the symmetry, so they survive a restart and any client starts from them.",
+        "operationId": "SetProjectPaint",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectPaintRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/project/settings": {
       "patch": {
         "tags": [
@@ -2765,6 +2826,191 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MaterialList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/brushes": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "The brush and tool presets a project can use: the shipped ones, its own and other projects\u0027, favourites first.",
+        "operationId": "GetBrushPresets",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrushPresetList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Saves a brush as a new preset, a document of the project.",
+        "operationId": "CreateBrushPreset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrushPresetCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrushPresetInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Rewrites a preset: from the brush as it stands, or as a favourite or not. A shipped preset keeps a copy in the project instead.",
+        "operationId": "UpdateBrushPreset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrushPresetUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrushPresetInfo"
                 }
               }
             }
@@ -5836,6 +6082,134 @@
           }
         },
         "description": "The thickness map\u0027s own settings."
+      },
+      "BrushPreset": {
+        "required": [
+          "tool",
+          "brush",
+          "favourite"
+        ],
+        "type": "object",
+        "properties": {
+          "tool": {
+            "type": "string",
+            "description": "What the pointer does: brush, eraser, line or path."
+          },
+          "brush": {
+            "description": "The brush, its size among it.",
+            "$ref": "#/components/schemas/StackBrush"
+          },
+          "colour": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The colour it paints, as \u0060#rrggbb\u0060, or null to keep the colour chosen."
+          },
+          "favourite": {
+            "type": "boolean",
+            "description": "Whether it is one of the favourites, which a shelf shows first.",
+            "default": false
+          }
+        },
+        "description": "A brush or tool preset: what the pointer paints as and with. It is a document of a project, a \u0060.ptbrush\u0060\nfile, and the file is the truth."
+      },
+      "BrushPresetCreateRequest": {
+        "required": [
+          "project",
+          "name",
+          "preset"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "name": {
+            "type": "string",
+            "description": "What to call it, which names its file."
+          },
+          "preset": {
+            "description": "What it holds: usually the brush as it stands.",
+            "$ref": "#/components/schemas/BrushPreset"
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/brushes\u0060, which saves a new preset in a project."
+      },
+      "BrushPresetInfo": {
+        "required": [
+          "name",
+          "source",
+          "origin",
+          "preset"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "What it is called."
+          },
+          "source": {
+            "type": "string",
+            "description": "What names it to the routes: \u0060starter:\u0060 and a name, or its file\u0027s path in the library."
+          },
+          "origin": {
+            "type": "string",
+            "description": "\u0060shipped\u0060, \u0060project\u0060, or \u0060library\u0060 for another project."
+          },
+          "preset": {
+            "description": "What it holds.",
+            "$ref": "#/components/schemas/BrushPreset"
+          },
+          "project": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The project it lives in, when that is another one."
+          }
+        },
+        "description": "A preset on the shelf."
+      },
+      "BrushPresetList": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BrushPresetInfo"
+            },
+            "description": "Them, favourites first, then by origin and name."
+          }
+        },
+        "description": "The presets a project can use: the shipped ones, its own, and other projects\u0027."
+      },
+      "BrushPresetUpdateRequest": {
+        "required": [
+          "project",
+          "source",
+          "preset"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project a shipped preset\u0027s copy goes in."
+          },
+          "source": {
+            "type": "string",
+            "description": "Which preset, as the shelf names it."
+          },
+          "preset": {
+            "description": "What it holds now.",
+            "$ref": "#/components/schemas/BrushPreset"
+          }
+        },
+        "description": "The body of \u0060PUT /api/v1/library/brushes\u0060, which rewrites a preset: from the brush as it stands, or to make\nit a favourite or not. A shipped preset cannot change, so changing one keeps a copy in the project instead."
       },
       "BuildPreview": {
         "required": [
@@ -9412,6 +9786,17 @@
                 "$ref": "#/components/schemas/ViewportDisplay"
               }
             ]
+          },
+          "paint": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "How its painting was left: recent colours, palette, brush and symmetry, or null for none yet.",
+                "$ref": "#/components/schemas/ProjectPaintSettings"
+              }
+            ]
           }
         },
         "description": "A project as it opens."
@@ -9933,6 +10318,70 @@
         },
         "description": "One page of projects."
       },
+      "ProjectPaintRequest": {
+        "required": [
+          "project",
+          "paint"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "paint": {
+            "description": "How its painting stands now.",
+            "$ref": "#/components/schemas/ProjectPaintSettings"
+          }
+        },
+        "description": "The body of \u0060PUT /api/v1/library/project/paint\u0060."
+      },
+      "ProjectPaintSettings": {
+        "required": [
+          "recentColours",
+          "palette"
+        ],
+        "type": "object",
+        "properties": {
+          "recentColours": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The colours strokes last used, newest first, as \u0060#rrggbb\u0060."
+          },
+          "palette": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Colours kept on purpose, in the order they were added, as \u0060#rrggbb\u0060."
+          },
+          "brush": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The brush last painted with, or null for a new one.",
+                "$ref": "#/components/schemas/StackBrush"
+              }
+            ]
+          },
+          "symmetry": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The symmetry strokes are copied with, or null for none.",
+                "$ref": "#/components/schemas/StackSymmetry"
+              }
+            ]
+          }
+        },
+        "description": "How a project\u0027s painting was left: the colours last used and kept, the brush and the symmetry. A project keeps\nit in its \u0060project.yaml\u0060, so it survives a restart and any client starts from it."
+      },
       "ProjectPicture": {
         "required": [
           "path"
@@ -10178,13 +10627,20 @@
           "sizeJitter",
           "pressureSize",
           "pressureFlow",
-          "lazy"
+          "lazy",
+          "curve",
+          "aspect",
+          "aspectAngle",
+          "flowJitter",
+          "scatterAxis",
+          "accumulate",
+          "sizeSpace"
         ],
         "type": "object",
         "properties": {
           "radius": {
             "type": "number",
-            "description": "In texels, or in the units of the picture for a stroke with a view.",
+            "description": "In SizeSpace: by default texels for a stroke with no view and the units of the picture for\none with a view. Above zero and at most float StackBrushes.MaximumRadius.",
             "format": "float"
           },
           "flow": {
@@ -10264,9 +10720,142 @@
             "description": "How far the brush trails the pointer, in the units of the radius: a lazy mouse. 0 follows it. A line or a path\ntakes none, so that it reaches its last point.",
             "format": "float",
             "default": 0
+          },
+          "curve": {
+            "type": "string",
+            "description": "How its edge falls away: smooth, linear, spherical or tip.",
+            "default": "smooth"
+          },
+          "aspect": {
+            "type": "number",
+            "description": "How much longer than wide a stamp is, 1 to 16; 1 is round. It keeps the area of the round stamp, so a longer one\nis narrower.",
+            "format": "float",
+            "default": 1
+          },
+          "aspectAngle": {
+            "type": "number",
+            "description": "Which way the long side points, in radians, on the picture or the map it is made on.",
+            "format": "float",
+            "default": 0
+          },
+          "flowJitter": {
+            "type": "number",
+            "description": "How much of its flow a stamp can lose, 0 to 1.",
+            "format": "float",
+            "default": 0
+          },
+          "scatterAxis": {
+            "type": "string",
+            "description": "Which way PositionJitter moves a stamp: both, or across the stroke only.",
+            "default": "both"
+          },
+          "accumulate": {
+            "type": "boolean",
+            "description": "Whether stamps build up where they overlap, to the opacity. Off, a place keeps the strongest stamp to reach it,\nso a slow drag paints what a fast one does.",
+            "default": true
+          },
+          "sizeSpace": {
+            "type": "string",
+            "description": "What the radius is measured in: \u0060screen\u0060, the stroke\u0027s own picture or map; \u0060texture\u0060, texels of the\nmap whatever the view; or \u0060model\u0060, thousandths of the model\u0027s size (its bounds\u0027 diagonal), which needs a\nmesh. A size other than screen is measured where the stroke starts and kept for the whole of it.",
+            "default": "screen"
           }
         },
         "description": "A brush. Everything but the radius has the value a new brush has."
+      },
+      "StackBrushTerms": {
+        "required": [
+          "default",
+          "falloffs",
+          "rotations",
+          "sizeSpaces",
+          "scatterAxes",
+          "symmetries",
+          "axes",
+          "centres",
+          "tools",
+          "maximumRadius",
+          "maximumAspect",
+          "maximumCount"
+        ],
+        "type": "object",
+        "properties": {
+          "default": {
+            "description": "A new brush, which Reset to Default goes back to.",
+            "$ref": "#/components/schemas/StackBrush"
+          },
+          "falloffs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "How an edge can fall away."
+          },
+          "rotations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "How stamps can turn."
+          },
+          "sizeSpaces": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "What a radius can be measured in."
+          },
+          "scatterAxes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "Which way scatter can move a stamp."
+          },
+          "symmetries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "The kinds of symmetry."
+          },
+          "axes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "The axes a symmetry can use."
+          },
+          "centres": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "What a symmetry\u0027s plane or axis can pass through."
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "What a preset can hold the pointer as."
+          },
+          "maximumRadius": {
+            "type": "number",
+            "description": "The largest radius a stroke takes, in its own units.",
+            "format": "float"
+          },
+          "maximumAspect": {
+            "type": "number",
+            "description": "The longest a stamp can be, against its width.",
+            "format": "float"
+          },
+          "maximumCount": {
+            "type": "integer",
+            "description": "The most strokes a radial symmetry makes.",
+            "format": "int32"
+          }
+        },
+        "description": "What a brush\u0027s fields take and how a new brush starts, so a client keeps no list or default of its own."
       },
       "StackChannel": {
         "required": [
@@ -10922,12 +11511,16 @@
             "description": "free follows the stamps; line and path run through them as control points when it ends.",
             "default": "free"
           },
-          "mirror": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "x, y or z mirrors a stroke on the mesh through that plane of the mesh, or null."
+          "symmetry": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The copies the stroke makes of itself on the mesh, or null. A stroke in the atlas is copied too, wherever its\nplace on the surface lands; either way the stack needs a mesh.",
+                "$ref": "#/components/schemas/StackSymmetry"
+              }
+            ]
           }
         },
         "description": "Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one\nStroke and they make one undo step, ended by one with Open false."
@@ -11981,6 +12574,46 @@
         },
         "description": "An open stack, for a list."
       },
+      "StackSymmetry": {
+        "required": [
+          "kind",
+          "axis",
+          "centre",
+          "offset",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "\u0060mirror\u0060 through a plane, or \u0060radial\u0060 round an axis.",
+            "default": "mirror"
+          },
+          "axis": {
+            "type": "string",
+            "description": "\u0060x\u0060, \u0060y\u0060 or \u0060z\u0060: the plane\u0027s normal, or the axis copies turn round.",
+            "default": "x"
+          },
+          "centre": {
+            "type": "string",
+            "description": "\u0060model\u0060, the centre of the model\u0027s bounds, or \u0060origin\u0060, the mesh\u0027s own.",
+            "default": "model"
+          },
+          "offset": {
+            "type": "number",
+            "description": "How far a mirror\u0027s plane moves along its axis from that centre, as a share of the model\u0027s bounding radius, -1\nto 1. A radial symmetry turns round a line along its axis, which moving along that axis does not change.",
+            "format": "float",
+            "default": 0
+          },
+          "count": {
+            "type": "integer",
+            "description": "How many strokes a radial symmetry makes, the stroke among them: 2 to 64.",
+            "format": "int32",
+            "default": 2
+          }
+        },
+        "description": "How a stroke on a mesh copies itself: through a plane, or round an axis. The plane or the axis passes through\nthe model\u0027s centre or the mesh\u0027s own origin, so a model that is not centred on its origin still mirrors onto\nitself."
+      },
       "StackTerm": {
         "required": [
           "value",
@@ -12107,7 +12740,8 @@
           "alphas",
           "maskEffects",
           "usages",
-          "generatorParameters"
+          "generatorParameters",
+          "brush"
         ],
         "type": "object",
         "properties": {
@@ -12190,6 +12824,10 @@
               }
             },
             "description": "The knobs each generator has, by its path."
+          },
+          "brush": {
+            "description": "What a brush\u0027s fields take, and the brush a new one starts as.",
+            "$ref": "#/components/schemas/StackBrushTerms"
           }
         },
         "description": "The words a stack\u0027s fields take, each with its label, so that a client holds no list of its own."
@@ -12747,6 +13385,17 @@
               "format": "float"
             },
             "description": "Where on the mesh, in its own space: three numbers."
+          },
+          "bounds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The box the mesh fits inside, in its own space: the least corner\u0027s three numbers, then the greatest\u0027s. A\nsymmetry\u0027s model centre is its middle, and a client draws a symmetry\u0027s plane across it."
           }
         },
         "description": "What a position in the viewport landed on."

@@ -11,6 +11,7 @@ from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
+  from ..models.stack_brush_terms import StackBrushTerms
   from ..models.stack_filter_kind import StackFilterKind
   from ..models.stack_term import StackTerm
   from ..models.stack_vocabulary_generator_parameters import StackVocabularyGeneratorParameters
@@ -39,6 +40,8 @@ class StackVocabulary:
             mask_effects (list[StackFilterKind]): The steps a mask can run.
             usages (list[StackTerm]): The channels a stack can have.
             generator_parameters (StackVocabularyGeneratorParameters): The knobs each generator has, by its path.
+            brush (StackBrushTerms): What a brush's fields take and how a new brush starts, so a client keeps no list or
+                default of its own.
      """
 
     blends: list[StackTerm]
@@ -52,6 +55,7 @@ class StackVocabulary:
     mask_effects: list[StackFilterKind]
     usages: list[StackTerm]
     generator_parameters: StackVocabularyGeneratorParameters
+    brush: StackBrushTerms
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -59,6 +63,7 @@ class StackVocabulary:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.stack_brush_terms import StackBrushTerms # noqa: PLC0415
         from ..models.stack_filter_kind import StackFilterKind # noqa: PLC0415
         from ..models.stack_term import StackTerm # noqa: PLC0415
         from ..models.stack_vocabulary_generator_parameters import StackVocabularyGeneratorParameters # noqa: PLC0415
@@ -134,6 +139,8 @@ class StackVocabulary:
 
         generator_parameters = self.generator_parameters.to_dict()
 
+        brush = self.brush.to_dict()
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -149,6 +156,7 @@ class StackVocabulary:
             "maskEffects": mask_effects,
             "usages": usages,
             "generatorParameters": generator_parameters,
+            "brush": brush,
         })
 
         return field_dict
@@ -157,6 +165,7 @@ class StackVocabulary:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.stack_brush_terms import StackBrushTerms # noqa: PLC0415
         from ..models.stack_filter_kind import StackFilterKind # noqa: PLC0415
         from ..models.stack_term import StackTerm # noqa: PLC0415
         from ..models.stack_vocabulary_generator_parameters import StackVocabularyGeneratorParameters # noqa: PLC0415
@@ -266,6 +275,11 @@ class StackVocabulary:
 
 
 
+        brush = StackBrushTerms.from_dict(d.pop("brush"))
+
+
+
+
         stack_vocabulary = cls(
             blends=blends,
             filters=filters,
@@ -278,6 +292,7 @@ class StackVocabulary:
             mask_effects=mask_effects,
             usages=usages,
             generator_parameters=generator_parameters,
+            brush=brush,
         )
 
 

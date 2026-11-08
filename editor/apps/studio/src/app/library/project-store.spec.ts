@@ -6,6 +6,7 @@ import { BakeStore } from '../bake/bake-store';
 import { Commands } from '../core/commands';
 import { SystemStatus } from '../core/system-status';
 import { GraphStore } from '../graph/graph-store';
+import { BrushStore } from '../paint/brush-store';
 import { PaintStore } from '../paint/paint-store';
 import { LibraryStore } from './library-store';
 import { ProjectCommands } from './project-commands';
@@ -112,6 +113,7 @@ function harness() {
   TestBed.configureTestingModule({
     providers: [
       { provide: PaintStore, useValue: paint },
+      { provide: BrushStore, useValue: { adopt: () => Promise.resolve(), useFile: () => Promise.resolve() } },
       { provide: GraphStore, useValue: graph },
       { provide: BakeStore, useValue: { viewportChanged: signal(0), current: signal(null), batch: signal([]) } },
       { provide: SystemStatus, useValue: { state: signal({ kind: 'connecting' }), pictures: signal([]) } },

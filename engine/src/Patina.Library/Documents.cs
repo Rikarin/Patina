@@ -81,6 +81,9 @@ public sealed record ProjectDocument(
 
     /// <summary>How the viewport was left in this project, or null for as it opens.</summary>
     public ViewportDisplay? Viewport { get; init; }
+
+    /// <summary>How its painting was left: recent colours, palette, brush and symmetry. Null writes nothing.</summary>
+    public ProjectPaintSettings? Paint { get; init; }
 }
 
 /// <summary>A mesh a project owns.</summary>
@@ -155,7 +158,13 @@ public static class DocumentKinds {
     /// <summary>A node graph, making a material, a mask, a brush or a filter.</summary>
     public const string Graph = "graph";
 
-    public static bool Known(string kind) => kind is Texturing or LayeredMaterial or ImageMaterial or Graph;
+    /// <summary>
+    ///     A brush or tool preset: what the pointer paints as and with. It opens no workspace; the brush takes it up.
+    /// </summary>
+    public const string BrushPreset = "brush-preset";
+
+    public static bool Known(string kind) =>
+        kind is Texturing or LayeredMaterial or ImageMaterial or Graph or BrushPreset;
 }
 
 /// <summary>

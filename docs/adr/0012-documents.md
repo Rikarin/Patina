@@ -100,7 +100,7 @@ meshes:
     high: crate_high.glb
 documents:
   - id: 0190…
-    kind: texturing        # texturing | layered-material | image-material | graph
+    kind: texturing        # texturing | layered-material | image-material | graph | brush-preset
     file: crate.vxlayers
     mesh: 0190…
 ```
@@ -114,6 +114,10 @@ InstaMAT's Materialize node inside the graph.
 
 ⚠ InstaMAT's neural de-lighting and upscaling have no equivalent. Without them this is height from luminance, normals, levels and
 tiling. That is useful, but it is not the same feature, and it should be labelled honestly until a model is chosen.
+
+A `brush-preset` is a `.ptbrush` file: the tool, the brush and an optional colour, keyed as the API names them, and whether it is a
+favourite. It opens no workspace; opening one takes it up as the brush. The ones that ship are read-only, so favouriting or updating one
+keeps a copy in the project (#124).
 
 ### 3. One contract between documents
 

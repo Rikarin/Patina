@@ -4,6 +4,9 @@ import { PaintStore, type PaintTool } from './paint-store';
 
 const RadiusStep = 1.25;
 
+/** The largest size the slider and `[`/`]` reach, which is short of the Server's 4096. */
+export const MaximumRadius = 1024;
+
 const Tools: Readonly<Record<string, PaintTool>> = {
   brushTool: 'brush',
   eraserTool: 'eraser',
@@ -36,10 +39,10 @@ export class PaintCommands {
 
     const resize = (by: number) => {
       const radius = this.paint.radius() * by;
-      this.paint.radius.set(Math.max(1, Math.min(256, Math.round(radius))));
+      this.paint.radius.set(Math.max(1, Math.min(MaximumRadius, Math.round(radius))));
     };
     this.commands.handle('smallerBrush', { enabled: () => this.paint.radius() > 1 && open(), run: () => resize(1 / RadiusStep) });
-    this.commands.handle('largerBrush', { enabled: () => this.paint.radius() < 256 && open(), run: () => resize(RadiusStep) });
+    this.commands.handle('largerBrush', { enabled: () => this.paint.radius() < MaximumRadius && open(), run: () => resize(RadiusStep) });
     this.commands.handle('pickIdColour', {
       enabled: () => open() && this.paint.layer() !== null,
       run: () => this.paint.picking.set(this.paint.layer())

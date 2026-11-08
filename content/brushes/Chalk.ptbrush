@@ -1,0 +1,12 @@
+# A brush preset that ships with Patina. CC0: see content/README.md.
+tool: brush
+brush:
+  radius: 20
+  alpha: Square
+  rotation: random
+  falloff: 0.3
+  spacing: 0.3
+  positionJitter: 0.3
+  sizeJitter: 0.4
+  flowJitter: 0.6
+  pressureSize: 1
