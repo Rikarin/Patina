@@ -345,9 +345,7 @@ public sealed partial class StackProcessTests {
                 Material = "Body",
                 Output = Path.Combine(Library, "projects", project, "bakes", "maps", "Body"),
                 Options = new() {
-                    Resolution = ExportSide,
-                    Maps = ["normal", "height", "ao"],
-                    Occlusion = new() { Rays = 4 }
+                    Resolution = ExportSide, Maps = ["normal", "height", "ao"], Occlusion = new() { Rays = 4 }
                 }
             },
             deadline.Token

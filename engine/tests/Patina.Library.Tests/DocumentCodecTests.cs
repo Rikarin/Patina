@@ -239,8 +239,8 @@ public sealed class DocumentCodecTests {
         JsonSerializer.Serialize(bake, LibraryTreeJsonContext.Default.ProjectBakeSettings!);
 
     /// <summary>
-    ///     A project's bake settings live in its own file, so they survive a restart, a copy and a Git checkout, and they
-    ///     come back as they went in, every member of every map's settings with them.
+    ///     A project's bake settings live in its own file, so they survive a restart, a copy and a Git checkout, and
+    ///     they come back as they went in, every member of every map's settings with them.
     /// </summary>
     [Fact]
     [Trait("Category", "Property")]
@@ -265,15 +265,18 @@ public sealed class DocumentCodecTests {
         Assert.Null(DocumentCodec.ReadProject(text, File).Document.Bake);
     }
 
-    /// <summary>A setting a bake cannot use is refused when the file is read, and a key nobody knows is reported.</summary>
+    /// <summary>A setting a bake cannot use is refused when the file is read, and an unknown key is reported.</summary>
     [Fact]
     public void A_wrong_bake_setting_is_refused_and_an_unknown_one_reported() {
         var text = DocumentCodec.Write(TestLibrary.Project("Crate") with { Bake = new() });
 
         var wrong = text.Replace("spread: 90", "spread: 400", StringComparison.Ordinal);
         Assert.NotEqual(text, wrong);
-        Assert.Contains("spread", Assert.Throws<LibraryFormatException>(() => DocumentCodec.ReadProject(wrong, File)).Message,
-            StringComparison.Ordinal);
+        Assert.Contains(
+            "spread",
+            Assert.Throws<LibraryFormatException>(() => DocumentCodec.ReadProject(wrong, File)).Message,
+            StringComparison.Ordinal
+        );
 
         var typed = text.Replace("gutter: 4", "gutter: four", StringComparison.Ordinal);
         Assert.Throws<LibraryFormatException>(() => DocumentCodec.ReadProject(typed, File));

@@ -60,7 +60,7 @@ public static class BakeInputs {
             tools
         );
 
-    /// <summary>The files a bake reads, by their part in it. The high meshes are numbered, because order counts.</summary>
+    /// <summary>The files a bake reads, by their part in it. The high meshes are numbered: order counts.</summary>
     static Dictionary<string, string> Files(BakeRequest request) {
         Dictionary<string, string> files = new(StringComparer.Ordinal) { ["low"] = request.Low };
         for (var at = 0; at < request.High.Count; at++) {

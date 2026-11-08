@@ -86,7 +86,7 @@ public sealed record BakeOptions {
 
     /// <summary>What is wrong with these options, or null when a bake can use them.</summary>
     public string? Problem() {
-        var unknown = Maps.FirstOrDefault(map => !AllMaps.Contains(map, StringComparer.Ordinal));
+        var unknown = Maps.FirstOrDefault(static map => !AllMaps.Contains(map, StringComparer.Ordinal));
         (bool Wrong, string Why)[] checks = [
             (Resolution is < 16 or > 16384, $"The resolution must be 16 to 16384, not {Resolution}."),
             (Supersampling is < 1 or > 8, $"Supersampling must be 1 to 8, not {Supersampling}."),
@@ -125,7 +125,7 @@ public sealed record BakeRayOptions {
     public double Skew { get; set; }
 
     /// <summary>A grey image saying where to apply the skew, or empty for everywhere.</summary>
-    public string SkewMap { get; set; } = "";
+    public string SkewMap { get; set; } = string.Empty;
 
     /// <summary>Whether a part of the low mesh only strikes the high part of the same name.</summary>
     public bool MatchByName { get; set; }
@@ -245,7 +245,7 @@ public sealed record BakeIdOptions {
     /// </summary>
     public string Source { get; set; } = "auto";
 
-    /// <summary>How labels become colours: <c>random</c>, <c>hue</c> or <c>grey</c>. Colours stay as they are.</summary>
+    /// <summary>How labels become colours: <c>random</c>, <c>hue</c> or <c>grey</c>. Colours stay colours.</summary>
     public string Palette { get; set; } = "random";
 
     /// <summary>What is wrong, or null.</summary>
@@ -270,7 +270,7 @@ public sealed record ProjectBakeSettings {
     public IReadOnlyList<string> High { get; set; } = [];
 
     /// <summary>A cage, as a path on the Server's machine, or empty for none.</summary>
-    public string Cage { get; set; } = "";
+    public string Cage { get; set; } = string.Empty;
 }
 
 /// <summary>The body of <c>PUT /api/v1/library/project/bake</c>.</summary>

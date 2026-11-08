@@ -113,9 +113,7 @@ public sealed class BakeProcessTests : IDisposable {
             Low = Path.Combine(Meshes, BakeFixture.LowFile),
             Output = Output,
             Options = new() {
-                Resolution = resolution,
-                Maps = ["normal", "height", "ao"],
-                Occlusion = new() { Rays = rays }
+                Resolution = resolution, Maps = ["normal", "height", "ao"], Occlusion = new() { Rays = rays }
             }
         };
     }

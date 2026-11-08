@@ -36,14 +36,15 @@ export class BakeSettings {
   });
 
   /** The settings as edited, which the project's file catches up with. */
-  readonly settings = linkedSignal<{ path: string | null; saved: ProjectBakeSettings | null }, ProjectBakeSettings | null>(
-    {
-      source: () => ({ path: this.project.current()?.path ?? null, saved: this.project.current()?.bake ?? null }),
-      // An edit not written yet outranks what the file said before it.
-      computation: (source, previous) =>
-        this.pending?.project === source.path && previous ? previous.value : source.saved
-    }
-  );
+  readonly settings = linkedSignal<
+    { path: string | null; saved: ProjectBakeSettings | null },
+    ProjectBakeSettings | null
+  >({
+    source: () => ({ path: this.project.current()?.path ?? null, saved: this.project.current()?.bake ?? null }),
+    // An edit not written yet outranks what the file said before it.
+    computation: (source, previous) =>
+      this.pending?.project === source.path && previous ? previous.value : source.saved
+  });
 
   readonly options = computed(() => this.settings()?.options ?? null);
 
@@ -212,9 +213,19 @@ export class BakeSettings {
     });
   }
 
-  /** Bakes every chosen set with the settings as they are. Throws the Server's refusal. */
-  async bake(): Promise<void> {
-    await this.flush();
-    await this.bakes.startAll(this.requests());
+  /** Why the Server refused the last bake, or null. */
+  readonly refused = signal<string | null>(null);
+
+  /** Bakes every chosen set with the settings as they are. Says whether it started; a refusal is in `refused`. */
+  async bake(): Promise<boolean> {
+    this.refused.set(null);
+    try {
+      await this.flush();
+      await this.bakes.startAll(this.requests());
+      return true;
+    } catch (error) {
+      this.refused.set(error instanceof Error ? error.message : String(error));
+      return false;
+    }
   }
 }

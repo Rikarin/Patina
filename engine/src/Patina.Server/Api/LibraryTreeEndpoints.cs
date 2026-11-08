@@ -83,8 +83,8 @@ static class LibraryTreeEndpoints {
         library.MapPut("/project/bake", SetBake)
             .Described(
                 "SetProjectBake",
-                "Keeps how a project's bakes run, which texture sets they make maps for and the files they read beyond its "
-                + "mesh, in the project's own file."
+                "Keeps how a project's bakes run, which texture sets they make maps for and the files they read "
+                + "beyond its mesh, in the project's own file."
             );
 
         library.MapPatch("/project/document/role", SetDocumentRole)

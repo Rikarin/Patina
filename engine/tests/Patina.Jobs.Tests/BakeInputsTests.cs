@@ -147,8 +147,14 @@ public sealed class BakeInputsTests : IDisposable {
     public void A_skew_map_is_an_input_by_its_content() {
         var request = Request();
         var one = With(request, options => options with { Rays = options.Rays with { SkewMap = File("a.png", "a") } });
-        var moved = With(request, options => options with { Rays = options.Rays with { SkewMap = File("b.png", "a") } });
-        var other = With(request, options => options with { Rays = options.Rays with { SkewMap = File("c.png", "c") } });
+        var moved = With(
+            request,
+            options => options with { Rays = options.Rays with { SkewMap = File("b.png", "a") } }
+        );
+        var other = With(
+            request,
+            options => options with { Rays = options.Rays with { SkewMap = File("c.png", "c") } }
+        );
 
         Assert.NotEqual(Key(request), Key(one));
         Assert.Equal(Key(one), Key(moved));
@@ -160,7 +166,10 @@ public sealed class BakeInputsTests : IDisposable {
     [InlineData(2048, "tga", "tangent")]
     [InlineData(2048, "png16", "sideways")]
     public void A_bake_no_baker_can_do_is_refused(int resolution, string format, string space) {
-        var request = With(Request(), options => options with { Resolution = resolution, Format = format, Space = space });
+        var request = With(
+            Request(),
+            options => options with { Resolution = resolution, Format = format, Space = space }
+        );
 
         Assert.Throws<BakeRefusedException>(() => BakeInputs.Check(request));
     }

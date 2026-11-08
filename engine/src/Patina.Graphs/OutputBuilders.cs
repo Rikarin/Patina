@@ -252,11 +252,14 @@ static class MeshMapSettings {
     /// <summary>The maps every mesh-maps output writes, before the ones it declares.</summary>
     static readonly string[] Measured = ["normal", "height"];
 
+    /// <summary>The maps an output that declares none asks for beyond those.</summary>
+    static readonly string[] DeclaredByDefault = ["ao"];
+
     public static BakeRequest Request(OutputStep step, string folder) {
         var s = step.Settings;
         // ⚠ The normal and the height are written whatever the output declares, as they always were: a declared
         // list names the maps beyond them, and an output that read the normal must not lose it.
-        string[] declared = s.TryGetValue("maps", out var maps) ? maps.Split(',') : ["ao"];
+        var declared = s.TryGetValue("maps", out var maps) ? maps.Split(',') : DeclaredByDefault;
         return new() {
             Low = Role(step, "low"),
             High = [Role(step, "high")],

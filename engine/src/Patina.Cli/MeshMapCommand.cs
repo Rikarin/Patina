@@ -22,7 +22,8 @@ internal static class MeshMapCommand {
         + "        [--ao-distribution cosine|uniform] [--ao-minimum <distance>] [--ao-ignore-backfaces]\n"
         + "        [--ao-within-part] [--ground-plane] [--ground-offset <distance>] [--thickness-raw]\n"
         + "        [--height-range measured|rays|custom] [--height-scale <distance>]\n"
-        + "        [--id-source auto|material|material-colour|vertex-colour|mesh|shell] [--id-palette random|hue|grey]\n"
+        + "        [--id-source auto|material|material-colour|vertex-colour|mesh|shell]\n"
+        + "        [--id-palette random|hue|grey]\n"
         + "        [--threads <n>] [--cache <folder>]";
 
     /// <summary>The options that take no value.</summary>
@@ -94,7 +95,8 @@ internal static class MeshMapCommand {
         };
     }
 
-    static BakeRequest Parse(string[] options, ref int threads, ref string? cache) {
+    /// <summary>The command line as named values, switches that are on, and the high meshes in order.</summary>
+    static (Dictionary<string, string> Named, HashSet<string> On, List<string> High) Scan(string[] options) {
         Dictionary<string, string> named = new(StringComparer.Ordinal);
         HashSet<string> on = new(StringComparer.Ordinal);
         List<string> high = [];
@@ -111,6 +113,12 @@ internal static class MeshMapCommand {
                 throw new FormatException($"'{option}' is not an option.\n{Usage}");
             }
         }
+
+        return (named, on, high);
+    }
+
+    static BakeRequest Parse(string[] options, ref int threads, ref string? cache) {
+        var (named, on, high) = Scan(options);
 
         string Required(string name) =>
             named.GetValueOrDefault(name) ?? throw new FormatException($"--{name} is required.\n{Usage}");
@@ -155,7 +163,7 @@ internal static class MeshMapCommand {
                     Units = Word("units", "relative"),
                     IgnoreBackfaces = on.Contains("ignore-backfaces"),
                     Skew = Fraction("skew", 0),
-                    SkewMap = named.GetValueOrDefault("skew-map") is { } skew ? Path.GetFullPath(skew) : "",
+                    SkewMap = named.GetValueOrDefault("skew-map") is { } skew ? Path.GetFullPath(skew) : string.Empty,
                     MatchByName = on.Contains("match-by-name"),
                     LowSuffix = Word("low-suffix", "_low"),
                     HighSuffix = Word("high-suffix", "_high")

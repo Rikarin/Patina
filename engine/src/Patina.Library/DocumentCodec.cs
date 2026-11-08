@@ -107,8 +107,8 @@ public static class DocumentCodec {
 
     /// <summary>The project's bake settings, whole, when it has any.</summary>
     /// <remarks>
-    ///     Written whole rather than as what differs from the defaults, so a default that moves in a later version does not
-    ///     move a project's bakes with it.
+    ///     Written whole rather than as what differs from the defaults, so a default that moves in a later version
+    ///     does not move a project's bakes with it.
     /// </remarks>
     static KeyValuePair<YamlNode, YamlNode>[] Bake(ProjectBakeSettings? bake) =>
         bake is null
@@ -128,7 +128,10 @@ public static class DocumentCodec {
             return null;
         }
 
-        var shape = JsonSerializer.SerializeToNode(new ProjectBakeSettings(), LibraryTreeJsonContext.Default.ProjectBakeSettings)!
+        var shape = JsonSerializer.SerializeToNode(
+            new(),
+            LibraryTreeJsonContext.Default.ProjectBakeSettings
+        )!
             .AsObject();
         var bake = YamlRecords.Read(map, shape).Deserialize(LibraryTreeJsonContext.Default.ProjectBakeSettings)!;
         return bake.Options.Problem() is { } problem ? throw fields.Problem($"'{BakeKey}': {problem}") : bake;

@@ -90,7 +90,10 @@ type Section = string;
   template: `
     @if (options(); as options) {
       <div class="flex min-h-0 flex-1">
-        <nav class="flex w-60 shrink-0 flex-col gap-0.5 overflow-y-auto border-e border-border p-2" aria-label="Bake sections">
+        <nav
+          class="border-border flex w-60 shrink-0 flex-col gap-0.5 overflow-y-auto border-e p-2"
+          aria-label="Bake sections"
+        >
           <button
             type="button"
             xuiButton
@@ -349,7 +352,10 @@ type Section = string;
                 />
               </div>
             </div>
-            <label class="flex items-center justify-between gap-2 text-sm" title="A high face turned away from the low mesh is passed through, not baked as a dent.">
+            <label
+              class="flex items-center justify-between gap-2 text-sm"
+              title="A high face turned away from the low mesh is passed through, not baked as a dent."
+            >
               Ignore backfaces
               <xui-switch
                 ariaLabel="Ignore backfaces"
@@ -358,7 +364,10 @@ type Section = string;
                 (checkedChange)="setRays({ ignoreBackfaces: $event })"
               />
             </label>
-            <div class="flex items-center gap-2" title="0% follows the smoothed direction and hides seams at hard edges; 100% follows each face, which keeps detail beside them square.">
+            <div
+              class="flex items-center gap-2"
+              title="0% follows the smoothed direction and hides seams at hard edges; 100% follows each face, which keeps detail beside them square."
+            >
               <span class="text-foreground-muted w-16 shrink-0 text-xs">Skew</span>
               <xui-slider
                 class="min-w-0 flex-1"
@@ -447,8 +456,8 @@ type Section = string;
                   />
                 </div>
                 <p class="text-foreground-muted text-xs">
-                  Measured uses the whole grey range for the tallest detail found. Ray distance and Custom give every bake
-                  the same scale, so maps of different meshes agree.
+                  Measured uses the whole grey range for the tallest detail found. Ray distance and Custom give every
+                  bake the same scale, so maps of different meshes agree.
                 </p>
                 @if (options.height.range === 'custom') {
                   <div class="flex min-w-0 flex-col gap-1">
@@ -517,7 +526,10 @@ type Section = string;
                     />
                   </div>
                 </div>
-                <div class="flex items-center gap-2" title="How far from the normal the rays reach. 90° is the whole hemisphere.">
+                <div
+                  class="flex items-center gap-2"
+                  title="How far from the normal the rays reach. 90° is the whole hemisphere."
+                >
                   <span class="text-foreground-muted w-16 shrink-0 text-xs">Spread</span>
                   <xui-slider
                     class="min-w-0 flex-1"
@@ -565,7 +577,10 @@ type Section = string;
                     (checkedChange)="setOcclusion({ withinPart: $event })"
                   />
                 </label>
-                <label class="flex items-center justify-between gap-2 text-sm" title="A floor under the high mesh, Y up.">
+                <label
+                  class="flex items-center justify-between gap-2 text-sm"
+                  title="A floor under the high mesh, Y up."
+                >
                   Ground plane
                   <xui-switch
                     ariaLabel="Ground plane"
@@ -647,7 +662,7 @@ type Section = string;
         The settings were not kept: {{ reason }}
       </xui-callout>
     }
-    @if (refused(); as reason) {
+    @if (refused() ?? settings.refused(); as reason) {
       <xui-callout color="error" data-testid="bake-refused" compact>{{ reason }}</xui-callout>
     }
 
@@ -656,7 +671,9 @@ type Section = string;
         <div class="flex items-center gap-2">
           <span class="readout" data-testid="bake-state">{{ stateName(job.state) }}</span>
           @if (store.batch().length > 1) {
-            <span class="text-foreground-muted text-xs">{{ finished() }} of {{ store.batch().length }} texture sets</span>
+            <span class="text-foreground-muted text-xs"
+              >{{ finished() }} of {{ store.batch().length }} texture sets</span
+            >
           }
           <span class="readout ms-auto" data-testid="bake-percent">{{ percent() }}%</span>
         </div>
@@ -679,7 +696,9 @@ type Section = string;
           }
           @if (each.result; as result) {
             @if (result.cached) {
-              <span class="text-foreground-muted text-xs" data-testid="bake-cached">Already baked: nothing has changed.</span>
+              <span class="text-foreground-muted text-xs" data-testid="bake-cached"
+                >Already baked: nothing has changed.</span
+              >
             }
             @if (result.missed > 0) {
               <span class="text-foreground-muted text-xs">
@@ -828,7 +847,9 @@ export class BakePane {
       return '';
     }
 
-    return chosen.length === sets.length ? `, all ${sets.length} texture sets` : `, ${chosen.length} of ${sets.length} texture sets`;
+    return chosen.length === sets.length
+      ? `, all ${sets.length} texture sets`
+      : `, ${chosen.length} of ${sets.length} texture sets`;
   });
 
   protected readonly absolute = computed(() => this.options()?.rays.units === 'absolute');
@@ -988,11 +1009,7 @@ export class BakePane {
 
   protected async start(): Promise<void> {
     this.refused.set(null);
-    try {
-      await this.settings.bake();
-    } catch (error) {
-      this.refused.set(error instanceof Error ? error.message : String(error));
-    }
+    await this.settings.bake();
   }
 
   protected async showOnMesh(job: JobState): Promise<void> {

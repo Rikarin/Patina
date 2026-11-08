@@ -73,7 +73,9 @@ public static class MeshMapBakeRun {
 
         var cage = request.Cage is { } path ? Read(path, request.Material).Mesh : null;
         var (source, colours) = Ids(request.Options.Id.Source, high, files, warnings);
-        var settings = Settings(request, high, low, cage, threads) with { IdSource = source, GroupsAreColours = colours };
+        var settings = Settings(request, high, low, cage, threads) with {
+            IdSource = source, GroupsAreColours = colours
+        };
         if (settings.Parts is not null) {
             Matches(request.Options.Rays, high, low, log);
         }
@@ -240,8 +242,8 @@ public static class MeshMapBakeRun {
     /// <param name="warnings">Where a source the mesh cannot give is said.</param>
     /// <returns>What Vixen labels by, and whether the labels are packed colours.</returns>
     /// <remarks>
-    ///     ⚠ <b>Flattening reads vertex colours into the groups when a file has them, and materials otherwise</b>, so the
-    ///     groups as they come are only ever one of the two. Every other source writes its own.
+    ///     ⚠ <b>Flattening reads vertex colours into the groups when a file has them, and materials otherwise</b>,
+    ///     so the groups as they come are only ever one of the two. Every other source writes its own.
     /// </remarks>
     static (BakeIdSource Source, bool Colours) Ids(
         string source,
@@ -309,19 +311,19 @@ public static class MeshMapBakeRun {
                 + $"{high.Parts.Count} part(s)."
             )
         );
+        var set = request.Material is { } material ? $", texture set {material}" : string.Empty;
         log.Add(
             string.Create(
                 CultureInfo.InvariantCulture,
-                $"Low: {Path.GetFileName(request.Low)}{(request.Material is { } set ? $", texture set {set}" : "")}, "
-                + $"{low.Mesh.FaceCount} faces in {low.Parts.Count} part(s)."
+                $"Low: {Path.GetFileName(request.Low)}{set}, {low.Mesh.FaceCount} faces in {low.Parts.Count} part(s)."
             )
         );
     }
 
     /// <summary>Says which low part matched which high part by name, and which matched nothing.</summary>
     /// <remarks>
-    ///     ⚠ <b>The answer to "why is my bolt baked into the plate"</b>: a low part that matched nothing strikes the whole
-    ///     high mesh, and only a log that names it says so.
+    ///     ⚠ <b>The answer to "why is my bolt baked into the plate"</b>: a low part that matched nothing strikes
+    ///     the whole high mesh, and only a log that names it says so.
     /// </remarks>
     static void Matches(BakeRayOptions rays, FlatModel high, FlatModel low, List<string> log) {
         var highSuffixes = Suffixes(rays.HighSuffix);

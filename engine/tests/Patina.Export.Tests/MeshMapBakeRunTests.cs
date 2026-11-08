@@ -40,10 +40,7 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
             Low = pair.Low,
             Output = folder.FullName,
             Options = new() {
-                Resolution = 128,
-                Format = format,
-                Maps = ["normal", "height", "ao"],
-                Occlusion = new() { Rays = 8 }
+                Resolution = 128, Format = format, Maps = ["normal", "height", "ao"], Occlusion = new() { Rays = 8 }
             }
         };
 
@@ -295,8 +292,8 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
     }
 
     /// <summary>
-    ///     A bake wrote the normal and the height whatever it was asked for, so a bake of an AO map left a normal map in
-    ///     the project. Only the maps asked for are written now.
+    ///     A bake wrote the normal and the height whatever it was asked for, so a bake of an AO map left a normal
+    ///     map in the project. Only the maps asked for are written now.
     /// </summary>
     [Fact]
     public void Only_the_maps_asked_for_are_written() {
@@ -312,7 +309,7 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
         Assert.False(File.Exists(Path.Combine(Into("bake"), "normal.png")));
     }
 
-    /// <summary>The log names the meshes, each part's match by name, and the time, so a wrong match can be found.</summary>
+    /// <summary>The log names the meshes, each part's match by name, and the time: a wrong match shows.</summary>
     [Fact]
     public void The_log_says_what_was_read_and_how_each_part_matched() {
         var manifest = MeshMapBakeRun.Run(
@@ -326,12 +323,15 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
 
         Assert.Contains(log, static line => line.StartsWith("High: housing_high.glb", StringComparison.Ordinal));
         Assert.Contains(log, static line => line.StartsWith("Low: housing_low.glb", StringComparison.Ordinal));
-        Assert.Contains(log, static line => line.StartsWith("Part strap:", StringComparison.Ordinal)
-            && line.Contains("strike only", StringComparison.Ordinal));
+        Assert.Contains(
+            log,
+            static line => line.StartsWith("Part strap:", StringComparison.Ordinal)
+                && line.Contains("strike only", StringComparison.Ordinal)
+        );
         Assert.Contains(log, static line => line.StartsWith("Baked in", StringComparison.Ordinal));
     }
 
-    /// <summary>A studio's own endings: with the high meshes ending otherwise, nothing matches, and the log says so.</summary>
+    /// <summary>A studio's own endings: high meshes that end otherwise match nothing, as the log says.</summary>
     [Fact]
     public void Name_endings_are_the_ones_the_bake_is_given() {
         var manifest = MeshMapBakeRun.Run(
@@ -345,7 +345,10 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
             TestContext.Current.CancellationToken
         );
 
-        Assert.Contains(manifest.Result.Log, static line => line.StartsWith("Part strap: matched no high part", StringComparison.Ordinal));
+        Assert.Contains(
+            manifest.Result.Log,
+            static line => line.StartsWith("Part strap: matched no high part", StringComparison.Ordinal)
+        );
         Assert.Contains(manifest.Result.Log, static line => line.Contains("strap_high", StringComparison.Ordinal));
     }
 
@@ -364,7 +367,10 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
             TestContext.Current.CancellationToken
         );
 
-        Assert.Contains(two.Result.Log, static line => line.StartsWith("High: housing_high.glb, second.glb", StringComparison.Ordinal));
+        Assert.Contains(
+            two.Result.Log,
+            static line => line.StartsWith("High: housing_high.glb, second.glb", StringComparison.Ordinal)
+        );
         Assert.Equal(one.Result.Covered, two.Result.Covered);
     }
 
