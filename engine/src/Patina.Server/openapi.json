@@ -7720,7 +7720,7 @@
               "null",
               "string"
             ],
-            "description": "Its frame\u0027s CSS colour, or empty for the client\u0027s own choice."
+            "description": "Its frame\u0027s colour as \u0060#rrggbb\u0060, or empty for the client\u0027s own choice. Anything else is refused, so the file\nstays readable by any client."
           },
           "description": {
             "type": [
@@ -8508,7 +8508,7 @@
           },
           "color": {
             "type": "string",
-            "description": "The CSS colour its frame is drawn in, or empty for the client\u0027s own choice.",
+            "description": "The colour its frame is drawn in, as \u0060#rrggbb\u0060, or empty for the client\u0027s own choice. A client that follows a\ntheme maps the colours it offers to its own.",
             "default": ""
           },
           "description": {

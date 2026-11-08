@@ -80,8 +80,23 @@ public static class GraphDocuments {
     public static GraphEdgeState State(GraphEdgeAsset edge) =>
         new(edge.FromNode, edge.FromPort, edge.ToNode, edge.ToPort);
 
+    /// <summary>A frame as clients see it. A colour no other reader could draw, such as a theme's token, is none.</summary>
     public static GraphGroupState State(GraphGroupAsset group) =>
-        new(group.Id, group.Title, group.Nodes, group.Color, group.Description);
+        new(group.Id, group.Title, group.Nodes, FrameColour(group.Color) ?? string.Empty, group.Description);
+
+    /// <summary>
+    ///     A frame's colour as a file holds it: <c>#rrggbb</c> in lower case, or empty for the client's own choice. Any
+    ///     client can draw that, where a CSS token, a name or <c>rgb()</c> would need a browser and a stylesheet (#225).
+    /// </summary>
+    /// <returns>The colour, or null when <paramref name="text" /> is not one.</returns>
+    public static string? FrameColour(string text) {
+        var colour = text.Trim();
+        return colour.Length == 0
+            ? colour
+            : colour.Length == 7 && colour[0] == '#' && colour[1..].All(char.IsAsciiHexDigit)
+                ? colour.ToLowerInvariant()
+                : null;
+    }
 
     public static GraphPresetState State(GraphPresetAsset preset) => new(preset.Name, preset.Values);
 

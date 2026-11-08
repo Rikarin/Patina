@@ -57,6 +57,7 @@ import { isWireable, wireFamily } from './graph-fields';
 import { diagnosticOf } from '../core/messages';
 import { diagnosticsOf, edgeKey, evaluationSummary } from './graph-model';
 import { type Alignment, type NodeBox, aligned, distributed } from './graph-authoring';
+import { frameShown } from './frame-colours';
 import { GraphStore, type NodeLink, type NodeWire, RerouteIn, RerouteOut, RerouteType } from './graph-store';
 import { NewGraphDialog } from './new-graph-dialog';
 import { SaveCompoundDialog } from './save-compound-dialog';
@@ -449,7 +450,7 @@ export class GraphThumbnail {
         <xui-graph-group
           data-testid="graph-frame"
           [attr.title]="group.description || null"
-          [color]="group.color || 'var(--color-chart-' + ((group.id % 8) + 1) + ')'"
+          [color]="frameShown(group.color, group.id)"
           [groupId]="groupPrefix + group.id"
           [label]="group.title"
         >
@@ -698,6 +699,7 @@ export class GraphCanvas {
   /** Where the last press on the canvas was, and whether Alt was held, for a click on a wire. */
   private lastPress: { x: number; y: number; alt: boolean } | null = null;
   protected readonly groupPrefix = GroupPrefix;
+  protected readonly frameShown = frameShown;
   protected readonly paletteOpen = signal(false);
   protected readonly creating = signal(false);
   protected readonly savingCompound = signal(false);

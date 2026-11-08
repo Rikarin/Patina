@@ -15,6 +15,7 @@ import { XuiSwitchImports } from '@xui/switch';
 import { choiceName, kindName } from '../core/labels';
 import { SystemStatus } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
+import { FrameColours, frameColourName } from './frame-colours';
 import { controlOf, freePresetName, grouped, holds, titleOf, widgetsFor } from './graph-authoring';
 import { GraphStore } from './graph-store';
 
@@ -25,11 +26,6 @@ const DefaultBitDepth = '16';
 const NoBake = '';
 const MeshMap = 'Source/Mesh Map';
 const SliderSteps = 1000;
-/** A frame's colours: the chart ramp, which follows the theme, and Auto for one picked from its number. */
-const FrameColours = ['', ...[1, 2, 3, 4, 5, 6, 7, 8].map(step => `var(--color-chart-${String(step)})`)];
-const colourNames: Readonly<Record<string, string>> = Object.fromEntries(
-  FrameColours.slice(1).map((colour, index) => [colour, `Colour ${String(index + 1)}`])
-);
 
 /** What a kind's default starts as, which the Server has to accept. */
 function startOf(kind: string): string {
@@ -776,8 +772,9 @@ export class GraphSettings {
   protected readonly titleOf = titleOf;
   protected readonly widgetsFor = widgetsFor;
   protected readonly comparisons = ['is', 'is not'];
-  protected readonly frameColours = FrameColours;
-  protected readonly colourName = (colour: string): string => (colour === '' ? 'Auto' : colourNames[colour] ?? colour);
+  /** Auto, which picks a colour from the frame's number, and the ramp's colours as the file holds them. */
+  protected readonly frameColours = ['', ...FrameColours];
+  protected readonly colourName = frameColourName;
 
   /** The parameters under their group headings. */
   protected readonly sections = computed(() => grouped(this.store.document()?.parameters ?? []));

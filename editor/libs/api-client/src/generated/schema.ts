@@ -2445,7 +2445,10 @@ export interface components {
       title?: null | string;
       /** @description Its new members. */
       nodes?: null | number[];
-      /** @description Its frame's CSS colour, or empty for the client's own choice. */
+      /**
+       * @description Its frame's colour as `#rrggbb`, or empty for the client's own choice. Anything else is refused, so the file
+       *     stays readable by any client.
+       */
       color?: null | string;
       /** @description What its nodes do together. */
       description?: null | string;
@@ -2784,7 +2787,8 @@ export interface components {
       /** @description Its members. */
       nodes: number[];
       /**
-       * @description The CSS colour its frame is drawn in, or empty for the client's own choice.
+       * @description The colour its frame is drawn in, as `#rrggbb`, or empty for the client's own choice. A client that follows a
+       *     theme maps the colours it offers to its own.
        * @default
        */
       color: string;

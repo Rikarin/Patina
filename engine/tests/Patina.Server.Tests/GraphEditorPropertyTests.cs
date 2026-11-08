@@ -268,7 +268,7 @@ public sealed class GraphEditorPropertyTests {
                 : new GraphRemovePreset($"Preset{random.Next(3)}"),
             31 => new GraphSetGroup(
                 Group(),
-                Color: random.Next(2) == 0 ? string.Empty : "var(--color-chart-2)",
+                Color: random.Next(2) == 0 ? string.Empty : "#eb6834",
                 Description: $"D{random.Next(3)}"
             ),
             _ => new GraphSetText(Node(), "=Hue", "Wear * 2")

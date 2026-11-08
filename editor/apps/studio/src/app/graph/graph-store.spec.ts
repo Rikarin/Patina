@@ -794,13 +794,13 @@ describe('what a graph holds besides its nodes', () => {
     test.store.savePreset('Clean');
     test.store.applyPreset('Clean');
     test.store.removePreset('Clean');
-    test.store.describeGroup(3, { color: 'var(--color-chart-2)' });
+    test.store.describeGroup(3, { color: '#eb6834' });
     await vi.waitFor(() => {
       expect(sent(test)).toEqual([
         { op: 'savePreset', name: 'Clean' },
         { op: 'applyPreset', name: 'Clean' },
         { op: 'removePreset', name: 'Clean' },
-        { op: 'setGroup', id: 3, color: 'var(--color-chart-2)' }
+        { op: 'setGroup', id: 3, color: '#eb6834' }
       ]);
     });
   });
