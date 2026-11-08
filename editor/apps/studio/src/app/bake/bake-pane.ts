@@ -517,7 +517,7 @@ type Section = string;
                     />
                   </div>
                   @if (settings.occlusionProblem(); as problem) {
-                    <p class="text-danger col-span-2 text-xs" role="alert" data-testid="bake-ao-minimum-problem">
+                    <p class="text-error col-span-2 text-xs" role="alert" data-testid="bake-ao-minimum-problem">
                       {{ problem }}
                     </p>
                   }
