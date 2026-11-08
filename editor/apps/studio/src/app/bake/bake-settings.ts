@@ -29,11 +29,19 @@ export class BakeSettings {
   /** Why the last write of the settings failed, or null. */
   readonly failure = signal<string | null>(null);
 
-  /** An output folder chosen for this session, which outranks the project's own until the project changes. */
-  readonly output = linkedSignal<string | null, string>({
-    source: () => this.project.current()?.path ?? null,
-    computation: () => ''
+  private readonly outputChoice = signal<{ project: string; path: string } | null>(null);
+
+  /** An output folder chosen for this session, which outranks the project's own while that project is open. */
+  readonly output = computed(() => {
+    const choice = this.outputChoice();
+    return choice && choice.project === this.project.current()?.path ? choice.path : '';
   });
+
+  /** Chooses where this session's bakes of the open project go, or the project's own folder for empty. */
+  chooseOutput(path: string): void {
+    const project = this.project.current()?.path;
+    this.outputChoice.set(project && path ? { project, path } : null);
+  }
 
   /** The settings as edited, which the project's file catches up with. */
   readonly settings = linkedSignal<

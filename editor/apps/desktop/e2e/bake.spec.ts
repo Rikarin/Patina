@@ -115,13 +115,13 @@ test('the bake settings are a section per map and stay in the project', async ()
   await expect(window.getByTestId('bake-low')).toHaveText('housing_low.glb');
 
   // A map can be turned off, the height included, and each has its own settings.
-  await window.getByTestId('bake-map-height').getByRole('switch').click();
+  await window.getByTestId('bake-map-height').click();
   await window.getByTestId('bake-section-ao').click();
   await expect(window.getByTestId('bake-section-title')).toHaveText('Ambient Occlusion');
   const rays = window.getByTestId('bake-ao-rays').getByRole('spinbutton');
   await rays.fill('128');
   await rays.press('Enter');
-  await window.getByTestId('bake-ao-ground').getByRole('switch').click();
+  await window.getByTestId('bake-ao-ground').click();
   mkdirSync(shots, { recursive: true });
   await window.screenshot({ path: join(shots, 'bake-sections.png') });
 
@@ -141,7 +141,7 @@ test('the bake settings are a section per map and stay in the project', async ()
 
   await window.keyboard.press('Escape');
   await window.getByTestId('open-bake').click();
-  await expect(window.getByTestId('bake-map-height').getByRole('switch')).not.toBeChecked();
+  await expect(window.getByTestId('bake-map-height')).not.toBeChecked();
   await window.getByTestId('bake-section-ao').click();
   await expect(window.getByTestId('bake-ao-rays').getByRole('spinbutton')).toHaveValue('128');
   await window.getByTestId('bake-section-common').click();

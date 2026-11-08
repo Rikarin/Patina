@@ -167,6 +167,21 @@ describe('BakeSettings', () => {
     expect(settings.requests()).toHaveLength(1);
   });
 
+  it('keeps a chosen output folder while the project’s contents change, and drops it for another project', () => {
+    const texturing = document('Crate', 'texturing', null, true);
+    const { settings, project } = setup([texturing], texturing);
+
+    settings.chooseOutput('/chosen');
+    // Choosing a high poly mesh rereads the project, which is a new object with the same path.
+    project.current.set(contents([texturing]));
+
+    expect(settings.requests()[0]?.output).toBe('/chosen');
+
+    project.current.set({ ...contents([texturing]), path: 'b' });
+
+    expect(settings.output()).toBe('');
+  });
+
   it('says plainly that a project with no mesh has nothing to bake', () => {
     const layered = document('Rust', 'layered-material', null, false);
     const { settings, project } = setup([layered], layered);

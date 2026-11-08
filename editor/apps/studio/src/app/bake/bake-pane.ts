@@ -86,7 +86,8 @@ type Section = string;
     XuiSwitchImports
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'flex h-full min-h-0 flex-col' },
+  // A width of its own, so the dialog does not jump as a section with longer lines is chosen.
+  host: { class: 'flex h-full min-h-0 w-[60rem] max-w-full flex-col' },
   template: `
     @if (options(); as options) {
       <div class="flex min-h-0 flex-1">
@@ -962,7 +963,7 @@ export class BakePane {
   protected setPath(field: 'cage' | 'skewMap' | 'output', value: string): void {
     const path = value.trim();
     if (field === 'output') {
-      this.settings.output.set(path);
+      this.settings.chooseOutput(path);
     } else if (field === 'cage') {
       this.settings.update(settings => ({ ...settings, cage: path }));
     } else {
