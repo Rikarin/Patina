@@ -75,8 +75,8 @@ const MinimapRoom = 480;
 const portTypes = xuiGraphChartPortTypes(['Image', 'Float', 'Int', 'Bool']);
 /** How wide a reroute dot's card is: room for its two connectors and nothing else. */
 const RerouteWidth = 28;
-/** How far below a reroute card's top its connectors are. */
-const RerouteConnectorDepth = 20;
+/** How far below a reroute card's top its connectors are, in graph units, as measured on a drawn card. */
+const RerouteConnectorDepth = 42;
 const none: ReadonlySet<string> = new Set();
 
 interface PortView {
