@@ -4229,7 +4229,7 @@ export interface components {
       environment: string;
       /**
        * Format: double
-       * @description How far the environment has turned around the model, which the light does not follow.
+       * @description How far the environment has turned around the model. The light stays.
        * @default 0
        */
       environmentRotation: number;
@@ -4275,7 +4275,7 @@ export interface components {
        * @default lit
        */
       view: string;
-      /** @description The picture the `picture` view shows on the mesh, on the Server's machine, or null. */
+      /** @description The picture the `picture` view shows, on the Server's machine, or null. */
       picture?: null | string;
       /**
        * @description Whether the triangles' edges are drawn over the model.

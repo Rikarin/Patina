@@ -11394,7 +11394,7 @@
           },
           "environmentRotation": {
             "type": "number",
-            "description": "How far the environment has turned around the model, which the light does not follow.",
+            "description": "How far the environment has turned around the model. The light stays.",
             "format": "double",
             "default": 0
           },
@@ -11450,7 +11450,7 @@
               "null",
               "string"
             ],
-            "description": "The picture the \u0060picture\u0060 view shows on the mesh, on the Server\u0027s machine, or null."
+            "description": "The picture the \u0060picture\u0060 view shows, on the Server\u0027s machine, or null."
           },
           "wireframe": {
             "type": "boolean",

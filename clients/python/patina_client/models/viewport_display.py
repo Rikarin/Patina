@@ -29,8 +29,8 @@ class ViewportDisplay:
         Attributes:
             environment (str): A built-in room (studio, overcast or sunset), or the path of an `.hdr` or `.exr` panorama.
                 Default: 'studio'.
-            environment_rotation (float): How far the environment has turned around the model, which the light does not
-                follow. Default: 0.0.
+            environment_rotation (float): How far the environment has turned around the model. The light stays. Default:
+                0.0.
             background_blur (float): How blurred the background is, 0 sharp to 1 a haze. Lighting is not blurred. Default:
                 0.66.
             background_opacity (float): How much of the environment shows behind the model, 0 none (black) to 1 all.
@@ -51,8 +51,7 @@ class ViewportDisplay:
             aberration (float): How far red and blue part towards the edges, 0 to 1. Default: 0.0.
             sharpen (float): Contrast-adaptive sharpening, 0 to 1. Default: 0.0.
             look (None | str | Unset): A `.cube` table the frame is viewed through after the curve, or null.
-            picture (None | str | Unset): The picture the `picture` view shows on the mesh, on the Server's machine, or
-                null.
+            picture (None | str | Unset): The picture the `picture` view shows, on the Server's machine, or null.
      """
 
     environment: str = 'studio'
