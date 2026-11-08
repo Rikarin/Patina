@@ -59,6 +59,8 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(StackCreateRequest))]
 [JsonSerializable(typeof(StackState))]
 [JsonSerializable(typeof(IReadOnlyList<OutputReport>))]
+[JsonSerializable(typeof(HistoryList))]
+[JsonSerializable(typeof(HistoryJump))]
 [JsonSerializable(typeof(IReadOnlyList<StackPixels>))]
 [JsonSerializable(typeof(StackMeshMapsRequest))]
 [JsonSerializable(typeof(StackCommandBatch))]

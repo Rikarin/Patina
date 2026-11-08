@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using Patina.Server.Graphs;
 using Patina.Server.Stacks;
+using System.Globalization;
 
 namespace Patina.Server.Api;
 
@@ -33,6 +35,18 @@ public static class Refusals {
 
     /// <summary>A stack command that cannot apply, for a reason no client is expected to explain.</summary>
     public const string StackRefused = "stack-refused";
+
+    /// <summary>A jump to an undo step the history no longer holds. Values: <c>step</c>.</summary>
+    public const string HistoryStepGone = "history-step-gone";
+
+    /// <summary>A jump through a history that went to a step it no longer holds.</summary>
+    public static ProblemHttpResult Of(HistoryStepGoneException gone, long? step) =>
+        Problem(
+            gone.Message,
+            StatusCodes.Status409Conflict,
+            HistoryStepGone,
+            new Dictionary<string, string> { ["step"] = step?.ToString(CultureInfo.InvariantCulture) ?? string.Empty }
+        );
 
     /// <summary>A refusal with its code and the values its detail was written from.</summary>
     public static ProblemHttpResult Problem(

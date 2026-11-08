@@ -45,6 +45,9 @@ export type GraphEvaluation = components['schemas']['GraphEvaluation'];
 export type GraphDelta = components['schemas']['GraphDelta'];
 export type GraphCommand = components['schemas']['GraphCommand'];
 export type GraphEditResult = components['schemas']['GraphEditResult'];
+/** An undo history as a list: what stands, oldest first, and what was undone, the next redo first. */
+export type HistoryList = components['schemas']['HistoryList'];
+export type HistoryStep = components['schemas']['HistoryStep'];
 
 /**
  * One event of a graph session. Its schema comes from `/graphs/{id}/events`, and `/ws/graphs/{id}?since=` sends the same

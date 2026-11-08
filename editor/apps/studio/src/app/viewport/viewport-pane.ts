@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { BakeStore } from '../bake/bake-store';
+import { Commands } from '../core/commands';
 import { desktop } from '../core/desktop';
 import { termName } from '../core/labels';
 import { SystemStatus } from '../core/system-status';
@@ -23,7 +24,7 @@ import { PaintStore, pressureOf } from '../paint/paint-store';
 import { StrokeGesture } from '../paint/stroke-gesture';
 import { FramePainter } from './frame-painter';
 import type { ViewportFrame } from './frame-transport';
-import { type AxisView, framed, nudge, orbit, padView, pan, snapped, zoom } from './orbit';
+import { type AxisView, framed, nudge, orbit, pan, snapped, zoom } from './orbit';
 import { ViewportClient } from './viewport-client';
 import { ViewportDisplayPanel } from './viewport-display';
 
@@ -52,6 +53,26 @@ const Views: readonly string[] = [
   'opacity'
 ];
 
+/** The viewport's own commands, for the keys a screen reader is told about. */
+const ViewportCommands = [
+  'frameModel',
+  'nextView',
+  'previousView',
+  'orbitLeft',
+  'orbitRight',
+  'orbitUp',
+  'orbitDown',
+  'panLeft',
+  'panRight',
+  'panUp',
+  'panDown',
+  'zoomIn',
+  'zoomOut'
+];
+
+/** How far a zoom drag goes per pixel, as a share of a wheel's. */
+const DragZoom = 4;
+
 /** What a value of the view list means when it is a mesh map rather than a view. */
 const MapPrefix = 'map:';
 /** What the look list means by none, and by asking for a file. */
@@ -64,11 +85,7 @@ const PickLook = '…';
   imports: [XuiButtonImports, ViewportDisplayPanel],
   providers: [ViewportClient],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    class: 'flex h-full min-h-0 flex-col',
-    '(document:keydown.escape)': 'gesture.cancel()',
-    '(document:keydown.f)': 'frame($event)'
-  },
+  host: { class: 'flex h-full min-h-0 flex-col' },
   template: `
     <div class="chrome-bar flex min-h-9 shrink-0 flex-wrap items-center gap-x-2 gap-y-1 px-2 py-1">
       @if (!paint.worn()) {
@@ -96,7 +113,7 @@ const PickLook = '…';
           size="sm"
           data-testid="viewport-paint"
           [variant]="painting() ? 'default' : 'ghost'"
-          [title]="'Paints the mesh. Hold Alt to orbit.'"
+          [title]="'Paints the mesh. Orbit: ' + commands.navigation().orbit + '.'"
           (click)="painting.set(!painting())"
         >
           Paint
@@ -106,7 +123,7 @@ const PickLook = '…';
       <select
         class="well h-6 max-w-28 px-1 text-xs"
         aria-label="View"
-        title="What the model shows: lit, its shape, or one stored channel as the file holds it (V steps through them)"
+        [title]="'What the model shows: lit, its shape, or one stored channel as the file holds it' + (commands.keyText('nextView') ? ' (' + commands.keyText('nextView') + ' steps through them)' : '')"
         data-testid="viewport-view"
         (change)="chooseView($event)"
       >
@@ -189,7 +206,8 @@ const PickLook = '…';
         #canvas
         class="absolute inset-0 size-full touch-none"
         aria-label="Viewport"
-        aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Shift+ArrowLeft Shift+ArrowRight Shift+ArrowUp Shift+ArrowDown + - F V Shift+V"
+        data-commands="viewport"
+        [attr.aria-keyshortcuts]="keyShortcuts()"
         role="application"
         tabindex="0"
         [attr.data-frames]="viewport.frames()"
@@ -204,7 +222,6 @@ const PickLook = '…';
         (pointerleave)="brushAt.set(null)"
         (dblclick)="gesture.finish()"
         (wheel)="wheel($event)"
-        (keydown)="key($event)"
       ></canvas>
       @if (paints()) {
         @if (brushAt(); as at) {
@@ -264,6 +281,7 @@ export class ViewportPane implements AfterViewInit {
     () => this.paints() || this.paint.picking() !== null || (this.paint.worn() && this.paint.tool() === 'picker')
   );
   private panning = false;
+  private zooming = false;
   /** Where the brush is over the canvas, in the units of a stroke. */
   protected readonly brushAt = signal<{ x: number; y: number } | null>(null);
   protected readonly options = inject(ViewOptions);
@@ -300,7 +318,17 @@ export class ViewportPane implements AfterViewInit {
     return [yaw, pitch, distance, panX, panY, panZ].join();
   });
 
+  protected readonly commands = inject(Commands);
+
+  /** The viewport's keys, for a screen reader, as ARIA writes them. */
+  protected readonly keyShortcuts = computed(() =>
+    ViewportCommands.flatMap(id => this.commands.keys().get(id) ?? [])
+      .map(chord => chord.replace('Mod+', 'Meta+').replace(/\b(Up|Down|Left|Right)$/u, 'Arrow$1').replace('Plus', '+'))
+      .join(' ')
+  );
+
   constructor() {
+    this.installCommands();
     // A path's points are places on this picture, so one the view has left is painted as it was placed.
     effect(() => {
       this.view();
@@ -428,11 +456,54 @@ export class ViewportPane implements AfterViewInit {
     return (event.target as HTMLInputElement).value;
   }
 
-  /** F brings the whole model back into the pane, from where the camera looks, as it does in every 3D tool. */
-  protected frame(event: Event): void {
-    if (!(event.target as Element).closest('input, textarea, select, [contenteditable=true]')) {
-      this.viewport.moveCamera(framed(this.viewport.camera()), false);
+  /**
+   * What the viewport answers. Framing works wherever focus is, as F does in every 3D tool; the rest while the viewport
+   * has focus, so that the keyboard does what the pointer does. The number pad snaps to an axis as Blender's does, and
+   * Next View steps through the views.
+   */
+  private installCommands(): void {
+    const handle = (id: string, run: () => unknown, enabled?: () => boolean) =>
+      this.commands.handle(id, { run, ...(enabled ? { enabled } : {}) }, this.destroyRef);
+    const move = (key: string, shift: boolean) => () => {
+      const moved = nudge(this.viewport.camera(), key, shift);
+      if (moved) {
+        this.viewport.moveCamera(moved, false);
+      }
+    };
+    const step = (by: number) => () => {
+      const at = Views.indexOf(this.display().view);
+      const next = Views[(at + by + Views.length) % Views.length];
+      this.viewport.setDisplay({ view: next ?? 'lit', picture: null });
+    };
+    handle('frameModel', () => this.viewport.moveCamera(framed(this.viewport.camera()), false));
+    handle('nextView', step(1));
+    handle('previousView', step(-1));
+    const axes: Readonly<Record<string, AxisView>> = {
+      viewFront: 'front',
+      viewBack: 'back',
+      viewRight: 'right',
+      viewLeft: 'left',
+      viewTop: 'top',
+      viewBottom: 'bottom'
+    };
+    for (const [id, axis] of Object.entries(axes)) {
+      handle(id, () => this.snap(axis));
     }
+
+    for (const [side, key] of [
+      ['Left', 'ArrowLeft'],
+      ['Right', 'ArrowRight'],
+      ['Up', 'ArrowUp'],
+      ['Down', 'ArrowDown']
+    ] as const) {
+      handle(`orbit${side}`, move(key, false));
+      handle(`pan${side}`, move(key, true));
+    }
+
+    handle('zoomIn', move('+', false));
+    handle('zoomOut', move('-', false));
+    handle('cancelStroke', () => this.gesture.cancel(), () => this.gesture.points().length > 0 || this.paint.picking() !== null);
+    handle('finishPath', () => this.gesture.finish(), () => this.paint.tool() === 'path' && this.gesture.points().length > 1);
   }
 
   protected press(event: PointerEvent): void {
@@ -442,7 +513,8 @@ export class ViewportPane implements AfterViewInit {
     }
 
     this.canvas().nativeElement.setPointerCapture(event.pointerId);
-    if (this.paints() && event.button === 0 && !event.altKey && !event.shiftKey) {
+    const drag = this.commands.navigation().drag(event, this.paints());
+    if (drag === 'stroke') {
       this.stroking = true;
       this.gesture.press(this.stamp(event));
       return;
@@ -453,7 +525,8 @@ export class ViewportPane implements AfterViewInit {
       this.paints() && event.button === 0 && event.shiftKey && this.gesture.canLine()
         ? { ...this.spot(event), snap: event.ctrlKey || event.metaKey }
         : null;
-    this.panning = event.button === 1 || event.shiftKey;
+    this.panning = drag === 'pan';
+    this.zooming = drag === 'zoom';
     this.dragging.set(true);
     this.viewport.moveCamera(this.viewport.camera(), true);
   }
@@ -470,8 +543,12 @@ export class ViewportPane implements AfterViewInit {
       // Still a click: a hand is never quite still, and a line should not cost the view a nudge.
     } else if (this.dragging()) {
       this.lining = null;
-      const move = this.panning ? pan : orbit;
-      this.viewport.camera.set(move(this.viewport.camera(), event.movementX, event.movementY));
+      const camera = this.viewport.camera();
+      this.viewport.camera.set(
+        this.zooming
+          ? zoom(camera, event.movementY * DragZoom)
+          : (this.panning ? pan : orbit)(camera, event.movementX, event.movementY)
+      );
       this.scheduleCamera();
     }
   }
@@ -495,33 +572,6 @@ export class ViewportPane implements AfterViewInit {
   protected wheel(event: WheelEvent): void {
     event.preventDefault();
     this.viewport.moveCamera(zoom(this.viewport.camera(), event.deltaY), false);
-  }
-
-  /**
-   * The keyboard does what the pointer does, so the view needs no mouse. The number pad snaps to an axis as Blender's
-   * does, and V steps through the views, Shift-V back.
-   */
-  protected key(event: KeyboardEvent): void {
-    const axis = padView(event.code, event.ctrlKey || event.metaKey);
-    if (axis) {
-      event.preventDefault();
-      this.snap(axis);
-      return;
-    }
-
-    if (event.key === 'v' || event.key === 'V') {
-      event.preventDefault();
-      const at = Views.indexOf(this.display().view);
-      const next = Views[(at + (event.shiftKey ? Views.length - 1 : 1) + Views.length) % Views.length];
-      this.viewport.setDisplay({ view: next ?? 'lit', picture: null });
-      return;
-    }
-
-    const moved = nudge(this.viewport.camera(), event.key, event.shiftKey);
-    if (moved) {
-      event.preventDefault();
-      this.viewport.moveCamera(moved, false);
-    }
   }
 
   private spot(event: PointerEvent): { x: number; y: number } {

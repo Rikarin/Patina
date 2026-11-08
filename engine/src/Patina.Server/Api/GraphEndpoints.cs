@@ -78,6 +78,25 @@ static class GraphEndpoints {
             .Describe("UndoGraph", "Takes back the newest batch, whichever client sent it.", Missing, Conflict);
         graphs.MapPost("/{id}/redo", Redo)
             .Describe("RedoGraph", "Puts back the newest undone batch.", Missing, Conflict);
+        graphs.MapGet(
+                "/{id}/history",
+                Results<Ok<HistoryList>, ProblemHttpResult>(string id, GraphSessions sessions) =>
+                    sessions.Find(id)?.Steps is { } steps ? TypedResults.Ok(steps) : NoSession(id)
+            )
+            .Describe("GetGraphHistory", "The undo history as a list, for a client that shows it.", Missing);
+        graphs.MapPost(
+                "/{id}/history",
+                Results<Ok<GraphEditResult>, ProblemHttpResult>(string id, HistoryJump jump, GraphSessions sessions) =>
+                    sessions.Find(id) is { } open
+                        ? UndoHistory.Answer(() => open.JumpTo(jump.Step), jump.Step)
+                        : NoSession(id)
+            )
+            .Describe(
+                "JumpGraphHistory",
+                "Undoes or redoes until a step is the newest that stands, as one event.",
+                Missing,
+                Conflict
+            );
         graphs.MapPost("/{id}/save", Save)
             .Describe(
                 "SaveGraph",

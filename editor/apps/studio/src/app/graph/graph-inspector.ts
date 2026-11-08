@@ -499,13 +499,8 @@ export class GraphInspector {
   selector: 'ptn-inspector',
   imports: [GraphInspector, GraphNoteInspector, GraphSelection, GraphSettings, LibraryInspector],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    class: 'block h-full min-h-0',
-    '(change)': 'typing = null',
-    '(focusout)': 'typing = null',
-    '(input)': 'typed($event)',
-    '(keydown)': 'onKeydown($event)'
-  },
+  // Undo in one of its boxes is the graph's, unless something was typed there (core/commands.ts).
+  host: { class: 'block h-full min-h-0', 'data-commands': 'graph', 'data-document-undo': '' },
   template: `
     @if (store.selection().size > 1) {
       <ptn-graph-selection />
@@ -522,24 +517,4 @@ export class GraphInspector {
 })
 export class Inspector {
   protected readonly store = inject(GraphStore);
-  /** The box holding text not yet committed: Undo there undoes the typing, as anywhere. */
-  protected typing: EventTarget | null = null;
-
-  protected typed(event: Event): void {
-    this.typing = event.target;
-  }
-
-  protected onKeydown(event: KeyboardEvent): void {
-    if (this.store.document() === null) {
-      return;
-    }
-
-    if (event.target !== this.typing) {
-      this.store.shortcut(event);
-    } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
-      // Leaving the box commits what it holds, so that this saves what the user can see.
-      (event.target as HTMLElement).blur();
-      this.store.shortcut(event);
-    }
-  }
 }

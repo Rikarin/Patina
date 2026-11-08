@@ -5,17 +5,19 @@ import { XuiButtonImports } from '@xui/button';
 import { XuiColorPickerImports } from '@xui/color-picker';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
+import { Commands } from '../core/commands';
 import { IconImports } from '../core/icons';
 import { channelName, termName } from '../core/labels';
 import { degrees, percent, toDegrees, toRadians } from '../core/numbers';
 import { type BrushSettings, type Mirror, PaintStore, type PaintTool } from './paint-store';
 
-const Tools: readonly { id: PaintTool; label: string; icon: string }[] = [
-  { id: 'brush', label: 'Brush (B)', icon: 'matBrush' },
-  { id: 'eraser', label: 'Eraser (E)', icon: 'matAutoFixOff' },
-  { id: 'picker', label: 'Picker (C)', icon: 'matColorize' },
-  { id: 'line', label: 'Line (L)', icon: 'matHorizontalRule' },
-  { id: 'path', label: 'Path (P)', icon: 'matPolyline' }
+/** The tools, by the command that chooses each: the table names them and says their keys (core/command-table.ts). */
+const Tools: readonly { id: PaintTool; command: string; icon: string }[] = [
+  { id: 'brush', command: 'brushTool', icon: 'matBrush' },
+  { id: 'eraser', command: 'eraserTool', icon: 'matAutoFixOff' },
+  { id: 'picker', command: 'pickerTool', icon: 'matColorize' },
+  { id: 'line', command: 'lineTool', icon: 'matHorizontalRule' },
+  { id: 'path', command: 'pathTool', icon: 'matPolyline' }
 ];
 const Mirrors: readonly { value: string; label: string }[] = [
   { value: 'none', label: 'Off' },
@@ -69,8 +71,8 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number; min?: 
           xuiButton
           size="sm"
           [attr.data-testid]="'paint-tool-' + tool.id"
-          [attr.aria-label]="tool.label"
-          [title]="tool.label"
+          [attr.aria-label]="commands.spec(tool.command)?.label"
+          [title]="commands.tooltip(tool.command)"
           [variant]="store.tool() === tool.id ? 'default' : 'ghost'"
           (click)="store.tool.set(tool.id)"
         >
@@ -220,6 +222,7 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number; min?: 
 })
 export class BrushPanel {
   protected readonly store = inject(PaintStore);
+  protected readonly commands = inject(Commands);
   protected readonly tools = Tools;
   protected readonly mirrors = Mirrors;
   protected readonly rotations = Rotations;

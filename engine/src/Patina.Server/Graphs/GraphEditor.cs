@@ -32,8 +32,8 @@ public sealed class GraphEditor {
     readonly NodeGraphModel graph;
     readonly GraphInterfaceEdits ports;
     readonly GraphParameterEdits parameters;
-    readonly List<Step> undoable = [];
-    readonly List<Step> redoable = [];
+    readonly List<UndoStep> undoable = [];
+    readonly List<UndoStep> redoable = [];
     NodeTypeRegistry registry;
     long nextStep;
     long? savedStep;
@@ -60,8 +60,15 @@ public sealed class GraphEditor {
             redoable.Count > 0,
             undoable.Count > 0 ? undoable[^1].Label : null,
             redoable.Count > 0 ? redoable[^1].Label : null,
-            (undoable.Count > 0 ? undoable[^1].Id : null) != savedStep
+            (undoable.Count > 0 ? undoable[^1].Id : null) != savedStep,
+            undoable.Count > 0 ? undoable[^1].Id : null
         );
+
+    /// <summary>The steps that stand, oldest first, which <see cref="UndoHistory.List" /> lists.</summary>
+    public IReadOnlyList<UndoStep> DoneSteps => undoable;
+
+    /// <summary>The steps undone, the next redo last.</summary>
+    public IReadOnlyList<UndoStep> UndoneSteps => redoable;
 
     /// <summary>Applies a batch whole, or throws and leaves the document as it was.</summary>
     /// <returns>The nodes the batch created under a client's <c>ref</c>.</returns>
@@ -441,7 +448,8 @@ public sealed class GraphEditor {
         TypeOf(node).Port(name, direction)
         ?? throw new GraphEditRefusedException($"{node.Type} has no {direction} port '{name}'.");
 
-    sealed record Step(long Id, string Label, List<IAuthoringCommand> Commands);
+    /// <summary>One undo step: what it is called, what a jump names it by, and the commands it did.</summary>
+    public sealed record UndoStep(long Id, string Label, List<IAuthoringCommand> Commands);
 
     /// <summary>Nothing listens: a session reads the document after every edit.</summary>
     sealed class HeadlessContext : ICommandContext {

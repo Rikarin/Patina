@@ -11,6 +11,26 @@ export interface SidecarStatus {
   pid: number | null;
 }
 
+/** One native menu item, as the studio describes it (apps/desktop/src/menu.ts builds it). */
+export type MenuModelItem =
+  | {
+      type: 'command';
+      id: string;
+      label: string;
+      /** Electron's accelerator, shown beside the item. */
+      accelerator?: string;
+      /** Whether the menu takes the key itself, which only a key with the command key does. */
+      registered?: boolean;
+      enabled: boolean;
+      checked?: boolean;
+    }
+  | { type: 'separator' }
+  | { type: 'submenu'; label: string; items: MenuModelItem[] }
+  | { type: 'native'; native: 'recent' | 'closeWindow' | 'fullScreen' | 'windowItems' | 'development' };
+
+/** The menu bar, left to right, after the app menu a Mac has. */
+export type MenuModel = { label: string; items: MenuModelItem[] }[];
+
 /** What the desktop app's preload exposes. Undefined in a plain browser, where the studio talks to a dev Server. */
 export interface DesktopBridge {
   platform: string;
@@ -45,8 +65,17 @@ export interface DesktopBridge {
   /** Has the focused text field carry out an edit, which only the browser's own editor can do. */
   editText(edit: TextEdit): void;
 
-  /** A menu command for the studio, such as `newProject`. */
-  onCommand(listener: (command: string) => void): void;
+  /**
+   * A menu command for the studio, such as `newProject`, and whether its key sent it rather than a click: a key the
+   * menu took first still keeps to the rules a key has in a text field.
+   */
+  onCommand(listener: (command: string, accelerator: boolean) => void): void;
+  /** Replaces the native menus with these, which say what is on and what each key is (#188). */
+  setMenu(menus: MenuModel): void;
+  /** The person's key settings (`keys.json` in the app's settings folder), or null when there are none. */
+  readKeys(): Promise<unknown>;
+  /** Writes the person's key settings. */
+  writeKeys(settings: unknown): Promise<void>;
   /** Asks the user for a mesh file: its path, or null if they cancelled. */
   openMesh(): Promise<string | null>;
   /** Asks the user for a picture of these formats: its path, or null if they cancelled. */

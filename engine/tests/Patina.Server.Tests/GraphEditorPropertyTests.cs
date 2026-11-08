@@ -46,6 +46,61 @@ public sealed class GraphEditorPropertyTests {
                 }
             );
 
+    /// <summary>
+    ///     A jump to any step of the list gives the document that stepping there one undo or redo at a time gives, and
+    ///     leaves the list the same.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Property")]
+    public void A_jump_lands_where_single_steps_land() =>
+        Gen.Select(Gen.Int.Array[1, 12], Gen.Int[0, 12], Gen.Int[0, 12])
+            .Sample(static (batches, back, target) => {
+                    var editor = new GraphEditor(GraphTesting.Sample(), Registry);
+                    foreach (var seed in batches) {
+                        TryEdit(editor, seed);
+                    }
+
+                    for (var i = 0; i < back; i++) {
+                        editor.Undo();
+                    }
+
+                    var list = Steps(editor);
+                    HistoryStep[] all = [..list.Done, ..list.Undone];
+                    var to = target < all.Length ? all[target].Id : (long?)null;
+                    var stepper = new GraphEditor(GraphTesting.Sample(), Registry);
+                    foreach (var seed in batches) {
+                        TryEdit(stepper, seed);
+                    }
+
+                    for (var i = 0; i < back; i++) {
+                        stepper.Undo();
+                    }
+
+                    var standing = to is null ? 0 : Array.FindIndex(all, step => step.Id == to) + 1;
+                    while (Steps(stepper).Done.Count > standing && stepper.Undo() is not null) { }
+
+                    while (Steps(stepper).Done.Count < standing && stepper.Redo() is not null) { }
+
+                    UndoHistory.Jump(Steps(editor), to, editor.Undo, editor.Redo);
+                    Assert.Equal(GraphDocuments.Text(stepper.Document), GraphDocuments.Text(editor.Document));
+                    Assert.Equal(to, editor.History.Step);
+                    Assert.Equal<HistoryStep>(all, [..Steps(editor).Done, ..Steps(editor).Undone]);
+                }
+            );
+
+    static HistoryList Steps(GraphEditor editor) =>
+        UndoHistory.List(editor.DoneSteps, editor.UndoneSteps, static step => new(step.Id, step.Label));
+
+    /// <summary>An edit from a seed, or nothing when the editor refuses it: a refused batch changes nothing.</summary>
+    static bool TryEdit(GraphEditor editor, int seed) {
+        try {
+            Edit(editor, new(seed), editor.Document);
+            return true;
+        } catch (GraphEditRefusedException) {
+            return false;
+        }
+    }
+
     /// <summary>Whatever the history did, deltas take a client from one document to the next.</summary>
     [Fact]
     [Trait("Category", "Property")]

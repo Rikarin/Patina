@@ -215,10 +215,23 @@ public sealed class GraphSession : FollowedSession<GraphEvent>, IFileSession {
     }
 
     /// <returns>Null when there was nothing to undo.</returns>
-    public GraphEditResult? Undo() => Walk(static e => e.Undo(), GraphEventKind.Undone);
+    public GraphEditResult? Undo() => Walk(static held => UndoHistory.Moved(held.Undo(), GraphEventKind.Undone));
 
     /// <returns>Null when there was nothing to redo.</returns>
-    public GraphEditResult? Redo() => Walk(static e => e.Redo(), GraphEventKind.Redone);
+    public GraphEditResult? Redo() => Walk(static held => UndoHistory.Moved(held.Redo(), GraphEventKind.Redone));
+
+    /// <summary>The undo history as a list.</summary>
+    public HistoryList Steps => Read(static held => Listed(held));
+
+    /// <summary>
+    ///     Undoes or redoes until a step is the newest that stands, as one event: followers see the document jump.
+    /// </summary>
+    /// <param name="step">The step, or null to undo everything.</param>
+    /// <exception cref="HistoryStepGoneException">The history does not hold the step, and nothing changed.</exception>
+    public GraphEditResult JumpTo(long? step) =>
+        Walk(held => UndoHistory.Jump(Listed(held), step, held.Undo, held.Redo))
+        ?? Read<GraphEditResult>(held => new(revision, Log.Sequence, held.History, []));
+
 
     /// <summary>Writes the document to its file.</summary>
     /// <param name="force">Write even though the file changed behind this session.</param>
@@ -381,15 +394,25 @@ public sealed class GraphSession : FollowedSession<GraphEvent>, IFileSession {
         Log.Append(new(Log.Sequence + 1, GraphEventKind.TypesChanged, revision, editor.History));
     }
 
-    GraphEditResult? Walk(Func<GraphEditor, string?> move, GraphEventKind kind) {
+    static HistoryList Listed(GraphEditor held) =>
+        UndoHistory.List(held.DoneSteps, held.UndoneSteps, static step => new(step.Id, step.Label));
+
+    /// <summary>What the document says, read under the lock.</summary>
+    T Read<T>(Func<GraphEditor, T> read) {
+        lock (Changing) {
+            return read(editor);
+        }
+    }
+
+    GraphEditResult? Walk(Func<GraphEditor, HistoryMove?> move) {
         GraphEditResult? result;
         lock (Changing) {
             var before = editor.Document;
-            if (move(editor) is not { } label) {
+            if (move(editor) is not { } moved) {
                 return null;
             }
 
-            result = Announce(kind, label, before, []);
+            result = Announce(moved.Kind, moved.Label, before, []);
         }
 
         wake();

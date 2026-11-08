@@ -26,9 +26,16 @@ contextBridge.exposeInMainWorld('patina', {
   openLook: () => ipcRenderer.invoke('patina:openLook'),
   pathOf: (file: File) => webUtils.getPathForFile(file),
   editText: (edit: string) => ipcRenderer.send('patina:editText', edit),
-  onCommand: (listener: (command: string) => void) => {
-    ipcRenderer.on('patina:command', (_event, command: string) => listener(command));
+  onCommand: (listener: (command: string, accelerator: boolean) => void) => {
+    ipcRenderer.on('patina:command', (_event, command: string, accelerator?: boolean) =>
+      listener(command, accelerator === true)
+    );
   },
+  setMenu: (menus: unknown) => {
+    ipcRenderer.send('patina:menu', menus);
+  },
+  readKeys: () => ipcRenderer.invoke('patina:keys:read'),
+  writeKeys: (settings: unknown) => ipcRenderer.invoke('patina:keys:write', settings),
   openMesh: () => ipcRenderer.invoke('patina:openMesh'),
   openImage: (formats?: readonly string[]) => ipcRenderer.invoke('patina:openImage', formats),
   openFolder: () => ipcRenderer.invoke('patina:openFolder'),

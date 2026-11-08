@@ -12,7 +12,8 @@ const Words: Readonly<Record<string, string>> = {
   'graph-not-open': 'That graph was closed elsewhere. Open it again from the Library.',
   'stroke-not-paint-layer': '{layer} is a {kind} layer, with nothing of its own to paint. Choose a paint layer, or paint its mask.',
   'stack-no-mesh': 'There is no mesh to paint on. Choose one in Project Settings.',
-  'stroke-repeated-channel': 'That stroke could not be painted. Try it again.'
+  'stroke-repeated-channel': 'That stroke could not be painted. Try it again.',
+  'history-step-gone': 'That step is no longer in the history: an edit made since replaced it.'
 };
 
 const KindWords: Readonly<Record<string, string>> = { Fill: 'fill', Filter: 'filter', Group: 'folder', Paint: 'paint' };
