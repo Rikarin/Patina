@@ -24,6 +24,7 @@ import { LibraryStore, type LibraryView } from './library-store';
 import { LibraryTree } from './library-tree';
 import { LibraryTreeStore } from './library-tree-store';
 import { counted, nextIndex } from './list-keys';
+import { documentKindName } from '../core/labels';
 import { NewProjectDialog } from './new-project-dialog';
 import { ProjectStore } from './project-store';
 import { ViewportFit } from './viewport-fit';
@@ -476,7 +477,7 @@ export class LibraryPane {
   }
 
   protected detail(row: LibraryRow): string {
-    return isAsset(row) ? row.kind : row.path;
+    return isAsset(row) ? documentKindName(row.kind) : row.path;
   }
 
   protected count(row: LibraryRow): number {

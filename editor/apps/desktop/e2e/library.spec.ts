@@ -75,6 +75,23 @@ test('browses, searches and shows the impact of a material', async () => {
   await window.screenshot({ path: join(shots, 'library-assets.png') });
 });
 
+test('the tree menu opens from the keyboard, on the chosen row', async () => {
+  const tree = window.getByTestId('library-tree');
+  await window.getByTestId('tree-row').first().click();
+  await tree.press('ArrowDown');
+  await tree.press('Shift+F10');
+
+  const menu = window.getByTestId('tree-menu');
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole('menuitem').first()).toBeFocused();
+  await window.keyboard.press('ArrowDown');
+  await expect(menu.getByRole('menuitem').nth(1)).toBeFocused();
+  await window.screenshot({ path: join(shots, 'tree-menu-keys.png') });
+  await window.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  await expect(tree).toBeFocused();
+});
+
 test('a new project reaches the list through the index', async () => {
   await window.getByTestId('library-new-project').click();
   await expect(window.getByTestId('new-project-name')).toBeFocused();

@@ -17,6 +17,7 @@ import { XuiSelectImports } from '@xui/select';
 import { SystemStatus } from '../core/system-status';
 import { LibrarySelection } from '../library/library-selection';
 import { GraphStore } from './graph-store';
+import { messageOf } from '../core/messages';
 
 /**
  * Asks for a new graph's name. It lands in the selected project, or in a project of its own when none is selected. The
@@ -119,7 +120,7 @@ export class NewGraphDialog {
       this.name.set('');
       this.open.set(false);
     } catch (error) {
-      this.refused.set(error instanceof Error ? error.message : String(error));
+      this.refused.set(messageOf(error));
     } finally {
       this.saving.set(false);
     }

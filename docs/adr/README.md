@@ -17,3 +17,4 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0012](0012-documents.md): accepted: a project holds typed documents, each with its own workspace, joined by a material contract.
 - [0013](0013-paths.md): accepted: names in library files stay inside their folder, and API paths are the caller's.
 - [0014](0014-graph-size.md): accepted: a graph's size is separate from what it is authored at, with one list of sides.
+- [0015](0015-words.md): accepted: the API sends labels with its words and codes with its refusals, and each client words them.

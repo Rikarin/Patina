@@ -21,8 +21,10 @@ import {
   type ViewportCameraState,
   unwrap
 } from '@patina/api-client';
+import { learnTerms } from '../core/labels';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
+import { messageOf } from '../core/messages';
 
 const RecentColours = 8;
 
@@ -262,14 +264,36 @@ export class PaintStore {
       this.worn.set(false);
       this.adopt(state);
       await this.follow();
-      this.vocabulary.set(unwrap(await client.GET('/api/v1/stacks/vocabulary')));
+      await this.loadVocabulary();
       if (state.model) {
         await this.wear();
       }
     } catch (failure) {
-      this.failure.set(failure instanceof Error ? failure.message : String(failure));
+      this.failure.set(messageOf(failure));
     }
   }
+
+  /**
+   * Reads the words a stack's fields take, once: they are the same for every stack, and the labels they carry are what
+   * every list and readout shows, so the app asks as soon as the Server answers rather than when a stack opens.
+   */
+  async loadVocabulary(): Promise<void> {
+    if (this.vocabulary() !== null || this.vocabularyAsked) {
+      return;
+    }
+
+    this.vocabularyAsked = true;
+    try {
+      const client = await this.api();
+      const vocabulary = unwrap(await client.GET('/api/v1/stacks/vocabulary'));
+      learnTerms(vocabulary);
+      this.vocabulary.set(vocabulary);
+    } finally {
+      this.vocabularyAsked = false;
+    }
+  }
+
+  private vocabularyAsked = false;
 
   /** Reads what the id map holds. No id map is an answer, not a failure: the mask says what to do about it. */
   async loadIdColours(): Promise<void> {
@@ -300,7 +324,7 @@ export class PaintStore {
         await this.setMask(layer, { ...layer.mask, colour: [...colour] });
       }
     } catch (failure) {
-      this.failure.set(failure instanceof Error ? failure.message : String(failure));
+      this.failure.set(messageOf(failure));
     }
   }
 
@@ -417,7 +441,7 @@ export class PaintStore {
             ).asset ?? '');
       await this.edit({ op: 'setLayer', layer: layer.id, meshMask: { parts: [...parts], asset } });
     } catch (failure) {
-      this.failure.set(failure instanceof Error ? failure.message : String(failure));
+      this.failure.set(messageOf(failure));
     }
   }
 
@@ -459,7 +483,7 @@ export class PaintStore {
       );
       return true;
     } catch (failure) {
-      this.failure.set(failure instanceof Error ? failure.message : String(failure));
+      this.failure.set(messageOf(failure));
       return false;
     }
   }
@@ -541,7 +565,7 @@ export class PaintStore {
       unwrap(await client.PUT('/api/v1/viewport/stack', { body: { stack } }));
       this.worn.set(true);
     } catch (failure) {
-      this.failure.set(failure instanceof Error ? failure.message : String(failure));
+      this.failure.set(messageOf(failure));
     }
   }
 
@@ -563,7 +587,7 @@ export class PaintStore {
       unwrap(await client.PUT('/api/v1/stacks/{id}/mesh-maps', { params: { path: { id } }, body: { folder } }));
       await this.refresh();
     } catch (failure) {
-      this.failure.set(failure instanceof Error ? failure.message : String(failure));
+      this.failure.set(messageOf(failure));
     }
   }
 
@@ -619,7 +643,7 @@ export class PaintStore {
         // For a step, a 409 is only that there is nothing to step to, and the keys can always ask.
         this.saveConflict.set(action === 'save');
       } else {
-        this.failure.set(failure instanceof Error ? failure.message : String(failure));
+        this.failure.set(messageOf(failure));
       }
 
       return false;
@@ -699,7 +723,7 @@ export class PaintStore {
     try {
       this.view = await this.pick(stamp, aim);
     } catch (failure) {
-      this.failure.set(failure instanceof Error ? failure.message : String(failure));
+      this.failure.set(messageOf(failure));
       this.stroke = null;
       this.ending = false;
       this.pending = [];
@@ -810,7 +834,7 @@ export class PaintStore {
         })
       ).revision;
     } catch (failure) {
-      this.failure.set(failure instanceof Error ? failure.message : String(failure));
+      this.failure.set(messageOf(failure));
       return null;
     }
   }

@@ -281,7 +281,7 @@ test('builds a tiling material from a new graph, down to its channels and full s
   await expect(nodes()).toHaveCount(4);
 
   // Each node lands selected, so the next one takes it: the chain is wired as it is made, and nothing is left unwired.
-  const unwired = window.getByTestId('graph-diagnostics').getByRole('listitem').filter({ hasText: 'TG0002' });
+  const unwired = window.getByTestId('graph-diagnostics').getByRole('listitem').filter({ hasText: 'has no image connected' });
   await expect.poll(wiresNow).toEqual(['1>2', '2>3', '3>4']);
   await expect(unwired).toHaveCount(0);
 
@@ -501,11 +501,16 @@ test('reads a bitmap from beside the graph, and says so when it cannot', async (
   await window.getByTestId('field-Source').getByRole('textbox').fill('dot.png');
   await window.getByTestId('field-Source').getByRole('textbox').press('Enter');
   await hashOf(thumbnail(added));
-  await expect(window.getByText('PT0001')).toHaveCount(0);
+  await expect(window.getByText("reads 'dot.png'")).toHaveCount(0);
 
   await window.getByTestId('field-Source').getByRole('textbox').fill('gone.png');
   await window.getByTestId('field-Source').getByRole('textbox').press('Enter');
+  // A person reads what is wrong, and the code waits behind Details for whoever reports it.
+  await expect(window.getByTestId('graph-diagnostics')).toContainText("reads 'gone.png'");
+  await expect(window.getByText('PT0001')).toHaveCount(0);
+  await window.getByTestId('graph-diagnostics-details').click();
   await expect(window.getByText('PT0001')).toBeVisible();
+  await window.screenshot({ path: join(shots, 'graph-diagnostics-details.png') });
 });
 
 test('the minimap leaves a small canvas, and steps aside for a wire on a large one', async () => {
@@ -533,7 +538,7 @@ test('the minimap leaves a small canvas, and steps aside for a wire on a large o
   await window.getByTestId('graph-canvas').click({ position: { x: 40, y: 40 } });
   await addNodeAt('Output/Output', box.width - 100, box.height - 150);
   await expect(nodes()).toHaveCount(2);
-  await expect(window.getByTestId('graph-diagnostics').getByText('TG0002')).toHaveCount(1);
+  await expect(window.getByTestId('graph-diagnostics').getByText(/has no image connected/u)).toHaveCount(1);
   const target = await centre(connector(2, 'Input'));
 
   // The instrument: the minimap really is over the port, so the drop below proves something.
@@ -544,7 +549,7 @@ test('the minimap leaves a small canvas, and steps aside for a wire on a large o
   expect(covered).toBe(true);
 
   await dragBetween(await centre(connector(1, 'Out')), target);
-  await expect(window.getByTestId('graph-diagnostics').getByText('TG0002')).toHaveCount(0);
+  await expect(window.getByTestId('graph-diagnostics').getByText(/has no image connected/u)).toHaveCount(0);
   await expect(window.getByTestId('graph-minimap')).toBeVisible();
 });
 

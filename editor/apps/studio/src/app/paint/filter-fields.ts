@@ -99,6 +99,7 @@ export interface FilterText {
                   class="min-w-0 flex-1"
                   [ariaLabel]="field.name"
                   [filterable]="false"
+                  [itemText]="field.label"
                   [items]="field.choices"
                   [value]="textOf(field)"
                   (valueChange)="setChoice(field, $event)"

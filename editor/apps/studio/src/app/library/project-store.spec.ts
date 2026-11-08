@@ -362,6 +362,16 @@ describe('ProjectStore', () => {
     expect(store.tabs()).toHaveLength(0);
   });
 
+  it('names the open documents a move would close, so the tree can ask first', async () => {
+    const { store } = harness();
+    await store.open('a');
+
+    expect(store.openInside(['a']).map(tab => tab.project)).toEqual(['a']);
+    expect(store.openInside(['b'])).toEqual([]);
+    expect(store.movesMesh({ mesh: '/meshes/new.glb' })).toBe(true);
+    expect(store.movesMesh({})).toBe(false);
+  });
+
   describe('work a crash left behind', () => {
     const saved = '2026-11-07T10:00:00Z';
 

@@ -265,14 +265,29 @@ describe('GraphPane', () => {
     const event = evaluated(1, {});
     if (event.evaluation) {
       event.evaluation.diagnostics = [
-        { id: 'PT0001', message: 'This graph reads the image a.png.', severity: 'Error', node: 1 }
+        {
+          id: 'TG0002',
+          message:
+            "'Input' has no image connected. There is no literal image an author could type into a port instead.",
+          severity: 'Error',
+          node: 1
+        }
       ];
     }
 
     sockets[0]?.send(event);
     await fixture.whenStable();
 
-    expect(found('graph-diagnostics')?.textContent).toContain('PT0001');
+    // A person reads what is wrong; the code and the compiler's reasoning wait behind Details (#198).
+    const list = found('graph-diagnostics')?.textContent ?? '';
+    expect(list).toContain("'Input' has no image connected.");
+    expect(list).not.toContain('TG0002');
+    expect(list).not.toContain('literal image');
+
+    (found('graph-diagnostics-details') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    expect(found('graph-diagnostics')?.textContent).toContain('TG0002');
+    expect(found('graph-diagnostics')?.textContent).toContain('literal image');
   });
 
   it('says when an evaluation failed', async () => {

@@ -6,6 +6,7 @@ import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
+import { choiceName, kindName } from '../core/labels';
 import { SystemStatus } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
 import { GraphStore } from './graph-store';
@@ -187,6 +188,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
               class="w-20 shrink-0"
               ariaLabel="Parameter kind"
               [disabled]="!store.editable()"
+              [itemText]="kindName"
               [items]="kinds"
               [value]="parameter.kind"
               (valueChange)="setKind(parameter, $event)"
@@ -231,6 +233,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
               <xui-select
                 [aria-label]="parameter.name + ' default'"
                 [disabled]="!store.editable()"
+                [itemText]="choiceOf(parameter)"
                 [items]="parameter.accepted"
                 [value]="store.parameterDefault(parameter)"
                 (valueChange)="setDefault(parameter, $event ?? parameter.default)"
@@ -299,6 +302,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
                 class="min-w-0 flex-1"
                 ariaLabel="Port kind"
                 [disabled]="!store.editable()"
+                [itemText]="kindName"
                 [items]="portKinds"
                 [value]="port.kind"
                 (valueChange)="setPortKind(port, $event)"
@@ -383,6 +387,11 @@ export class GraphSettings {
   protected readonly String = String;
   protected readonly bitDepths = BitDepths;
   protected readonly portKinds = PortKinds;
+  protected readonly kindName = kindName;
+  /** The labels of a parameter's choices, as a select asks for them. */
+  protected choiceOf(parameter: GraphSettingDefinition): (value: string) => string {
+    return value => choiceName(parameter, value);
+  }
 
   protected readonly seed = computed(() => Number(this.store.document()?.settings['seed'] ?? 0));
 

@@ -295,6 +295,10 @@ test('each material of a mesh is a texture set, and paint follows a repacked mes
     BrowserWindow.getAllWindows()[0]?.webContents.send('patina:command', 'projectSettings');
   });
   await window.getByTestId('project-settings-mesh').click();
+  // A new mesh closes the open documents and loses their undo, and the dialog says so before Apply does it.
+  await expect(window.getByTestId('project-settings-closes')).toContainText('undo history is lost');
+  await expect(window.getByTestId('project-settings-apply')).toHaveText('Close and Apply');
+  await window.screenshot({ path: join(shots, 'project-settings-closes.png') });
   await window.getByTestId('project-settings-apply').click();
   await expect(window.getByTestId('project-settings')).toHaveCount(0, { timeout: 60_000 });
   await expect(window.getByTestId('texture-sets')).toBeVisible({ timeout: 60_000 });

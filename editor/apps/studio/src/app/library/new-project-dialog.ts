@@ -11,6 +11,7 @@ import { SystemStatus } from '../core/system-status';
 import { LibraryStore } from './library-store';
 import { LibraryTreeStore } from './library-tree-store';
 import { ProjectStore } from './project-store';
+import { messageOf } from '../core/messages';
 
 /** Asks for a new project's name. The Server decides whether it can exist, so its refusal is what this shows. */
 @Component({
@@ -214,7 +215,7 @@ export class NewProjectDialog {
       this.tree.choose(project.path);
       await this.project.open(project.path);
     } catch (error) {
-      this.refused.set(error instanceof Error ? error.message : String(error));
+      this.refused.set(messageOf(error));
     } finally {
       this.saving.set(false);
     }

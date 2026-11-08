@@ -229,6 +229,7 @@ export function keptLanes(held: readonly number[], picked: readonly number[]): r
                   <xui-select
                     [aria-label]="field.name"
                     [disabled]="!store.editable()"
+                    [itemText]="field.label"
                     [items]="field.choices"
                     [value]="textOf(field)"
                     (valueChange)="setChoice(field, $event)"

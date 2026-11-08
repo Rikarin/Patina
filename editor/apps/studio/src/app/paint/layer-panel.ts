@@ -14,7 +14,9 @@ import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
-import { blendName, channelName } from '../core/labels';
+import { colourName } from '../core/colour-names';
+import { blendName, channelName, choiceName, termName } from '../core/labels';
+import { amount, percent } from '../core/numbers';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { FilterFields } from './filter-fields';
@@ -22,14 +24,6 @@ import { LiveValue } from './live-value';
 import { MaterialUse } from './material-use';
 import { colourOf, PaintStore, writesChannel } from './paint-store';
 
-const Fills: readonly string[] = ['Constant', 'Texture', 'Graph'];
-const Projections: readonly { value: string; label: string }[] = [
-  { value: 'Uv', label: 'UV' },
-  { value: 'Triplanar', label: 'Tri-planar' },
-  { value: 'Planar', label: 'Planar' },
-  { value: 'Spherical', label: 'Spherical' },
-  { value: 'Cylindrical', label: 'Cylindrical' }
-];
 const Axes: readonly string[] = ['X', 'Y', 'Z'];
 
 /** Four numbers as a swatch's value. */
@@ -126,7 +120,8 @@ export function hexOf(colour: readonly number[] | undefined): string {
                 class="min-w-0 flex-1"
                 aria-label="Fill source"
                 data-testid="paint-fill-source"
-                [items]="fills"
+                [itemText]="termName"
+                [items]="fills()"
                 [value]="layer.fill"
                 (valueChange)="store.edit({ op: 'setLayer', layer: layer.id, fill: $event })"
               />
@@ -140,7 +135,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
                   data-testid="paint-fill-projection"
                   (change)="store.edit({ op: 'setLayer', layer: layer.id, projection: text($event) })"
                 >
-                  @for (option of projections; track option.value) {
+                  @for (option of projections(); track option.value) {
                     <option [value]="option.value" [selected]="option.value === layer.projection">
                       {{ option.label }}
                     </option>
@@ -243,8 +238,8 @@ export function hexOf(colour: readonly number[] | undefined): string {
                         (valueChange)="setScalar(layer, channel.usage, $event)"
                         (pointerup)="scalarDraft.set(null)"
                       />
-                      <span class="readout w-8 shrink-0 text-end text-xs">{{
-                        scalar(layer, channel.usage, channel.default).toFixed(2)
+                      <span class="readout w-9 shrink-0 text-end text-xs">{{
+                        amount(scalar(layer, channel.usage, channel.default))
                       }}</span>
                     } @else {
                       <xui-color-picker
@@ -333,7 +328,9 @@ export function hexOf(colour: readonly number[] | undefined): string {
                 (change)="setKnob(layer, parameter.name, text($event))"
               >
                 @for (value of parameter.accepted; track value) {
-                  <option [value]="value" [selected]="value === knob(layer, parameter)">{{ value }}</option>
+                  <option [value]="value" [selected]="value === knob(layer, parameter)">
+                    {{ choiceName(parameter, value) }}
+                  </option>
                 }
               </select>
             } @else if (parameter.kind === 'Float' || parameter.kind === 'Int') {
@@ -376,6 +373,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
             class="min-w-0 flex-1"
             aria-label="Mask source"
             data-testid="paint-mask-source"
+            [itemText]="termName"
             [items]="masks()"
             [value]="layer.mask.source"
             (valueChange)="setMask(layer, { source: $event ?? 'None' })"
@@ -388,16 +386,22 @@ export function hexOf(colour: readonly number[] | undefined): string {
         }
         @switch (layer.mask.source) {
           @case ('Constant') {
-            <xui-slider
-              labelStepSize="0"
-              aria-label="Mask value"
-              data-testid="paint-mask-value"
-              [max]="1"
-              [min]="0"
-              [stepSize]="0.01"
-              [value]="layer.mask.value"
-              (valueChange)="setMask(layer, { value: $event })"
-            />
+            <div class="flex items-center gap-2">
+              <xui-slider
+                class="min-w-0 flex-1"
+                labelStepSize="0"
+                aria-label="Mask value"
+                data-testid="paint-mask-value"
+                [max]="1"
+                [min]="0"
+                [stepSize]="0.01"
+                [value]="layer.mask.value"
+                (valueChange)="setMask(layer, { value: $event })"
+              />
+              <span class="readout w-9 shrink-0 text-end text-xs" data-testid="paint-mask-value-readout">{{
+                percent(layer.mask.value)
+              }}</span>
+            </div>
           }
           @case ('Texture') {
             <div class="flex items-center gap-2">
@@ -420,6 +424,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
             <xui-select
               aria-label="Anchor layer"
               data-testid="paint-mask-anchor"
+              [itemText]="layerName"
               [items]="anchors(layer)"
               [value]="layer.mask.anchor"
               (valueChange)="setMask(layer, { anchor: $event ?? '' })"
@@ -429,6 +434,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
             <xui-select
               aria-label="Generator"
               data-testid="paint-mask-generator"
+              [itemText]="termName"
               [items]="generatorsWith(layer.mask.generator)"
               [value]="layer.mask.generator"
               (valueChange)="setMask(layer, { generator: $event ?? '' })"
@@ -446,7 +452,9 @@ export function hexOf(colour: readonly number[] | undefined): string {
                     (change)="setGeneratorKnob(layer, parameter.name, text($event))"
                   >
                     @for (value of parameter.accepted; track value) {
-                      <option [value]="value" [selected]="value === generatorKnob(layer, parameter)">{{ value }}</option>
+                      <option [value]="value" [selected]="value === generatorKnob(layer, parameter)">
+                        {{ choiceName(parameter, value) }}
+                      </option>
                     }
                   </select>
                 } @else {
@@ -467,6 +475,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
             <xui-select
               aria-label="Mesh map"
               data-testid="paint-mask-map"
+              [itemText]="termName"
               [items]="meshMaps()"
               [value]="layer.mask.map"
               (valueChange)="setMask(layer, { map: $event ?? '' })"
@@ -479,10 +488,10 @@ export function hexOf(colour: readonly number[] | undefined): string {
                       type="button"
                       class="border-hairline size-6 rounded-sm border"
                       data-testid="paint-id-colour"
-                      [attr.aria-label]="'Select ' + hexOf(entry.colour)"
+                      [attr.aria-label]="'Select ' + colourName(entry.colour) + ', ' + percent(entry.share) + ' of the map'"
                       [class.outline]="same(layer.mask.colour, entry.colour)"
                       [style.background]="hexOf(entry.colour)"
-                      [title]="hexOf(entry.colour) + ', ' + percent(entry.share) + '%'"
+                      [title]="colourName(entry.colour) + ', ' + percent(entry.share) + ' of the map'"
                       (click)="setMask(layer, { colour: [...entry.colour] })"
                     ></button>
                   } @empty {
@@ -523,6 +532,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
                     [value]="layer.mask.tolerance"
                     (valueChange)="setMask(layer, { tolerance: $event })"
                   />
+                  <span class="readout w-9 shrink-0 text-end text-xs">{{ percent(layer.mask.tolerance) }}</span>
                 </div>
                 <div class="flex items-center gap-2">
                   <span class="text-foreground-muted w-16 shrink-0 text-xs">Softness</span>
@@ -537,6 +547,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
                     [value]="layer.mask.softness"
                     (valueChange)="setMask(layer, { softness: $event })"
                   />
+                  <span class="readout w-9 shrink-0 text-end text-xs">{{ percent(layer.mask.softness) }}</span>
                 </div>
               </div>
             }
@@ -624,17 +635,22 @@ export class LayerPanel {
   private readonly project = inject(ProjectStore);
   private readonly library = inject(LibraryStore);
   private readonly using = inject(MaterialUse);
-  protected readonly fills = Fills;
-  protected readonly projections = Projections;
+  protected readonly fills = computed(() => this.store.vocabulary()?.fills.map(term => term.value) ?? []);
+  protected readonly projections = computed(() => this.store.vocabulary()?.projections ?? []);
   protected readonly axes = Axes;
-  protected readonly blends = computed(() => this.store.vocabulary()?.blends ?? []);
+  protected readonly blends = computed(() => this.store.vocabulary()?.blends.map(term => term.value) ?? []);
   /** Every filter, by the node it runs. */
   private readonly filters = computed(
     () => new Map((this.store.vocabulary()?.filters ?? []).map(filter => [filter.node, filter] as const))
   );
-  protected readonly masks = computed(() => this.store.vocabulary()?.masks ?? []);
-  protected readonly generators = computed(() => this.store.vocabulary()?.generators ?? []);
-  protected readonly meshMaps = computed(() => this.store.vocabulary()?.meshMaps ?? []);
+  protected readonly masks = computed(() => this.store.vocabulary()?.masks.map(term => term.value) ?? []);
+  protected readonly generators = computed(() => this.store.vocabulary()?.generators.map(term => term.value) ?? []);
+  protected readonly meshMaps = computed(() => this.store.vocabulary()?.meshMaps.map(term => term.value) ?? []);
+  protected readonly termName = termName;
+  protected readonly choiceName = choiceName;
+  /** A layer by its name, which is what the anchor list offers rather than its id. */
+  protected readonly layerName = (id: string): string =>
+    this.store.layers().find(row => row.layer.id === id)?.layer.name ?? id;
   protected readonly name = new LiveValue<string>(() => this.store.chosen()?.name ?? '');
   protected readonly scalarDraft = signal<{ usage: string; value: number } | null>(null);
 
@@ -766,6 +782,7 @@ export class LayerPanel {
   }
 
   protected readonly hexOf = hexOf;
+  protected readonly colourName = colourName;
   protected readonly channelName = channelName;
   protected readonly blendName = blendName;
 
@@ -930,9 +947,8 @@ export class LayerPanel {
     return !!left && right.every((lane, index) => Math.abs(lane - (left[index] ?? 0)) < 0.002);
   }
 
-  protected percent(share: number): number {
-    return Math.round(share * 100);
-  }
+  protected readonly percent = percent;
+  protected readonly amount = amount;
 
   protected setMask(layer: StackLayer, change: Partial<StackMask>): void {
     void this.store.setMask(layer, { ...layer.mask, ...change });

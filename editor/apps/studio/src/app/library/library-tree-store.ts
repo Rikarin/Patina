@@ -1,6 +1,7 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { type FolderSummary, type ProjectDocumentInfo, type ProjectSummary, unwrap } from '@patina/api-client';
 import { LibraryStore } from './library-store';
+import { messageOf } from '../core/messages';
 
 const PageSize = 200;
 const ExpandedKey = 'patina.library.expanded';
@@ -381,7 +382,7 @@ export class LibraryTreeStore {
     try {
       return await act();
     } catch (failure) {
-      this.mutableFailure.set(failure instanceof Error ? failure.message : String(failure));
+      this.mutableFailure.set(messageOf(failure));
       return null;
     }
   }

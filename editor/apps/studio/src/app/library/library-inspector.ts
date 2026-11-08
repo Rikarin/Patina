@@ -17,6 +17,7 @@ import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiSkeletonImports } from '@xui/skeleton';
 import { XuiSpinnerImports } from '@xui/spinner';
 import { XuiTagImports } from '@xui/tag';
+import { documentKindName } from '../core/labels';
 import { GraphStore } from '../graph/graph-store';
 import { LibrarySelection } from './library-selection';
 import { LibraryStore } from './library-store';
@@ -89,7 +90,7 @@ export class ProjectDetails {
     @let item = asset();
     <div class="shrink-0 p-3">
       <h2 class="truncate text-sm font-semibold" data-testid="inspector-title" [title]="item.name">{{ item.name }}</h2>
-      <p class="section-label mb-3">{{ item.kind }}</p>
+      <p class="section-label mb-3">{{ kindName(item.kind) }}</p>
       @if (item.kind === 'graph') {
         <button
           class="mb-3 w-full"
@@ -180,6 +181,7 @@ export class AssetImpactView {
   private readonly viewport = viewChild(CdkVirtualScrollViewport);
 
   readonly asset = input.required<AssetSummary>();
+  protected readonly kindName = documentKindName;
 
   protected readonly rowHeight = DependentHeight;
   protected readonly impact = computed(() => this.store.impactOf(this.asset()));
