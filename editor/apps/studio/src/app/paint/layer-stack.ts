@@ -10,7 +10,7 @@ import {
   matUndo
 } from '@ng-icons/material-icons/baseline';
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, inject, signal } from '@angular/core';
-import type { StackFilterKind, StackLayer } from '@patina/api-client';
+import type { StackFilterKind, StackLayer, StackMaskLayer } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiContextMenuImports } from '@xui/context-menu';
 import { XuiMenuImports } from '@xui/menu';
@@ -48,6 +48,16 @@ const QuickSteps: readonly { node: string; name: string }[] = [
 ];
 
 const KindMarks: Readonly<Record<string, string>> = { paint: 'P', fill: 'F', filter: 'Fx', group: '' };
+
+/** What a mask's stack can have added to it, in the order its menu offers them. */
+const MaskLayerSources: readonly { value: string; label: string }[] = [
+  { value: 'Paint', label: 'Paint' },
+  { value: 'Constant', label: 'Uniform' },
+  { value: 'Generator', label: 'Generator' },
+  { value: 'Bake', label: 'Mesh Map' },
+  { value: 'Texture', label: 'Bitmap' },
+  { value: 'Anchor', label: 'Anchor Point' }
+];
 
 const MaskMarks: Readonly<Record<string, string>> = {
   Constant: 'C',
@@ -264,6 +274,192 @@ const MaskMarks: Readonly<Record<string, string>> = {
       </ul>
     }
 
+    @if (maskStackLayer(); as owner) {
+      <div class="chrome-bar flex shrink-0 items-center gap-1 px-1 py-0.5" data-testid="mask-stack-bar">
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          class="shrink-0 px-1.5 text-xs"
+          data-testid="mask-stack-back"
+          title="Back to the layers"
+          (click)="closeMaskStack()"
+        >
+          ‹ Layers
+        </button>
+        <span class="min-w-0 flex-1 truncate text-xs" data-testid="mask-stack-title">{{ owner.name }} · Mask</span>
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          class="shrink-0 px-1.5 text-xs"
+          data-testid="mask-stack-add"
+          title="Add a layer to this mask"
+          [xuiMenuTriggerFor]="maskLayerMenu"
+        >
+          Add…
+        </button>
+      </div>
+      <div
+        class="min-h-0 flex-1 overflow-auto"
+        role="list"
+        data-testid="mask-stack"
+        [attr.aria-label]="'Mask of ' + owner.name"
+      >
+        @for (item of workOf(owner); track item.key) {
+          @if (item.effect !== null) {
+            <div class="border-hairline flex h-7 items-center gap-1.5 border-b px-1" role="listitem" data-testid="mask-stack-effect">
+              <button
+                type="button"
+                class="grid size-5 shrink-0 place-items-center"
+                [attr.aria-label]="(item.enabled ? 'Hide ' : 'Show ') + item.name"
+                [attr.aria-pressed]="item.enabled"
+                (click)="setWork(owner, item.effect, !item.enabled)"
+              >
+                <svg viewBox="0 0 16 16" class="size-3.5" aria-hidden="true">
+                  <path d="M1 8s2.6-4.5 7-4.5S15 8 15 8s-2.6 4.5-7 4.5S1 8 1 8z" fill="none" stroke="currentColor" stroke-width="1.3" />
+                  @if (item.enabled) {
+                    <circle cx="8" cy="8" r="2.2" fill="currentColor" />
+                  }
+                </svg>
+              </button>
+              <span class="text-foreground-muted w-5 shrink-0 text-center text-xs">Fx</span>
+              <span class="min-w-0 flex-1 truncate text-xs">{{ item.name }}</span>
+              <button
+                type="button"
+                class="text-foreground-muted grid size-5 shrink-0 place-items-center"
+                [attr.aria-label]="'Take off ' + item.name"
+                (click)="removeWork(owner, item.effect)"
+              >
+                ×
+              </button>
+            </div>
+          }
+        }
+        @for (entry of maskEntries(owner); track entry.index) {
+          <div
+            class="border-hairline flex h-9 items-center gap-1.5 border-b px-1"
+            role="listitem"
+            tabindex="0"
+            [attr.aria-label]="entry.name"
+            [attr.aria-current]="isMaskEntry(owner, entry.index)"
+            [attr.data-testid]="'mask-layer-' + entry.index"
+            [class.bg-selection]="isMaskEntry(owner, entry.index)"
+            [class.opacity-50]="!entry.layer.enabled"
+            (click)="store.chooseMaskLayer(owner, entry.index)"
+            (keydown.enter)="store.chooseMaskLayer(owner, entry.index)"
+          >
+            <button
+              type="button"
+              class="grid size-5 shrink-0 place-items-center"
+              data-testid="mask-layer-eye"
+              [attr.aria-label]="(entry.layer.enabled ? 'Hide ' : 'Show ') + entry.name"
+              [attr.aria-pressed]="entry.layer.enabled"
+              (click)="$event.stopPropagation(); store.setMaskLayer(owner, entry.index, { enabled: !entry.layer.enabled })"
+            >
+              <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
+                <path d="M1 8s2.6-4.5 7-4.5S15 8 15 8s-2.6 4.5-7 4.5S1 8 1 8z" fill="none" stroke="currentColor" />
+                @if (entry.layer.enabled) {
+                  <circle cx="8" cy="8" r="2.2" fill="currentColor" />
+                }
+              </svg>
+            </button>
+            <span
+              class="border-hairline text-foreground-muted grid size-6 shrink-0 place-items-center rounded-sm border text-xs"
+              [style.background]="entryColour(entry.layer)"
+              >{{ sourceMark(entry.layer.source) }}</span
+            >
+            <span class="min-w-0 flex-1 truncate text-xs" [title]="entry.name">{{ entry.name }}</span>
+            <span
+              class="flex w-24 shrink-0 flex-col gap-0.5"
+              role="group"
+              tabindex="-1"
+              [attr.aria-label]="'Blending of ' + entry.name"
+              (click)="$event.stopPropagation()"
+              (keydown)="$event.stopPropagation()"
+            >
+              <xui-select
+                class="w-full min-w-0 [&_button]:text-xs"
+                style="--control-height-md: 1.25rem; --control-padding-md: 0.375rem"
+                data-testid="mask-layer-blend"
+                [ariaLabel]="'Blend mode of ' + entry.name"
+                [filterable]="false"
+                [itemText]="blendLabel"
+                [items]="blends()"
+                [matchTargetWidth]="false"
+                [value]="entry.layer.blend"
+                (valueChange)="$event && store.setMaskLayer(owner, entry.index, { blend: $event })"
+              />
+              <span class="flex items-center gap-1">
+                <xui-slider
+                  class="h-3 min-w-0 flex-1 pb-0"
+                  labelStepSize="0"
+                  data-testid="mask-layer-opacity"
+                  [attr.aria-label]="'Opacity of ' + entry.name"
+                  [max]="1"
+                  [min]="0"
+                  [stepSize]="0.01"
+                  [value]="entry.layer.opacity"
+                  (valueChange)="setEntryOpacity(owner, entry.index, $event)"
+                />
+                <span class="readout w-8 shrink-0 text-end text-xs">{{ percent(entry.layer.opacity) }}</span>
+              </span>
+            </span>
+            <span class="flex shrink-0 flex-col" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" role="group" tabindex="-1" [attr.aria-label]="'Order of ' + entry.name">
+              <button
+                type="button"
+                class="text-foreground-muted grid h-4 w-5 place-items-center text-xs"
+                data-testid="mask-layer-up"
+                [attr.aria-label]="'Move ' + entry.name + ' up'"
+                [disabled]="entry.index === (owner.mask.layers?.length ?? 0) - 1"
+                (click)="store.moveMaskLayer(owner, entry.index, 1)"
+              >
+                ▲
+              </button>
+              <button
+                type="button"
+                class="text-foreground-muted grid h-4 w-5 place-items-center text-xs"
+                data-testid="mask-layer-down"
+                [attr.aria-label]="'Move ' + entry.name + ' down'"
+                [disabled]="entry.index === 0"
+                (click)="store.moveMaskLayer(owner, entry.index, -1)"
+              >
+                ▼
+              </button>
+            </span>
+            <button
+              type="button"
+              class="text-foreground-muted grid size-5 shrink-0 place-items-center"
+              data-testid="mask-layer-remove"
+              [attr.aria-label]="'Remove ' + entry.name"
+              (click)="$event.stopPropagation(); store.removeMaskLayer(owner, entry.index)"
+            >
+              ×
+            </button>
+          </div>
+        }
+        <div
+          class="border-hairline flex h-9 items-center gap-1.5 border-b px-1"
+          role="listitem"
+          tabindex="0"
+          data-testid="mask-stack-base"
+          [attr.aria-current]="store.masking() && store.layer() === owner.id && store.maskLayer() === null"
+          [class.bg-selection]="store.masking() && store.layer() === owner.id && store.maskLayer() === null"
+          (click)="store.chooseMask(owner)"
+          (keydown.enter)="store.chooseMask(owner)"
+        >
+          <span class="size-5 shrink-0"></span>
+          <span
+            class="border-hairline text-foreground-muted grid size-6 shrink-0 place-items-center rounded-sm border text-xs"
+            [style.background]="maskColour(owner)"
+            >{{ sourceMark(owner.mask.source) }}</span
+          >
+          <span class="min-w-0 flex-1 truncate text-xs">Base · {{ termName(owner.mask.source) }}</span>
+        </div>
+      </div>
+    } @else {
     <div
       class="min-h-0 flex-1 overflow-auto"
       role="tree"
@@ -404,8 +600,9 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 [attr.aria-label]="'Mask of ' + row.layer.name"
                 [class.outline]="row.layer.id === store.layer() && store.masking()"
                 [style.background]="maskColour(row.layer)"
-                [title]="termName(row.layer.mask.source) + ' mask'"
+                [title]="termName(row.layer.mask.source) + ' mask. Double-click to open it as a stack'"
                 (click)="$event.stopPropagation(); choose(row.layer, true)"
+                (dblclick)="$event.stopPropagation(); openMaskStack(row.layer)"
               >
                 <svg viewBox="0 0 16 16" class="size-5" aria-hidden="true">
                   <path d="M1 1h14v14H1z" fill="currentColor" fill-opacity="0.35" />
@@ -583,6 +780,24 @@ const MaskMarks: Readonly<Record<string, string>> = {
         <p class="text-foreground-muted p-3 text-sm">Nothing open.</p>
       }
     </div>
+    }
+
+    <ng-template #maskLayerMenu>
+      <xui-menu data-testid="mask-stack-add-menu" aria-label="Add to the mask">
+        @if (maskStackLayer(); as owner) {
+          @for (source of maskLayerSources; track source.value) {
+            <button
+              type="button"
+              xuiMenuItem
+              [attr.data-testid]="'mask-stack-add-' + source.value"
+              (triggered)="store.addMaskLayer(owner, source.value)"
+            >
+              {{ source.label }}
+            </button>
+          }
+        }
+      </xui-menu>
+    </ng-template>
 
     <ng-template #meshList>
       <div class="flex max-h-80 min-w-44 flex-col gap-1 overflow-auto p-1 text-sm" data-testid="layer-meshes">
@@ -717,6 +932,9 @@ const MaskMarks: Readonly<Record<string, string>> = {
               Add Generator
             </button>
           } @else {
+            <button type="button" xuiMenuItem data-testid="layer-menu-mask-open" (triggered)="openMaskStack(layer)">
+              {{ commands.label('openMaskStack') }}
+            </button>
             <button type="button" xuiMenuItem data-testid="layer-menu-mask-invert" (triggered)="invertMask(layer)">
               Invert Mask
             </button>
@@ -903,6 +1121,78 @@ export class LayerStack {
     }
   }
   protected readonly rowHeight = RowHeight;
+  protected readonly maskLayerSources = MaskLayerSources;
+  /** The layer whose mask the list shows as a stack of its own, in place of the layers (#109), or null. */
+  protected readonly maskStack = signal<string | null>(null);
+  protected readonly maskStackLayer = computed(() => {
+    const id = this.maskStack();
+    return this.store.layers().find(row => row.layer.id === id)?.layer ?? null;
+  });
+  private entryOpacity: { layer: StackLayer; index: number; opacity: number } | null = null;
+  private sendingEntryOpacity = false;
+
+  /** Shows a layer's mask as a stack: its effects, its entries top first, and its base. */
+  protected openMaskStack(layer: StackLayer): void {
+    this.maskStack.set(layer.id);
+    this.store.chooseMask(layer);
+  }
+
+  /** Back to the layers, with the layer whose mask it was still chosen. */
+  protected closeMaskStack(): void {
+    this.maskStack.set(null);
+  }
+
+  /** A mask's entries top first, as a list of layers reads, each with its place counted from the bottom. */
+  protected maskEntries(layer: StackLayer): readonly { index: number; name: string; layer: StackMaskLayer }[] {
+    return (layer.mask.layers ?? [])
+      .map((entry, index) => ({ index, name: this.entryName(entry), layer: entry }))
+      .reverse();
+  }
+
+  private entryName(entry: StackMaskLayer): string {
+    const what =
+      entry.source === 'Generator' && entry.generator
+        ? termName(entry.generator)
+        : entry.source === 'Bake' && entry.map
+          ? termName(entry.map)
+          : entry.source === 'Constant'
+            ? percent(entry.value)
+            : '';
+    return what ? `${termName(entry.source)} · ${what}` : termName(entry.source);
+  }
+
+  protected isMaskEntry(layer: StackLayer, index: number): boolean {
+    return this.store.masking() && this.store.layer() === layer.id && this.store.maskLayer() === index;
+  }
+
+  protected sourceMark(source: string): string {
+    return MaskMarks[source] ?? '';
+  }
+
+  protected entryColour(entry: StackMaskLayer): string | null {
+    return entry.source === 'Constant' ? hexOf([entry.value, entry.value, entry.value]) : null;
+  }
+
+  /** One request out at a time, the newest value next, as a layer's own opacity is sent. */
+  protected setEntryOpacity(layer: StackLayer, index: number, opacity: number): void {
+    this.entryOpacity = { layer, index, opacity };
+    void this.sendEntryOpacity();
+  }
+
+  private async sendEntryOpacity(): Promise<void> {
+    if (this.sendingEntryOpacity) {
+      return;
+    }
+
+    this.sendingEntryOpacity = true;
+    while (this.entryOpacity) {
+      const { layer, index, opacity } = this.entryOpacity;
+      this.entryOpacity = null;
+      await this.store.setMaskLayer(layer, index, { opacity });
+    }
+
+    this.sendingEntryOpacity = false;
+  }
   protected readonly quickSteps = QuickSteps;
 
   /** The filters a menu offers, under the headings the node library uses. */
@@ -1070,12 +1360,21 @@ export class LayerStack {
       return layer ? this.store.unflatten(layer.id) : undefined;
     });
     handle('flattenStack', () => open() && (this.store.state()?.layers.length ?? 0) > 0, () => this.store.flatten());
+    handle('openMaskStack', () => (chosen()?.mask.source ?? 'None') !== 'None', () => {
+      const layer = chosen();
+      if (layer) {
+        this.openMaskStack(layer);
+      }
+    });
   }
 
   /** The Delete key takes what is in front: a mask that is, or else the layers. Anything that says layers takes those. */
   private async removeInFront(): Promise<void> {
     const layer = this.store.chosen();
-    if (this.store.masking() && layer) {
+    const entry = this.store.maskLayer();
+    if (this.store.masking() && layer && entry !== null) {
+      await this.store.removeMaskLayer(layer, entry);
+    } else if (this.store.masking() && layer) {
       this.store.masking.set(false);
       await this.store.setMask(layer, { ...layer.mask, source: 'None' });
     } else {

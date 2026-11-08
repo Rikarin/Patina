@@ -115,6 +115,13 @@ export const CommandTable: readonly CommandSpec[] = [
   },
   { id: 'unflattenFolder', label: 'Unflatten Folder', section: 'Layers', area: 'stack' },
   { id: 'flattenStack', label: 'Flatten Stack', section: 'Layers', area: 'stack' },
+  {
+    id: 'openMaskStack',
+    label: 'Open Mask as Stack',
+    section: 'Layers',
+    area: 'stack',
+    hint: 'Shows the chosen layer’s mask in Layers as a stack of its own'
+  },
 
   { id: 'addNode', label: 'Add Node…', section: 'Graph', keys: ['Space'], area: 'graph' },
   { id: 'groupNodes', label: 'Group Selection', section: 'Graph', keys: ['Mod+G'], area: 'graph' },
@@ -251,7 +258,9 @@ export const MenuBar: readonly {
       '-',
       'flattenFolder',
       'unflattenFolder',
-      'flattenStack'
+      'flattenStack',
+      '-',
+      'openMaskStack'
     ]
   },
   {

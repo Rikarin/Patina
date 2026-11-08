@@ -192,6 +192,11 @@ export class PaintStore {
   readonly atlasScale = signal(1);
   /** Whether strokes go to the chosen layer's mask rather than its channels. */
   readonly masking = signal(false);
+  /**
+   * While {@link masking}, the entry of the mask's own stack a stroke paints, counted from the bottom, or null for the
+   * mask's base (#109).
+   */
+  readonly maskLayer = signal<number | null>(null);
   /** What a stroke on a mask lays down, from nothing shown to everything: a mask is one number, not a colour. */
   readonly maskGrey = signal(0);
   readonly brush = signal<BrushSettings>(settingsOf(NewBrush));
@@ -226,6 +231,11 @@ export class PaintStore {
     const layer = this.chosen();
     if (!layer) {
       return false;
+    }
+
+    const entry = this.maskLayer();
+    if (this.masking() && entry !== null) {
+      return layer.mask.layers?.[entry]?.source === 'Paint';
     }
 
     return this.masking()
@@ -416,6 +426,7 @@ export class PaintStore {
   chooseMask(layer: StackLayer): void {
     this.layer.set(layer.id);
     this.masking.set(true);
+    this.maskLayer.set(null);
     if (layer.mask.source === 'Constant') {
       this.maskGrey.set(layer.mask.value < 0.5 ? 1 : 0);
     }
@@ -630,6 +641,46 @@ export class PaintStore {
 
   setMask(layer: StackLayer, mask: StackMask): Promise<void> {
     return this.edit({ op: 'setLayer', layer: layer.id, mask });
+  }
+
+  /** Puts an entry of a layer's mask stack in front of the brush and of Properties. */
+  chooseMaskLayer(layer: StackLayer, index: number): void {
+    this.layer.set(layer.id);
+    this.masking.set(true);
+    this.maskLayer.set(index);
+  }
+
+  /** Adds an entry at the top of a layer's mask stack and chooses it. A layer with no mask gets a white one under it. */
+  async addMaskLayer(layer: StackLayer, source: string): Promise<void> {
+    const index = layer.mask.layers?.length ?? 0;
+    await this.edit({ op: 'addMaskLayer', layer: layer.id, source, index: null, generator: null });
+    const added = this.layers().find(row => row.layer.id === layer.id)?.layer;
+    if (added && (added.mask.layers?.length ?? 0) > index) {
+      this.chooseMaskLayer(added, index);
+    }
+  }
+
+  async removeMaskLayer(layer: StackLayer, index: number): Promise<void> {
+    if (this.maskLayer() !== null && this.layer() === layer.id) {
+      this.maskLayer.set(null);
+    }
+
+    await this.edit({ op: 'removeMaskLayer', layer: layer.id, index });
+  }
+
+  async moveMaskLayer(layer: StackLayer, index: number, delta: number): Promise<void> {
+    await this.edit({ op: 'moveMaskLayer', layer: layer.id, index, delta });
+    if (this.layer() === layer.id && this.maskLayer() === index) {
+      this.maskLayer.set(index + delta);
+    }
+  }
+
+  setMaskLayer(
+    layer: StackLayer,
+    index: number,
+    change: Omit<Extract<StackCommand, { op: 'setMaskLayer' }>, 'op' | 'layer' | 'index'>
+  ): Promise<void> {
+    return this.edit({ op: 'setMaskLayer', layer: layer.id, index, ...change });
   }
 
   /** A frame reached the screen showing this revision of the stack. */
@@ -908,6 +959,7 @@ export class PaintStore {
         stamps,
         open,
         mask: this.masking(),
+        maskLayer: this.masking() ? this.maskLayer() : null,
         view,
         curve,
         symmetry

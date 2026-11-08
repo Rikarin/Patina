@@ -4021,7 +4021,11 @@ export interface components {
       | components['schemas']['StackCommandStackPasteLayers']
       | components['schemas']['StackCommandStackFlattenLayer']
       | components['schemas']['StackCommandStackUnflattenLayer']
-      | components['schemas']['StackCommandStackSetHeightNormal'];
+      | components['schemas']['StackCommandStackSetHeightNormal']
+      | components['schemas']['StackCommandStackAddMaskLayer']
+      | components['schemas']['StackCommandStackRemoveMaskLayer']
+      | components['schemas']['StackCommandStackMoveMaskLayer']
+      | components['schemas']['StackCommandStackSetMaskLayer'];
     /** @description Edits applied whole or not at all, as one undo step. */
     StackCommandBatch: {
       /** @description The edits, in order. */
@@ -4064,6 +4068,25 @@ export interface components {
       filterNode?: null | string;
     };
     /**
+     * @description Adds an entry to a layer's mask stack. A layer with no mask gets a white one under it first, so that the entry has
+     *     something to composite over.
+     */
+    StackCommandStackAddMaskLayer: {
+      /** @enum {string} */
+      op: 'addMaskLayer';
+      /** @description The layer whose mask it is. */
+      layer: string;
+      /** @description Constant, Texture, Anchor, Generator, Bake or Paint. */
+      source: string;
+      /**
+       * Format: int32
+       * @description Where it goes, counted from the bottom of the mask's stack, or null for the top.
+       */
+      index?: null | number;
+      /** @description The compound, for a generator entry, or null for the first the vocabulary offers. */
+      generator?: null | string;
+    };
+    /**
      * @description Duplicates layers, each just above itself, with everything inside it. A painted canvas is copied, never shared:
      *     a stroke on the copy leaves the original alone.
      */
@@ -4089,6 +4112,23 @@ export interface components {
       op: 'moveLayer';
       /** @description Which. */
       layer: string;
+      /**
+       * Format: int32
+       * @description How many places, up the stack when positive.
+       */
+      delta: number;
+    };
+    /** @description Moves an entry up or down a layer's mask stack. */
+    StackCommandStackMoveMaskLayer: {
+      /** @enum {string} */
+      op: 'moveMaskLayer';
+      /** @description The layer whose mask it is. */
+      layer: string;
+      /**
+       * Format: int32
+       * @description Which, counted from the bottom.
+       */
+      index: number;
       /**
        * Format: int32
        * @description How many places, up the stack when positive.
@@ -4122,6 +4162,18 @@ export interface components {
       op: 'removeLayer';
       /** @description Which. */
       layer: string;
+    };
+    /** @description Removes an entry from a layer's mask stack. */
+    StackCommandStackRemoveMaskLayer: {
+      /** @enum {string} */
+      op: 'removeMaskLayer';
+      /** @description The layer whose mask it is. */
+      layer: string;
+      /**
+       * Format: int32
+       * @description Which, counted from the bottom.
+       */
+      index: number;
     };
     /** @description Says how the texture set's height becomes the normal its surface is lit with. */
     StackCommandStackSetHeightNormal: {
@@ -4194,6 +4246,45 @@ export interface components {
         [key: string]: components['schemas']['StackAnchorRef'];
       };
     };
+    /** @description Changes an entry of a layer's mask stack. What is null stays. */
+    StackCommandStackSetMaskLayer: {
+      /** @enum {string} */
+      op: 'setMaskLayer';
+      /** @description The layer whose mask it is. */
+      layer: string;
+      /**
+       * Format: int32
+       * @description Which, counted from the bottom.
+       */
+      index: number;
+      /** @description Where its pixels come from. A paint entry keeps its canvas whatever it becomes. */
+      source?: null | string;
+      /**
+       * Format: float
+       * @description A constant entry's value, 0 to 1.
+       */
+      value?: null | number;
+      /** @description The image a texture entry reads. */
+      asset?: null | string;
+      anchor?: null | components['schemas']['StackAnchorRef'];
+      /** @description The compound a generator entry runs. Another compound starts from its own knobs. */
+      generator?: null | string;
+      /** @description The mesh map a bake entry reads. */
+      map?: null | string;
+      /** @description A generator entry's knobs, replacing what these names held. */
+      parameters?: null | {
+        [key: string]: string;
+      };
+      /** @description How it composites. */
+      blend?: null | string;
+      /**
+       * Format: float
+       * @description How much of it composites, 0 to 1.
+       */
+      opacity?: null | number;
+      /** @description Whether it composites. */
+      enabled?: null | boolean;
+    };
     /** @description Names the mesh a stack is painted on, which is undone like any other edit. */
     StackCommandStackSetModel: {
       /** @enum {string} */
@@ -4248,6 +4339,12 @@ export interface components {
        */
       curve: string;
       symmetry?: null | components['schemas']['StackSymmetry'];
+      /**
+       * Format: int32
+       * @description With Mask, the entry of the mask's stack it paints, counted from the bottom, which must be a
+       *     paint entry. Null paints the mask's base.
+       */
+      maskLayer?: null | number;
     };
     /** @description Takes a flattened group back to its children, which composite again. */
     StackCommandStackUnflattenLayer: {
@@ -4533,6 +4630,11 @@ export interface components {
       inputs?: null | {
         [key: string]: components['schemas']['StackAnchorRef'];
       };
+      /**
+       * @description The mask's own stack over this base, bottom first. Ignored in a change: the mask layer commands edit it, so that
+       *     a painted canvas stays with its entry.
+       */
+      layers?: null | components['schemas']['StackMaskLayer'][];
     };
     /** @description One step run on a mask. */
     StackMaskEffect: {
@@ -4555,6 +4657,65 @@ export interface components {
       inputs?: null | {
         [key: string]: components['schemas']['StackAnchorRef'];
       };
+    };
+    /**
+     * @description One entry of a mask's own stack: a source, composited over the base and the entries beneath it with its own blend
+     *     and opacity. Paint over a generator is a Paint entry over a Generator base.
+     */
+    StackMaskLayer: {
+      /** @description Constant, Texture, Anchor, Generator, Bake or Paint. */
+      source: string;
+      /**
+       * Format: float
+       * @description A constant entry's value.
+       * @default 1
+       */
+      value: number;
+      /**
+       * @description The image a texture entry reads.
+       * @default
+       */
+      asset: string;
+      anchor?: null | components['schemas']['StackAnchorRef'];
+      /**
+       * @description The compound a generator entry runs.
+       * @default
+       */
+      generator: string;
+      /**
+       * @description The mesh map a bake entry reads.
+       * @default
+       */
+      map: string;
+      /** @description What a generator entry's knobs are set to, as text. */
+      parameters?: null | {
+        [key: string]: string;
+      };
+      /** @description The image inputs of a generator entry that anchor points feed, by port. */
+      inputs?: null | {
+        [key: string]: components['schemas']['StackAnchorRef'];
+      };
+      /**
+       * @description Whether a paint entry has a canvas yet.
+       * @default false
+       */
+      painted: boolean;
+      /**
+       * @description How it composites over what is beneath it.
+       * @default Copy
+       */
+      blend: string;
+      /**
+       * Format: float
+       * @description How much of it composites, 0 to 1.
+       * @default 1
+       */
+      opacity: number;
+      /**
+       * @description Whether it composites at all.
+       * @default true
+       */
+      enabled: boolean;
     };
     /** @description Chooses the bake a stack's generators and bake masks read. */
     StackMeshMapsRequest: {
@@ -4853,7 +5014,7 @@ export interface components {
     };
     /** @description The words a stack's fields take, each with its label, so that a client holds no list of its own. */
     StackVocabulary: {
-      /** @description The sixteen blend modes. */
+      /** @description The thirty blend modes. */
       blends: components['schemas']['StackTerm'][];
       /** @description The filters a layer can be. */
       filters: components['schemas']['StackFilterKind'][];

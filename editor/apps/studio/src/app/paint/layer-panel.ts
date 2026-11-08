@@ -425,6 +425,97 @@ export function hexOf(colour: readonly number[] | undefined): string {
           </div>
         }
 
+        @if (maskEntry(); as entry) {
+          <p class="section-label mt-1">Mask Layer</p>
+          <div class="flex flex-col gap-1.5" data-testid="paint-mask-layer">
+            <div class="flex items-center gap-2">
+              <span class="text-foreground-muted w-16 shrink-0 text-xs">Source</span>
+              <xui-select
+                class="min-w-0 flex-1"
+                aria-label="Mask layer source"
+                data-testid="paint-mask-layer-source"
+                [itemText]="termName"
+                [items]="entrySources()"
+                [value]="entry.layer.source"
+                (valueChange)="$event && setEntry(layer, entry.index, { source: $event })"
+              />
+            </div>
+            @switch (entry.layer.source) {
+              @case ('Constant') {
+                <div class="flex items-center gap-2">
+                  <xui-slider
+                    class="min-w-0 flex-1"
+                    labelStepSize="0"
+                    aria-label="Mask layer value"
+                    data-testid="paint-mask-layer-value"
+                    [max]="1"
+                    [min]="0"
+                    [stepSize]="0.01"
+                    [value]="entry.layer.value"
+                    (valueChange)="setEntry(layer, entry.index, { value: $event })"
+                  />
+                  <span class="readout w-9 shrink-0 text-end text-xs">{{ percent(entry.layer.value) }}</span>
+                </div>
+              }
+              @case ('Generator') {
+                <xui-select
+                  aria-label="Mask layer generator"
+                  data-testid="paint-mask-layer-generator"
+                  [itemText]="termName"
+                  [items]="generatorsWith(entry.layer.generator)"
+                  [value]="entry.layer.generator"
+                  (valueChange)="setEntry(layer, entry.index, { generator: $event ?? '' })"
+                />
+              }
+              @case ('Bake') {
+                <xui-select
+                  aria-label="Mask layer mesh map"
+                  data-testid="paint-mask-layer-map"
+                  [itemText]="termName"
+                  [items]="meshMaps()"
+                  [value]="entry.layer.map"
+                  (valueChange)="setEntry(layer, entry.index, { map: $event ?? '' })"
+                />
+              }
+              @case ('Texture') {
+                <div class="flex items-center gap-2">
+                  <span class="min-w-0 flex-1 truncate text-xs" [title]="entry.layer.asset">{{
+                    fileOf(entry.layer.asset) || 'None'
+                  }}</span>
+                  <button
+                    type="button"
+                    xuiButton
+                    size="sm"
+                    variant="ghost"
+                    data-testid="paint-mask-layer-picture"
+                    (click)="chooseEntryPicture(layer, entry.index)"
+                  >
+                    Choose…
+                  </button>
+                </div>
+              }
+              @case ('Anchor') {
+                <xui-select
+                  aria-label="Anchor point the mask layer reads"
+                  data-testid="paint-mask-layer-anchor"
+                  [items]="anchorNames(layer)"
+                  [value]="entry.layer.anchor?.anchor || null"
+                  (valueChange)="
+                    setEntry(layer, entry.index, {
+                      anchor: { anchor: $event ?? '', channel: entry.layer.anchor?.channel || store.channel() }
+                    })
+                  "
+                />
+              }
+              @case ('Paint') {
+                <p class="text-foreground-muted text-xs" data-testid="paint-mask-layer-paint">
+                  Paint white to show the layer and black to hide it. Where nothing is painted, what is beneath shows.
+                </p>
+              }
+            }
+          </div>
+        }
+
         <p class="section-label mt-1">Mask</p>
         <div class="flex items-center gap-2">
           <span class="text-foreground-muted w-16 shrink-0 text-xs">Mask</span>
@@ -438,7 +529,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
             (valueChange)="setMask(layer, { source: $event ?? 'None' })"
           />
         </div>
-        @if (store.masking() && !store.canPaint()) {
+        @if (store.masking() && store.maskLayer() === null && !store.canPaint()) {
           <p class="text-foreground-muted text-xs" data-testid="paint-mask-no-brush">
             A brush would replace this mask. Set Mask to Paint to paint it.
           </p>
@@ -1058,5 +1149,30 @@ export class LayerPanel {
 
   protected setMask(layer: StackLayer, change: Partial<StackMask>): void {
     void this.store.setMask(layer, { ...layer.mask, ...change });
+  }
+
+  /** The entry of the chosen layer's mask stack in front of the brush, with its place counted from the bottom. */
+  protected readonly maskEntry = computed(() => {
+    const index = this.store.maskLayer();
+    const entry = index === null || !this.store.masking() ? undefined : this.store.chosen()?.mask.layers?.[index];
+    return entry && index !== null ? { index, layer: entry } : null;
+  });
+
+  /** What an entry of a mask's stack can be: any mask source but none. */
+  protected readonly entrySources = computed(() => this.masks().filter(source => source !== 'None'));
+
+  protected setEntry(
+    layer: StackLayer,
+    index: number,
+    change: Parameters<PaintStore['setMaskLayer']>[2]
+  ): void {
+    void this.store.setMaskLayer(layer, index, change);
+  }
+
+  protected async chooseEntryPicture(layer: StackLayer, index: number): Promise<void> {
+    const picture = await this.project.pickPicture();
+    if (picture) {
+      this.setEntry(layer, index, { asset: picture });
+    }
   }
 }
