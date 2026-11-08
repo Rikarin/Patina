@@ -203,8 +203,8 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
         Assert.NotEmpty(starters);
         Assert.All(starters, static found => Assert.EndsWith("@shipped", found, StringComparison.Ordinal));
         var terms = await client.GetFromJsonAsync<MaterialList>("/api/v1/library/materials?project=alpha", Token);
-        Assert.Contains(new StackTerm("library", "Other projects"), terms!.Origins);
-        Assert.Contains(new StackTerm("mask", "Masks"), terms.Roles);
+        Assert.Contains(new("library", "Other projects"), terms!.Origins);
+        Assert.Contains(new("mask", "Masks"), terms.Roles);
     }
 
     /// <summary>
@@ -247,17 +247,14 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
 
     /// <summary>
     ///     An export of the whole library belongs to no project, so the Server keeps its settings in
-    ///     <c>library.yaml</c>, and <c>GET /library</c> reads them back for any client: a scope change in one client loses
-    ///     nothing, and no project's file takes them (#227).
+    ///     <c>library.yaml</c>, and <c>GET /library</c> reads them back for any client: a scope change in one client
+    ///     loses nothing, and no project's file takes them (#227).
     /// </summary>
     [Fact]
     public async Task A_library_exports_settings_are_kept_in_library_yaml_and_read_back() {
         await client.PostAsJsonAsync("/api/v1/library/projects", new ProjectCreateRequest("Crate"), Token);
         var settings = new ProjectExportSettings {
-            Preset = "godot",
-            Folder = "/exports/all",
-            Dither = true,
-            Skipped = ["trim", "body"]
+            Preset = "godot", Folder = "/exports/all", Dither = true, Skipped = ["trim", "body"]
         };
 
         using var kept = await client.PutAsJsonAsync(

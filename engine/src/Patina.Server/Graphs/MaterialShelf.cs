@@ -76,8 +76,9 @@ public static class MaterialShelf {
     }
 
     /// <summary>
-    ///     Whether a material has every word of a search, ignoring case, in one of what the shelf shows of it: its name,
-    ///     its type and what that is called, its kind, where it is from and what that is called, its project or its path.
+    ///     Whether a material has every word of a search, ignoring case, in one of what the shelf shows of it: its
+    ///     name, its type and what that is called, its kind, where it is from and what that is called, its project or
+    ///     its path.
     /// </summary>
     public static bool Matches(MaterialInfo material, IReadOnlyCollection<string> words) =>
         words.Count == 0
@@ -149,7 +150,9 @@ public static class MaterialShelf {
     /// </summary>
     static bool Maybe(ProjectDocumentInfo document, string project, string[] words) {
         var graph = document.Kind is DocumentKinds.Graph or DocumentKinds.ImageMaterial;
-        var role = document.Kind == DocumentKinds.LayeredMaterial ? GraphRoles.Material : document.Role ?? GraphRoles.Material;
+        var role = document.Kind == DocumentKinds.LayeredMaterial
+            ? GraphRoles.Material
+            : document.Role ?? GraphRoles.Material;
         return Has(
             words,
             document.Name,
@@ -170,9 +173,9 @@ public static class MaterialShelf {
         for (var offset = 0;; offset += ProjectPage) {
             var page = library.Projects(new(Offset: offset, Limit: ProjectPage)).Items;
             foreach (var summary in page.Where(summary => summary.Path != project)) {
-                var wanted = DocumentsOf(library, summary.Path).Where(document => Maybe(document, summary.Name, words));
-                foreach (var document in wanted) {
-                    if (Readable(library, document) is { } read
+                foreach (var document in DocumentsOf(library, summary.Path)) {
+                    if (Maybe(document, summary.Name, words)
+                        && Readable(library, document) is { } read
                         && read with { Origin = ElsewhereOrigin, Project = summary.Name } is var material
                         && Matches(material, words)) {
                         yield return material;

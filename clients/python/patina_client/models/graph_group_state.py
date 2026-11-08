@@ -28,8 +28,7 @@ class GraphGroupState:
             title (str): What it is called.
             nodes (list[int]): Its members.
             color (str): The colour its frame is drawn in, as `#rrggbb`, or empty for the client's own choice. A client that
-                follows a
-                theme maps the colours it offers to its own. Default: ''.
+                follows a theme maps the colours it offers to its own. Default: ''.
             description (str): What its nodes do together. Default: ''.
      """
 

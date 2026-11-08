@@ -31,8 +31,8 @@ class GraphCommandGraphSetGroup:
             title (None | str | Unset): Its new title.
             nodes (list[int] | None | Unset): Its new members.
             color (None | str | Unset): Its frame's colour as `#rrggbb`, or empty for the client's own choice. Anything else
-                is refused, so the file
-                stays readable by any client.
+                is refused, so the
+                file stays readable by any client.
             description (None | str | Unset): What its nodes do together.
      """
 

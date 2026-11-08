@@ -135,8 +135,8 @@ public sealed record GraphNodeMatches(IReadOnlyList<string> Paths);
 /// <param name="Title">What it is called.</param>
 /// <param name="Nodes">Its members.</param>
 /// <param name="Color">
-///     The colour its frame is drawn in, as <c>#rrggbb</c>, or empty for the client's own choice. A client that follows a
-///     theme maps the colours it offers to its own.
+///     The colour its frame is drawn in, as <c>#rrggbb</c>, or empty for the client's own choice. A client that
+///     follows a theme maps the colours it offers to its own.
 /// </param>
 /// <param name="Description">What its nodes do together.</param>
 public sealed record GraphGroupState(
@@ -439,8 +439,8 @@ public sealed record GraphAddGroup(string Title, IReadOnlyList<int> Nodes, int? 
 /// <param name="Title">Its new title.</param>
 /// <param name="Nodes">Its new members.</param>
 /// <param name="Color">
-///     Its frame's colour as <c>#rrggbb</c>, or empty for the client's own choice. Anything else is refused, so the file
-///     stays readable by any client.
+///     Its frame's colour as <c>#rrggbb</c>, or empty for the client's own choice. Anything else is refused, so the
+///     file stays readable by any client.
 /// </param>
 /// <param name="Description">What its nodes do together.</param>
 public sealed record GraphSetGroup(
