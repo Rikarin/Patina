@@ -141,6 +141,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/viewport/isolation': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Draws only some named meshes and materials (texture sets) of the model, for every client. Empty lists draw the whole model. */
+    put: operations['SetViewportIsolation'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/viewport/bake': {
     parameters: {
       query?: never;
@@ -1222,6 +1239,23 @@ export interface paths {
     get: operations['GetStackIdColours'];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/find': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** The layer on top at a place on the map, as a click on the mesh or the map finds it. Its answer is a layer id: the Worker weighs each layer there and no picture leaves it. */
+    post: operations['FindStackLayer'];
     delete?: never;
     options?: never;
     head?: never;
@@ -4484,6 +4518,27 @@ export interface components {
       /** @description What it takes as text. */
       settings: components['schemas']['GraphSettingDefinition'][];
     };
+    /** @description Asks which layer is on top at a place on a stack's map, as a click on the mesh or the map finds it. */
+    StackFindRequest: {
+      /**
+       * Format: float
+       * @description Across the map, 0 to 1: the texture coordinate `POST /viewport/pick` gives.
+       */
+      u: number;
+      /**
+       * Format: float
+       * @description Down it, 0 to 1.
+       */
+      v: number;
+    };
+    /** @description The layer on top at a place on a stack's map. */
+    StackFound: {
+      /**
+       * @description The topmost layer that covers the place, inside its folders, or null when only the stack's defaults are there.
+       *     A filter covers nothing of its own, and a flattened folder is one layer.
+       */
+      layer?: null | string;
+    };
     /** @description One colour of a stack's id map. */
     StackIdColour: {
       /** @description Red, green and blue, 0 to 1, as the map stores them. */
@@ -5331,6 +5386,16 @@ export interface components {
       graph: string;
     };
     /**
+     * @description What the viewport draws alone (#136): the named meshes and the materials, which are texture sets, that show. The
+     *     rest of the model is not drawn and casts no shadow. Both empty is the whole model.
+     */
+    ViewportIsolation: {
+      /** @description Named meshes that show, as the model names them. */
+      parts: string[];
+      /** @description Materials that show, as the model names them: a texture set is one. */
+      materials: string[];
+    };
+    /**
      * @description Pictures to lay over the mesh's own materials, on every part. Each is a path on the Server's machine, and a slot
      *     left null keeps what the material asks for. A filled slot replaces the material's factor too, so what shows
      *     is the picture. Roughness is read from green, metallic from blue and occlusion from red, so one packed file or
@@ -5452,6 +5517,7 @@ export interface components {
       display: components['schemas']['ViewportDisplay'];
       /** @description The stack session it is wearing, or null. */
       stack?: null | string;
+      isolation?: null | components['schemas']['ViewportIsolation'];
     };
     /** @description The Worker as the Server sees it. All but `Connected` are null while there is none. */
     WorkerStatus: {
@@ -5752,6 +5818,30 @@ export interface operations {
         };
         content: {
           'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetViewportIsolation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportIsolation'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportState'];
         };
       };
     };
@@ -9201,6 +9291,50 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  FindStackLayer: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StackFindRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackFound'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
         headers: {
           [name: string]: unknown;
         };

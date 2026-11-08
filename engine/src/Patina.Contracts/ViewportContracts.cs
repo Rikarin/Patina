@@ -184,7 +184,8 @@ public sealed record ViewportPick(
 /// <param name="Parts">Named meshes that show, as the model names them.</param>
 /// <param name="Materials">Materials that show, as the model names them: a texture set is one.</param>
 public sealed record ViewportIsolation(IReadOnlyList<string> Parts, IReadOnlyList<string> Materials) {
-    /// <summary>Whether it hides nothing.</summary>
+    /// <summary>Whether it hides nothing. Not on the wire: it is what the lists say.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
     public bool Whole => Parts.Count == 0 && Materials.Count == 0;
 }
 

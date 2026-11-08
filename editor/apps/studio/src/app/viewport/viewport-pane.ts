@@ -311,7 +311,10 @@ export class ViewportPane implements AfterViewInit {
   });
   /** Whether a press does something at the point under it, which is what the cursor says. */
   protected readonly aiming = computed(
-    () => this.paints() || this.paint.picking() !== null || (this.paint.worn() && this.paint.tool() === 'picker')
+    () =>
+      this.paints() ||
+      this.paint.picking() !== null ||
+      (this.paint.worn() && (this.paint.tool() === 'picker' || this.paint.finding()))
   );
   private panning = false;
   private zooming = false;
@@ -556,6 +559,11 @@ export class ViewportPane implements AfterViewInit {
   }
 
   protected press(event: PointerEvent): void {
+    if (this.paint.finding() && event.button === 0) {
+      void this.paint.findLayerOnMesh(this.stamp(event), this.aim());
+      return;
+    }
+
     if ((this.paint.picking() !== null || this.paint.tool() === 'picker') && event.button === 0) {
       void this.paint.pickColourOnMesh(this.stamp(event), this.aim());
       return;

@@ -327,6 +327,37 @@
         }
       }
     },
+    "/api/v1/viewport/isolation": {
+      "put": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "Draws only some named meshes and materials (texture sets) of the model, for every client. Empty lists draw the whole model.",
+        "operationId": "SetViewportIsolation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewportIsolation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportState"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/viewport/bake": {
       "put": {
         "tags": [
@@ -4725,6 +4756,67 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/find": {
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "The layer on top at a place on the map, as a click on the mesh or the map finds it. Its answer is a layer id: the Worker weighs each layer there and no picture leaves it.",
+        "operationId": "FindStackLayer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StackFindRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackFound"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -12459,6 +12551,39 @@
         },
         "description": "An adjustment a filter layer or a mask can run: any node or shipped compound with one image in and one image\nout. A project\u0027s own compounds reach a stack from the shelf."
       },
+      "StackFindRequest": {
+        "required": [
+          "u",
+          "v"
+        ],
+        "type": "object",
+        "properties": {
+          "u": {
+            "type": "number",
+            "description": "Across the map, 0 to 1: the texture coordinate \u0060POST /viewport/pick\u0060 gives.",
+            "format": "float"
+          },
+          "v": {
+            "type": "number",
+            "description": "Down it, 0 to 1.",
+            "format": "float"
+          }
+        },
+        "description": "Asks which layer is on top at a place on a stack\u0027s map, as a click on the mesh or the map finds it."
+      },
+      "StackFound": {
+        "type": "object",
+        "properties": {
+          "layer": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The topmost layer that covers the place, inside its folders, or null when only the stack\u0027s defaults are there.\nA filter covers nothing of its own, and a flattened folder is one layer."
+          }
+        },
+        "description": "The layer on top at a place on a stack\u0027s map."
+      },
       "StackIdColour": {
         "required": [
           "colour",
@@ -14091,6 +14216,30 @@
         },
         "description": "Asks the viewport to lay a graph\u0027s Output nodes over the mesh it is showing, as they stand now."
       },
+      "ViewportIsolation": {
+        "required": [
+          "parts",
+          "materials"
+        ],
+        "type": "object",
+        "properties": {
+          "parts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Named meshes that show, as the model names them."
+          },
+          "materials": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Materials that show, as the model names them: a texture set is one."
+          }
+        },
+        "description": "What the viewport draws alone (#136): the named meshes and the materials, which are texture sets, that show. The\nrest of the model is not drawn and casts no shadow. Both empty is the whole model."
+      },
       "ViewportMapPaths": {
         "type": "object",
         "properties": {
@@ -14344,6 +14493,17 @@
               "string"
             ],
             "description": "The stack session it is wearing, or null."
+          },
+          "isolation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What is drawn alone, or null for the whole model.",
+                "$ref": "#/components/schemas/ViewportIsolation"
+              }
+            ]
           }
         },
         "description": "The reply to \u0060GET /api/v1/viewport\u0060. The Server owns all of this; a Worker can die without losing it."

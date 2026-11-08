@@ -116,6 +116,13 @@ export const CommandTable: readonly CommandSpec[] = [
   { id: 'unflattenFolder', label: 'Unflatten Folder', section: 'Layers', area: 'stack' },
   { id: 'flattenStack', label: 'Flatten Stack', section: 'Layers', area: 'stack' },
   {
+    id: 'findLayer',
+    label: 'Find Layer Under Cursor',
+    section: 'Layers',
+    area: 'stack',
+    hint: 'The next click on the mesh or the map chooses the layer on top there'
+  },
+  {
     id: 'openMaskStack',
     label: 'Open Mask as Stack',
     section: 'Layers',
@@ -260,6 +267,7 @@ export const MenuBar: readonly {
       'unflattenFolder',
       'flattenStack',
       '-',
+      'findLayer',
       'openMaskStack'
     ]
   },

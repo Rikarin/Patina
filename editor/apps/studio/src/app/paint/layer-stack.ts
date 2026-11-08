@@ -1,5 +1,6 @@
 import { provideIcons } from '@ng-icons/core';
 import {
+  matAdsClick,
   matBrush,
   matDeleteOutline,
   matFolder,
@@ -85,7 +86,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
     XuiSliderImports
   ],
   viewProviders: [
-    provideIcons({ matBrush, matDeleteOutline, matFolder, matFormatColorFill, matRedo, matSave, matTune, matUndo })
+    provideIcons({ matAdsClick, matBrush, matDeleteOutline, matFolder, matFormatColorFill, matRedo, matSave, matTune, matUndo })
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -121,6 +122,21 @@ const MaskMarks: Readonly<Record<string, string>> = {
         Add…
       </button>
       <span class="flex-1"></span>
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        class="w-6 shrink-0 px-0"
+        data-testid="layers-find"
+        [title]="commands.tooltip('findLayer')"
+        [attr.aria-label]="commands.label('findLayer')"
+        [attr.aria-pressed]="store.finding()"
+        [class.bg-selection]="store.finding()"
+        (click)="store.finding.set(!store.finding())"
+      >
+        <ng-icon xui size="sm" name="matAdsClick" />
+      </button>
       <button
         type="button"
         xuiButton

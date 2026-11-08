@@ -207,6 +207,8 @@ export class PaintStore {
   readonly idColours = signal<readonly StackIdColour[] | null>(null);
   /** The layer whose mask is taking its colour from the next click on the mesh or the map. */
   readonly picking = signal<string | null>(null);
+  /** Whether the next click on the mesh or the map chooses the layer on top there (#136). */
+  readonly finding = signal(false);
   /** The mesh maps layers want and no bake has given, which read as grey until one does. */
   readonly unbaked = signal<string | null>(null);
   /** Whether the viewport is wearing this stack, so a stroke can be made on the mesh. */
@@ -403,6 +405,48 @@ export class PaintStore {
       await this.pickColourAt(hit.u, hit.v);
     } else {
       this.picking.set(null);
+    }
+  }
+
+  /**
+   * Chooses the layer on top at a place on the map, 0 to 1 across and down, which the Server finds from what each
+   * layer covers there. Nothing found chooses nothing new.
+   */
+  async findLayerAt(u: number, v: number): Promise<void> {
+    this.finding.set(false);
+    const id = this.state()?.id;
+    if (!id) {
+      return;
+    }
+
+    try {
+      const client = await this.api();
+      const found = unwrap(
+        await client.POST('/api/v1/stacks/{id}/find', { params: { path: { id } }, body: { u, v } })
+      ).layer;
+      if (found) {
+        this.marked.set(new Set());
+        this.layer.set(found);
+        this.masking.set(false);
+      }
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+    }
+  }
+
+  /** Chooses the layer on top under a place on the mesh in the viewport. */
+  async findLayerOnMesh(stamp: StackStamp, aim: Aim): Promise<void> {
+    const client = await this.api();
+    const { width, height, camera } = aim;
+    const hit = unwrap(
+      await client.POST('/api/v1/viewport/pick', {
+        body: { x: stamp.x / width, y: stamp.y / height, camera, width, height }
+      })
+    );
+    if (hit.found) {
+      await this.findLayerAt(hit.u, hit.v);
+    } else {
+      this.finding.set(false);
     }
   }
 

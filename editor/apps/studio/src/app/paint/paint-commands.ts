@@ -43,6 +43,11 @@ export class PaintCommands {
     };
     this.commands.handle('smallerBrush', { enabled: () => this.paint.radius() > 1 && open(), run: () => resize(1 / RadiusStep) });
     this.commands.handle('largerBrush', { enabled: () => this.paint.radius() < MaximumRadius && open(), run: () => resize(RadiusStep) });
+    this.commands.handle('findLayer', {
+      enabled: () => open() && (this.paint.state()?.layers.length ?? 0) > 0,
+      checked: () => this.paint.finding(),
+      run: () => this.paint.finding.set(!this.paint.finding())
+    });
     this.commands.handle('pickIdColour', {
       enabled: () => open() && this.paint.layer() !== null,
       run: () => this.paint.picking.set(this.paint.layer())
