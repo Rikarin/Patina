@@ -210,6 +210,8 @@ test('the shelf shows each material as a picture, at a size of choice, and narro
 });
 
 test('a material with wear masks shows at once, and a bake sharpens it', async () => {
+  // The bake alone may take the 120 s its wait allows, so the test's own 120 s limit would cut it off first.
+  test.setTimeout(300_000);
   await launch();
   await newLibrary(app, window, join(scratch, 'Ember.ptlib'));
   await newProject(app, window, 'Housing', mesh);
