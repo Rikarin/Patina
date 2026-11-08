@@ -294,7 +294,7 @@ describe('ExportPane settings', () => {
     let library: unknown = { preset: 'unreal', folder: '/everything', dither: true, skipped: [], files: [] };
     const put = (request: Request) => {
       const path = new URL(request.url).pathname;
-      return request.json().then(body => {
+      return request.json().then((body: (typeof puts)[number]['body']) => {
         puts.push({ path, body });
         if (path.endsWith('/library/export')) {
           library = (body as { export: unknown }).export;
@@ -353,7 +353,7 @@ describe('ExportPane settings', () => {
         return Response.json({ id: path, name: path, path, export: path === 'alpha' ? kept : null });
       },
       'PUT library/project/export': request => {
-        void request.json().then(body => puts.push(body));
+        void request.json().then((body: (typeof puts)[number]) => puts.push(body));
         return Response.json({});
       }
     });
@@ -385,7 +385,7 @@ describe('ExportPane settings', () => {
         return Response.json({ id: path, name: path, path });
       },
       'PUT library/project/export': request => {
-        void request.json().then(body => puts.push(body));
+        void request.json().then((body: (typeof puts)[number]) => puts.push(body));
         return Response.json({});
       }
     });
