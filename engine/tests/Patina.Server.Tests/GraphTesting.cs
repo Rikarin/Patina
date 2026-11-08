@@ -100,6 +100,23 @@ static class GraphTesting {
         return (await response.Content.ReadFromJsonAsync(ContractsJsonContext.Default.GraphEditResult, token))!;
     }
 
+    /// <summary>Jumps through the undo history to a step, or to before every step.</summary>
+    public static async Task<GraphEditResult> JumpAsync(
+        this HttpClient client,
+        string id,
+        long? step,
+        CancellationToken token
+    ) {
+        using var response = await client.PostAsJsonAsync(
+            $"/api/v1/graphs/{id}/history",
+            new HistoryJump(step),
+            ContractsJsonContext.Default.HistoryJump,
+            token
+        );
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync(ContractsJsonContext.Default.GraphEditResult, token))!;
+    }
+
     public static async Task<GraphEventPage> EventsAsync(
         this HttpClient client,
         string id,

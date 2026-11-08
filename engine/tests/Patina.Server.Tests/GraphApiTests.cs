@@ -612,6 +612,62 @@ public sealed partial class GraphApiTests : IDisposable {
     }
 
     [Fact]
+    public async Task The_history_lists_its_steps_and_jumps_to_one_as_a_single_event() {
+        var (client, state) = await OpenAsync();
+        using (client) {
+            await client.EditAsync(state.Id, Token, new GraphSetValue(2, "Hue", [0.25f]));
+            await client.EditAsync(state.Id, Token, new GraphSetSetting("seed", "9"));
+            var third = await client.EditAsync(state.Id, Token, new GraphMoveNodes([new(1, 50, 60)]));
+            var listed = (await client.GetFromJsonAsync(
+                $"/api/v1/graphs/{state.Id}/history",
+                ContractsJsonContext.Default.HistoryList,
+                Token
+            ))!;
+            Assert.Equal(3, listed.Done.Count);
+            Assert.Empty(listed.Undone);
+            Assert.Equal(third.History.Step, listed.Done[^1].Id);
+            Assert.Equal(third.History.UndoLabel, listed.Done[^1].Label);
+
+            // Back to the first step: two undone, and followers hear one event.
+            var jumped = await client.JumpAsync(state.Id, listed.Done[0].Id, Token);
+            Assert.Equal(listed.Done[0].Id, jumped.History.Step);
+            Assert.Equal(third.Sequence + 1, jumped.Sequence);
+            var after = await client.StateAsync(state.Id, Token);
+            Assert.Equal("7", after.Settings["seed"]);
+            var page = await client.EventsAsync(state.Id, third.Sequence, Token);
+            var heard = Assert.Single(page.Events);
+            Assert.Equal((GraphEventKind.Undone, listed.Done[1].Label), (heard.Kind, heard.Label));
+            var back = (await client.GetFromJsonAsync(
+                $"/api/v1/graphs/{state.Id}/history",
+                ContractsJsonContext.Default.HistoryList,
+                Token
+            ))!;
+            Assert.Equal([listed.Done[0]], back.Done);
+            Assert.Equal([listed.Done[1], listed.Done[2]], back.Undone);
+
+            // Forward to the newest, then to before everything, which is the file as it was opened.
+            Assert.Equal(third.History.Step, (await client.JumpAsync(state.Id, third.History.Step, Token)).History.Step);
+            Assert.Equal("9", (await client.StateAsync(state.Id, Token)).Settings["seed"]);
+            var start = await client.JumpAsync(state.Id, null, Token);
+            Assert.Null(start.History.Step);
+            Assert.False(start.History.Dirty);
+            AssertSameDocument(state, await client.StateAsync(state.Id, Token));
+
+            // A new edit drops what was undone, and a jump to a dropped step changes nothing and says why.
+            await client.EditAsync(state.Id, Token, new GraphSetSetting("seed", "3"));
+            using var gone = await client.PostAsJsonAsync(
+                $"/api/v1/graphs/{state.Id}/history",
+                new HistoryJump(third.History.Step),
+                ContractsJsonContext.Default.HistoryJump,
+                Token
+            );
+            Assert.Equal(HttpStatusCode.Conflict, gone.StatusCode);
+            Assert.Contains("history-step-gone", await gone.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
+            Assert.Equal("3", (await client.StateAsync(state.Id, Token)).Settings["seed"]);
+        }
+    }
+
+    [Fact]
     public async Task Undo_and_redo_go_a_batch_at_a_time_and_cover_every_kind_of_edit() {
         var (client, state) = await OpenAsync();
         using (client) {

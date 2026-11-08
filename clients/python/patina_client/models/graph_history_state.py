@@ -30,6 +30,9 @@ class GraphHistoryState:
             dirty (bool): Whether the document differs from the file.
             undo_label (None | str | Unset): What undo would take back.
             redo_label (None | str | Unset): What redo would put back.
+            step (int | None | Unset): The newest step that stands, or null before the first. Each new step, undo and redo
+                changes it, so a client that
+                lists the history (HistoryList) reads it again when this changes.
      """
 
     can_undo: bool
@@ -37,6 +40,7 @@ class GraphHistoryState:
     dirty: bool
     undo_label: None | str | Unset = UNSET
     redo_label: None | str | Unset = UNSET
+    step: int | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -62,6 +66,12 @@ class GraphHistoryState:
         else:
             redo_label = self.redo_label
 
+        step: int | None | Unset
+        if isinstance(self.step, Unset):
+            step = UNSET
+        else:
+            step = self.step
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -74,6 +84,8 @@ class GraphHistoryState:
             field_dict["undoLabel"] = undo_label
         if redo_label is not UNSET:
             field_dict["redoLabel"] = redo_label
+        if step is not UNSET:
+            field_dict["step"] = step
 
         return field_dict
 
@@ -108,12 +120,23 @@ class GraphHistoryState:
         redo_label = _parse_redo_label(d.pop("redoLabel", UNSET))
 
 
+        def _parse_step(data: object) -> int | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(int | None | Unset, data)
+
+        step = _parse_step(d.pop("step", UNSET))
+
+
         graph_history_state = cls(
             can_undo=can_undo,
             can_redo=can_redo,
             dirty=dirty,
             undo_label=undo_label,
             redo_label=redo_label,
+            step=step,
         )
 
 

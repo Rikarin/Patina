@@ -111,6 +111,9 @@ from .graph_setting_definition import GraphSettingDefinition
 from .graph_state import GraphState
 from .graph_state_settings import GraphStateSettings
 from .graph_summary import GraphSummary
+from .history_jump import HistoryJump
+from .history_list import HistoryList
+from .history_step import HistoryStep
 from .host_info import HostInfo
 from .impacted_project import ImpactedProject
 from .job_event import JobEvent
@@ -359,6 +362,9 @@ __all__ = (
     "GraphState",
     "GraphStateSettings",
     "GraphSummary",
+    "HistoryJump",
+    "HistoryList",
+    "HistoryStep",
     "HostInfo",
     "ImpactedProject",
     "JobEvent",

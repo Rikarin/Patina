@@ -81,6 +81,15 @@ static class StackEndpoints {
             Conflict
         );
         Post("/{id}/redo", Redo, "RedoStack", "Puts back the newest undone batch.", Missing, Conflict);
+        Get("/{id}/history", GetHistory, "GetStackHistory", "The undo history as a list, for a client that shows it.", Missing);
+        Post(
+            "/{id}/history",
+            JumpHistory,
+            "JumpStackHistory",
+            "Undoes or redoes until a step is the newest that stands, as one event.",
+            Missing,
+            Conflict
+        );
         Post(
             "/{id}/save",
             Save,
@@ -265,6 +274,25 @@ static class StackEndpoints {
 
     static Results<Ok<StackEditResult>, ProblemHttpResult> Redo(string id, StackSessions sessions) =>
         Step(id, sessions, static session => session.Redo(), "redo");
+
+    static Results<Ok<HistoryList>, ProblemHttpResult> GetHistory(string id, StackSessions sessions) =>
+        sessions.Find(id) is { } session ? TypedResults.Ok(session.Steps) : NoSession(id);
+
+    static Results<Ok<StackEditResult>, ProblemHttpResult> JumpHistory(
+        string id,
+        HistoryJump jump,
+        StackSessions sessions
+    ) {
+        if (sessions.Find(id) is not { } session) {
+            return NoSession(id);
+        }
+
+        try {
+            return TypedResults.Ok(session.JumpTo(jump.Step));
+        } catch (HistoryStepGoneException e) {
+            return Refusals.Of(e, jump.Step);
+        }
+    }
 
     static async Task<Results<Ok<StackEditResult>, ProblemHttpResult>> Save(
         string id,

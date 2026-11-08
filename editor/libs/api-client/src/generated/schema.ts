@@ -865,6 +865,24 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/graphs/{id}/history': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The undo history as a list, for a client that shows it. */
+    get: operations['GetGraphHistory'];
+    put?: never;
+    /** Undoes or redoes until a step is the newest that stands, as one event. */
+    post: operations['JumpGraphHistory'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/graphs/{id}/save': {
     parameters: {
       query?: never;
@@ -1082,6 +1100,24 @@ export interface paths {
     put?: never;
     /** Puts back the newest undone batch. */
     post: operations['RedoStack'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/history': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The undo history as a list, for a client that shows it. */
+    get: operations['GetStackHistory'];
+    put?: never;
+    /** Undoes or redoes until a step is the newest that stands, as one event. */
+    post: operations['JumpStackHistory'];
     delete?: never;
     options?: never;
     head?: never;
@@ -2586,6 +2622,12 @@ export interface components {
       redoLabel?: null | string;
       /** @description Whether the document differs from the file. */
       dirty: boolean;
+      /**
+       * Format: int64
+       * @description The newest step that stands, or null before the first. Each new step, undo and redo changes it, so a client that
+       *     lists the history (HistoryList) reads it again when this changes.
+       */
+      step?: null | number;
     };
     /** @description Where a full-size picture is: `GET /api/v1/previews/{hash}`. Pixels never cross JSON. */
     GraphImage: {
@@ -2840,6 +2882,31 @@ export interface components {
       /** Format: int64 */
       revision: number;
       dirty: boolean;
+    };
+    /** @description Where to take an undo history: undoing or redoing until a step is the newest that stands. */
+    HistoryJump: {
+      /**
+       * Format: int64
+       * @description The step to stand at, or null to undo everything.
+       */
+      step?: null | number;
+    };
+    /** @description An undo history as a list, which is what a history pane shows. */
+    HistoryList: {
+      /** @description The steps that stand, oldest first. Undo takes back the last. */
+      done: components['schemas']['HistoryStep'][];
+      /** @description The steps undone, the next one redo puts back first. */
+      undone: components['schemas']['HistoryStep'][];
+    };
+    /** @description One undo step of a graph or a stack. */
+    HistoryStep: {
+      /**
+       * Format: int64
+       * @description What a jump names it by. Ids only grow, so a step that has gone is never mistaken for another.
+       */
+      id: number;
+      /** @description What it is called, as undo and redo call it. */
+      label: string;
     };
     /** @description The machine and runtime a process runs on. */
     HostInfo: {
@@ -7481,6 +7548,81 @@ export interface operations {
       };
     };
   };
+  GetGraphHistory: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HistoryList'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  JumpGraphHistory: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['HistoryJump'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphEditResult'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   SaveGraph: {
     parameters: {
       query?: {
@@ -8022,6 +8164,81 @@ export interface operations {
       cookie?: never;
     };
     requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackEditResult'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetStackHistory: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HistoryList'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  JumpStackHistory: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['HistoryJump'];
+      };
+    };
     responses: {
       /** @description OK */
       200: {

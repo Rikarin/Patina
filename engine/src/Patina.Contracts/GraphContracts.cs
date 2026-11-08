@@ -155,13 +155,32 @@ public sealed record GraphPreview(int Node, string Port, string Hash, int Width,
 /// <param name="UndoLabel">What undo would take back.</param>
 /// <param name="RedoLabel">What redo would put back.</param>
 /// <param name="Dirty">Whether the document differs from the file.</param>
+/// <param name="Step">
+///     The newest step that stands, or null before the first. Each new step, undo and redo changes it, so a client that
+///     lists the history (<see cref="HistoryList" />) reads it again when this changes.
+/// </param>
 public sealed record GraphHistoryState(
     bool CanUndo,
     bool CanRedo,
     string? UndoLabel,
     string? RedoLabel,
-    bool Dirty
+    bool Dirty,
+    long? Step = null
 );
+
+/// <summary>One undo step of a graph or a stack.</summary>
+/// <param name="Id">What a jump names it by. Ids only grow, so a step that has gone is never mistaken for another.</param>
+/// <param name="Label">What it is called, as undo and redo call it.</param>
+public sealed record HistoryStep(long Id, string Label);
+
+/// <summary>An undo history as a list, which is what a history pane shows.</summary>
+/// <param name="Done">The steps that stand, oldest first. Undo takes back the last.</param>
+/// <param name="Undone">The steps undone, the next one redo puts back first.</param>
+public sealed record HistoryList(IReadOnlyList<HistoryStep> Done, IReadOnlyList<HistoryStep> Undone);
+
+/// <summary>Where to take an undo history: undoing or redoing until a step is the newest that stands.</summary>
+/// <param name="Step">The step to stand at, or null to undo everything.</param>
+public sealed record HistoryJump(long? Step);
 
 /// <summary>What one evaluation did.</summary>
 /// <param name="Revision">The document revision it shows; during a drag this trails the newest.</param>

@@ -220,6 +220,35 @@ public sealed class GraphSession : FollowedSession<GraphEvent>, IFileSession {
     /// <returns>Null when there was nothing to redo.</returns>
     public GraphEditResult? Redo() => Walk(static e => e.Redo(), GraphEventKind.Redone);
 
+    /// <summary>The undo history as a list.</summary>
+    public HistoryList Steps {
+        get {
+            lock (Changing) {
+                return editor.Steps;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Undoes or redoes until a step is the newest that stands, as one event: followers see the document jump.
+    /// </summary>
+    /// <param name="step">The step, or null to undo everything.</param>
+    /// <exception cref="HistoryStepGoneException">The history does not hold the step, and nothing changed.</exception>
+    public GraphEditResult JumpTo(long? step) {
+        GraphEditResult result;
+        lock (Changing) {
+            var before = editor.Document;
+            if (editor.JumpTo(step) is not { } moved) {
+                return new(revision, Log.Sequence, editor.History, []);
+            }
+
+            result = Announce(moved.Kind, moved.Label, before, []);
+        }
+
+        wake();
+        return result;
+    }
+
     /// <summary>Writes the document to its file.</summary>
     /// <param name="force">Write even though the file changed behind this session.</param>
     /// <exception cref="GraphFileChangedException">The file is not what this session read or wrote.</exception>

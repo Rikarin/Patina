@@ -46,6 +46,52 @@ public sealed class GraphEditorPropertyTests {
                 }
             );
 
+    /// <summary>
+    ///     A jump to any step of the list gives the document that stepping there one undo or redo at a time gives, and
+    ///     leaves the list the same.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Property")]
+    public void A_jump_lands_where_single_steps_land() =>
+        Gen.Select(Gen.Int.Array[1, 12], Gen.Int[0, 12], Gen.Int[0, 12])
+            .Sample(static (batches, back, target) => {
+                    var editor = new GraphEditor(GraphTesting.Sample(), Registry);
+                    foreach (var seed in batches) {
+                        try {
+                            Edit(editor, new Random(seed), editor.Document);
+                        } catch (GraphEditRefusedException) { }
+                    }
+
+                    for (var i = 0; i < back; i++) {
+                        editor.Undo();
+                    }
+
+                    var list = editor.Steps;
+                    HistoryStep[] all = [..list.Done, ..list.Undone];
+                    var to = target < all.Length ? all[target].Id : (long?)null;
+                    var stepper = new GraphEditor(GraphTesting.Sample(), Registry);
+                    foreach (var seed in batches) {
+                        try {
+                            Edit(stepper, new Random(seed), stepper.Document);
+                        } catch (GraphEditRefusedException) { }
+                    }
+
+                    for (var i = 0; i < back; i++) {
+                        stepper.Undo();
+                    }
+
+                    var standing = to is null ? 0 : Array.FindIndex(all, step => step.Id == to) + 1;
+                    while (stepper.Steps.Done.Count > standing && stepper.Undo() is not null) { }
+
+                    while (stepper.Steps.Done.Count < standing && stepper.Redo() is not null) { }
+
+                    editor.JumpTo(to);
+                    Assert.Equal(GraphDocuments.Text(stepper.Document), GraphDocuments.Text(editor.Document));
+                    Assert.Equal(to, editor.History.Step);
+                    Assert.Equal<HistoryStep>(all, [..editor.Steps.Done, ..editor.Steps.Undone]);
+                }
+            );
+
     /// <summary>Whatever the history did, deltas take a client from one document to the next.</summary>
     [Fact]
     [Trait("Category", "Property")]

@@ -3348,6 +3348,106 @@
         }
       }
     },
+    "/api/v1/graphs/{id}/history": {
+      "get": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "The undo history as a list, for a client that shows it.",
+        "operationId": "GetGraphHistory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryList"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Undoes or redoes until a step is the newest that stands, as one event.",
+        "operationId": "JumpGraphHistory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HistoryJump"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphEditResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/graphs/{id}/save": {
       "post": {
         "tags": [
@@ -4052,6 +4152,106 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackEditResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/history": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "The undo history as a list, for a client that shows it.",
+        "operationId": "GetStackHistory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryList"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Undoes or redoes until a step is the newest that stands, as one event.",
+        "operationId": "JumpStackHistory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HistoryJump"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -7740,6 +7940,14 @@
           "dirty": {
             "type": "boolean",
             "description": "Whether the document differs from the file."
+          },
+          "step": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The newest step that stands, or null before the first. Each new step, undo and redo changes it, so a client that\nlists the history (HistoryList) reads it again when this changes.",
+            "format": "int64"
           }
         },
         "description": "What the undo history offers."
@@ -8341,6 +8549,63 @@
           }
         },
         "description": "An open graph, for a list."
+      },
+      "HistoryJump": {
+        "type": "object",
+        "properties": {
+          "step": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The step to stand at, or null to undo everything.",
+            "format": "int64"
+          }
+        },
+        "description": "Where to take an undo history: undoing or redoing until a step is the newest that stands."
+      },
+      "HistoryList": {
+        "required": [
+          "done",
+          "undone"
+        ],
+        "type": "object",
+        "properties": {
+          "done": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HistoryStep"
+            },
+            "description": "The steps that stand, oldest first. Undo takes back the last."
+          },
+          "undone": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HistoryStep"
+            },
+            "description": "The steps undone, the next one redo puts back first."
+          }
+        },
+        "description": "An undo history as a list, which is what a history pane shows."
+      },
+      "HistoryStep": {
+        "required": [
+          "id",
+          "label"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "What a jump names it by. Ids only grow, so a step that has gone is never mistaken for another.",
+            "format": "int64"
+          },
+          "label": {
+            "type": "string",
+            "description": "What it is called, as undo and redo call it."
+          }
+        },
+        "description": "One undo step of a graph or a stack."
       },
       "HostInfo": {
         "required": [

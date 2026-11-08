@@ -148,8 +148,18 @@ public sealed class StackEditor : ILayerStackDocument {
             redoable.Count > 0,
             undoable.Count > 0 ? undoable[^1].Label : null,
             redoable.Count > 0 ? redoable[^1].Label : null,
-            extendedSinceSave || (undoable.Count > 0 ? undoable[^1].Id : null) != savedStep
+            extendedSinceSave || (undoable.Count > 0 ? undoable[^1].Id : null) != savedStep,
+            undoable.Count > 0 ? undoable[^1].Id : null
         );
+
+    /// <summary>The history as a list: the steps that stand, oldest first, and the ones undone, the next redo first.</summary>
+    public HistoryList Steps => UndoHistory.List(undoable, redoable, static step => new(step.Id, step.Label));
+
+    /// <summary>Undoes or redoes until a step is the newest that stands, or undoes everything for null.</summary>
+    /// <returns>Which way it went and the last step it passed, or null when the history already stood there.</returns>
+    /// <exception cref="HistoryStepGoneException">The history does not hold the step.</exception>
+    public HistoryMove? JumpTo(long? step) =>
+        UndoHistory.Jump(undoable, redoable, static held => held.Id, step, Undo, Redo);
 
     /// <summary>The strokes that stand, oldest first.</summary>
     public IReadOnlyList<StackJournalEntry> Standing => [..undoable.SelectMany(static step => step.Strokes)];

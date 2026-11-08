@@ -1,5 +1,6 @@
 using CsCheck;
 using Patina.Contracts;
+using Patina.Server.Graphs;
 using Patina.Server.Stacks;
 using Vixen.Texturing.Layers;
 
@@ -127,6 +128,44 @@ public sealed class StackEditorPropertyTests {
         Assert.Throws<StackEditRefusedException>(() => session.Apply(new([new StackSetHeightNormal("Blurry")])));
         session.Undo();
         Assert.Equal("Smooth", session.State.HeightNormal);
+    }
+
+    /// <summary>
+    ///     A stack's history is a list with labels, and a jump through it is one event that lands where single steps
+    ///     would.
+    /// </summary>
+    [Fact]
+    public void A_stack_history_lists_its_steps_and_jumps_as_one_event() {
+        var session = new StackSession(
+            "/tmp/History.vxlayers",
+            StackDocuments.Text(Sample() with { Seed = 7 }),
+            static () => { }
+        );
+        session.Apply(new([new StackSetSeed(9)], "Change Seed"));
+        session.Apply(new([new StackSetSeed(11)]));
+        session.Apply(new([new StackSetHeightNormal("Sharp")]));
+        var list = session.Steps;
+        Assert.Equal(3, list.Done.Count);
+        Assert.Equal("Change Seed", list.Done[0].Label);
+        Assert.Equal(list.Done[^1].Id, session.State.History.Step);
+
+        var sequence = session.State.Sequence;
+        var jumped = session.JumpTo(list.Done[0].Id);
+        Assert.Equal(sequence + 1, jumped.Sequence);
+        Assert.Equal(9u, session.State.Seed);
+        Assert.Equal("Smooth", session.State.HeightNormal);
+        Assert.Equal<HistoryStep>([list.Done[1], list.Done[2]], session.Steps.Undone);
+
+        session.JumpTo(null);
+        Assert.Equal(7u, session.State.Seed);
+        Assert.Null(session.State.History.Step);
+        Assert.Equal(sequence + 2, session.State.Sequence);
+
+        Assert.Equal(sequence + 2, session.JumpTo(null).Sequence); // already there: no event
+        session.JumpTo(list.Done[2].Id);
+        Assert.Equal("Sharp", session.State.HeightNormal);
+        Assert.Equal(11u, session.State.Seed);
+        Assert.Throws<HistoryStepGoneException>(() => session.JumpTo(12345));
     }
 
     static MaskAsset Mask(StackEditor editor) =>

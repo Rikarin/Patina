@@ -256,6 +256,34 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     /// <returns>Null when there was nothing to redo.</returns>
     public StackEditResult? Redo() => Walk(static editor => editor.Redo(), GraphEventKind.Redone);
 
+    /// <summary>The undo history as a list.</summary>
+    public HistoryList Steps {
+        get {
+            lock (Changing) {
+                return editor.Steps;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Undoes or redoes until a step is the newest that stands, as one event: followers see the stack jump.
+    /// </summary>
+    /// <param name="step">The step, or null to undo everything.</param>
+    /// <exception cref="HistoryStepGoneException">The history does not hold the step, and nothing changed.</exception>
+    public StackEditResult JumpTo(long? step) {
+        StackEditResult result;
+        lock (Changing) {
+            if (editor.JumpTo(step) is not { } moved) {
+                return new(revision, Log.Sequence, editor.History);
+            }
+
+            result = Announce(moved.Kind, moved.Label, []);
+        }
+
+        wake();
+        return result;
+    }
+
     /// <summary>
     ///     What the document says now, and that everything the Worker has been told is about to be on
     ///     disk.
