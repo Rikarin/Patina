@@ -128,7 +128,8 @@ test('the bake settings are a section per map and stay in the project', async ()
   mkdirSync(shots, { recursive: true });
   await window.screenshot({ path: join(shots, 'bake-sections.png') });
 
-  // The project's own file has them a moment later, so a restart or another client starts from them.
+  // The project's own file has them a moment later, so a restart or another client starts from them. Edits further
+  // apart than the dialog's save delay are written one at a time, so it waits for the last of them, not the first.
   const projects = join(scratch, 'Game.ptlib', 'projects');
   const project = join(
     projects,
@@ -137,9 +138,9 @@ test('the bake settings are a section per map and stay in the project', async ()
   );
   await expect
     .poll(() => (existsSync(project) ? readFileSync(project, 'utf8') : ''), { timeout: 10_000 })
-    .toContain('rays: 128');
+    .toContain('groundPlane: true');
   const kept = readFileSync(project, 'utf8');
-  expect(kept).toContain('groundPlane: true');
+  expect(kept).toContain('rays: 128');
   expect(kept).not.toMatch(/maps:\n(\s+- [a-z]+\n)*\s+- height\n/u);
 
   await window.keyboard.press('Escape');
