@@ -181,6 +181,39 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
         Assert.Equal("tga", Assert.Single(read.Export.Files).Format);
     }
 
+    /// <summary>
+    ///     An export of the whole library belongs to no project, so the Server keeps its settings in
+    ///     <c>library.yaml</c>, and <c>GET /library</c> reads them back for any client: a scope change in one client loses
+    ///     nothing, and no project's file takes them (#227).
+    /// </summary>
+    [Fact]
+    public async Task A_library_exports_settings_are_kept_in_library_yaml_and_read_back() {
+        await client.PostAsJsonAsync("/api/v1/library/projects", new ProjectCreateRequest("Crate"), Token);
+        var settings = new ProjectExportSettings {
+            Preset = "godot",
+            Folder = "/exports/all",
+            Dither = true,
+            Skipped = ["trim", "body"]
+        };
+
+        using var kept = await client.PutAsJsonAsync(
+            "/api/v1/library/export",
+            new LibraryExportRequest(settings),
+            Token
+        );
+
+        Assert.Equal(HttpStatusCode.OK, kept.StatusCode);
+        var yaml = await File.ReadAllTextAsync(Path.Combine(server.Library, "library.yaml"), Token);
+        Assert.Contains("export:", yaml, StringComparison.Ordinal);
+        var read = await client.GetFromJsonAsync<LibraryInfo>("/api/v1/library", Token);
+        Assert.Equal(
+            ("godot", "/exports/all", true, "body,trim"),
+            (read!.Export!.Preset, read.Export.Folder, read.Export.Dither, string.Join(',', read.Export.Skipped))
+        );
+        var project = await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=crate", Token);
+        Assert.Null(project!.Export);
+    }
+
     [Fact]
     public async Task A_document_is_added_to_a_project_and_moves_to_another_mesh() {
         var (first, second) = (Path.Combine(files.FullName, "a.glb"), Path.Combine(files.FullName, "b.glb"));

@@ -8,9 +8,12 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
+from ..types import UNSET, Unset
 from typing import cast
 from uuid import UUID
 
+if TYPE_CHECKING:
+  from ..models.project_export_settings import ProjectExportSettings
 
 
 
@@ -36,6 +39,7 @@ class LibraryInfo:
             project_count (int): The projects in the index.
             asset_count (int): The shared assets in the index.
             indexing (bool): Whether a rescan is running; counts and pages may lag the files until it ends.
+            export (None | ProjectExportSettings | Unset):
      """
 
     id: UUID
@@ -49,6 +53,7 @@ class LibraryInfo:
     project_count: int
     asset_count: int
     indexing: bool
+    export: None | ProjectExportSettings | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -56,6 +61,7 @@ class LibraryInfo:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.project_export_settings import ProjectExportSettings # noqa: PLC0415
         id = str(self.id)
 
         name = self.name
@@ -82,6 +88,14 @@ class LibraryInfo:
 
         indexing = self.indexing
 
+        export: dict[str, Any] | None | Unset
+        if isinstance(self.export, Unset):
+            export = UNSET
+        elif isinstance(self.export, ProjectExportSettings):
+            export = self.export.to_dict()
+        else:
+            export = self.export
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -98,6 +112,8 @@ class LibraryInfo:
             "assetCount": asset_count,
             "indexing": indexing,
         })
+        if export is not UNSET:
+            field_dict["export"] = export
 
         return field_dict
 
@@ -105,6 +121,7 @@ class LibraryInfo:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.project_export_settings import ProjectExportSettings # noqa: PLC0415
         d = dict(src_dict)
         id = UUID(d.pop("id"))
 
@@ -133,6 +150,26 @@ class LibraryInfo:
 
         indexing = d.pop("indexing")
 
+        def _parse_export(data: object) -> None | ProjectExportSettings | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                export_type_1 = ProjectExportSettings.from_dict(data)
+
+
+
+                return export_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | ProjectExportSettings | Unset, data)
+
+        export = _parse_export(d.pop("export", UNSET))
+
+
         library_info = cls(
             id=id,
             name=name,
@@ -145,6 +182,7 @@ class LibraryInfo:
             project_count=project_count,
             asset_count=asset_count,
             indexing=indexing,
+            export=export,
         )
 
 

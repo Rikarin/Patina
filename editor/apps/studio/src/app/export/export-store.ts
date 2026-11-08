@@ -26,6 +26,17 @@ export interface FileChoice {
   format: string;
 }
 
+/**
+ * Whose export settings the dialog holds: a project's, by its path, kept in its project.yaml, or the whole library's,
+ * which belong to no project and are kept in library.yaml.
+ */
+export type ExportOwner = { readonly project: string } | 'library';
+
+/** Whether two owners are the same project, or both the library. */
+export function sameOwner(a: ExportOwner | null, b: ExportOwner | null): boolean {
+  return a === b || (typeof a === 'object' && typeof b === 'object' && a?.project === b?.project);
+}
+
 /** What the dialog sets, kept per project so the next export of it starts where the last one ended. */
 export interface ExportSettings {
   preset: string | null;
@@ -268,21 +279,28 @@ export class ExportStore {
     this.projectCount.set(page.total);
   }
 
-  /** What a project's export was last set to, from its project.yaml through the Server, or null for none. */
-  async settings(project: string): Promise<ProjectExportSettings | null> {
+  /**
+   * What an export was last set to, through the Server, or null for none: a project's from its project.yaml, the
+   * library's from library.yaml.
+   */
+  async settings(owner: ExportOwner): Promise<ProjectExportSettings | null> {
     const client = await this.api();
-    const contents = unwrap(await client.GET('/api/v1/library/project', { params: { query: { path: project } } }));
-    return contents.export ?? null;
+    if (owner === 'library') {
+      return unwrap(await client.GET('/api/v1/library')).export ?? null;
+    }
+    const query = { path: owner.project };
+    return unwrap(await client.GET('/api/v1/library/project', { params: { query } })).export ?? null;
   }
 
-  /** Keeps what a project's export is set to, in its project.yaml, where any client's next export starts. */
-  async keep(project: string, settings: ExportSettings): Promise<void> {
+  /** Keeps what an export is set to, in its owner's file, where any client's next export of it starts. */
+  async keep(owner: ExportOwner, settings: ExportSettings): Promise<void> {
     const client = await this.api();
-    unwrap(
-      await client.PUT('/api/v1/library/project/export', {
-        body: { project, export: storedOf(settings) }
-      })
-    );
+    const stored = storedOf(settings);
+    if (owner === 'library') {
+      unwrap(await client.PUT('/api/v1/library/export', { body: { export: stored } }));
+    } else {
+      unwrap(await client.PUT('/api/v1/library/project/export', { body: { project: owner.project, export: stored } }));
+    }
   }
 
   private async api(): Promise<PatinaClient> {

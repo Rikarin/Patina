@@ -50,13 +50,20 @@ public static class DocumentCodec {
     public static string Write(LibraryDocument document) =>
         YamlText.Write(
             new(
-                Pair(SchemaChain.VersionKey, YamlText.Plain(SchemaChain.Library.Current)),
-                Pair(IdKey, YamlText.Plain(document.Id.ToString())),
-                Pair(NameKey, YamlText.Text(document.Name)),
-                Pair("texelDensity", YamlText.Plain(document.TexelDensity)),
-                Pair("channels", YamlText.Texts(document.Channels)),
-                Pair("defaultShader", YamlText.Text(document.DefaultShader)),
-                Pair("exportTargets", YamlText.Texts(document.ExportTargets))
+                [
+                    Pair(SchemaChain.VersionKey, YamlText.Plain(SchemaChain.Library.Current)),
+                    Pair(IdKey, YamlText.Plain(document.Id.ToString())),
+                    Pair(NameKey, YamlText.Text(document.Name)),
+                    Pair("texelDensity", YamlText.Plain(document.TexelDensity)),
+                    Pair("channels", YamlText.Texts(document.Channels)),
+                    Pair("defaultShader", YamlText.Text(document.DefaultShader)),
+                    Pair("exportTargets", YamlText.Texts(document.ExportTargets)),
+                    ..Block(
+                        ExportKey,
+                        Canonical(document.Export),
+                        LibraryTreeJsonContext.Default.ProjectExportSettings
+                    )
+                ]
             )
         );
 
@@ -283,7 +290,7 @@ public static class DocumentCodec {
                 fields.Texts("channels"),
                 fields.Optional("defaultShader") ?? string.Empty,
                 fields.Texts("exportTargets")
-            )
+            ) { Export = ReadBlock(fields, ExportKey, LibraryTreeJsonContext.Default.ProjectExportSettings, new()) }
         );
 
     public static ReadDocument<ProjectDocument> ReadProject(string text, string path, SchemaChain? chain = null) =>

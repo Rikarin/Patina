@@ -91,6 +91,7 @@ const formats = [
 function setup(routes: Record<string, (request: Request) => Response> = {}) {
   const all: Record<string, (request: Request) => Response> = {
     'GET jobs': () => Response.json({ jobs: [], sequence: 0 }),
+    'GET library': () => Response.json({ id: 'l', name: 'Library' }),
     'GET export/presets': () =>
       Response.json({
         presets: [unreal],
@@ -210,6 +211,8 @@ describe('ExportPane', () => {
         return Response.json(build, { status: 202 });
       }
     });
+    // The library's own export settings are read first.
+    await settled(fixture);
     await settled(fixture);
     const page = fixture.nativeElement as HTMLElement;
 
@@ -226,6 +229,8 @@ describe('ExportPane', () => {
 
   it('lists the files of the preset in the formats that hold their lanes', async () => {
     const { fixture } = setup();
+    // The library's own export settings are read first.
+    await settled(fixture);
     await settled(fixture);
     const page = fixture.nativeElement as HTMLElement;
 
@@ -284,21 +289,121 @@ describe('ExportPane settings', () => {
     });
   });
 
-  it('keeps nothing for a library export, which belongs to no project', async () => {
-    const puts: unknown[] = [];
-    const { fixture } = setup({
-      'PUT library/project/export': () => {
-        puts.push(1);
-        return Response.json({});
+  it('keeps a library export’s settings in the library, where a scope change finds them again (#227)', async () => {
+    const puts: { path: string; body: { export: { folder: string | null; dither: boolean } } }[] = [];
+    let library: unknown = { preset: 'unreal', folder: '/everything', dither: true, skipped: [], files: [] };
+    const put = (request: Request) => {
+      const path = new URL(request.url).pathname;
+      return request.json().then(body => {
+        puts.push({ path, body });
+        if (path.endsWith('/library/export')) {
+          library = (body as { export: unknown }).export;
+        }
+      });
+    };
+    const { fixture, selection } = setup({
+      'GET library': () => Response.json({ id: 'l', name: 'Library', export: library }),
+      'GET library/project': () => Response.json({ id: 'p', name: 'Crate', path: 'crate' }),
+      'PUT library/export': request => {
+        void put(request);
+        return Response.json({ id: 'l', name: 'Library' });
+      },
+      'PUT library/project/export': request => {
+        void put(request);
+        return Response.json({ id: 'p', name: 'Crate', path: 'crate' });
       }
     });
     await settled(fixture);
+    await settled(fixture);
     const page = fixture.nativeElement as HTMLElement;
+    const folder = () => page.querySelector('[data-testid="export-folder"]')?.textContent.trim();
+    expect(folder()).toBe('/everything');
 
     page.querySelectorAll<HTMLInputElement>('[data-testid="export-file-on"]')[0]?.click();
     await new Promise(resolve => setTimeout(resolve, 600));
+    expect(puts.map(kept => kept.path)).toEqual(['/api/v1/library/export']);
+    expect(puts[0]?.body.export).toMatchObject({ folder: '/everything', dither: true });
 
-    expect(puts).toEqual([]);
+    // To a project that has kept nothing, which starts from its preset alone, and back.
+    selection.select({ kind: 'project', project: { id: 'p', name: 'Crate', path: 'crate' } } as never);
+    await settled(fixture);
+    await settled(fixture);
+    expect(folder()).toBe('The library’s exports folder');
+    selection.clear();
+    await settled(fixture);
+    await settled(fixture);
+
+    expect(folder()).toBe('/everything');
+    expect(page.querySelectorAll<HTMLInputElement>('[data-testid="export-file-on"]')[0]?.checked).toBe(false);
+    expect(puts.map(kept => kept.path)).toEqual(['/api/v1/library/export']);
+  });
+
+  it('starts a project that has kept nothing from its preset, never from the project before it (#227)', async () => {
+    const puts: { project: string; export: { folder: string | null; skipped: string[]; files: unknown[] } }[] = [];
+    const kept = {
+      preset: 'unreal',
+      folder: '/alpha/out',
+      dither: false,
+      skipped: ['Trim'],
+      files: [{ preset: 'unreal', template: 'T_{project}_R', enabled: false, format: 'png8' }]
+    };
+    const { fixture, selection } = setup({
+      'GET library/project': request => {
+        const path = new URL(request.url).searchParams.get('path');
+        return Response.json({ id: path, name: path, path, export: path === 'alpha' ? kept : null });
+      },
+      'PUT library/project/export': request => {
+        void request.json().then(body => puts.push(body));
+        return Response.json({});
+      }
+    });
+    const page = fixture.nativeElement as HTMLElement;
+    const folder = () => page.querySelector('[data-testid="export-folder"]')?.textContent.trim();
+    selection.select({ kind: 'project', project: { id: 'alpha', name: 'Alpha', path: 'alpha' } } as never);
+    await settled(fixture);
+    await settled(fixture);
+    expect(folder()).toBe('/alpha/out');
+
+    selection.select({ kind: 'project', project: { id: 'beta', name: 'Beta', path: 'beta' } } as never);
+    await settled(fixture);
+    await settled(fixture);
+    expect(folder()).toBe('The library’s exports folder');
+    expect(page.querySelectorAll<HTMLInputElement>('[data-testid="export-file-on"]')[1]?.checked).toBe(true);
+
+    page.querySelector<HTMLElement>('[data-testid="export-dither"] button, [data-testid="export-dither"]')?.click();
+    await new Promise(resolve => setTimeout(resolve, 600));
+
+    expect(puts).toHaveLength(1);
+    expect(puts[0]).toMatchObject({ project: 'beta', export: { folder: null, skipped: [], files: [] } });
+  });
+
+  it('sends a change still waiting to the project it was made in even when the next project changes too', async () => {
+    const puts: { project: string; export: { dither: boolean } }[] = [];
+    const { fixture, selection } = setup({
+      'GET library/project': request => {
+        const path = new URL(request.url).searchParams.get('path');
+        return Response.json({ id: path, name: path, path });
+      },
+      'PUT library/project/export': request => {
+        void request.json().then(body => puts.push(body));
+        return Response.json({});
+      }
+    });
+    const page = fixture.nativeElement as HTMLElement;
+    selection.select({ kind: 'project', project: { id: 'alpha', name: 'Alpha', path: 'alpha' } } as never);
+    await settled(fixture);
+    await settled(fixture);
+    page.querySelector<HTMLElement>('[data-testid="export-dither"] button, [data-testid="export-dither"]')?.click();
+    selection.select({ kind: 'project', project: { id: 'beta', name: 'Beta', path: 'beta' } } as never);
+    await settled(fixture);
+    await settled(fixture);
+    page.querySelectorAll<HTMLInputElement>('[data-testid="export-file-on"]')[0]?.click();
+    await new Promise(resolve => setTimeout(resolve, 600));
+
+    expect(puts.map(kept => [kept.project, kept.export.dither])).toEqual([
+      ['alpha', true],
+      ['beta', false]
+    ]);
   });
 
   it('turns kept settings back into the dialog’s, and the dialog’s into kept ones, losing nothing', () => {

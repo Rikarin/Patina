@@ -368,6 +368,32 @@ public sealed class LibraryFolderTests : IDisposable {
     }
 
     /// <summary>
+    ///     An export of the whole library keeps its settings in library.yaml, which a library opened again after its
+    ///     cache is deleted reads back, and the library's other settings are as they were (#227).
+    /// </summary>
+    [Fact]
+    public void A_librarys_export_settings_outlive_the_cache_in_library_yaml() {
+        var before = library.Document;
+        Assert.Null(before.Export);
+        Assert.DoesNotContain("export:", File.ReadAllText(Path.Combine(root, LibraryLayout.LibraryFile)));
+
+        library.SetExport(new() { Preset = "unreal", Folder = "/all", Skipped = ["Shade"] });
+        library.Dispose();
+        Directory.Delete(Path.Combine(root, LibraryLayout.CacheFolder), true);
+        using var again = OpenLibrary.Open(root);
+
+        Assert.Equal(
+            ("unreal", "/all", "Shade"),
+            (again.Document.Export!.Preset, again.Document.Export.Folder, again.Document.Export.Skipped[0])
+        );
+        Assert.Equal(
+            (before.Id, before.Name, string.Join(',', before.Channels)),
+            (again.Id, again.Document.Name, string.Join(',', again.Document.Channels))
+        );
+        Assert.Equal("unreal", again.Describe().Export!.Preset);
+    }
+
+    /// <summary>
     ///     A project keeps how its viewport was left, every setting of it, through its file: a project that never set
     ///     one has none, and its file says nothing about the viewport.
     /// </summary>

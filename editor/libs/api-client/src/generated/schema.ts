@@ -436,6 +436,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/export': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Keeps what an export of the whole library is set to in library.yaml, where any client's next library export starts. GET /library reads it back. */
+    put: operations['SetLibraryExport'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/project/export': {
     parameters: {
       query?: never;
@@ -3192,6 +3209,11 @@ export interface components {
       /** @description Whether a client has asked for it to stop. */
       cancelRequested: boolean;
     };
+    /** @description The body of `PUT /api/v1/library/export`. */
+    LibraryExportRequest: {
+      /** @description What an export of the whole library is set to now. */
+      export: components['schemas']['ProjectExportSettings'];
+    };
     /** @description The reply to `GET /api/v1/library`: what opening a library reads, and nothing more. */
     LibraryInfo: {
       /**
@@ -3231,6 +3253,7 @@ export interface components {
       assetCount: number;
       /** @description Whether a rescan is running; counts and pages may lag the files until it ends. */
       indexing: boolean;
+      export?: null | components['schemas']['ProjectExportSettings'];
     };
     /** @description Where things went. */
     LibraryMoved: {
@@ -6627,6 +6650,57 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProjectMeshChange'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetLibraryExport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LibraryExportRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryInfo'];
         };
       };
       /** @description Bad Request */

@@ -14,6 +14,10 @@ namespace Patina.Contracts;
 /// <param name="ProjectCount">The projects in the index.</param>
 /// <param name="AssetCount">The shared assets in the index.</param>
 /// <param name="Indexing">Whether a rescan is running; counts and pages may lag the files until it ends.</param>
+/// <param name="Export">
+///     What an export of the whole library was last set to, from <c>library.yaml</c>, or null. A project's export is
+///     in its own contents.
+/// </param>
 public sealed record LibraryInfo(
     Guid Id,
     string Name,
@@ -25,7 +29,8 @@ public sealed record LibraryInfo(
     IReadOnlyList<string> ExportTargets,
     int ProjectCount,
     int AssetCount,
-    bool Indexing
+    bool Indexing,
+    ProjectExportSettings? Export
 );
 #pragma warning restore SK7005
 
@@ -239,6 +244,10 @@ public sealed record ProjectExportSettings {
 /// <param name="Project">The project, below <c>projects/</c>.</param>
 /// <param name="Export">What its export is set to now.</param>
 public sealed record ProjectExportRequest(string Project, ProjectExportSettings Export);
+
+/// <summary>The body of <c>PUT /api/v1/library/export</c>.</summary>
+/// <param name="Export">What an export of the whole library is set to now.</param>
+public sealed record LibraryExportRequest(ProjectExportSettings Export);
 
 /// <summary>The body of <c>PUT /api/v1/library/project/viewport</c>.</summary>
 /// <param name="Project">The project, below <c>projects/</c>.</param>
