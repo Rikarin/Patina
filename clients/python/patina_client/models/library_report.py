@@ -41,7 +41,6 @@ class LibraryReport:
             nothing (None | str | Unset): Why a finished build wrote nothing, or null when it wrote something or something
                 failed.
             current (None | str | Unset): What a running build is on, for a person: a project and an output or a preset.
-                Null once it ends.
      """
 
     build: str

@@ -8374,7 +8374,7 @@
               "null",
               "string"
             ],
-            "description": "What a running build is on, for a person: a project and an output or a preset. Null once it ends."
+            "description": "What a running build is on, for a person: a project and an output or a preset."
           }
         },
         "description": "What a whole build did."

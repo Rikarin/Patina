@@ -2880,7 +2880,7 @@ export interface components {
       folder: string;
       /** @description Why a finished build wrote nothing, or null when it wrote something or something failed. */
       nothing?: null | string;
-      /** @description What a running build is on, for a person: a project and an output or a preset. Null once it ends. */
+      /** @description What a running build is on, for a person: a project and an output or a preset. */
       current?: null | string;
     };
     /** @description A graph rendered to a picture a brush stamps. */
