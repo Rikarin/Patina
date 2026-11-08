@@ -2,6 +2,7 @@ import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrollin
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   computed,
   effect,
   inject,
@@ -17,6 +18,7 @@ import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { XuiSkeletonImports } from '@xui/skeleton';
 import { XuiSpinnerImports } from '@xui/spinner';
+import { Commands } from '../core/commands';
 import { desktop } from '../core/desktop';
 import { NewGraphDialog } from '../graph/new-graph-dialog';
 import { LibrarySelection } from './library-selection';
@@ -61,7 +63,7 @@ function isAsset(row: LibraryRow): row is AssetSummary {
     XuiSpinnerImports
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'flex h-full min-h-0 flex-col' },
+  host: { class: 'flex h-full min-h-0 flex-col', 'data-commands': 'library' },
   template: `
     @let state = store.state();
     @switch (state.kind) {
@@ -264,6 +266,8 @@ function isAsset(row: LibraryRow): row is AssetSummary {
 })
 export class LibraryPane {
   protected readonly store = inject(LibraryStore);
+  private readonly commands = inject(Commands);
+  private readonly destroyRef = inject(DestroyRef);
   protected readonly treeStore = inject(LibraryTreeStore);
   private readonly project = inject(ProjectStore);
   private readonly selection = inject(LibrarySelection);
@@ -372,13 +376,9 @@ export class LibraryPane {
         untracked(() => this.newProjectIn(this.treeStore.target()));
       }
     });
-    desktop()?.onCommand(command => {
-      if (command === 'newProject') {
-        this.newProjectIn(this.treeStore.target());
-      } else if (command === 'newFolder') {
-        void this.newFolder();
-      }
-    });
+    const ready = () => this.store.state().kind === 'ready';
+    this.commands.handle('newProject', { enabled: ready, run: () => this.newProjectIn(this.treeStore.target()) }, this.destroyRef);
+    this.commands.handle('newFolder', { enabled: ready, run: () => this.newFolder() }, this.destroyRef);
 
     // The list stops at its last row, so an index past it after a smaller result set has no row to land on.
     effect(() => {

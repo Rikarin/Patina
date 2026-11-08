@@ -1,5 +1,15 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  linkedSignal,
+  signal,
+  untracked
+} from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { XuiDialogImports } from '@xui/dialog';
 import { type XuiDockManagerLayout, XuiDockManagerImports } from '@xui/dock-manager';
@@ -7,24 +17,39 @@ import { XuiInputImports } from '@xui/input';
 import { BakePane } from './bake/bake-pane';
 import { BakeSettings } from './bake/bake-settings';
 import { BakeStore } from './bake/bake-store';
+import { menuModel } from './core/app-menu';
+import { type CommandHandler, Commands } from './core/commands';
 import { desktop } from './core/desktop';
 import { DiagnosticsDialog } from './core/diagnostics-dialog';
 import { EditCommands } from './core/edit-commands';
+import { PaintCommands } from './paint/paint-commands';
 import { FileConflictDialog } from './core/file-conflict-dialog';
-import { Shortcuts } from './core/shortcuts';
+import { HistoryPane } from './core/history-pane';
+import { ShortcutsDialog } from './core/shortcuts-dialog';
 import { StartPane } from './core/start-pane';
 import { SystemStatus } from './core/system-status';
 import { ViewOptions } from './core/view-options';
-import { keepLayout, layoutOf, resetLayout, showing } from './core/workspaces';
+import {
+  chooseLayout,
+  chosenLayout,
+  holds,
+  keepLayout,
+  layoutNames,
+  layoutOf,
+  resetLayout,
+  showing
+} from './core/workspaces';
 import { ExportPane } from './export/export-pane';
 import { Inspector } from './graph/graph-inspector';
 import { GraphPane } from './graph/graph-pane';
+import { GraphStore } from './graph/graph-store';
 import { ImageMaterialPane } from './graph/image-material-pane';
 import { NodeLibrary } from './graph/node-library';
 import { TextureView } from './graph/texture-view';
 import { LibraryPane } from './library/library-pane';
 import { ProjectSettingsDialog } from './library/project-settings-dialog';
 import { TextureSets } from './paint/texture-sets';
+import { ProjectCommands } from './library/project-commands';
 import { ProjectStore } from './library/project-store';
 import { LayerStack } from './paint/layer-stack';
 import { MaterialShelf } from './paint/material-shelf';
@@ -40,6 +65,8 @@ import { ViewportPane } from './viewport/viewport-pane';
     BakePane,
     ExportPane,
     GraphPane,
+    HistoryPane,
+    ShortcutsDialog,
     ImageMaterialPane,
     Inspector,
     NodeLibrary,
@@ -64,7 +91,7 @@ import { ViewportPane } from './viewport/viewport-pane';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'flex h-full flex-col',
-    '(document:keydown)': 'shortcuts.press($event)',
+    '(document:keydown)': 'commands.press($event)',
     '(document:dragover)': 'allowFiles($event)',
     '(document:drop)': 'dropFiles($event)'
   },
@@ -102,7 +129,15 @@ import { ViewportPane } from './viewport/viewport-pane';
         }
       </div>
       <div class="flex shrink-0 items-center gap-1">
-        <button type="button" xuiButton size="sm" variant="ghost" data-testid="open-bake" (click)="baking.set(true)">
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          data-testid="open-bake"
+          [title]="commands.tooltip('bake')"
+          (click)="commands.run('bake')"
+        >
           Bake…
         </button>
         <button
@@ -112,8 +147,8 @@ import { ViewportPane } from './viewport/viewport-pane';
           variant="ghost"
           data-testid="quick-bake"
           [disabled]="bakeSettings.blocked() !== null"
-          [title]="bakeSettings.blocked() ?? 'Bake with the project’s bake settings, without the dialog'"
-          (click)="quickBake()"
+          [title]="bakeSettings.blocked() ?? commands.tooltip('quickBake')"
+          (click)="commands.run('quickBake')"
         >
           {{ bakes.busy() ? 'Baking ' + bakePercent() + '%' : 'Quick Bake' }}
         </button>
@@ -123,7 +158,8 @@ import { ViewportPane } from './viewport/viewport-pane';
           size="sm"
           variant="ghost"
           data-testid="open-export"
-          (click)="exporting.set(true)"
+          [title]="commands.tooltip('export')"
+          (click)="commands.run('export')"
         >
           Export…
         </button>
@@ -169,6 +205,9 @@ import { ViewportPane } from './viewport/viewport-pane';
       </ng-template>
       <ng-template xuiDockContent="paint">
         <ptn-paint />
+      </ng-template>
+      <ng-template xuiDockContent="history">
+        <ptn-history />
       </ng-template>
     </xui-dock-manager>
 
@@ -300,29 +339,7 @@ import { ViewportPane } from './viewport/viewport-pane';
 
     <ptn-diagnostics [(open)]="diagnosing" />
 
-    <xui-dialog size="sm" title="Keyboard Shortcuts" [(open)]="keys">
-      <xui-dialog-body>
-        <div class="flex flex-col gap-1" data-testid="shortcuts">
-          @for (shortcut of shortcuts.all(); track shortcut.id) {
-            <div class="flex items-center gap-2">
-              <span class="min-w-0 flex-1 text-sm">{{ shortcut.label }}</span>
-              <button
-                type="button"
-                xuiButton
-                size="sm"
-                [attr.aria-label]="'Change the key for ' + shortcut.label"
-                (keydown)="bind($event, shortcut.id)"
-              >
-                {{ shortcut.key.toUpperCase() }}
-              </button>
-            </div>
-          }
-        </div>
-      </xui-dialog-body>
-      <xui-dialog-footer>
-        <button type="button" xuiButton variant="ghost" (click)="shortcuts.reset()">Reset</button>
-      </xui-dialog-footer>
-    </xui-dialog>
+    <ptn-shortcuts [(open)]="keys" />
 
     <xui-dialog size="sm" title="Save As" [open]="project.savingAs()" (openChange)="project.savingAs.set($event)">
       <form (submit)="saveAs($event, saveName.value)">
@@ -390,6 +407,24 @@ import { ViewportPane } from './viewport/viewport-pane';
         <button type="button" xuiButton color="primary" (click)="project.resolveQuitting('save')">Save All</button>
       </xui-dialog-footer>
     </xui-dialog>
+
+    <xui-dialog
+      size="sm"
+      title="Close Project?"
+      [open]="project.closingProject() !== null"
+      (openChange)="$event || project.resolveClosingProject('cancel')"
+    >
+      <xui-dialog-body data-testid="project-closing"
+        >Some documents of this project have changes that are not saved.</xui-dialog-body
+      >
+      <xui-dialog-footer>
+        <button type="button" xuiButton variant="ghost" (click)="project.resolveClosingProject('cancel')">Cancel</button>
+        <button type="button" xuiButton variant="ghost" (click)="project.resolveClosingProject('discard')">
+          Don't Save
+        </button>
+        <button type="button" xuiButton color="primary" (click)="project.resolveClosingProject('save')">Save All</button>
+      </xui-dialog-footer>
+    </xui-dialog>
   `
 })
 export class App {
@@ -404,7 +439,9 @@ export class App {
   });
   private readonly edit = inject(EditCommands);
   private readonly options = inject(ViewOptions);
-  protected readonly shortcuts = inject(Shortcuts);
+  protected readonly commands = inject(Commands);
+  private readonly graph = inject(GraphStore);
+  private readonly destroyRef = inject(DestroyRef);
   protected readonly keys = signal(false);
   protected readonly diagnosing = signal(false);
   protected readonly paint = inject(PaintStore);
@@ -413,14 +450,16 @@ export class App {
   protected readonly baking = signal(false);
 
   /** Bakes with the project's settings. A refusal opens the dialog, which says why. */
-  protected async quickBake(): Promise<void> {
+  private async quickBake(): Promise<void> {
     if (!(await this.bakeSettings.bake())) {
       this.baking.set(true);
     }
   }
   protected readonly exporting = signal(false);
+  /** Which of its named layouts the workspace in front is in. */
+  private readonly chosen = linkedSignal(() => chosenLayout(this.project.workspace()));
   /** The layout of what is in front. Each kind of document keeps its own (ADR 0012). */
-  protected readonly layout = linkedSignal(() => layoutOf(this.project.workspace()));
+  protected readonly layout = linkedSignal(() => layoutOf(this.project.workspace(), this.chosen()));
   /** What is open, which is also what the window says. */
   protected readonly title = computed(() => {
     const state = this.status.state();
@@ -464,46 +503,28 @@ export class App {
 
     const bridge = desktop();
     bridge?.onFullScreen(fullScreen => this.fullScreen.set(fullScreen));
-    bridge?.onCommand(command => {
-      if (this.edit.run(command)) {
-        return;
-      }
-
-      if (command === 'save') {
-        void this.project.saveActive();
-      } else if (command === 'saveAs') {
-        this.project.savingAs.set(true);
-      } else if (command === 'import') {
-        void bridge.openFile(this.status.pictures()).then(path => (path ? this.project.importFiles([path]) : undefined));
-      } else if (command === 'export') {
-        this.exporting.set(true);
-      } else if (command === 'reloadMesh') {
-        void this.project.reloadMesh();
-      } else if (command === 'projectSettings') {
-        this.project.settingsOpen.set(this.project.current() !== null);
-      } else if (command === 'toggleStats') {
-        this.options.toggleStats();
-      } else if (command === 'resetLayout') {
-        this.layout.set(resetLayout(this.project.workspace()));
-      } else if (command === 'shortcuts') {
-        this.keys.set(true);
-      } else if (command === 'diagnostics') {
-        this.diagnosing.set(true);
+    this.edit.install();
+    inject(PaintCommands).install();
+    this.installCommands();
+    bridge?.onCommand((command, accelerator) => this.commands.run(command, accelerator ? 'accelerator' : 'menu'));
+    // The native menus are the command table's, with what is on now: sent whenever an answer changes (#188).
+    let sent = '';
+    effect(() => {
+      const menus = menuModel(this.commands, {
+        stack: this.paint.state() !== null && this.project.active() !== null && !this.project.graphInFront(),
+        graph: this.project.graphInFront() && this.graph.document() !== null,
+        viewport: holds(this.layout(), 'viewport')
+      });
+      const text = JSON.stringify(menus);
+      if (text !== sent) {
+        sent = text;
+        bridge?.setMenu(menus);
       }
     });
     if (bridge) {
       effect(() => {
         bridge.setTitle(this.title());
       });
-    }
-  }
-
-  /** The next key pressed in a row of the shortcuts dialog becomes that row's. */
-  protected bind(event: KeyboardEvent, id: string): void {
-    if (event.key.length === 1) {
-      event.preventDefault();
-      event.stopPropagation();
-      this.shortcuts.rebind(id, event.key);
     }
   }
 
@@ -537,7 +558,50 @@ export class App {
   }
 
   protected keep(layout: XuiDockManagerLayout): void {
-    keepLayout(this.project.workspace(), layout);
+    keepLayout(this.project.workspace(), layout, this.chosen());
     this.layout.set(layout);
+  }
+
+  /**
+   * The commands the shell answers: dialogs, layouts and help. The File commands about the document in front are
+   * {@link ProjectCommands}'.
+   */
+  private installCommands(): void {
+    const project = this.project;
+    const handle = (id: string, handler: CommandHandler) => this.commands.handle(id, handler, this.destroyRef);
+    const bridge = desktop();
+    inject(ProjectCommands).install();
+
+    if (bridge) {
+      handle('newLibrary', { run: () => bridge.newLibrary() });
+      handle('openLibrary', { run: () => bridge.openLibrary() });
+    }
+
+    handle('export', { run: () => this.exporting.set(true) });
+    handle('bake', { run: () => this.baking.set(true) });
+    handle('quickBake', { enabled: () => this.bakeSettings.blocked() === null, run: () => this.quickBake() });
+    handle('toggleStats', { checked: () => this.options.stats(), run: () => this.options.toggleStats() });
+    for (const [at, id] of ['layout1', 'layout2', 'layout3'].entries()) {
+      handle(id, {
+        enabled: () => at < layoutNames(project.workspace()).length,
+        label: () => layoutNames(project.workspace())[at] ?? null,
+        checked: () => this.chosen() === at && at < layoutNames(project.workspace()).length,
+        run: () => {
+          chooseLayout(project.workspace(), at);
+          this.chosen.set(at);
+        }
+      });
+    }
+
+    handle('resetLayout', { run: () => this.layout.set(resetLayout(project.workspace(), this.chosen())) });
+    handle('showHistory', {
+      enabled: () => holds(this.layout(), 'history'),
+      run: () => this.layout.update(layout => showing(layout, 'history'))
+    });
+    handle('shortcuts', { run: () => this.keys.set(true) });
+    handle('diagnostics', { run: () => this.diagnosing.set(true) });
+    handle('reportProblem', {
+      run: () => globalThis.open('https://github.com/Rikarin/Patina/issues/new', '_blank')
+    });
   }
 }

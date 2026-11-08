@@ -1,11 +1,22 @@
 import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
-import { ChangeDetectionStrategy, Component, type ElementRef, computed, inject, output, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  type ElementRef,
+  computed,
+  inject,
+  output,
+  signal,
+  viewChild
+} from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiContextMenuImports } from '@xui/context-menu';
 import { XuiDialogImports } from '@xui/dialog';
 import { XuiInputImports } from '@xui/input';
 import { XuiMenuImports } from '@xui/menu';
+import { Commands } from '../core/commands';
 import { desktop } from '../core/desktop';
 import { documentKindName } from '../core/labels';
 import { MenuKeys } from '../core/menu-keys';
@@ -339,6 +350,27 @@ export class LibraryTree {
   protected readonly dropInto = signal<string | null>(null);
   protected readonly deleting = signal<Extract<TreeRow, { kind: 'folder' }> | null>(null);
   protected readonly deletingProject = signal<TreeRow | null>(null);
+  private readonly commands = inject(Commands);
+
+  /** The folder chosen in the tree, which Edit > Delete deletes while the Library has focus. */
+  private readonly chosenFolder = computed(
+    () =>
+      this.tree
+        .rows()
+        .find((row): row is Extract<TreeRow, { kind: 'folder' }> => row.kind === 'folder' && this.tree.selected().has(row.path)) ??
+      null
+  );
+
+  constructor() {
+    this.commands.handle(
+      'delete',
+      {
+        enabled: () => this.commands.focus().area === 'library' && this.chosenFolder() !== null,
+        run: () => this.deleting.set(this.chosenFolder())
+      },
+      inject(DestroyRef)
+    );
+  }
   protected readonly canReveal = computed(() => desktop() !== undefined);
   private dragged: readonly string[] = [];
 

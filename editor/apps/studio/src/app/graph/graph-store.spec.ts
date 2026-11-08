@@ -787,29 +787,3 @@ describe('going into a compound', () => {
     expect(test.store.session().kind).toBe('none');
   });
 });
-
-describe('the shortcuts', () => {
-  const press = (key: string, modifiers: KeyboardEventInit = { ctrlKey: true }) =>
-    new KeyboardEvent('keydown', { key, cancelable: true, ...modifiers });
-
-  it('undoes, redoes and saves, and claims nothing else', async () => {
-    const test = harness();
-    test.routes['POST graphs/g1/redo'] = () => editReply(2);
-    await test.store.open('a.vxtexgraph');
-
-    expect(test.store.shortcut(press('a'))).toBe(false);
-    expect(test.store.shortcut(press('z', {}))).toBe(false);
-
-    const undo = press('z');
-    expect(test.store.shortcut(undo)).toBe(true);
-    expect(undo.defaultPrevented).toBe(true);
-    expect(test.store.shortcut(press('z', { metaKey: true, shiftKey: true }))).toBe(true);
-    expect(test.store.shortcut(press('s'))).toBe(true);
-    await vi.waitFor(() => {
-      const keys = test.requests.map(request => request.key);
-      expect(keys).toContain('POST graphs/g1/undo');
-      expect(keys).toContain('POST graphs/g1/redo');
-      expect(keys).toContain('POST graphs/g1/save');
-    });
-  });
-});

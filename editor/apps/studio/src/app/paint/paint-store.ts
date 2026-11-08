@@ -2,6 +2,7 @@ import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core'
 import {
   ApiError,
   type Connection,
+  type HistoryList,
   type PatinaClient,
   type StackBrush,
   type StackClip,
@@ -647,6 +648,35 @@ export class PaintStore {
       }
 
       return false;
+    }
+  }
+
+  /** The undo history as a list, or null with no stack open. */
+  async historySteps(): Promise<HistoryList | null> {
+    const id = this.state()?.id;
+    if (!id) {
+      return null;
+    }
+
+    const client = await this.api();
+    return unwrap(await client.GET('/api/v1/stacks/{id}/history', { params: { path: { id } } }));
+  }
+
+  /** Undoes or redoes until a step is the newest that stands, or undoes everything for null. */
+  async jumpTo(step: number | null): Promise<void> {
+    const id = this.state()?.id;
+    if (!id) {
+      return;
+    }
+
+    this.startAction();
+    try {
+      await this.drained(); // a jump that overtook the end of a drag would leave the rest of it standing
+      const client = await this.api();
+      unwrap(await client.POST('/api/v1/stacks/{id}/history', { params: { path: { id } }, body: { step } }));
+      await this.refresh();
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
     }
   }
 

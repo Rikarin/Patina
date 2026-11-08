@@ -2,86 +2,52 @@ import { Injectable, inject } from '@angular/core';
 import { GraphStore } from '../graph/graph-store';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore } from '../paint/paint-store';
+import { Commands } from './commands';
 import { desktop, type TextEdit } from './desktop';
 
-const TextFields = 'input, textarea, select, [contenteditable=true]';
-
-/** What each Edit command is called in a text field. */
-const TextCommands: Readonly<Record<string, TextEdit>> = {
-  undo: 'undo',
-  redo: 'redo',
-  delete: 'delete',
-  selectAll: 'selectAll',
-  cut: 'cut',
-  copy: 'copy',
-  paste: 'paste'
-};
-
-/** The keys a pane already answers, so that a menu item and its key cannot come to mean different things. */
-const PaneKeys: Readonly<Record<string, KeyboardEventInit>> = {
-  delete: { key: 'Delete' },
-  selectAll: { key: 'a', metaKey: true, ctrlKey: true }
-};
+/** The Edit commands a text field answers itself, by what the browser's editor calls them. */
+const TextEdits: readonly TextEdit[] = ['undo', 'redo', 'cut', 'copy', 'paste', 'delete', 'selectAll'];
 
 /**
- * The Edit menu. The menu takes these keys before a page sees them, so this is the one place that says what they mean
- * for what is in front: a text field keeps its own behaviour, and otherwise it is the open document's.
+ * The Edit menu's own handlers: a text field's edits, and Undo and Redo for the document in front. Panes register what
+ * the rest mean for them (layers in the stack, nodes in a graph, a folder in the Library), so this is no longer where
+ * each command is routed: {@link Commands} runs the first handler that would act.
  */
 @Injectable({ providedIn: 'root' })
 export class EditCommands {
+  private readonly commands = inject(Commands);
   private readonly graph = inject(GraphStore);
   private readonly paint = inject(PaintStore);
   private readonly project = inject(ProjectStore);
+  private installed = false;
 
-  /** @returns Whether the command was an Edit command. */
-  run(command: string): boolean {
-    const text = TextCommands[command];
-    if (!text) {
-      return false;
+  /** Registers the handlers, once. */
+  install(): void {
+    if (this.installed) {
+      return;
     }
 
-    const focus = globalThis.document.activeElement;
-    if (focus?.closest(TextFields)) {
-      desktop()?.editText(text);
-    } else if (command === 'undo' || command === 'redo') {
-      this.walk(command);
-    } else if (command === 'copy' || command === 'cut' || command === 'paste') {
-      this.clip(command);
-    } else {
-      const init = PaneKeys[command];
-      (focus ?? globalThis.document.body).dispatchEvent(new KeyboardEvent('keydown', { ...init, bubbles: true }));
+    this.installed = true;
+    for (const edit of TextEdits) {
+      this.commands.handle(edit, {
+        text: true,
+        // Undo in a box of a pane that undoes its document is the document's, unless something was typed there.
+        enabled: () => (edit !== 'undo' && edit !== 'redo') || this.commands.textUndoes(),
+        run: () => desktop()?.editText(edit)
+      });
     }
 
-    return true;
-  }
-
-  /** Cut, copy and paste work on nodes in a graph, layers in a stack, and text in anything that has some selected. */
-  private clip(command: 'copy' | 'cut' | 'paste'): void {
-    if (this.project.active()?.kind !== 'graph') {
-      if (!this.paint.state()) {
-        desktop()?.editText(command);
-      } else if (command === 'paste') {
-        void this.paint.pasteLayers();
-      } else if (command === 'copy') {
-        void this.paint.copyLayers();
-      } else {
-        void this.paint.cutLayers();
-      }
-    } else if (command === 'paste') {
-      void this.graph.paste();
-    } else {
-      this.graph.copySelection();
-      if (command === 'cut') {
-        this.graph.remove([...this.graph.selection()], []);
-      }
-    }
-  }
-
-  private walk(command: 'undo' | 'redo'): void {
-    if (this.project.active()?.kind === 'graph') {
-      this.graph[command]();
-    } else {
-      void this.paint.act(command);
-    }
+    const graphInFront = this.project.graphInFront;
+    const history = () => (graphInFront() ? this.graph.document()?.history : this.paint.state()?.history) ?? null;
+    this.commands.handle('undo', {
+      enabled: () => (graphInFront() ? this.graph.editable() : true) && history()?.canUndo === true,
+      label: () => (history()?.undoLabel ? `Undo ${history()?.undoLabel}` : null),
+      run: () => (graphInFront() ? this.graph.undo() : this.paint.act('undo'))
+    });
+    this.commands.handle('redo', {
+      enabled: () => (graphInFront() ? this.graph.editable() : true) && history()?.canRedo === true,
+      label: () => (history()?.redoLabel ? `Redo ${history()?.redoLabel}` : null),
+      run: () => (graphInFront() ? this.graph.redo() : this.paint.act('redo'))
+    });
   }
 }

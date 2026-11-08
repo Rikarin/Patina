@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
+import { Commands } from '../core/commands';
 import { channelName } from '../core/labels';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore, pressureOf, toTexels } from './paint-store';
@@ -11,10 +12,7 @@ import { StrokeGesture } from './stroke-gesture';
   selector: 'ptn-paint-atlas',
   imports: [XuiButtonImports, XuiNonIdealStateImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    class: 'relative flex h-full min-h-0 items-center justify-center overflow-hidden p-2',
-    '(document:keydown.escape)': 'gesture.cancel()'
-  },
+  host: { class: 'relative flex h-full min-h-0 items-center justify-center overflow-hidden p-2', 'data-commands': 'atlas' },
   template: `
     @if (store.state(); as state) {
       <select
@@ -91,6 +89,27 @@ import { StrokeGesture } from './stroke-gesture';
 export class PaintAtlas {
   protected readonly store = inject(PaintStore);
   protected readonly gesture = new StrokeGesture(this.store, () => undefined);
+  protected readonly commands = inject(Commands);
+
+  constructor() {
+    const destroyRef = inject(DestroyRef);
+    this.commands.handle(
+      'cancelStroke',
+      {
+        enabled: () => this.gesture.points().length > 0 || this.store.picking() !== null,
+        run: () => this.gesture.cancel()
+      },
+      destroyRef
+    );
+    this.commands.handle(
+      'finishPath',
+      {
+        enabled: () => this.store.tool() === 'path' && this.gesture.points().length > 1,
+        run: () => this.gesture.finish()
+      },
+      destroyRef
+    );
+  }
   private readonly project = inject(ProjectStore);
 
   /** A layered material has to meet itself at its edges, which only shows when it repeats. */
@@ -124,7 +143,7 @@ export class PaintAtlas {
   }
 
   protected down(event: PointerEvent): void {
-    if (event.button === 1 || event.altKey) {
+    if (this.commands.navigation().pans2d(event)) {
       (event.target as HTMLElement).setPointerCapture(event.pointerId);
       this.panning = true;
       return;

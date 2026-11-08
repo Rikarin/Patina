@@ -38,7 +38,6 @@ function fakeStore() {
     setValue: vi.fn(),
     setText: vi.fn(),
     endGesture: vi.fn(),
-    shortcut: vi.fn(() => true),
     hasNumberSource: signal(false),
     shownPorts: signal(new Set<string>()),
     wireInto: vi.fn((): { fromPort: string } | undefined => undefined)
@@ -210,10 +209,6 @@ describe('the Inspector', () => {
     return { store, fixture };
   }
 
-  const key = (target: Element) => {
-    target.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }));
-  };
-
   it('says how many nodes are selected rather than showing one of them', () => {
     const { fixture } = render(store => {
       store.selection.set(new Set([1, 2]));
@@ -229,57 +224,6 @@ describe('the Inspector', () => {
     const element = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('[data-testid=inspector-title]')?.textContent).toBe('2 nodes');
     expect(element.querySelector('[data-testid=selection-list]')?.textContent).toContain('Tint');
-  });
-
-  it('passes Undo to the graph from a control', () => {
-    const { store, fixture } = render(held => {
-      Object.assign(held, { document: signal({ nodes: new Map() }) });
-    });
-    const box = (fixture.nativeElement as HTMLElement).querySelector('[data-testid=box]');
-    if (box) {
-      key(box);
-    }
-
-    expect(store.shortcut).toHaveBeenCalledOnce();
-  });
-
-  it('leaves Undo to a box with text still being typed, until it is committed', () => {
-    const { store, fixture } = render(held => {
-      Object.assign(held, { document: signal({ nodes: new Map() }) });
-    });
-    const box = (fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>('[data-testid=box]');
-    if (!box) {
-      throw new Error('No box.');
-    }
-
-    box.dispatchEvent(new Event('input', { bubbles: true }));
-    key(box);
-    expect(store.shortcut).not.toHaveBeenCalled();
-    box.dispatchEvent(new Event('change', { bubbles: true }));
-    key(box);
-    expect(store.shortcut).toHaveBeenCalledOnce();
-  });
-});
-
-describe('Save from a box still being typed in', () => {
-  it('commits the text by leaving the box, then saves', () => {
-    const store = fakeStore();
-    Object.assign(store, { document: signal({ nodes: new Map() }) });
-    TestBed.configureTestingModule({ providers: [{ provide: GraphStore, useValue: store }] });
-    TestBed.overrideComponent(Inspector, { set: { imports: [], template: '<input data-testid="box" />' } });
-    const fixture = TestBed.createComponent(Inspector);
-    fixture.detectChanges();
-    const box = (fixture.nativeElement as HTMLElement).querySelector('input');
-    if (!box) {
-      throw new Error('No box.');
-    }
-
-    (fixture.nativeElement as HTMLElement).ownerDocument.body.append(fixture.nativeElement as HTMLElement);
-    box.focus();
-    box.dispatchEvent(new Event('input', { bubbles: true }));
-    box.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true }));
-    expect(store.shortcut).toHaveBeenCalledOnce();
-    expect(document.activeElement).not.toBe(box);
   });
 });
 

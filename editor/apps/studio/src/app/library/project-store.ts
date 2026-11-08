@@ -84,6 +84,7 @@ export class ProjectStore {
   private readonly mutableReloading = signal<string | null>(null);
   private readonly mutableClosing = signal<string | null>(null);
   private readonly mutableQuitting = signal(false);
+  private readonly mutableClosingProject = signal<string | null>(null);
   private readonly mutableNewKind = signal<{ kind: string } | null>(null);
   /** The Project Settings dialog is up. */
   readonly settingsOpen = signal(false);
@@ -95,6 +96,15 @@ export class ProjectStore {
   private readonly mutableBakeAsked = signal(0);
   private readonly linkedBakes = new Set<string>();
   private switching = false;
+  /**
+   * The tab on its way to the front, done when it is there. A new tab shows before it is in front, while the viewport
+   * lets go of what was, and a command sent in between would otherwise find no project open (as on fix/wave-3-ci,
+   * 9db6373, which this follows).
+   */
+  private bringing: Promise<void> = Promise.resolve();
+  private readonly mutableArriving = signal<string | null>(null);
+  /** The tab on its way to the front: commands that act on the document in front wait for it rather than refuse. */
+  readonly arriving = this.mutableArriving.asReadonly();
   private restored: string | null = null;
 
   readonly tabs = this.mutableTabs.asReadonly();
@@ -109,10 +119,14 @@ export class ProjectStore {
   readonly closing = this.mutableClosing.asReadonly();
   /** The app wants to quit and something is not saved. */
   readonly quitting = this.mutableQuitting.asReadonly();
+  /** The project waiting on what to do with its documents' unsaved edits before it closes. */
+  readonly closingProject = this.mutableClosingProject.asReadonly();
   /** A kind of document someone asked to start a project with. */
   readonly newKind = this.mutableNewKind.asReadonly();
 
   readonly active = computed(() => this.mutableTabs().find(tab => tab.path === this.mutableActive()) ?? null);
+  /** The document in front is a graph underneath, as an image material is. */
+  readonly graphInFront = computed(() => isGraph(this.active()));
   readonly workspace = computed<WorkspaceName>(() => (this.active()?.kind ?? 'start') as WorkspaceName);
   /** The project of the document in front. */
   readonly current = computed(() => {
@@ -254,6 +268,22 @@ export class ProjectStore {
       return;
     }
 
+    this.mutableArriving.set(path);
+    this.bringing = this.bringToFront(tab).finally(() => {
+      if (this.mutableArriving() === path) {
+        this.mutableArriving.set(null);
+      }
+    });
+    await this.bringing;
+  }
+
+  /** Waits for the tab on its way to the front, if one is: what a command meant by the document in front. */
+  inFront(): Promise<void> {
+    return this.bringing;
+  }
+
+  private async bringToFront(tab: DocumentTab): Promise<void> {
+    const path = tab.path;
     this.switching = true;
     try {
       this.detach();
@@ -307,6 +337,53 @@ export class ProjectStore {
     }
 
     await this.remove(path, choice === 'discard');
+  }
+
+  /** Closes every document of the project in front, asking once first if any has edits that are not saved. */
+  async closeProject(): Promise<void> {
+    await this.bringing;
+    const project = this.active()?.project ?? null;
+    if (project === null) {
+      return;
+    }
+
+    this.startAction();
+    if (this.tabsOf(project).some(tab => tab.dirty)) {
+      this.mutableClosingProject.set(project);
+      return;
+    }
+
+    await this.removeAll(project, false);
+  }
+
+  /** Carries out the answer to closing a project with unsaved edits. */
+  async resolveClosingProject(choice: 'save' | 'discard' | 'cancel'): Promise<void> {
+    const project = this.mutableClosingProject();
+    this.mutableClosingProject.set(null);
+    if (project === null || choice === 'cancel') {
+      return;
+    }
+
+    // What could not be saved stays open, and the failure says why.
+    if (choice === 'save' && !(await this.saveTabs(this.tabsOf(project).filter(tab => tab.dirty)))) {
+      return;
+    }
+
+    await this.removeAll(project, choice === 'discard');
+  }
+
+  /** The tabs of one project. */
+  tabsOf(project: string): readonly DocumentTab[] {
+    return this.mutableTabs().filter(tab => tab.project === project);
+  }
+
+  private async removeAll(project: string, discard: boolean): Promise<void> {
+    // The one in front goes last, so that closing it brings forward a document of another project, not of this one.
+    const front = this.mutableActive();
+    const tabs = this.tabsOf(project);
+    for (const tab of [...tabs.filter(held => held.path !== front), ...tabs.filter(held => held.path === front)]) {
+      await this.remove(tab.path, discard);
+    }
   }
 
   /** Carries out the answer to quitting with unsaved edits. */
@@ -512,6 +589,7 @@ export class ProjectStore {
 
   /** Brings files into the open project. The Server says what each is, and refuses what nothing could read. */
   async importFiles(paths: readonly string[]): Promise<void> {
+    await this.bringing; // a project made or opened a moment ago is the one meant
     const project = this.current();
     if (!project) {
       this.startAction();

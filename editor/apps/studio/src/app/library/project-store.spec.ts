@@ -3,10 +3,12 @@ import { TestBed } from '@angular/core/testing';
 import { ApiError } from '@patina/api-client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BakeStore } from '../bake/bake-store';
+import { Commands } from '../core/commands';
 import { SystemStatus } from '../core/system-status';
 import { GraphStore } from '../graph/graph-store';
 import { PaintStore } from '../paint/paint-store';
 import { LibraryStore } from './library-store';
+import { ProjectCommands } from './project-commands';
 import { ProjectStore } from './project-store';
 
 const paths = { texturing: 'projects/a/a.vxlayers', graph: 'projects/a/rust.vxtexgraph' };
@@ -112,7 +114,7 @@ function harness() {
       { provide: PaintStore, useValue: paint },
       { provide: GraphStore, useValue: graph },
       { provide: BakeStore, useValue: { viewportChanged: signal(0), current: signal(null), batch: signal([]) } },
-      { provide: SystemStatus, useValue: { state: signal({ kind: 'connecting' }) } },
+      { provide: SystemStatus, useValue: { state: signal({ kind: 'connecting' }), pictures: signal([]) } },
       {
         provide: LibraryStore,
         useValue: {
@@ -130,6 +132,73 @@ describe('ProjectStore', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     storage = memoryStorage;
+  });
+
+  describe('a tab on its way to the front', () => {
+    /** Opens a project with the viewport's DELETE held, which is the moment its tab shows and is not yet in front. */
+    async function opening() {
+      const test = harness();
+      let release = (): void => undefined;
+      test.client.DELETE.mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            release = () => resolve({ data: {}, response: new Response() });
+          })
+      );
+      TestBed.inject(ProjectCommands).install();
+      const commands = TestBed.inject(Commands);
+      const opened = test.store.open('a');
+      await vi.waitFor(() => expect(test.store.tabs()).toHaveLength(1));
+      expect(test.store.current()).toBeNull(); // the viewport is still letting go of what was in front
+      return { ...test, commands, opened, release: () => release() };
+    }
+
+    it('keeps the commands about it on, and they wait for it rather than act on nothing', async () => {
+      const { store, paint, commands, opened, release } = await opening();
+      expect(store.arriving()).toBe(paths.texturing);
+      for (const id of ['projectSettings', 'save', 'saveAs', 'reloadMesh', 'closeDocument', 'closeProject']) {
+        expect(commands.enabled(id), id).toBe(true);
+      }
+
+      commands.run('projectSettings', 'menu');
+      commands.run('save', 'menu');
+      await Promise.resolve();
+      expect(store.settingsOpen()).toBe(false);
+      expect(paint.act).not.toHaveBeenCalled();
+
+      release();
+      await opened;
+      await vi.waitFor(() => expect(store.settingsOpen()).toBe(true));
+      expect(paint.act).toHaveBeenCalledWith('save');
+      expect(store.arriving()).toBeNull();
+    });
+
+    it('turns them off with nothing open or on its way', () => {
+      harness();
+      TestBed.inject(ProjectCommands).install();
+      const commands = TestBed.inject(Commands);
+      for (const id of ['projectSettings', 'save', 'saveAs', 'saveAll', 'reloadMesh', 'closeDocument', 'closeProject']) {
+        expect(commands.enabled(id), id).toBe(false);
+      }
+    });
+  });
+
+  it('closes every document of a project, asking once when one is unsaved', async () => {
+    const { store, paintState, graphDirty } = harness();
+    await store.openDocument('a', paths.graph);
+    await store.openDocument('a', paths.texturing);
+    expect(store.tabs()).toHaveLength(2);
+    graphDirty.set(true);
+    paintState.set({ id: `session:${paths.texturing}`, history: { dirty: true } });
+    TestBed.tick();
+
+    await store.closeProject();
+    expect(store.closingProject()).toBe('a');
+    expect(store.tabs()).toHaveLength(2);
+
+    await store.resolveClosingProject('discard');
+    expect(store.tabs()).toHaveLength(0);
+    expect(store.active()).toBeNull();
   });
 
   it('stays open when Save All cannot save', async () => {

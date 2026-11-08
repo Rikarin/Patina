@@ -32,6 +32,7 @@ import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiOmnibarImports } from '@xui/omnibar';
 import { XuiSpinnerImports } from '@xui/spinner';
 import { XuiTagImports } from '@xui/tag';
+import { Commands } from '../core/commands';
 import { FileConflictDialog } from '../core/file-conflict-dialog';
 import { IconImports } from '../core/icons';
 import { NodeDragType } from './node-library';
@@ -149,7 +150,7 @@ export class GraphThumbnail {
     XuiTagImports
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'flex h-full min-h-0 flex-col', '(keydown)': 'onKeydown($event)' },
+  host: { class: 'flex h-full min-h-0 flex-col', 'data-commands': 'graph' },
   template: `
     @let current = document();
     <div class="chrome-bar flex h-9 shrink-0 items-center gap-1 px-2">
@@ -219,7 +220,7 @@ export class GraphThumbnail {
         type="button"
         xuiButton
         aria-label="Group the selection"
-        title="Group the selection"
+        [title]="commands.tooltip('groupNodes')"
         size="sm"
         variant="ghost"
         data-testid="graph-group"
@@ -245,7 +246,7 @@ export class GraphThumbnail {
         type="button"
         xuiButton
         aria-label="Add a node"
-        title="Add a node"
+        [title]="commands.tooltip('addNode')"
         size="sm"
         variant="ghost"
         data-testid="graph-add"
@@ -265,7 +266,7 @@ export class GraphThumbnail {
         variant="ghost"
         data-testid="graph-undo"
         [disabled]="!store.editable() || !current?.history?.canUndo"
-        [title]="current?.history?.undoLabel ?? 'Undo'"
+        [title]="commands.tooltip('undo', current?.history?.undoLabel ? 'Undo ' + current.history.undoLabel : 'Undo')"
         (click)="store.undo()"
       >
         <ng-icon xui size="sm" name="matUndo" />
@@ -278,7 +279,7 @@ export class GraphThumbnail {
         variant="ghost"
         data-testid="graph-redo"
         [disabled]="!store.editable() || !current?.history?.canRedo"
-        [title]="current?.history?.redoLabel ?? 'Redo'"
+        [title]="commands.tooltip('redo', current?.history?.redoLabel ? 'Redo ' + current.history.redoLabel : 'Redo')"
         (click)="store.redo()"
       >
         <ng-icon xui size="sm" name="matRedo" />
@@ -466,6 +467,7 @@ export class GraphCanvas {
   protected readonly store = inject(GraphStore);
   private readonly status = inject(SystemStatus);
   private readonly destroyed = inject(DestroyRef);
+  protected readonly commands = inject(Commands);
   private readonly graph = viewChild.required(XuiNodeGraph);
   private readonly graphElement = viewChild.required(XuiNodeGraph, { read: ElementRef<HTMLElement> });
   private nodeViews = new WeakMap<GraphNodeState, NodeView>();
@@ -618,6 +620,7 @@ export class GraphCanvas {
   });
 
   constructor() {
+    this.installCommands();
     effect(() => {
       const type = this.store.adding();
       if (type) {
@@ -643,17 +646,12 @@ export class GraphCanvas {
       element.addEventListener('pointerleave', () => {
         this.pointer = null;
       });
-      const space = (event: KeyboardEvent): void => {
-        this.openOnSpace(event, element);
-      };
       const enter = (event: KeyboardEvent): void => {
         this.enterEarly(event);
       };
-      document.addEventListener('keydown', space);
       // Capturing, so that it is ahead of the omnibar's own listener.
       document.addEventListener('keydown', enter, { capture: true });
       this.destroyed.onDestroy(() => {
-        document.removeEventListener('keydown', space);
         document.removeEventListener('keydown', enter, { capture: true });
       });
     });
@@ -805,38 +803,32 @@ export class GraphCanvas {
     }
   }
 
-  protected onKeydown(event: KeyboardEvent): void {
-    const target = event.target as HTMLElement;
-    if (target.closest('input, textarea, [contenteditable]')) {
-      return;
-    }
-
-    const command = event.metaKey || event.ctrlKey;
-    if (this.store.shortcut(event)) {
-      return;
-    }
-
-    if (command && event.key.toLowerCase() === 'g') {
-      event.preventDefault();
-      this.store.groupSelection();
-    }
-  }
-
-  /** Space adds at the pointer, from anywhere the pointer is over the canvas, and not only once it has focus. */
-  private openOnSpace(event: KeyboardEvent, canvas: HTMLElement): void {
-    const target = event.target as HTMLElement;
-    const here = this.pointer !== null || canvas.contains(target);
-    if (
-      event.key === ' ' &&
-      here &&
-      this.store.editable() &&
-      !this.paletteOpen() &&
-      !target.closest('input, textarea, select, button, [contenteditable], [role=button], [role=dialog]')
-    ) {
-      event.preventDefault();
-      const { x, y } = this.pointer ?? { x: null, y: null };
-      this.openPalette(x === null ? null : this.graph().store.toGraphPoint(x, y));
-    }
+  /**
+   * What the canvas answers. The Edit commands work on the selection while focus is in the graph, or nowhere; Add Node
+   * opens the palette at the pointer when it is over the canvas, and beside the selection otherwise.
+   */
+  private installCommands(): void {
+    const handle = (id: string, enabled: () => boolean, run: (via: string) => unknown) =>
+      this.commands.handle(id, { enabled, run }, this.destroyed);
+    const here = () => this.commands.focus().area === 'graph' || this.commands.focus().area === null;
+    const editable = () => this.store.editable() && this.store.document() !== null;
+    const selected = () => here() && this.store.selection().size > 0;
+    handle('copy', selected, () => this.store.copySelection());
+    handle('cut', () => selected() && editable(), () => {
+      this.store.copySelection();
+      this.store.remove([...this.store.selection()], []);
+    });
+    handle('paste', () => here() && editable(), () => this.store.paste());
+    handle('duplicate', () => selected() && editable(), () => this.store.duplicate());
+    handle('delete', () => here() && editable() && this.graph().store.selectedNodes().size + this.graph().store.selectedEdges().size > 0, () =>
+      this.remove({ nodes: [...this.graph().store.selectedNodes()], edges: [...this.graph().store.selectedEdges()] })
+    );
+    handle('selectAll', () => here() && this.store.document() !== null, () => this.graph().store.selectAll());
+    handle('groupNodes', () => editable() && this.store.selection().size > 0, () => this.store.groupSelection());
+    handle('addNode', () => editable() && !this.paletteOpen(), via => {
+      const at = via === 'key' ? this.pointer : null;
+      this.openPalette(at === null ? null : this.graph().store.toGraphPoint(at.x, at.y));
+    });
   }
 
   private showPalette(at: XuiGraphPoint | null, link: NodeLink | null, wire: NodeWire): void {

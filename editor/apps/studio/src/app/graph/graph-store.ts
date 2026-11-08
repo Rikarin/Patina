@@ -11,6 +11,7 @@ import {
   type GraphNodeType,
   type GraphSettingDefinition,
   type GraphState,
+  type HistoryList,
   type PatinaClient,
   unwrap
 } from '@patina/api-client';
@@ -808,40 +809,29 @@ export class GraphStore {
     this.walk('redo');
   }
 
-  /**
-   * Undo, Redo and Save, wherever the keys were pressed: true if this was one of them. A caller decides first whether
-   * the press belongs to a text box.
-   */
-  shortcut(event: KeyboardEvent): boolean {
-    if (!event.metaKey && !event.ctrlKey) {
-      return false;
+  /** The undo history as a list, or null with no graph open. */
+  async historySteps(): Promise<HistoryList | null> {
+    const id = this.mutableDocument()?.id;
+    return id === undefined
+      ? null
+      : unwrap(await this.api().GET('/api/v1/graphs/{id}/history', { params: { path: { id } } }));
+  }
+
+  /** Undoes or redoes until a step is the newest that stands, or undoes everything for null. */
+  async jumpTo(step: number | null): Promise<void> {
+    const id = this.mutableDocument()?.id;
+    if (id === undefined) {
+      return;
     }
 
-    const key = event.key.toLowerCase();
-    if (key === 'z') {
-      event.preventDefault();
-      if (event.shiftKey) {
-        this.redo();
-      } else {
-        this.undo();
-      }
-
-      return true;
+    this.endGesture();
+    try {
+      await this.edits.submit(async () =>
+        unwrap(await this.api().POST('/api/v1/graphs/{id}/history', { params: { path: { id } }, body: { step } }))
+      );
+    } catch (error) {
+      this.refused(error);
     }
-
-    if (key === 's') {
-      event.preventDefault();
-      void this.save();
-      return true;
-    }
-
-    if (key === 'd') {
-      event.preventDefault();
-      void this.duplicate();
-      return true;
-    }
-
-    return false;
   }
 
   /** Writes the file. False if it did not happen. */

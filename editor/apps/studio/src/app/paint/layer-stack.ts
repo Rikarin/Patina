@@ -9,7 +9,7 @@ import {
   matTune,
   matUndo
 } from '@ng-icons/material-icons/baseline';
-import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, inject, signal } from '@angular/core';
 import type { StackFilterKind, StackLayer } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiContextMenuImports } from '@xui/context-menu';
@@ -18,7 +18,8 @@ import { XuiPopoverImports } from '@xui/popover';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { IconImports } from '../core/icons';
-import { MenuKeys, keyLabels } from '../core/menu-keys';
+import { Commands } from '../core/commands';
+import { MenuKeys } from '../core/menu-keys';
 import { diagnosticOf } from '../core/messages';
 import { percent } from '../core/numbers';
 import { blendName as blendLabelOf, channelName, termName } from '../core/labels';
@@ -79,8 +80,8 @@ const MaskMarks: Readonly<Record<string, string>> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'flex h-full min-h-0 flex-col',
-    '(document:pointerup)': 'letGo()',
-    '(document:keydown)': 'press($event)'
+    'data-commands': 'stack',
+    '(document:pointerup)': 'letGo()'
   },
   template: `
     <div class="chrome-bar flex shrink-0 items-center gap-0.5 px-1 py-0.5" role="toolbar" aria-label="Layers">
@@ -183,8 +184,8 @@ const MaskMarks: Readonly<Record<string, string>> = {
         variant="ghost"
         class="w-6 shrink-0 px-0"
         data-testid="paint-undo"
-        title="Undo"
-        aria-label="Undo"
+        [title]="commands.tooltip('undo', undoLabel())"
+        [attr.aria-label]="undoLabel()"
         [disabled]="!store.state()?.history?.canUndo"
         (click)="store.act('undo')"
       >
@@ -197,8 +198,8 @@ const MaskMarks: Readonly<Record<string, string>> = {
         variant="ghost"
         class="w-6 shrink-0 px-0"
         data-testid="paint-redo"
-        title="Redo"
-        aria-label="Redo"
+        [title]="commands.tooltip('redo', redoLabel())"
+        [attr.aria-label]="redoLabel()"
         [disabled]="!store.state()?.history?.canRedo"
         (click)="store.act('redo')"
       >
@@ -744,16 +745,16 @@ const MaskMarks: Readonly<Record<string, string>> = {
           </button>
           <xui-menu-divider />
           <button type="button" xuiMenuItem data-testid="layer-menu-group" (triggered)="groupSelected()">
-            Group Layers <span menuItemLabel>{{ keys.mod }}G</span>
+            Group Layers <span menuItemLabel>{{ commands.keyText('groupLayers') }}</span>
           </button>
           <button type="button" xuiMenuItem data-testid="layer-menu-duplicate" (triggered)="store.duplicateLayers()">
-            Duplicate Layers <span menuItemLabel>{{ keys.mod }}D</span>
+            Duplicate Layers <span menuItemLabel>{{ commands.keyText('duplicate') }}</span>
           </button>
           <button type="button" xuiMenuItem data-testid="layer-menu-copy" (triggered)="store.copyLayers()">
-            Copy <span menuItemLabel>{{ keys.mod }}C</span>
+            Copy <span menuItemLabel>{{ commands.keyText('copy') }}</span>
           </button>
           <button type="button" xuiMenuItem data-testid="layer-menu-cut" (triggered)="store.cutLayers()">
-            Cut <span menuItemLabel>{{ keys.mod }}X</span>
+            Cut <span menuItemLabel>{{ commands.keyText('cut') }}</span>
           </button>
         } @else {
           <button type="button" xuiMenuItem data-testid="layer-menu-new-paint" (triggered)="add('paint', 'Paint')">
@@ -773,12 +774,12 @@ const MaskMarks: Readonly<Record<string, string>> = {
           [disabled]="!store.clip()"
           (triggered)="store.pasteLayers()"
         >
-          Paste <span menuItemLabel>{{ keys.mod }}V</span>
+          Paste <span menuItemLabel>{{ commands.keyText('paste') }}</span>
         </button>
         @if (menuLayer(); as layer) {
           <xui-menu-divider />
           <button type="button" xuiMenuItem color="error" data-testid="paint-remove" (triggered)="remove(layer)">
-            Delete Layers <span menuItemLabel>{{ keys.delete }}</span>
+            Delete Layers <span menuItemLabel>{{ commands.keyText('delete') }}</span>
           </button>
         }
       </xui-menu>
@@ -891,7 +892,15 @@ export class LayerStack {
     const id = this.menuId();
     return this.store.layers().find(row => row.layer.id === id)?.layer ?? null;
   });
-  protected readonly keys = keyLabels();
+  protected readonly commands = inject(Commands);
+  protected readonly undoLabel = computed(() => {
+    const label = this.store.state()?.history.undoLabel;
+    return label ? `Undo ${label}` : 'Undo';
+  });
+  protected readonly redoLabel = computed(() => {
+    const label = this.store.state()?.history.redoLabel;
+    return label ? `Redo ${label}` : 'Redo';
+  });
   protected readonly channels = computed(() => (this.store.state()?.channels ?? []).map(channel => channel.usage));
   protected readonly channelLabel = channelName;
   /** The layer whose list of meshes is open. */
@@ -992,35 +1001,34 @@ export class LayerStack {
     this.store.masking.set(false);
   }
 
-  /** Delete takes what is selected, as does Backspace, which is what a Mac's delete key sends, and Cmd+A selects all. */
-  protected press(event: KeyboardEvent): void {
-    if (!this.keysAreOurs(event)) {
-      return;
-    }
-
-    if (event.key === 'Delete' || event.key === 'Backspace') {
-      event.preventDefault();
-      void this.removeInFront();
-    } else if (event.key === 'g' && (event.metaKey || event.ctrlKey)) {
-      event.preventDefault();
-      void this.groupSelected();
-    } else if (event.key === 'a' && (event.metaKey || event.ctrlKey)) {
-      event.preventDefault();
-      this.store.marked.set(new Set(this.rows().map(row => row.layer.id)));
-    } else if (event.key === 'd' && (event.metaKey || event.ctrlKey)) {
-      event.preventDefault();
-      void this.store.duplicateLayers();
-    }
-  }
-
-  /** Keys belong to the stack when focus is in it or nowhere, and never while something is being typed. */
-  private keysAreOurs(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement;
-    if (target.closest('input, textarea, select, [contenteditable=true], [role=dialog]')) {
-      return false;
-    }
-
-    return target === globalThis.document.body || this.host.nativeElement.contains(target);
+  /**
+   * What the stack answers: the Edit commands while focus is in it, or nowhere, and the Layer menu's. Delete takes a
+   * mask that is in front, or else the layers; Backspace, which is what a Mac's delete key sends, does the same.
+   */
+  constructor() {
+    const destroyRef = inject(DestroyRef);
+    const handle = (id: string, enabled: () => boolean, run: () => unknown) =>
+      this.commands.handle(id, { enabled, run }, destroyRef);
+    const open = () => this.store.state() !== null;
+    const here = () => open() && (this.commands.focus().area === 'stack' || this.commands.focus().area === null);
+    const selected = () => here() && this.store.selection().size > 0;
+    handle('delete', () => here() && (this.store.selection().size > 0 || (this.store.masking() && this.store.chosen() !== null)), () => this.removeInFront());
+    handle('selectAll', () => here() && this.rows().length > 0, () => this.store.marked.set(new Set(this.rows().map(row => row.layer.id))));
+    handle('copy', selected, () => this.store.copyLayers());
+    handle('cut', selected, () => this.store.cutLayers());
+    handle('paste', () => here() && this.store.clip() !== null, () => this.store.pasteLayers());
+    handle('duplicate', selected, () => this.store.duplicateLayers());
+    handle('groupLayers', () => open() && this.store.selection().size > 0, () => this.groupSelected());
+    handle('renameLayer', () => open() && this.store.chosen() !== null, () => {
+      const layer = this.store.chosen();
+      if (layer) {
+        this.startRename(layer);
+      }
+    });
+    handle('addPaintLayer', open, () => this.add('paint', 'Paint'));
+    handle('addFillLayer', open, () => this.add('fill', 'Fill'));
+    handle('addFilterLayer', open, () => this.add('filter', 'Filter', 'Levels'));
+    handle('addLayerFolder', open, () => this.add('group', 'Folder'));
   }
 
   /** The Delete key takes what is in front: a mask that is, or else the layers. Anything that says layers takes those. */
@@ -1336,7 +1344,7 @@ export class LayerStack {
 
   protected over(event: DragEvent, row: LayerRow): void {
     const zone = this.zoneOf(event, row);
-    if (this.using.carried() === null && this.commands(row, zone).length === 0) {
+    if (this.using.carried() === null && this.dropCommands(row, zone).length === 0) {
       this.target.set(null);
       return;
     }
@@ -1367,7 +1375,7 @@ export class LayerStack {
     event.stopPropagation();
     const zone = this.zoneOf(event, row);
     const material = this.using.carried();
-    const commands = this.commands(row, zone);
+    const commands = this.dropCommands(row, zone);
     this.dragged = [];
     this.target.set(null);
     if (material) {
@@ -1386,7 +1394,7 @@ export class LayerStack {
     }));
   }
 
-  private commands(row: LayerRow, zone: DropZone) {
+  private dropCommands(row: LayerRow, zone: DropZone) {
     return dropManyCommands(this.dragRows(), this.dragged, row.layer.id, zone);
   }
 

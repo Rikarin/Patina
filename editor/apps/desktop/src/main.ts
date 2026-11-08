@@ -16,7 +16,8 @@ import { extname, join, normalize, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { contentSecurityPolicy } from './csp';
 import { LibraryPlace, type LibraryChoice } from './libraries';
-import { installMenu } from './menu';
+import { KeyFile } from './keys';
+import { installMenu, readMenuModel, type MenuModel } from './menu';
 import { Sidecars } from './sidecars';
 
 // Patina desktop: the studio in a sandboxed window, and the backend (patina-server + patina-worker) as supervised
@@ -197,6 +198,16 @@ function openRecent(path: string): Promise<string | null> {
   return openLibrary({ path, create: false });
 }
 
+/** The studio's menus as it last said they are, or null before it has (or after it went). */
+let studioMenus: MenuModel | null = null;
+
+let keyFile: KeyFile | null = null;
+
+function keys(): KeyFile {
+  keyFile ??= new KeyFile(join(app.getPath('userData'), 'keys.json'));
+  return keyFile;
+}
+
 function rebuildMenu(): void {
   installMenu({
     recent: places().recent(),
@@ -210,8 +221,8 @@ function rebuildMenu(): void {
     openRecent: async path => {
       await openRecent(path);
     },
-    command: command => window?.webContents.send('patina:command', command)
-  });
+    command: (command, accelerator) => window?.webContents.send('patina:command', command, accelerator)
+  }, studioMenus);
 }
 
 function serveStudio(): void {
@@ -283,8 +294,16 @@ function createWindow(): void {
       event.preventDefault();
     }
   });
+  window.webContents.on('did-start-navigation', (_event, _url, isInPlace, isMainFrame) => {
+    if (isMainFrame && !isInPlace && studioMenus !== null) {
+      studioMenus = null; // a reloading studio has no handlers until it says its menus again
+      rebuildMenu();
+    }
+  });
   window.on('closed', () => {
     window = null;
+    studioMenus = null;
+    rebuildMenu(); // with no studio, only the app's own items do anything
     unsaved = false;
   });
   window
@@ -312,6 +331,16 @@ function handleIpc(): void {
       contents.copy();
     } else if (edit === 'paste') {
       contents.paste();
+    }
+  });
+  listen('patina:menu', (_event, menus: unknown) => {
+    studioMenus = readMenuModel(menus);
+    rebuildMenu();
+  });
+  handle('patina:keys:read', () => keys().read());
+  handle('patina:keys:write', (_event, settings: unknown) => {
+    if (!keys().write(settings)) {
+      throw new Error('Those are not key settings.');
     }
   });
   listen('patina:quit', () => {
