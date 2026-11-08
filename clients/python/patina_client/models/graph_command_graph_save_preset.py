@@ -31,7 +31,7 @@ class GraphCommandGraphSavePreset:
             op (GraphCommandGraphSavePresetOp):
             name (str): What it is called.
             values (GraphCommandGraphSavePresetValuesType1 | None | Unset): What each parameter is set to, by name; null for
-                every parameter's default as it is now.
+                every parameter's default now.
      """
 
     op: GraphCommandGraphSavePresetOp

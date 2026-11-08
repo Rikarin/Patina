@@ -20,7 +20,7 @@ T = TypeVar("T", bound="GraphSettingCondition")
 
 @_attrs_define
 class GraphSettingCondition:
-    """ When a parameter or a setting is shown: while another one of the same graph or node holds a value.
+    """ When a parameter or a setting is shown: while another of the same graph or node holds a value.
 
         Attributes:
             setting (str): The other one, by name.

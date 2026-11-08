@@ -35,9 +35,12 @@ sealed class GraphParameterEdits(NodeGraphModel graph) {
     IEnumerable<SettingDefinition> Following(string name, string? renamed) =>
         graph.Parameters.Select(parameter =>
             parameter.VisibleIf is { } condition && string.Equals(condition.Setting, name, StringComparison.Ordinal)
-                ? parameter with { VisibleIf = renamed is null ? null : condition with { Setting = renamed } }
+                ? parameter with { VisibleIf = Renamed(condition, renamed) }
                 : parameter
         );
+
+    static SettingCondition? Renamed(SettingCondition condition, string? renamed) =>
+        renamed is null ? null : condition with { Setting = renamed };
 
     int ParameterAt(string name) {
         var index = graph.Parameters.FindIndex(p => string.Equals(p.Name, name, StringComparison.Ordinal));
@@ -76,7 +79,7 @@ sealed class GraphParameterEdits(NodeGraphModel graph) {
             parameter.Maximum ?? float.PositiveInfinity,
             parameter.Group,
             [..parameter.Accepted],
-            parameter.Label?.Trim() ?? "",
+            parameter.Label?.Trim() ?? string.Empty,
             widget,
             Condition(parameter, replacing)
         );
@@ -86,7 +89,7 @@ sealed class GraphParameterEdits(NodeGraphModel graph) {
             : throw new GraphEditRefusedException($"'{parameter.Default}' is not a value for {parameter.Name}.");
     }
 
-    /// <summary>A widget that cannot draw this parameter is refused, so that no client has to guess a fallback.</summary>
+    /// <summary>A widget that cannot draw this parameter is refused, so no client has to guess a fallback.</summary>
     static void Suits(SettingDefinition parameter) {
         var fits = parameter.Widget switch {
             SettingWidget.Slider => parameter.IsBounded,
@@ -116,7 +119,9 @@ sealed class GraphParameterEdits(NodeGraphModel graph) {
 
         return graph.Parameters.Exists(p => string.Equals(p.Name, condition.Setting, StringComparison.Ordinal))
             ? new(condition.Setting, condition.Value, condition.Negated)
-            : throw new GraphEditRefusedException($"There is no parameter '{condition.Setting}' to show {parameter.Name} by.");
+            : throw new GraphEditRefusedException(
+                $"There is no parameter '{condition.Setting}' to show {parameter.Name} by."
+            );
     }
 
     /// <summary>Saves the defaults as they are, or the values sent, under a name, replacing one of that name.</summary>

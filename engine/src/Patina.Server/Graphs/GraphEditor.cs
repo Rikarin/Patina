@@ -32,6 +32,7 @@ public sealed class GraphEditor {
     readonly NodeGraphModel graph;
     readonly GraphInterfaceEdits ports;
     readonly GraphParameterEdits parameters;
+    readonly GraphAuthoringEdits authoring;
     readonly List<Step> undoable = [];
     readonly List<Step> redoable = [];
     NodeTypeRegistry registry;
@@ -43,6 +44,7 @@ public sealed class GraphEditor {
         graph = NodeGraphDocument.Load(asset, out var repairs);
         ports = new(graph, TypeOf);
         parameters = new(graph);
+        authoring = new(graph, parameters, this);
         this.registry = registry;
         Repairs = repairs;
         Document = GraphDocuments.Canonical(NodeGraphDocument.Save(graph));
@@ -184,6 +186,9 @@ public sealed class GraphEditor {
     /// <summary>Takes a new list of node types, after a compound changed.</summary>
     public void UseRegistry(NodeTypeRegistry types) => registry = types;
 
+    /// <summary>The node types as they are now.</summary>
+    internal NodeTypeRegistry Registry => registry;
+
     /// <summary>
     ///     Says the document now matches the file. A later drag starts a new undo step rather than merging.
     /// </summary>
@@ -225,8 +230,7 @@ public sealed class GraphEditor {
     IAuthoringCommand? Build(GraphCommand command, Dictionary<int, int> refs) =>
         command switch {
             GraphAddNode add => BuildAdd(add, refs),
-            GraphRemoveNodes { Relink: true } remove => BuildRelink(remove, refs),
-            GraphRemoveNodes remove => BuildRemove(remove, refs),
+            GraphRemoveNodes { Relink: false } remove => BuildRemove(remove, refs),
             GraphMoveNodes move => BuildMove(move, refs),
             GraphConnect connect => BuildConnect(connect, refs),
             GraphWire wire => BuildWire(wire, refs),
@@ -246,16 +250,13 @@ public sealed class GraphEditor {
             GraphAddComment add => BuildAddComment(add),
             GraphSetComment set => BuildSetComment(set),
             GraphRemoveComment remove => new RemoveCommentCommand(graph, CommentOf(remove.Id)),
-            GraphSetBypass bypass => BuildBypass(bypass, refs),
-            GraphArrange arrange => BuildArrange(arrange, refs),
-            GraphSavePreset save => parameters.SavePreset(save),
-            GraphRemovePreset remove => parameters.RemovePreset(remove),
-            GraphApplyPreset apply => parameters.ApplyPreset(apply),
-            _ => throw new GraphEditRefusedException($"Unknown command '{command.GetType().Name}'.")
+            _ => authoring.Build(command, refs)
         };
 
     AddNodeCommand BuildAdd(GraphAddNode add, Dictionary<int, int> refs) {
-        if (!SubGraphs.IsBoundary(add.Type) && !Reroutes.IsReroute(add.Type) && !registry.TryGet(add.Type, out _)) {
+        if (!SubGraphs.IsBoundary(add.Type)
+            && !GraphAuthoringEdits.IsDot(add.Type)
+            && !registry.TryGet(add.Type, out _)) {
             throw new GraphEditRefusedException($"There is no node type '{add.Type}'.");
         }
 
@@ -389,71 +390,8 @@ public sealed class GraphEditor {
 
     SetGroupCommand BuildSetGroup(GraphSetGroup set, Dictionary<int, int> refs) {
         var group = GroupOf(set.Id);
-        return new(
-            group,
-            new(
-                set.Title ?? group.Title,
-                [..set.Nodes is { } nodes ? Members(nodes, refs) : group.Nodes],
-                set.Color?.Trim() ?? group.Color,
-                set.Description ?? group.Description
-            )
-        );
+        return new(group, set, [..set.Nodes is { } nodes ? Members(nodes, refs) : group.Nodes]);
     }
-
-    /// <summary>Removes nodes and wires what fed them to what they fed, as one command so it undoes as one.</summary>
-    CompositeCommand BuildRelink(GraphRemoveNodes remove, Dictionary<int, int> refs) {
-        var removal = BuildRemove(remove, refs);
-        HashSet<NodeId> removing = [..remove.Nodes.Select(node => Find(node, refs).Id)];
-        var bridges = NodeBypass.Bridges(graph, removing, TypeOrNull);
-        return new(
-            remove.Nodes.Count == 1 ? "Delete and Relink" : $"Delete and Relink {remove.Nodes.Count} Nodes",
-            [removal, ..bridges.Select(bridge => new ConnectCommand(graph, bridge.From, bridge.To))]
-        );
-    }
-
-    SetBypassCommand BuildBypass(GraphSetBypass bypass, Dictionary<int, int> refs) {
-        if (bypass.Nodes.Count == 0) {
-            throw new GraphEditRefusedException("Switching nothing off is not an edit.");
-        }
-
-        GraphNode[] nodes = [..bypass.Nodes.Distinct().Select(node => Find(node, refs))];
-        if (nodes.FirstOrDefault(node => SubGraphs.IsBoundary(node.Type) || Reroutes.IsReroute(node.Type)) is { } fixture) {
-            throw new GraphEditRefusedException($"{fixture.Type} has nothing to switch off.");
-        }
-
-        return new(nodes, bypass.Bypassed);
-    }
-
-    /// <summary>
-    ///     Vixen's layered layout, over the whole graph or over a block of nodes that keeps its top-left corner. The
-    ///     sizes are Patina's cards: wider than Vixen's, and a preview square under the title.
-    /// </summary>
-    MoveNodesCommand BuildArrange(GraphArrange arrange, Dictionary<int, int> refs) {
-        var block = graph;
-        if (arrange.Nodes.Count > 0) {
-            HashSet<NodeId> chosen = [..arrange.Nodes.Select(node => Find(node, refs).Id)];
-            block = new();
-            foreach (var node in graph.Nodes.Where(node => chosen.Contains(node.Id))) {
-                block.Add(node.Id, node.Type, node.Position);
-            }
-
-            foreach (var edge in graph.Edges.Where(edge => chosen.Contains(edge.From.Node) && chosen.Contains(edge.To.Node))) {
-                block.Connect(edge.From, edge.To);
-            }
-        }
-
-        if (block.Nodes.Count == 0) {
-            throw new GraphEditRefusedException("There is nothing to lay out.");
-        }
-
-        var corner = new Vector2(block.Nodes.Min(static node => node.Position.X), block.Nodes.Min(static node => node.Position.Y));
-        var placed = NodeGraphLayout.Arrange(block, registry, Layout with { Origin = corner });
-        // Named as Vixen's LayoutCommand names it, and never folded into a drag that came before it.
-        return new(graph, new Dictionary<NodeId, Vector2>(placed), null, "Auto-Layout", coalesces: false);
-    }
-
-    /// <summary>A Patina node card: 176 wide, a 30-high title, a preview as tall as the card is wide, 24 per port row.</summary>
-    static readonly NodeLayoutOptions Layout = new(default, 96f, 32f, 176f, 30f + 176f, 24f, 12f);
 
     AddNoteCommand BuildAddComment(GraphAddComment add) {
         GraphComment standard = new();
@@ -489,7 +427,7 @@ public sealed class GraphEditor {
             ? new(width, height)
             : throw new GraphEditRefusedException("A note's size takes positive numbers.");
 
-    GraphNode Find(int id, Dictionary<int, int> refs) {
+    internal GraphNode Find(int id, Dictionary<int, int> refs) {
         var actual = id < 0 && refs.TryGetValue(id, out var created) ? created : id;
         return graph.TryGet(new(actual), out var node)
             ? node
@@ -497,16 +435,16 @@ public sealed class GraphEditor {
     }
 
     /// <summary>
-    ///     A node's type. A boundary node's ports are this graph's interface, as it stands now, and a reroute dot's carry
-    ///     whatever is wired to it.
+    ///     A node's type. A boundary node's ports are this graph's interface, as it stands now, and a reroute
+    ///     dot's ports carry whatever is wired to it.
     /// </summary>
     NodeTypeDefinition TypeOf(GraphNode node) {
         if (SubGraphs.IsBoundary(node.Type)) {
             return SubGraphs.Boundary(graph, node.Type);
         }
 
-        if (Reroutes.IsReroute(node.Type)) {
-            return Reroutes.Definition(Reroutes.KindOf(graph, node.Id, TypeOrNull));
+        if (authoring.DotOf(node) is { } dot) {
+            return dot;
         }
 
         return registry.TryGet(node.Type, out var type)
@@ -514,7 +452,7 @@ public sealed class GraphEditor {
             : throw new GraphEditRefusedException($"There is no node type '{node.Type}'.");
     }
 
-    NodeTypeDefinition? TypeOrNull(GraphNode node) =>
+    internal NodeTypeDefinition? TypeOrNull(GraphNode node) =>
         SubGraphs.IsBoundary(node.Type) ? SubGraphs.Boundary(graph, node.Type)
         : registry.TryGet(node.Type, out var type) ? type
         : null;
@@ -552,8 +490,18 @@ sealed class SetGraphSettingCommand(NodeGraphModel graph, string key, string val
 readonly record struct GroupState(string Title, NodeId[] Nodes, string Color, string Description);
 
 /// <summary>Changes a group's title, members, colour and description. Vixen's own command only retitles.</summary>
-sealed class SetGroupCommand(GraphGroup group, GroupState next) : IAuthoringCommand {
+/// <param name="group">The group.</param>
+/// <param name="set">What a client asked for: anything it left null stays as it is.</param>
+/// <param name="nodes">Its members, resolved from the client's numbers.</param>
+sealed class SetGroupCommand(GraphGroup group, GraphSetGroup set, NodeId[] nodes) : IAuthoringCommand {
     readonly GroupState previous = new(group.Title, [..group.Nodes], group.Color, group.Description);
+
+    readonly GroupState next = new(
+        set.Title ?? group.Title,
+        nodes,
+        set.Color?.Trim() ?? group.Color,
+        set.Description ?? group.Description
+    );
 
     public string Name => "Edit Group";
 
@@ -567,42 +515,6 @@ sealed class SetGroupCommand(GraphGroup group, GroupState next) : IAuthoringComm
         group.Nodes.AddRange(state.Nodes);
         group.Color = state.Color;
         group.Description = state.Description;
-    }
-}
-
-/// <summary>Switches nodes off or on, remembering what each was.</summary>
-sealed class SetBypassCommand(GraphNode[] nodes, bool bypassed) : IAuthoringCommand {
-    readonly bool[] previous = [..nodes.Select(static node => node.Bypassed)];
-
-    public string Name => bypassed ? "Bypass" : "Stop Bypassing";
-
-    public void Do(ICommandContext context) {
-        foreach (var node in nodes) {
-            node.Bypassed = bypassed;
-        }
-    }
-
-    public void Undo(ICommandContext context) {
-        for (var i = 0; i < nodes.Length; i++) {
-            nodes[i].Bypassed = previous[i];
-        }
-    }
-}
-
-/// <summary>Several commands that are one edit, done in order and undone the other way.</summary>
-sealed class CompositeCommand(string name, IReadOnlyList<IAuthoringCommand> commands) : IAuthoringCommand {
-    public string Name => name;
-
-    public void Do(ICommandContext context) {
-        foreach (var command in commands) {
-            command.Do(context);
-        }
-    }
-
-    public void Undo(ICommandContext context) {
-        foreach (var command in commands.Reverse()) {
-            command.Undo(context);
-        }
     }
 }
 

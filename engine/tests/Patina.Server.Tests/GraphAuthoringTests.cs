@@ -26,7 +26,7 @@ public sealed class GraphAuthoringTests {
         editor.Document.Edges.SingleOrDefault(edge => edge.ToNode == node && edge.ToPort == port);
 
     static GraphSettingDefinition Float(string name, string value = "0.5") =>
-        new(name, value, "", "Float", 0f, 1f, "", []);
+        new(name, value, string.Empty, "Float", 0f, 1f, string.Empty, []);
 
     [Fact]
     public void Switching_a_node_off_is_one_undo_and_the_worker_is_told_the_whole_document() {
@@ -39,7 +39,10 @@ public sealed class GraphAuthoringTests {
         Assert.Equal("Bypass", editor.History.UndoLabel);
         // Not a number: the compiler walks a different graph, so the Worker needs the document.
         Assert.Null(GraphDocuments.Values(before, editor.Document));
-        Assert.Contains(GraphDocuments.Delta(before, editor.Document).Nodes, node => node is { Id: 2, Bypassed: true });
+        Assert.Contains(
+            GraphDocuments.Delta(before, editor.Document).Nodes,
+            static node => node is { Id: 2, Bypassed: true }
+        );
 
         editor.Undo();
 
@@ -51,7 +54,8 @@ public sealed class GraphAuthoringTests {
         var editor = Editor();
         var created = editor.Apply(new([new GraphAddNode(Reroutes.Type, 0, 0, -1)]));
 
-        Assert.Throws<GraphEditRefusedException>(() => editor.Apply(new([new GraphSetBypass([created[0].Node], true)])));
+        Assert.Throws<GraphEditRefusedException>(() => editor.Apply(new([new GraphSetBypass([created[0].Node], true)]))
+        );
         Assert.Throws<GraphEditRefusedException>(() => editor.Apply(new([new GraphSetBypass([], true)])));
     }
 
@@ -60,9 +64,9 @@ public sealed class GraphAuthoringTests {
         var editor = Editor();
         var original = GraphDocuments.Text(editor.Document);
 
-        editor.Apply(new([new GraphRemoveNodes([2], Relink: true)]));
+        editor.Apply(new([new GraphRemoveNodes([2], true)]));
 
-        Assert.DoesNotContain(editor.Document.Nodes, node => node.Id == 2);
+        Assert.DoesNotContain(editor.Document.Nodes, static node => node.Id == 2);
         var bridge = Into(editor, 3, "Input");
         Assert.NotNull(bridge);
         Assert.Equal(1, bridge.FromNode);
@@ -88,18 +92,22 @@ public sealed class GraphAuthoringTests {
 
         // Noise's picture through a dot into the Invert, in one batch: the dot takes the kind of what reaches it first.
         editor.Apply(
-            new([
-                new GraphAddNode(Reroutes.Type, 450, 40, -1),
-                new GraphConnect(2, "Out", -1, Reroutes.In),
-                new GraphConnect(-1, Reroutes.Out, 3, "Input")
-            ])
+            new(
+                [
+                    new GraphAddNode(Reroutes.Type, 450, 40, -1),
+                    new GraphConnect(2, "Out", -1, Reroutes.In),
+                    new GraphConnect(-1, Reroutes.Out, 3, "Input")
+                ]
+            )
         );
 
-        var dot = editor.Document.Nodes.Single(node => node.Type == Reroutes.Type).Id;
+        var dot = editor.Document.Nodes.Single(static node => node.Type == Reroutes.Type).Id;
         Assert.Equal(dot, Into(editor, 3, "Input")?.FromNode);
 
         // An image dot cannot feed a number.
-        Assert.Throws<GraphEditRefusedException>(() => editor.Apply(new([new GraphConnect(dot, Reroutes.Out, 5, "Radius")])));
+        Assert.Throws<GraphEditRefusedException>(() =>
+            editor.Apply(new([new GraphConnect(dot, Reroutes.Out, 5, "Radius")]))
+        );
     }
 
     [Fact]
@@ -127,10 +135,13 @@ public sealed class GraphAuthoringTests {
         var group = editor.Document.Groups[0];
 
         editor.Apply(new([new GraphSetGroup(group.Id, Color: "var(--color-chart-3)", Description: "The ground")]));
-        editor.Apply(new([new GraphSetGroup(group.Id, Title: "Base coat")]));
+        editor.Apply(new([new GraphSetGroup(group.Id, "Base coat")]));
 
         var after = editor.Document.Groups[0];
-        Assert.Equal(("Base coat", "var(--color-chart-3)", "The ground"), (after.Title, after.Color, after.Description));
+        Assert.Equal(
+            ("Base coat", "var(--color-chart-3)", "The ground"),
+            (after.Title, after.Color, after.Description)
+        );
         Assert.Equal(group.Nodes, after.Nodes);
     }
 
@@ -138,25 +149,35 @@ public sealed class GraphAuthoringTests {
     public void A_parameter_is_described_apart_from_its_name() {
         var editor = Editor();
 
-        editor.Apply(new([new GraphAddParameter(new("Worn", "true", "", "Bool", null, null, "", [], Widget: "Toggle"))]));
         editor.Apply(
-            new([
-                new GraphSetParameter(
-                    "Wear",
-                    Float("Wear") with {
-                        Label = "Wear amount",
-                        Group = "Rust",
-                        Summary = "How far the rust has got.",
-                        Widget = "Slider",
-                        VisibleIf = new("Worn", "true")
-                    }
-                )
-            ])
+            new(
+                [
+                    new GraphAddParameter(
+                        new("Worn", "true", string.Empty, "Bool", null, null, string.Empty, [], Widget: "Toggle")
+                    )
+                ]
+            )
+        );
+        editor.Apply(
+            new(
+                [
+                    new GraphSetParameter(
+                        "Wear",
+                        Float("Wear") with {
+                            Label = "Wear amount",
+                            Group = "Rust",
+                            Summary = "How far the rust has got.",
+                            Widget = "Slider",
+                            VisibleIf = new("Worn", "true")
+                        }
+                    )
+                ]
+            )
         );
 
         var wear = GraphDocuments.Definition(editor.Document.Parameters[0]);
         Assert.Equal(("Wear", "Wear amount", "Rust", "Slider"), (wear.Name, wear.Label, wear.Group, wear.Widget));
-        Assert.Equal(new GraphSettingCondition("Worn", "true"), wear.VisibleIf);
+        Assert.Equal(new("Worn", "true"), wear.VisibleIf);
     }
 
     [Theory]
@@ -175,9 +196,7 @@ public sealed class GraphAuthoringTests {
         var editor = Editor();
 
         Assert.Throws<GraphEditRefusedException>(() =>
-            editor.Apply(
-                new([new GraphSetParameter("Wear", Float("Wear") with { Maximum = null, Widget = "Slider" })])
-            )
+            editor.Apply(new([new GraphSetParameter("Wear", Float("Wear") with { Maximum = null, Widget = "Slider" })]))
         );
     }
 
@@ -201,7 +220,7 @@ public sealed class GraphAuthoringTests {
 
         editor.Apply(new([new GraphRemoveParameter("Corrosion")]));
 
-        Assert.Equal("", editor.Document.Parameters[0].VisibleIf);
+        Assert.Equal(string.Empty, editor.Document.Parameters[0].VisibleIf);
     }
 
     [Fact]

@@ -2240,12 +2240,15 @@ export interface components {
       op: 'savePreset';
       /** @description What it is called. */
       name: string;
-      /** @description What each parameter is set to, by name; null for every parameter's default as it is now. */
+      /** @description What each parameter is set to, by name; null for every parameter's default now. */
       values?: null | {
         [key: string]: string;
       };
     };
-    /** @description Switches nodes off or back on. A switched-off node keeps its wires and values; see GraphNodeState. */
+    /**
+     * @description Switches nodes off or back on. A switched-off node keeps its wires and values; see
+     *     GraphNodeState.
+     */
     GraphCommandGraphSetBypass: {
       /** @enum {string} */
       op: 'setBypass';
@@ -2842,7 +2845,7 @@ export interface components {
        */
       height: number;
     };
-    /** @description When a parameter or a setting is shown: while another one of the same graph or node holds a value. */
+    /** @description When a parameter or a setting is shown: while another of the same graph or node holds a value. */
     GraphSettingCondition: {
       /** @description The other one, by name. */
       setting: string;
@@ -2883,7 +2886,10 @@ export interface components {
        *     sends a definition leaves it out.
        */
       labels?: null | string[];
-      /** @description What a person calls it, apart from Name, which expressions write. Null or empty for the name. */
+      /**
+       * @description What a person calls it, apart from Name, which expressions write. Null or empty
+       *     for the name.
+       */
       label?: null | string;
       /**
        * @description The control an inspector draws: `Default`, `Slider` (a number with a range), `Angle` (a number

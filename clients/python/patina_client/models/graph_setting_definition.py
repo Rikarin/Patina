@@ -38,8 +38,8 @@ class GraphSettingDefinition:
             labels (list[str] | None | Unset): What a person calls each of Accepted, in its order. The Server fills it in; a
                 client that
                 sends a definition leaves it out.
-            label (None | str | Unset): What a person calls it, apart from Name, which expressions write. Null or empty for
-                the name.
+            label (None | str | Unset): What a person calls it, apart from Name, which expressions write. Null or empty
+                for the name.
             widget (None | str | Unset): The control an inspector draws: `Default`, `Slider` (a number with a range),
                 `Angle` (a number
                 in degrees) or `Toggle` (a flag). Null for `Default`.

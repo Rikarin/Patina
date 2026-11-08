@@ -43,7 +43,10 @@ public sealed record GraphEdgeState(int FromNode, string FromPort, int ToNode, s
 ///     What a person calls each of <paramref name="Accepted" />, in its order. The Server fills it in; a client that
 ///     sends a definition leaves it out.
 /// </param>
-/// <param name="Label">What a person calls it, apart from <paramref name="Name" />, which expressions write. Null or empty for the name.</param>
+/// <param name="Label">
+///     What a person calls it, apart from <paramref name="Name" />, which expressions write. Null or empty
+///     for the name.
+/// </param>
 /// <param name="Widget">
 ///     The control an inspector draws: <c>Default</c>, <c>Slider</c> (a number with a range), <c>Angle</c> (a number
 ///     in degrees) or <c>Toggle</c> (a flag). Null for <c>Default</c>.
@@ -67,7 +70,7 @@ public sealed record GraphSettingDefinition(
 );
 #pragma warning restore SK7005
 
-/// <summary>When a parameter or a setting is shown: while another one of the same graph or node holds a value.</summary>
+/// <summary>When a parameter or a setting is shown: while another of the same graph or node holds a value.</summary>
 /// <param name="Setting">The other one, by name.</param>
 /// <param name="Value">
 ///     What it is compared with, as text. Numbers compare as numbers and anything else as a name, ignoring case.
@@ -318,7 +321,10 @@ public sealed record GraphAddNode(string Type, float X, float Y, int? Ref = null
 /// </param>
 public sealed record GraphRemoveNodes(IReadOnlyList<int> Nodes, bool Relink = false) : GraphCommand;
 
-/// <summary>Switches nodes off or back on. A switched-off node keeps its wires and values; see <see cref="GraphNodeState" />.</summary>
+/// <summary>
+///     Switches nodes off or back on. A switched-off node keeps its wires and values; see
+///     <see cref="GraphNodeState" />.
+/// </summary>
 public sealed record GraphSetBypass(IReadOnlyList<int> Nodes, bool Bypassed) : GraphCommand;
 
 /// <summary>Lays nodes out in columns, left to right in the order data flows, with Vixen's layout.</summary>
@@ -330,7 +336,7 @@ public sealed record GraphArrange(IReadOnlyList<int> Nodes) : GraphCommand;
 
 /// <summary>Saves a preset, replacing one of the same name where it stands.</summary>
 /// <param name="Name">What it is called.</param>
-/// <param name="Values">What each parameter is set to, by name; null for every parameter's default as it is now.</param>
+/// <param name="Values">What each parameter is set to, by name; null for every parameter's default now.</param>
 public sealed record GraphSavePreset(string Name, IReadOnlyDictionary<string, string>? Values = null) : GraphCommand;
 
 /// <summary>Takes a preset away.</summary>

@@ -6955,7 +6955,7 @@
             "additionalProperties": {
               "type": "string"
             },
-            "description": "What each parameter is set to, by name; null for every parameter\u0027s default as it is now."
+            "description": "What each parameter is set to, by name; null for every parameter\u0027s default now."
           }
         },
         "description": "Saves a preset, replacing one of the same name where it stands."
@@ -6984,7 +6984,7 @@
             "type": "boolean"
           }
         },
-        "description": "Switches nodes off or back on. A switched-off node keeps its wires and values; see GraphNodeState."
+        "description": "Switches nodes off or back on. A switched-off node keeps its wires and values; see\nGraphNodeState."
       },
       "GraphCommandGraphSetComment": {
         "required": [
@@ -8348,7 +8348,7 @@
             "default": false
           }
         },
-        "description": "When a parameter or a setting is shown: while another one of the same graph or node holds a value."
+        "description": "When a parameter or a setting is shown: while another of the same graph or node holds a value."
       },
       "GraphSettingDefinition": {
         "required": [
@@ -8419,7 +8419,7 @@
               "null",
               "string"
             ],
-            "description": "What a person calls it, apart from Name, which expressions write. Null or empty for the name."
+            "description": "What a person calls it, apart from Name, which expressions write. Null or empty\nfor the name."
           },
           "widget": {
             "type": [

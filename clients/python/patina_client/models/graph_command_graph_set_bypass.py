@@ -22,7 +22,8 @@ T = TypeVar("T", bound="GraphCommandGraphSetBypass")
 
 @_attrs_define
 class GraphCommandGraphSetBypass:
-    """ Switches nodes off or back on. A switched-off node keeps its wires and values; see GraphNodeState.
+    """ Switches nodes off or back on. A switched-off node keeps its wires and values; see
+    GraphNodeState.
 
         Attributes:
             op (GraphCommandGraphSetBypassOp):

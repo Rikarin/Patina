@@ -20,7 +20,7 @@ T = TypeVar("T", bound="GraphCommandGraphSavePresetValuesType1")
 
 @_attrs_define
 class GraphCommandGraphSavePresetValuesType1:
-    """ What each parameter is set to, by name; null for every parameter's default as it is now.
+    """ What each parameter is set to, by name; null for every parameter's default now.
 
      """
 
