@@ -22,7 +22,10 @@ without anything to act on.
 - **Keys respect where focus is.** A key a text field or a dialog would type or use stays there unless its command says it
   works there (Save does). A key a control already answered is left alone. Two commands share a key only in areas that are
   never live together, a stack's and a graph's; rebinding into a clash is refused with an offer to swap, and a settings
-  file that clashes keeps the person's own key and drops the default.
+  file that clashes keeps the person's own key and drops the default. Where a control would take a command's key before
+  the window sees it (xUI's graph canvas deletes on Delete with any modifier, which Delete and Relink's keys are), the
+  pane catches the key ahead of the control and hands it to the table (`Commands.isKeyOf`, then `press`), so the table
+  still says what the key is and a rebound one works.
 - **The studio says what the menus are.** It sends the menu bar to the main process whenever anything in it changes; the
   main process builds it, adding only what is its own (the app menu, Open Recent, the window's items). The menu takes a
   key itself only when it has the command key, so a plain letter in a menu is shown and still reaches a text field.
