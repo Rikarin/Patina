@@ -53,7 +53,7 @@ public static class MapPictures {
 
     /// <summary>A picture as numbers at whatever depth it has: any of <see cref="PictureFormats.Pictures" />.</summary>
     /// <exception cref="InvalidDataException">It is not a picture this reads.</exception>
-    public static FloatImage ReadFile(string path) => Decode(File.ReadAllBytes(path), Path.GetExtension(path));
+    public static FloatImage ReadFile(string path) => Decode(SharedFile.ReadAllBytes(path), Path.GetExtension(path));
 
     /// <summary>
     ///     An encoded picture as numbers at whatever depth it has, as a model file carries one inside
@@ -91,7 +91,7 @@ public static class MapPictures {
 
     static byte PngDepth(string path) {
         Span<byte> head = stackalloc byte[PngDepthAt + 1];
-        using var file = File.OpenRead(path);
+        using var file = SharedFile.OpenRead(path);
         return file.Read(head) > PngDepthAt ? head[PngDepthAt] : (byte)0;
     }
 

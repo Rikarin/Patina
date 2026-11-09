@@ -64,7 +64,7 @@ static class StrokeSources {
     /// <summary>A picture file as a stroke reads it, its colours and transparency as they are.</summary>
     public static PaintImage Read(string file) {
         try {
-            var decoded = PngCodec.Decode(File.ReadAllBytes(file));
+            var decoded = PngCodec.Decode(SharedFile.ReadAllBytes(file));
             PaintImage image = new(decoded.Width, decoded.Height);
             image.CopyFrom(decoded.Pixels);
             return image;

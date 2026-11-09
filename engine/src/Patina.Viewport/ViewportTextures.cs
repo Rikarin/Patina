@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+using Patina.Contracts;
 using System.Security.Cryptography;
 using Vixen.Core.Imaging;
 using Vixen.Graphics;
@@ -48,7 +49,7 @@ sealed class ViewportTextures : IDisposable {
         Of(
             file.Hash,
             meaning,
-            () => ViewportImage.Decode(File.ReadAllBytes(file.Path), Path.GetExtension(file.Path), meaning),
+            () => ViewportImage.Decode(SharedFile.ReadAllBytes(file.Path), Path.GetExtension(file.Path), meaning),
             file.Path
         );
 
@@ -56,7 +57,7 @@ sealed class ViewportTextures : IDisposable {
     /// <exception cref="InvalidDataException">It is not an image this reads.</exception>
     /// <exception cref="IOException">It cannot be read.</exception>
     public TextureViewHandle Of(ModelTexture texture, string meshFolder, MapMeaning meaning) {
-        var bytes = texture.Embedded ?? File.ReadAllBytes(Path.GetFullPath(texture.Path!, meshFolder));
+        var bytes = texture.Embedded ?? SharedFile.ReadAllBytes(Path.GetFullPath(texture.Path!, meshFolder));
         return Of(
             Convert.ToHexStringLower(SHA256.HashData(bytes)),
             meaning,

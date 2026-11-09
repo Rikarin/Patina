@@ -99,7 +99,7 @@ static class MaterialEndpoints {
         var held = graphs.All.Any(open => open.Path == full);
         var session = graphs.Open(request.Source);
         try {
-            var (node, usage) = MaterialShelf.BrushOutput(await File.ReadAllTextAsync(full, cancellationToken));
+            var (node, usage) = MaterialShelf.BrushOutput(await SharedFile.ReadAllTextAsync(full, cancellationToken));
             session.Evaluate();
             using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             patience.CancelAfter(BrushPatience);

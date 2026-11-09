@@ -124,7 +124,7 @@ static class ProjectFiles {
         }
 
         var kept = LibraryLayout.MeshSourcePath(root, mesh.Id);
-        return File.Exists(kept) ? File.ReadAllText(kept) : null;
+        return File.Exists(kept) ? SharedFile.ReadAllText(kept) : null;
     }
 
     /// <summary>
@@ -368,7 +368,7 @@ static class ProjectFiles {
         }
 
         var stem = Path.GetFileNameWithoutExtension(item.File);
-        var text = File.ReadAllText(Path.Combine(full, item.File));
+        var text = SharedFile.ReadAllText(Path.Combine(full, item.File));
         foreach (var paint in StackInputs.PaintsOf(item.File, text)) {
             var renamed = paint.Replace(stem, slug, StringComparison.Ordinal);
             if (File.Exists(Path.Combine(full, paint))) {
@@ -431,7 +431,7 @@ static class ProjectFiles {
         var file = Path.Combine(full, item.File);
         List<string> files = [item.File];
         if (File.Exists(file)) {
-            files.AddRange(StackInputs.PaintsOf(item.File, File.ReadAllText(file)));
+            files.AddRange(StackInputs.PaintsOf(item.File, SharedFile.ReadAllText(file)));
         }
 
         files.Add(Path.GetRelativePath(full, GraphMeshMaps.FileOf(file)).Replace('\\', '/'));
@@ -591,7 +591,7 @@ static class ProjectFiles {
 
         CopyFolder(full, copy);
         var file = Path.Combine(copy, LibraryLayout.ProjectFile);
-        var text = File.ReadAllText(file);
+        var text = SharedFile.ReadAllText(file);
         List<Guid> ids = [
             document.Id.Value,
             ..document.Meshes.Select(static mesh => mesh.Id.Value),
@@ -650,7 +650,7 @@ static class ProjectFiles {
             throw new FileNotFoundException($"There is no project '{path}' in this library.", path);
         }
 
-        return (Path.GetDirectoryName(file)!, DocumentCodec.ReadProject(File.ReadAllText(file), file).Document);
+        return (Path.GetDirectoryName(file)!, DocumentCodec.ReadProject(SharedFile.ReadAllText(file), file).Document);
     }
 
     /// <summary>The files in a project, relative to it, leaving out what its bakes wrote.</summary>
@@ -692,7 +692,8 @@ static class ProjectFiles {
 
     static string? ManifestMesh(string file) {
         try {
-            return JsonSerializer.Deserialize(File.ReadAllBytes(file), ContractsJsonContext.Default.BakeManifest)?.Mesh;
+            return JsonSerializer.Deserialize(SharedFile.ReadAllBytes(file), ContractsJsonContext.Default.BakeManifest)
+                ?.Mesh;
         } catch (JsonException) {
             return null; // something half written says nothing about the mesh
         }

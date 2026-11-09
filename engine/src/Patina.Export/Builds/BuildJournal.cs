@@ -41,7 +41,7 @@ public sealed class BuildJournal {
         log = Path.Combine(folder, LogFile);
         this.started = started;
         if (File.Exists(log)) {
-            foreach (var line in File.ReadLines(log)) {
+            foreach (var line in SharedFile.ReadLines(log)) {
                 Replay(line);
             }
         }
@@ -136,7 +136,7 @@ public sealed class BuildJournal {
     public static LibraryReport? ReadLibrary(string folder) {
         var file = Path.Combine(folder, LibraryFile);
         return File.Exists(file)
-            ? JsonSerializer.Deserialize(File.ReadAllBytes(file), ContractsJsonContext.Default.LibraryReport)
+            ? JsonSerializer.Deserialize(SharedFile.ReadAllBytes(file), ContractsJsonContext.Default.LibraryReport)
             : null;
     }
 
@@ -152,7 +152,7 @@ public sealed class BuildJournal {
                 ..files.Skip(offset)
                     .Take(limit)
                     .Select(static file => JsonSerializer.Deserialize(
-                            File.ReadAllBytes(file),
+                            SharedFile.ReadAllBytes(file),
                             ContractsJsonContext.Default.ProjectReport
                         )!
                     )
@@ -208,7 +208,7 @@ public sealed class BuildJournal {
     }
 
     bool EndsLine() {
-        using var stream = new FileStream(log, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var stream = SharedFile.OpenRead(log);
         if (stream.Length == 0) {
             return true;
         }

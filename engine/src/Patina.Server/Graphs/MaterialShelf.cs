@@ -265,7 +265,7 @@ public static class MaterialShelf {
             throw new FileNotFoundException($"There is no graph '{source}' in this library.", source);
         }
 
-        var graph = GraphDocuments.Parse(File.ReadAllText(full));
+        var graph = GraphDocuments.Parse(SharedFile.ReadAllText(full));
         var name = Path.GetFileNameWithoutExtension(full);
         var file = CompoundFile(library, project, name);
 
@@ -279,7 +279,7 @@ public static class MaterialShelf {
         Reference(library, project, source);
         var text = GraphDocuments.Text(AsCompound(Rooted(graph, full, library.RootPath)));
         var path = $"{MaterialsFolder}/{name}";
-        if (File.Exists(file) && string.Equals(File.ReadAllText(file), text, StringComparison.Ordinal)) {
+        if (File.Exists(file) && string.Equals(SharedFile.ReadAllText(file), text, StringComparison.Ordinal)) {
             return path;
         }
 
@@ -310,7 +310,7 @@ public static class MaterialShelf {
 
     static bool Taken(string file, string source) =>
         File.Exists(file + SourceSuffix)
-        && !string.Equals(File.ReadAllText(file + SourceSuffix).Trim(), source, StringComparison.Ordinal);
+        && !string.Equals(SharedFile.ReadAllText(file + SourceSuffix).Trim(), source, StringComparison.Ordinal);
 
     /// <summary>Publishes again every graph a project has published, for edits saved since.</summary>
     /// <returns>Whether any of them changed.</returns>
@@ -322,7 +322,7 @@ public static class MaterialShelf {
 
         var changed = false;
         foreach (var file in Directory.EnumerateFiles(folder, "*" + SourceSuffix)) {
-            var source = File.ReadAllText(file).Trim();
+            var source = SharedFile.ReadAllText(file).Trim();
             if (File.Exists(Path.GetFullPath(source, library.RootPath))) {
                 changed |= Republished(library, project, source, file[..^SourceSuffix.Length]);
             }
@@ -351,20 +351,20 @@ public static class MaterialShelf {
     ///     only a graph being worked on.
     /// </summary>
     static bool Republished(OpenLibrary library, string project, string source, string compound) {
-        var before = File.Exists(compound) ? File.ReadAllText(compound) : string.Empty;
+        var before = File.Exists(compound) ? SharedFile.ReadAllText(compound) : string.Empty;
         try {
             Publish(library, project, source);
         } catch (StackEditRefusedException) {
             return false;
         }
 
-        return !string.Equals(before, File.ReadAllText(compound), StringComparison.Ordinal);
+        return !string.Equals(before, SharedFile.ReadAllText(compound), StringComparison.Ordinal);
     }
 
     /// <summary>Whether a graph has the shape a role needs: one map, and a filter reads one too.</summary>
     /// <exception cref="ProjectRefusedException">It does not, and this says what is missing.</exception>
     public static void CheckRole(OpenLibrary library, string path, string role) {
-        var graph = GraphDocuments.Parse(File.ReadAllText(Path.GetFullPath(path, library.RootPath)));
+        var graph = GraphDocuments.Parse(SharedFile.ReadAllText(Path.GetFullPath(path, library.RootPath)));
         var outputs = graph.Nodes.Count(static node => node.Type == OutputNode);
         var inputs = graph.Interface.Count(static port => port is {
                 Direction: PortDirection.Input, Kind: PortKind.Image
@@ -408,7 +408,7 @@ public static class MaterialShelf {
             throw new StackEditRefusedException($"There is no material '{source}' in this library.");
         }
 
-        var stack = StackDocuments.Parse(File.ReadAllText(full));
+        var stack = StackDocuments.Parse(SharedFile.ReadAllText(full));
         return SmartMaterial.Extract(stack, stack.Name).Material
             ?? throw new StackEditRefusedException($"'{stack.Name}' has no layers to use.");
     }
@@ -434,7 +434,7 @@ public static class MaterialShelf {
         };
 
     static MaterialInfo FromGraph(OpenLibrary library, string name, string path, string origin, string? role = null) {
-        var graph = GraphDocuments.Parse(File.ReadAllText(Path.GetFullPath(path, library.RootPath)));
+        var graph = GraphDocuments.Parse(SharedFile.ReadAllText(Path.GetFullPath(path, library.RootPath)));
         var usages = Usages(graph);
         return new(
             name,

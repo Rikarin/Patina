@@ -1,3 +1,4 @@
+using Patina.Contracts;
 using Patina.Graphs;
 using Patina.Library;
 
@@ -58,7 +59,7 @@ internal static class GraphBake {
         }
 
         var model = NodeGraphDocument.Load(
-            CompoundShelf.WithoutBoundaries(YamlSerializer.Parse<NodeGraphAsset>(File.ReadAllText(graph))),
+            CompoundShelf.WithoutBoundaries(YamlSerializer.Parse<NodeGraphAsset>(SharedFile.ReadAllText(graph))),
             out var repairs
         );
 

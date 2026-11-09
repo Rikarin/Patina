@@ -162,7 +162,7 @@ public sealed class GraphSessions(ServerIdentity identity) : IDisposable {
 
         // The same folder `patina bake` reads, so a graph means the same in both.
         var folder = CompoundFolders.Of(full);
-        return new(full, File.ReadAllText(full), Types(folder), folder, Wake) {
+        return new(full, SharedFile.ReadAllText(full), Types(folder), folder, Wake) {
             ImageRoots = CompoundFolders.PictureRoots(full, identity.Library)
         };
     }

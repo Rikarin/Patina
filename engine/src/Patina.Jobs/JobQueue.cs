@@ -253,7 +253,7 @@ public sealed class JobQueue {
 
     static JobState? Read(string file) {
         try {
-            return JsonSerializer.Deserialize(File.ReadAllBytes(file), ContractsJsonContext.Default.JobState);
+            return JsonSerializer.Deserialize(SharedFile.ReadAllBytes(file), ContractsJsonContext.Default.JobState);
         } catch (Exception e) when (e is JsonException or IOException) {
             // A torn file cannot happen through Replace, and any other is not this queue's.
             return null;

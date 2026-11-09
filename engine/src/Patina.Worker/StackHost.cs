@@ -628,7 +628,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
 
         void Restore(string checkpoint) {
             foreach (var file in Directory.EnumerateFiles(checkpoint, $"*{LayerPaint.Extension}")) {
-                using var stream = File.OpenRead(file);
+                using var stream = SharedFile.OpenRead(file);
                 var name = Path.GetFileName(file);
                 canvases.Adopt(Path.Combine(folder, name), PaintCanvas.Read(stream));
                 touched.Add(name);
@@ -730,7 +730,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             }
 
             try {
-                var picture = PngCodec.Decode(File.ReadAllBytes(file));
+                var picture = PngCodec.Decode(SharedFile.ReadAllBytes(file));
                 PaintImage image = new(picture.Width, picture.Height);
                 for (var at = 0; at < picture.Width * picture.Height; at++) {
                     image[at] = PaintImage.Pack(picture.Pixels[at * 4] / 255f, 0f, 0f, 1f);

@@ -251,7 +251,7 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
     /// <exception cref="FormatException">It is not a 3D table.</exception>
     void SetLook(string? path, string? hash) {
         if (path != lookPath || hash != lookHash) {
-            look = path is null ? null : ViewportLook.Parse(System.IO.File.ReadAllText(path));
+            look = path is null ? null : ViewportLook.Parse(SharedFile.ReadAllText(path));
             lookPath = path;
             lookHash = hash;
         }

@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using Patina.Contracts;
 using System.Collections.Concurrent;
 
 namespace Patina.Library;
@@ -108,7 +109,7 @@ sealed class LibraryOutputs(string root, IndexDatabase database, LibraryQueries 
         var location = $"{LibraryLayout.ProjectsFolder}/{path}";
         ProjectDocument project;
         try {
-            var text = File.ReadAllText(LibraryLayout.Full(root, $"{location}/{LibraryLayout.ProjectFile}"));
+            var text = SharedFile.ReadAllText(LibraryLayout.Full(root, $"{location}/{LibraryLayout.ProjectFile}"));
             project = DocumentCodec.ReadProject(text, location).Document;
         } catch (Exception e) when (e is IOException or LibraryFormatException) {
             return null; // changed since the rescan; the next build sees it

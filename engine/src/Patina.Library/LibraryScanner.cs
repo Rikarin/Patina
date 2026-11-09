@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using Patina.Contracts;
 using System.Collections.Concurrent;
 using System.Text;
 
@@ -204,7 +205,7 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
                 return new(file, revision == knownHash ? Effect.Same : Effect.Changed, revision);
             }
 
-            var bytes = File.ReadAllBytes(file.FullPath);
+            var bytes = SharedFile.ReadAllBytes(file.FullPath);
             var hash = Revision.Of(bytes).Text;
             return hash == knownHash ? new(file, Effect.Same, hash) : Parse(file, bytes, hash);
         } catch (Exception e) when (e is FileNotFoundException or DirectoryNotFoundException) {

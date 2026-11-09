@@ -1,3 +1,4 @@
+using Patina.Contracts;
 using Patina.Server.Sessions;
 using Vixen.Texturing.Layers;
 
@@ -45,7 +46,7 @@ public sealed class StackSessions(ServerIdentity identity, StackClips clips) : I
                     throw new FileNotFoundException($"There is no stack at '{full}'.", full);
                 }
 
-                StackSession session = new(full, File.ReadAllText(full), table.Wake) {
+                StackSession session = new(full, SharedFile.ReadAllText(full), table.Wake) {
                     ImageRoots = LibraryRoot, Clips = clips, Changed = CatchUp
                 };
                 session.Siblings = name => Sibling(session, name);
@@ -89,7 +90,7 @@ public sealed class StackSessions(ServerIdentity identity, StackClips clips) : I
 
         TextureSetAsset? set;
         try {
-            set = LayerStackEdit.SetFor(StackDocuments.Parse(File.ReadAllText(file)), string.Empty);
+            set = LayerStackEdit.SetFor(StackDocuments.Parse(SharedFile.ReadAllText(file)), string.Empty);
         } catch (Exception e) when (e is IOException or StackEditRefusedException) {
             set = null;
         }

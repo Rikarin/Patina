@@ -1,3 +1,5 @@
+using Patina.Contracts;
+
 namespace Patina.Library;
 
 /// <summary>The tools a project's outputs can name.</summary>
@@ -64,7 +66,7 @@ public static class DocumentBakes {
 
     static ProjectItem? Listed(string project, string file, string listing) {
         try {
-            return DocumentCodec.ReadProject(File.ReadAllText(listing), listing)
+            return DocumentCodec.ReadProject(SharedFile.ReadAllText(listing), listing)
                 .Document.Documents.FirstOrDefault(item => Path.GetFullPath(item.File, project) == file);
         } catch (Exception e) when (e is IOException or LibraryFormatException) {
             return null; // changing as it is read: what was chosen still stands

@@ -291,7 +291,7 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     /// <returns>The text to write, and the revision it is of.</returns>
     public (string Text, long Revision) PrepareSave(bool force) {
         lock (Changing) {
-            if (!force && File.Exists(Path) && Hash(File.ReadAllText(Path)) != fileHash) {
+            if (!force && File.Exists(Path) && Hash(SharedFile.ReadAllText(Path)) != fileHash) {
                 throw new GraphFileChangedException($"'{Path}' changed on disk after it was opened.");
             }
 

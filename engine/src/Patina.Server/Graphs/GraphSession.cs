@@ -241,7 +241,7 @@ public sealed class GraphSession : FollowedSession<GraphEvent>, IFileSession {
     public GraphEditResult Save(bool force) {
         lock (Changing) {
             RefuseIfReadOnly();
-            if (!force && File.Exists(Path) && Hash(File.ReadAllText(Path)) != fileHash) {
+            if (!force && File.Exists(Path) && Hash(SharedFile.ReadAllText(Path)) != fileHash) {
                 throw new GraphFileChangedException($"'{Path}' changed on disk after it was opened.");
             }
 

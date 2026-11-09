@@ -124,7 +124,7 @@ public sealed class InstanceRegistry(string path) {
         }
 
         try {
-            var stream = File.OpenRead(path);
+            var stream = SharedFile.OpenRead(path);
             await using (stream.ConfigureAwait(false)) {
                 var document = await JsonSerializer
                     .DeserializeAsync(stream, ContractsJsonContext.Default.DiscoveryDocument, cancellationToken)

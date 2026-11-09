@@ -1,3 +1,4 @@
+using Patina.Contracts;
 using Patina.Export;
 using System.Collections.Immutable;
 using System.Runtime.InteropServices;
@@ -155,7 +156,7 @@ public sealed class GraphPictures {
             return Keep(stamp, Widened(MapPictures.ReadFile(stamp.Path)));
         }
 
-        using var stream = File.OpenRead(stamp.Path);
+        using var stream = SharedFile.OpenRead(stamp.Path);
         var data = decoder.Decode(stream, Path.GetExtension(stamp.Path));
         if (data.Format != PixelFormat.Rgba8UNorm) {
             throw new InvalidDataException($"a bitmap is 8-bit RGBA, and this file decodes to {data.Format}");

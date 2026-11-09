@@ -152,7 +152,7 @@ public static class MeshMapBakeRun {
     /// <exception cref="ModelFormatException">It is not a readable model.</exception>
     internal static ReadModel Model(string path) =>
         ModelReader.Read(
-            File.ReadAllBytes(path),
+            SharedFile.ReadAllBytes(path),
             Path.GetExtension(path),
             Path.GetFileNameWithoutExtension(path),
             new ModelReadOptions {

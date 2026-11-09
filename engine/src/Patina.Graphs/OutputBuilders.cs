@@ -72,7 +72,7 @@ public sealed class OutputBuilders(
             : step.Assets.Concat(step.Files).FirstOrDefault()
             ?? throw new InvalidDataException("A texture-graph output names no graph.");
         var model = NodeGraphDocument.Load(
-            CompoundShelf.WithoutBoundaries(YamlSerializer.Parse<NodeGraphAsset>(File.ReadAllText(graph))),
+            CompoundShelf.WithoutBoundaries(YamlSerializer.Parse<NodeGraphAsset>(SharedFile.ReadAllText(graph))),
             out _
         );
         Apply(model, step.Settings);
@@ -123,7 +123,7 @@ public sealed class OutputBuilders(
             )
             ?? throw new InvalidDataException("A layer-stack output names no stack.");
         var meshMaps = BakeOf(step, file);
-        var text = File.ReadAllText(file);
+        var text = SharedFile.ReadAllText(file);
         StackInputs.CheckPaint(file, text);
         var document = LayerStackYaml.Read(text);
         var set = LayerStackEdit.SetFor(document, step.Settings.GetValueOrDefault("set", string.Empty))

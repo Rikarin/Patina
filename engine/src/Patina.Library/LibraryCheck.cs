@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using Patina.Contracts;
 using System.Collections.Concurrent;
 
 namespace Patina.Library;
@@ -293,7 +294,7 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
         var location = $"{LibraryLayout.ProjectsFolder}/{path}";
         ProjectDocument project;
         try {
-            var text = File.ReadAllText(LibraryLayout.Full(root, $"{location}/{LibraryLayout.ProjectFile}"));
+            var text = SharedFile.ReadAllText(LibraryLayout.Full(root, $"{location}/{LibraryLayout.ProjectFile}"));
             project = DocumentCodec.ReadProject(text, location).Document;
         } catch (Exception e) when (e is IOException or LibraryFormatException) {
             return 0; // changed since the rescan; the next check sees it
@@ -348,7 +349,7 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
         /// <summary>A text file of the library, or null when it is not there.</summary>
         public string? Text(string path) {
             var file = LibraryLayout.Full(root, path);
-            return File.Exists(file) ? File.ReadAllText(file) : null;
+            return File.Exists(file) ? SharedFile.ReadAllText(file) : null;
         }
 
         /// <summary>How a build looks inside the stacks of a project.</summary>

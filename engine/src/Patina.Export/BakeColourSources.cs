@@ -119,7 +119,7 @@ public static class BakeColourSources {
         }
 
         try {
-            var bytes = texture.Embedded ?? File.ReadAllBytes(Resolved(texture, path)!);
+            var bytes = texture.Embedded ?? SharedFile.ReadAllBytes(Resolved(texture, path)!);
             return Image(MapPictures.Decode(bytes, texture.Extension), true);
         } catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException) {
             warnings.Add($"A base colour picture of '{Path.GetFileName(path)}' could not be read: {e.Message}");

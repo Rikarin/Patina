@@ -1,3 +1,4 @@
+using Patina.Contracts;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -83,7 +84,7 @@ public static class Recovery {
         foreach (var kept in Directory.EnumerateFiles(latest)) {
             var name = Path.GetFileName(kept);
             if (name == DocumentFile) {
-                LibraryFiles.Replace(file, File.ReadAllBytes(kept));
+                LibraryFiles.Replace(file, SharedFile.ReadAllBytes(kept));
             } else {
                 File.Copy(kept, LibraryLayout.Beside(beside, name), true);
             }

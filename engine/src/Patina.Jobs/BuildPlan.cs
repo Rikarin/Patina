@@ -181,7 +181,7 @@ public static class BuildObjects {
         ArgumentNullException.ThrowIfNull(objects);
         var path = objects.PathOf(key);
         return File.Exists(path)
-            ? JsonSerializer.Deserialize(File.ReadAllBytes(path), ContractsJsonContext.Default.BuildManifest)
+            ? JsonSerializer.Deserialize(SharedFile.ReadAllBytes(path), ContractsJsonContext.Default.BuildManifest)
             : null;
     }
 
@@ -208,7 +208,10 @@ public static class BuildObjects {
         var marker = Path.Combine(target, DeliveredFile);
         try {
             return File.Exists(marker)
-                ? JsonSerializer.Deserialize(File.ReadAllBytes(marker), ContractsJsonContext.Default.ExportDelivery)
+                ? JsonSerializer.Deserialize(
+                    SharedFile.ReadAllBytes(marker),
+                    ContractsJsonContext.Default.ExportDelivery
+                )
                 : null;
         } catch (JsonException) {
             return null; // Not ours to trust: the export is written again.

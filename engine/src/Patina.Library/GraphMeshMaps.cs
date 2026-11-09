@@ -1,3 +1,5 @@
+using Patina.Contracts;
+
 namespace Patina.Library;
 
 /// <summary>Which bake a graph's Mesh Map nodes read: a one-line file beside it, which outlives a session.</summary>
@@ -9,7 +11,7 @@ public static class GraphMeshMaps {
     public static string? Read(string graph) {
         var file = FileOf(graph);
         return File.Exists(file)
-            ? Path.GetFullPath(File.ReadAllText(file).Trim(), Path.GetDirectoryName(Path.GetFullPath(graph))!)
+            ? Path.GetFullPath(SharedFile.ReadAllText(file).Trim(), Path.GetDirectoryName(Path.GetFullPath(graph))!)
             : null;
     }
 }

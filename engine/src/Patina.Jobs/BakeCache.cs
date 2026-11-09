@@ -34,7 +34,7 @@ public sealed class BakeCache(string root) {
         }
 
         try {
-            return JsonSerializer.Deserialize(File.ReadAllBytes(file), ContractsJsonContext.Default.BakeManifest);
+            return JsonSerializer.Deserialize(SharedFile.ReadAllBytes(file), ContractsJsonContext.Default.BakeManifest);
         } catch (JsonException) {
             return null;
         }

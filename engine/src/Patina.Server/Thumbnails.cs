@@ -88,7 +88,7 @@ public sealed class Thumbnails(WorkerLink worker, PreviewStore store) : IDisposa
                 return null;
             }
 
-            hash = File.ReadAllText(file).Trim();
+            hash = SharedFile.ReadAllText(file).Trim();
             hash = hash == NothingToDraw ? string.Empty : hash;
         }
 
@@ -182,7 +182,7 @@ public sealed class Thumbnails(WorkerLink worker, PreviewStore store) : IDisposa
         return full.EndsWith(LibraryLayout.GraphExtension, StringComparison.OrdinalIgnoreCase)
             ? OfGraph(
                 source,
-                File.ReadAllText(full),
+                SharedFile.ReadAllText(full),
                 full,
                 CompoundFolders.Of(full),
                 CompoundFolders.PictureRoots(full, library.RootPath)

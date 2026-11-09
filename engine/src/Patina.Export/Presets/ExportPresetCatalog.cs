@@ -1,3 +1,4 @@
+using Patina.Contracts;
 using Patina.Library;
 using System.Reflection;
 
@@ -33,7 +34,7 @@ public static class ExportPresetCatalog {
         if (folder is not null && Directory.Exists(folder)) {
             foreach (var file in Directory.EnumerateFiles(folder, "*.yaml").Order(StringComparer.Ordinal)) {
                 try {
-                    var preset = ExportPresetReader.Read(File.ReadAllText(file), Path.GetFileName(file), file);
+                    var preset = ExportPresetReader.Read(SharedFile.ReadAllText(file), Path.GetFileName(file), file);
                     presets[preset.Id] = preset;
                 } catch (Exception e) when (e is ExportPresetException or IOException) {
                     problems.Add(e.Message);
@@ -48,7 +49,7 @@ public static class ExportPresetCatalog {
     public static string TextOf(ExportPreset preset) {
         ArgumentNullException.ThrowIfNull(preset);
         if (preset.Path is { } path) {
-            return File.ReadAllText(path);
+            return SharedFile.ReadAllText(path);
         }
 
         using var reader = new StreamReader(Resource(preset.Id));

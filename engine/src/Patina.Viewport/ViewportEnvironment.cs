@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+using Patina.Contracts;
 using System.Runtime.InteropServices;
 using Vixen.Core.Imaging;
 using Vixen.Core.Mathematics;
@@ -126,7 +127,7 @@ sealed class ViewportEnvironment {
     static (float[] Pixels, int Width, int Height) Radiance(string path) {
         var kind = Path.GetExtension(path).ToLowerInvariant();
         if (kind == ".exr") {
-            var image = ExrCodec.Decode(File.ReadAllBytes(path));
+            var image = ExrCodec.Decode(SharedFile.ReadAllBytes(path));
             var lanes = image.Channels;
             var pixels = new float[image.Width * image.Height * 4];
             for (var at = 0; at < image.Width * image.Height; at++) {
@@ -138,7 +139,7 @@ sealed class ViewportEnvironment {
             return (pixels, image.Width, image.Height);
         }
 
-        using var file = File.OpenRead(path);
+        using var file = SharedFile.OpenRead(path);
         var picture = new StbImageDecoder().Decode(file, StbImageDecoder.HighDynamicRangeExtension);
         return (MemoryMarshal.Cast<byte, float>(picture.PixelSpan()).ToArray(), picture.Width, picture.Height);
     }

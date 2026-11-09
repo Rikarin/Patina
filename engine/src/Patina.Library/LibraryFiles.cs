@@ -1,3 +1,4 @@
+using Patina.Contracts;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -60,7 +61,7 @@ public static class LibraryFiles {
 
     /// <summary>What a file holds, as a name for it: two files with one digest are the same bytes.</summary>
     public static string Digest(string file) {
-        using var stream = File.OpenRead(file);
+        using var stream = SharedFile.OpenRead(file);
         return Convert.ToHexStringLower(SHA256.HashData(stream));
     }
 
@@ -146,7 +147,7 @@ public static class LibraryFiles {
     public static void WriteDocument(string root, string project, ReadOnlySpan<byte> content, ProjectItem item) {
         var listing = ProjectFile(root, project);
         var document = File.Exists(listing)
-            ? DocumentCodec.ReadProject(File.ReadAllText(listing), project).Document
+            ? DocumentCodec.ReadProject(SharedFile.ReadAllText(listing), project).Document
             : new(ProjectId.New(), Path.GetFileName(project), [], [], []);
         Replace(AssetFile(root, $"{project}/{item.File}"), content);
         WriteProject(

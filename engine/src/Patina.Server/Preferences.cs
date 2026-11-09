@@ -86,7 +86,7 @@ public sealed class Preferences {
 
         try {
             var read = JsonSerializer.Deserialize(
-                File.ReadAllBytes(file),
+                SharedFile.ReadAllBytes(file),
                 LibraryTreeJsonContext.Default.ServerPreferences
             );
             if (read?.Autosave is null) {

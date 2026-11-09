@@ -179,7 +179,7 @@ sealed class ViewportMesh {
             GenerateTangents = false, ImportAnimations = false, ImportBlendShapes = false
         };
         var read = ModelReader.Read(
-            File.ReadAllBytes(path),
+            SharedFile.ReadAllBytes(path),
             Path.GetExtension(path),
             Path.GetFileNameWithoutExtension(path),
             options

@@ -114,7 +114,7 @@ public static class LibraryBin {
             throw new LibraryFormatException(file, "a deleted document has lost what it was.", false);
         }
 
-        return DocumentCodec.ReadProject(File.ReadAllText(file), file).Document.Documents is [var item, ..]
+        return DocumentCodec.ReadProject(SharedFile.ReadAllText(file), file).Document.Documents is [var item, ..]
             ? item
             : throw new LibraryFormatException(file, "a deleted document has lost what it was.", false);
     }
@@ -187,7 +187,7 @@ public static class LibraryBin {
         }
 
         try {
-            var fields = new YamlFields(YamlText.Parse(File.ReadAllText(file), file), file);
+            var fields = new YamlFields(YamlText.Parse(SharedFile.ReadAllText(file), file), file);
             var deleted = DateTimeOffset.Parse(
                 fields.Require(DeletedKey),
                 CultureInfo.InvariantCulture,

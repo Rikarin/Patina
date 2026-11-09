@@ -184,7 +184,7 @@ sealed class WorkerLoop(
         foreach (var file in ask.Paints) {
             File.Copy(file, Path.Combine(ask.Backup, Path.GetFileName(file)), true);
             PaintCanvas canvas;
-            using (var read = File.OpenRead(file)) {
+            using (var read = SharedFile.OpenRead(file)) {
                 canvas = PaintCanvas.Read(read);
             }
 

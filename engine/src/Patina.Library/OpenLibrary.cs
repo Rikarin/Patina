@@ -50,7 +50,7 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     public static OpenLibrary Open(string root) {
         var file = Path.Combine(root, LibraryLayout.LibraryFile);
         SharedFolderMove.Run(root);
-        return new(root, DocumentCodec.ReadLibrary(File.ReadAllText(file), LibraryLayout.LibraryFile));
+        return new(root, DocumentCodec.ReadLibrary(SharedFile.ReadAllText(file), LibraryLayout.LibraryFile));
     }
 
     /// <summary>Brings the index up to the files. One rescan runs at a time in a process.</summary>

@@ -24,7 +24,7 @@ public static class ExportRun {
     public static ExportManifest? Find(string folder) {
         var file = Path.Combine(folder, ManifestFile);
         return File.Exists(file)
-            ? JsonSerializer.Deserialize(File.ReadAllBytes(file), ContractsJsonContext.Default.ExportManifest)
+            ? JsonSerializer.Deserialize(SharedFile.ReadAllBytes(file), ContractsJsonContext.Default.ExportManifest)
             : null;
     }
 

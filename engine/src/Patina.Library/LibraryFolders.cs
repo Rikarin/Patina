@@ -1,3 +1,4 @@
+using Patina.Contracts;
 using System.Text.RegularExpressions;
 
 namespace Patina.Library;
@@ -216,7 +217,7 @@ static partial class LibraryFolders {
         string? color = null;
         if (File.Exists(file)) {
             try {
-                color = DocumentCodec.ReadFolder(File.ReadAllText(file), file).Document.Color;
+                color = DocumentCodec.ReadFolder(SharedFile.ReadAllText(file), file).Document.Color;
             } catch (LibraryFormatException) {
                 // A colour is a decoration, and a merge conflict in one should not hide the projects under it.
             }

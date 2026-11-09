@@ -1,3 +1,5 @@
+using Patina.Contracts;
+
 namespace Patina.Library;
 
 /// <summary>
@@ -52,7 +54,7 @@ static class SharedFolderMove {
     }
 
     static ProjectItem? Item(string sidecar, string file) {
-        var asset = DocumentCodec.ReadAsset(File.ReadAllText(sidecar), sidecar).Document;
+        var asset = DocumentCodec.ReadAsset(SharedFile.ReadAllText(sidecar), sidecar).Document;
         var kind = file.EndsWith(StackInputs.Extension, StringComparison.Ordinal) ? DocumentKinds.LayeredMaterial
             : file.EndsWith(LibraryLayout.GraphExtension, StringComparison.Ordinal) ? DocumentKinds.Graph
             : null;

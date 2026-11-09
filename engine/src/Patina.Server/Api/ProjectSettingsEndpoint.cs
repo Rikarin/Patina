@@ -187,7 +187,7 @@ static class ProjectSettingsEndpoint {
             }
 
             string[] paints = [
-                ..StackInputs.PaintsOf(document.File, File.ReadAllText(stack))
+                ..StackInputs.PaintsOf(document.File, SharedFile.ReadAllText(stack))
                     .Select(paint => library.ProjectFile(project, paint))
                     .Where(File.Exists)
             ];

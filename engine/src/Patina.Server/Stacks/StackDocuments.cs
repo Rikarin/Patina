@@ -354,7 +354,7 @@ public static class StackDocuments {
     /// <summary>Points a stack that is not open at a mesh, relative to its file.</summary>
     /// <summary>Names a stack's texture set after the material it paints.</summary>
     public static void SetSetName(string path, string name) {
-        var document = Parse(File.ReadAllText(path));
+        var document = Parse(SharedFile.ReadAllText(path));
         LibraryFiles.Replace(
             path,
             Text(document with { Sets = [document.Sets[0] with { Name = name }, ..document.Sets.Skip(1)] })
@@ -362,10 +362,10 @@ public static class StackDocuments {
     }
 
     /// <summary>The side of a stack's maps.</summary>
-    public static int Side(string path) => Parse(File.ReadAllText(path)).BaseWidth;
+    public static int Side(string path) => Parse(SharedFile.ReadAllText(path)).BaseWidth;
 
     public static void SetModel(string path, string model) {
-        LibraryFiles.Replace(path, Text(Parse(File.ReadAllText(path)) with { Model = model }));
+        LibraryFiles.Replace(path, Text(Parse(SharedFile.ReadAllText(path)) with { Model = model }));
     }
 
     /// <summary>

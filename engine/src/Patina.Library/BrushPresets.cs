@@ -30,7 +30,7 @@ public static class BrushPresets {
 
     /// <summary>Reads a preset's file.</summary>
     /// <exception cref="LibraryFormatException">It is not a preset.</exception>
-    public static BrushPreset Read(string path) => Parse(File.ReadAllText(path), path);
+    public static BrushPreset Read(string path) => Parse(SharedFile.ReadAllText(path), path);
 
     /// <summary>Writes a preset's file whole, so a reader never sees half of one.</summary>
     public static void Write(string path, BrushPreset preset) => LibraryFiles.Replace(path, Text(preset));

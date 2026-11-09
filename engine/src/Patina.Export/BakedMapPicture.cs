@@ -18,7 +18,7 @@ public static class BakedMapPicture {
         foreach (var file in Directory.EnumerateFiles(folder, $"*.{BakeCache.ManifestFile}")
                      .Order(StringComparer.Ordinal)) {
             var manifest = System.Text.Json.JsonSerializer.Deserialize(
-                File.ReadAllBytes(file),
+                SharedFile.ReadAllBytes(file),
                 ContractsJsonContext.Default.BakeManifest
             );
             if (manifest?.Result.Maps.FirstOrDefault(m => m.Map == map) is { } found) {
@@ -39,7 +39,7 @@ public static class BakedMapPicture {
     /// <exception cref="InvalidDataException">The file is not one this reads.</exception>
     public static Bitmap Read(string path, BakedMapFile map, string format) {
         ArgumentNullException.ThrowIfNull(map);
-        var data = File.ReadAllBytes(path);
+        var data = SharedFile.ReadAllBytes(path);
         return format is BakeInputs.Exr16 or BakeInputs.Exr32 ? FromFloat(ExrCodec.Decode(data), map) : FromPng(data);
     }
 
@@ -50,7 +50,7 @@ public static class BakedMapPicture {
     /// <exception cref="InvalidDataException">The file is not one this reads.</exception>
     public static FloatImage ReadDeep(string path, BakedMapFile map, string format) {
         ArgumentNullException.ThrowIfNull(map);
-        var data = File.ReadAllBytes(path);
+        var data = SharedFile.ReadAllBytes(path);
         if (format is BakeInputs.Exr16 or BakeInputs.Exr32) {
             var image = ExrCodec.Decode(data);
             var signed = IsSigned(map.Map);

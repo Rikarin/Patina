@@ -1,3 +1,4 @@
+using Patina.Contracts;
 using System.Buffers;
 using System.Security.Cryptography;
 
@@ -26,15 +27,9 @@ public readonly record struct Revision {
 
     public static Revision Of(ReadOnlySpan<byte> content) => FromDigest(SHA256.HashData(content));
 
+    /// <summary>The revision of a file's bytes, read while anybody else may still write or replace it.</summary>
     public static Revision OfFile(string path) {
-        using var stream = new FileStream(
-            path,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read | FileShare.Delete,
-            1 << 16,
-            FileOptions.SequentialScan
-        );
+        using var stream = SharedFile.OpenRead(path);
         return FromDigest(SHA256.HashData(stream));
     }
 
