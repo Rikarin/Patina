@@ -156,15 +156,18 @@ public sealed class Thumbnails(WorkerLink worker, PreviewStore store) : IDisposa
         }
 
         var full = Path.GetFullPath(source, library.RootPath);
-        if (!full.StartsWith(Path.GetFullPath(library.RootPath) + Path.DirectorySeparatorChar, StringComparison.Ordinal)) {
+        if (!full.StartsWith(
+                Path.GetFullPath(library.RootPath) + Path.DirectorySeparatorChar,
+                StringComparison.Ordinal
+            )) {
             return null;
         }
 
         if (Directory.Exists(full)) {
             // An empty material, or one that cannot be read, gives way to the next.
-            return Standing(library, source).Select(document => Readable(library, document)).FirstOrDefault(
-                static ask => ask is not null
-            );
+            return Standing(library, source)
+                .Select(document => Readable(library, document))
+                .FirstOrDefault(static ask => ask is not null);
         }
 
         if (!File.Exists(full)) {
@@ -254,10 +257,15 @@ public sealed class Thumbnails(WorkerLink worker, PreviewStore store) : IDisposa
 
     /// <summary>
     ///     A layered material, as the shelf hands it to a layer, at the picture's size. Its paint lies beside its file
-    ///     and its compounds below it, so those are part of what it looks like.
+    ///     and its compounds below it, so those are part of what it looks like. One with no layers yet is nothing to
+    ///     show, and a project's picture passes it by.
     /// </summary>
-    (string Key, MaterialThumbnailAsk Ask) OfStack(string source, string library, string file) {
+    (string Key, MaterialThumbnailAsk Ask)? OfStack(string source, string library, string file) {
         var material = MaterialShelf.Read(library, source);
+        if (material.Sets.All(static set => set.Layers.Count == 0)) {
+            return null;
+        }
+
         var document = StackDocuments.Text(material with { BaseWidth = Side, BaseHeight = Side });
         var folder = Path.GetDirectoryName(file)!;
         var key = Key(

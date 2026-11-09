@@ -405,7 +405,7 @@ static class ProjectFiles {
         LibraryFiles.WriteProject(root, path, document with { Name = trimmed });
     }
 
-    /// <summary>Moves a project into the library's bin (<see cref="LibraryBin" />), from where it can come back.</summary>
+    /// <summary>Moves a project into the library's bin (<see cref="LibraryBin" />), to come back from.</summary>
     /// <exception cref="FileNotFoundException">It is not there.</exception>
     public static BinItem Trash(string root, string path) {
         var (full, document) = Project(root, path);
@@ -435,7 +435,11 @@ static class ProjectFiles {
             document with { Documents = [item], Meshes = [], References = [], Outputs = [] },
             files
         );
-        LibraryFiles.WriteProject(root, path, document with { Documents = [..document.Documents.Where(d => d.Id != id)] });
+        LibraryFiles.WriteProject(
+            root,
+            path,
+            document with { Documents = [..document.Documents.Where(d => d.Id != id)] }
+        );
         return binned;
     }
 
@@ -445,7 +449,7 @@ static class ProjectFiles {
     /// </summary>
     /// <returns>Where it is now, below the library.</returns>
     /// <exception cref="FileNotFoundException">The bin holds no such thing.</exception>
-    /// <exception cref="ProjectRefusedException">A document's project is gone, or a file name of it is taken.</exception>
+    /// <exception cref="ProjectRefusedException">A document's project is gone, or a name of it is taken.</exception>
     public static string Restore(string root, string id) {
         var (item, entry) = LibraryBin.Find(root, id);
         var files = LibraryBin.FilesOf(entry);
@@ -488,7 +492,7 @@ static class ProjectFiles {
         return item.From;
     }
 
-    /// <summary>A folder below <c>projects/</c> that is free: the one asked for, or one beside it with a number.</summary>
+    /// <summary>A free folder below <c>projects/</c>: the one asked for, or one beside it with a number.</summary>
     static string FreeFolder(string root, string wanted) {
         var path = wanted;
         for (var count = 2;

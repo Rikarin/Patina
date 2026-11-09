@@ -7,8 +7,8 @@ using System.Text.Json;
 namespace Patina.Server.Tests;
 
 /// <summary>
-///     Pictures of what a library holds, for the shelf and the Library's grid alike: drawn by the Worker into the cache,
-///     named by hash, and only time lost with the cache.
+///     Pictures of what a library holds, for the shelf and the Library's grid alike: drawn by the Worker into the
+///     cache, named by hash, and only time lost with the cache.
 /// </summary>
 public sealed partial class StackProcessTests {
     [Fact]
@@ -49,13 +49,17 @@ public sealed partial class StackProcessTests {
                 StringComparison.Ordinal
             )
         );
-        string[] sources = [graph, starter, shipped, "projects/crate/missing.vxtexgraph", "projects/crate", "projects"];
+        string[] sources = [
+            graph, starter, shipped, "projects/crate/missing.vxtexgraph", "projects/crate", "projects",
+            "projects/crate/crate.vxlayers"
+        ];
 
         var first = await ThumbnailsAsync(sources, deadline.Token);
         Assert.All(first[..3], static hash => Assert.Matches("^[0-9a-f]{64}$", hash));
         Assert.Null(first[3]);
-        // A project is the picture of the document that stands for it: its layered material is empty, so its graph.
-        Assert.Equal(first[0], first[4]);
+        // A project is the picture of the document that stands for it: its layered material comes before its graph.
+        Assert.Equal(first[6], first[4]);
+        Assert.NotEqual(first[0], first[4]);
         Assert.Null(first[5]);
         foreach (var hash in first[..3]) {
             Assert.Equal((256, 256), await PictureSizeAsync(hash!, deadline.Token));

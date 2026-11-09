@@ -1,5 +1,3 @@
-using Patina.Contracts;
-
 namespace Patina.Library.Tests;
 
 /// <summary>
@@ -31,7 +29,10 @@ public sealed class LibraryCareTests : IDisposable {
 
         Assert.False(Directory.Exists(Path.Combine(root, "projects", "Props", "crate")));
         var item = Assert.Single(library.Bin().Items);
-        Assert.Equal((binned.Id, "project", "Crate", "projects/Props/crate"), (item.Id, item.Kind, item.Name, item.From));
+        Assert.Equal(
+            (binned.Id, "project", "Crate", "projects/Props/crate"),
+            (item.Id, item.Kind, item.Name, item.From)
+        );
         Assert.True(library.Bin().Bytes > 0);
 
         Assert.Equal("projects/Props/crate", library.Restore(item.Id));
@@ -109,7 +110,7 @@ public sealed class LibraryCareTests : IDisposable {
         File.WriteAllText(Path.Combine(root, "projects", made.Path, "wood.vxtexgraph"), "graph");
         var document = library.AddDocument(made.Path, DocumentKinds.Graph, "wood.vxtexgraph", "Wood", null);
 
-        library.SetProjectTags(made.Path, [" Hero ", "prop", "hero", ""]);
+        library.SetProjectTags(made.Path, [" Hero ", "prop", "hero", string.Empty]);
         library.SetDocumentTags(made.Path, document.Id, ["oak"]);
         library.RenameDocument(made.Path, document.Id, "Oak Planks");
 

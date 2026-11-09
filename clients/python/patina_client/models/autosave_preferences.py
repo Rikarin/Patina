@@ -23,8 +23,7 @@ class AutosavePreferences:
     """ How unsaved work is kept. It goes to the library's cache, never over a document.
 
         Attributes:
-            interval_seconds (int): How often open, unsaved documents are kept, at the most. Zero turns autosave off.
-                Default: 60.
+            interval_seconds (int): How often open, unsaved documents are kept at the most. Zero is off. Default: 60.
             idle_seconds (int): How long after the last edit a document is kept, without waiting for the interval. Zero
                 waits. Default: 5.
             keep (int): How many autosaves of a document are kept, the latest first. Restoring takes the latest. Default: 3.

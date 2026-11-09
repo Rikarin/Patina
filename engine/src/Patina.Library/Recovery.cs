@@ -73,7 +73,7 @@ public static class Recovery {
             : null;
     }
 
-    /// <summary>Puts the newest autosave in place of the file, and its paint beside it, then forgets them all.</summary>
+    /// <summary>Puts the newest autosave in place of the file, its paint beside it, then forgets them.</summary>
     public static void Restore(string root, string file) {
         if (Latest(root, file) is not { } latest) {
             return;

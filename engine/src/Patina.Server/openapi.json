@@ -6545,13 +6545,13 @@
         "properties": {
           "intervalSeconds": {
             "type": "integer",
-            "description": "How often open, unsaved documents are kept, at the most. Zero turns autosave off.",
+            "description": "How often open, unsaved documents are kept at the most. Zero is off.",
             "format": "int32",
             "default": 60
           },
           "idleSeconds": {
             "type": "integer",
-            "description": "How long after the last edit a document is kept, without waiting for the interval. Zero waits.",
+            "description": "How long after the last edit a document is kept, without waiting for the interval. Zero\nwaits.",
             "format": "int32",
             "default": 5
           },

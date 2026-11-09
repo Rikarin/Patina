@@ -1791,13 +1791,14 @@ export interface components {
     AutosavePreferences: {
       /**
        * Format: int32
-       * @description How often open, unsaved documents are kept, at the most. Zero turns autosave off.
+       * @description How often open, unsaved documents are kept at the most. Zero is off.
        * @default 60
        */
       intervalSeconds: number;
       /**
        * Format: int32
-       * @description How long after the last edit a document is kept, without waiting for the interval. Zero waits.
+       * @description How long after the last edit a document is kept, without waiting for the interval. Zero
+       *     waits.
        * @default 5
        */
       idleSeconds: number;

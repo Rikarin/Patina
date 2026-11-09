@@ -25,7 +25,11 @@ public sealed class LibraryCareApiTests : IAsyncLifetime {
     }
 
     async Task<ProjectContents> MakeAsync(string name, string kind = "graph") {
-        var made = await client.PostAsJsonAsync("/api/v1/library/projects", new ProjectCreateRequest(name, Kind: kind), Token);
+        var made = await client.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new ProjectCreateRequest(name, Kind: kind),
+            Token
+        );
         made.EnsureSuccessStatusCode();
         var path = (await made.Content.ReadFromJsonAsync<ProjectSummary>(Token))!.Path;
         return (await client.GetFromJsonAsync<ProjectContents>($"/api/v1/library/project?path={path}", Token))!;
@@ -57,7 +61,11 @@ public sealed class LibraryCareApiTests : IAsyncLifetime {
         var bin = await client.GetFromJsonAsync<BinList>("/api/v1/library/bin", Token);
         Assert.Equal(binned.Id, Assert.Single(bin!.Items).Id);
 
-        var restored = await client.PostAsJsonAsync("/api/v1/library/bin/restore", new BinRestoreRequest(binned.Id), Token);
+        var restored = await client.PostAsJsonAsync(
+            "/api/v1/library/bin/restore",
+            new BinRestoreRequest(binned.Id),
+            Token
+        );
         Assert.Equal(document.Path, (await restored.Content.ReadFromJsonAsync<BinRestored>(Token))!.Path);
         var back = await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=crate", Token);
         Assert.Equal(document.Id, Assert.Single(back!.Documents).Id);
@@ -81,7 +89,11 @@ public sealed class LibraryCareApiTests : IAsyncLifetime {
         var crate = await MakeAsync("Crate");
         var document = Assert.Single(crate.Documents);
 
-        var tagged = await client.PatchAsJsonAsync("/api/v1/library/project/tags", new ProjectTagsRequest("crate", ["prop", "hero"]), Token);
+        var tagged = await client.PatchAsJsonAsync(
+            "/api/v1/library/project/tags",
+            new ProjectTagsRequest("crate", ["prop", "hero"]),
+            Token
+        );
         tagged.EnsureSuccessStatusCode();
         var renamed = await client.PatchAsJsonAsync(
             "/api/v1/library/project/document/name",
@@ -99,7 +111,10 @@ public sealed class LibraryCareApiTests : IAsyncLifetime {
         Assert.Equal(["hero", "prop"], contents.Tags);
         Assert.Equal("Oak", contents.Documents[0].Name);
         Assert.Equal(["wood"], contents.Documents[0].Tags);
-        var yaml = await File.ReadAllTextAsync(Path.Combine(server.Library, "projects", "crate", "project.yaml"), Token);
+        var yaml = await File.ReadAllTextAsync(
+            Path.Combine(server.Library, "projects", "crate", "project.yaml"),
+            Token
+        );
         Assert.Contains("wood", yaml, StringComparison.Ordinal);
     }
 
@@ -118,7 +133,7 @@ public sealed class LibraryCareApiTests : IAsyncLifetime {
     [Fact]
     public async Task Preferences_are_kept_in_a_plain_file_and_refused_out_of_range() {
         var held = await client.GetFromJsonAsync<ServerPreferences>("/api/v1/preferences", Token);
-        Assert.Equal(new AutosavePreferences(), held!.Autosave);
+        Assert.Equal(new(), held!.Autosave);
 
         var set = await client.PutAsJsonAsync("/api/v1/preferences", new ServerPreferences(new(120, 10, 5)), Token);
         set.EnsureSuccessStatusCode();
@@ -127,7 +142,10 @@ public sealed class LibraryCareApiTests : IAsyncLifetime {
         Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
         var file = await File.ReadAllTextAsync(server.PreferencesFile, Token);
         Assert.Contains("\"intervalSeconds\": 120", file, StringComparison.Ordinal);
-        Assert.Equal(5, (await client.GetFromJsonAsync<ServerPreferences>("/api/v1/preferences", Token))!.Autosave.Keep);
+        Assert.Equal(
+            5,
+            (await client.GetFromJsonAsync<ServerPreferences>("/api/v1/preferences", Token))!.Autosave.Keep
+        );
     }
 
     [Theory]

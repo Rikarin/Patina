@@ -87,7 +87,10 @@ public sealed record ThumbnailList(IReadOnlyList<Thumbnail> Items);
 public sealed record ServerPreferences(AutosavePreferences Autosave);
 
 /// <summary>How unsaved work is kept. It goes to the library's cache, never over a document.</summary>
-/// <param name="IntervalSeconds">How often open, unsaved documents are kept, at the most. Zero turns autosave off.</param>
-/// <param name="IdleSeconds">How long after the last edit a document is kept, without waiting for the interval. Zero waits.</param>
+/// <param name="IntervalSeconds">How often open, unsaved documents are kept at the most. Zero is off.</param>
+/// <param name="IdleSeconds">
+///     How long after the last edit a document is kept, without waiting for the interval. Zero
+///     waits.
+/// </param>
 /// <param name="Keep">How many autosaves of a document are kept, the latest first. Restoring takes the latest.</param>
 public sealed record AutosavePreferences(int IntervalSeconds = 60, int IdleSeconds = 5, int Keep = 3);

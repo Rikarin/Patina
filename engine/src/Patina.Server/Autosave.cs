@@ -56,9 +56,14 @@ public sealed class Autosave(
                 }
             }
 
-            foreach (var closed in watched.Keys.Where(path => !open.Contains(path)).ToList()) {
-                watched.Remove(closed);
-            }
+            Forget(open);
+        }
+    }
+
+    /// <summary>Lets go of what autosave knew of documents that have closed.</summary>
+    void Forget(HashSet<string> open) {
+        foreach (var path in watched.Keys.Except(open, StringComparer.Ordinal).ToList()) {
+            watched.Remove(path);
         }
     }
 

@@ -30,7 +30,8 @@ public sealed class Preferences {
     }
 
     /// <summary>Where the file is when nothing says otherwise: the per-user folder the discovery file is in.</summary>
-    public static string DefaultPath => Path.Combine(Path.GetDirectoryName(InstanceRegistry.DefaultPath)!, "preferences.json");
+    public static string DefaultPath =>
+        Path.Combine(Path.GetDirectoryName(InstanceRegistry.DefaultPath)!, "preferences.json");
 
     /// <summary>The settings as the person keeps them.</summary>
     public ServerPreferences Current {
@@ -84,7 +85,10 @@ public sealed class Preferences {
         }
 
         try {
-            var read = JsonSerializer.Deserialize(File.ReadAllBytes(file), LibraryTreeJsonContext.Default.ServerPreferences);
+            var read = JsonSerializer.Deserialize(
+                File.ReadAllBytes(file),
+                LibraryTreeJsonContext.Default.ServerPreferences
+            );
             if (read?.Autosave is null) {
                 return defaults;
             }

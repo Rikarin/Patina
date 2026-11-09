@@ -13,55 +13,43 @@ namespace Patina.Server.Api;
 static class LibraryCareEndpoints {
     const string Tag = "Library";
 
+    /// <summary>Every route here: its method, its path below <c>/library</c>, handler, name and summary.</summary>
+    static readonly (string Method, string Pattern, Delegate Handler, string Name, string Summary)[] Routes = [
+        (
+            HttpMethods.Post, "/thumbnails", DrawAsync, "GetThumbnails",
+            "Pictures of documents, projects or shelf materials, by hash under /previews, drawing those the cache "
+            + "lacks first. A project is drawn as the document that best stands for it."
+        ),
+        (HttpMethods.Patch, "/project/tags", SetProjectTags, "SetProjectTags",
+            "Sets every tag a project has, in its project.yaml."),
+        (HttpMethods.Patch, "/project/document/name", RenameDocument, "RenameDocument",
+            "Gives a document a new display name. Its file stays."),
+        (HttpMethods.Patch, "/project/document/tags", SetDocumentTags, "SetDocumentTags",
+            "Sets every tag a document has, in its project's project.yaml."),
+        (HttpMethods.Delete, "/project/document", TrashDocument, "TrashDocument",
+            "Moves a document to the library's bin, with the paint it keeps beside it. It may not be open."),
+        (HttpMethods.Patch, "/project/reference", SetPin, "SetReferencePin",
+            "Pins a project's reference to an asset at the bytes it has now, or lets it follow the asset again."),
+        (HttpMethods.Get, "/bin", GetBin, "GetBin",
+            "What the library's bin holds: deleted projects and documents, the latest first."),
+        (HttpMethods.Post, "/bin/restore", Restore, "RestoreFromBin",
+            "Puts something back where it was deleted from. A project whose folder was taken comes back beside it."),
+        (HttpMethods.Delete, "/bin/{id}", DeleteFromBin, "DeleteFromBin", "Deletes one thing in the bin for good."),
+        (HttpMethods.Delete, "/bin", EmptyBin, "EmptyBin", "Deletes everything in the bin for good."),
+        (HttpMethods.Get, "/cache", GetCache, "GetCache",
+            "The library's cache folder and how much room it takes. Deleting it costs only time.")
+    ];
+
     public static void MapLibraryCareApi(this IEndpointRouteBuilder api) {
         var library = api.MapGroup("/library").WithTags(Tag);
+        foreach (var (method, pattern, handler, name, summary) in Routes) {
+            var route = library.MapMethods(pattern, [method], handler);
+            if (name == "GetThumbnails") {
+                route.ProducesProblem(StatusCodes.Status503ServiceUnavailable);
+            }
 
-        library.MapPost("/thumbnails", DrawAsync)
-            .ProducesProblem(StatusCodes.Status503ServiceUnavailable)
-            .Described(
-                "GetThumbnails",
-                "Pictures of documents, projects or shelf materials, by hash under /previews, drawing those the "
-                + "cache lacks first. A project is drawn as the document that best stands for it."
-            );
-
-        library.MapPatch("/project/tags", SetProjectTags)
-            .Described("SetProjectTags", "Sets every tag a project has, in its project.yaml.");
-
-        library.MapPatch("/project/document/name", RenameDocument)
-            .Described("RenameDocument", "Gives a document a new display name. Its file stays.");
-
-        library.MapPatch("/project/document/tags", SetDocumentTags)
-            .Described("SetDocumentTags", "Sets every tag a document has, in its project's project.yaml.");
-
-        library.MapDelete("/project/document", TrashDocument)
-            .Described(
-                "TrashDocument",
-                "Moves a document to the library's bin, with the paint it keeps beside it. It may not be open."
-            );
-
-        library.MapPatch("/project/reference", SetPin)
-            .Described(
-                "SetReferencePin",
-                "Pins a project's reference to an asset at the bytes it has now, or lets it follow the asset again."
-            );
-
-        library.MapGet("/bin", GetBin)
-            .Described("GetBin", "What the library's bin holds: deleted projects and documents, the latest first.");
-
-        library.MapPost("/bin/restore", Restore)
-            .Described(
-                "RestoreFromBin",
-                "Puts something back where it was deleted from. A project whose folder was taken comes back beside it."
-            );
-
-        library.MapDelete("/bin/{id}", DeleteFromBin)
-            .Described("DeleteFromBin", "Deletes one thing in the bin for good.");
-
-        library.MapDelete("/bin", EmptyBin)
-            .Described("EmptyBin", "Deletes everything in the bin for good.");
-
-        library.MapGet("/cache", GetCache)
-            .Described("GetCache", "The library's cache folder and how much room it takes. Deleting it costs only time.");
+            route.Described(name, summary);
+        }
     }
 
     static async Task<Results<Ok<ThumbnailList>, ProblemHttpResult>> DrawAsync(
@@ -83,7 +71,10 @@ static class LibraryCareEndpoints {
         }
     }
 
-    static Results<Ok<ProjectContents>, ProblemHttpResult> SetProjectTags(LibraryHost host, ProjectTagsRequest request) =>
+    static Results<Ok<ProjectContents>, ProblemHttpResult> SetProjectTags(
+        LibraryHost host,
+        ProjectTagsRequest request
+    ) =>
         LibraryTreeEndpoints.Guarded(
             host,
             library => {

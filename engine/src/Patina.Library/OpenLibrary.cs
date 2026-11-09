@@ -407,7 +407,7 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     /// <summary>
     ///     Pins a project's reference to an asset at the bytes the asset has now, or lets it follow the asset again.
     /// </summary>
-    /// <exception cref="FileNotFoundException">The project is not there, or the index does not know the asset.</exception>
+    /// <exception cref="FileNotFoundException">The project, or the asset in the index, is not there.</exception>
     /// <exception cref="ProjectRefusedException">The project does not refer to the asset itself.</exception>
     public AssetReference SetPin(string path, AssetId asset, bool pinned) {
         string? file = null;
