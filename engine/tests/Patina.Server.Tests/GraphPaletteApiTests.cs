@@ -85,7 +85,7 @@ public sealed partial class GraphApiTests {
         }
     }
 
-    /// <summary>A node made from a selection of several takes each of them on an input of its own, in turn (#183).</summary>
+    /// <summary>A node made from several selected takes each on an input of its own, in turn (#183).</summary>
     [Fact]
     public async Task A_new_node_from_several_takes_each_on_the_next_free_input() {
         var (client, state) = await OpenAsync();

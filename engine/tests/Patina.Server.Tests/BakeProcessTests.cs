@@ -747,6 +747,7 @@ public sealed partial class BakeProcessTests : IDisposable {
         }
 
         uint input = 0;
+
         async Task<byte[]> SettledFrameAsync() {
             await SendAsync(socket, new(Input: ++input), deadline.Token);
             var frame = await FrameAsync(socket, deadline.Token);
@@ -760,7 +761,7 @@ public sealed partial class BakeProcessTests : IDisposable {
         Assert.Null((await DisplayAsync(new(Shape: ViewportShapes.Plane))).Mesh);
         var node = await ShowGraphAsync(new ViewportGraphRequest(graph.Id, 1), deadline.Token);
         Assert.EndsWith("Plane.glb", node.Mesh, StringComparison.Ordinal);
-        Assert.Equal(new ViewportNodeShown(graph.Id, 1, "Out"), node.Node);
+        Assert.Equal(new(graph.Id, 1, "Out"), node.Node);
         Assert.Equal(ViewportViews.Lit, node.Display.View);
         var gradient = await SettledFrameAsync();
 

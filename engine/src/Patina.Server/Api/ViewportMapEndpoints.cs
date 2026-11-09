@@ -87,8 +87,8 @@ static class ViewportMapEndpoints {
             .WithName("ShowGraphInViewport")
             .WithTags(Tag)
             .WithSummary(
-                "Lays a graph's Output nodes over the mesh, or the display's shape with none, as they stand now, or shows "
-                + "one node's picture there. Ask again to see a later edit."
+                "Lays a graph's Output nodes over the mesh, or the display's shape with none, as they stand now, or "
+                + "shows one node's picture there. Ask again to see a later edit."
             )
             .ProducesProblem(Missing)
             .ProducesProblem(Refused)

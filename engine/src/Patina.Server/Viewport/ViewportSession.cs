@@ -71,6 +71,7 @@ public sealed class ViewportSession(
 
     /// <summary>A graph node's picture shown in place of the material, and its file, or null.</summary>
     (ViewportNodeShown Shown, ViewportMapFile File)? node;
+
     int width = DefaultWidth;
     int height = DefaultHeight;
     bool interacting;
@@ -255,8 +256,8 @@ public sealed class ViewportSession(
     }
 
     /// <summary>
-    ///     Swaps the mesh for another and keeps whatever lies on it: a stack, pictures or a node. For one stand-in shape
-    ///     taking another's place.
+    ///     Swaps the mesh for another and keeps whatever lies on it: a stack, pictures or a node. For one stand-in
+    ///     shape taking another's place.
     /// </summary>
     public void Reshape(string path) {
         lock (changing) {
@@ -592,7 +593,7 @@ public sealed class ViewportSession(
             settings.Orthographic
         );
 
-    /// <summary>The display settings the Worker draws with: the picture view of a node shown in place of the material.</summary>
+    /// <summary>The display the Worker draws with: the picture view of a node shown in place of the material.</summary>
     ViewportDisplaySet Shown() =>
         node is var (_, file)
             ? display with { Display = display.Display with { View = ViewportViews.Picture }, Picture = file }

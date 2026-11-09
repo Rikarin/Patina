@@ -338,8 +338,8 @@ public sealed class GraphEditor {
     }
 
     /// <summary>
-    ///     The first input with no wire yet that takes what the filter allows, so that several wires to a node made from
-    ///     a selection fill its inputs in turn rather than replacing each other on the first.
+    ///     The first input with no wire yet that takes what the filter allows, so that several wires to a node made
+    ///     from a selection fill its inputs in turn rather than replacing each other on the first.
     /// </summary>
     string? FreeLanding(GraphNode to, PortFilter filter) =>
         TypeOf(to)

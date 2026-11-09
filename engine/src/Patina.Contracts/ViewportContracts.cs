@@ -60,8 +60,8 @@ public static class ViewportLanes {
 }
 
 /// <summary>
-///     The shapes <see cref="ViewportDisplay.Shape" /> takes: what a material or a graph is seen on when it has no mesh of
-///     its own.
+///     The shapes <see cref="ViewportDisplay.Shape" /> takes: what a material or a graph is seen on when it has no
+///     mesh of its own.
 /// </summary>
 public static class ViewportShapes {
     /// <summary>A ball, with two turns of the picture around it.</summary>

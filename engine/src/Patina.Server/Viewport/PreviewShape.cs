@@ -8,9 +8,9 @@ namespace Patina.Server.Viewport;
 
 /// <summary>
 ///     What a material or a graph with no mesh is seen on: a sphere, a plane, a cube or a cylinder
-///     (<see cref="ViewportShapes" />), each written once into the cache. Deleting the cache loses nothing but the time to
-///     write them again, and they are generated so that no asset has to ship for them. Every shape fits the box from -1
-///     to 1, and its front faces +z, as the viewport's Front view does.
+///     (<see cref="ViewportShapes" />), each written once into the cache. Deleting the cache loses nothing but the time
+///     to write them again, and they are generated so that no asset has to ship for them. Every shape fits the box from
+///     -1 to 1, and its front faces +z, as the viewport's Front view does.
 /// </summary>
 public static class PreviewShape {
     const int Rings = 48;
@@ -22,7 +22,7 @@ public static class PreviewShape {
     const int IndexComponent = 5125;
     const int Stride = 32;
 
-    /// <summary>The folder the shapes are written to: the library's cache, or a temporary folder with no library.</summary>
+    /// <summary>Where the shapes are written: the library's cache, or a temporary folder with no library.</summary>
     public static string Folder(string? library) =>
         library is null
             ? Path.Combine(Path.GetTempPath(), "patina-preview")
@@ -56,7 +56,7 @@ public static class PreviewShape {
         && ViewportShapes.All.Any(shape => Path.GetFileName(mesh) == FileName(shape));
 
     /// <summary>A shape as a binary glTF: positions, normals and texture coordinates, and its triangles.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The shape is none of <see cref="ViewportShapes.All" />.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">It is none of <see cref="ViewportShapes.All" />.</exception>
     public static byte[] Glb(string shape) {
         var mesh = new MeshBuilder();
         switch (shape) {
@@ -96,7 +96,7 @@ public static class PreviewShape {
             }
         );
 
-    /// <summary>A point on the unit circle round the up axis, turning to the right as it is seen from outside.</summary>
+    /// <summary>A point on the unit circle round the up axis, turning right as it is seen from outside.</summary>
     static Vector3 Around(int segment) {
         var phi = MathF.Tau * segment / Segments;
         return new(MathF.Cos(phi), 0, -MathF.Sin(phi));
@@ -188,8 +188,8 @@ public static class PreviewShape {
             foreach (var (position, normal, u, v) in corners) {
                 least = Vector3.Min(least, position);
                 most = Vector3.Max(most, position);
-                foreach (var value in (ReadOnlySpan<float>)[position.X, position.Y, position.Z, normal.X, normal.Y,
-                             normal.Z, u, v]) {
+                float[] vertex = [position.X, position.Y, position.Z, normal.X, normal.Y, normal.Z, u, v];
+                foreach (var value in vertex) {
                     writer.Write(value);
                 }
             }

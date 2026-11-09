@@ -15,9 +15,9 @@ public sealed class PreviewShapeTests : IDisposable {
     public static TheoryData<string> Shapes => [..ViewportShapes.All];
 
     /// <summary>
-    ///     Every triangle turns anticlockwise seen from outside, glTF's front, which is the side the viewport draws: the
-    ///     sphere turned the other way and was drawn inside out. Its normals point away from the middle, and the picture
-    ///     on it reads the right way round, as a tangent-space normal map needs: the sphere's was mirrored.
+    ///     Every triangle turns anticlockwise seen from outside, glTF's front, which is the side the viewport draws:
+    ///     the sphere turned the other way and was drawn inside out. Its normals point away from the middle, and the
+    ///     picture on it reads the right way round, as a tangent-space normal map needs: the sphere's was mirrored.
     /// </summary>
     [Theory]
     [MemberData(nameof(Shapes))]
