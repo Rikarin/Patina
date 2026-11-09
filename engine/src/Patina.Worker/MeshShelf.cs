@@ -51,7 +51,7 @@ sealed class MeshShelf {
     /// </summary>
     /// <exception cref="IpcException">The file cannot be read as a mesh.</exception>
     public (PaintProjection Projection, int[] Triangles) Shown(string path, string[] parts, string[] materials) {
-        var key = string.Join('\n', [path, ..parts, "", ..materials]);
+        var key = string.Join('\n', [path, ..parts, string.Empty, ..materials]);
         try {
             var written = File.GetLastWriteTimeUtc(path);
             if (shown is { } known && known.Key == key && known.Written == written) {

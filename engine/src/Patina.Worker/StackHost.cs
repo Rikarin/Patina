@@ -455,8 +455,7 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
             foreach (var (layer, alone, inPicture) in StackFinding.Candidates(document, chosen)) {
                 // A layer whose mask reads the picture is weighed in it, with the layers beneath it as they are (#113).
                 using LayerStackEvaluator run = new(evaluator, canvases, path, fill) {
-                    Weighing = !inPicture,
-                    Asked = inPicture ? layer : ""
+                    Weighing = !inPicture, Asked = inPicture ? layer : string.Empty
                 };
                 var refused = inPicture
                     ? run.Prepare(document, chosen, compounds.Registry, compounds.Source)
