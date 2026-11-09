@@ -270,6 +270,12 @@ export const CommandTable: readonly CommandSpec[] = [
     section: 'Window',
     hint: 'Lists what the texture set in front would get wrong in an export'
   },
+  {
+    id: 'showActivity',
+    label: 'Activity',
+    section: 'Window',
+    hint: 'Bakes and exports with how far each is, and everything the app has said'
+  },
 
   { id: 'shortcuts', label: 'Keyboard Shortcuts…', section: 'Help', keys: ['Mod+/'] },
   { id: 'diagnostics', label: 'Diagnostics…', section: 'Help' },
@@ -443,6 +449,7 @@ export const MenuBar: readonly {
       { submenu: 'Layout', items: ['layout1', 'layout2', 'layout3', '-', 'resetLayout'] },
       'showHistory',
       'showChecks',
+      'showActivity',
       '-',
       { native: 'windowItems' }
     ]

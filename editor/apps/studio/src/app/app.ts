@@ -17,6 +17,8 @@ import { XuiInputImports } from '@xui/input';
 import { BakePane } from './bake/bake-pane';
 import { BakeSettings } from './bake/bake-settings';
 import { BakeStore } from './bake/bake-store';
+import { Activity } from './core/activity';
+import { ActivityPanel } from './core/activity-panel';
 import { menuModel } from './core/app-menu';
 import { type CommandHandler, Commands } from './core/commands';
 import { desktop } from './core/desktop';
@@ -48,7 +50,9 @@ import { GraphStore } from './graph/graph-store';
 import { ImageMaterialPane } from './graph/image-material-pane';
 import { NodeLibrary } from './graph/node-library';
 import { TextureView } from './graph/texture-view';
+import { LibraryActions } from './library/library-actions';
 import { LibraryPane } from './library/library-pane';
+import { LibraryTreeStore } from './library/library-tree-store';
 import { ProjectSettingsDialog } from './library/project-settings-dialog';
 import { TextureSets } from './paint/texture-sets';
 import { ProjectCommands } from './library/project-commands';
@@ -57,6 +61,7 @@ import { LayerStack } from './paint/layer-stack';
 import { MaterialShelf } from './paint/material-shelf';
 import { PaintAtlas } from './paint/paint-atlas';
 import { PaintPane } from './paint/paint-pane';
+import { BrushStore } from './paint/brush-store';
 import { PaintStore } from './paint/paint-store';
 import { ViewportPane } from './viewport/viewport-pane';
 
@@ -64,6 +69,7 @@ import { ViewportPane } from './viewport/viewport-pane';
 @Component({
   selector: 'ptn-root',
   imports: [
+    ActivityPanel,
     BakePane,
     ChecksPane,
     ExportPane,
@@ -397,7 +403,38 @@ import { ViewportPane } from './viewport/viewport-pane';
           <span class="readout text-error truncate">The engine stopped: {{ current.reason }}</span>
         }
       }
+      <!-- Every bake and export, and everything the app said, in one place (#192). -->
+      <button
+        type="button"
+        class="readout hover:bg-hover ms-auto flex max-w-[50%] min-w-0 shrink-0 items-center gap-1.5 rounded px-1.5"
+        data-testid="activity-readout"
+        aria-haspopup="dialog"
+        [attr.aria-expanded]="activity.open()"
+        [title]="commands.tooltip('showActivity')"
+        (click)="activity.toggle()"
+      >
+        @if (activity.readout(); as doing) {
+          <span class="bg-primary size-2 shrink-0 animate-pulse rounded-full" aria-hidden="true"></span>
+          <span class="truncate" data-testid="activity-doing">{{ doing }}</span>
+        } @else {
+          <span class="truncate">Activity</span>
+        }
+        @if (activity.unread() > 0) {
+          <span
+            class="bg-error text-error-foreground rounded-full px-1.5 text-xs"
+            data-testid="activity-unread"
+            [attr.aria-label]="activity.unread() + ' new'"
+            >{{ activity.unread() }}</span
+          >
+        }
+      </button>
     </footer>
+
+    @defer (when activity.open()) {
+      @if (activity.open()) {
+        <ptn-activity />
+      }
+    }
 
     <xui-dialog class="max-w-5xl" size="lg" title="Bake" [(open)]="baking">
       <xui-dialog-body>
@@ -577,6 +614,7 @@ export class App {
   protected readonly status = inject(SystemStatus);
   protected readonly project = inject(ProjectStore);
   protected readonly bakes = inject(BakeStore);
+  protected readonly activity = inject(Activity);
   protected readonly bakeSettings = inject(BakeSettings);
   /** How far the jobs of the last bake are, together. */
   protected readonly bakePercent = computed(() => {
@@ -651,6 +689,8 @@ export class App {
       }
     });
 
+    this.hear();
+
     const bridge = desktop();
     bridge?.onFullScreen(fullScreen => this.fullScreen.set(fullScreen));
     this.edit.install();
@@ -676,6 +716,29 @@ export class App {
         bridge.setTitle(this.title());
       });
     }
+  }
+
+  /** What each part of the app says goes to Activity too, so it can be read again once it has gone (#192). */
+  private hear(): void {
+    const activity = this.activity;
+    activity.listen('Project', 'error', this.project.failure);
+    activity.listen('Project', 'info', this.project.notice);
+    activity.listen('Layers', 'error', this.paint.failure);
+    activity.listen('Layers', 'warning', this.paint.notice);
+    activity.listen('Graph', 'error', this.graph.problem);
+    activity.listen('Graph', 'info', this.graph.notice);
+    activity.listen('Bake', 'error', this.bakeSettings.failure);
+    activity.listen('Brush', 'error', inject(BrushStore).failure);
+    activity.listen('Library', 'error', inject(LibraryActions).failure);
+    activity.listen('Library', 'error', inject(LibraryTreeStore).failure);
+    activity.listen(
+      'Engine',
+      'error',
+      computed(() => {
+        const state = this.status.state();
+        return state.kind === 'offline' ? `The engine stopped: ${state.reason}` : null;
+      })
+    );
   }
 
   /** Files from outside the app can land anywhere on the window. */
@@ -753,6 +816,7 @@ export class App {
       enabled: () => holds(this.layout(), 'checks'),
       run: () => this.layout.update(layout => showing(layout, 'checks'))
     });
+    handle('showActivity', { checked: () => this.activity.open(), run: () => this.activity.toggle() });
     handle('shortcuts', { run: () => this.keys.set(true) });
     handle('preferences', { run: () => this.preferencesOpen.set(true) });
     handle('diagnostics', { run: () => this.diagnosing.set(true) });

@@ -206,3 +206,35 @@ test('the panel says why the Server refused a high poly mesh', async () => {
 
   await expect(window.getByTestId('app-failure')).toContainText('/nowhere/high.glb');
 });
+
+test('a bake goes on reporting once its dialog closes: the status bar says how far, and Activity keeps how it ended', async () => {
+  test.setTimeout(300_000);
+  await window.getByTestId('open-bake').click();
+  await choose('high', join(scratch, 'meshes', 'housing_high.glb'));
+  await choose('output', join(scratch, 'maps'));
+  await window.getByTestId('bake-start').click();
+  await window.keyboard.press('Escape');
+
+  // The dialog is gone, and the work is still in sight (#192).
+  await expect(window.getByTestId('activity-doing')).toContainText('Bake of', { timeout: 30_000 });
+  await window.getByTestId('activity-readout').click();
+  const panel = window.getByTestId('activity-panel');
+  await expect(panel.getByTestId('activity-job')).toHaveCount(1);
+  await expect(panel.getByTestId('activity-job')).toHaveAttribute('data-state', 'done', { timeout: 240_000 });
+  await expect(panel.getByTestId('activity-notice').first()).toContainText(/Bake of .+ finished\./u);
+  await expect(window.getByTestId('activity-doing')).toHaveCount(0);
+  mkdirSync(shots, { recursive: true });
+  await window.screenshot({ path: join(shots, 'activity.png') });
+
+  // A refusal is kept there too, after its bar is dismissed.
+  await window.getByTestId('activity-close').click();
+  await window.getByTestId('open-bake').click();
+  await choose('high', '/nowhere/high.glb');
+  await expect(window.getByTestId('app-failure')).toContainText('/nowhere/high.glb');
+  await window.keyboard.press('Escape');
+  await window.getByTestId('app-failure-dismiss').click();
+  await expect(window.getByTestId('activity-unread')).toBeVisible();
+  await window.getByTestId('activity-readout').click();
+  await expect(panel.getByTestId('activity-notice').first()).toContainText('/nowhere/high.glb');
+  await expect(window.getByTestId('activity-unread')).toHaveCount(0);
+});

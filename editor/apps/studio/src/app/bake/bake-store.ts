@@ -52,6 +52,9 @@ export class BakeStore {
   private sequence = 0;
   private stopped = false;
 
+  /** Every job the Server remembers, bakes and exports, newest first. */
+  readonly jobs = computed(() => [...this.byId().values()].sort((a, b) => b.created.localeCompare(a.created)));
+
   /** The jobs the last Bake started, one per texture set, in the order they were asked for. */
   private readonly batchIds = signal<readonly string[]>([]);
 
