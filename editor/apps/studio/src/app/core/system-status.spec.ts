@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { ApiError, createPatinaClient } from '@patina/api-client';
-import { API_CLIENT_FACTORY, SERVER_CONNECTION, SystemStatus } from './system-status';
+import { API_CLIENT_FACTORY, EngineUnreachable, SERVER_CONNECTION, SystemStatus } from './system-status';
 
 const system = {
   version: '1.2.3',
@@ -58,7 +58,8 @@ describe('SystemStatus', () => {
 
     await vi.waitFor(() => expect(status.state().kind).toBe('offline'));
 
-    expect(status.state()).toEqual({ kind: 'offline', reason: 'connection refused' });
+    // A sentence for a person, with what the network said kept for whoever looks closer (#198).
+    expect(status.state()).toEqual({ kind: 'offline', reason: EngineUnreachable, detail: 'connection refused' });
   });
 
   it('reports a Server that refuses the call', async () => {
@@ -66,6 +67,6 @@ describe('SystemStatus', () => {
 
     await vi.waitFor(() => expect(status.state().kind).toBe('offline'));
 
-    expect(status.state()).toMatchObject({ reason: new ApiError(401, '401').message });
+    expect(status.state()).toMatchObject({ reason: EngineUnreachable, detail: new ApiError(401, '401').message });
   });
 });

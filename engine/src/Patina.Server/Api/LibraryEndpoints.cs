@@ -178,9 +178,11 @@ static class LibraryEndpoints {
         string? folder;
         if (request.Graph is { } graph) {
             if (sessions.Find(graph) is not { } session) {
-                return TypedResults.Problem(
+                return Refusals.Problem(
                     $"There is no open graph '{graph}'.",
-                    statusCode: StatusCodes.Status404NotFound
+                    StatusCodes.Status404NotFound,
+                    Refusals.GraphNotOpen,
+                    new Dictionary<string, string> { ["id"] = graph }
                 );
             }
 

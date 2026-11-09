@@ -400,7 +400,9 @@ import { ViewportPane } from './viewport/viewport-pane';
           }
         }
         @case ('offline') {
-          <span class="readout text-error truncate">The engine stopped: {{ current.reason }}</span>
+          <span class="readout text-error truncate" data-testid="status-offline" [title]="current.detail ?? ''">{{
+            current.reason
+          }}</span>
         }
       }
       <!-- Every bake and export, and everything the app said, in one place (#192). -->
@@ -736,7 +738,7 @@ export class App {
       'error',
       computed(() => {
         const state = this.status.state();
-        return state.kind === 'offline' ? `The engine stopped: ${state.reason}` : null;
+        return state.kind === 'offline' ? state.reason : null;
       })
     );
   }

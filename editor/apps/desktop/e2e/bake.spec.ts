@@ -62,7 +62,7 @@ test('a bake runs from the panel and its maps show in the Texture pane', async (
   await expect(picture).toBeVisible();
   await expect(picture).toHaveJSProperty('complete', true);
   expect(await picture.evaluate(image => (image as HTMLImageElement).naturalWidth)).toBe(2048);
-  await expect(window.getByTestId('texture-size')).toContainText('normal, 2048 × 2048');
+  await expect(window.getByTestId('texture-size')).toContainText('Normal, 2048 × 2048');
 
   mkdirSync(shots, { recursive: true });
   await window.screenshot({ path: join(shots, 'bake-panel.png') });

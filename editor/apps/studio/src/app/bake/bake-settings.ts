@@ -131,7 +131,7 @@ export class BakeSettings {
   readonly blocked = computed<string | null>(() => {
     const options = this.options();
     if (!this.library()) {
-      return 'The engine is not running.';
+      return 'Open a library to bake.';
     }
 
     if (!this.project.current()) {

@@ -541,10 +541,10 @@ export class BrushPanel {
   protected readonly percent = percent;
   protected readonly toRadians = toRadians;
 
-  /** The words a brush takes, with the labels the Server gives them, or the values alone until it answers. */
+  /** The words a brush takes, with the labels the Server gives them, or the values in words until it answers. */
   protected readonly terms = computed(() => {
     const brush = this.store.vocabulary()?.brush;
-    const plain = (values: readonly string[]): StackTerm[] => values.map(value => ({ value, label: value }));
+    const plain = (values: readonly string[]): StackTerm[] => values.map(value => ({ value, label: termName(value) }));
     return {
       rotations: brush?.rotations ?? plain(['fixed', 'along', 'random']),
       falloffs: brush?.falloffs ?? plain(['smooth', 'linear', 'spherical', 'tip']),

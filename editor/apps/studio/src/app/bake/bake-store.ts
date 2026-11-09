@@ -109,7 +109,7 @@ export class BakeStore {
   async start(request: BakeRequest): Promise<JobState> {
     const [job] = await this.startAll([request]);
     if (!job) {
-      throw new Error('The Server made no job of the bake.');
+      throw new Error('The bake did not start. Try again.');
     }
 
     return job;

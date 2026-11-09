@@ -252,7 +252,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
 
     @if (store.unbaked(); as maps) {
       <div class="bg-warning-subtle flex shrink-0 items-center gap-2 px-2 py-1 text-xs" data-testid="layers-need-bake">
-        <span class="min-w-0 flex-1" [title]="maps">Some masks need baked maps, and show grey until then.</span>
+        <span class="min-w-0 flex-1" [title]="mapNames(maps)">Some masks need baked maps, and show grey until then.</span>
         <button type="button" xuiButton size="sm" data-testid="layers-bake" (click)="project.askToBake()">Bake…</button>
       </div>
     }
@@ -1400,6 +1400,14 @@ export class LayerStack {
     return this.store.layers().find(row => row.layer.id === id)?.layer ?? null;
   });
   protected readonly commands = inject(Commands);
+
+  /** The maps a mask waits for, as the app calls them, from the values the Worker lists them by (#198). */
+  protected mapNames(maps: string): string {
+    return maps
+      .split(', ')
+      .map(map => termName(map))
+      .join(', ');
+  }
   protected readonly undoLabel = computed(() => {
     const label = this.store.state()?.history.undoLabel;
     return label ? `Undo ${label}` : 'Undo';

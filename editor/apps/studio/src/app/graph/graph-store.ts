@@ -172,7 +172,7 @@ export class GraphStore {
       const document = this.mutableDocument();
       if (document && epoch === this.epoch) {
         this.endSession();
-        this.mutableSession.set({ kind: 'failed', path: document.path, reason: error.message });
+        this.mutableSession.set({ kind: 'failed', path: document.path, reason: messageOf(error) });
       }
     }
   }, inject(EngineRestarts));

@@ -378,9 +378,9 @@ function lanesOf(hex: string): number[] {
           <div class="well grid grid-cols-[1fr_auto] gap-x-3 p-2 text-xs" data-testid="export-impact">
             <span>Projects to touch</span>
             <span class="readout" data-testid="export-impact-projects">{{ preview.projects }}</span>
-            <span>Outputs to build</span>
+            <span>Maps to make</span>
             <span class="readout" data-testid="export-impact-rebuilds">{{ preview.rebuilds }}</span>
-            <span>Of those, shared work</span>
+            <span>Of those, made once for several projects</span>
             <span class="readout">{{ preview.shared }}</span>
             <span>Up to date</span>
             <span class="readout">{{ preview.fresh }}</span>

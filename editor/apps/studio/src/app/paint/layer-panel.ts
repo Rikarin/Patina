@@ -416,12 +416,12 @@ export function hexOf(colour: readonly number[] | undefined): string {
         @for (parameter of knobs(); track parameter.name) {
           <div class="flex items-center gap-2">
             <span class="text-foreground-muted w-16 shrink-0 truncate text-xs" [title]="parameter.summary">{{
-              parameter.name
+              knobName(parameter)
             }}</span>
             @if (parameter.accepted.length > 0) {
               <select
                 class="well h-7 min-w-0 flex-1 px-1 text-sm"
-                [attr.aria-label]="parameter.name"
+                [attr.aria-label]="knobName(parameter)"
                 [attr.data-testid]="'paint-knob-' + parameter.name"
                 (change)="setKnob(layer, parameter.name, text($event))"
               >
@@ -435,7 +435,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
               <xui-numeric-input
                 class="min-w-0 flex-1"
                 size="sm"
-                [ariaLabel]="parameter.name"
+                [ariaLabel]="knobName(parameter)"
                 [attr.data-testid]="'paint-knob-' + parameter.name"
                 [stepSize]="parameter.kind === 'Int' ? 1 : 0.1"
                 [value]="+knob(layer, parameter)"
@@ -444,7 +444,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
             } @else if (parameter.kind === 'Bool') {
               <input
                 type="checkbox"
-                [attr.aria-label]="parameter.name"
+                [attr.aria-label]="knobName(parameter)"
                 [attr.data-testid]="'paint-knob-' + parameter.name"
                 [checked]="knob(layer, parameter) === 'true'"
                 (change)="setKnob(layer, parameter.name, checked($event).toString())"
@@ -455,7 +455,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
                 xuiInput
                 size="sm"
                 autocomplete="off"
-                [attr.aria-label]="parameter.name"
+                [attr.aria-label]="knobName(parameter)"
                 [attr.data-testid]="'paint-knob-' + parameter.name"
                 [value]="knob(layer, parameter)"
                 (change)="setKnob(layer, parameter.name, text($event))"
@@ -652,12 +652,12 @@ export function hexOf(colour: readonly number[] | undefined): string {
             @for (parameter of generatorKnobs(); track parameter.name) {
               <div class="flex items-center gap-2">
                 <span class="text-foreground-muted w-16 shrink-0 truncate text-xs" [title]="parameter.summary">{{
-                  parameter.name
+                  knobName(parameter)
                 }}</span>
                 @if (parameter.accepted.length > 0) {
                   <select
                     class="well h-7 min-w-0 flex-1 px-1 text-sm"
-                    [attr.aria-label]="parameter.name"
+                    [attr.aria-label]="knobName(parameter)"
                     [attr.data-testid]="'paint-mask-knob-' + parameter.name"
                     (change)="setGeneratorKnob(layer, parameter.name, text($event))"
                   >
@@ -671,7 +671,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
                   <xui-numeric-input
                     class="min-w-0 flex-1"
                     size="sm"
-                    [ariaLabel]="parameter.name"
+                    [ariaLabel]="knobName(parameter)"
                     [attr.data-testid]="'paint-mask-knob-' + parameter.name"
                     [stepSize]="parameter.kind === 'Int' ? 1 : 0.05"
                     [value]="+generatorKnob(layer, parameter)"
@@ -886,6 +886,11 @@ export class LayerPanel {
   /** The lanes of a picture a mask can read, which a direction's mesh map holds its axes in. */
   protected readonly lanes = computed(() => this.store.vocabulary()?.lanes?.map(term => term.value) ?? ['Red']);
   protected readonly termName = termName;
+
+  /** A knob as the app calls it: its label, or its name in words, never the key a graph stores it by (#198). */
+  protected knobName(parameter: { name: string; label?: string | null }): string {
+    return parameter.label ?? termName(parameter.name);
+  }
   protected readonly choiceName = choiceName;
   /** A layer by its name, which is what the anchor list offers rather than its id. */
   protected readonly layerName = (id: string): string =>

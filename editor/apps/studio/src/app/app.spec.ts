@@ -91,8 +91,10 @@ describe('App', () => {
   });
 
   it('says why when the Server cannot be reached', async () => {
-    const element = await render({ kind: 'offline', reason: 'connection refused' });
+    const element = await render({ kind: 'offline', reason: 'The engine stopped.', detail: 'connection refused' });
 
-    expect(element.querySelector('footer[role=status]')?.textContent).toContain('connection refused');
+    expect(element.querySelector('footer[role=status]')?.textContent).toContain('The engine stopped.');
+    expect(element.querySelector('footer[role=status]')?.textContent).not.toContain('connection refused');
+    expect(element.querySelector('[data-testid=status-offline]')?.getAttribute('title')).toBe('connection refused');
   });
 });

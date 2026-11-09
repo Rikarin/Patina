@@ -384,7 +384,7 @@ public sealed class GraphEditor {
     SetGraphSettingCommand BuildSetting(GraphSetSetting setting) =>
         GraphSettingValues.Accepts(setting.Key, setting.Value)
             ? new(graph, setting.Key, setting.Value)
-            : throw new GraphEditRefusedException($"'{setting.Value}' is not a value for {setting.Key}.");
+            : throw new GraphEditRefusedException($"'{setting.Value}' is not a value for {Terms.Label(setting.Key)}.");
 
     IEnumerable<NodeId> Members(IReadOnlyList<int> nodes, Dictionary<int, int> refs) =>
         [..nodes.Distinct().Select(node => Find(node, refs).Id)];
@@ -490,7 +490,7 @@ public sealed class GraphEditor {
 sealed class SetGraphSettingCommand(NodeGraphModel graph, string key, string value) : IAuthoringCommand {
     readonly string? previous = graph.Settings.GetValueOrDefault(key);
 
-    public string Name => $"Set {key}";
+    public string Name => $"Set {Terms.Label(key)}";
 
     public void Do(ICommandContext context) => graph.Settings[key] = value;
 
