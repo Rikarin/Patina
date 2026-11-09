@@ -122,23 +122,16 @@ public static class MeshMapBakeRun {
     /// <exception cref="ModelFormatException">It is not a readable model.</exception>
     public static FlatModel Read(string path) => Read(path, null);
 
-    /// <summary>Reads a mesh file, keeping only one material's parts.</summary>
-    /// <param name="path">The file.</param>
-    /// <param name="material">The material, or null for the whole mesh.</param>
-    /// <exception cref="ModelFormatException">It is not a readable model.</exception>
-    /// <exception cref="InvalidDataException">
-    ///     It has no such material. A texture set whose material was renamed asks for this, and the whole mesh in its
-    ///     place would bake every part into one atlas, overlaps included.
-    /// </exception>
-    public static FlatModel Read(string path, string? material) => Read(path, material, 0);
-
     /// <summary>Reads a mesh file, keeping only one material's parts, laid out in one of its coordinate sets.</summary>
     /// <param name="path">The file.</param>
     /// <param name="material">The material, or null for the whole mesh.</param>
     /// <param name="uvSet">The coordinate set, by the file's number, a texture set is painted and baked in.</param>
     /// <exception cref="ModelFormatException">It is not a readable model.</exception>
-    /// <exception cref="InvalidDataException">It has no such material, or a part of it has no such set.</exception>
-    public static FlatModel Read(string path, string? material, int uvSet) {
+    /// <exception cref="InvalidDataException">
+    ///     It has no such material, or a part of it has no such set. A texture set whose material was renamed asks for
+    ///     this, and the whole mesh in its place would bake every part into one atlas, overlaps included.
+    /// </exception>
+    public static FlatModel Read(string path, string? material, int uvSet = 0) {
         var read = Model(path, uvSet != 0);
         var names = MaterialNames.Unique(read.Model.Materials);
         if (material is not null) {
@@ -183,13 +176,9 @@ public static class MeshMapBakeRun {
         }
     }
 
-    /// <summary>Reads a mesh file as it is, keeping what a bake and an unwrap need.</summary>
+    /// <summary>Reads a mesh file as it is, with what a bake and an unwrap need, and every UV set if asked.</summary>
     /// <exception cref="ModelFormatException">It is not a readable model.</exception>
-    internal static ReadModel Model(string path) => Model(path, false);
-
-    /// <summary>Reads a mesh file as it is, with every coordinate set when asked.</summary>
-    /// <exception cref="ModelFormatException">It is not a readable model.</exception>
-    internal static ReadModel Model(string path, bool allSets) =>
+    internal static ReadModel Model(string path, bool allSets = false) =>
         ModelReader.Read(
             SharedFile.ReadAllBytes(path),
             Path.GetExtension(path),

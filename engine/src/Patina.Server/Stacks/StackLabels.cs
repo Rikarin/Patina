@@ -8,8 +8,7 @@ static class StackLabels {
         command switch {
             StackAddLayer add => $"Add {add.Name}",
             StackRemoveLayer => "Remove layer",
-            StackNestLayer => "Move layer",
-            StackMoveLayer => "Move layer",
+            StackNestLayer or StackMoveLayer => "Move layer",
             StackSetLayer set => Changed(set),
             StackSetModel => "Bind mesh",
             StackAddChannel add => $"Add {add.Usage}",

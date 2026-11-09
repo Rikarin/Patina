@@ -723,10 +723,7 @@ public sealed record StackSetHeightNormal(string Method) : StackCommand;
 ///     when it is next painted (#19).
 /// </param>
 /// <param name="Height">The height, which may differ from the width.</param>
-/// <param name="UvSet">
-///     Which of the mesh's texture coordinate sets the set is painted, baked and drawn in, by the file's number: 0 is
-///     the first (#210). Every part of the set has to have it.
-/// </param>
+/// <param name="UvSet">The mesh's UV set it is painted, baked and drawn in, by its number; 0 is the first.</param>
 /// <param name="HeightNormal">How height becomes the normal: <c>Sharp</c> or <c>Smooth</c>.</param>
 public sealed record StackSetSettings(
     int? Width = null,

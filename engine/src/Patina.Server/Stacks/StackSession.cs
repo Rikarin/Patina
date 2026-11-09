@@ -475,8 +475,8 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                         entry.Fill,
                         // Only with the first part: the Worker makes its source once, as the stroke begins.
                         known ? null : entry.SourceDocument,
-                        entry.Side.Width,
-                        entry.Side.Height
+                        entry.Width,
+                        entry.Height
                     )
                 );
                 sent[entry.Id] = (entry.Stamps.Count, entry.Open);

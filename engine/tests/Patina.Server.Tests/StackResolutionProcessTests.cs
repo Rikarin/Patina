@@ -33,7 +33,7 @@ public sealed partial class StackProcessTests {
         }
 
         var again = await OpenAsync(state.Path, deadline.Token);
-        await EditAsync(again.Id, deadline.Token, new StackSetSettings(Width: Side * 2, Height: Side * 2));
+        await EditAsync(again.Id, deadline.Token, new StackSetSettings(Side * 2, Side * 2));
         await SaveAsync(again.Id, deadline.Token);
         Assert.Equal(Side, CanvasBeside(state.Path).Width);
 

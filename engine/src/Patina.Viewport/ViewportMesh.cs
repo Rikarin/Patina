@@ -43,13 +43,9 @@ public sealed record ViewportGeometry(
     /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
     public static ViewportGeometry Read(string path) => ViewportMesh.Read(path).Geometry();
 
-    /// <summary>Reads the triangles of one material, or all of them if the file has no material of that name.</summary>
-    /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
-    public static ViewportGeometry Read(string path, string material) => Read(path, material, 0);
-
     /// <summary>One material's triangles, laid out in one of the file's coordinate sets (#210).</summary>
     /// <exception cref="ModelFormatException">The file is not a readable model, or a part has no such set.</exception>
-    public static ViewportGeometry Read(string path, string material, int uvSet) =>
+    public static ViewportGeometry Read(string path, string material, int uvSet = 0) =>
         ViewportMesh.Read(path, uvSet == 0 ? null : new Dictionary<string, int> { [material] = uvSet })
             .Geometry(material);
 
@@ -179,16 +175,13 @@ sealed class ViewportMesh {
         }
     }
 
-    /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
-    public static ViewportMesh Read(string path) => Read(path, null);
-
     /// <summary>Reads a model, each material laid out in the coordinate set its texture set chose (#210).</summary>
     /// <param name="path">The file.</param>
     /// <param name="uvSets">The coordinate set of each material, by name. One it does not name has the first.</param>
     /// <exception cref="ModelFormatException">
     ///     The file is not a readable model, or a part has no coordinate set of the number its material asks for.
     /// </exception>
-    public static ViewportMesh Read(string path, IReadOnlyDictionary<string, int>? uvSets) {
+    public static ViewportMesh Read(string path, IReadOnlyDictionary<string, int>? uvSets = null) {
         var other = uvSets?.Values.Any(static set => set != 0) ?? false;
         var options = new ModelReadOptions {
             GenerateTangents = false, ImportAnimations = false, ImportBlendShapes = false, ImportAllTexCoords = other
@@ -214,7 +207,9 @@ sealed class ViewportMesh {
             var (mesh, at) = meshes[part.Mesh];
             var first = indices.Count;
             var offset = (uint)(vertices.Count / FloatsPerVertex);
-            var name = part.Material >= 0 && part.Material < materials.Length ? materials[part.Material].Name : "";
+            var name = part.Material >= 0 && part.Material < materials.Length
+                ? materials[part.Material].Name
+                : string.Empty;
             var coordinates = Layout(read, mesh, at, uvSets?.GetValueOrDefault(name) ?? 0, name);
             bounds = Append(mesh, coordinates, world[part.Node], vertices, bounds);
             hasCoordinates |= coordinates.Length == mesh.Positions.Length;

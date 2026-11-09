@@ -139,7 +139,7 @@ public sealed class StackEditorPropertyTests {
         var session = new StackSession("/tmp/Settings.vxlayers", StackDocuments.Text(Sample()), static () => { });
         var (width, height) = (session.State.Width, session.State.Height);
 
-        session.Apply(new([new StackSetSettings(Width: 4096, Height: 1024, UvSet: 1, HeightNormal: "Sharp")]));
+        session.Apply(new([new StackSetSettings(4096, 1024, 1, "Sharp")]));
         var state = session.State;
         Assert.Equal((4096, 1024, 1, "Sharp"), (state.Width, state.Height, state.UvSet, state.HeightNormal));
         Assert.Contains("uvSet: 1", session.Text, StringComparison.Ordinal);
@@ -148,7 +148,7 @@ public sealed class StackEditorPropertyTests {
         session.Apply(new([new StackSetSettings(UvSet: 0)]));
         Assert.Equal((4096, 1024, 0), (session.State.Width, session.State.Height, session.State.UvSet));
 
-        Assert.Throws<StackEditRefusedException>(() => session.Apply(new([new StackSetSettings(Width: 3000)])));
+        Assert.Throws<StackEditRefusedException>(() => session.Apply(new([new StackSetSettings(3000)])));
         Assert.Throws<StackEditRefusedException>(() => session.Apply(new([new StackSetSettings(UvSet: 8)])));
 
         session.Undo();

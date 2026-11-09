@@ -16,13 +16,9 @@ sealed class MeshShelf {
     /// <exception cref="IpcException">The file cannot be read as a mesh with a layout.</exception>
     public Mesh Of(string path) => Of(path, string.Empty);
 
-    /// <summary>One texture set's triangles, or all of them for a set that is no material of the file.</summary>
-    /// <exception cref="IpcException">The file cannot be read as a mesh with a layout.</exception>
-    public Mesh Of(string path, string set) => Of(path, set, 0);
-
     /// <summary>One texture set's triangles, laid out in the coordinate set it chose (#210).</summary>
     /// <exception cref="IpcException">The file cannot be read as a mesh with that layout.</exception>
-    public Mesh Of(string path, string set, int uvSet) {
+    public Mesh Of(string path, string set, int uvSet = 0) {
         try {
             var written = File.GetLastWriteTimeUtc(path);
             if (held.TryGetValue((path, set, uvSet), out var known) && known.Written == written) {

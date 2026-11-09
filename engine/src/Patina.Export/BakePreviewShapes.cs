@@ -60,7 +60,7 @@ public static class BakePreviewShapes {
     /// <exception cref="InvalidDataException">The low mesh has no such texture set, or a map is not square.</exception>
     public static BakePreviewDrawing Build(ViewportBakePreview preview) {
         ArgumentNullException.ThrowIfNull(preview);
-        var files = preview.High.Select(MeshMapBakeRun.Model).ToList();
+        var files = preview.High.Select(static file => MeshMapBakeRun.Model(file)).ToList();
         var high = ModelGeometry.Flatten(files);
         var low = MeshMapBakeRun.Read(preview.Low, preview.Material);
         var cage = preview.Cage is { Length: > 0 } path ? MeshMapBakeRun.Read(path, preview.Material).Mesh : null;

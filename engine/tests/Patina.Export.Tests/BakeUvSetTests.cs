@@ -1,4 +1,3 @@
-using Patina.Contracts;
 using Patina.Jobs;
 using Vixen.Core.Imaging;
 

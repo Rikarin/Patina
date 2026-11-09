@@ -1,5 +1,8 @@
 namespace Patina.Contracts;
 
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field, so fewer parameters means a new API.
+#pragma warning disable SK7005
+
 /// <summary>What a mesh file is, as the engine reads it (#146): the answer to <c>GET /library/mesh</c>.</summary>
 /// <param name="File">The file's name.</param>
 /// <param name="Format">What the format is called, for a person.</param>
@@ -35,6 +38,7 @@ public sealed record MeshFacts(
 /// <param name="Triangles">How many triangles.</param>
 /// <param name="UvSets">How many texture coordinate sets it has.</param>
 public sealed record MeshPartFacts(string Name, string Material, int Triangles, int UvSets);
+#pragma warning restore SK7005
 
 /// <summary>One material of a mesh, which is one texture set.</summary>
 /// <param name="Name">Its name, unique in the file.</param>

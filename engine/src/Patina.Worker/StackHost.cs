@@ -316,6 +316,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
 
         /// <summary>The coordinate set this texture set is laid out in, which every stroke lands in (#210).</summary>
         public int UvSet => LayerStackEdit.SetFor(document, set)?.UvSet ?? 0;
+
         readonly string folder;
         readonly PublishedCompounds compounds;
         readonly PaintCanvasStore canvases = new(long.MaxValue);
@@ -323,6 +324,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
 
         /// <summary>The canvases a stroke of this session began on, whose old pixels its undo holds.</summary>
         readonly HashSet<string> stroked = new(StringComparer.Ordinal);
+
         readonly TexturePlanEvaluator evaluator;
         readonly LayerStackPictures fill;
         readonly List<Applied> applied = [];

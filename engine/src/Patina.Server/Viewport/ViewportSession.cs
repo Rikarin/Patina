@@ -65,6 +65,7 @@ public sealed class ViewportSession(
 
     /// <summary>The UV set each worn texture set is laid out in, by its material, when it is not the first.</summary>
     readonly SortedDictionary<string, int> layouts = new(StringComparer.Ordinal);
+
     readonly HashSet<string> held = new(StringComparer.Ordinal);
     long painted;
     string? toldStack;
@@ -405,14 +406,13 @@ public sealed class ViewportSession(
 
             work = new(
                 mesh,
-                new(stack, also, painted),
+                new(stack, also, painted, new Dictionary<string, int>(layouts, StringComparer.Ordinal)),
                 maps,
                 display,
                 Lens(camera, display.Display),
                 (request.Width ?? width, request.Height ?? height, 1d),
                 false,
-                lastInput,
-                new Dictionary<string, int>(layouts, StringComparer.Ordinal)
+                lastInput
             );
         }
 
@@ -463,14 +463,14 @@ public sealed class ViewportSession(
     async Task<IpcConnection> TellAsync(Work work, CancellationToken cancellationToken) {
         var connection = await worker.ConnectionAsync(cancellationToken);
         // A texture set moved to another coordinate set is the mesh read again with it (#210).
-        var layouts = string.Join(';', work.UvSets.Select(static pair => $"{pair.Key}={pair.Value}"));
+        var layouts = string.Join(';', work.Worn.UvSets.Select(static pair => $"{pair.Key}={pair.Value}"));
         if (!ReferenceEquals(connection, told) || work.Mesh != toldMesh || layouts != toldLayouts) {
             (toldMesh, toldCamera, toldMaps, toldStack, toldDisplay) = (null, null, null, null, null);
             await connection.SendAsync(
                 new() {
                     Type = IpcTypes.ViewportOpen,
                     Mesh = work.Mesh,
-                    UvSets = work.UvSets.Count == 0 ? null : work.UvSets
+                    UvSets = work.Worn.UvSets.Count == 0 ? null : work.Worn.UvSets
                 },
                 cancellationToken
             );
@@ -608,14 +608,13 @@ public sealed class ViewportSession(
                 ? (null, revision)
                 : (new(
                     mesh,
-                    new(stack, also, painted),
+                    new(stack, also, painted, new Dictionary<string, int>(layouts, StringComparer.Ordinal)),
                     maps,
                     display,
                     Lens(camera, display.Display),
                     (width, height, scale.Value),
                     interacting,
-                    lastInput,
-                    new Dictionary<string, int>(layouts, StringComparer.Ordinal)
+                    lastInput
                 ),
                     revision);
         }
@@ -730,7 +729,12 @@ public sealed class ViewportSession(
         );
 
     /// <summary>The stack the viewport wears, if any, and the newest revision of it the Worker has shown.</summary>
-    readonly record struct Wearing(string? Stack, IReadOnlyList<string> Also, long Revision);
+    readonly record struct Wearing(
+        string? Stack,
+        IReadOnlyList<string> Also,
+        long Revision,
+        IReadOnlyDictionary<string, int> UvSets
+    );
 
     readonly record struct Work(
         string? Mesh,
@@ -740,7 +744,6 @@ public sealed class ViewportSession(
         ViewportCamera Camera,
         (int Width, int Height, double Scale) Size,
         bool Interacting,
-        uint Input,
-        IReadOnlyDictionary<string, int> UvSets
+        uint Input
     );
 }

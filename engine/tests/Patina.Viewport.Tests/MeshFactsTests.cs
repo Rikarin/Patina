@@ -17,62 +17,69 @@ public sealed class MeshFactsTests : IDisposable {
             + "property float s\nproperty float t\nelement face 1\nproperty list uchar int vertex_indices\nend_header\n"
             + "0 0 0 0 0\n1 0 0 1 0\n0 1 0 0 1\n3 0 1 2\n",
         [".dae"] = """
-            <?xml version="1.0" encoding="utf-8"?>
-            <COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1">
-              <asset><unit name="meter" meter="1"/><up_axis>Y_UP</up_axis></asset>
-              <library_geometries>
-                <geometry id="tri" name="Tri">
-                  <mesh>
-                    <source id="pos">
-                      <float_array id="pos-a" count="9">0 0 0 1 0 0 0 1 0</float_array>
-                      <technique_common>
-                        <accessor source="#pos-a" count="3" stride="3">
-                          <param name="X" type="float"/><param name="Y" type="float"/><param name="Z" type="float"/>
-                        </accessor>
-                      </technique_common>
-                    </source>
-                    <vertices id="v"><input semantic="POSITION" source="#pos"/></vertices>
-                    <triangles count="1"><input semantic="VERTEX" source="#v" offset="0"/><p>0 1 2</p></triangles>
-                  </mesh>
-                </geometry>
-              </library_geometries>
-              <library_visual_scenes>
-                <visual_scene id="s"><node id="n" name="Tri"><instance_geometry url="#tri"/></node></visual_scene>
-              </library_visual_scenes>
-              <scene><instance_visual_scene url="#s"/></scene>
-            </COLLADA>
-            """,
+                   <?xml version="1.0" encoding="utf-8"?>
+                   <COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1">
+                     <asset><unit name="meter" meter="1"/><up_axis>Y_UP</up_axis></asset>
+                     <library_geometries>
+                       <geometry id="tri" name="Tri">
+                         <mesh>
+                           <source id="pos">
+                             <float_array id="pos-a" count="9">0 0 0 1 0 0 0 1 0</float_array>
+                             <technique_common>
+                               <accessor source="#pos-a" count="3" stride="3">
+                                 <param name="X" type="float"/>
+                                 <param name="Y" type="float"/>
+                                 <param name="Z" type="float"/>
+                               </accessor>
+                             </technique_common>
+                           </source>
+                           <vertices id="v"><input semantic="POSITION" source="#pos"/></vertices>
+                           <triangles count="1">
+                             <input semantic="VERTEX" source="#v" offset="0"/>
+                             <p>0 1 2</p>
+                           </triangles>
+                         </mesh>
+                       </geometry>
+                     </library_geometries>
+                     <library_visual_scenes>
+                       <visual_scene id="s">
+                         <node id="n" name="Tri"><instance_geometry url="#tri"/></node>
+                       </visual_scene>
+                     </library_visual_scenes>
+                     <scene><instance_visual_scene url="#s"/></scene>
+                   </COLLADA>
+                   """,
         [".fbx"] = """
-            ; FBX 7.4.0 project file
-            FBXHeaderExtension:  {
-            	FBXHeaderVersion: 1003
-            	FBXVersion: 7400
-            }
-            GlobalSettings:  {
-            	Version: 1000
-            	Properties70:  {
-            		P: "UnitScaleFactor", "double", "Number", "",100
-            	}
-            }
-            Objects:  {
-            	Geometry: 1000, "Geometry::Tri", "Mesh" {
-            		Vertices: *9 {
-            			a: 0,0,0,1,0,0,0,1,0
-            		}
-            		PolygonVertexIndex: *3 {
-            			a: 0,1,-3
-            		}
-            		GeometryVersion: 124
-            	}
-            	Model: 2000, "Model::Tri", "Mesh" {
-            		Version: 232
-            	}
-            }
-            Connections:  {
-            	C: "OO",1000,2000
-            	C: "OO",2000,0
-            }
-            """,
+                   ; FBX 7.4.0 project file
+                   FBXHeaderExtension:  {
+                   	FBXHeaderVersion: 1003
+                   	FBXVersion: 7400
+                   }
+                   GlobalSettings:  {
+                   	Version: 1000
+                   	Properties70:  {
+                   		P: "UnitScaleFactor", "double", "Number", "",100
+                   	}
+                   }
+                   Objects:  {
+                   	Geometry: 1000, "Geometry::Tri", "Mesh" {
+                   		Vertices: *9 {
+                   			a: 0,0,0,1,0,0,0,1,0
+                   		}
+                   		PolygonVertexIndex: *3 {
+                   			a: 0,1,-3
+                   		}
+                   		GeometryVersion: 124
+                   	}
+                   	Model: 2000, "Model::Tri", "Mesh" {
+                   		Version: 232
+                   	}
+                   }
+                   Connections:  {
+                   	C: "OO",1000,2000
+                   	C: "OO",2000,0
+                   }
+                   """,
         [".gltf"] = Gltf("data:application/octet-stream;base64," + Convert.ToBase64String(Buffer())),
         [".glb"] = string.Empty
     };
@@ -136,7 +143,7 @@ public sealed class MeshFactsTests : IDisposable {
         var path = Path.Combine(folder.FullName, "two.gltf");
         File.WriteAllText(path, TwoParts());
 
-        var first = ViewportGeometry.Read(path, "Body", 0);
+        var first = ViewportGeometry.Read(path, "Body");
         var second = ViewportGeometry.Read(path, "Body", 1);
 
         var middle = new Vixen.Core.Mathematics.Vector2(0.5f, 0.25f);
@@ -154,8 +161,10 @@ public sealed class MeshFactsTests : IDisposable {
                     new Vixen.Geometry.MeshData {
                         Name = "Tri",
                         Positions = [new(0, 0, 0), new(1, 0, 0), new(0, 1, 0)],
-                        Normals = [Vixen.Core.Mathematics.Vector3.UnitZ, Vixen.Core.Mathematics.Vector3.UnitZ,
-                            Vixen.Core.Mathematics.Vector3.UnitZ],
+                        Normals = [
+                            Vixen.Core.Mathematics.Vector3.UnitZ, Vixen.Core.Mathematics.Vector3.UnitZ,
+                            Vixen.Core.Mathematics.Vector3.UnitZ
+                        ],
                         TexCoords = [new(0, 0), new(1, 0), new(0, 1)],
                         Indices = [0, 1, 2],
                         Bounds = new(new(0, 0, 0), new(1, 1, 0))
@@ -184,9 +193,11 @@ public sealed class MeshFactsTests : IDisposable {
         return buffer;
     }
 
-    const string OneMesh =
-        "\"meshes\": [{ \"name\": \"Tri\", \"primitives\": "
-        + "[{ \"attributes\": { \"POSITION\": 0, \"TEXCOORD_0\": 1 }, \"indices\": 3 }] }],";
+    const string OneMesh = """
+                           "meshes": [{ "name": "Tri", "primitives": [
+                             { "attributes": { "POSITION": 0, "TEXCOORD_0": 1 }, "indices": 3 }
+                           ] }],
+                           """;
 
     static string Gltf(string uri, string meshes = OneMesh) =>
         $$"""
