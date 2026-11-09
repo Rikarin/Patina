@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('patina', {
   openFile: (pictures?: readonly string[]) => ipcRenderer.invoke('patina:openFile', pictures),
   openEnvironment: (formats?: readonly string[]) => ipcRenderer.invoke('patina:openEnvironment', formats),
   openLook: () => ipcRenderer.invoke('patina:openLook'),
+  openPreset: () => ipcRenderer.invoke('patina:openPreset'),
   pathOf: (file: File) => webUtils.getPathForFile(file),
   editText: (edit: string) => ipcRenderer.send('patina:editText', edit),
   onCommand: (listener: (command: string, accelerator: boolean) => void) => {

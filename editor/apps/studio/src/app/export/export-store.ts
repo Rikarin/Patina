@@ -2,6 +2,12 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import {
   type BuildPreview,
   type BuildRequest,
+  type CompressionPreviewInfo,
+  type CompressionPreviewRequest,
+  type ExportPresetCheck,
+  type ExportPresetDocument,
+  type ExportPresetSource,
+  type ExportFileChoice,
   type ExportFormatInfo,
   type ExportPresetInfo,
   type JobState,
@@ -20,10 +26,22 @@ const ReportPage = 50;
 /** What an export covers: the document in front, its project, or the whole library. */
 export type ExportScope = 'document' | 'project' | 'library';
 
-/** One file of the preset, as the dialog has it: on or off, and in which format. */
+/**
+ * One file of the preset, as the dialog has it: on or off, in which format, and for a KTX2 or DDS file what it holds,
+ * how hard its blocks are searched and whether it has mips. Absent fields keep the preset's.
+ */
 export interface FileChoice {
   enabled: boolean;
   format: string;
+  compression?: string | null;
+  quality?: string | null;
+  mips?: boolean | null;
+}
+
+/** One texture set's own changes over the whole export's: so far, its size. */
+export interface SetChoice {
+  /** The longest side of the set's files, or null for the export's. */
+  size: number | null;
 }
 
 /**
@@ -53,6 +71,8 @@ export interface ExportSettings {
   skipped: readonly string[];
   /** Per preset, per file template. */
   files: Readonly<Record<string, Readonly<Record<string, FileChoice>>>>;
+  /** Per texture set, what it changes over the rest. */
+  perSet: Readonly<Record<string, SetChoice>>;
 }
 
 /** What the dialog starts from for a preset nobody has changed. */
@@ -67,7 +87,8 @@ export function settingsFor(preset: ExportPresetInfo | null, previous?: ExportSe
     colour: preset?.padding.colour.length ? preset.padding.colour : [0, 0, 0, 1],
     dither: preset?.dither ?? false,
     skipped: previous?.skipped ?? [],
-    files: previous?.files ?? {}
+    files: previous?.files ?? {},
+    perSet: {}
   };
 }
 
@@ -86,9 +107,15 @@ export function storedOf(settings: ExportSettings): ProjectExportSettings {
         preset,
         template,
         enabled: choice.enabled,
-        format: choice.format
+        format: choice.format,
+        compression: choice.compression ?? null,
+        quality: choice.quality ?? null,
+        mips: choice.mips ?? null
       }))
-    )
+    ),
+    perSet: Object.entries(settings.perSet)
+      .filter(([, choice]) => choice.size !== null)
+      .map(([set, choice]) => ({ set, size: choice.size }))
   };
 }
 
@@ -101,7 +128,20 @@ export function settingsOf(stored: ProjectExportSettings, preset: ExportPresetIn
   const same = stored.preset === preset.id;
   const files: Record<string, Record<string, FileChoice>> = {};
   for (const file of stored.files) {
-    files[file.preset] = { ...files[file.preset], [file.template]: { enabled: file.enabled, format: file.format } };
+    files[file.preset] = {
+      ...files[file.preset],
+      [file.template]: {
+        enabled: file.enabled,
+        format: file.format,
+        ...(file.compression ? { compression: file.compression } : {}),
+        ...(file.quality ? { quality: file.quality } : {}),
+        ...(file.mips !== null && file.mips !== undefined ? { mips: file.mips } : {})
+      }
+    };
+  }
+  const perSet: Record<string, SetChoice> = {};
+  for (const set of stored.perSet) {
+    perSet[set.set] = { size: set.size ?? null };
   }
 
   return {
@@ -109,6 +149,7 @@ export function settingsOf(stored: ProjectExportSettings, preset: ExportPresetIn
     folder: stored.folder ?? null,
     skipped: stored.skipped,
     files,
+    perSet: same ? perSet : {},
     ...(same
       ? {
           size: stored.size ?? null,
@@ -159,17 +200,19 @@ export function requestFor(
   const choices = settings.files[preset.id] ?? {};
   const files = preset.files
     .map(file => ({ file, choice: choices[file.template] }))
-    .filter(({ file, choice }) => choice && (!choice.enabled || choice.format !== file.format))
-    .map(({ file, choice }) => ({
-      template: file.template,
-      enabled: choice?.enabled ?? true,
-      ...(choice && choice.format !== file.format ? { format: choice.format } : {})
-    }));
+    .filter(({ file, choice }) => choice && changesFile(file, choice))
+    .map(({ file, choice }) => fileOptions(file, choice as FileChoice));
   if (files.length > 0) {
     options.files = files;
   }
   if (scope.sets) {
     options.sets = [...scope.sets];
+  }
+  const perSet = Object.entries(settings.perSet)
+    .filter(([set, choice]) => choice.size !== null && (!scope.sets || scope.sets.includes(set)))
+    .map(([set, choice]) => ({ set, size: choice.size }));
+  if (perSet.length > 0) {
+    options.perSet = perSet;
   }
 
   return {
@@ -178,6 +221,37 @@ export function requestFor(
     ...(scope.asset ? { asset: scope.asset } : {}),
     ...(settings.folder ? { folder: settings.folder } : {}),
     ...(Object.keys(options).length > 0 ? { options } : {})
+  };
+}
+
+interface PresetFileShape {
+  template: string;
+  format: string;
+  compression: string;
+  quality: string;
+  mips: boolean;
+}
+
+/** Whether a file's choice differs from what the preset says of it. */
+function changesFile(file: PresetFileShape, choice: FileChoice): boolean {
+  return (
+    !choice.enabled ||
+    choice.format !== file.format ||
+    (!!choice.compression && choice.compression !== file.compression) ||
+    (!!choice.quality && choice.quality !== file.quality) ||
+    (choice.mips !== undefined && choice.mips !== null && choice.mips !== file.mips)
+  );
+}
+
+/** A file's choice as an export's options: only what differs from the preset. */
+export function fileOptions(file: PresetFileShape, choice: FileChoice): ExportFileChoice {
+  return {
+    template: file.template,
+    enabled: choice.enabled,
+    ...(choice.format !== file.format ? { format: choice.format } : {}),
+    ...(choice.compression && choice.compression !== file.compression ? { compression: choice.compression } : {}),
+    ...(choice.quality && choice.quality !== file.quality ? { quality: choice.quality } : {}),
+    ...(choice.mips !== undefined && choice.mips !== null && choice.mips !== file.mips ? { mips: choice.mips } : {})
   };
 }
 
@@ -205,6 +279,11 @@ export class ExportStore {
   /** The padding modes and resize filters, each with the label the Server gives it. */
   readonly paddingTerms = signal<readonly StackTerm[]>([]);
   readonly filterTerms = signal<readonly StackTerm[]>([]);
+  /** What a KTX2 or DDS file can hold, the maps a lane can read, the material files, and the names a template takes. */
+  readonly compressionTerms = signal<readonly StackTerm[]>([]);
+  readonly mapTerms = signal<readonly StackTerm[]>([]);
+  readonly materialTerms = signal<readonly StackTerm[]>([]);
+  readonly tokens = signal<readonly string[]>([]);
   readonly paddings = computed(() => this.paddingTerms().map(term => term.value));
   readonly filters = computed(() => this.filterTerms().map(term => term.value));
   readonly problems = signal<readonly string[]>([]);
@@ -228,14 +307,70 @@ export class ExportStore {
     this.exported.set(maps.map(map => map.file ?? map.usage));
   }
 
-  /** Reads the presets this library can use, and the formats, paddings and filters an export can choose. */
-  async load(): Promise<void> {
-    const list = unwrap(await (await this.api()).GET('/api/v1/export/presets'));
+  /**
+   * Reads the presets this library can use, with a project's own when one is named, and the formats, paddings and
+   * filters an export can choose.
+   */
+  async load(project: string | null = null): Promise<void> {
+    const query = project ? { project } : {};
+    const list = unwrap(await (await this.api()).GET('/api/v1/export/presets', { params: { query } }));
     this.presets.set(list.presets);
     this.problems.set(list.problems);
     this.formats.set(list.formats);
     this.paddingTerms.set(list.paddings);
     this.filterTerms.set(list.filters);
+    this.compressionTerms.set(list.compressions);
+    this.mapTerms.set(list.maps);
+    this.materialTerms.set(list.materials);
+    this.tokens.set(list.tokens);
+  }
+
+  /** A preset as its file says it, where it comes from, and its text. */
+  async preset(id: string, project: string | null): Promise<ExportPresetSource> {
+    const query = project ? { project } : {};
+    return unwrap(await (await this.api()).GET('/api/v1/export/presets/{id}', { params: { path: { id }, query } }));
+  }
+
+  /** What a preset would be, and the files it would write for a project, keeping nothing. */
+  async check(preset: ExportPresetDocument, project: string | null): Promise<ExportPresetCheck> {
+    return unwrap(await (await this.api()).POST('/api/v1/export/presets/check', { body: { preset, project } }));
+  }
+
+  /** Keeps a preset as a file in the library or a project, renaming the one it replaces. */
+  async save(preset: ExportPresetDocument, project: string | null, replaces: string | null = null): Promise<ExportPresetSource> {
+    return unwrap(
+      await (await this.api()).PUT('/api/v1/export/presets/{id}', {
+        params: { path: { id: preset.id } },
+        body: { preset, project, replaces }
+      })
+    );
+  }
+
+  /** Removes a library's or a project's preset file. */
+  async remove(id: string, project: string | null): Promise<void> {
+    const query = project ? { project } : {};
+    unwrap(await (await this.api()).DELETE('/api/v1/export/presets/{id}', { params: { path: { id }, query } }));
+  }
+
+  /** Brings a preset file someone shared into the library or a project. */
+  async bringIn(file: string, project: string | null): Promise<ExportPresetSource> {
+    return unwrap(await (await this.api()).POST('/api/v1/export/presets/import', { body: { file, project } }));
+  }
+
+  /** A region of one file as the file holds it, beside its source, with the error per lane. */
+  async compression(request: CompressionPreviewRequest): Promise<CompressionPreviewInfo> {
+    return unwrap(await (await this.api()).POST('/api/v1/export/compression', { body: request }));
+  }
+
+  /** One picture of a compression preview, as an object URL the caller revokes. */
+  async picture(id: string, picture: 'source' | 'written' | 'difference'): Promise<string> {
+    const blob = unwrap(
+      await (await this.api()).GET('/api/v1/export/compression/{id}/{picture}', {
+        params: { path: { id, picture } },
+        parseAs: 'blob'
+      })
+    );
+    return URL.createObjectURL(blob);
   }
 
   /** Asks what a build would do. Nothing runs. */
@@ -281,15 +416,16 @@ export class ExportStore {
 
   /**
    * What an export was last set to, through the Server, or null for none: a project's from its project.yaml, the
-   * library's from library.yaml.
+   * library's from library.yaml. A project's texture sets come with it, so a project that is not open has them too.
    */
-  async settings(owner: ExportOwner): Promise<ProjectExportSettings | null> {
+  async settings(owner: ExportOwner): Promise<{ kept: ProjectExportSettings | null; sets: readonly string[] }> {
     const client = await this.api();
     if (owner === 'library') {
-      return unwrap(await client.GET('/api/v1/library')).export ?? null;
+      return { kept: unwrap(await client.GET('/api/v1/library')).export ?? null, sets: [] };
     }
     const query = { path: owner.project };
-    return unwrap(await client.GET('/api/v1/library/project', { params: { query } })).export ?? null;
+    const contents = unwrap(await client.GET('/api/v1/library/project', { params: { query } }));
+    return { kept: contents.export ?? null, sets: contents.exportSets };
   }
 
   /** Keeps what an export is set to, in its owner's file, where any client's next export of it starts. */

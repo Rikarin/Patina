@@ -3,6 +3,7 @@ import {
   Component,
   DestroyRef,
   type OnInit,
+  Injector,
   computed,
   effect,
   inject,
@@ -24,6 +25,8 @@ import { SystemStatus } from '../core/system-status';
 import { LibrarySelection } from '../library/library-selection';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore } from '../paint/paint-store';
+import { PresetEditor } from './preset-editor';
+import { CompressionView } from './compression-view';
 import {
   type ExportOwner,
   type ExportScope,
@@ -69,6 +72,8 @@ function lanesOf(hex: string): number[] {
 @Component({
   selector: 'ptn-export',
   imports: [
+    CompressionView,
+    PresetEditor,
     XuiButtonImports,
     XuiCalloutImports,
     XuiColorPickerImports,
@@ -80,6 +85,15 @@ function lanesOf(hex: string): number[] {
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
   template: `
+    @if (editing()) {
+      <ptn-preset-editor
+        class="min-h-0 flex-1"
+        [project]="target()?.path ?? null"
+        [projectName]="target()?.name ?? null"
+        [start]="settings().preset"
+        (closed)="closeEditor($event)"
+      />
+    } @else {
     <div class="grid min-h-0 flex-1 grid-cols-[19rem_minmax(0,1fr)] gap-3 overflow-hidden p-3">
       <div class="flex min-h-0 flex-col gap-3 overflow-y-auto pr-1" data-testid="export-settings">
         <section class="flex flex-col gap-1.5">
@@ -112,10 +126,20 @@ function lanesOf(hex: string): number[] {
           />
           @if (chosen(); as info) {
             <span class="text-foreground-muted text-xs" data-testid="export-preset-info">
-              {{ info.engine }} · normal map {{ greenName(info.normal) }} ·
-              {{ info.origin === 'factory' ? 'built in' : 'this library' }}
+              {{ info.engine }} · normal map {{ greenName(info.normal) }} · {{ originName(info.origin) }}
             </span>
           }
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            variant="ghost"
+            class="self-start"
+            data-testid="export-edit-presets"
+            (click)="editing.set(true)"
+          >
+            Edit Presets…
+          </button>
         </section>
 
         <section class="flex flex-col gap-1.5">
@@ -281,15 +305,27 @@ function lanesOf(hex: string): number[] {
               </button>
             </div>
             @for (set of setNames(); track set) {
-              <label class="flex items-center gap-2 text-xs" data-testid="export-set">
-                <input
-                  type="checkbox"
-                  [attr.aria-label]="'Export ' + set"
-                  [checked]="!settings().skipped.includes(set)"
-                  (change)="toggleSet(set)"
+              <div class="flex items-center gap-2 text-xs" data-testid="export-set">
+                <label class="flex min-w-0 flex-1 items-center gap-2">
+                  <input
+                    type="checkbox"
+                    [attr.aria-label]="'Export ' + set"
+                    [checked]="!settings().skipped.includes(set)"
+                    (change)="toggleSet(set)"
+                  />
+                  <span class="truncate">{{ set }}</span>
+                </label>
+                <xui-select
+                  class="w-32 shrink-0"
+                  data-testid="export-set-size"
+                  [ariaLabel]="'Size of ' + set"
+                  [filterable]="false"
+                  [itemText]="setSizeName"
+                  [items]="setSizes()"
+                  [value]="setSizeOf(set)"
+                  (valueChange)="chooseSetSize(set, $event)"
                 />
-                <span class="truncate">{{ set }}</span>
-              </label>
+              </div>
             }
           </section>
         }
@@ -332,8 +368,92 @@ function lanesOf(hex: string): number[] {
                   (valueChange)="chooseFile(file, { format: $event ?? file.format })"
                 />
               </div>
+              @if (choice.enabled && (isContainer(choice.format) || choice.format === 'jpeg')) {
+                <div
+                  class="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-x-2 pb-1 text-xs"
+                  data-testid="export-file-options"
+                >
+                  <span></span>
+                  <span class="flex min-w-0 items-center gap-1.5">
+                    @if (isContainer(choice.format)) {
+                      <xui-select
+                        class="w-40"
+                        data-testid="export-file-compression"
+                        [ariaLabel]="'Compression of ' + file.template"
+                        [filterable]="false"
+                        [itemText]="compressionName"
+                        [items]="compressionsFor(file)"
+                        [value]="compressionOf(file, choice)"
+                        (valueChange)="chooseFile(file, { compression: $event ?? 'none' })"
+                      />
+                      @if (searched(compressionOf(file, choice))) {
+                        <xui-select
+                          class="w-28"
+                          data-testid="export-file-quality"
+                          [ariaLabel]="'Search of ' + file.template"
+                          [filterable]="false"
+                          [itemText]="qualityName"
+                          [items]="searches"
+                          [value]="qualityOf(file, choice)"
+                          (valueChange)="chooseFile(file, { quality: $event ?? 'balanced' })"
+                        />
+                      }
+                      <label class="flex items-center gap-1">
+                        <input
+                          type="checkbox"
+                          data-testid="export-file-mips"
+                          [attr.aria-label]="'Mips of ' + file.template"
+                          [checked]="choice.mips ?? file.mips"
+                          (change)="chooseFile(file, { mips: !(choice.mips ?? file.mips) })"
+                        />
+                        Mips
+                      </label>
+                    } @else {
+                      <span class="text-foreground-muted">Quality</span>
+                      <xui-slider
+                        class="w-28"
+                        labelStepSize="0"
+                        data-testid="export-file-jpeg"
+                        [attr.aria-label]="'JPEG quality of ' + file.template"
+                        [min]="1"
+                        [max]="100"
+                        [stepSize]="1"
+                        [value]="jpegQuality(file, choice)"
+                        (valueChange)="chooseFile(file, { quality: '' + $event })"
+                      />
+                      <span class="readout w-8 text-right">{{ jpegQuality(file, choice) }}</span>
+                    }
+                  </span>
+                  <button
+                    type="button"
+                    xuiButton
+                    size="sm"
+                    variant="ghost"
+                    data-testid="export-file-preview"
+                    [disabled]="!target()"
+                    [title]="'See what ' + formatName(choice.format) + ' does to this file'"
+                    (click)="previewing.set(file.template)"
+                  >
+                    See Compression
+                  </button>
+                </div>
+              }
             }
           </section>
+        }
+
+        @if (previewing(); as template) {
+          @if (target(); as project) {
+            <ptn-compression-view
+              [project]="project.path"
+              [projectId]="project.id"
+              [preset]="settings().preset ?? ''"
+              [file]="template"
+              [set]="previewSet()"
+              [options]="previewOptions()"
+              (closed)="previewing.set(null)"
+            />
+          }
         }
 
         @if (unsaved().length > 0) {
@@ -539,6 +659,7 @@ function lanesOf(hex: string): number[] {
         }
       </div>
     </div>
+    }
   `
 })
 export class ExportPane implements OnInit {
@@ -547,12 +668,20 @@ export class ExportPane implements OnInit {
   protected readonly project = inject(ProjectStore);
   private readonly selection = inject(LibrarySelection);
   private readonly status = inject(SystemStatus);
+  private readonly injector = inject(Injector);
 
   /** The scope chosen by hand, which holds until it stops being possible. */
   private readonly picked = signal<ExportScope | null>(null);
   protected readonly settings = signal<ExportSettings>(settingsFor(null));
   protected readonly error = signal<string | null>(null);
   protected readonly confirming = signal(false);
+  /** Whether the preset editor is showing in place of the export's settings. */
+  protected readonly editing = signal(false);
+  /** The file whose compression is being looked at, by its template, or null. */
+  protected readonly previewing = signal<string | null>(null);
+  /** The texture sets of the project in front as the Server listed them, for one that is not open. */
+  private readonly keptSets = signal<readonly string[]>([]);
+  protected readonly searches = ['fast', 'balanced', 'best'];
   /** The Server's texture sides, after the maps' own size. */
   protected readonly sizes = computed(() => ['native', ...this.status.textureSides().map(String)]);
 
@@ -574,9 +703,16 @@ export class ExportPane implements OnInit {
   protected readonly formatName = (format: string): string =>
     this.store.formats().find(known => known.id === format)?.label ?? format;
   protected readonly lanes = lanesOf;
+  protected readonly compressionName = (compression: string): string =>
+    labelIn(this.store.compressionTerms(), compression);
+  protected readonly qualityName = (quality: string): string =>
+    ({ fast: 'Fast', balanced: 'Balanced', best: 'Best' })[quality] ?? quality;
+  protected readonly setSizeName = (size: string): string => (size === 'export' ? 'Export’s size' : `${size} px`);
+  /** The sides a texture set can take of its own, after the export's. */
+  protected readonly setSizes = computed(() => ['export', ...this.status.textureSides().map(String)]);
 
   /** The project the dialog is about: the one in front, or the one selected in the Library. */
-  private readonly target = computed<{ id: string; name: string; path: string } | null>(() => {
+  protected readonly target = computed<{ id: string; name: string; path: string } | null>(() => {
     const open = this.project.current();
     if (open) {
       return { id: open.id, name: open.name, path: open.path };
@@ -635,7 +771,8 @@ export class ExportPane implements OnInit {
     if (this.scope() !== 'project') {
       return [];
     }
-    const sets = this.project.current()?.id === this.target()?.id ? (this.project.current()?.exportSets ?? []) : [];
+    const open = this.project.current();
+    const sets = open && open.id === this.target()?.id ? open.exportSets : this.keptSets();
     return sets.length > 1 ? sets : [];
   });
 
@@ -741,7 +878,87 @@ export class ExportPane implements OnInit {
   }
 
   ngOnInit(): void {
-    void this.attempt(() => this.store.load());
+    // The presets the project in front can use: the library's and its own.
+    effect(
+      () => {
+        const project = this.target()?.path ?? null;
+        void untracked(() => this.attempt(() => this.store.load(project)));
+      },
+      { injector: this.injector }
+    );
+  }
+
+  /** The texture set a compression preview shows: the document's, or the first that is written. */
+  protected readonly previewSet = computed(() => {
+    if (this.scope() === 'document') {
+      return this.documentSet();
+    }
+    return this.setNames().find(set => !this.settings().skipped.includes(set)) ?? null;
+  });
+
+  /** What an export would change of the preset, which a preview must show the file under. */
+  protected readonly previewOptions = computed(() => this.request().options ?? null);
+
+  protected originName(origin: string): string {
+    return origin === 'factory' ? 'built in' : origin === 'project' ? 'this project' : 'this library';
+  }
+
+  protected isContainer(format: string): boolean {
+    return this.store.formats().find(known => known.id === format)?.container ?? false;
+  }
+
+  /** What a container file of this many lanes can hold. */
+  protected compressionsFor(file: ExportPresetFile): string[] {
+    const fits: Readonly<Record<string, readonly number[]>> = {
+      bc1: [3],
+      bc3: [3, 4],
+      bc4: [1],
+      bc5: [2],
+      bc6h: [3],
+      bc7: [3, 4]
+    };
+    return this.store
+      .compressionTerms()
+      .map(term => term.value)
+      .filter(compression => fits[compression]?.includes(file.lanes) ?? true);
+  }
+
+  protected compressionOf(file: ExportPresetFile, choice: FileChoice): string {
+    return choice.compression ?? (this.isContainer(file.format) ? file.compression : 'none');
+  }
+
+  protected searched(compression: string): boolean {
+    return compression === 'bc6h' || compression === 'bc7';
+  }
+
+  protected qualityOf(file: ExportPresetFile, choice: FileChoice): string {
+    const quality = choice.quality ?? file.quality;
+    return this.searches.includes(quality) ? quality : 'balanced';
+  }
+
+  protected jpegQuality(file: ExportPresetFile, choice: FileChoice): number {
+    const quality = Number(choice.quality ?? (file.format === 'jpeg' ? file.quality : '90'));
+    return Number.isFinite(quality) ? quality : 90;
+  }
+
+  protected setSizeOf(set: string): string {
+    const size = this.settings().perSet[set]?.size;
+    return size ? String(size) : 'export';
+  }
+
+  protected chooseSetSize(set: string, size: string | null): void {
+    const kept = Object.entries(this.settings().perSet).filter(([name]) => name !== set);
+    const own = !size || size === 'export' ? [] : [[set, { size: Number(size) }] as const];
+    this.change({ perSet: Object.fromEntries([...kept, ...own]) });
+  }
+
+  /** Back from the preset editor, choosing the preset it was left on. */
+  protected async closeEditor(chosen: string | null): Promise<void> {
+    this.editing.set(false);
+    await this.attempt(() => this.store.load(this.target()?.path ?? null));
+    if (chosen && chosen !== this.settings().preset) {
+      this.choosePreset(chosen);
+    }
   }
 
   protected greenName(normal: string): string {
@@ -797,7 +1014,9 @@ export class ExportPane implements OnInit {
     if (!preset) {
       return;
     }
-    const next = { ...this.choiceOf(file), ...change };
+    const current = this.choiceOf(file);
+    const reformatted = change.format !== undefined && change.format !== current.format;
+    const next = { ...current, ...(reformatted ? { compression: null, quality: null, mips: null } : {}), ...change };
     this.settings.update(settings => ({
       ...settings,
       files: { ...settings.files, [preset]: { ...settings.files[preset], [file.template]: next } }
@@ -891,10 +1110,12 @@ export class ExportPane implements OnInit {
   private async restore(owner: ExportOwner | null, presets: readonly ExportPresetInfo[]): Promise<void> {
     this.flush();
     this.restored = null;
-    const saved = owner ? await this.store.settings(owner) : null;
+    const read = owner ? await this.store.settings(owner) : null;
     if (!sameOwner(owner, this.settingsOwner())) {
       return; // Another project came to the front while this one was read.
     }
+    const saved = read?.kept ?? null;
+    this.keptSets.set(read?.sets ?? []);
     const preset = presets.find(known => known.id === saved?.preset) ?? presets[0];
     if (!preset) {
       return;

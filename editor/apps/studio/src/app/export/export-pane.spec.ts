@@ -58,6 +58,7 @@ const unreal = {
   dither: false,
   size: null,
   filter: 'box',
+  materials: [],
   files: [
     {
       template: 'T_{project}_D',
@@ -67,7 +68,8 @@ const unreal = {
       mips: false,
       maps: ['baseColor', 'opacity'],
       lanes: 4,
-      quality: 'balanced'
+      quality: 'balanced',
+      scale: 1
     },
     {
       template: 'T_{project}_R',
@@ -77,7 +79,8 @@ const unreal = {
       mips: false,
       maps: ['roughness'],
       lanes: 1,
-      quality: 'balanced'
+      quality: 'balanced',
+      scale: 1
     }
   ]
 };
@@ -253,10 +256,11 @@ describe('ExportPane settings', () => {
       padding: { mode: 'transparent', distance: 8, colour: [] },
       dither: true,
       skipped: [],
+      perSet: [],
       files: [{ preset: 'unreal', template: 'T_{project}_R', enabled: false, format: 'png8' }]
     };
     const { fixture, selection } = setup({
-      'GET library/project': () => Response.json({ id: 'p', name: 'Crate', path: 'crate', export: kept }),
+      'GET library/project': () => Response.json({ id: 'p', name: 'Crate', path: 'crate', export: kept, exportSets: [] }),
       'PUT library/project/export': request => {
         void request.json().then(body => puts.push(body));
         return Response.json({ id: 'p', name: 'Crate', path: 'crate' });
@@ -291,7 +295,7 @@ describe('ExportPane settings', () => {
 
   it('keeps a library export’s settings in the library, where a scope change finds them again (#227)', async () => {
     const puts: { path: string; body: { export: { folder: string | null; dither: boolean } } }[] = [];
-    let library: unknown = { preset: 'unreal', folder: '/everything', dither: true, skipped: [], files: [] };
+    let library: unknown = { preset: 'unreal', folder: '/everything', dither: true, skipped: [], files: [], perSet: [] };
     const put = (request: Request) => {
       const path = new URL(request.url).pathname;
       return request.json().then((body: (typeof puts)[number]['body']) => {
@@ -303,7 +307,7 @@ describe('ExportPane settings', () => {
     };
     const { fixture, selection } = setup({
       'GET library': () => Response.json({ id: 'l', name: 'Library', export: library }),
-      'GET library/project': () => Response.json({ id: 'p', name: 'Crate', path: 'crate' }),
+      'GET library/project': () => Response.json({ id: 'p', name: 'Crate', path: 'crate', exportSets: [] }),
       'PUT library/export': request => {
         void put(request);
         return Response.json({ id: 'l', name: 'Library' });
@@ -345,12 +349,13 @@ describe('ExportPane settings', () => {
       folder: '/alpha/out',
       dither: false,
       skipped: ['Trim'],
+      perSet: [],
       files: [{ preset: 'unreal', template: 'T_{project}_R', enabled: false, format: 'png8' }]
     };
     const { fixture, selection } = setup({
       'GET library/project': request => {
         const path = new URL(request.url).searchParams.get('path');
-        return Response.json({ id: path, name: path, path, export: path === 'alpha' ? kept : null });
+        return Response.json({ id: path, name: path, path, export: path === 'alpha' ? kept : null, exportSets: [] });
       },
       'PUT library/project/export': request => {
         void request.json().then((body: (typeof puts)[number]) => puts.push(body));
@@ -382,7 +387,7 @@ describe('ExportPane settings', () => {
     const { fixture, selection } = setup({
       'GET library/project': request => {
         const path = new URL(request.url).searchParams.get('path');
-        return Response.json({ id: path, name: path, path });
+        return Response.json({ id: path, name: path, path, exportSets: [] });
       },
       'PUT library/project/export': request => {
         void request.json().then((body: (typeof puts)[number]) => puts.push(body));
@@ -406,6 +411,28 @@ describe('ExportPane settings', () => {
     ]);
   });
 
+  it('offers the texture sets of a project selected in the Library that is not open, each with a size of its own', async () => {
+    const { fixture, text, selection } = setup({
+      'GET library/project': () => Response.json({ id: 'crate', name: 'Crate', path: 'crate', exportSets: ['Body', 'Head'] })
+    });
+    selection.select({ kind: 'project', project: { id: 'crate', name: 'Crate', path: 'crate' } } as never);
+    await settled(fixture);
+    await settled(fixture);
+
+    expect(text('export-set').map(row => row.slice(0, 4))).toEqual(['Body', 'Head']);
+    expect((fixture.nativeElement as HTMLElement).querySelectorAll('[data-testid="export-set-size"]')).toHaveLength(2);
+  });
+
+  it('turns kept compression and a set’s own size back into the dialog’s, losing nothing', () => {
+    const settings = {
+      ...settingsFor(unreal),
+      files: { unreal: { 'T_{project}_D': { enabled: true, format: 'ktx2', compression: 'bc7', quality: 'best', mips: true } } },
+      perSet: { Head: { size: 512 } }
+    };
+
+    expect(settingsOf(storedOf(settings), unreal as never)).toEqual(settings);
+  });
+
   it('turns kept settings back into the dialog’s, and the dialog’s into kept ones, losing nothing', () => {
     const settings = {
       ...settingsFor(unreal),
@@ -424,6 +451,28 @@ describe('requestFor', () => {
 
   it('sends no options when nothing differs from the preset, so the preset keeps its key', () => {
     expect(requestFor(settings, unreal as never, {})).toEqual({ presets: ['unreal'] });
+  });
+
+  it('sends a file’s compression, search and mips, and a set’s own size, only where they differ', () => {
+    const request = requestFor(
+      {
+        ...settings,
+        files: {
+          unreal: {
+            'T_{project}_D': { enabled: true, format: 'ktx2', compression: 'bc7', quality: 'balanced', mips: true },
+            'T_{project}_R': { enabled: true, format: 'png8', compression: null, quality: null, mips: null }
+          }
+        },
+        perSet: { Head: { size: 512 }, Body: { size: null } }
+      },
+      unreal,
+      { projects: ['p'] }
+    );
+
+    expect(request.options).toEqual({
+      files: [{ template: 'T_{project}_D', enabled: true, format: 'ktx2', compression: 'bc7', mips: true }],
+      perSet: [{ set: 'Head', size: 512 }]
+    });
   });
 
   it('sends only what differs: size, padding, a file turned off, another format, the sets', () => {
