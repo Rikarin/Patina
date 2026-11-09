@@ -224,6 +224,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Properties starts with the document itself, whatever tool or layer is chosen: its name and mesh, its texture set and size, and its channels with Add Channel…, which was in the brush's settings and went away while a fill was chosen.
 - Fewer raw values and developer words reach the screen: the History list says Add Ambient Occlusion and Set Bit Depth, not Add occlusion and Set bitDepth; a refusal names a channel or a mask source as the app does; a filter or generator's settings are labelled in words; the Maps view and the tooltip of masks waiting for a bake name maps as the app does; the brush's lists show words before the engine has answered; and when the engine cannot be reached the status bar says so in a sentence, with what the network said on hover.
 - Undo, Redo and Save are in the title bar, for whichever document is in front, in place of the Layers and Graph panes' own buttons; a document with unsaved changes says so with the • on its tab alone, and a graph is closed from its tab, as every document is. The status bar names the library and shows its whole path on hover. Export's button is at the right, as Bake's is.
 - Occlusion darkens the light as well as the environment: a crevice the occlusion map calls closed is lit only when the light comes from well above it, and reflections fade there less than the diffuse does on a smooth surface. A reflection a normal map turns below the surface is taken away, and the edge of the model's shadow is softer.

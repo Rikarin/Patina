@@ -462,19 +462,6 @@ const SizeSteps = 1000;
           />
         </div>
       }
-      @if (addable().length > 0) {
-        <select
-          class="well h-7 min-w-0 px-1 text-sm"
-          aria-label="Add a channel to this stack"
-          data-testid="paint-add-channel"
-          (change)="addChannel($event)"
-        >
-          <option value="">Add a channel…</option>
-          @for (usage of addable(); track usage) {
-            <option [value]="usage">{{ nameOf(usage) }}</option>
-          }
-        </select>
-      }
     </div>
     @for (slider of sliders; track slider.key) {
       <div class="flex items-center gap-2">
@@ -561,10 +548,6 @@ export class BrushPanel {
   protected readonly others = computed(() =>
     (this.store.state()?.channels ?? []).filter(channel => channel.usage !== this.store.channel())
   );
-  protected readonly addable = computed(() => {
-    const held = this.store.state()?.channels.map(channel => channel.usage) ?? [];
-    return (this.store.vocabulary()?.usages ?? []).map(term => term.value).filter(usage => !held.includes(usage));
-  });
 
   protected toggleChannel(usage: string, event: Event): void {
     const next = new Map(this.store.alsoPaints());
@@ -579,15 +562,6 @@ export class BrushPanel {
 
   protected setChannel(usage: string, colour: string): void {
     this.store.alsoPaints.set(new Map(this.store.alsoPaints()).set(usage, colour));
-  }
-
-  protected addChannel(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    const usage = select.value;
-    select.value = '';
-    if (usage) {
-      void this.store.edit({ op: 'addChannel', usage });
-    }
   }
 
   /** A palette colour paints, or with Alt held leaves the palette. */
