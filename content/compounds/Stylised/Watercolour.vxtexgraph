@@ -1,0 +1,56 @@
+version: 1
+name: Watercolour
+nodes:
+  - { id: 1, type: Sub-graph/Input, x: -1280, y: 0 }
+  - { id: 2, type: Filters/Edge-Preserving Blur, x: -960, y: 0, values: { Edge Tolerance: [0.2] }, texts: { '=Sigma': '1f + wash * 8f' } }
+  - { id: 3, type: Colour/Grayscale, x: -640, y: 200 }
+  - { id: 4, type: Analysis/Edge Detect, x: -320, y: 200, values: { Threshold: [0.01] }, texts: { '=Width': '1f + bleed * 4f' } }
+  - { id: 5, type: Filters/Blur HQ, x: -160, y: 200, texts: { '=Sigma': '1f + bleed * 3f' } }
+  - { id: 6, type: Source/Noise, x: -640, y: 400, values: { Octaves: [4], Gain: [0.6] }, texts: { Basis: Value, '=Scale': '64f', '=Seed': seed } }
+  - { id: 10, type: Source/Noise, x: -640, y: 560, values: { Octaves: [3] }, texts: { Basis: Gradient, '=Scale': '6f', '=Seed': 'seed + 1' } }
+  - id: 7
+    type: Filters/Pixel Processor
+    x: 0
+    y: 300
+    texts:
+      Expression: 'float4(a.x, b.x, 0f, 1f)'
+  - { id: 11, type: Colour/Blend, x: -320, y: 480, values: { Opacity: [0.5] }, texts: { Mode: Overlay } }
+  - id: 8
+    type: Filters/Pixel Processor
+    x: 320
+    y: 0
+    texts:
+      Expression: 'float4(saturate(lerp(a.xyz, float3(1f, 1f, 1f), x) * (1f - saturate(b.x * 3f) * y) * (1f - (b.y - 0.5f) * z)), a.w)'
+      '=X': 'lightness * 0.5f'
+      '=Y': 'pooling * 0.5f'
+      '=Z': 'paper * 0.6f'
+  - { id: 99, type: Sub-graph/Output, x: 640, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Input, toNode: 2, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 4, fromPort: Out, toNode: 5, toPort: Input }
+  - { fromNode: 6, fromPort: Out, toNode: 11, toPort: Background }
+  - { fromNode: 10, fromPort: Out, toNode: 11, toPort: Foreground }
+  - { fromNode: 5, fromPort: Out, toNode: 7, toPort: A }
+  - { fromNode: 11, fromPort: Out, toNode: 7, toPort: B }
+  - { fromNode: 2, fromPort: Out, toNode: 8, toPort: A }
+  - { fromNode: 7, fromPort: Out, toNode: 8, toPort: B }
+  - { fromNode: 8, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - { name: Input, direction: Input, kind: Image, default: [], summary: 'The picture to paint.' }
+  - { name: Out, direction: Output, kind: Image, default: [], summary: 'The picture as a watercolour: soft washes, pigment pooled dark at their edges, and the grain of the paper through it.' }
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'A watercolour of the picture beneath: flat soft washes, darker where the pigment pools at an edge, on grainy paper.'
+parameters:
+  - { name: wash, label: Wash, default: '0.4', summary: 'How much the washes smooth the picture''s detail away.', kind: Float, minimum: 0, maximum: 1, group: Wash }
+  - { name: lightness, label: Lightness, default: '0.3', summary: 'How far the colours are thinned towards the white of the paper.', kind: Float, minimum: 0, maximum: 1, group: Wash }
+  - { name: pooling, label: Pooling, default: '0.6', summary: 'How dark the pigment gathers along the edge of a wash.', kind: Float, minimum: 0, maximum: 1, group: Edges }
+  - { name: bleed, label: Bleed, default: '0.3', summary: 'How wide the pooled edges spread.', kind: Float, minimum: 0, maximum: 1, group: Edges }
+  - { name: paper, label: Paper Grain, default: '0.4', summary: 'How much the grain of the paper shows through.', kind: Float, minimum: 0, maximum: 1, group: Paper }
+  - { name: seed, label: Seed, default: '0', summary: 'Another draw of the paper and the blotches.', kind: Int, minimum: 0, maximum: 100, group: Paper }

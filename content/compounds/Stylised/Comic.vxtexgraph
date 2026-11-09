@@ -1,0 +1,41 @@
+version: 1
+name: Comic
+nodes:
+  - { id: 1, type: Sub-graph/Input, x: -960, y: 0 }
+  - { id: 2, type: Filters/Edge-Preserving Blur, x: -640, y: 0, values: { Edge Tolerance: [0.12] }, texts: { '=Sigma': 'simplify * 6f' } }
+  - { id: 4, type: Colour/Grayscale, x: -640, y: 220 }
+  - { id: 5, type: Analysis/Edge Detect, x: -320, y: 220, texts: { '=Width': 'line', '=Threshold': '0.02f + (1f - detail) * 0.2f' } }
+  - id: 6
+    type: Filters/Pixel Processor
+    x: 0
+    y: 0
+    texts:
+      Expression: 'float4(saturate(lerp(float3(dot(a.xyz, float3(0.2126f, 0.7152f, 0.0722f))), a.xyz, 1f + x) * ((floor(dot(a.xyz, float3(0.2126f, 0.7152f, 0.0722f)) * z) + 0.5f) / z) / max(dot(a.xyz, float3(0.2126f, 0.7152f, 0.0722f)), 0.02f)) * (1f - saturate(b.x * 4f) * y), a.w)'
+      '=X': 'punch * 0.8f'
+      '=Y': ink
+      '=Z': tones
+  - { id: 99, type: Sub-graph/Output, x: 320, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Input, toNode: 2, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 4, fromPort: Out, toNode: 5, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 6, toPort: A }
+  - { fromNode: 5, fromPort: Out, toNode: 6, toPort: B }
+  - { fromNode: 6, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - { name: Input, direction: Input, kind: Image, default: [], summary: 'The picture to ink.' }
+  - { name: Out, direction: Output, kind: Image, default: [], summary: 'The picture as a comic panel: a few flat tones and black ink round every shape.' }
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'A comic-book look: the picture simplified into a few flat tones, with ink lines drawn round its shapes.'
+parameters:
+  - { name: tones, label: Tones, default: '4', summary: 'How many flat steps of light and shade the picture is cut into. Each keeps its own hue.', kind: Int, minimum: 2, maximum: 12, group: Colour }
+  - { name: simplify, label: Simplify, default: '0.4', summary: 'How much small detail is smoothed away first, while edges stay sharp.', kind: Float, minimum: 0, maximum: 1, group: Colour }
+  - { name: punch, label: Punch, default: '0.4', summary: 'How much brighter the colours are than the picture''s own.', kind: Float, minimum: 0, maximum: 1, group: Colour }
+  - { name: line, label: Line Width, default: '2', summary: 'How wide the ink lines are, in texels.', kind: Float, minimum: 1, maximum: 8, group: Ink }
+  - { name: detail, label: Line Detail, default: '0.5', summary: 'How faint an edge may be and still be inked.', kind: Float, minimum: 0, maximum: 1, group: Ink }
+  - { name: ink, label: Ink, default: '0.9', summary: 'How black the lines are.', kind: Float, minimum: 0, maximum: 1, group: Ink }

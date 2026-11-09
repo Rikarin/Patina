@@ -1,0 +1,64 @@
+version: 1
+name: Shut Lines
+nodes:
+  - { id: 1, type: Sub-graph/Input, x: -320, y: -400 }
+  - { id: 2, type: Source/Mesh Map, x: -1280, y: 0, texts: { Map: id } }
+  - { id: 10, type: Colour/Grayscale, x: -1120, y: 0, values: { Weight R: [0.61], Weight G: [0.29], Weight B: [0.1] } }
+  - { id: 3, type: Analysis/Edge Detect, x: -960, y: 0, values: { Threshold: [0.01] }, texts: { '=Width': 'width' } }
+  - { id: 4, type: Filters/Blur HQ, x: -640, y: 0, texts: { '=Sigma': 'softness * 2f' } }
+  - { id: 5, type: Colour/Levels, x: -320, y: 0, values: { Input Black: [0.02], Input White: [0.25] } }
+  - id: 6
+    type: Filters/Pixel Processor
+    x: 0
+    y: -400
+    texts:
+      Expression: 'float4(a.xyz * (1f - b.x * x), 1f)'
+      '=X': darkening
+  - id: 7
+    type: Filters/Pixel Processor
+    x: 0
+    y: -240
+    texts:
+      Expression: 'float4(lerp(a.xyz, saturate(a.xyz + 0.25f), b.x), 1f)'
+  - id: 8
+    type: Filters/Pixel Processor
+    x: 0
+    y: -80
+    texts:
+      Expression: 'float4(a.xyz - b.xxx * x * 0.1f, 1f)'
+      '=X': depth
+  - { id: 99, type: Sub-graph/Output, x: 320, y: -240 }
+edges:
+  - { fromNode: 2, fromPort: Out, toNode: 10, toPort: Input }
+  - { fromNode: 10, fromPort: Out, toNode: 3, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 4, fromPort: Out, toNode: 5, toPort: Input }
+  - { fromNode: 1, fromPort: baseColor, toNode: 6, toPort: A }
+  - { fromNode: 5, fromPort: Out, toNode: 6, toPort: B }
+  - { fromNode: 1, fromPort: roughness, toNode: 7, toPort: A }
+  - { fromNode: 5, fromPort: Out, toNode: 7, toPort: B }
+  - { fromNode: 1, fromPort: height, toNode: 8, toPort: A }
+  - { fromNode: 5, fromPort: Out, toNode: 8, toPort: B }
+  - { fromNode: 6, fromPort: Out, toNode: 99, toPort: baseColor }
+  - { fromNode: 7, fromPort: Out, toNode: 99, toPort: roughness }
+  - { fromNode: 8, fromPort: Out, toNode: 99, toPort: height }
+groups: []
+comments: []
+interface:
+  - { name: baseColor, direction: Input, kind: Image, default: [], summary: 'The surface beneath.' }
+  - { name: roughness, direction: Input, kind: Image, default: [], summary: 'The roughness beneath.' }
+  - { name: height, direction: Input, kind: Image, default: [], summary: 'The height beneath, which a seam is cut into.' }
+  - { name: baseColor, direction: Output, kind: Image, default: [], summary: 'The surface, darker down every seam.' }
+  - { name: roughness, direction: Output, kind: Image, default: [], summary: 'The roughness, rougher down every seam where grime sits.' }
+  - { name: height, direction: Output, kind: Image, default: [], summary: 'The height, with a groove down every seam.' }
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Shut lines: a dark groove wherever two parts of the model meet, read from the borders of the id bake.'
+  doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: width, label: Width, default: '2', summary: 'How wide a groove is, in texels.', kind: Float, minimum: 1, maximum: 16, group: Seams }
+  - { name: softness, label: Softness, default: '0.5', summary: 'How soft a groove''s sides are.', kind: Float, minimum: 0, maximum: 1, group: Seams }
+  - { name: depth, label: Depth, default: '0.4', summary: 'How deep a groove is cut. One is a tenth of the height''s range.', kind: Float, minimum: 0, maximum: 1, group: Seams }
+  - { name: darkening, label: Darkening, default: '0.6', summary: 'How dark the inside of a groove is.', kind: Float, minimum: 0, maximum: 1, group: Seams }

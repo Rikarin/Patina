@@ -1,0 +1,90 @@
+version: 1
+name: Peeling Paint
+nodes:
+  - { id: 1, type: Sub-graph/Input, x: -320, y: -480 }
+  - { id: 2, type: Source/Mesh Map, x: -1600, y: 0, texts: { Map: position } }
+  - { id: 3, type: Source/Volume Noise, x: -1280, y: 0, values: { Octaves: [5], Gain: [0.6] }, texts: { Basis: Gradient, '=Scale': scale, '=Seed': seed } }
+  - id: 4
+    type: Colour/Levels
+    x: -960
+    y: 0
+    texts:
+      '=Input Black': '0.72f - amount * 0.3f'
+      '=Input White': '0.725f - amount * 0.3f'
+  - { id: 5, type: Filters/Blur HQ, x: -640, y: 160, texts: { '=Sigma': '1f + curl * 5f' } }
+  - id: 6
+    type: Filters/Pixel Processor
+    x: -320
+    y: 0
+    texts:
+      Expression: 'float4(a.x, saturate((b.x - a.x) * 2.5f), 0f, 1f)'
+  - id: 7
+    type: Filters/Pixel Processor
+    x: 0
+    y: -480
+    texts:
+      Expression: 'float4(lerp(a.xyz * (1f + b.y * 0.25f), float3(x, x * 0.97f, x * 0.92f), b.x), 1f)'
+      '=X': '0.15f + undercoat * 0.6f'
+  - id: 8
+    type: Filters/Pixel Processor
+    x: 0
+    y: -320
+    texts:
+      Expression: 'float4(lerp(a.xyz, float3(0.75f, 0.75f, 0.75f), b.x), 1f)'
+  - id: 9
+    type: Filters/Pixel Processor
+    x: 0
+    y: -160
+    texts:
+      Expression: 'float4(lerp(a.xyz, float3(x, x, x), b.x), 1f)'
+      '=X': metal
+  - id: 10
+    type: Filters/Pixel Processor
+    x: 0
+    y: 0
+    texts:
+      Expression: 'float4(a.xyz - b.xxx * 0.03f + b.yyy * x * 0.08f, 1f)'
+      '=X': curl
+  - { id: 99, type: Sub-graph/Output, x: 320, y: -240 }
+edges:
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Position }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 4, fromPort: Out, toNode: 5, toPort: Input }
+  - { fromNode: 4, fromPort: Out, toNode: 6, toPort: A }
+  - { fromNode: 5, fromPort: Out, toNode: 6, toPort: B }
+  - { fromNode: 1, fromPort: baseColor, toNode: 7, toPort: A }
+  - { fromNode: 6, fromPort: Out, toNode: 7, toPort: B }
+  - { fromNode: 1, fromPort: roughness, toNode: 8, toPort: A }
+  - { fromNode: 6, fromPort: Out, toNode: 8, toPort: B }
+  - { fromNode: 1, fromPort: metalness, toNode: 9, toPort: A }
+  - { fromNode: 6, fromPort: Out, toNode: 9, toPort: B }
+  - { fromNode: 1, fromPort: height, toNode: 10, toPort: A }
+  - { fromNode: 6, fromPort: Out, toNode: 10, toPort: B }
+  - { fromNode: 7, fromPort: Out, toNode: 99, toPort: baseColor }
+  - { fromNode: 8, fromPort: Out, toNode: 99, toPort: roughness }
+  - { fromNode: 9, fromPort: Out, toNode: 99, toPort: metalness }
+  - { fromNode: 10, fromPort: Out, toNode: 99, toPort: height }
+groups: []
+comments: []
+interface:
+  - { name: baseColor, direction: Input, kind: Image, default: [], summary: 'The paint beneath, which peels away.' }
+  - { name: roughness, direction: Input, kind: Image, default: [], summary: 'The roughness beneath.' }
+  - { name: metalness, direction: Input, kind: Image, default: [], summary: 'The metalness beneath.' }
+  - { name: height, direction: Input, kind: Image, default: [], summary: 'The height beneath.' }
+  - { name: baseColor, direction: Output, kind: Image, default: [], summary: 'The paint, with the undercoat showing where it has gone and its torn edges catching the light.' }
+  - { name: roughness, direction: Output, kind: Image, default: [], summary: 'The roughness, chalky where the paint has gone.' }
+  - { name: metalness, direction: Output, kind: Image, default: [], summary: 'The metalness, the undercoat''s own where the paint has gone.' }
+  - { name: height, direction: Output, kind: Image, default: [], summary: 'The height, lower where the paint has gone and lifted along the torn edges.' }
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Paint peeling away in sheets: bare undercoat where it has gone, and the torn edges curling up around it.'
+  doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: amount, label: Amount, default: '0.4', summary: 'How much paint has peeled away.', kind: Float, minimum: 0, maximum: 1, group: Peeling }
+  - { name: scale, label: Scale, default: '6', summary: 'How many peeled patches run across the model.', kind: Float, minimum: 1, maximum: 32, group: Peeling }
+  - { name: curl, label: Curl, default: '0.4', summary: 'How wide and high the torn edges lift.', kind: Float, minimum: 0, maximum: 1, group: Peeling }
+  - { name: seed, label: Seed, default: '0', summary: 'Another draw of the peeling. Every whole number is a different pattern.', kind: Int, minimum: 0, maximum: 100, group: Peeling }
+  - { name: undercoat, label: Undercoat Tone, default: '0.4', summary: 'How bright what lies under the paint is, from dark wood or iron to pale plaster.', kind: Float, minimum: 0, maximum: 1, group: Undercoat }
+  - { name: metal, label: Undercoat Metalness, default: '0', summary: 'Whether what lies under the paint is metal.', kind: Float, minimum: 0, maximum: 1, group: Undercoat }

@@ -218,21 +218,20 @@ public sealed class StackVocabularyTests {
     /// <summary>
     ///     Patina #220: a node whose output measures its input gives a layer or a mask nothing of the surface back,
     ///     so no statistics node is offered as either, and the equaliser, whose output is a picture, still is. Nor is a
-    ///     node whose one image is a mesh map (#179), one whose first image is a mask it spreads a colour from, a
-    ///     composite of two normal maps, or one with two pictures out (#174, #176); and wave 5's one-picture nodes are
-    ///     both, Compare among them (#110).
+    ///     node whose one image is a mesh map (#179), a composite of two normal maps, or one with two pictures out
+    ///     (#176); and wave 5's one-picture nodes are both, Compare among them (#110), and Distance Colour, whose first
+    ///     image is the colour it pads out from a mask an input names.
     /// </summary>
     [Fact]
     public void No_statistics_node_is_offered_as_a_filter_or_a_mask_step() {
         var vocabulary = StackDocuments.Vocabulary;
         string[] refused = [
             "Analysis/Histogram", "Analysis/Histogram Render", "Analysis/Summed Area Table", "Source/Volume Noise",
-            "Source/Volume Mask", "Source/Volume Gradient", "Analysis/Distance Colour", "Surface/Normal Blend",
-            "Utility/Frequency Split"
+            "Source/Volume Mask", "Source/Volume Gradient", "Surface/Normal Blend", "Utility/Frequency Split"
         ];
         string[] offered = [
             "Colour/Histogram Equalise", "Analysis/Distance", "Analysis/Flood Fill", "Surface/Height Shadow",
-            "Surface/Bevel Height", "Analysis/Compare"
+            "Surface/Bevel Height", "Analysis/Compare", "Analysis/Distance Colour"
         ];
 
         Assert.All(

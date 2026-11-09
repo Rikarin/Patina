@@ -1,0 +1,42 @@
+version: 1
+name: Cavity Select
+nodes:
+  - { id: 1, type: Source/Mesh Map, x: -960, y: 0, texts: { Map: curvature } }
+  - { id: 2, type: Filters/Blur HQ, x: -640, y: 0, texts: { '=Sigma': 'smoothing' } }
+  - { id: 3, type: Colour/Histogram Equalise, x: -320, y: 0 }
+  - id: 4
+    type: Colour/Levels
+    x: 0
+    y: 0
+    texts:
+      '=Input Black': 'amount * 0.5f + softness * 0.1f + 0.001f'
+      '=Input White': 'amount * 0.5f - softness * 0.1f'
+  - { id: 5, type: Colour/Levels, x: 0, y: 200, values: { Input Black: [0.498], Input White: [0.494] } }
+  - { id: 6, type: Colour/Blend, x: 320, y: 0, texts: { Mode: Multiply } }
+  - { id: 99, type: Sub-graph/Output, x: 640, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 5, toPort: Input }
+  - { fromNode: 4, fromPort: Out, toNode: 6, toPort: Background }
+  - { fromNode: 5, fromPort: Out, toNode: 6, toPort: Foreground }
+  - { fromNode: 6, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'White in the creases and grooves, the deepest first, with no breakup: where dirt or paint would pool.'
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Selects the concave creases of the model by its curvature, ranked so that it reads the same on any mesh.'
+  doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: amount, label: Amount, default: '0.3', summary: 'How much of the creases is taken, deepest first. One takes every concave texel.', kind: Float, minimum: 0, maximum: 1, group: Cavities }
+  - { name: softness, label: Softness, default: '0.3', summary: 'How gently the selection fades out of the crease.', kind: Float, minimum: 0, maximum: 1, group: Cavities }
+  - { name: smoothing, label: Smoothing, default: '1.5', summary: 'How far the curvature is blurred first, in texels. More keeps only broad creases and drops fine detail.', kind: Float, minimum: 0, maximum: 16, group: Cavities }

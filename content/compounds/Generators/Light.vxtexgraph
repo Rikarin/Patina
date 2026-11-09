@@ -1,0 +1,59 @@
+version: 1
+name: Light
+nodes:
+  - { id: 1, type: Source/Mesh Map, x: -640, y: 0, texts: { Map: world } }
+  - id: 2
+    type: Filters/Pixel Processor
+    x: -320
+    y: 0
+    texts:
+      Format: Grey
+      Expression: 'float4(saturate((dot(a.xyz * 2f - 1f, normalize(float3(x, y, z) + 0.00001f)) + w) / (1f + w)), 0f, 0f, 1f)'
+      '=X': across
+      '=Y': up
+      '=Z': through
+      '=W': wrap
+  - { id: 3, type: Source/Mesh Map, x: -640, y: 220, texts: { Map: ao } }
+  - id: 4
+    type: Colour/Levels
+    x: -320
+    y: 220
+    texts:
+      '=Output Black': '1f - occlusion'
+  - { id: 5, type: Colour/Blend, x: 0, y: 0, texts: { Mode: Multiply } }
+  - id: 6
+    type: Colour/Levels
+    x: 320
+    y: 0
+    texts:
+      '=Input Black': 'contrast * 0.45f'
+      '=Input White': '1f - contrast * 0.45f'
+  - { id: 99, type: Sub-graph/Output, x: 640, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: A }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 5, toPort: Background }
+  - { fromNode: 4, fromPort: Out, toNode: 5, toPort: Foreground }
+  - { fromNode: 5, fromPort: Out, toNode: 6, toPort: Input }
+  - { fromNode: 6, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'How much light from one direction each texel takes: white where it faces the light, dark in its shadow and its hollows.'
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'The model lit from one direction in its own space, as a mask: for sun bleaching, a warm side and a cool side, or light baked into the colour.'
+  doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: across, label: Across, default: '0.4', summary: 'How much the light comes from along the model''s first axis.', kind: Float, minimum: -1, maximum: 1, group: Direction }
+  - { name: up, label: Up, default: '0.8', summary: 'How much it comes from above. Negative lights from below.', kind: Float, minimum: -1, maximum: 1, group: Direction }
+  - { name: through, label: Through, default: '0.4', summary: 'How much it comes from the front. Negative lights from behind.', kind: Float, minimum: -1, maximum: 1, group: Direction }
+  - { name: wrap, label: Wrap, default: '0.3', summary: 'How far the light wraps round past the side the light is on. One reaches the far side.', kind: Float, minimum: 0, maximum: 1, group: Light }
+  - { name: occlusion, label: Occlusion, default: '0.6', summary: 'How much the hollows the light cannot reach are darkened.', kind: Float, minimum: 0, maximum: 1, group: Light }
+  - { name: contrast, label: Contrast, default: '0', summary: 'How hard the step between lit and unlit is.', kind: Float, minimum: 0, maximum: 1, group: Light }

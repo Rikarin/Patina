@@ -1,0 +1,100 @@
+version: 1
+name: Rust
+nodes:
+  - { id: 1, type: Sub-graph/Input, x: -320, y: -480 }
+  - { id: 2, type: Source/Mesh Map, x: -1600, y: 0, texts: { Map: curvature } }
+  - { id: 3, type: Filters/Blur HQ, x: -1280, y: 0, values: { Sigma: [2] } }
+  - { id: 4, type: Colour/Histogram Equalise, x: -960, y: 0 }
+  - { id: 5, type: Colour/Levels, x: -640, y: 0, values: { Input Black: [0.08], Input White: [0.92] }, texts: { '=Gamma': '0.6f' } }
+  - { id: 6, type: Source/Mesh Map, x: -1600, y: 200, texts: { Map: ao } }
+  - { id: 7, type: Colour/Levels, x: -1280, y: 200, values: { Input Black: [1], Input White: [0.4] } }
+  - { id: 8, type: Colour/Blend, x: -320, y: 100, values: { Opacity: [1] }, texts: { Mode: Lighten } }
+  - { id: 9, type: Source/Mesh Map, x: -1600, y: 420, texts: { Map: position } }
+  - { id: 10, type: Source/Volume Noise, x: -1280, y: 420, values: { Octaves: [5], Gain: [0.55] }, texts: { Basis: Gradient, '=Scale': scale, '=Seed': seed } }
+  - { id: 11, type: Source/Volume Noise, x: -1280, y: 620, values: { Octaves: [4], Gain: [0.6] }, texts: { Basis: Gradient, '=Scale': 'scale * 3f', '=Seed': 'seed + 1' } }
+  - id: 12
+    type: Filters/Pixel Processor
+    x: 0
+    y: 100
+    texts:
+      Format: Grey
+      Expression: 'float4(smoothstep(1.02f - x, 1.12f - x, a.x * 0.55f * y + b.x * 0.75f + (1f - y) * 0.25f), 0f, 0f, 1f)'
+      '=X': amount
+      '=Y': exposure
+  - id: 13
+    type: Filters/Pixel Processor
+    x: 320
+    y: -480
+    texts:
+      Expression: 'float4(lerp(a.xyz, lerp(float3(0.16f, 0.06f, 0.03f), float3(0.48f, 0.2f, 0.07f), saturate(b.y * 1.6f - 0.3f)) * (0.6f + x * 0.8f), b.x), 1f)'
+      '=X': tone
+  - id: 14
+    type: Filters/Pixel Processor
+    x: 320
+    y: -320
+    texts:
+      Expression: 'float4(lerp(a.xyz, float3(0.82f, 0.82f, 0.82f) + (b.y - 0.5f) * 0.2f, b.x), 1f)'
+  - id: 15
+    type: Filters/Pixel Processor
+    x: 320
+    y: -160
+    texts:
+      Expression: 'float4(lerp(a.xyz, float3(0f, 0f, 0f), b.x), 1f)'
+  - id: 16
+    type: Filters/Pixel Processor
+    x: 320
+    y: 0
+    texts:
+      Expression: 'float4(a.xyz + (b.x * (0.4f + b.y)) * x * 0.06f, 1f)'
+      '=X': bumps
+  - { id: 17, type: Filters/Pixel Processor, x: 160, y: 300, texts: { Expression: 'float4(a.x, b.x, 0f, 1f)' } }
+  - { id: 99, type: Sub-graph/Output, x: 640, y: -240 }
+edges:
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 4, fromPort: Out, toNode: 5, toPort: Input }
+  - { fromNode: 6, fromPort: Out, toNode: 7, toPort: Input }
+  - { fromNode: 5, fromPort: Out, toNode: 8, toPort: Background }
+  - { fromNode: 7, fromPort: Out, toNode: 8, toPort: Foreground }
+  - { fromNode: 9, fromPort: Out, toNode: 10, toPort: Position }
+  - { fromNode: 9, fromPort: Out, toNode: 11, toPort: Position }
+  - { fromNode: 8, fromPort: Out, toNode: 12, toPort: A }
+  - { fromNode: 10, fromPort: Out, toNode: 12, toPort: B }
+  - { fromNode: 12, fromPort: Out, toNode: 17, toPort: A }
+  - { fromNode: 11, fromPort: Out, toNode: 17, toPort: B }
+  - { fromNode: 1, fromPort: baseColor, toNode: 13, toPort: A }
+  - { fromNode: 17, fromPort: Out, toNode: 13, toPort: B }
+  - { fromNode: 1, fromPort: roughness, toNode: 14, toPort: A }
+  - { fromNode: 17, fromPort: Out, toNode: 14, toPort: B }
+  - { fromNode: 1, fromPort: metalness, toNode: 15, toPort: A }
+  - { fromNode: 17, fromPort: Out, toNode: 15, toPort: B }
+  - { fromNode: 1, fromPort: height, toNode: 16, toPort: A }
+  - { fromNode: 17, fromPort: Out, toNode: 16, toPort: B }
+  - { fromNode: 13, fromPort: Out, toNode: 99, toPort: baseColor }
+  - { fromNode: 14, fromPort: Out, toNode: 99, toPort: roughness }
+  - { fromNode: 15, fromPort: Out, toNode: 99, toPort: metalness }
+  - { fromNode: 16, fromPort: Out, toNode: 99, toPort: height }
+groups: []
+comments: []
+interface:
+  - { name: baseColor, direction: Input, kind: Image, default: [], summary: 'The surface beneath, which the rust eats into.' }
+  - { name: roughness, direction: Input, kind: Image, default: [], summary: 'The roughness beneath.' }
+  - { name: metalness, direction: Input, kind: Image, default: [], summary: 'The metalness beneath.' }
+  - { name: height, direction: Input, kind: Image, default: [], summary: 'The height beneath, which the rust swells.' }
+  - { name: baseColor, direction: Output, kind: Image, default: [], summary: 'The surface with rust in its creases, on its edges and spreading across it, dark and orange by turns.' }
+  - { name: roughness, direction: Output, kind: Image, default: [], summary: 'The roughness, close to fully rough where it has rusted.' }
+  - { name: metalness, direction: Output, kind: Image, default: [], summary: 'The metalness, gone where it has rusted, since rust is no metal.' }
+  - { name: height, direction: Output, kind: Image, default: [], summary: 'The height, swollen and pitted where it has rusted.' }
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Rust weathering: oxide that starts in the creases, the hollows and the edges and spreads in blooms, in every channel at once.'
+  doesNotTile: 'Reads mesh maps, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: amount, label: Amount, default: '0.3', summary: 'How far the rust has spread.', kind: Float, minimum: 0, maximum: 1, group: Rust }
+  - { name: exposure, label: Exposure, default: '0.7', summary: 'How much the rust keeps to the creases, the hollows and the edges, where water stands. Nought spreads it evenly.', kind: Float, minimum: 0, maximum: 1, group: Rust }
+  - { name: scale, label: Bloom Scale, default: '4', summary: 'How many blooms of rust run across the model.', kind: Float, minimum: 1, maximum: 32, group: Rust }
+  - { name: seed, label: Seed, default: '0', summary: 'Another draw of the blooms. Every whole number is a different pattern.', kind: Int, minimum: 0, maximum: 100, group: Rust }
+  - { name: tone, label: Tone, default: '0.5', summary: 'How bright the rust is, from a dark old crust to fresh orange.', kind: Float, minimum: 0, maximum: 1, group: Look }
+  - { name: bumps, label: Bumps, default: '0.4', summary: 'How much the rust swells the surface.', kind: Float, minimum: 0, maximum: 1, group: Look }

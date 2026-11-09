@@ -1,0 +1,58 @@
+version: 1
+name: Paint Chips
+nodes:
+  - { id: 1, type: Source/Mesh Map, x: -1280, y: 0, texts: { Map: curvature } }
+  - { id: 2, type: Filters/Blur HQ, x: -960, y: 0, texts: { '=Sigma': '1f + reach * 4f' } }
+  - { id: 3, type: Colour/Histogram Equalise, x: -640, y: 0 }
+  - id: 4
+    type: Colour/Levels
+    x: -320
+    y: 0
+    values: { Input White: [1] }
+    texts:
+      '=Input Black': '0.95f - reach * 0.35f'
+  - { id: 5, type: Colour/Levels, x: -320, y: 160, values: { Input Black: [0.501], Input White: [0.504] } }
+  - { id: 6, type: Colour/Blend, x: 0, y: 0, texts: { Mode: Multiply } }
+  - { id: 7, type: Source/Mesh Map, x: -1280, y: 360, texts: { Map: position } }
+  - { id: 8, type: Source/Volume Noise, x: -960, y: 360, values: { Octaves: [3], Gain: [0.6] }, texts: { Basis: Gradient, '=Scale': '64f - size * 52f', '=Seed': seed } }
+  - id: 9
+    type: Filters/Pixel Processor
+    x: 320
+    y: 0
+    texts:
+      Format: Grey
+      Expression: 'float4(smoothstep(0.5f - y, 0.5f + y, a.x * (0.3f + x * 0.9f) + b.x * 0.55f), 0f, 0f, 1f)'
+      '=X': amount
+      '=Y': '0.005f + softness * 0.08f'
+  - { id: 99, type: Sub-graph/Output, x: 640, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 5, toPort: Input }
+  - { fromNode: 4, fromPort: Out, toNode: 6, toPort: Background }
+  - { fromNode: 5, fromPort: Out, toNode: 6, toPort: Foreground }
+  - { fromNode: 7, fromPort: Out, toNode: 8, toPort: Position }
+  - { fromNode: 6, fromPort: Out, toNode: 9, toPort: A }
+  - { fromNode: 8, fromPort: Out, toNode: 9, toPort: B }
+  - { fromNode: 9, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'Flakes of paint knocked off, crowded along the edges and thinning out across the faces. White is a chip.'
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Chipped paint: hard-edged flakes knocked off the model, most of them along its convex edges.'
+  doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: amount, label: Amount, default: '0.5', summary: 'How much paint has been knocked off.', kind: Float, minimum: 0, maximum: 1, group: Chips }
+  - { name: reach, label: Reach, default: '0.5', summary: 'How far from the edges the chips spread across the faces.', kind: Float, minimum: 0, maximum: 1, group: Chips }
+  - { name: size, label: Size, default: '0.5', summary: 'How big a chip is.', kind: Float, minimum: 0, maximum: 1, group: Chips }
+  - { name: softness, label: Softness, default: '0.1', summary: 'How soft a chip''s rim is. Nought is a clean break.', kind: Float, minimum: 0, maximum: 1, group: Chips }
+  - { name: seed, label: Seed, default: '0', summary: 'Another draw of the chips. Every whole number is a different pattern.', kind: Int, minimum: 0, maximum: 100, group: Chips }

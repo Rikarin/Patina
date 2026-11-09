@@ -22,6 +22,10 @@ static class RenderBench {
     /// <param name="camera">The first frame's camera.</param>
     /// <param name="shading">How the frames are lit, shown and finished.</param>
     /// <param name="environment">A room or a panorama, or null for the studio.</param>
+    /// <param name="material">
+    ///     A folder <c>patina bake</c> wrote a graph's outputs to, as <c>baseColor.png</c>, <c>roughness.png</c>,
+    ///     <c>metalness.png</c> and <c>normal.png</c>, laid over the mesh on top of the bake, or null.
+    /// </param>
     public static int Run(
         string mesh,
         string png,
@@ -30,7 +34,8 @@ static class RenderBench {
         string? bake,
         OrbitCamera camera,
         ViewportShading shading,
-        string? environment
+        string? environment,
+        string? material = null
     ) {
         var start = Stopwatch.StartNew();
         var cache = new ShaderCache(ShaderCache.DefaultDirectory);
@@ -52,9 +57,9 @@ static class RenderBench {
             Say($"environment baked in {start.Elapsed.TotalMilliseconds:F0} ms");
         }
 
-        if (bake is not null) {
+        if (bake is not null || material is not null) {
             start.Restart();
-            renderer.SetMaps(Maps(bake));
+            renderer.SetMaps(Maps(bake, material));
             Say($"maps on in {start.Elapsed.TotalMilliseconds:F0} ms");
         }
 
@@ -80,11 +85,22 @@ static class RenderBench {
         return 0;
     }
 
-    static ViewportMaps Maps(string folder) {
-        return new(Normal: Of("normal"), Occlusion: Of("ao"));
+    static ViewportMaps Maps(string? folder, string? material) {
+        return new(
+            BaseColor: Painted("baseColor"),
+            Normal: Painted("normal") ?? Of("normal"),
+            Roughness: Painted("roughness"),
+            Metallic: Painted("metalness"),
+            Occlusion: Of("ao")
+        );
 
         ViewportMapFile? Of(string map) =>
-            BakedMapPicture.Find(folder, map) is { } found ? new(found.Path, found.Path) : null;
+            folder is not null && BakedMapPicture.Find(folder, map) is { } found ? new(found.Path, found.Path) : null;
+
+        ViewportMapFile? Painted(string usage) =>
+            material is not null && Path.Combine(material, usage + ".png") is var path && File.Exists(path)
+                ? new(path, path)
+                : null;
     }
 
     static void Say(FormattableString line) => Console.WriteLine(line.ToString(CultureInfo.InvariantCulture));
