@@ -214,7 +214,7 @@ function lanesOf(hex: string): number[] {
           }
           @if (settings().padding === 'colour') {
             <div class="flex items-center gap-2">
-              <span class="text-foreground-muted w-16 shrink-0 text-xs">Colour</span>
+              <span class="text-foreground-muted w-16 shrink-0 text-xs">Color</span>
               <xui-color-picker showAlpha [value]="paddingHex()" (valueChange)="change({ colour: lanes($event) })" />
             </div>
           }

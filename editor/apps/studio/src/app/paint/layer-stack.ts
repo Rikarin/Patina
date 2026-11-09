@@ -914,7 +914,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
           <button type="button" xuiMenuItem (triggered)="addValueMask(layer, 0)">Black Mask</button>
           <button type="button" xuiMenuItem (triggered)="addBitmapMask(layer)">Bitmap Mask…</button>
           <button type="button" xuiMenuItem (triggered)="addMask(layer, 'Paint')">Paint Mask</button>
-          <button type="button" xuiMenuItem (triggered)="addColourMask(layer)">Colour Selection Mask</button>
+          <button type="button" xuiMenuItem (triggered)="addColourMask(layer)">Color Selection Mask</button>
           <button type="button" xuiMenuItem (triggered)="addMask(layer, 'Generator')">Generator</button>
         }
       </xui-menu>
@@ -1024,7 +1024,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
               Add Paint Mask
             </button>
             <button type="button" xuiMenuItem data-testid="layer-menu-mask-colour" (triggered)="addColourMask(layer)">
-              Add Colour Selection Mask
+              Add Color Selection Mask
             </button>
             <button
               type="button"

@@ -704,7 +704,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
             </div>
             @if (layer.mask.map === 'id') {
               <div class="flex flex-col gap-1.5" data-testid="paint-colour-selection">
-                <div class="flex flex-wrap items-center gap-1" role="group" aria-label="Colours in the id map">
+                <div class="flex flex-wrap items-center gap-1" role="group" aria-label="Colors in the ID map">
                   @for (entry of store.idColours() ?? []; track $index) {
                     <button
                       type="button"
@@ -718,7 +718,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
                     ></button>
                   } @empty {
                     <span class="text-foreground-muted text-xs" data-testid="paint-id-none">
-                      Bake with the ID map on to pick from its colours.
+                      Bake with the ID map on to pick from its colors.
                     </span>
                   }
                 </div>
@@ -746,7 +746,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
                   <xui-slider
                     class="min-w-0 flex-1"
                     labelStepSize="0"
-                    aria-label="Colour tolerance"
+                    aria-label="Color tolerance"
                     data-testid="paint-mask-tolerance"
                     [max]="0.5"
                     [min]="0"
@@ -761,7 +761,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
                   <xui-slider
                     class="min-w-0 flex-1"
                     labelStepSize="0"
-                    aria-label="Colour softness"
+                    aria-label="Color softness"
                     data-testid="paint-mask-softness"
                     [max]="0.5"
                     [min]="0"

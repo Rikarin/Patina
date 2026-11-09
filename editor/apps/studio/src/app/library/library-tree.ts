@@ -275,7 +275,7 @@ interface Closing {
           </button>
         }
         @if (row?.kind === 'folder') {
-          <button type="button" xuiMenuItem data-testid="menu-colour" [xuiMenuTriggerFor]="colourMenu">Colour</button>
+          <button type="button" xuiMenuItem data-testid="menu-colour" [xuiMenuTriggerFor]="colourMenu">Color</button>
           <xui-menu-divider />
           <button type="button" xuiMenuItem color="error" data-testid="menu-delete" (triggered)="act(askDelete)">
             Delete Folder…
@@ -285,11 +285,11 @@ interface Closing {
     </ng-template>
 
     <ng-template #colourMenu>
-      <xui-menu aria-label="Folder colour">
+      <xui-menu aria-label="Folder color">
         @let row = menuRow();
         @let held = row?.kind === 'folder' ? (row.folder.color ?? null) : null;
         <button type="button" xuiMenuItem data-testid="menu-colour-none" [selected]="held === null" (triggered)="colour(null)">
-          No Colour
+          No Color
         </button>
         @for (choice of colours; track choice.hex) {
           <button

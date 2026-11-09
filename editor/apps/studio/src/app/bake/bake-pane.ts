@@ -38,11 +38,11 @@ const Maps: readonly { name: string; about: string }[] = [
   { name: 'thickness', about: 'How deep the surface goes behind each point, for light through thin parts.' },
   { name: 'position', about: 'Where each point is within the high mesh’s bounding box, for gradients.' },
   { name: 'world', about: 'The high mesh’s normal in object space, for masks by direction.' },
-  { name: 'id', about: 'A flat colour per material, part or shell, for masks.' },
+  { name: 'id', about: 'A flat color per material, part or shell, for masks.' },
   {
     name: 'colour',
     about:
-      'The high mesh’s colour carried onto the low mesh, or any picture moved from its UV layout to the low mesh’s.'
+      'The high mesh’s color carried onto the low mesh, or any picture moved from its UV layout to the low mesh’s.'
   }
 ];
 const RoundedEdges = [
@@ -52,7 +52,7 @@ const RoundedEdges = [
 const ColourSources = ['auto', 'vertex-colour', 'material', 'texture'];
 const ColourSourceNames: Readonly<Record<string, string>> = {
   auto: 'Automatic',
-  'vertex-colour': 'Vertex colour',
+  'vertex-colour': 'Vertex color',
   material: 'Material',
   texture: 'A picture'
 };
@@ -60,7 +60,7 @@ const ColourSourceNames: Readonly<Record<string, string>> = {
 const PreviewParts: readonly { key: 'reach' | 'highMesh' | 'matches'; label: string; about: string }[] = [
   { key: 'reach', label: 'Reach', about: 'The cage, or the ray distances, as a shell with a ray from each point.' },
   { key: 'highMesh', label: 'High poly', about: 'The high poly meshes, see-through.' },
-  { key: 'matches', label: 'Matches', about: 'Each part name in its own colour on both meshes.' }
+  { key: 'matches', label: 'Matches', about: 'Each part name in its own color on both meshes.' }
 ];
 
 const Spaces = [
@@ -91,8 +91,8 @@ const IdSources = ['auto', 'material', 'material-colour', 'vertex-colour', 'mesh
 const IdSourceNames: Readonly<Record<string, string>> = {
   auto: 'Automatic',
   material: 'Material',
-  'material-colour': 'Material colour',
-  'vertex-colour': 'Vertex colour',
+  'material-colour': 'Material color',
+  'vertex-colour': 'Vertex color',
   mesh: 'Mesh part',
   shell: 'Connected shell'
 };
@@ -483,7 +483,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
               </div>
               <p class="text-foreground-muted text-xs">
                 Blue is where the rays start, with a line out to the front distance and orange in to the rear. Parts
-                matched by name share a colour; red matched no high part, so its rays strike all of the high mesh.
+                matched by name share a color; red matched no high part, so its rays strike all of the high mesh.
               </p>
               @if (settings.preview(); as state) {
                 @if (state.parts.length > 0) {
@@ -774,10 +774,10 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
               }
               @case ('id') {
                 <div class="flex min-w-0 flex-col gap-1">
-                  <span class="text-foreground-muted text-xs">Colour by</span>
+                  <span class="text-foreground-muted text-xs">Color by</span>
                   <xui-select
                     class="w-full"
-                    ariaLabel="ID colour source"
+                    ariaLabel="ID color source"
                     data-testid="bake-id-source"
                     [itemText]="idSourceName"
                     [items]="idSources"
@@ -786,13 +786,13 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   />
                 </div>
                 <p class="text-foreground-muted text-xs">
-                  Automatic takes vertex colours, then materials when there are several, then each connected shell.
+                  Automatic takes vertex colors, then materials when there are several, then each connected shell.
                 </p>
                 <div class="flex items-center justify-between gap-2 text-sm">
-                  Colours
+                  Colors
                   <xui-segmented-control
                     size="sm"
-                    ariaLabel="ID colours"
+                    ariaLabel="ID colors"
                     data-testid="bake-id-palette"
                     [options]="palettes"
                     [value]="options.id.palette"
@@ -802,10 +802,10 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
               }
               @case ('colour') {
                 <div class="flex min-w-0 flex-col gap-1">
-                  <span class="text-foreground-muted text-xs">Colour from</span>
+                  <span class="text-foreground-muted text-xs">Color from</span>
                   <xui-select
                     class="w-full"
-                    ariaLabel="Colour source"
+                    ariaLabel="Color source"
                     data-testid="bake-colour-source"
                     [itemText]="colourSourceName"
                     [items]="colourSources"
@@ -814,7 +814,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   />
                 </div>
                 <p class="text-foreground-muted text-xs">
-                  Automatic takes the high mesh’s vertex colours, or its materials’ base colour and picture when it has
+                  Automatic takes the high mesh’s vertex colors, or its materials’ base color and picture when it has
                   none. A picture is read at the high mesh’s own UVs, so a map made for one layout moves to the low
                   mesh’s layout as it is.
                 </p>

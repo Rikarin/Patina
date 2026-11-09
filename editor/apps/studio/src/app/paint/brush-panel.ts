@@ -149,13 +149,13 @@ const SizeSteps = 1000;
             size="sm"
             variant="ghost"
             data-testid="paint-material-clear"
-            title="Paints the colours again"
+            title="Paints the colors again"
             (click)="store.material.set(null)"
           >
             Clear
           </button>
         } @else {
-          <span class="text-foreground-muted min-w-0 flex-1 truncate text-xs">Colours · Alt-click a shelf material</span>
+          <span class="text-foreground-muted min-w-0 flex-1 truncate text-xs">Colors · Alt-click a shelf material</span>
         }
       </div>
     }
@@ -339,9 +339,9 @@ const SizeSteps = 1000;
       </div>
     } @else {
       <div class="flex items-center gap-2">
-        <span class="text-foreground-muted w-16 shrink-0 text-xs">Colour</span>
+        <span class="text-foreground-muted w-16 shrink-0 text-xs">Color</span>
         <xui-color-picker
-          aria-label="Brush colour"
+          aria-label="Brush color"
           data-testid="paint-colour"
           [presets]="store.recentColours()"
           [value]="store.colour()"
@@ -353,7 +353,7 @@ const SizeSteps = 1000;
           size="sm"
           variant="ghost"
           data-testid="paint-keep-colour"
-          title="Keeps this colour in the project's palette"
+          title="Keeps this color in the project's palette"
           (click)="store.keepColour(store.colour())"
         >
           Keep
@@ -456,7 +456,7 @@ const SizeSteps = 1000;
           />
           <span class="min-w-0 flex-1 truncate text-xs">{{ nameOf(channel.usage) }}</span>
           <xui-color-picker
-            [attr.aria-label]="nameOf(channel.usage) + ' colour'"
+            [attr.aria-label]="nameOf(channel.usage) + ' color'"
             [value]="store.alsoPaints().get(channel.usage) ?? '#808080'"
             (valueChange)="setChannel(channel.usage, $event)"
           />

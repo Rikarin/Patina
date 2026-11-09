@@ -631,7 +631,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
           <div class="flex items-center gap-1">
             <xui-select
               class="w-28 min-w-0 shrink-0"
-              ariaLabel="Frame colour"
+              ariaLabel="Frame color"
               data-testid="group-colour"
               [disabled]="!store.editable()"
               [itemText]="colourName"

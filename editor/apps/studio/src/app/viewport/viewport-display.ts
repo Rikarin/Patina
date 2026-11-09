@@ -67,7 +67,7 @@ const Lighting: readonly Slider[] = [
 
 const Finish: readonly Slider[] = [
   { key: 'contrast', label: 'Contrast', title: 'Contrast about middle grey', min: 0, max: 2, step: 0.01, unit: 'share' },
-  { key: 'saturation', label: 'Saturation', title: 'How much colour', min: 0, max: 2, step: 0.01, unit: 'share' },
+  { key: 'saturation', label: 'Saturation', title: 'How much color', min: 0, max: 2, step: 0.01, unit: 'share' },
   { key: 'vignette', label: 'Vignette', title: 'Darkens the corners', min: 0, max: 1, step: 0.01, unit: 'share' },
   { key: 'grain', label: 'Grain', title: 'Film grain', min: 0, max: 1, step: 0.01, unit: 'share' },
   {
@@ -95,7 +95,7 @@ const Finish: readonly Slider[] = [
 
 /** The lanes the picture view shows one of, as a grey, or all of as its colour. */
 const Lanes: readonly { value: string; label: string }[] = [
-  { value: 'rgb', label: 'Colour' },
+  { value: 'rgb', label: 'Color' },
   { value: 'r', label: 'Red' },
   { value: 'g', label: 'Green' },
   { value: 'b', label: 'Blue' },
@@ -197,7 +197,7 @@ const Snaps: readonly { view: AxisView; label: string; key: string }[] = [
       <input
         type="color"
         class="well h-6 w-10 shrink-0"
-        aria-label="Background colour"
+        aria-label="Background color"
         data-testid="viewport-background-colour"
         [value]="display().backgroundColor"
         (change)="viewport.setDisplay({ backgroundColor: text($event) })"
@@ -215,7 +215,7 @@ const Snaps: readonly { view: AxisView; label: string; key: string }[] = [
 
     @if (display().view === 'picture') {
       <span class="section-label mt-1">Picture</span>
-      <div class="flex items-center gap-2" title="One lane of the picture as a grey, or all of it as its colour">
+      <div class="flex items-center gap-2" title="One lane of the picture as a grey, or all of it as its color">
         <span class="text-foreground-muted w-20 shrink-0 text-xs">Lane</span>
         <select
           class="well h-7 min-w-0 flex-1 px-1 text-sm"

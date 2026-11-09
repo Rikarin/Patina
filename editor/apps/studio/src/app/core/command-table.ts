@@ -119,11 +119,11 @@ export const CommandTable: readonly CommandSpec[] = [
   },
   {
     id: 'pickerTool',
-    label: 'Colour Picker',
+    label: 'Color Picker',
     section: 'Painting',
     keys: ['C'],
     area: 'stack',
-    hint: 'Takes the brush colour from the picture'
+    hint: 'Takes the brush color from the picture'
   },
   {
     id: 'lineTool',
@@ -143,7 +143,7 @@ export const CommandTable: readonly CommandSpec[] = [
   },
   { id: 'finishPath', label: 'Finish Path', section: 'Painting', keys: ['Enter'], area: 'stack' },
   { id: 'cancelStroke', label: 'Cancel Line or Path', section: 'Painting', keys: ['Escape'], area: 'stack' },
-  { id: 'pickIdColour', label: 'Pick a Colour from the ID Map', section: 'Painting', keys: ['I'], area: 'stack' },
+  { id: 'pickIdColour', label: 'Pick a Color from the ID Map', section: 'Painting', keys: ['I'], area: 'stack' },
   { id: 'smallerBrush', label: 'Smaller Brush', section: 'Painting', keys: ['['], area: 'stack' },
   { id: 'largerBrush', label: 'Larger Brush', section: 'Painting', keys: [']'], area: 'stack' },
 

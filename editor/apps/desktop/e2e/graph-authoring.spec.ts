@@ -146,7 +146,7 @@ test('arranges, badges a problem and colours a frame', async () => {
   await window.getByTestId('graph-group').click();
   await window.getByTestId('graph-settings').click();
   await window.getByTestId('group-colour').getByRole('combobox').click();
-  await window.getByRole('option', { name: 'Colour 3' }).click();
+  await window.getByRole('option', { name: 'Color 3' }).click();
   await window.getByTestId('group-description').fill('Where the colour is decided');
   await window.getByTestId('group-description').press('Enter');
   await expect(window.getByTestId('graph-frame-description')).toHaveText('Where the colour is decided');
