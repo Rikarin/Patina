@@ -59,6 +59,14 @@ public sealed record ViewportGeometry(
     /// <summary>The materials the file's triangles use, which is its texture sets.</summary>
     /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
     public static IReadOnlyList<string> Materials(string path) => ViewportMesh.Read(path).MaterialsInUse();
+
+    /// <summary>
+    ///     The triangles an isolation draws (#136), with the model's own number for each, so a pick through them names the
+    ///     triangle it would have named on the whole model. Both lists empty is the whole model.
+    /// </summary>
+    /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
+    public static (ViewportGeometry Geometry, int[] Triangles) Shown(string path, string[] parts, string[] materials) =>
+        ViewportMesh.Read(path).ShownGeometry(parts, materials);
 }
 
 /// <summary>
@@ -237,6 +245,21 @@ sealed class ViewportMesh {
                         && materials.Contains(Materials[part.Material].Name))
                 )
             ];
+
+    /// <summary>The triangles of the parts an isolation shows, and the model's number for each of them.</summary>
+    public (ViewportGeometry Geometry, int[] Triangles) ShownGeometry(string[] parts, string[] materials) {
+        var whole = Geometry();
+        List<int> indices = [];
+        List<int> triangles = [];
+        foreach (var part in Shown(parts, materials)) {
+            for (var corner = part.FirstIndex; corner + 2 < part.FirstIndex + part.IndexCount; corner += 3) {
+                indices.AddRange(whole.Indices[corner..(corner + 3)]);
+                triangles.Add(corner / 3);
+            }
+        }
+
+        return (whole with { Indices = [..indices] }, [..triangles]);
+    }
 
     /// <summary>One material's triangles as a brush reaches them, or all of them for an unknown name.</summary>
     public ViewportGeometry Geometry(string material) {

@@ -45,6 +45,30 @@ sealed class MeshShelf {
         }
     }
 
+    /// <summary>
+    ///     The triangles an isolation draws, as a ray reaches them, and the model's own number for each (#136). Held for
+    ///     the last isolation asked about, since a pick asks again for every click.
+    /// </summary>
+    /// <exception cref="IpcException">The file cannot be read as a mesh.</exception>
+    public (PaintProjection Projection, int[] Triangles) Shown(string path, string[] parts, string[] materials) {
+        var key = string.Join('\n', [path, ..parts, "", ..materials]);
+        try {
+            var written = File.GetLastWriteTimeUtc(path);
+            if (shown is { } known && known.Key == key && known.Written == written) {
+                return (known.Projection, known.Triangles);
+            }
+
+            var (geometry, triangles) = ViewportGeometry.Shown(path, parts, materials);
+            var projection = PaintProjection.Over(geometry.Positions, geometry.Coordinates, geometry.Indices);
+            shown = (key, written, projection, triangles);
+            return (projection, triangles);
+        } catch (Exception e) when (e is ModelFormatException or IOException or UnauthorizedAccessException) {
+            throw new IpcException($"'{path}' would not read: {e.Message}");
+        }
+    }
+
+    (string Key, DateTime Written, PaintProjection Projection, int[] Triangles)? shown;
+
     /// <summary>One model.</summary>
     /// <param name="Geometry">Its triangles.</param>
     /// <param name="Projection">What a ray or a brush reaches them through.</param>
