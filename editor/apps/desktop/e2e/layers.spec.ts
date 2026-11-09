@@ -381,6 +381,10 @@ test('the layer menu and the Add menu work from the keyboard alone', async () =>
   const paint = window.getByTestId('paint-layer-paint');
   const base = window.getByTestId('paint-layer-base');
   await paint.click();
+  // ⚠ Keyboard alone: the pointer that clicked the row goes, since the layer menu is now taller than the window and
+  // opens over it. Chromium hovers what appears under a resting pointer, and xUI's menu gives that item the focus and
+  // shuts the submenu the arrow keys opened.
+  await window.mouse.move(0, 0);
 
   // Shift+F10 is the key every keyboard has: the menu opens on the row, with its first item in hand.
   await paint.press('Shift+F10');
