@@ -114,6 +114,19 @@ const PickLook = '…';
         >
           Show {{ document.name }}
         </button>
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          data-testid="viewport-show-node"
+          title="Shows the selected node's picture alone, as stored and unlit, in place of the material, and follows the selection"
+          [active]="followsNode() && followed() === document.id"
+          [attr.aria-pressed]="followsNode() && followed() === document.id"
+          (click)="toggleNode(document.id)"
+        >
+          Node
+        </button>
       }
       @if (paint.worn() && project.active()?.kind === 'texturing') {
         <button
@@ -137,8 +150,12 @@ const PickLook = '…';
           (commands.keyText('nextView') ? ' (' + commands.keyText('nextView') + ' steps through them)' : '')
         "
         data-testid="viewport-view"
+        [disabled]="viewport.node() !== null"
         (change)="chooseView($event)"
       >
+        @if (viewport.node() !== null) {
+          <option selected>Node picture</option>
+        }
         @for (view of views; track view) {
           <option [value]="view" [selected]="view === display().view">{{ viewName(view) }}</option>
         }
@@ -404,12 +421,16 @@ export class ViewportPane implements AfterViewInit {
       this.view();
       untracked(() => this.gesture.finish());
     });
+    // The graph on the mesh keeps up with its evaluations, and with the node on view when it shows one node.
     effect(() => {
       const followed = this.followed();
       const document = this.graph.document();
       const revision = document?.evaluation?.revision;
+      const viewed = this.followsNode() ? this.graph.viewedNode() : null;
+      // A node with no picture, such as a reroute dot, leaves the material on.
+      const node = viewed && document?.previews.has(viewed.id) ? viewed.id : null;
       if (followed && document?.id === followed && revision !== undefined) {
-        void this.viewport.showGraph(followed);
+        void this.viewport.showGraph(followed, node);
       }
     });
     // The guide follows the camera once it rests, since each look is a round trip to the Worker.
@@ -487,8 +508,18 @@ export class ViewportPane implements AfterViewInit {
   /** The graph on the mesh, which follows its evaluations until asked to stop. */
   protected readonly followed = signal<string | null>(null);
 
+  /** Whether the graph on the mesh shows the node on view alone rather than its Output nodes. */
+  protected readonly followsNode = signal(false);
+
   protected follow(graph: string): void {
     this.followed.update(now => (now === graph ? null : graph));
+  }
+
+  /** Shows the node on view alone, or the material again. Either way the graph is followed from here on. */
+  protected toggleNode(graph: string): void {
+    const on = !(this.followsNode() && this.followed() === graph);
+    this.followsNode.set(on);
+    this.followed.set(graph);
   }
 
   protected async chooseEnvironment(event: Event): Promise<void> {

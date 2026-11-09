@@ -55,13 +55,15 @@ export interface GraphPoint {
 }
 
 /**
- * What a new node is wired to: an output it takes, an input it drives, or a wire it goes into the middle of. A port left
- * out is the first that fits, which the Server finds.
+ * What a new node is wired to: an output it takes, an input it drives, a wire it goes into the middle of, or several
+ * nodes, each on the next free input that fits, in order. A port left out is the first that fits, which the Server
+ * finds.
  */
 export type NodeLink =
   | { kind: 'from'; node: number; port?: string }
   | { kind: 'to'; node: number; port: string }
-  | { kind: 'wire'; node: number; port: string; toNode: number; toPort: string };
+  | { kind: 'wire'; node: number; port: string; toNode: number; toPort: string }
+  | { kind: 'many'; nodes: readonly number[] };
 
 /** The kinds of wire a node must suit: one it can take on an input, and an input it can drive. */
 export interface NodeWire {
@@ -241,6 +243,24 @@ export class GraphStore {
     const [first] = this.mutableSelection();
     return (first === undefined ? undefined : document?.nodes.get(first)) ?? null;
   });
+
+  private readonly mutablePinned = signal<{ document: string; node: number } | null>(null);
+
+  /** The node the 2D and 3D views keep showing whatever is selected, in the graph it was pinned in. */
+  readonly pinned = computed(() => {
+    const pinned = this.mutablePinned();
+    const document = this.mutableDocument();
+    return pinned && document?.id === pinned.document ? (document.nodes.get(pinned.node) ?? null) : null;
+  });
+
+  /** The node the 2D view shows, and the 3D view when it shows one node: the pinned one, or the selected one. */
+  readonly viewedNode = computed(() => this.pinned() ?? this.selectedNode());
+
+  /** Keeps the views on a node while the selection moves on, or lets them follow it again with null. */
+  pin(node: number | null): void {
+    const document = this.mutableDocument();
+    this.mutablePinned.set(node === null || !document ? null : { document: document.id, node });
+  }
 
   /**
    * Whether an edit is still on its way: sent and not answered, or answered and its event not yet applied. Until then
@@ -697,7 +717,7 @@ export class GraphStore {
     }
   }
 
-  /** Adds a node, and wires it to the port a dropped wire came from. */
+  /** Adds a node, and wires it to what it was made from: a dropped wire, the selection, or a wire it goes into. */
   async addNode(type: GraphNodeType, position: GraphPoint, link?: NodeLink): Promise<void> {
     const reference = -1;
     const commands: GraphCommand[] = [{ op: 'addNode', type: type.path, x: position.x, y: position.y, ref: reference }];
@@ -712,6 +732,11 @@ export class GraphStore {
 
     if (link?.kind === 'wire') {
       commands.push({ op: 'wire', fromNode: reference, toNode: link.toNode, toPort: link.toPort });
+    }
+
+    // Each takes the next input that fits and has no wire yet, so two images go into a Blend's two.
+    for (const node of link?.kind === 'many' ? link.nodes : []) {
+      commands.push({ op: 'wire', fromNode: node, fromPort: null, toNode: reference });
     }
 
     const result = await this.apply(commands, `Add ${type.title}`);

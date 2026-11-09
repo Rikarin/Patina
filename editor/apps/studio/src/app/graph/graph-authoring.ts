@@ -196,3 +196,84 @@ export function freePresetName(taken: readonly { name: string }[]): string {
 
   return `Preset ${String(number)}`;
 }
+
+/** A wire as {@link flowOf} reads it. */
+export interface FlowWire {
+  fromNode: number;
+  toNode: number;
+}
+
+/**
+ * The wires a picture takes on its way into the selected nodes and out of them, as far as it goes either way: what the
+ * graph lights up to show where a node's picture comes from and where it ends up.
+ */
+export function flowOf<T extends FlowWire>(wires: readonly T[], selected: ReadonlySet<number>): Set<T> {
+  const flowing = new Set<T>();
+  const walk = (along: (wire: T) => number, back: (wire: T) => number): void => {
+    const seen = new Set(selected);
+    const waiting = [...seen];
+    for (let node = waiting.pop(); node !== undefined; node = waiting.pop()) {
+      for (const wire of wires) {
+        if (back(wire) === node) {
+          flowing.add(wire);
+          const next = along(wire);
+          if (!seen.has(next)) {
+            seen.add(next);
+            waiting.push(next);
+          }
+        }
+      }
+    }
+  };
+  walk(
+    wire => wire.fromNode,
+    wire => wire.toNode
+  );
+  walk(
+    wire => wire.toNode,
+    wire => wire.fromNode
+  );
+  return flowing;
+}
+
+/** A line of the add-node palette: a node type, and the heading it is under. */
+export interface PaletteLine<T> {
+  type: T;
+  group: string;
+}
+
+/**
+ * The palette with nothing typed: the starred node types, then the ones added last, then every one under its category.
+ * A type the list was not given, such as one a dropped wire cannot use or one that has gone, is left out of the first
+ * two, so a favourite never offers what cannot be added there.
+ */
+export function paletteOf<T extends { path: string; category: string }>(
+  types: readonly T[],
+  favourites: readonly string[],
+  recents: readonly string[]
+): PaletteLine<T>[] {
+  const byPath = new Map(types.map(type => [type.path, type]));
+  const pick = (paths: readonly string[], group: string): PaletteLine<T>[] =>
+    paths.flatMap(path => {
+      const type = byPath.get(path);
+      return type ? [{ type, group }] : [];
+    });
+  return [
+    ...pick(favourites, 'Favourites'),
+    ...pick(recents, 'Recent'),
+    ...types.map(type => ({ type, group: type.category || 'Compounds' }))
+  ];
+}
+
+/** The nodes whose title holds what was typed, those that start with it first, for Find Node. */
+export function findMatches<T extends { title: string }>(nodes: readonly T[], query: string): T[] {
+  const typed = query.trim().toLocaleLowerCase();
+  if (typed === '') {
+    return [...nodes];
+  }
+
+  const starts = (node: T) => (node.title.toLocaleLowerCase().startsWith(typed) ? 0 : 1);
+  return nodes
+    .filter(node => node.title.toLocaleLowerCase().includes(typed))
+    .sort((a, b) => starts(a) - starts(b) || a.title.localeCompare(b.title));
+}

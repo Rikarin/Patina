@@ -188,6 +188,14 @@ export const CommandTable: readonly CommandSpec[] = [
   },
 
   { id: 'addNode', label: 'Add Node…', section: 'Graph', keys: ['Space'], area: 'graph' },
+  {
+    id: 'findNode',
+    label: 'Find Node…',
+    section: 'Graph',
+    keys: ['Mod+F'],
+    area: 'graph',
+    hint: 'Selects a node of this graph by its name and shows it'
+  },
   { id: 'groupNodes', label: 'Group Selection', section: 'Graph', keys: ['Mod+G'], area: 'graph' },
   {
     id: 'bypassNodes',
@@ -214,6 +222,16 @@ export const CommandTable: readonly CommandSpec[] = [
   { id: 'alignBottom', label: 'Align Bottom', section: 'Graph', area: 'graph' },
   { id: 'distributeHorizontally', label: 'Distribute Horizontally', section: 'Graph', area: 'graph' },
   { id: 'distributeVertically', label: 'Distribute Vertically', section: 'Graph', area: 'graph' },
+  {
+    id: 'toggleGraphSnap',
+    label: 'Snap to Grid',
+    section: 'Graph',
+    area: 'graph',
+    hint: 'A node dragged on the graph lands on the grid'
+  },
+  { id: 'curvedWires', label: 'Curved Wires', section: 'Graph', area: 'graph' },
+  { id: 'angledWires', label: 'Angled Wires', section: 'Graph', area: 'graph' },
+  { id: 'straightWires', label: 'Straight Wires', section: 'Graph', area: 'graph' },
 
   { id: 'frameModel', label: 'Frame the Model', section: 'Viewport', keys: ['F'] },
   { id: 'nextView', label: 'Next View', section: 'Viewport', keys: ['V'], area: 'viewport' },
@@ -388,6 +406,7 @@ export const MenuBar: readonly {
     when: 'graph',
     items: [
       'addNode',
+      'findNode',
       'groupNodes',
       '-',
       'bypassNodes',
@@ -409,6 +428,8 @@ export const MenuBar: readonly {
           'distributeVertically'
         ]
       },
+      { submenu: 'Wires', items: ['curvedWires', 'angledWires', 'straightWires'] },
+      'toggleGraphSnap',
       '-',
       'showHistory'
     ]

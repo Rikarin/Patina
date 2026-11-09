@@ -14,12 +14,15 @@ function setup() {
   const opens: (() => void)[] = [];
   /** What the Server draws alone, which one that restarts forgets. */
   const server: { isolation: ViewportIsolation | null } = { isolation: null };
+  const shown: { graph: string; node: number | null }[] = [];
   const fetcher = (async (input: Request) => {
     const path = new URL(input.url).pathname;
     if (input.method === 'PUT' && path.endsWith('/viewport/display')) {
       const display: unknown = await input.json();
       displays.push(display);
-      return Response.json({ mesh: null, camera: DefaultCamera, display });
+      // A stand-in shape gives way to the one the display chooses.
+      const shape = (display as { shape?: string }).shape ?? 'sphere';
+      return Response.json({ mesh: `/cache/preview/${shape}.glb`, camera: DefaultCamera, display });
     }
 
     return Response.json({
@@ -41,11 +44,23 @@ function setup() {
           return { send: (input: ViewportInput) => inputs.push(input), close: () => undefined };
         }
       },
-      { provide: BakeStore, useValue: { viewportChanged: signal(0) } },
+      {
+        provide: BakeStore,
+        useValue: {
+          viewportChanged: signal(0),
+          showGraphOnMesh: (graph: string, node: number | null) => {
+            shown.push({ graph, node });
+            return Promise.resolve({
+              mesh: '/cache/preview/sphere.glb',
+              node: node === null ? null : { graph, node, port: 'Out' }
+            });
+          }
+        }
+      },
       { provide: ProjectStore, useValue: { active: signal(null), current: signal(null) } }
     ]
   });
-  return { client: TestBed.inject(ViewportClient), inputs, displays, opens, server };
+  return { client: TestBed.inject(ViewportClient), inputs, displays, opens, server, shown };
 }
 
 describe('ViewportClient', () => {
@@ -66,6 +81,24 @@ describe('ViewportClient', () => {
 
     expect(inputs).toEqual([expect.objectContaining({ camera, interacting: false })]);
     await vi.waitFor(() => expect(displays).toEqual([expect.objectContaining({ exposure: 1.25 })]));
+  });
+
+  it('shows one node of a graph alone, says so, and lets it go for the material', async () => {
+    const { client, shown } = setup();
+
+    await client.showGraph('g1', 4);
+    expect(shown).toEqual([{ graph: 'g1', node: 4 }]);
+    expect(client.node()).toEqual({ graph: 'g1', node: 4, port: 'Out' });
+
+    await client.showGraph('g1');
+    expect(shown.at(-1)).toEqual({ graph: 'g1', node: null });
+    expect(client.node()).toBeNull();
+  });
+
+  it('takes the mesh the Server answers a new shape with', async () => {
+    const { client } = setup();
+    client.setDisplay({ shape: 'cube' });
+    await vi.waitFor(() => expect(client.mesh()).toBe('/cache/preview/cube.glb'));
   });
 
   it('hears what the Server draws alone when it connects, and that one which restarted draws everything', async () => {

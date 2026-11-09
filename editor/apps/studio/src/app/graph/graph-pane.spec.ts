@@ -1,10 +1,11 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { type GraphNodeType, type GraphState, createPatinaClient } from '@patina/api-client';
+import { Preferences } from '../core/preferences';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION, type ServerState, SystemStatus } from '../core/system-status';
 import { GraphPane } from './graph-pane';
 import { GRAPH_SOCKET, GraphStore } from './graph-store';
-import { FakeSocket, evaluated, noiseType, state } from './graph-testing';
+import { FakeSocket, evaluated, node, noiseType, state } from './graph-testing';
 
 vi.stubGlobal(
   'ResizeObserver',
@@ -205,6 +206,62 @@ describe('GraphPane', () => {
 
     await vi.waitFor(() => {
       expect(paletteRows()).toEqual(['Levels', 'Auto Levels']);
+    });
+  });
+
+  it('offers the starred and the last added first with nothing typed, and remembers what was added', async () => {
+    const types = [
+      { ...typeCalled('Colour/Blend', 'Blend'), category: 'Colour' },
+      typeCalled('Filters/Blur', 'Blur'),
+      typeCalled('Filters/Levels', 'Levels')
+    ];
+    const { open, found, fixture, sent } = await render(online(true), state, types);
+    const preferences = TestBed.inject(Preferences);
+    preferences.set({ favouriteNodes: ['Filters/Levels'], recentNodes: ['Colour/Blend'] });
+    await open();
+
+    (found('graph-add') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    await vi.waitFor(() => {
+      expect(paletteRows().slice(0, 3)).toEqual(['Levels', 'Blend', 'Blend']);
+    });
+    const headings = [...document.querySelectorAll('[role=dialog] [role=listbox] [role=presentation]')].map(heading =>
+      heading.textContent.trim()
+    );
+    expect(headings.slice(0, 3)).toEqual(['Favourites', 'Recent', 'Colour']);
+
+    document.querySelector<HTMLElement>('[role=dialog] [role=option]')?.click();
+    await vi.waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+    expect(preferences.recentNodes()).toEqual(['Filters/Levels', 'Colour/Blend']);
+  });
+
+  it('wires every selected node into a node added from the selection, top first', async () => {
+    const graph = () => state({ nodes: [{ ...node(1), y: 300 }, node(2)], edges: [] });
+    const { open, found, fixture, sent, store } = await render(online(true), graph, [
+      typeCalled('Colour/Blend', 'Blend')
+    ]);
+    await open();
+    store.select([1, 2]);
+    await fixture.whenStable();
+
+    (found('graph-add') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    await vi.waitFor(() => {
+      expect(paletteRows()).toContain('Blend');
+    });
+    document.querySelector<HTMLElement>('[role=dialog] [role=option]')?.click();
+    await vi.waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+
+    expect(sent[0]).toMatchObject({
+      commands: [
+        { op: 'addNode', type: 'Colour/Blend' },
+        { op: 'wire', fromNode: 2, toNode: -1 },
+        { op: 'wire', fromNode: 1, toNode: -1 }
+      ]
     });
   });
 

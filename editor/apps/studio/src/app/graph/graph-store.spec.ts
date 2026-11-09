@@ -310,6 +310,20 @@ describe('GraphStore', () => {
     ]);
   });
 
+  it('wires each of several nodes into a new one in turn, leaving the Server to find each a free input', async () => {
+    const test = await opened();
+    test.routes['POST graphs/g1/commands'] = () =>
+      Response.json({ revision: 2, sequence: 1, history: dirty, created: [{ ref: -1, node: 9 }] });
+
+    await test.store.addNode(noiseType, { x: 1, y: 2 }, { kind: 'many', nodes: [2, 1] });
+
+    expect(test.commands()[0]?.commands).toEqual([
+      { op: 'addNode', type: 'Source/Noise', x: 1, y: 2, ref: -1 },
+      { op: 'wire', fromNode: 2, fromPort: null, toNode: -1 },
+      { op: 'wire', fromNode: 1, fromPort: null, toNode: -1 }
+    ]);
+  });
+
   it('turns a selected wire into a disconnect', async () => {
     const test = await opened();
 
