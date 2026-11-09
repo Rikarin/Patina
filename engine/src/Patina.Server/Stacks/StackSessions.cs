@@ -10,6 +10,9 @@ namespace Patina.Server.Stacks;
 public sealed class StackSessions(ServerIdentity identity, StackClips clips) : IDisposable {
     readonly SessionTable<StackSession> table = new();
 
+    /// <summary>The texture sets of stacks nobody has open, by file, until the file changes.</summary>
+    readonly Dictionary<string, (DateTime Written, TextureSetAsset? Set)> files = new(StringComparer.Ordinal);
+
     string[] LibraryRoot => identity.Library is { } library ? [library] : [];
 
     public IReadOnlyList<StackSession> All => table.All;
@@ -102,8 +105,6 @@ public sealed class StackSessions(ServerIdentity identity, StackClips clips) : I
 
         return set;
     }
-
-    readonly Dictionary<string, (DateTime Written, TextureSetAsset? Set)> files = new(StringComparer.Ordinal);
 
     /// <summary>An edit of one set reaches every instance of its layers in another, open in a session of its own.</summary>
     void CatchUp(StackSession changed) {

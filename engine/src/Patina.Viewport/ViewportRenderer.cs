@@ -40,6 +40,8 @@ public sealed class ViewportRenderer : IDisposable {
     TextureViewHandle environmentView;
     TextureViewHandle pictureView;
     ViewportMapFile? picture;
+    HashSet<string> isolatedParts = new(StringComparer.Ordinal);
+    HashSet<string> isolatedMaterials = new(StringComparer.Ordinal);
     readonly ViewportShadows shadows;
     readonly ViewportPost post;
     readonly BufferHandle frameConstants;
@@ -306,9 +308,6 @@ public sealed class ViewportRenderer : IDisposable {
         isolatedParts = [..parts];
         isolatedMaterials = [..materials];
     }
-
-    HashSet<string> isolatedParts = new(StringComparer.Ordinal);
-    HashSet<string> isolatedMaterials = new(StringComparer.Ordinal);
 
     /// <summary>The parts a frame draws: all of them, or those the isolation keeps.</summary>
     ViewportPart[] Shown(ViewportMesh mesh) =>

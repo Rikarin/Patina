@@ -47,6 +47,9 @@ class StackCommandStackStroke:
                 'free'.
             view (None | StackView | Unset):
             symmetry (None | StackSymmetry | Unset):
+            mask_layer (int | None | Unset): With Mask, the entry of the mask's stack it paints, counted from the bottom,
+                which must be a
+                paint entry. Null paints the mask's base.
      """
 
     op: StackCommandStackStrokeOp
@@ -61,6 +64,7 @@ class StackCommandStackStroke:
     curve: str = 'free'
     view: None | StackView | Unset = UNSET
     symmetry: None | StackSymmetry | Unset = UNSET
+    mask_layer: int | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -115,6 +119,12 @@ class StackCommandStackStroke:
         else:
             symmetry = self.symmetry
 
+        mask_layer: int | None | Unset
+        if isinstance(self.mask_layer, Unset):
+            mask_layer = UNSET
+        else:
+            mask_layer = self.mask_layer
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -134,6 +144,8 @@ class StackCommandStackStroke:
             field_dict["view"] = view
         if symmetry is not UNSET:
             field_dict["symmetry"] = symmetry
+        if mask_layer is not UNSET:
+            field_dict["maskLayer"] = mask_layer
 
         return field_dict
 
@@ -221,6 +233,16 @@ class StackCommandStackStroke:
         symmetry = _parse_symmetry(d.pop("symmetry", UNSET))
 
 
+        def _parse_mask_layer(data: object) -> int | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(int | None | Unset, data)
+
+        mask_layer = _parse_mask_layer(d.pop("maskLayer", UNSET))
+
+
         stack_command_stack_stroke = cls(
             op=op,
             stroke=stroke,
@@ -234,6 +256,7 @@ class StackCommandStackStroke:
             curve=curve,
             view=view,
             symmetry=symmetry,
+            mask_layer=mask_layer,
         )
 
 

@@ -8,6 +8,7 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
+from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
@@ -29,7 +30,7 @@ class StackVocabulary:
     """ The words a stack's fields take, each with its label, so that a client holds no list of its own.
 
         Attributes:
-            blends (list[StackTerm]): The sixteen blend modes.
+            blends (list[StackTerm]): The thirty blend modes.
             filters (list[StackFilterKind]): The filters a layer can be.
             masks (list[StackTerm]): The mask sources.
             fills (list[StackTerm]): What a fill layer reads.
@@ -42,6 +43,7 @@ class StackVocabulary:
             generator_parameters (StackVocabularyGeneratorParameters): The knobs each generator has, by its path.
             brush (StackBrushTerms): What a brush's fields take and how a new brush starts, so a client keeps no list or
                 default of its own.
+            lanes (list[StackTerm] | None | Unset): The lanes of a picture a mask can read.
      """
 
     blends: list[StackTerm]
@@ -56,6 +58,7 @@ class StackVocabulary:
     usages: list[StackTerm]
     generator_parameters: StackVocabularyGeneratorParameters
     brush: StackBrushTerms
+    lanes: list[StackTerm] | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -141,6 +144,19 @@ class StackVocabulary:
 
         brush = self.brush.to_dict()
 
+        lanes: list[dict[str, Any]] | None | Unset
+        if isinstance(self.lanes, Unset):
+            lanes = UNSET
+        elif isinstance(self.lanes, list):
+            lanes = []
+            for lanes_type_1_item_data in self.lanes:
+                lanes_type_1_item = lanes_type_1_item_data.to_dict()
+                lanes.append(lanes_type_1_item)
+
+
+        else:
+            lanes = self.lanes
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -158,6 +174,8 @@ class StackVocabulary:
             "generatorParameters": generator_parameters,
             "brush": brush,
         })
+        if lanes is not UNSET:
+            field_dict["lanes"] = lanes
 
         return field_dict
 
@@ -280,6 +298,31 @@ class StackVocabulary:
 
 
 
+        def _parse_lanes(data: object) -> list[StackTerm] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                lanes_type_1 = []
+                _lanes_type_1 = data
+                for lanes_type_1_item_data in (_lanes_type_1):
+                    lanes_type_1_item = StackTerm.from_dict(lanes_type_1_item_data)
+
+
+
+                    lanes_type_1.append(lanes_type_1_item)
+
+                return lanes_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[StackTerm] | None | Unset, data)
+
+        lanes = _parse_lanes(d.pop("lanes", UNSET))
+
+
         stack_vocabulary = cls(
             blends=blends,
             filters=filters,
@@ -293,6 +336,7 @@ class StackVocabulary:
             usages=usages,
             generator_parameters=generator_parameters,
             brush=brush,
+            lanes=lanes,
         )
 
 

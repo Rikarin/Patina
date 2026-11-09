@@ -14,6 +14,7 @@ from typing import cast
 if TYPE_CHECKING:
   from ..models.viewport_camera_state import ViewportCameraState
   from ..models.viewport_display import ViewportDisplay
+  from ..models.viewport_isolation import ViewportIsolation
   from ..models.viewport_map_paths import ViewportMapPaths
 
 
@@ -46,6 +47,7 @@ class ViewportState:
             mesh (None | str | Unset): The mesh's path, or null when none is open.
             error (None | str | Unset): Why the last command failed, or null.
             stack (None | str | Unset): The stack session it is wearing, or null.
+            isolation (None | Unset | ViewportIsolation):
      """
 
     maps: ViewportMapPaths
@@ -58,6 +60,7 @@ class ViewportState:
     mesh: None | str | Unset = UNSET
     error: None | str | Unset = UNSET
     stack: None | str | Unset = UNSET
+    isolation: None | Unset | ViewportIsolation = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -67,6 +70,7 @@ class ViewportState:
     def to_dict(self) -> dict[str, Any]:
         from ..models.viewport_camera_state import ViewportCameraState # noqa: PLC0415
         from ..models.viewport_display import ViewportDisplay # noqa: PLC0415
+        from ..models.viewport_isolation import ViewportIsolation # noqa: PLC0415
         from ..models.viewport_map_paths import ViewportMapPaths # noqa: PLC0415
         maps = self.maps.to_dict()
 
@@ -100,6 +104,14 @@ class ViewportState:
         else:
             stack = self.stack
 
+        isolation: dict[str, Any] | None | Unset
+        if isinstance(self.isolation, Unset):
+            isolation = UNSET
+        elif isinstance(self.isolation, ViewportIsolation):
+            isolation = self.isolation.to_dict()
+        else:
+            isolation = self.isolation
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -118,6 +130,8 @@ class ViewportState:
             field_dict["error"] = error
         if stack is not UNSET:
             field_dict["stack"] = stack
+        if isolation is not UNSET:
+            field_dict["isolation"] = isolation
 
         return field_dict
 
@@ -127,6 +141,7 @@ class ViewportState:
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.viewport_camera_state import ViewportCameraState # noqa: PLC0415
         from ..models.viewport_display import ViewportDisplay # noqa: PLC0415
+        from ..models.viewport_isolation import ViewportIsolation # noqa: PLC0415
         from ..models.viewport_map_paths import ViewportMapPaths # noqa: PLC0415
         d = dict(src_dict)
         maps = ViewportMapPaths.from_dict(d.pop("maps"))
@@ -182,6 +197,26 @@ class ViewportState:
         stack = _parse_stack(d.pop("stack", UNSET))
 
 
+        def _parse_isolation(data: object) -> None | Unset | ViewportIsolation:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                isolation_type_1 = ViewportIsolation.from_dict(data)
+
+
+
+                return isolation_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | Unset | ViewportIsolation, data)
+
+        isolation = _parse_isolation(d.pop("isolation", UNSET))
+
+
         viewport_state = cls(
             maps=maps,
             camera=camera,
@@ -193,6 +228,7 @@ class ViewportState:
             mesh=mesh,
             error=error,
             stack=stack,
+            isolation=isolation,
         )
 
 

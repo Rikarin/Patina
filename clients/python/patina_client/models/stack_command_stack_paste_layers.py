@@ -29,11 +29,15 @@ class StackCommandStackPasteLayers:
         Attributes:
             op (StackCommandStackPasteLayersOp):
             clip (str): What `POST /stacks/{id}/clip` answered.
+            as_instances (bool): Whether each comes in as an instance of the layer that was copied rather than as a copy, so
+                that an edit to the
+                original shows in it. The original has to be in this stack or another texture set of its model. Default: False.
             above (None | str | Unset): The layer they go just above, or null for the top of the stack.
      """
 
     op: StackCommandStackPasteLayersOp
     clip: str
+    as_instances: bool = False
     above: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -45,6 +49,8 @@ class StackCommandStackPasteLayers:
         op = self.op.value
 
         clip = self.clip
+
+        as_instances = self.as_instances
 
         above: None | str | Unset
         if isinstance(self.above, Unset):
@@ -58,6 +64,7 @@ class StackCommandStackPasteLayers:
         field_dict.update({
             "op": op,
             "clip": clip,
+            "asInstances": as_instances,
         })
         if above is not UNSET:
             field_dict["above"] = above
@@ -76,6 +83,8 @@ class StackCommandStackPasteLayers:
 
         clip = d.pop("clip")
 
+        as_instances = d.pop("asInstances")
+
         def _parse_above(data: object) -> None | str | Unset:
             if data is None:
                 return data
@@ -89,6 +98,7 @@ class StackCommandStackPasteLayers:
         stack_command_stack_paste_layers = cls(
             op=op,
             clip=clip,
+            as_instances=as_instances,
             above=above,
         )
 
