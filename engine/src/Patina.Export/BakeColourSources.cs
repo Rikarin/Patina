@@ -59,8 +59,7 @@ public static class BakeColourSources {
     ) {
         var corners = new Vector4[high.Mesh.CornerCount];
         var faceImages = new int[high.Mesh.FaceCount];
-        List<BakeImage> images = [];
-        Dictionary<(int File, int Material), int> read = [];
+        var (images, read) = Pictures(request, files, warnings);
         var part = 0;
         var face = 0;
         for (var at = 0; at < files.Count; at++) {
@@ -70,16 +69,7 @@ public static class BakeColourSources {
                 var colour = material >= 0 && material < file.MaterialFactors.Length
                     ? file.MaterialFactors[material].BaseColor
                     : ModelMaterialFactors.Default.BaseColor;
-                if (!read.TryGetValue((at, material), out var image)) {
-                    image = -1;
-                    if (Picture(file, material, request.High[at], warnings) is { } picture) {
-                        image = images.Count;
-                        images.Add(picture);
-                    }
-
-                    read.Add((at, material), image);
-                }
-
+                var image = read[(at, material)];
                 for (var end = face + high.Parts[part].Faces; face < end; face++) {
                     faceImages[face] = image;
                     var entry = high.Mesh.Faces[face];
@@ -93,9 +83,34 @@ public static class BakeColourSources {
         return new(corners, images, faceImages);
     }
 
+    /// <summary>
+    ///     Each material's base colour picture that a part uses, read once however many parts use it, and which of them
+    ///     each file's material reads, <c>-1</c> for none.
+    /// </summary>
+    static (List<BakeImage> Images, Dictionary<(int File, int Material), int> Read) Pictures(
+        BakeRequest request,
+        IReadOnlyList<ReadModel> files,
+        List<string> warnings
+    ) {
+        List<BakeImage> images = [];
+        Dictionary<(int File, int Material), int> read = [];
+        for (var at = 0; at < files.Count; at++) {
+            foreach (var material in files[at].Model.Parts.Select(static part => part.Material).Distinct()) {
+                var picture = Picture(files[at], material, request.High[at], warnings);
+                read[(at, material)] = picture is null ? -1 : images.Count;
+                if (picture is not null) {
+                    images.Add(picture);
+                }
+            }
+        }
+
+        return (images, read);
+    }
+
     /// <summary>A material's base colour picture in linear light, or null when it names none or it cannot be read.</summary>
     static BakeImage? Picture(ReadModel file, int material, string path, List<string> warnings) {
-        if (material < 0 || material >= file.MaterialTextures.Length
+        if (material < 0
+            || material >= file.MaterialTextures.Length
             || file.MaterialTextures[material].BaseColor is not { } texture) {
             return null;
         }
@@ -111,7 +126,9 @@ public static class BakeColourSources {
 
     /// <summary>Where a picture a model names lies, or null when it is inside the model.</summary>
     static string? Resolved(ModelTexture texture, string model) =>
-        texture.Path is { } relative ? Path.GetFullPath(relative, Path.GetDirectoryName(Path.GetFullPath(model))!) : null;
+        texture.Path is { } relative
+            ? Path.GetFullPath(relative, Path.GetDirectoryName(Path.GetFullPath(model))!)
+            : null;
 
     /// <summary>
     ///     The pictures beside the high meshes that a colour bake from materials reads, so a key changes when one does.
@@ -130,7 +147,9 @@ public static class BakeColourSources {
         foreach (var path in request.High) {
             var file = MeshMapBakeRun.Model(path);
             foreach (var textures in file.MaterialTextures) {
-                if (textures.BaseColor is { } texture && Resolved(texture, path) is { } picture && File.Exists(picture)) {
+                if (textures.BaseColor is { } texture
+                    && Resolved(texture, path) is { } picture
+                    && File.Exists(picture)) {
                     pictures.Add(picture);
                 }
             }
@@ -176,8 +195,7 @@ public static class BakeColourSources {
         return plane with { Samples = samples };
     }
 
-    static float Linear(float value) =>
-        value <= 0.04045f ? value / 12.92f : MathF.Pow((value + 0.055f) / 1.055f, 2.4f);
+    static float Linear(float value) => value <= 0.04045f ? value / 12.92f : MathF.Pow((value + 0.055f) / 1.055f, 2.4f);
 
     static float Srgb(float value) {
         var clamped = Math.Clamp(value, 0f, 1f);

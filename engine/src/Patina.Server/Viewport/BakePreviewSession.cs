@@ -88,6 +88,7 @@ public sealed class BakePreviewSession(WorkerLink worker) : IDisposable {
                         state = reply.BakePreviewShown ?? BakePreviewState.Off;
                     }
                 }
+
                 told = (connection, asked);
             } catch (Exception e) when (e is IpcException || (e is TimeoutException && !throwing)) {
                 // ⚠ A Worker too slow to answer is told once and not on every frame, or the viewport would wait on

@@ -78,8 +78,12 @@ public static class BakeInputs {
     ///     its texture set, or the pictures a model names. Null reads every file whole.
     /// </param>
     /// <remarks>
-    ///     ⚠ <b>A revision in place of the bytes is only sound when it covers everything the bake reads of that
-    ///     file</b>, and a reader that cannot say leaves the role out, so the bytes decide: a full rebake is the
+    ///     ⚠
+    ///     <b>
+    ///         A revision in place of the bytes is only sound when it covers everything the bake reads of that
+    ///         file
+    ///     </b>
+    ///     , and a reader that cannot say leaves the role out, so the bytes decide: a full rebake is the
     ///     answer whenever it is unclear (#151).
     /// </remarks>
     public static BuildKey KeyOf(

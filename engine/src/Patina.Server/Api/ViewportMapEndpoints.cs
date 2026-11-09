@@ -148,13 +148,17 @@ static class ViewportMapEndpoints {
                 return TypedResults.Problem(wrong, statusCode: Refused);
             }
 
-            string[] files = [request.Low, ..request.High, request.Cage ?? string.Empty, request.Options.Rays.DistanceMap];
+            string[] files =
+                [request.Low, ..request.High, request.Cage ?? string.Empty, request.Options.Rays.DistanceMap];
             if (files.FirstOrDefault(static file => file.Length > 0 && !File.Exists(file)) is { } missing) {
                 return TypedResults.Problem($"There is no file at '{missing}'.", statusCode: Missing);
             }
 
             if (request.High.Count == 0) {
-                return TypedResults.Problem("A bake needs a high mesh, which may be the low mesh itself.", statusCode: Refused);
+                return TypedResults.Problem(
+                    "A bake needs a high mesh, which may be the low mesh itself.",
+                    statusCode: Refused
+                );
             }
         }
 

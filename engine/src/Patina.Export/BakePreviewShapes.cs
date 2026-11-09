@@ -88,24 +88,7 @@ public static class BakePreviewShapes {
         }
 
         if (preview.HighMesh) {
-            var count = Faces(high.Mesh).Count();
-            var step = Math.Max(1, (count + MostHighTriangles - 1) / MostHighTriangles);
-            if (step > 1) {
-                warnings.Add(
-                    string.Create(
-                        CultureInfo.InvariantCulture,
-                        $"The high mesh has {count} triangles, so one in {step} is drawn."
-                    )
-                );
-            }
-
-            var at = 0;
-            foreach (var (face, a, b, c) in Faces(high.Mesh)) {
-                if (at++ % step == 0) {
-                    var colour = highColours?[face] ?? Ghost;
-                    Triangle(triangles, high.Mesh, a, b, c, colour);
-                }
-            }
+            Ghosted(high.Mesh, highColours, triangles, warnings);
         }
 
         if (lowColours is not null) {
@@ -119,6 +102,27 @@ public static class BakePreviewShapes {
         }
 
         return new([..triangles], [..lines], parts, warnings);
+    }
+
+    /// <summary>The high mesh see-through, in its parts' colours or neutral, thinned evenly past the most drawn.</summary>
+    static void Ghosted(EditMesh mesh, Vector4[]? colours, List<float> triangles, List<string> warnings) {
+        var count = Faces(mesh).Count();
+        var step = Math.Max(1, (count + MostHighTriangles - 1) / MostHighTriangles);
+        if (step > 1) {
+            warnings.Add(
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"The high mesh has {count} triangles, so one in {step} is drawn."
+                )
+            );
+        }
+
+        var at = 0;
+        foreach (var (face, a, b, c) in Faces(mesh)) {
+            if (at++ % step == 0) {
+                Triangle(triangles, mesh, a, b, c, colours?[face] ?? Ghost);
+            }
+        }
     }
 
     /// <summary>The cage or the ray distances: the outer shell, see-through with its edges, and each point's ray.</summary>
@@ -183,7 +187,9 @@ public static class BakePreviewShapes {
             var matched = lowFaces.ContainsKey(name) && highFaces.ContainsKey(name);
             var colour = matched
                 ? new Vector4(MapBaker.IdColour(colours.Count + 1), 0.55f)
-                : lowFaces.ContainsKey(name) ? Unmatched : Leftover;
+                : lowFaces.ContainsKey(name)
+                    ? Unmatched
+                    : Leftover;
             colours[name] = colour;
             parts.Add(new(name, lowFaces.GetValueOrDefault(name), highFaces.GetValueOrDefault(name), Hex(colour)));
         }
@@ -191,7 +197,10 @@ public static class BakePreviewShapes {
         return (parts, PerFace(low, lowSuffixes, colours), PerFace(high, highSuffixes, colours));
     }
 
-    static Dictionary<string, int> Count(IReadOnlyList<(string Name, int Faces)> parts, IReadOnlyList<string> suffixes) {
+    static Dictionary<string, int> Count(
+        IReadOnlyList<(string Name, int Faces)> parts,
+        IReadOnlyList<string> suffixes
+    ) {
         Dictionary<string, int> faces = new(StringComparer.Ordinal);
         foreach (var (name, count) in parts) {
             var key = BakeParts.Key(name, suffixes);

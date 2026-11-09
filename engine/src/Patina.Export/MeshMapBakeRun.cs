@@ -163,7 +163,13 @@ public static class MeshMapBakeRun {
             }
         );
 
-    internal static BakeSettings Settings(BakeRequest request, FlatModel high, FlatModel low, EditMesh? cage, int threads) {
+    internal static BakeSettings Settings(
+        BakeRequest request,
+        FlatModel high,
+        FlatModel low,
+        EditMesh? cage,
+        int threads
+    ) {
         var options = request.Options;
         var rays = options.Rays;
         var occlusion = options.Occlusion;
@@ -209,18 +215,22 @@ public static class MeshMapBakeRun {
             Skew = (float)rays.Skew,
             SkewMap = rays.SkewMap is { Length: > 0 } map ? Mask(map, "skew map") : null,
             DistanceMap = rays.DistanceMap is { Length: > 0 } distance ? Mask(distance, "distance map") : null,
-            Rounding = options.Rounding.Enabled
-                ? new BakeRounding(
-                    (float)options.Rounding.Width,
-                    options.Rounding.Edges == "hard" ? RoundedEdges.Hard : RoundedEdges.Angle,
-                    (float)options.Rounding.Angle
-                )
-                : null,
+            Rounding = Rounding(options.Rounding),
             Parts = rays.MatchByName
                 ? BakeParts.ByName(high.Parts, low.Parts, Suffixes(rays.HighSuffix), Suffixes(rays.LowSuffix))
                 : null,
             Threads = threads
         };
+    }
+
+    /// <summary>The edges to round, or null when rounding is off.</summary>
+    static BakeRounding? Rounding(BakeRoundingOptions rounding) {
+        if (!rounding.Enabled) {
+            return null;
+        }
+
+        var edges = rounding.Edges == "hard" ? RoundedEdges.Hard : RoundedEdges.Angle;
+        return new((float)rounding.Width, edges, (float)rounding.Angle);
     }
 
     /// <summary>A name ending as the matching takes it: one ending, or none for an empty field.</summary>
@@ -415,7 +425,9 @@ public static class MeshMapBakeRun {
         var extension = MeshMapFiles.ExtensionOf(request.Options.Format);
         List<BakedMapFile> files = [];
         foreach (var baked in MeshMapPlanes.Of(maps)) {
-            var plane = baked.Kind == MeshMapKind.Colour ? BakeColourSources.Encoded(baked, request.Options.Colour) : baked;
+            var plane = baked.Kind == MeshMapKind.Colour
+                ? BakeColourSources.Encoded(baked, request.Options.Colour)
+                : baked;
             var map = MeshMapFiles.NameOf(plane.Kind);
             if (!wanted.Contains(map)) {
                 continue;

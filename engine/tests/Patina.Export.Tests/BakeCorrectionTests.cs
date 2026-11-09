@@ -113,7 +113,10 @@ public sealed class BakeCorrectionTests : IDisposable {
             Request(high, low, static options => options with { Colour = new() { Source = "vertex-colour" } })
         );
 
-        Assert.Contains(manifest.Result.Warnings, static warning => warning.Contains("vertex colours", StringComparison.Ordinal));
+        Assert.Contains(
+            manifest.Result.Warnings,
+            static warning => warning.Contains("vertex colours", StringComparison.Ordinal)
+        );
         Assert.Equal(255, Red(PngCodec.Load(Path.Combine(Into("bake"), "colour.png")), 32, 32));
     }
 
@@ -126,7 +129,9 @@ public sealed class BakeCorrectionTests : IDisposable {
                 Name = name,
                 Positions = [new(left, 0, 0), new(left + 1, 0, 0), new(left + 1, 1, 0), new(left, 1, 0)],
                 Normals = [Vector3.UnitZ, Vector3.UnitZ, Vector3.UnitZ, Vector3.UnitZ],
-                TexCoords = [new(left / 2 + 0.5f, 0), new(left / 2 + 1, 0), new(left / 2 + 1, 1), new(left / 2 + 0.5f, 1)],
+                TexCoords = [
+                    new(left / 2 + 0.5f, 0), new(left / 2 + 1, 0), new(left / 2 + 1, 1), new(left / 2 + 0.5f, 1)
+                ],
                 Indices = [0, 1, 2, 0, 2, 3],
                 MaterialIndex = material,
                 Bounds = new(new(left, 0, 0), new(left + 1, 1, 0))
@@ -193,9 +198,13 @@ public sealed class BakeCorrectionTests : IDisposable {
         File.WriteAllBytes(map, ExrCodec.Encode(new(2, 1, 1, [0.5f, 0.5f])));
 
         var refused = Assert.Throws<InvalidDataException>(() =>
-            Bake(Request(quad, quad, options => options with {
-                Maps = ["normal"], Rays = options.Rays with { DistanceMap = map }
-            }))
+            Bake(
+                Request(
+                    quad,
+                    quad,
+                    options => options with { Maps = ["normal"], Rays = options.Rays with { DistanceMap = map } }
+                )
+            )
         );
 
         Assert.Contains("distance map", refused.Message, StringComparison.Ordinal);
@@ -242,7 +251,9 @@ public sealed class BakeCorrectionTests : IDisposable {
     string Key(string low, string set, bool bytes = false) {
         var high = Quad("high.obj", 0f, Straight);
         var request = Request(high, low, static options => options with { Maps = ["normal"] }) with { Material = set };
-        return (bytes ? BakeInputs.KeyOf(request, ToolCatalog.Default) : BakeKeyReads.KeyOf(request, ToolCatalog.Default))
+        return (bytes
+                ? BakeInputs.KeyOf(request, ToolCatalog.Default)
+                : BakeKeyReads.KeyOf(request, ToolCatalog.Default))
             .Hex;
     }
 
@@ -263,7 +274,7 @@ public sealed class BakeCorrectionTests : IDisposable {
     /// <summary>A low mesh's material colour is read by no map of it, so changing it rebakes nothing.</summary>
     [Fact]
     public void A_recoloured_material_on_the_low_mesh_rebakes_nothing() {
-        var red = TwoSets("red.obj", 0f, "1 0 0");
+        var red = TwoSets("red.obj", 0f);
         var green = TwoSets("green.obj", 0f, "0 1 0");
 
         Assert.Equal(Key(red, "Body"), Key(green, "Body"));
@@ -275,6 +286,7 @@ public sealed class BakeCorrectionTests : IDisposable {
     public void A_low_mesh_that_is_also_the_high_mesh_is_keyed_by_its_bytes() {
         var before = TwoSets("before.obj", 0f);
         var after = TwoSets("after.obj", 0.25f);
+
         BakeRequest Own(string low) =>
             Request(low, low, static options => options with { Maps = ["normal"] }) with { Material = "Body" };
 
@@ -296,7 +308,10 @@ public sealed class BakeCorrectionTests : IDisposable {
         var key = BakeKeyReads.KeyOf(request, ToolCatalog.Default).Hex;
         var manifest = MeshMapBakeRun.Run(request, cache.FolderOf(key), 0, null, TestContext.Current.CancellationToken);
 
-        File.WriteAllText(before, File.ReadAllText(before).Replace("v 1 -1 0", "v 1 -1 0.25", StringComparison.Ordinal));
+        File.WriteAllText(
+            before,
+            File.ReadAllText(before).Replace("v 1 -1 0", "v 1 -1 0.25", StringComparison.Ordinal)
+        );
         Assert.Equal(key, BakeKeyReads.KeyOf(request, ToolCatalog.Default).Hex);
         cache.Deliver(key, manifest, request, true);
 

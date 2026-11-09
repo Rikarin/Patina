@@ -9,7 +9,9 @@ namespace Patina.Export;
 
 /// <summary>
 ///     What a bake reads of its files, where that is less than the bytes: so a mesh change rebakes only the texture sets
-///     it touched (#151). <see cref="Patina.Jobs.BakeInputs.KeyOf(BakeRequest, Patina.Library.ToolCatalog, Func{BakeRequest, IReadOnlyDictionary{string, Revision}})" />
+///     it touched (#151).
+///     <see
+///         cref="Patina.Jobs.BakeInputs.KeyOf(BakeRequest, Patina.Library.ToolCatalog, Func{BakeRequest, IReadOnlyDictionary{string, Revision}})" />
 ///     takes these in place of the bytes.
 /// </summary>
 /// <remarks>
@@ -74,6 +76,7 @@ public static class BakeKeyReads {
         ArgumentNullException.ThrowIfNull(model);
         var mesh = model.Mesh;
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+
         void Count(int value) {
             Span<byte> number = stackalloc byte[4];
             BinaryPrimitives.WriteInt32LittleEndian(number, value);

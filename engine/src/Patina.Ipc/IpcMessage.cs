@@ -201,12 +201,6 @@ public sealed class IpcMessage {
     /// <summary>viewport.display: how frames are lit, shown and finished.</summary>
     public ViewportDisplaySet? Display { get; set; }
 
-    /// <summary>viewport.bake-preview: the bake's setup to show.</summary>
-    public ViewportBakePreview? BakePreview { get; set; }
-
-    /// <summary>The reply to viewport.bake-preview: the key to what is drawn.</summary>
-    public BakePreviewState? BakePreviewShown { get; set; }
-
     /// <summary>viewport.render: what to render and where to put it.</summary>
     public ViewportRender? Render { get; set; }
 
@@ -253,6 +247,15 @@ public sealed class IpcMessage {
     public IReadOnlyList<string>? Parts { get; set; }
 
     public MeshPartMaskAsk? MeshPartMask { get; set; }
+
+    /// <summary>
+    ///     The bake's setup for <see cref="IpcTypes.ViewportBakePreview" />: paths and options, never shapes, and an
+    ///     empty low mesh for none.
+    /// </summary>
+    public ViewportBakePreview? BakePreview { get; set; }
+
+    /// <summary>The key to what <see cref="IpcTypes.ViewportBakePreview" /> drew, in its answer.</summary>
+    public BakePreviewState? BakePreviewShown { get; set; }
 
     /// <summary>A model's materials, in the answer to <see cref="IpcTypes.MeshMaterials" />.</summary>
     public IReadOnlyList<string>? Materials { get; set; }

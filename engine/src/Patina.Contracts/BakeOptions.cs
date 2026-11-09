@@ -133,7 +133,11 @@ public sealed record BakeOptions {
             (Maps.Count == 0, "A bake has to write at least one map.")
         ];
         return checks.FirstOrDefault(static check => check.Wrong).Why
-            ?? Rays.Problem() ?? Height.Problem() ?? Occlusion.Problem() ?? Id.Problem() ?? Rounding.Problem()
+            ?? Rays.Problem()
+            ?? Height.Problem()
+            ?? Occlusion.Problem()
+            ?? Id.Problem()
+            ?? Rounding.Problem()
             ?? Colour.Problem(Maps.Contains("colour", StringComparer.Ordinal));
     }
 }

@@ -14,14 +14,16 @@ public sealed class BakePreviewShapesTests : IDisposable {
         for (var at = 0; at < names.Length; at++) {
             var x = at * 2;
             var v = at * 4;
-            lines.AddRange([
-                $"o {names[at]}",
-                $"v {x} 0 0", $"v {x + 1} 0 0", $"v {x + 1} 1 0", $"v {x} 1 0",
-                "vt 0 0", "vt 1 0", "vt 1 1", "vt 0 1",
-                "vn 0 0 1",
-                $"f {v + 1}/{v + 1}/{at + 1} {v + 2}/{v + 2}/{at + 1} {v + 3}/{v + 3}/{at + 1}",
-                $"f {v + 1}/{v + 1}/{at + 1} {v + 3}/{v + 3}/{at + 1} {v + 4}/{v + 4}/{at + 1}"
-            ]);
+            lines.AddRange(
+                [
+                    $"o {names[at]}",
+                    $"v {x} 0 0", $"v {x + 1} 0 0", $"v {x + 1} 1 0", $"v {x} 1 0",
+                    "vt 0 0", "vt 1 0", "vt 1 1", "vt 0 1",
+                    "vn 0 0 1",
+                    $"f {v + 1}/{v + 1}/{at + 1} {v + 2}/{v + 2}/{at + 1} {v + 3}/{v + 3}/{at + 1}",
+                    $"f {v + 1}/{v + 1}/{at + 1} {v + 3}/{v + 3}/{at + 1} {v + 4}/{v + 4}/{at + 1}"
+                ]
+            );
         }
 
         var path = Path.Combine(folder.FullName, file);
@@ -69,12 +71,7 @@ public sealed class BakePreviewShapesTests : IDisposable {
         var high = Quads("high.obj", "bolt_high", "strap_high");
         var low = Quads("low.obj", "bolt_low", "plate_low");
         var drawing = BakePreviewShapes.Build(
-            new() {
-                High = [high],
-                Low = low,
-                Reach = false,
-                Options = new() { Rays = new() { MatchByName = true } }
-            }
+            new() { High = [high], Low = low, Reach = false, Options = new() { Rays = new() { MatchByName = true } } }
         );
 
         var parts = drawing.Parts.ToDictionary(static part => part.Name);

@@ -176,6 +176,7 @@ public sealed class BakeInputsTests : IDisposable {
     [InlineData("colour")]
     public void A_distance_map_and_a_carried_picture_are_inputs_by_their_content(string which) {
         var request = Request();
+
         BakeRequest Using(string path) =>
             With(
                 request,

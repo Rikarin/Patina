@@ -628,8 +628,8 @@ public sealed class BakeProcessTests : IDisposable {
         Assert.True(SamePicture(baked, again), "A new Worker drew something else.");
     }
 
-    async Task<HttpResponseMessage> PreviewAsync(ViewportBakePreview preview, CancellationToken cancellationToken) =>
-        await http.PutAsJsonAsync(
+    Task<HttpResponseMessage> PreviewAsync(ViewportBakePreview preview, CancellationToken cancellationToken) =>
+        http.PutAsJsonAsync(
             "/api/v1/viewport/bake-preview",
             preview,
             ContractsJsonContext.Default.ViewportBakePreview,
@@ -873,9 +873,7 @@ public sealed class BakeProcessTests : IDisposable {
         Assert.Equal(HttpStatusCode.NotFound, gone.StatusCode);
         using var reachless = await PreviewAsync(
             new() {
-                High = queued.Bake.High,
-                Low = queued.Bake.Low,
-                Options = new() { Rays = new() { Front = 0, Rear = 0 } }
+                High = queued.Bake.High, Low = queued.Bake.Low, Options = new() { Rays = new() { Front = 0, Rear = 0 } }
             },
             deadline.Token
         );
