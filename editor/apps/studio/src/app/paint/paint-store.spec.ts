@@ -464,6 +464,54 @@ describe('PaintStore', () => {
     vi.useRealTimers();
   });
 
+  it('keeps the mask in front and Find armed through a restart, and lets go of a mask entry the file lacks', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { store, sockets, server } = setup();
+    const entry = {
+      source: 'Paint',
+      value: 1,
+      asset: '',
+      generator: '',
+      map: '',
+      painted: true,
+      lane: 'Red',
+      blend: 'Copy',
+      opacity: 1,
+      enabled: true
+    };
+    const masked = {
+      ...layer('paint', 'paint'),
+      mask: { ...layer('paint', 'paint').mask, source: 'Constant', layers: [entry] }
+    };
+    server.reply = (method, path) =>
+      method === 'POST' && path === '/api/v1/stacks'
+        ? Response.json(stack({ layers: [layer('base', 'fill'), masked] }))
+        : null;
+    await store.open('/a/Crate.vxlayers', false);
+    store.chooseMaskLayer(masked, 0);
+    store.finding.set(true);
+    expect(store.maskLayer()).toBe(0);
+
+    // The entry was never saved, so the file the stack opens again from has the mask without it.
+    const reopened = stack({
+      id: 's2',
+      sequence: 0,
+      layers: [layer('base', 'fill'), { ...masked, mask: { ...masked.mask, layers: [] } }]
+    });
+    server.reply = (method, path) =>
+      path === '/api/v1/stacks/s1'
+        ? notOpen()
+        : method === 'POST' && path === '/api/v1/stacks'
+          ? Response.json(reopened)
+          : null;
+    drop(sockets[0]);
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    expect(store.state()?.id).toBe('s2');
+    expect([store.layer(), store.masking(), store.maskLayer(), store.finding()]).toEqual(['paint', true, null, true]);
+    vi.useRealTimers();
+  });
+
   it('keeps asking while the Server is down, and follows the same stack when it kept it', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const { store, sockets, server, posts } = setup();

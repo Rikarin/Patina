@@ -1114,6 +1114,14 @@ export class PaintStore {
       this.layer.set(rows.find(row => row.layer.kind === 'paint')?.layer.id ?? null);
     }
 
+    // A mask entry chosen that the stack no longer has, undone or lost with a Server that restarted, is let go of, so
+    // the brush goes back to the mask's base rather than to an entry the Server would refuse as missing.
+    const entry = this.maskLayer();
+    const entries = rows.find(row => row.layer.id === this.layer())?.layer.mask.layers?.length ?? 0;
+    if (entry !== null && entry >= entries) {
+      this.maskLayer.set(null);
+    }
+
     if (state.evaluation) {
       this.heardNotes(state.evaluation.diagnostics);
     }

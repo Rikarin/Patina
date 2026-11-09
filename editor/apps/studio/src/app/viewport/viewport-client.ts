@@ -11,6 +11,7 @@ import {
   StreamFrameTransport,
   type ViewportFrame
 } from './frame-transport';
+import { IsolationStore } from './isolation-store';
 import { DefaultCamera } from './orbit';
 
 /** Makes the frame transport; tests replace it. */
@@ -67,6 +68,7 @@ export class ViewportClient {
   private readonly createTransport = inject(FRAME_TRANSPORT_FACTORY);
   private readonly bakes = inject(BakeStore);
   private readonly projects = inject(ProjectStore);
+  private readonly isolation = inject(IsolationStore);
   private transport: FrameTransport | null = null;
   /** The project whose display is on the viewport, which a change is kept in. */
   private adopted: string | null = null;
@@ -255,7 +257,17 @@ export class ViewportClient {
     const state = unwrap(await this.createClient(await this.connection()).GET('/api/v1/viewport'));
     this.mesh.set(state.mesh ?? null);
     this.display.set(state.display);
+    this.isolation.heard(state.isolation);
     this.error.set(state.error ?? null);
+  }
+
+  private async hearIsolation(): Promise<void> {
+    try {
+      const state = unwrap(await this.createClient(await this.connection()).GET('/api/v1/viewport'));
+      this.isolation.heard(state.isolation);
+    } catch (error) {
+      this.error.set(messageOf(error));
+    }
   }
 
   private send(input: ViewportInput): void {
@@ -270,6 +282,7 @@ export class ViewportClient {
       const state = unwrap(await this.createClient(connection).GET('/api/v1/viewport'));
       this.mesh.set(state.mesh ?? null);
       this.camera.set(state.camera);
+      this.isolation.heard(state.isolation);
       if (this.adopted === null) {
         this.display.set(state.display);
       }
@@ -288,6 +301,9 @@ export class ViewportClient {
           if (this.opens++ > 0) {
             this.send({ camera: this.camera(), interacting: false });
             this.sendDisplay(this.display());
+            // What it drew alone is not told again: that is the Server's, kept in memory only, so one that restarted
+            // draws the whole model, and the controls hear that rather than claim parts are alone that are not.
+            void this.hearIsolation();
           }
         }
       );

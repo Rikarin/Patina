@@ -35,6 +35,15 @@ export class IsolationStore {
     return this.set(Whole);
   }
 
+  /**
+   * What the Server says it draws alone, read when the viewport connects and again when it reconnects. The Server keeps
+   * isolation in memory only, so after a restart it draws the whole model and the controls say so, rather than claiming
+   * parts are drawn alone that are not.
+   */
+  heard(isolation: ViewportIsolation | null | undefined): void {
+    this.isolation.set(isolation ?? Whole);
+  }
+
   private async set(isolation: ViewportIsolation): Promise<void> {
     this.isolation.set(isolation);
     try {
