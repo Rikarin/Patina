@@ -59,6 +59,27 @@ public static class ViewportLanes {
     public static IReadOnlyList<string> All { get; } = ["rgb", "r", "g", "b", "a"];
 }
 
+/// <summary>
+///     The shapes <see cref="ViewportDisplay.Shape" /> takes: what a material or a graph is seen on when it has no mesh of
+///     its own.
+/// </summary>
+public static class ViewportShapes {
+    /// <summary>A ball, with two turns of the picture around it.</summary>
+    public const string Sphere = "sphere";
+
+    /// <summary>A flat square facing the front, the picture once across it.</summary>
+    public const string Plane = "plane";
+
+    /// <summary>A box, the picture once on each face.</summary>
+    public const string Cube = "cube";
+
+    /// <summary>A drum, with the sphere's two turns of the picture around its side.</summary>
+    public const string Cylinder = "cylinder";
+
+    /// <summary>Every shape, in the order a list offers them.</summary>
+    public static IReadOnlyList<string> All { get; } = [Sphere, Plane, Cube, Cylinder];
+}
+
 /// <summary>The curves <see cref="ViewportDisplay.ToneMapping" /> takes: Vixen's four, and none.</summary>
 public static class ViewportToneMappings {
     /// <summary>Every curve, in the order the Worker numbers them.</summary>
@@ -109,6 +130,10 @@ public static class ViewportToneMappings {
 ///     What the picture's numbers are multiplied by before they are shown, 0.001 to 1000, so a height in the model's
 ///     units or a position comes into view.
 /// </param>
+/// <param name="Shape">
+///     What a material or a graph with no mesh of its own is seen on: one of <see cref="ViewportShapes.All" />. A model
+///     that has a mesh is seen on its mesh whatever this says.
+/// </param>
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field, and a default on each is what makes a
 // field left out of a request mean the viewport's own; init-only properties would come through as nothing.
 #pragma warning disable SK7005
@@ -139,7 +164,8 @@ public sealed record ViewportDisplay(
     string BackgroundColor = "#000000",
     bool Grid = false,
     string PictureLane = "rgb",
-    double PictureScale = 1
+    double PictureScale = 1,
+    string Shape = ViewportShapes.Sphere
 ) {
 #pragma warning restore SK7005
     /// <summary>
@@ -175,6 +201,10 @@ public sealed record ViewportDisplay(
 
         if (!ViewportLanes.All.Contains(PictureLane)) {
             return $"'{PictureLane}' is no lane. Choose one of {string.Join(", ", ViewportLanes.All)}.";
+        }
+
+        if (!ViewportShapes.All.Contains(Shape)) {
+            return $"'{Shape}' is no shape. Choose one of {string.Join(", ", ViewportShapes.All)}.";
         }
 
         if (Colour(BackgroundColor) is null) {
@@ -299,9 +329,23 @@ public sealed record ViewportMapPaths(
 /// <param name="Job">The bake's job.</param>
 public sealed record ViewportBakeRequest(string Job);
 
-/// <summary>Asks the viewport to lay a graph's Output nodes over the mesh it is showing, as they stand now.</summary>
+/// <summary>
+///     Asks the viewport to show a graph on the mesh it is showing, or on the display's shape with none, as it stands
+///     now: its Output nodes as a material, or one node's picture alone.
+/// </summary>
 /// <param name="Graph">The graph's session.</param>
-public sealed record ViewportGraphRequest(string Graph);
+/// <param name="Node">
+///     A node whose picture to show as stored, lit by nothing, in place of the material, or null for the Output nodes.
+///     The display's picture lane and scale apply to it, and its view, Lit or another, returns when the node is let go.
+/// </param>
+/// <param name="Port">The node's output, or null for the one its preview shows.</param>
+public sealed record ViewportGraphRequest(string Graph, int? Node = null, string? Port = null);
+
+/// <summary>A graph node whose picture the viewport shows in place of a material.</summary>
+/// <param name="Graph">The graph's session.</param>
+/// <param name="Node">The node.</param>
+/// <param name="Port">Its output.</param>
+public sealed record ViewportNodeShown(string Graph, int Node, string Port);
 
 /// <summary>
 ///     The reply to <c>GET /api/v1/viewport</c>. The Server owns all of this; a Worker can die without losing it.
@@ -319,6 +363,10 @@ public sealed record ViewportGraphRequest(string Graph);
 /// <param name="Frames">How many frames this Server has published.</param>
 /// <param name="Error">Why the last command failed, or null.</param>
 /// <param name="Isolation">What is drawn alone, or null for the whole model.</param>
+/// <param name="Node">
+///     The graph node whose picture is shown in place of the material, or null. While it is, the picture view is
+///     what the frames show, whatever <see cref="ViewportDisplay.View" /> says.
+/// </param>
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field.
 #pragma warning disable SK7005
 public sealed record ViewportState(
@@ -332,7 +380,8 @@ public sealed record ViewportState(
     string? Error,
     ViewportDisplay Display,
     string? Stack = null,
-    ViewportIsolation? Isolation = null
+    ViewportIsolation? Isolation = null,
+    ViewportNodeShown? Node = null
 );
 #pragma warning restore SK7005
 

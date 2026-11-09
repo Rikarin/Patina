@@ -141,7 +141,7 @@ static class PatinaApi {
         }
 
         // A material has no mesh of its own, and is seen on a shape instead.
-        var file = stack.ModelFile ?? PreviewShape.File(identity.Library);
+        var file = stack.ModelFile ?? PreviewShape.File(identity.Library, session.State.Display.Shape);
         if (!File.Exists(file)) {
             return TypedResults.Problem(
                 $"There is no file at '{stack.ModelFile}'.",

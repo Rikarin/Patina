@@ -236,7 +236,7 @@ export interface paths {
       cookie?: never;
     };
     get?: never;
-    /** Lays a graph's Output nodes over the mesh, as they stand now. Ask again to see a later edit. */
+    /** Lays a graph's Output nodes over the mesh, or the display's shape with none, as they stand now, or shows one node's picture there. Ask again to see a later edit. */
     put: operations['ShowGraphInViewport'];
     post?: never;
     delete?: never;
@@ -6246,11 +6246,28 @@ export interface components {
        * @default 1
        */
       pictureScale: number;
+      /**
+       * @description What a material or a graph with no mesh of its own is seen on: one of IReadOnlyList&lt;string&gt; ViewportShapes.All. A model
+       *     that has a mesh is seen on its mesh whatever this says.
+       * @default sphere
+       */
+      shape: string;
     };
-    /** @description Asks the viewport to lay a graph's Output nodes over the mesh it is showing, as they stand now. */
+    /**
+     * @description Asks the viewport to show a graph on the mesh it is showing, or on the display's shape with none, as it stands
+     *     now: its Output nodes as a material, or one node's picture alone.
+     */
     ViewportGraphRequest: {
       /** @description The graph's session. */
       graph: string;
+      /**
+       * Format: int32
+       * @description A node whose picture to show as stored, lit by nothing, in place of the material, or null for the Output nodes.
+       *     The display's picture lane and scale apply to it, and its view, Lit or another, returns when the node is let go.
+       */
+      node?: null | number;
+      /** @description The node's output, or null for the one its preview shows. */
+      port?: null | string;
     };
     /**
      * @description What the viewport draws alone (#136): the named meshes and the materials, which are texture sets, that show. The
@@ -6288,6 +6305,18 @@ export interface components {
     ViewportMeshRequest: {
       /** @description The file's path, on the Server's machine. */
       path: string;
+    };
+    /** @description A graph node whose picture the viewport shows in place of a material. */
+    ViewportNodeShown: {
+      /** @description The graph's session. */
+      graph: string;
+      /**
+       * Format: int32
+       * @description The node.
+       */
+      node: number;
+      /** @description Its output. */
+      port: string;
     };
     /** @description What a position in the viewport landed on. */
     ViewportPick: {
@@ -6418,6 +6447,7 @@ export interface components {
       /** @description The stack session it is wearing, or null. */
       stack?: null | string;
       isolation?: null | components['schemas']['ViewportIsolation'];
+      node?: null | components['schemas']['ViewportNodeShown'];
     };
     /** @description The Worker as the Server sees it. All but `Connected` are null while there is none. */
     WorkerStatus: {

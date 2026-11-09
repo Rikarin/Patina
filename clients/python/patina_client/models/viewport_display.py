@@ -64,6 +64,9 @@ class ViewportDisplay:
             picture_scale (float): What the picture's numbers are multiplied by before they are shown, 0.001 to 1000, so a
                 height in the model's
                 units or a position comes into view. Default: 1.0.
+            shape (str): What a material or a graph with no mesh of its own is seen on: one of IReadOnlyList&lt;string&gt;
+                ViewportShapes.All. A model
+                that has a mesh is seen on its mesh whatever this says. Default: 'sphere'.
             look (None | str | Unset): A `.cube` table the frame is viewed through after the curve, or null.
             picture (None | str | Unset): The picture the `picture` view shows, on the Server's machine, or null.
      """
@@ -93,6 +96,7 @@ class ViewportDisplay:
     grid: bool = False
     picture_lane: str = 'rgb'
     picture_scale: float = 1.0
+    shape: str = 'sphere'
     look: None | str | Unset = UNSET
     picture: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -152,6 +156,8 @@ class ViewportDisplay:
 
         picture_scale = self.picture_scale
 
+        shape = self.shape
+
         look: None | str | Unset
         if isinstance(self.look, Unset):
             look = UNSET
@@ -193,6 +199,7 @@ class ViewportDisplay:
             "grid": grid,
             "pictureLane": picture_lane,
             "pictureScale": picture_scale,
+            "shape": shape,
         })
         if look is not UNSET:
             field_dict["look"] = look
@@ -256,6 +263,8 @@ class ViewportDisplay:
 
         picture_scale = d.pop("pictureScale")
 
+        shape = d.pop("shape")
+
         def _parse_look(data: object) -> None | str | Unset:
             if data is None:
                 return data
@@ -302,6 +311,7 @@ class ViewportDisplay:
             grid=grid,
             picture_lane=picture_lane,
             picture_scale=picture_scale,
+            shape=shape,
             look=look,
             picture=picture,
         )

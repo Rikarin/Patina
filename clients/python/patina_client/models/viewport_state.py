@@ -16,6 +16,7 @@ if TYPE_CHECKING:
   from ..models.viewport_display import ViewportDisplay
   from ..models.viewport_isolation import ViewportIsolation
   from ..models.viewport_map_paths import ViewportMapPaths
+  from ..models.viewport_node_shown import ViewportNodeShown
 
 
 
@@ -48,6 +49,7 @@ class ViewportState:
             error (None | str | Unset): Why the last command failed, or null.
             stack (None | str | Unset): The stack session it is wearing, or null.
             isolation (None | Unset | ViewportIsolation):
+            node (None | Unset | ViewportNodeShown):
      """
 
     maps: ViewportMapPaths
@@ -61,6 +63,7 @@ class ViewportState:
     error: None | str | Unset = UNSET
     stack: None | str | Unset = UNSET
     isolation: None | Unset | ViewportIsolation = UNSET
+    node: None | Unset | ViewportNodeShown = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -72,6 +75,7 @@ class ViewportState:
         from ..models.viewport_display import ViewportDisplay # noqa: PLC0415
         from ..models.viewport_isolation import ViewportIsolation # noqa: PLC0415
         from ..models.viewport_map_paths import ViewportMapPaths # noqa: PLC0415
+        from ..models.viewport_node_shown import ViewportNodeShown # noqa: PLC0415
         maps = self.maps.to_dict()
 
         camera = self.camera.to_dict()
@@ -112,6 +116,14 @@ class ViewportState:
         else:
             isolation = self.isolation
 
+        node: dict[str, Any] | None | Unset
+        if isinstance(self.node, Unset):
+            node = UNSET
+        elif isinstance(self.node, ViewportNodeShown):
+            node = self.node.to_dict()
+        else:
+            node = self.node
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -132,6 +144,8 @@ class ViewportState:
             field_dict["stack"] = stack
         if isolation is not UNSET:
             field_dict["isolation"] = isolation
+        if node is not UNSET:
+            field_dict["node"] = node
 
         return field_dict
 
@@ -143,6 +157,7 @@ class ViewportState:
         from ..models.viewport_display import ViewportDisplay # noqa: PLC0415
         from ..models.viewport_isolation import ViewportIsolation # noqa: PLC0415
         from ..models.viewport_map_paths import ViewportMapPaths # noqa: PLC0415
+        from ..models.viewport_node_shown import ViewportNodeShown # noqa: PLC0415
         d = dict(src_dict)
         maps = ViewportMapPaths.from_dict(d.pop("maps"))
 
@@ -217,6 +232,26 @@ class ViewportState:
         isolation = _parse_isolation(d.pop("isolation", UNSET))
 
 
+        def _parse_node(data: object) -> None | Unset | ViewportNodeShown:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                node_type_1 = ViewportNodeShown.from_dict(data)
+
+
+
+                return node_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | Unset | ViewportNodeShown, data)
+
+        node = _parse_node(d.pop("node", UNSET))
+
+
         viewport_state = cls(
             maps=maps,
             camera=camera,
@@ -229,6 +264,7 @@ class ViewportState:
             error=error,
             stack=stack,
             isolation=isolation,
+            node=node,
         )
 
 

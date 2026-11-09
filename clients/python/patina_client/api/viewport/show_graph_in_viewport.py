@@ -98,11 +98,13 @@ def sync_detailed(
     body: ViewportGraphRequest,
 
 ) -> Response[ProblemDetails | ViewportState]:
-    """ Lays a graph's Output nodes over the mesh, as they stand now. Ask again to see a later edit.
+    """ Lays a graph's Output nodes over the mesh, or the display's shape with none, as they stand now, or
+    shows one node's picture there. Ask again to see a later edit.
 
     Args:
-        body (ViewportGraphRequest): Asks the viewport to lay a graph's Output nodes over the mesh
-            it is showing, as they stand now.
+        body (ViewportGraphRequest): Asks the viewport to show a graph on the mesh it is showing,
+            or on the display's shape with none, as it stands
+            now: its Output nodes as a material, or one node's picture alone.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -130,11 +132,13 @@ def sync(
     body: ViewportGraphRequest,
 
 ) -> ProblemDetails | ViewportState | None:
-    """ Lays a graph's Output nodes over the mesh, as they stand now. Ask again to see a later edit.
+    """ Lays a graph's Output nodes over the mesh, or the display's shape with none, as they stand now, or
+    shows one node's picture there. Ask again to see a later edit.
 
     Args:
-        body (ViewportGraphRequest): Asks the viewport to lay a graph's Output nodes over the mesh
-            it is showing, as they stand now.
+        body (ViewportGraphRequest): Asks the viewport to show a graph on the mesh it is showing,
+            or on the display's shape with none, as it stands
+            now: its Output nodes as a material, or one node's picture alone.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -157,11 +161,13 @@ async def asyncio_detailed(
     body: ViewportGraphRequest,
 
 ) -> Response[ProblemDetails | ViewportState]:
-    """ Lays a graph's Output nodes over the mesh, as they stand now. Ask again to see a later edit.
+    """ Lays a graph's Output nodes over the mesh, or the display's shape with none, as they stand now, or
+    shows one node's picture there. Ask again to see a later edit.
 
     Args:
-        body (ViewportGraphRequest): Asks the viewport to lay a graph's Output nodes over the mesh
-            it is showing, as they stand now.
+        body (ViewportGraphRequest): Asks the viewport to show a graph on the mesh it is showing,
+            or on the display's shape with none, as it stands
+            now: its Output nodes as a material, or one node's picture alone.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -189,11 +195,13 @@ async def asyncio(
     body: ViewportGraphRequest,
 
 ) -> ProblemDetails | ViewportState | None:
-    """ Lays a graph's Output nodes over the mesh, as they stand now. Ask again to see a later edit.
+    """ Lays a graph's Output nodes over the mesh, or the display's shape with none, as they stand now, or
+    shows one node's picture there. Ask again to see a later edit.
 
     Args:
-        body (ViewportGraphRequest): Asks the viewport to lay a graph's Output nodes over the mesh
-            it is showing, as they stand now.
+        body (ViewportGraphRequest): Asks the viewport to show a graph on the mesh it is showing,
+            or on the display's shape with none, as it stands
+            now: its Output nodes as a material, or one node's picture alone.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
