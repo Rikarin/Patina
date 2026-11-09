@@ -125,6 +125,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The Library's foot no longer cuts the project count short beside the bin: in a narrow pane the count shrinks to its number, and the whole of it shows on hover.
 - A document tab closed while its document was still opening no longer leaves it open in the engine, where the document could then be neither moved nor deleted. The close waits for the open and ends what it opened.
 - On Windows, saving a library file from another program, or a git checkout, no longer fails with "being used by another process" because the engine was reading it at that moment. The engine reads library files letting others write over or delete them meanwhile, as it already did for pictures.
 - A paint canvas rewritten by another program just after the engine read it is read again, even when the rewrite kept the file's time and size. A file the clock may not yet have stamped apart is checked by its bytes until it is a couple of seconds old.
