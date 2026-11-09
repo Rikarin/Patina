@@ -991,6 +991,21 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     expect(sent(bodies)[0]?.symmetry).toBeNull();
   });
 
+  it('fills nothing where the viewport draws nothing under a click, as when an isolation hides it (#136)', async () => {
+    const test = await onMesh();
+    const { store, bodies, server } = test;
+    server.reply = (_method, path) =>
+      path.endsWith('/viewport/pick') ? Response.json({ found: false, view: PickedView, u: 0, v: 0 }) : null;
+    store.tool.set('fill');
+    await store.fillAt({ x: 50, y: 25, pressure: 1 }, aim);
+    expect(sent(bodies)).toHaveLength(0);
+    expect(store.failure()).toBeNull();
+
+    // In the 2D view there is no pick: the click is on the map.
+    await store.fillAt({ x: 50, y: 25, pressure: 1 });
+    await vi.waitFor(() => expect(sent(bodies)).toHaveLength(1));
+  });
+
   it('smudges each channel it paints, and sends no colour of its own', async () => {
     const { store, bodies } = await onMesh();
     store.tool.set('smudge');

@@ -1028,7 +1028,10 @@ export class PaintStore {
     }
   }
 
-  /** Fills the piece of the mesh under a click, as the fill tool's mode says, as one undo step. */
+  /**
+   * Fills the piece of the mesh under a click, as the fill tool's mode says, as one undo step. In the viewport the
+   * click is picked as the viewport draws (#136): where an isolation leaves nothing under it, nothing is filled.
+   */
   async fillAt(stamp: StackStamp, aim?: Aim): Promise<void> {
     const layer = this.layer();
     if (!layer || !this.state()?.model.trim()) {
@@ -1036,11 +1039,15 @@ export class PaintStore {
     }
 
     this.startAction();
-    this.strokes += 1;
-    const stroke = `fill-${Date.now()}-${this.strokes}`;
     try {
-      const view = aim ? await this.pick(stamp, aim) : null;
-      await this.send(stroke, layer, [stamp], false, view, 'fill', performance.now());
+      const hit = aim ? await this.picked(stamp, aim) : null;
+      if (hit && !hit.found) {
+        return;
+      }
+
+      this.strokes += 1;
+      const stroke = `fill-${Date.now()}-${this.strokes}`;
+      await this.send(stroke, layer, [stamp], false, hit?.view ?? null, 'fill', performance.now());
     } catch (failure) {
       this.failure.set(messageOf(failure));
     }
