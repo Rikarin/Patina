@@ -33,9 +33,7 @@ class StackCommandStackSetSettings:
                 another resolution is never rewritten by this: it is sampled at the set's, and a smaller one is enlarged exactly
                 when it is next painted (#19).
             height (int | None | Unset): The height, which may differ from the width.
-            uv_set (int | None | Unset): Which of the mesh's texture coordinate sets the set is painted, baked and drawn in,
-                by the file's number: 0 is
-                the first (#210). Every part of the set has to have it.
+            uv_set (int | None | Unset): The mesh's UV set it is painted, baked and drawn in, by its number; 0 is the first.
             height_normal (None | str | Unset): How height becomes the normal: `Sharp` or `Smooth`.
      """
 

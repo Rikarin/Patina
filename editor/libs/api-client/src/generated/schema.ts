@@ -5104,8 +5104,7 @@ export interface components {
       height?: null | number;
       /**
        * Format: int32
-       * @description Which of the mesh's texture coordinate sets the set is painted, baked and drawn in, by the file's number: 0 is
-       *     the first (#210). Every part of the set has to have it.
+       * @description The mesh's UV set it is painted, baked and drawn in, by its number; 0 is the first.
        */
       uvSet?: null | number;
       /** @description How height becomes the normal: `Sharp` or `Smooth`. */

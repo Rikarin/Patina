@@ -32,7 +32,9 @@ static class StackSetEdits {
         var document = editor.Document;
         var width = settings.Width ?? document.BaseWidth;
         var height = settings.Height ?? document.BaseHeight;
-        if (!TextureSizes.Sides.Contains(width) || !TextureSizes.Sides.Contains(height)) {
+        // Only a side asked for is held to the list: a stack made at another size keeps it through other changes.
+        if ((settings.Width is { } wide && !TextureSizes.Sides.Contains(wide))
+            || (settings.Height is { } high && !TextureSizes.Sides.Contains(high))) {
             throw new StackEditRefusedException(
                 $"{width}×{height} is no resolution a texture set has. Each side is one of "
                 + $"{string.Join(", ", TextureSizes.Sides)}."

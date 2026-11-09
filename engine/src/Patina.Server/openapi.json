@@ -14165,7 +14165,7 @@
               "null",
               "integer"
             ],
-            "description": "Which of the mesh\u0027s texture coordinate sets the set is painted, baked and drawn in, by the file\u0027s number: 0 is\nthe first (#210). Every part of the set has to have it.",
+            "description": "The mesh\u0027s UV set it is painted, baked and drawn in, by its number; 0 is the first.",
             "format": "int32"
           },
           "heightNormal": {
