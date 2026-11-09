@@ -459,7 +459,7 @@ import { ViewportPane } from './viewport/viewport-pane';
       [open]="project.closing() !== null"
       (openChange)="$event || project.resolveClosing('cancel')"
     >
-      <xui-dialog-body data-testid="project-leaving">This document has changes that are not saved.</xui-dialog-body>
+      <xui-dialog-body data-testid="project-leaving">This document has unsaved changes.</xui-dialog-body>
       <xui-dialog-footer>
         <button type="button" xuiButton variant="ghost" (click)="project.resolveClosing('cancel')">Cancel</button>
         <button
@@ -600,7 +600,7 @@ import { ViewportPane } from './viewport/viewport-pane';
       (openChange)="$event || project.resolveClosingProject('cancel')"
     >
       <xui-dialog-body data-testid="project-closing"
-        >Some documents of this project have changes that are not saved.</xui-dialog-body
+        >Some documents of this project have unsaved changes.</xui-dialog-body
       >
       <xui-dialog-footer>
         <button type="button" xuiButton variant="ghost" (click)="project.resolveClosingProject('cancel')">Cancel</button>

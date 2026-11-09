@@ -150,7 +150,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
           </ul>
         }
         @if (!layer.instance) {
-        <p class="section-label mt-1">Material Channels</p>
+        <p class="section-label mt-1">Channels</p>
         <div class="flex flex-wrap items-center gap-1">
           @for (channel of store.state()?.channels ?? []; track channel.usage) {
             <button

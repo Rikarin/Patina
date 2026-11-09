@@ -188,7 +188,7 @@ export const CommandTable: readonly CommandSpec[] = [
   },
 
   { id: 'addNode', label: 'Add Node…', section: 'Graph', keys: ['Space'], area: 'graph' },
-  { id: 'groupNodes', label: 'Group Selection', section: 'Graph', keys: ['Mod+G'], area: 'graph' },
+  { id: 'groupNodes', label: 'Frame Selection', section: 'Graph', keys: ['Mod+G'], area: 'graph' },
   {
     id: 'bypassNodes',
     label: 'Bypass',

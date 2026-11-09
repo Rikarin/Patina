@@ -27,7 +27,7 @@ import { messageOf } from '../core/messages';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <xui-dialog title="New project" size="sm" [(open)]="open">
+    <xui-dialog title="New Project" size="sm" [(open)]="open">
       <form (submit)="create($event)">
         <xui-dialog-body class="flex flex-col gap-3">
           <xui-form-field label="Name">
@@ -151,7 +151,7 @@ export class NewProjectDialog {
     { value: 'texturing', label: 'Texturing: paint a mesh' },
     { value: 'layered-material', label: 'Layered Material: layers with no mesh' },
     { value: 'image-material', label: 'Image Material: from one photo' },
-    { value: 'graph', label: 'Material Graph: nodes' }
+    { value: 'graph', label: 'Graph: nodes' }
   ];
   protected readonly kind = linkedSignal(() => this.startKind());
   protected readonly mesh = signal('');

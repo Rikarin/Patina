@@ -15,7 +15,7 @@ import { LibraryStore } from './library-store';
 /** The kinds a project can be given another document of, and what each is for. */
 const DocumentKinds = [
   { value: 'layered-material', label: 'Layered Material: layers with no mesh' },
-  { value: 'graph', label: 'Material Graph: nodes' },
+  { value: 'graph', label: 'Graph: nodes' },
   { value: 'image-material', label: 'Image Material: from one photo' },
   { value: 'texturing', label: 'Texturing: paint a mesh of the project' }
 ];

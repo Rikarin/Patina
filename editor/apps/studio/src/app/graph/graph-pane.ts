@@ -303,7 +303,7 @@ export class GraphThumbnail {
       <button
         type="button"
         xuiButton
-        aria-label="Group the selection"
+        aria-label="Frame the selection"
         [title]="commands.tooltip('groupNodes')"
         size="sm"
         variant="ghost"
@@ -1290,7 +1290,7 @@ export class GraphCanvas {
         <xui-non-ideal-state
           class="flex-1"
           title="No graph open"
-          description="Select a graph in the Library's Shared Assets, then choose Open in the Inspector."
+          description="Select a graph under Materials in the Library, then choose Open in the Inspector."
           data-testid="graph-none"
         >
           <button action type="button" xuiButton size="sm" data-testid="graph-new" (click)="creating.set(true)">
@@ -1340,12 +1340,12 @@ export class GraphCanvas {
       (openChange)="$event || store.resolveLeaving('cancel')"
     >
       <xui-dialog-body data-testid="graph-leaving">
-        {{ store.document()?.name }} has edits that are not in its file.
+        {{ store.document()?.name }} has unsaved changes.
       </xui-dialog-body>
       <xui-dialog-footer>
         <button type="button" xuiButton variant="ghost" (click)="store.resolveLeaving('cancel')">Cancel</button>
         <button type="button" xuiButton data-testid="graph-discard" (click)="store.resolveLeaving('discard')">
-          Discard
+          Don't Save
         </button>
         <button type="button" xuiButton color="primary" (click)="store.resolveLeaving('save')">Save</button>
       </xui-dialog-footer>

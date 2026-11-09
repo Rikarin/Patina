@@ -252,7 +252,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
 
     @if (store.unbaked(); as maps) {
       <div class="bg-warning-subtle flex shrink-0 items-center gap-2 px-2 py-1 text-xs" data-testid="layers-need-bake">
-        <span class="min-w-0 flex-1" [title]="mapNames(maps)">Some masks need baked maps, and show grey until then.</span>
+        <span class="min-w-0 flex-1" [title]="mapNames(maps)">Some masks need mesh maps, and show grey until they are baked.</span>
         <button type="button" xuiButton size="sm" data-testid="layers-bake" (click)="project.askToBake()">Bake…</button>
       </div>
     }
@@ -359,7 +359,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
               <button
                 type="button"
                 class="text-foreground-muted grid size-5 shrink-0 place-items-center"
-                [attr.aria-label]="'Take off ' + item.name"
+                [attr.aria-label]="'Remove ' + item.name"
                 (click)="removeWork(owner, item.effect)"
               >
                 ×
@@ -811,7 +811,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
               type="button"
               class="text-foreground-muted grid size-5 shrink-0 place-items-center"
               data-testid="layer-work-remove"
-              [attr.aria-label]="'Take off ' + item.name"
+              [attr.aria-label]="'Remove ' + item.name"
               (click)="removeWork(row.layer, item.effect)"
             >
               ×

@@ -15,7 +15,7 @@ import { GraphStore } from './graph-store';
   imports: [XuiButtonImports, XuiCalloutImports, XuiDialogImports, XuiFormFieldImports, XuiInputImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <xui-dialog title="Save as compound" size="sm" [(open)]="open">
+    <xui-dialog title="Save as Compound" size="sm" [(open)]="open">
       <form (submit)="save($event)">
         <xui-dialog-body class="flex flex-col gap-3">
           <xui-form-field label="Name" helperText="Saved in the Compounds folder next to this graph. Undoing puts the nodes back and keeps the saved compound.">

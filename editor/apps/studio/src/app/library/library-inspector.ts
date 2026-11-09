@@ -52,7 +52,7 @@ const DependentHeight = 28;
       <xui-descriptions-item label="Folder">
         <span class="break-all select-text">{{ item.path }}</span>
       </xui-descriptions-item>
-      <xui-descriptions-item label="Shared assets">
+      <xui-descriptions-item label="Materials used">
         <span class="readout" data-testid="inspector-references">{{ item.referenceCount }}</span>
       </xui-descriptions-item>
       <xui-descriptions-item label="Tags">
