@@ -19,12 +19,14 @@ from patina_client.api.jobs import get_job, start_bake
 from patina_client.api.system import get_system
 from patina_client.api.viewport import get_viewport, set_viewport_mesh, show_graph_in_viewport
 from patina_client.models import (
+    BakeColourOptions,
     BakeHeightOptions,
     BakeIdOptions,
     BakeOcclusionOptions,
     BakeOptions,
     BakeRayOptions,
     BakeRequest,
+    BakeRoundingOptions,
     BakeThicknessOptions,
     BuildRequest,
     GraphCommandBatch,
@@ -130,6 +132,7 @@ def test_a_blender_shaped_session(session) -> None:
                     ignore_backfaces=False,
                     skew=0.0,
                     skew_map="",
+                    distance_map="",
                     match_by_name=False,
                     low_suffix="_low",
                     high_suffix="_high",
@@ -149,6 +152,8 @@ def test_a_blender_shaped_session(session) -> None:
                 ),
                 thickness=BakeThicknessOptions(normalised=True),
                 id=BakeIdOptions(source="auto", palette="random"),
+                rounding=BakeRoundingOptions(enabled=False, width=0.01, edges="angle", angle=30.0),
+                colour=BakeColourOptions(source="auto", texture=""),
             ),
         ),
     )
