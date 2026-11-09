@@ -1,6 +1,12 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import type { ProjectBakeSettings, ProjectContents, ProjectDocumentInfo, ProjectMeshInfo } from '@patina/api-client';
+import type {
+  ProjectBakeSettings,
+  ProjectContents,
+  ProjectDocumentInfo,
+  ProjectMeshInfo,
+  ViewportBakePreview
+} from '@patina/api-client';
 import { SystemStatus } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
 import { BakeSettings } from './bake-settings';
@@ -21,6 +27,7 @@ const defaults: ProjectBakeSettings = {
       ignoreBackfaces: false,
       skew: 0,
       skewMap: '',
+      distanceMap: '',
       matchByName: false,
       lowSuffix: '_low',
       highSuffix: '_high'
@@ -39,7 +46,9 @@ const defaults: ProjectBakeSettings = {
       groundOffset: 0
     },
     thickness: { normalised: true },
-    id: { source: 'auto', palette: 'random' }
+    id: { source: 'auto', palette: 'random' },
+    rounding: { enabled: false, width: 0.01, edges: 'angle', angle: 30 },
+    colour: { source: 'auto', texture: '' }
   },
   sets: [],
   high: [],
@@ -74,6 +83,7 @@ function setup(documents: ProjectDocumentInfo[], front: ProjectDocumentInfo | nu
   const current = signal<ProjectContents | null>(contents(documents));
   const written: { project: string; bake: ProjectBakeSettings }[] = [];
   const started: unknown[][] = [];
+  const shown: ViewportBakePreview[] = [];
   const project = {
     current,
     mesh: signal(front?.mesh ? mesh : null),
@@ -99,17 +109,41 @@ function setup(documents: ProjectDocumentInfo[], front: ProjectDocumentInfo | nu
           startAll: (requests: unknown[]) => {
             started.push(requests);
             return Promise.resolve([]);
+          },
+          showSetup: (preview: ViewportBakePreview) => {
+            shown.push(preview);
+            return Promise.resolve({ preview: preview.low ? preview : null, parts: [], warnings: [] });
           }
         }
       }
     ]
   });
-  return { settings: TestBed.inject(BakeSettings), written, started, project };
+  return { settings: TestBed.inject(BakeSettings), written, started, project, shown };
 }
 
 describe('BakeSettings', () => {
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('shows the setup a bake would be sent, follows an edit while shown, and takes it off with no low mesh', async () => {
+    vi.useFakeTimers();
+    const texturing = document('Crate', 'texturing', null, true);
+    const { settings, shown } = setup([texturing], texturing);
+
+    await settings.setPreviewing(true);
+    expect(settings.previewing()).toBe(true);
+    expect(shown[0]?.low).toBe('/lib/projects/a/crate.glb');
+    expect(shown[0]?.high).toEqual(['/lib/projects/a/crate_high.glb']);
+    expect(shown[0]?.options.rays.front).toBe(0.05);
+
+    settings.set(options => ({ ...options, rays: { ...options.rays, front: 0.2 } }));
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(shown.at(-1)?.options.rays.front).toBe(0.2);
+
+    await settings.setPreviewing(false);
+    expect(shown.at(-1)?.low).toBe('');
+    expect(settings.previewing()).toBe(false);
   });
 
   it('keeps an edit in the project a moment later, once, with every setting', async () => {

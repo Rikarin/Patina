@@ -1,5 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import type { BakeOcclusionOptions, BakeOptions, BakeRayOptions, JobState } from '@patina/api-client';
+import type {
+  BakeColourOptions,
+  BakeOcclusionOptions,
+  BakeOptions,
+  BakePreviewPart,
+  BakeRayOptions,
+  BakeRoundingOptions,
+  JobState
+} from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiInputImports } from '@xui/input';
@@ -30,7 +38,29 @@ const Maps: readonly { name: string; about: string }[] = [
   { name: 'thickness', about: 'How deep the surface goes behind each point, for light through thin parts.' },
   { name: 'position', about: 'Where each point is within the high mesh’s bounding box, for gradients.' },
   { name: 'world', about: 'The high mesh’s normal in object space, for masks by direction.' },
-  { name: 'id', about: 'A flat colour per material, part or shell, for masks.' }
+  { name: 'id', about: 'A flat colour per material, part or shell, for masks.' },
+  {
+    name: 'colour',
+    about:
+      'The high mesh’s colour carried onto the low mesh, or any picture moved from its UV layout to the low mesh’s.'
+  }
+];
+const RoundedEdges = [
+  { value: 'angle', label: 'By angle' },
+  { value: 'hard', label: 'Hard edges' }
+];
+const ColourSources = ['auto', 'vertex-colour', 'material', 'texture'];
+const ColourSourceNames: Readonly<Record<string, string>> = {
+  auto: 'Automatic',
+  'vertex-colour': 'Vertex colour',
+  material: 'Material',
+  texture: 'A picture'
+};
+/** What a preview can draw, each on its own switch. */
+const PreviewParts: readonly { key: 'reach' | 'highMesh' | 'matches'; label: string; about: string }[] = [
+  { key: 'reach', label: 'Reach', about: 'The cage, or the ray distances, as a shell with a ray from each point.' },
+  { key: 'highMesh', label: 'High poly', about: 'The high poly meshes, see-through.' },
+  { key: 'matches', label: 'Matches', about: 'Each part name in its own colour on both meshes.' }
 ];
 
 const Spaces = [
@@ -69,6 +99,9 @@ const IdSourceNames: Readonly<Record<string, string>> = {
 
 /** What the right side shows: `common`, or a map by name. */
 type Section = string;
+
+/** A path the dialog takes from a file chooser. */
+type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
 
 /**
  * The Bake dialog: common settings, then each map with its own, and the texture sets to bake. Every change is kept in
@@ -420,6 +453,58 @@ type Section = string;
                 </div>
               </div>
             }
+
+            <p class="section-label mt-1">Preview</p>
+            <label
+              class="flex items-center justify-between gap-2 text-sm"
+              title="Shows in the viewport what this bake will do before it runs, and follows the settings as they change."
+            >
+              Show in the viewport
+              <xui-switch
+                ariaLabel="Show the bake in the viewport"
+                data-testid="bake-preview"
+                [checked]="settings.previewing()"
+                (checkedChange)="settings.setPreviewing($event)"
+              />
+            </label>
+            @if (settings.previewing()) {
+              <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                @for (shown of previewParts; track shown.key) {
+                  <label class="flex items-center gap-1.5" [title]="shown.about">
+                    <xui-switch
+                      [ariaLabel]="'Show ' + shown.label"
+                      [attr.data-testid]="'bake-preview-' + shown.key"
+                      [checked]="settings.previewShows()[shown.key]"
+                      (checkedChange)="showInPreview(shown.key, $event)"
+                    />
+                    {{ shown.label }}
+                  </label>
+                }
+              </div>
+              <p class="text-foreground-muted text-xs">
+                Blue is where the rays start, with a line out to the front distance and orange in to the rear. Parts
+                matched by name share a colour; red matched no high part, so its rays strike all of the high mesh.
+              </p>
+              @if (settings.preview(); as state) {
+                @if (state.parts.length > 0) {
+                  <ul class="flex flex-col gap-0.5 text-xs" aria-label="Parts by name" data-testid="bake-preview-parts">
+                    @for (part of state.parts; track part.name) {
+                      <li class="flex items-center gap-1.5">
+                        <span class="size-3 shrink-0 rounded-sm" [style.background]="part.colour"></span>
+                        <span class="min-w-0 flex-1 truncate">{{ part.name }}</span>
+                        <span class="text-foreground-muted readout">{{ partSaid(part) }}</span>
+                      </li>
+                    }
+                  </ul>
+                }
+                @for (warning of state.warnings; track warning) {
+                  <p class="text-foreground-muted text-xs" data-testid="bake-preview-warning">{{ warning }}</p>
+                }
+              }
+            }
+            @if (settings.previewFailure(); as reason) {
+              <xui-callout color="error" compact data-testid="bake-preview-failure">{{ reason }}</xui-callout>
+            }
           } @else {
             <div class="flex flex-col gap-1">
               <p class="text-sm font-medium" data-testid="bake-section-title">{{ label(section()) }}</p>
@@ -445,6 +530,65 @@ type Section = string;
                   Tangent space follows the surface and survives deformation; object space is fixed to the model. The
                   bent normal uses the same space.
                 </p>
+                <label
+                  class="flex items-center justify-between gap-2 text-sm"
+                  title="Bakes a bevel into the normal map at sharp edges, with no high poly mesh modelled to give one."
+                >
+                  Round edges
+                  <xui-switch
+                    ariaLabel="Round edges"
+                    data-testid="bake-round"
+                    [checked]="options.rounding.enabled"
+                    (checkedChange)="setRounding({ enabled: $event })"
+                  />
+                </label>
+                @if (options.rounding.enabled) {
+                  <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
+                    <div class="flex min-w-0 flex-col gap-1">
+                      <span class="text-foreground-muted text-xs">Width, {{ unit() }}</span>
+                      <xui-numeric-input
+                        size="sm"
+                        ariaLabel="Rounded edge width"
+                        data-testid="bake-round-width"
+                        [min]="0"
+                        [stepSize]="step()"
+                        [value]="shown(options.rounding.width)"
+                        (valueChange)="setRounding({ width: stored($event) })"
+                      />
+                    </div>
+                    @if (options.rounding.edges === 'angle') {
+                      <div class="flex min-w-0 flex-col gap-1">
+                        <span class="text-foreground-muted text-xs">Sharper than, degrees</span>
+                        <xui-numeric-input
+                          size="sm"
+                          ariaLabel="Rounded edge angle"
+                          data-testid="bake-round-angle"
+                          [max]="180"
+                          [min]="0"
+                          [stepSize]="5"
+                          [value]="options.rounding.angle"
+                          (valueChange)="setRounding({ angle: $event ?? 30 })"
+                        />
+                      </div>
+                    }
+                  </div>
+                  <div class="flex items-center justify-between gap-2 text-sm">
+                    Edges
+                    <xui-segmented-control
+                      size="sm"
+                      ariaLabel="Which edges are rounded"
+                      data-testid="bake-round-edges"
+                      [options]="roundedEdges"
+                      [value]="options.rounding.edges"
+                      (valueChange)="setRounding({ edges: $event ?? options.rounding.edges })"
+                    />
+                  </div>
+                  <p class="text-foreground-muted text-xs">
+                    By angle rounds every edge sharper than the angle. Hard edges rounds the edges the mesh’s own
+                    normals split, which is where its author made it hard. With no high poly mesh, the low mesh bakes
+                    onto itself.
+                  </p>
+                }
               }
               @case ('height') {
                 <div class="flex items-center justify-between gap-2 text-sm">
@@ -656,6 +800,53 @@ type Section = string;
                   />
                 </div>
               }
+              @case ('colour') {
+                <div class="flex min-w-0 flex-col gap-1">
+                  <span class="text-foreground-muted text-xs">Colour from</span>
+                  <xui-select
+                    class="w-full"
+                    ariaLabel="Colour source"
+                    data-testid="bake-colour-source"
+                    [itemText]="colourSourceName"
+                    [items]="colourSources"
+                    [value]="options.colour.source"
+                    (valueChange)="setColour({ source: $event ?? options.colour.source })"
+                  />
+                </div>
+                <p class="text-foreground-muted text-xs">
+                  Automatic takes the high mesh’s vertex colours, or its materials’ base colour and picture when it has
+                  none. A picture is read at the high mesh’s own UVs, so a map made for one layout moves to the low
+                  mesh’s layout as it is.
+                </p>
+                @if (options.colour.source === 'texture') {
+                  <div class="flex gap-1">
+                    <input
+                      class="min-w-0 flex-1"
+                      xuiInput
+                      autocomplete="off"
+                      aria-label="Picture to carry"
+                      data-testid="bake-colour-texture"
+                      placeholder="The picture made for the high mesh’s UVs"
+                      [readOnly]="canPick"
+                      [title]="options.colour.texture"
+                      [value]="canPick ? nameOf(options.colour.texture) : options.colour.texture"
+                      (change)="setColour({ texture: text($event).trim() })"
+                    />
+                    @if (canPick) {
+                      <button
+                        type="button"
+                        xuiButton
+                        size="sm"
+                        variant="ghost"
+                        aria-label="Choose Picture to carry"
+                        (click)="pickColourTexture()"
+                      >
+                        Choose…
+                      </button>
+                    }
+                  </div>
+                }
+              }
               @default {
                 <p class="text-foreground-muted text-xs">This map has no settings of its own.</p>
               }
@@ -705,7 +896,7 @@ type Section = string;
           @if (each.result; as result) {
             @if (result.cached) {
               <span class="text-foreground-muted text-xs" data-testid="bake-cached"
-                >Already baked: nothing has changed.</span
+                >Already baked: nothing this set reads has changed.</span
               >
             }
             @if (result.missed > 0) {
@@ -831,12 +1022,24 @@ export class BakePane {
   protected readonly idSourceName = (value: string) => IdSourceNames[value] ?? value;
   protected readonly sideName = (value: string) => `${value} × ${value}`;
   protected readonly canPick = desktop() !== undefined;
-  protected readonly pathFields: readonly { key: 'cage' | 'skewMap' | 'output'; label: string; placeholder: string }[] =
-    [
-      { key: 'cage', label: 'Cage', placeholder: 'None: rays start on the low poly mesh' },
-      { key: 'skewMap', label: 'Skew map', placeholder: 'None: the skew applies everywhere' },
-      { key: 'output', label: 'Output folder', placeholder: 'The project’s bakes folder' }
-    ];
+  protected readonly roundedEdges = RoundedEdges;
+  protected readonly colourSources = ColourSources;
+  protected readonly colourSourceName = (value: string) => ColourSourceNames[value] ?? value;
+  protected readonly previewParts = PreviewParts;
+  protected readonly pathFields: readonly { key: PathField; label: string; placeholder: string }[] = [
+    { key: 'cage', label: 'Cage', placeholder: 'None: rays start on the low poly mesh' },
+    { key: 'skewMap', label: 'Skew map', placeholder: 'None: the skew applies everywhere' },
+    {
+      key: 'distanceMap',
+      label: 'Distance map',
+      placeholder: 'None: the rays reach as set. Mid grey keeps them, white doubles them'
+    },
+    { key: 'output', label: 'Output folder', placeholder: 'The project’s bakes folder' }
+  ];
+
+  constructor() {
+    void this.settings.readPreview();
+  }
 
   protected readonly section = signal<Section>('common');
   protected readonly refused = signal<string | null>(null);
@@ -957,34 +1160,68 @@ export class BakePane {
     this.settings.update(settings => ({ ...settings, sets: [] }));
   }
 
-  protected path(field: 'cage' | 'skewMap' | 'output'): string {
+  protected setRounding(change: Partial<BakeRoundingOptions>): void {
+    this.settings.set(options => ({ ...options, rounding: { ...options.rounding, ...change } }));
+  }
+
+  protected setColour(change: Partial<BakeColourOptions>): void {
+    this.settings.set(options => ({ ...options, colour: { ...options.colour, ...change } }));
+  }
+
+  protected async pickColourTexture(): Promise<void> {
+    const path = await desktop()?.openImage(this.status.pictures());
+    if (path) {
+      this.setColour({ texture: path });
+    }
+  }
+
+  protected showInPreview(key: 'reach' | 'highMesh' | 'matches', on: boolean): void {
+    this.settings.previewShows.update(shows => ({ ...shows, [key]: on }));
+  }
+
+  /** A part of the preview's key: how many faces each side has, or which side has none. */
+  protected partSaid(part: BakePreviewPart): string {
+    if (part.highFaces === 0) {
+      return `${part.lowFaces} low faces, matched nothing`;
+    }
+
+    return part.lowFaces === 0
+      ? `${part.highFaces} high faces, no low part`
+      : `${part.lowFaces} low, ${part.highFaces} high faces`;
+  }
+
+  protected path(field: PathField): string {
     const settings = this.settings.settings();
     switch (field) {
       case 'cage':
         return settings?.cage ?? '';
       case 'skewMap':
         return settings?.options.rays.skewMap ?? '';
+      case 'distanceMap':
+        return settings?.options.rays.distanceMap ?? '';
       default:
         return this.settings.output();
     }
   }
 
-  protected setPath(field: 'cage' | 'skewMap' | 'output', value: string): void {
+  protected setPath(field: PathField, value: string): void {
     const path = value.trim();
     if (field === 'output') {
       this.settings.chooseOutput(path);
     } else if (field === 'cage') {
       this.settings.update(settings => ({ ...settings, cage: path }));
+    } else if (field === 'distanceMap') {
+      this.setRays({ distanceMap: path });
     } else {
       this.setRays({ skewMap: path });
     }
   }
 
-  protected async pick(field: 'cage' | 'skewMap' | 'output'): Promise<void> {
+  protected async pick(field: PathField): Promise<void> {
     const bridge = desktop();
     const path = await (field === 'output'
       ? bridge?.openFolder()
-      : field === 'skewMap'
+      : field === 'skewMap' || field === 'distanceMap'
         ? bridge?.openImage(this.status.pictures())
         : bridge?.openMesh());
     if (path) {

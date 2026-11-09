@@ -1,3 +1,4 @@
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, inject, signal } from '@angular/core';
 import { provideIcons } from '@ng-icons/core';
 import {
   matAdsClick,
@@ -10,7 +11,6 @@ import {
   matTune,
   matUndo
 } from '@ng-icons/material-icons/baseline';
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, inject, signal } from '@angular/core';
 import type { StackFilterKind, StackLayer, StackMaskLayer } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiContextMenuImports } from '@xui/context-menu';
@@ -18,12 +18,12 @@ import { XuiMenuImports } from '@xui/menu';
 import { XuiPopoverImports } from '@xui/popover';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
-import { IconImports } from '../core/icons';
 import { Commands } from '../core/commands';
+import { IconImports } from '../core/icons';
+import { blendName as blendLabelOf, channelName, termName } from '../core/labels';
 import { MenuKeys } from '../core/menu-keys';
 import { diagnosticOf } from '../core/messages';
 import { percent } from '../core/numbers';
-import { blendName as blendLabelOf, channelName, termName } from '../core/labels';
 import { ProjectStore } from '../library/project-store';
 import { type DropZone, dropManyCommands } from './layer-drag';
 import { hexOf } from './layer-panel';
@@ -86,7 +86,17 @@ const MaskMarks: Readonly<Record<string, string>> = {
     XuiSliderImports
   ],
   viewProviders: [
-    provideIcons({ matAdsClick, matBrush, matDeleteOutline, matFolder, matFormatColorFill, matRedo, matSave, matTune, matUndo })
+    provideIcons({
+      matAdsClick,
+      matBrush,
+      matDeleteOutline,
+      matFolder,
+      matFormatColorFill,
+      matRedo,
+      matSave,
+      matTune,
+      matUndo
+    })
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -253,6 +263,16 @@ const MaskMarks: Readonly<Record<string, string>> = {
     @if (project.bakeOutOfDate()) {
       <div class="bg-warning-subtle flex shrink-0 items-center gap-2 px-2 py-1 text-xs" data-testid="layers-stale-bake">
         <span class="min-w-0 flex-1">The mesh changed after the last bake.</span>
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          data-testid="layers-rebake"
+          title="Bakes again with the project’s settings. Texture sets the change did not touch come from the cache."
+          (click)="commands.run('quickBake')"
+        >
+          Rebake
+        </button>
         <button type="button" xuiButton size="sm" (click)="project.askToBake()">Bake…</button>
       </div>
     }
@@ -326,7 +346,11 @@ const MaskMarks: Readonly<Record<string, string>> = {
       >
         @for (item of workOf(owner); track item.key) {
           @if (item.effect !== null) {
-            <div class="border-hairline flex h-7 items-center gap-1.5 border-b px-1" role="listitem" data-testid="mask-stack-effect">
+            <div
+              class="border-hairline flex h-7 items-center gap-1.5 border-b px-1"
+              role="listitem"
+              data-testid="mask-stack-effect"
+            >
               <button
                 type="button"
                 class="grid size-5 shrink-0 place-items-center"
@@ -335,7 +359,12 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 (click)="setWork(owner, item.effect, !item.enabled)"
               >
                 <svg viewBox="0 0 16 16" class="size-3.5" aria-hidden="true">
-                  <path d="M1 8s2.6-4.5 7-4.5S15 8 15 8s-2.6 4.5-7 4.5S1 8 1 8z" fill="none" stroke="currentColor" stroke-width="1.3" />
+                  <path
+                    d="M1 8s2.6-4.5 7-4.5S15 8 15 8s-2.6 4.5-7 4.5S1 8 1 8z"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.3"
+                  />
                   @if (item.enabled) {
                     <circle cx="8" cy="8" r="2.2" fill="currentColor" />
                   }
@@ -373,7 +402,9 @@ const MaskMarks: Readonly<Record<string, string>> = {
               data-testid="mask-layer-eye"
               [attr.aria-label]="(entry.layer.enabled ? 'Hide ' : 'Show ') + entry.name"
               [attr.aria-pressed]="entry.layer.enabled"
-              (click)="$event.stopPropagation(); store.setMaskLayer(owner, entry.index, { enabled: !entry.layer.enabled })"
+              (click)="
+                $event.stopPropagation(); store.setMaskLayer(owner, entry.index, { enabled: !entry.layer.enabled })
+              "
             >
               <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
                 <path d="M1 8s2.6-4.5 7-4.5S15 8 15 8s-2.6 4.5-7 4.5S1 8 1 8z" fill="none" stroke="currentColor" />
@@ -423,7 +454,14 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 <span class="readout w-8 shrink-0 text-end text-xs">{{ percent(entry.layer.opacity) }}</span>
               </span>
             </span>
-            <span class="flex shrink-0 flex-col" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" role="group" tabindex="-1" [attr.aria-label]="'Order of ' + entry.name">
+            <span
+              class="flex shrink-0 flex-col"
+              (click)="$event.stopPropagation()"
+              (keydown)="$event.stopPropagation()"
+              role="group"
+              tabindex="-1"
+              [attr.aria-label]="'Order of ' + entry.name"
+            >
               <button
                 type="button"
                 class="text-foreground-muted grid h-4 w-5 place-items-center text-xs"
@@ -476,326 +514,335 @@ const MaskMarks: Readonly<Record<string, string>> = {
         </div>
       </div>
     } @else {
-    <div
-      class="min-h-0 flex-1 overflow-auto"
-      role="tree"
-      aria-label="Layers"
-      aria-multiselectable="true"
-      data-testid="paint-layers"
-      ptnMenuKeys
-      (aiming)="aimMenu($event)"
-      [xuiContextMenuTriggerFor]="layerMenu"
-      (pointerdown)="pressed($event)"
-      (contextmenu)="aimMenu($event)"
-      (contextMenuClosed)="restoreFocus()"
-      (dragover)="overList($event)"
-      (drop)="dropOnList($event)"
-    >
-      @for (row of rows(); track row.layer.id) {
-        <div
-          class="border-hairline relative flex items-center gap-1.5 border-b pe-2"
-          role="treeitem"
-          [attr.aria-level]="row.depth + 1"
-          [attr.draggable]="sliding() !== row.layer.id"
-          [attr.aria-selected]="store.selection().has(row.layer.id)"
-          [attr.aria-expanded]="row.layer.kind === 'group' && !row.layer.flattened ? !closed().has(row.layer.id) : null"
-          [attr.data-testid]="'paint-layer-' + row.layer.id"
-          [attr.data-layer]="row.layer.id"
-          [attr.tabindex]="row.layer.id === (store.layer() ?? rows()[0]?.layer?.id) ? 0 : -1"
-          [class.bg-selection]="store.selection().has(row.layer.id)"
-          [class.opacity-50]="!row.layer.enabled"
-          [style.height.px]="row.effect ? effectHeight : rowHeight"
-          [style.padding-inline-start.px]="row.depth * 14 + 4"
-          (click)="click($event, row.layer)"
-          (dragstart)="start($event, row.layer.id)"
-          (dragover)="over($event, row)"
-          (dragleave)="target.set(null)"
-          (dragend)="dragged = []"
-          (drop)="drop($event, row)"
-          (keydown)="key($event, row)"
-          (keydown.enter)="choose(row.layer, false)"
-        >
-          @if (target()?.id === row.layer.id) {
-            <span
-              class="bg-accent pointer-events-none absolute inset-x-0 h-0.5"
-              data-testid="layer-drop-line"
-              [class.inset-y-0]="target()?.zone === 'into'"
-              [class.h-full]="target()?.zone === 'into'"
-              [class.opacity-30]="target()?.zone === 'into'"
-              [class.top-0]="target()?.zone === 'above'"
-              [class.bottom-0]="target()?.zone === 'below'"
-            ></span>
-          }
-          <button
-            type="button"
-            class="grid size-5 shrink-0 place-items-center"
-            data-testid="layer-eye"
-            [attr.aria-label]="(row.layer.enabled ? 'Hide ' : 'Show ') + row.layer.name"
-            [attr.aria-pressed]="row.layer.enabled"
-            (click)="$event.stopPropagation(); store.setEnabled(row.layer, !row.layer.enabled)"
-          >
-            <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
-              <path d="M1 8s2.6-4.5 7-4.5S15 8 15 8s-2.6 4.5-7 4.5S1 8 1 8z" fill="none" stroke="currentColor" />
-              @if (row.layer.enabled) {
-                <circle cx="8" cy="8" r="2.2" fill="currentColor" />
-              }
-            </svg>
-          </button>
-
-          @if (row.effect) {
-            <span class="text-foreground-muted grid size-5 shrink-0 place-items-center text-xs" data-testid="layer-effect-mark">
-              {{ mark(row.layer) }}
-            </span>
-          } @else if (row.layer.flattened) {
-            <span class="size-4 shrink-0"></span>
-            <svg
-              viewBox="0 0 16 16"
-              class="text-foreground-muted size-8 shrink-0"
-              role="img"
-              aria-label="Flattened folder"
-              data-testid="layer-flattened"
-            >
-              <title>Flattened folder: its layers are kept, and Unflatten brings them back</title>
-              <path d="M1.5 3.5h5l1.5 2h6.5v7.5h-13z" fill="currentColor" fill-opacity="0.9" />
-              <path class="text-background" d="M4 9.5h8M4 11.5h8" stroke="currentColor" stroke-width="1" />
-            </svg>
-          } @else if (row.layer.kind === 'group') {
-            <button
-              type="button"
-              class="text-foreground-muted grid size-4 shrink-0 place-items-center"
-              data-testid="layer-toggle"
-              [attr.aria-label]="(closed().has(row.layer.id) ? 'Open ' : 'Close ') + row.layer.name"
-              (click)="$event.stopPropagation(); toggle(row.layer.id)"
-            >
-              <svg
-                viewBox="0 0 16 16"
-                class="size-3"
-                [class.rotate-90]="!closed().has(row.layer.id)"
-                aria-hidden="true"
-              >
-                <path d="M6 3l5 5-5 5z" fill="currentColor" />
-              </svg>
-            </button>
-            <svg viewBox="0 0 16 16" class="text-foreground-muted size-8 shrink-0" aria-hidden="true">
-              <path d="M1.5 3.5h5l1.5 2h6.5v7.5h-13z" fill="currentColor" fill-opacity="0.45" />
-            </svg>
-          } @else {
-            <span class="flex shrink-0 flex-col gap-0.5">
-              <span
-                class="border-hairline text-foreground-muted relative grid size-8 place-items-center overflow-hidden rounded-full border"
-                data-testid="layer-thumbnail"
-                [class.outline]="row.layer.id === store.layer() && !store.masking()"
-                [style.background]="swatch(row.layer)"
-              >
-                @if (store.thumbnails().get(row.layer.id); as picture) {
-                  <img class="size-full object-cover" alt="" [src]="picture" />
-                } @else {
-                  {{ mark(row.layer) }}
-                }
-                <span
-                  class="pointer-events-none absolute inset-0 rounded-full"
-                  style="background: radial-gradient(circle at 35% 30%, rgb(255 255 255 / 0.5), transparent 45%, rgb(0 0 0 / 0.5))"
-                  aria-hidden="true"
-                ></span>
-              </span>
-              <span
-                class="h-[3px] w-8 rounded-full"
-                data-testid="layer-content-mark"
-                [class.bg-surface-sunken]="!hasContent(row.layer)"
-                [class.bg-warning]="hasContent(row.layer)"
-              ></span>
-            </span>
-          }
-
-          @if (row.layer.mask.source !== 'None') {
-            <span class="flex shrink-0 flex-col gap-0.5">
-              <button
-                type="button"
-                class="border-hairline bg-background text-foreground-muted grid size-8 place-items-center rounded-sm border text-xs"
-                data-testid="layer-mask"
-                [attr.aria-label]="'Mask of ' + row.layer.name"
-                [class.outline]="row.layer.id === store.layer() && store.masking()"
-                [style.background]="maskColour(row.layer)"
-                [title]="termName(row.layer.mask.source) + ' mask. Double-click to open it as a stack'"
-                (click)="$event.stopPropagation(); choose(row.layer, true)"
-                (dblclick)="$event.stopPropagation(); openMaskStack(row.layer)"
-              >
-                <svg viewBox="0 0 16 16" class="size-5" aria-hidden="true">
-                  <path d="M1 1h14v14H1z" fill="currentColor" fill-opacity="0.35" />
-                  <circle cx="8" cy="8" r="4.5" fill="currentColor" />
-                </svg>
-              </button>
-              <span
-                class="h-[3px] w-8 rounded-full"
-                data-testid="layer-mask-mark"
-                [class.bg-surface-sunken]="!hasMaskWork(row.layer)"
-                [class.bg-warning]="hasMaskWork(row.layer)"
-              ></span>
-            </span>
-          }
-
-          @if (store.faults().get(row.layer.id); as fault) {
-            <span
-              class="shrink-0 text-xs font-semibold"
-              data-testid="layer-fault"
-              role="img"
-              [attr.aria-label]="fault.message"
-              [class.text-error]="fault.severity === 'Error'"
-              [class.text-warning]="fault.severity !== 'Error'"
-              [title]="fault.message"
-              >!</span
-            >
-          }
-
-          <span class="min-w-0 flex-1 leading-tight">
-            @if (renaming() === row.layer.id) {
-              <input
-                class="w-full bg-transparent text-sm"
-                aria-label="Layer name"
-                data-testid="layer-rename"
-                [value]="row.layer.name"
-                (click)="$event.stopPropagation()"
-                (blur)="rename(row.layer, $event)"
-                (keydown.enter)="blur($event)"
-                (keydown.escape)="renaming.set(null)"
-              />
-            } @else {
-              <span class="block truncate text-sm" [class.font-semibold]="row.layer.id === store.layer()">
-                {{ row.layer.name }}
-              </span>
-            }
-          </span>
-
-          @if (!row.effect) {
-            <button
-              type="button"
-              class="border-hairline bg-background text-foreground-muted grid size-8 shrink-0 place-items-center rounded-sm border text-xs"
-              data-testid="layer-mesh-mask"
-              [attr.aria-label]="'Meshes of ' + row.layer.name"
-              [attr.aria-pressed]="!!row.layer.mask.meshParts"
-              [class.bg-selection]="!!row.layer.mask.meshParts"
-              [title]="row.layer.mask.meshParts ? 'On some meshes' : 'On every mesh'"
-              placement="bottom-end"
-              [ariaLabel]="'Meshes ' + row.layer.name + ' is on'"
-              [role]="'dialog'"
-              [xuiPopover]="meshList"
-              (click)="$event.stopPropagation()"
-              (opened)="openMeshes(row.layer)"
-            >
-              <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
-                <path d="M2 2h12v12H2z" fill="none" stroke="currentColor" stroke-width="1.5" />
-                @if (row.layer.mask.meshParts) {
-                  <path d="M2 2h6v6H2z" fill="currentColor" />
-                }
-              </svg>
-            </button>
-          }
-
-          <span
-            class="flex shrink-0"
-            [class.flex-col]="!row.effect"
-            [class.gap-1]="row.effect"
-            [class.gap-2]="!row.effect"
-            [class.items-center]="row.effect"
-            [class.w-20]="!row.effect"
-            [class.w-40]="row.effect"
-            role="group"
-            tabindex="-1"
-            data-testid="layer-blending"
-            [attr.aria-label]="'Blending of ' + row.layer.name"
-            (click)="$event.stopPropagation()"
-            (keydown)="$event.stopPropagation()"
-            (pointerdown)="sliding.set(row.layer.id)"
-          >
-            <xui-select
-              class="min-w-0 [&_button]:text-xs"
-              style="--control-height-md: 1.375rem; --control-padding-md: 0.375rem"
-              data-testid="paint-layer-blend"
-              [ariaLabel]="'Blend mode of ' + row.layer.name"
-              [filterable]="false"
-              [class.w-20]="row.effect"
-              [class.w-full]="!row.effect"
-              [itemText]="blendLabel"
-              [items]="blends()"
-              [matchTargetWidth]="false"
-              [value]="row.layer.blend"
-              (valueChange)="setBlend(row.layer, $event)"
-            />
-            <span class="flex min-w-0 flex-1 items-center gap-1">
-              <xui-slider
-                class="h-4 min-w-0 flex-1 pb-0"
-                labelStepSize="0"
-                data-testid="paint-layer-opacity"
-                [attr.aria-label]="'Opacity of ' + row.layer.name"
-                [max]="1"
-                [min]="0"
-                [stepSize]="0.01"
-                [value]="opacityOf(row.layer)"
-                (valueChange)="setOpacity(row.layer, $event)"
-              />
-              <span class="readout w-9 shrink-0 ps-1 text-end text-xs" data-testid="paint-layer-opacity-readout">{{
-                percent(opacityOf(row.layer))
-              }}</span>
-            </span>
-          </span>
-
-          @if (row.effect) {
-            <button
-              type="button"
-              class="text-foreground-muted grid size-5 shrink-0 place-items-center"
-              data-testid="layer-effect-remove"
-              [attr.aria-label]="'Remove ' + row.layer.name"
-              (click)="$event.stopPropagation(); remove(row.layer)"
-            >
-              ×
-            </button>
-          }
-
-        </div>
-        @for (item of workOf(row.layer); track item.key) {
+      <div
+        class="min-h-0 flex-1 overflow-auto"
+        role="tree"
+        aria-label="Layers"
+        aria-multiselectable="true"
+        data-testid="paint-layers"
+        ptnMenuKeys
+        (aiming)="aimMenu($event)"
+        [xuiContextMenuTriggerFor]="layerMenu"
+        (pointerdown)="pressed($event)"
+        (contextmenu)="aimMenu($event)"
+        (contextMenuClosed)="restoreFocus()"
+        (dragover)="overList($event)"
+        (drop)="dropOnList($event)"
+      >
+        @for (row of rows(); track row.layer.id) {
           <div
-            class="border-hairline flex h-7 items-center gap-1.5 border-b pe-2"
-            data-testid="layer-work"
-            [style.padding-inline-start.px]="row.depth * 14 + 34"
+            class="border-hairline relative flex items-center gap-1.5 border-b pe-2"
+            role="treeitem"
+            [attr.aria-level]="row.depth + 1"
+            [attr.draggable]="sliding() !== row.layer.id"
+            [attr.aria-selected]="store.selection().has(row.layer.id)"
+            [attr.aria-expanded]="
+              row.layer.kind === 'group' && !row.layer.flattened ? !closed().has(row.layer.id) : null
+            "
+            [attr.data-testid]="'paint-layer-' + row.layer.id"
+            [attr.data-layer]="row.layer.id"
+            [attr.tabindex]="row.layer.id === (store.layer() ?? rows()[0]?.layer?.id) ? 0 : -1"
+            [class.bg-selection]="store.selection().has(row.layer.id)"
+            [class.opacity-50]="!row.layer.enabled"
+            [style.height.px]="row.effect ? effectHeight : rowHeight"
+            [style.padding-inline-start.px]="row.depth * 14 + 4"
+            (click)="click($event, row.layer)"
+            (dragstart)="start($event, row.layer.id)"
+            (dragover)="over($event, row)"
+            (dragleave)="target.set(null)"
+            (dragend)="dragged = []"
+            (drop)="drop($event, row)"
+            (keydown)="key($event, row)"
+            (keydown.enter)="choose(row.layer, false)"
           >
+            @if (target()?.id === row.layer.id) {
+              <span
+                class="bg-accent pointer-events-none absolute inset-x-0 h-0.5"
+                data-testid="layer-drop-line"
+                [class.inset-y-0]="target()?.zone === 'into'"
+                [class.h-full]="target()?.zone === 'into'"
+                [class.opacity-30]="target()?.zone === 'into'"
+                [class.top-0]="target()?.zone === 'above'"
+                [class.bottom-0]="target()?.zone === 'below'"
+              ></span>
+            }
             <button
               type="button"
               class="grid size-5 shrink-0 place-items-center"
-              data-testid="layer-work-eye"
-              [attr.aria-label]="(item.enabled ? 'Hide ' : 'Show ') + item.name"
-              [attr.aria-pressed]="item.enabled"
-              [disabled]="item.effect === null"
-              (click)="setWork(row.layer, item.effect, !item.enabled)"
+              data-testid="layer-eye"
+              [attr.aria-label]="(row.layer.enabled ? 'Hide ' : 'Show ') + row.layer.name"
+              [attr.aria-pressed]="row.layer.enabled"
+              (click)="$event.stopPropagation(); store.setEnabled(row.layer, !row.layer.enabled)"
             >
-              <svg viewBox="0 0 16 16" class="size-3.5" aria-hidden="true">
-                <path d="M1 8s2.6-4.5 7-4.5S15 8 15 8s-2.6 4.5-7 4.5S1 8 1 8z" fill="none" stroke="currentColor" stroke-width="1.3" />
-                @if (item.enabled) {
+              <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
+                <path d="M1 8s2.6-4.5 7-4.5S15 8 15 8s-2.6 4.5-7 4.5S1 8 1 8z" fill="none" stroke="currentColor" />
+                @if (row.layer.enabled) {
                   <circle cx="8" cy="8" r="2.2" fill="currentColor" />
                 }
               </svg>
             </button>
-            <button
-              type="button"
-              class="hover:bg-selection min-w-0 flex-1 truncate text-start text-xs"
-              (click)="choose(row.layer, true)"
+
+            @if (row.effect) {
+              <span
+                class="text-foreground-muted grid size-5 shrink-0 place-items-center text-xs"
+                data-testid="layer-effect-mark"
+              >
+                {{ mark(row.layer) }}
+              </span>
+            } @else if (row.layer.flattened) {
+              <span class="size-4 shrink-0"></span>
+              <svg
+                viewBox="0 0 16 16"
+                class="text-foreground-muted size-8 shrink-0"
+                role="img"
+                aria-label="Flattened folder"
+                data-testid="layer-flattened"
+              >
+                <title>Flattened folder: its layers are kept, and Unflatten brings them back</title>
+                <path d="M1.5 3.5h5l1.5 2h6.5v7.5h-13z" fill="currentColor" fill-opacity="0.9" />
+                <path class="text-background" d="M4 9.5h8M4 11.5h8" stroke="currentColor" stroke-width="1" />
+              </svg>
+            } @else if (row.layer.kind === 'group') {
+              <button
+                type="button"
+                class="text-foreground-muted grid size-4 shrink-0 place-items-center"
+                data-testid="layer-toggle"
+                [attr.aria-label]="(closed().has(row.layer.id) ? 'Open ' : 'Close ') + row.layer.name"
+                (click)="$event.stopPropagation(); toggle(row.layer.id)"
+              >
+                <svg
+                  viewBox="0 0 16 16"
+                  class="size-3"
+                  [class.rotate-90]="!closed().has(row.layer.id)"
+                  aria-hidden="true"
+                >
+                  <path d="M6 3l5 5-5 5z" fill="currentColor" />
+                </svg>
+              </button>
+              <svg viewBox="0 0 16 16" class="text-foreground-muted size-8 shrink-0" aria-hidden="true">
+                <path d="M1.5 3.5h5l1.5 2h6.5v7.5h-13z" fill="currentColor" fill-opacity="0.45" />
+              </svg>
+            } @else {
+              <span class="flex shrink-0 flex-col gap-0.5">
+                <span
+                  class="border-hairline text-foreground-muted relative grid size-8 place-items-center overflow-hidden rounded-full border"
+                  data-testid="layer-thumbnail"
+                  [class.outline]="row.layer.id === store.layer() && !store.masking()"
+                  [style.background]="swatch(row.layer)"
+                >
+                  @if (store.thumbnails().get(row.layer.id); as picture) {
+                    <img class="size-full object-cover" alt="" [src]="picture" />
+                  } @else {
+                    {{ mark(row.layer) }}
+                  }
+                  <span
+                    class="pointer-events-none absolute inset-0 rounded-full"
+                    style="background: radial-gradient(circle at 35% 30%, rgb(255 255 255 / 0.5), transparent 45%, rgb(0 0 0 / 0.5))"
+                    aria-hidden="true"
+                  ></span>
+                </span>
+                <span
+                  class="h-[3px] w-8 rounded-full"
+                  data-testid="layer-content-mark"
+                  [class.bg-surface-sunken]="!hasContent(row.layer)"
+                  [class.bg-warning]="hasContent(row.layer)"
+                ></span>
+              </span>
+            }
+
+            @if (row.layer.mask.source !== 'None') {
+              <span class="flex shrink-0 flex-col gap-0.5">
+                <button
+                  type="button"
+                  class="border-hairline bg-background text-foreground-muted grid size-8 place-items-center rounded-sm border text-xs"
+                  data-testid="layer-mask"
+                  [attr.aria-label]="'Mask of ' + row.layer.name"
+                  [class.outline]="row.layer.id === store.layer() && store.masking()"
+                  [style.background]="maskColour(row.layer)"
+                  [title]="termName(row.layer.mask.source) + ' mask. Double-click to open it as a stack'"
+                  (click)="$event.stopPropagation(); choose(row.layer, true)"
+                  (dblclick)="$event.stopPropagation(); openMaskStack(row.layer)"
+                >
+                  <svg viewBox="0 0 16 16" class="size-5" aria-hidden="true">
+                    <path d="M1 1h14v14H1z" fill="currentColor" fill-opacity="0.35" />
+                    <circle cx="8" cy="8" r="4.5" fill="currentColor" />
+                  </svg>
+                </button>
+                <span
+                  class="h-[3px] w-8 rounded-full"
+                  data-testid="layer-mask-mark"
+                  [class.bg-surface-sunken]="!hasMaskWork(row.layer)"
+                  [class.bg-warning]="hasMaskWork(row.layer)"
+                ></span>
+              </span>
+            }
+
+            @if (store.faults().get(row.layer.id); as fault) {
+              <span
+                class="shrink-0 text-xs font-semibold"
+                data-testid="layer-fault"
+                role="img"
+                [attr.aria-label]="fault.message"
+                [class.text-error]="fault.severity === 'Error'"
+                [class.text-warning]="fault.severity !== 'Error'"
+                [title]="fault.message"
+                >!</span
+              >
+            }
+
+            <span class="min-w-0 flex-1 leading-tight">
+              @if (renaming() === row.layer.id) {
+                <input
+                  class="w-full bg-transparent text-sm"
+                  aria-label="Layer name"
+                  data-testid="layer-rename"
+                  [value]="row.layer.name"
+                  (click)="$event.stopPropagation()"
+                  (blur)="rename(row.layer, $event)"
+                  (keydown.enter)="blur($event)"
+                  (keydown.escape)="renaming.set(null)"
+                />
+              } @else {
+                <span class="block truncate text-sm" [class.font-semibold]="row.layer.id === store.layer()">
+                  {{ row.layer.name }}
+                </span>
+              }
+            </span>
+
+            @if (!row.effect) {
+              <button
+                type="button"
+                class="border-hairline bg-background text-foreground-muted grid size-8 shrink-0 place-items-center rounded-sm border text-xs"
+                data-testid="layer-mesh-mask"
+                [attr.aria-label]="'Meshes of ' + row.layer.name"
+                [attr.aria-pressed]="!!row.layer.mask.meshParts"
+                [class.bg-selection]="!!row.layer.mask.meshParts"
+                [title]="row.layer.mask.meshParts ? 'On some meshes' : 'On every mesh'"
+                placement="bottom-end"
+                [ariaLabel]="'Meshes ' + row.layer.name + ' is on'"
+                [role]="'dialog'"
+                [xuiPopover]="meshList"
+                (click)="$event.stopPropagation()"
+                (opened)="openMeshes(row.layer)"
+              >
+                <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
+                  <path d="M2 2h12v12H2z" fill="none" stroke="currentColor" stroke-width="1.5" />
+                  @if (row.layer.mask.meshParts) {
+                    <path d="M2 2h6v6H2z" fill="currentColor" />
+                  }
+                </svg>
+              </button>
+            }
+
+            <span
+              class="flex shrink-0"
+              [class.flex-col]="!row.effect"
+              [class.gap-1]="row.effect"
+              [class.gap-2]="!row.effect"
+              [class.items-center]="row.effect"
+              [class.w-20]="!row.effect"
+              [class.w-40]="row.effect"
+              role="group"
+              tabindex="-1"
+              data-testid="layer-blending"
+              [attr.aria-label]="'Blending of ' + row.layer.name"
+              (click)="$event.stopPropagation()"
+              (keydown)="$event.stopPropagation()"
+              (pointerdown)="sliding.set(row.layer.id)"
             >
-              {{ item.name }}
-            </button>
-            <button
-              type="button"
-              class="text-foreground-muted grid size-5 shrink-0 place-items-center"
-              data-testid="layer-work-remove"
-              [attr.aria-label]="'Take off ' + item.name"
-              (click)="removeWork(row.layer, item.effect)"
-            >
-              ×
-            </button>
+              <xui-select
+                class="min-w-0 [&_button]:text-xs"
+                style="--control-height-md: 1.375rem; --control-padding-md: 0.375rem"
+                data-testid="paint-layer-blend"
+                [ariaLabel]="'Blend mode of ' + row.layer.name"
+                [filterable]="false"
+                [class.w-20]="row.effect"
+                [class.w-full]="!row.effect"
+                [itemText]="blendLabel"
+                [items]="blends()"
+                [matchTargetWidth]="false"
+                [value]="row.layer.blend"
+                (valueChange)="setBlend(row.layer, $event)"
+              />
+              <span class="flex min-w-0 flex-1 items-center gap-1">
+                <xui-slider
+                  class="h-4 min-w-0 flex-1 pb-0"
+                  labelStepSize="0"
+                  data-testid="paint-layer-opacity"
+                  [attr.aria-label]="'Opacity of ' + row.layer.name"
+                  [max]="1"
+                  [min]="0"
+                  [stepSize]="0.01"
+                  [value]="opacityOf(row.layer)"
+                  (valueChange)="setOpacity(row.layer, $event)"
+                />
+                <span class="readout w-9 shrink-0 ps-1 text-end text-xs" data-testid="paint-layer-opacity-readout">{{
+                  percent(opacityOf(row.layer))
+                }}</span>
+              </span>
+            </span>
+
+            @if (row.effect) {
+              <button
+                type="button"
+                class="text-foreground-muted grid size-5 shrink-0 place-items-center"
+                data-testid="layer-effect-remove"
+                [attr.aria-label]="'Remove ' + row.layer.name"
+                (click)="$event.stopPropagation(); remove(row.layer)"
+              >
+                ×
+              </button>
+            }
           </div>
+          @for (item of workOf(row.layer); track item.key) {
+            <div
+              class="border-hairline flex h-7 items-center gap-1.5 border-b pe-2"
+              data-testid="layer-work"
+              [style.padding-inline-start.px]="row.depth * 14 + 34"
+            >
+              <button
+                type="button"
+                class="grid size-5 shrink-0 place-items-center"
+                data-testid="layer-work-eye"
+                [attr.aria-label]="(item.enabled ? 'Hide ' : 'Show ') + item.name"
+                [attr.aria-pressed]="item.enabled"
+                [disabled]="item.effect === null"
+                (click)="setWork(row.layer, item.effect, !item.enabled)"
+              >
+                <svg viewBox="0 0 16 16" class="size-3.5" aria-hidden="true">
+                  <path
+                    d="M1 8s2.6-4.5 7-4.5S15 8 15 8s-2.6 4.5-7 4.5S1 8 1 8z"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.3"
+                  />
+                  @if (item.enabled) {
+                    <circle cx="8" cy="8" r="2.2" fill="currentColor" />
+                  }
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="hover:bg-selection min-w-0 flex-1 truncate text-start text-xs"
+                (click)="choose(row.layer, true)"
+              >
+                {{ item.name }}
+              </button>
+              <button
+                type="button"
+                class="text-foreground-muted grid size-5 shrink-0 place-items-center"
+                data-testid="layer-work-remove"
+                [attr.aria-label]="'Take off ' + item.name"
+                (click)="removeWork(row.layer, item.effect)"
+              >
+                ×
+              </button>
+            </div>
+          }
+        } @empty {
+          <p class="text-foreground-muted p-3 text-sm">Nothing open.</p>
         }
-      } @empty {
-        <p class="text-foreground-muted p-3 text-sm">Nothing open.</p>
-      }
-    </div>
+      </div>
     }
 
     <ng-template #maskLayerMenu>
@@ -838,7 +885,9 @@ const MaskMarks: Readonly<Record<string, string>> = {
 
     <ng-template #addMenu>
       <xui-menu data-testid="layers-add-menu" aria-label="Add">
-        <button type="button" xuiMenuItem data-testid="add-paint" (triggered)="add('paint', 'Paint')">Paint Layer</button>
+        <button type="button" xuiMenuItem data-testid="add-paint" (triggered)="add('paint', 'Paint')">
+          Paint Layer
+        </button>
         <button type="button" xuiMenuItem data-testid="add-fill" (triggered)="add('fill', 'Fill')">Fill Layer</button>
         <button type="button" xuiMenuItem data-testid="add-filter" (triggered)="add('filter', 'Filter', 'Levels')">
           Filter Layer
@@ -887,7 +936,10 @@ const MaskMarks: Readonly<Record<string, string>> = {
     </ng-template>
 
     <ng-template #filterMenu>
-      <xui-menu data-testid="layer-menu-filters" [attr.aria-label]="store.masking() ? 'Filters for the mask' : 'Filters'">
+      <xui-menu
+        data-testid="layer-menu-filters"
+        [attr.aria-label]="store.masking() ? 'Filters for the mask' : 'Filters'"
+      >
         @for (group of stepGroups(); track group.category) {
           <button
             type="button"
@@ -921,7 +973,9 @@ const MaskMarks: Readonly<Record<string, string>> = {
     <ng-template #layerMenu>
       <xui-menu data-testid="layer-menu" [attr.aria-label]="menuLayer() ? 'Layer' : 'Layers'">
         @if (menuLayer(); as layer) {
-          <button type="button" xuiMenuItem data-testid="layer-menu-rename" (triggered)="startRename(layer)">Rename</button>
+          <button type="button" xuiMenuItem data-testid="layer-menu-rename" (triggered)="startRename(layer)">
+            Rename
+          </button>
           <xui-menu-divider />
           @if (layer.mask.source === 'None') {
             <button type="button" xuiMenuItem data-testid="layer-menu-mask-white" (triggered)="addValueMask(layer, 1)">
@@ -992,7 +1046,12 @@ const MaskMarks: Readonly<Record<string, string>> = {
           </button>
           <xui-menu-divider />
           @if (layer.flattened) {
-            <button type="button" xuiMenuItem data-testid="layer-menu-unflatten" (triggered)="store.unflatten(layer.id)">
+            <button
+              type="button"
+              xuiMenuItem
+              data-testid="layer-menu-unflatten"
+              (triggered)="store.unflatten(layer.id)"
+            >
               Unflatten Folder
             </button>
           } @else if (layer.kind === 'group') {
@@ -1225,7 +1284,8 @@ export class LayerStack {
 
   /** The filters a menu offers, under the headings the node library uses. */
   protected readonly stepGroups = computed(() => {
-    const kinds = (this.store.masking() ? this.store.vocabulary()?.maskEffects : this.store.vocabulary()?.filters) ?? [];
+    const kinds =
+      (this.store.masking() ? this.store.vocabulary()?.maskEffects : this.store.vocabulary()?.filters) ?? [];
     const groups = new Map<string, StackFilterKind[]>();
     for (const kind of kinds) {
       groups.set(kind.category, [...(groups.get(kind.category) ?? []), kind]);
@@ -1304,7 +1364,7 @@ export class LayerStack {
   protected reveal(id: string): void {
     const rows = this.store.layers();
     const closed = new Set(this.closed());
-    for (let at = rows.find(row => row.layer.id === id); at?.parent; ) {
+    for (let at = rows.find(row => row.layer.id === id); at?.parent;) {
       closed.delete(at.parent);
       const parent = at.parent;
       at = rows.find(row => row.layer.id === parent);
@@ -1361,44 +1421,88 @@ export class LayerStack {
     const open = () => this.store.state() !== null;
     const here = () => open() && (this.commands.focus().area === 'stack' || this.commands.focus().area === null);
     const selected = () => here() && this.store.selection().size > 0;
-    handle('delete', () => here() && (this.store.selection().size > 0 || (this.store.masking() && this.store.chosen() !== null)), () => this.removeInFront());
-    handle('selectAll', () => here() && this.rows().length > 0, () => this.store.marked.set(new Set(this.rows().map(row => row.layer.id))));
+    handle(
+      'delete',
+      () => here() && (this.store.selection().size > 0 || (this.store.masking() && this.store.chosen() !== null)),
+      () => this.removeInFront()
+    );
+    handle(
+      'selectAll',
+      () => here() && this.rows().length > 0,
+      () => this.store.marked.set(new Set(this.rows().map(row => row.layer.id)))
+    );
     handle('copy', selected, () => this.store.copyLayers());
     handle('cut', selected, () => this.store.cutLayers());
-    handle('paste', () => here() && this.store.clip() !== null, () => this.store.pasteLayers());
+    handle(
+      'paste',
+      () => here() && this.store.clip() !== null,
+      () => this.store.pasteLayers()
+    );
     handle('duplicate', selected, () => this.store.duplicateLayers());
-    handle('groupLayers', () => open() && this.store.selection().size > 0, () => this.groupSelected());
-    handle('renameLayer', () => open() && this.store.chosen() !== null, () => {
-      const layer = this.store.chosen();
-      if (layer) {
-        this.startRename(layer);
+    handle(
+      'groupLayers',
+      () => open() && this.store.selection().size > 0,
+      () => this.groupSelected()
+    );
+    handle(
+      'renameLayer',
+      () => open() && this.store.chosen() !== null,
+      () => {
+        const layer = this.store.chosen();
+        if (layer) {
+          this.startRename(layer);
+        }
       }
-    });
+    );
     handle('addPaintLayer', open, () => this.add('paint', 'Paint'));
     handle('addFillLayer', open, () => this.add('fill', 'Fill'));
     handle('addFilterLayer', open, () => this.add('filter', 'Filter', 'Levels'));
     handle('addLayerFolder', open, () => this.add('group', 'Folder'));
     const chosen = () => (open() ? this.store.chosen() : null);
-    handle('flattenFolder', () => chosen()?.kind === 'group' && !chosen()?.flattened, () => {
-      const layer = chosen();
-      return layer ? this.store.flatten(layer.id) : undefined;
-    });
-    handle('unflattenFolder', () => chosen()?.flattened === true, () => {
-      const layer = chosen();
-      return layer ? this.store.unflatten(layer.id) : undefined;
-    });
-    handle('flattenStack', () => open() && (this.store.state()?.layers.length ?? 0) > 0, () => this.store.flatten());
-    handle('createInstance', () => chosen() !== null, () => {
-      const layer = chosen();
-      return layer ? this.store.addInstance(layer.id) : undefined;
-    });
-    handle('pasteAsInstance', () => here() && this.store.clip() !== null, () => this.store.pasteAsInstances());
-    handle('openMaskStack', () => (chosen()?.mask.source ?? 'None') !== 'None', () => {
-      const layer = chosen();
-      if (layer) {
-        this.openMaskStack(layer);
+    handle(
+      'flattenFolder',
+      () => chosen()?.kind === 'group' && !chosen()?.flattened,
+      () => {
+        const layer = chosen();
+        return layer ? this.store.flatten(layer.id) : undefined;
       }
-    });
+    );
+    handle(
+      'unflattenFolder',
+      () => chosen()?.flattened === true,
+      () => {
+        const layer = chosen();
+        return layer ? this.store.unflatten(layer.id) : undefined;
+      }
+    );
+    handle(
+      'flattenStack',
+      () => open() && (this.store.state()?.layers.length ?? 0) > 0,
+      () => this.store.flatten()
+    );
+    handle(
+      'createInstance',
+      () => chosen() !== null,
+      () => {
+        const layer = chosen();
+        return layer ? this.store.addInstance(layer.id) : undefined;
+      }
+    );
+    handle(
+      'pasteAsInstance',
+      () => here() && this.store.clip() !== null,
+      () => this.store.pasteAsInstances()
+    );
+    handle(
+      'openMaskStack',
+      () => (chosen()?.mask.source ?? 'None') !== 'None',
+      () => {
+        const layer = chosen();
+        if (layer) {
+          this.openMaskStack(layer);
+        }
+      }
+    );
   }
 
   /** The Delete key takes what is in front: a mask that is, or else the layers. Anything that says layers takes those. */
@@ -1647,7 +1751,8 @@ export class LayerStack {
 
   /** With the mask in front a step runs on the mask, and otherwise on the layer's content. */
   protected addStep(layer: StackLayer, node: string): Promise<void> {
-    const name = this.store.vocabulary()?.filters.find(kind => kind.node === node)?.name ?? node.split('/').pop() ?? node;
+    const name =
+      this.store.vocabulary()?.filters.find(kind => kind.node === node)?.name ?? node.split('/').pop() ?? node;
     return this.store.masking() ? this.addWork(layer, node) : this.addContent(layer, 'filter', name, node);
   }
 

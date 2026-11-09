@@ -3,13 +3,17 @@
 from .asset_impact import AssetImpact
 from .asset_page import AssetPage
 from .asset_summary import AssetSummary
+from .bake_colour_options import BakeColourOptions
 from .bake_height_options import BakeHeightOptions
 from .bake_id_options import BakeIdOptions
 from .bake_occlusion_options import BakeOcclusionOptions
 from .bake_options import BakeOptions
+from .bake_preview_part import BakePreviewPart
+from .bake_preview_state import BakePreviewState
 from .bake_ray_options import BakeRayOptions
 from .bake_request import BakeRequest
 from .bake_result import BakeResult
+from .bake_rounding_options import BakeRoundingOptions
 from .bake_thickness_options import BakeThicknessOptions
 from .baked_map_file import BakedMapFile
 from .brush_preset import BrushPreset
@@ -296,6 +300,7 @@ from .tag_page import TagPage
 from .unwrap_options import UnwrapOptions
 from .unwrap_report import UnwrapReport
 from .unwrap_set import UnwrapSet
+from .viewport_bake_preview import ViewportBakePreview
 from .viewport_bake_request import ViewportBakeRequest
 from .viewport_camera_state import ViewportCameraState
 from .viewport_display import ViewportDisplay
@@ -313,14 +318,18 @@ __all__ = (
     "AssetImpact",
     "AssetPage",
     "AssetSummary",
+    "BakeColourOptions",
     "BakedMapFile",
     "BakeHeightOptions",
     "BakeIdOptions",
     "BakeOcclusionOptions",
     "BakeOptions",
+    "BakePreviewPart",
+    "BakePreviewState",
     "BakeRayOptions",
     "BakeRequest",
     "BakeResult",
+    "BakeRoundingOptions",
     "BakeThicknessOptions",
     "BrushPreset",
     "BrushPresetCreateRequest",
@@ -606,6 +615,7 @@ __all__ = (
     "UnwrapOptions",
     "UnwrapReport",
     "UnwrapSet",
+    "ViewportBakePreview",
     "ViewportBakeRequest",
     "ViewportCameraState",
     "ViewportDisplay",
