@@ -158,6 +158,29 @@ describe('BakeSettings', () => {
     expect(settings.blocked()).toBe('Turn on at least one map.');
   });
 
+  it('keeps back a minimum occluder distance at the occluder distance, which would bake white, and says why (#228)', async () => {
+    vi.useFakeTimers();
+    const texturing = document('Crate', 'texturing', null, true);
+    const { settings, written } = setup([texturing], texturing);
+    const words = 'The minimum occluder distance has to be less than the occluder distance';
+
+    settings.set(options => ({ ...options, occlusion: { ...options.occlusion, minimum: 0.5 } }));
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    expect(settings.occlusionProblem()).toContain(words);
+    expect(settings.blocked()).toContain(words);
+    expect(written).toEqual([]); // the Server would refuse it
+
+    // Nothing that reads the minimum is baked, so it may stay.
+    settings.set(options => ({ ...options, maps: ['normal', 'thickness'] }));
+    expect(settings.blocked()).toBeNull();
+
+    settings.set(options => ({ ...options, maps: ['bent'], occlusion: { ...options.occlusion, minimum: 0.25 } }));
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(settings.blocked()).toBeNull();
+    expect(written.at(-1)?.bake.options.occlusion.minimum).toBe(0.25);
+  });
+
   it('bakes the project’s mesh from a layered material, which has none of its own', () => {
     const texturing = document('Crate', 'texturing', null, true);
     const layered = document('Rust', 'layered-material', null, false);

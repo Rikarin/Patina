@@ -162,6 +162,16 @@ test('the display settings change the picture, and the project keeps them', asyn
   await window.getByTestId('viewport-projection').getByText('Orthographic').click();
   await window.getByTestId('viewport-wireframe').click();
   await expect.poll(frames).toBeGreaterThan(before);
+
+  // W switches the wireframe from the viewport, as the switch's tooltip says (#229).
+  const wireframe = window.getByTestId('viewport-wireframe');
+  await expect(wireframe).toBeChecked();
+  await expect(wireframe.locator('..')).toHaveAttribute('title', /^Wireframe \(W\)/u);
+  await window.getByRole('application', { name: 'Viewport' }).focus();
+  await window.keyboard.press('w');
+  await expect(wireframe).not.toBeChecked();
+  await window.keyboard.press('w');
+  await expect(wireframe).toBeChecked();
   await window.screenshot({ path: join(shots, 'viewport-display.png'), scale: 'css' });
 
   // The front view looks along the model's z axis.

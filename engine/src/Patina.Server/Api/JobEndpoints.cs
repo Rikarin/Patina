@@ -67,7 +67,9 @@ static class JobEndpoints {
         } catch (FileNotFoundException e) {
             return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status404NotFound);
         } catch (BakeRefusedException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+            return e.Code is { } code
+                ? Refusals.Problem(e.Message, StatusCodes.Status422UnprocessableEntity, code, e.Values)
+                : TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
         }
     }
 

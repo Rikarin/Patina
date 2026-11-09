@@ -1,12 +1,4 @@
 import { Directive, input, output } from '@angular/core';
-import { desktop } from './desktop';
-
-/** How a menu writes the keys beside its items, as the platform does. */
-export function keyLabels(): { mod: string; delete: string } {
-  const platform = desktop()?.platform ?? globalThis.navigator.platform;
-  const mac = platform === 'darwin' || /mac/iu.test(platform);
-  return mac ? { mod: '⌘', delete: '⌫' } : { mod: 'Ctrl+', delete: 'Del' };
-}
 
 /** Whether a key asks for the context menu: the Menu key, or Shift+F10, which is the one a Mac keyboard has. */
 export function asksForMenu(event: KeyboardEvent): boolean {

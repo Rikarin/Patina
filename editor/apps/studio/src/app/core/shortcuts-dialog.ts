@@ -3,21 +3,23 @@ import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiDialogImports } from '@xui/dialog';
 import { type Chord, chordOf, chordText, isMac } from './chords';
-import { type CommandSpec, FixedKeys, KeyPresets, Sections } from './command-table';
+import { type CommandSpec, FixedKeys, KeyPresets, Sections, reservedKeys } from './command-table';
 import { Commands } from './commands';
 import { desktop } from './desktop';
 
-/** A key the dialog could not give, and who has it. */
+/** A key the dialog could not give, and what has it: a command, which can swap, or the app menu or a control. */
 interface Refused {
   id: string;
   chord: Chord;
-  taken: CommandSpec;
+  taken: CommandSpec | null;
+  label: string;
+  where: string | null;
 }
 
 /**
  * Keyboard Shortcuts: every command by section, each with its keys, and the keys controls answer themselves. Clicking a
  * command's key listens for the next chord, modifiers and all; a key another command has where this one's keys work is
- * refused, with the offer to swap.
+ * refused, with the offer to swap, and one the app menu or a control holds is refused outright.
  */
 @Component({
   selector: 'ptn-shortcuts',
@@ -47,12 +49,17 @@ interface Refused {
             <xui-callout color="warning" data-testid="shortcuts-taken" compact>
               <span class="flex flex-wrap items-center gap-2">
                 <span class="min-w-0 flex-1"
-                  >{{ text(refusal.chord) }} is already {{ refusal.taken.label }}. One key does one thing.</span
+                  >{{ text(refusal.chord) }} is already {{ refusal.label
+                  }}{{ refusal.where ? ', in ' + refusal.where : '' }}. One key does one thing.</span
                 >
-                <button type="button" xuiButton size="sm" data-testid="shortcuts-swap" (click)="swap(refusal)">
-                  Swap Keys
+                @if (refusal.taken) {
+                  <button type="button" xuiButton size="sm" data-testid="shortcuts-swap" (click)="swap(refusal)">
+                    Swap Keys
+                  </button>
+                }
+                <button type="button" xuiButton size="sm" variant="ghost" (click)="refused.set(null)">
+                  {{ refusal.taken ? 'Keep' : 'OK' }}
                 </button>
-                <button type="button" xuiButton size="sm" variant="ghost" (click)="refused.set(null)">Keep</button>
               </span>
             </xui-callout>
           }
@@ -145,10 +152,16 @@ export class ShortcutsDialog {
     ].map(row => ({ ...row, keys: this.words(row.keys) }));
   });
 
-  protected readonly fixed = [...new Set(FixedKeys.map(row => row.section))].map(name => ({
-    name,
-    rows: FixedKeys.filter(row => row.section === name).map(row => ({ ...row, keys: this.words(row.keys) }))
-  }));
+  protected readonly fixed = [
+    ...[...new Set(FixedKeys.map(row => row.section))].map(name => ({
+      name,
+      rows: FixedKeys.filter(row => row.section === name).map(row => ({ label: row.label, keys: this.words(row.keys) }))
+    })),
+    {
+      name: 'App menu',
+      rows: reservedKeys(this.mac).map(key => ({ label: key.label, keys: chordText(key.chord, this.mac) }))
+    }
+  ];
 
   protected keysOf(id: string): string {
     return (this.commands.keys().get(id) ?? []).map(chord => this.text(chord)).join(', ');
@@ -181,11 +194,14 @@ export class ShortcutsDialog {
 
     this.listening.set(null);
     const done = this.commands.bind(id, chord);
-    this.refused.set(done.done ? null : { id, chord, taken: done.taken });
+    this.refused.set(done.done ? null : { id, chord, taken: done.taken, label: done.label, where: done.where });
   }
 
   protected swap(refusal: Refused): void {
-    this.commands.swap(refusal.id, refusal.taken.id, refusal.chord);
+    if (refusal.taken) {
+      this.commands.swap(refusal.id, refusal.taken.id, refusal.chord);
+    }
+
     this.refused.set(null);
   }
 

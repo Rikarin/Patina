@@ -135,6 +135,7 @@ import { ViewportPane } from './viewport/viewport-pane';
           size="sm"
           variant="ghost"
           data-testid="open-bake"
+          [disabled]="!commands.enabled('bake')"
           [title]="commands.tooltip('bake')"
           (click)="commands.run('bake')"
         >
@@ -166,52 +167,84 @@ import { ViewportPane } from './viewport/viewport-pane';
       </div>
     </header>
 
+    <!--
+      Only what the start shows first is in the first bundle: the Start page and the Library. Every other pane, the
+      Inspector included since it starts with nothing to show, and every dialog loads the first time it is shown (#221),
+      from disk, so it costs a moment once. A pane deferred here must not be imported by anything the first bundle
+      holds, or it lands back in it.
+    -->
     <xui-dock-manager class="min-h-0 flex-1" [layout]="layout()" (layoutChange)="keep($event)">
       <ng-template xuiDockContent="start">
         <ptn-start />
       </ng-template>
       <ng-template xuiDockContent="atlas">
-        <ptn-paint-atlas />
+        @defer (on immediate) {
+          <ptn-paint-atlas />
+        }
       </ng-template>
       <ng-template xuiDockContent="image">
-        <ptn-image-material />
+        @defer (on immediate) {
+          <ptn-image-material />
+        }
       </ng-template>
       <ng-template xuiDockContent="sets">
-        <ptn-texture-sets />
+        @defer (on immediate) {
+          <ptn-texture-sets />
+        }
       </ng-template>
       <ng-template xuiDockContent="layers">
-        <ptn-layer-stack />
+        @defer (on immediate) {
+          <ptn-layer-stack />
+        }
       </ng-template>
       <ng-template xuiDockContent="shelf">
-        <ptn-material-shelf />
+        @defer (on immediate) {
+          <ptn-material-shelf />
+        }
       </ng-template>
       <ng-template xuiDockContent="library">
         <ptn-library />
       </ng-template>
       <ng-template xuiDockContent="viewport">
-        <ptn-viewport />
+        @defer (on immediate) {
+          <ptn-viewport />
+        }
       </ng-template>
       <ng-template xuiDockContent="texture">
-        <ptn-texture-view />
+        @defer (on immediate) {
+          <ptn-texture-view />
+        }
       </ng-template>
       <ng-template xuiDockContent="graph">
-        <ptn-graph />
+        @defer (on immediate) {
+          <ptn-graph />
+        }
       </ng-template>
       <ng-template xuiDockContent="nodes">
-        <ptn-node-library />
+        @defer (on immediate) {
+          <ptn-node-library />
+        }
       </ng-template>
       <ng-template xuiDockContent="inspector">
-        <ptn-inspector />
+        @defer (on immediate) {
+          <ptn-inspector />
+        }
       </ng-template>
       <ng-template xuiDockContent="paint">
-        <ptn-paint />
+        @defer (on immediate) {
+          <ptn-paint />
+        }
       </ng-template>
       <ng-template xuiDockContent="history">
-        <ptn-history />
+        @defer (on immediate) {
+          <ptn-history />
+        }
       </ng-template>
     </xui-dock-manager>
 
-    <ptn-project-settings />
+    @defer (when project.settingsOpen()) {
+      <ptn-project-settings />
+    }
 
     @if (failure(); as reason) {
       <div
@@ -267,12 +300,16 @@ import { ViewportPane } from './viewport/viewport-pane';
 
     <xui-dialog class="max-w-5xl" size="lg" title="Bake" [(open)]="baking">
       <xui-dialog-body>
-        <div class="flex h-[70vh] min-h-0 flex-col"><ptn-bake /></div>
+        @defer (when baking()) {
+          <div class="flex h-[70vh] min-h-0 flex-col"><ptn-bake /></div>
+        }
       </xui-dialog-body>
     </xui-dialog>
     <xui-dialog class="max-w-5xl" size="lg" title="Export" [(open)]="exporting">
       <xui-dialog-body>
-        <div class="flex h-[75vh] min-h-0 flex-col"><ptn-export /></div>
+        @defer (when exporting()) {
+          <div class="flex h-[75vh] min-h-0 flex-col"><ptn-export /></div>
+        }
       </xui-dialog-body>
     </xui-dialog>
 
@@ -337,9 +374,13 @@ import { ViewportPane } from './viewport/viewport-pane';
       (overwrite)="paint.act('save', true)"
     />
 
-    <ptn-diagnostics [(open)]="diagnosing" />
+    @defer (when diagnosing()) {
+      <ptn-diagnostics [(open)]="diagnosing" />
+    }
 
-    <ptn-shortcuts [(open)]="keys" />
+    @defer (when keys()) {
+      <ptn-shortcuts [(open)]="keys" />
+    }
 
     <xui-dialog size="sm" title="Save As" [open]="project.savingAs()" (openChange)="project.savingAs.set($event)">
       <form (submit)="saveAs($event, saveName.value)">
@@ -578,7 +619,8 @@ export class App {
     }
 
     handle('export', { run: () => this.exporting.set(true) });
-    handle('bake', { run: () => this.baking.set(true) });
+    // With no project there is no mesh to bake, and the dialog would only say so.
+    handle('bake', { enabled: () => project.current() !== null, run: () => this.baking.set(true) });
     handle('quickBake', { enabled: () => this.bakeSettings.blocked() === null, run: () => this.quickBake() });
     handle('toggleStats', { checked: () => this.options.stats(), run: () => this.options.toggleStats() });
     for (const [at, id] of ['layout1', 'layout2', 'layout3'].entries()) {

@@ -689,10 +689,15 @@ test('Undo, Redo and Save work from the Inspector, and several nodes say so', as
   await window.keyboard.press('ArrowRight');
   await expect(window.getByTestId('graph-unsaved')).toBeVisible();
   await window.keyboard.press('ControlOrMeta+z');
-  await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
-  // A key whose command has nothing to act on does nothing (#191), so Redo waits for the undo to land.
   await expect(window.getByTestId('graph-redo')).toBeEnabled();
+  await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
+
+  // Pressed together, each before the last has come back: a key waits for the edit in flight, not dropped (#223).
+  // Back past the save, then forward twice, ends somewhere none of them passed through: unsaved, nothing to redo.
+  await window.keyboard.press('ControlOrMeta+z');
   await window.keyboard.press('ControlOrMeta+Shift+z');
+  await window.keyboard.press('ControlOrMeta+Shift+z');
+  await expect(window.getByTestId('graph-redo')).toBeDisabled();
   await expect(window.getByTestId('graph-unsaved')).toBeVisible();
   expect(title).not.toBe('');
 

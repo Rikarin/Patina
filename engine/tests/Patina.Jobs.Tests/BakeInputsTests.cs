@@ -1,5 +1,6 @@
 using Patina.Contracts;
 using Patina.Library;
+using System.Globalization;
 
 namespace Patina.Jobs.Tests;
 
@@ -197,6 +198,48 @@ public sealed class BakeInputsTests : IDisposable {
         );
 
         Assert.Throws<BakeRefusedException>(() => BakeInputs.Check(request));
+    }
+
+    /// <summary>
+    ///     A minimum occluder distance at or past the occlusion distance starts every ray past its reach, which bakes
+    ///     white occlusion and a bent normal that is the normal, so it is refused with a code (#228). Thickness reads
+    ///     the distance only, so it may bake with one.
+    /// </summary>
+    [Theory]
+    [InlineData("ao", 0.5, 0.5)]
+    [InlineData("ao", 0.75, 0.5)]
+    [InlineData("ao", 0, 0)]
+    [InlineData("bent", 0.5, 0.25)]
+    public void A_minimum_occluder_distance_at_or_past_the_distance_is_refused_with_a_code(
+        string map,
+        double minimum,
+        double distance
+    ) {
+        var refusal = Assert.Throws<BakeRefusedException>(() =>
+            BakeInputs.Check(
+                With(
+                    Request(),
+                    options => options with {
+                        Maps = ["normal", map],
+                        Occlusion = options.Occlusion with { Minimum = minimum, Distance = distance }
+                    }
+                )
+            )
+        );
+
+        Assert.Equal(BakeOptions.MinimumPastDistance, refusal.Code);
+        Assert.Equal(minimum.ToString(CultureInfo.InvariantCulture), refusal.Values["minimum"]);
+        Assert.Equal(distance.ToString(CultureInfo.InvariantCulture), refusal.Values["distance"]);
+        Assert.Null(
+            With(
+                    Request(),
+                    options => options with {
+                        Maps = ["normal", "thickness"],
+                        Occlusion = options.Occlusion with { Minimum = minimum, Distance = distance }
+                    }
+                )
+                .Options.Problem()
+        );
     }
 
     [Fact]

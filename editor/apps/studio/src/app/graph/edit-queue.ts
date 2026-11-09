@@ -1,3 +1,5 @@
+import { signal } from '@angular/core';
+
 /** One request to the Server. `merge` is passed in because coalescing decides it, not the caller. */
 type Send<R> = (merge: boolean) => Promise<R>;
 
@@ -17,11 +19,13 @@ interface Entry<R> {
 export class EditQueue<R> {
   private readonly waiting: Entry<R>[] = [];
   private running = false;
+  private readonly count = signal(0);
 
-  /** Requests not yet answered, the one in flight included. */
-  get pending(): number {
-    return this.waiting.length + (this.running ? 1 : 0);
-  }
+  /** Requests not yet answered, the one in flight included. A signal, so that a key can wait for the queue to empty. */
+  readonly pending = this.count.asReadonly();
+
+  /** `answered` hears each request's answer before whoever submitted it does. */
+  constructor(private readonly answered: (result: R) => void = () => undefined) {}
 
   submit(send: Send<R>, options: { key?: string; merge?: boolean } = {}): Promise<R> {
     const key = options.key ?? null;
@@ -35,6 +39,7 @@ export class EditQueue<R> {
       }
 
       this.waiting.push({ key, merge: options.merge ?? false, send, waiters: [{ resolve, reject }] });
+      this.counted();
       void this.drain();
     });
   }
@@ -46,6 +51,8 @@ export class EditQueue<R> {
         waiter.reject(reason);
       }
     }
+
+    this.counted();
   }
 
   private async drain(): Promise<void> {
@@ -57,10 +64,14 @@ export class EditQueue<R> {
     for (let entry = this.waiting.shift(); entry; entry = this.waiting.shift()) {
       try {
         const result = await entry.send(entry.merge);
+        // Answered, and so no longer pending, before whoever waits for it hears.
+        this.count.set(this.waiting.length);
+        this.answered(result);
         entry.waiters.forEach(waiter => {
           waiter.resolve(result);
         });
       } catch (reason) {
+        this.count.set(this.waiting.length);
         entry.waiters.forEach(waiter => {
           waiter.reject(reason);
         });
@@ -68,5 +79,10 @@ export class EditQueue<R> {
     }
 
     this.running = false;
+    this.counted();
+  }
+
+  private counted(): void {
+    this.count.set(this.waiting.length + (this.running ? 1 : 0));
   }
 }

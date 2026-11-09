@@ -1,6 +1,6 @@
 # ADR 0016: One command table, which the menus, the keys and the tooltips read
 
-**Status:** accepted, 2026-11-08, for issues #188, #191 and #193.
+**Status:** accepted, 2026-11-08, for issues #188, #191 and #193; amended for #223, #224 and #229.
 
 ## What was wrong
 
@@ -26,6 +26,17 @@ without anything to act on.
   the window sees it (xUI's graph canvas deletes on Delete with any modifier, which Delete and Relink's keys are), the
   pane catches the key ahead of the control and hands it to the table (`Commands.isKeyOf`, then `press`), so the table
   still says what the key is and a rebound one works.
+- **Keys nothing can rebind are known too (#224).** The app menu's own items take their keys before the window sees them
+  (Cmd+Q, Cmd+H, Cmd+M, Shift+Cmd+W on a Mac), and a fixed key belongs to a control whenever it has focus (F2 renames in a
+  list). The table lists both, with each fixed key's chords and the kind of control it lives in, so a command is never
+  given one where its keys would work while that control has focus. Rebinding into one is refused with no swap, and a
+  settings file that names one drops it. A fixed key that does a command's own work, as Delete in a list does, is that
+  command's too.
+- **A key can wait for its command (#223).** A handler can say it is `waiting`: something in flight, such as an undo, may
+  still change what it would do. A key for it is held and decided at its turn, running only if the command is on then,
+  and keys pressed behind it wait too, so none overtakes. A key held five seconds is dropped.
+- **Words never name a key the table does not give.** A tooltip or a menu item reads a command's key from `Commands`, and
+  a test reads the code for keys written into words, which only a fixed key may be (#229).
 - **The studio says what the menus are.** It sends the menu bar to the main process whenever anything in it changes; the
   main process builds it, adding only what is its own (the app menu, Open Recent, the window's items). The menu takes a
   key itself only when it has the command key, so a plain letter in a menu is shown and still reaches a text field.

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using Patina.Contracts;
 using Patina.Server.Graphs;
 using Patina.Server.Stacks;
 using System.Globalization;
@@ -72,6 +73,12 @@ public static class Refusals {
 
     /// <summary>Unflattening a group that is not flattened. Values: <c>layer</c>.</summary>
     public const string NotFlattened = "not-flattened";
+
+    /// <summary>
+    ///     Bake options whose minimum occluder distance is at or past the occlusion distance while occlusion or the
+    ///     bent normal is baked, which would be white. Values: <c>minimum</c>, <c>distance</c>, in the rays' units.
+    /// </summary>
+    public const string BakeOccluderMinimum = BakeOptions.MinimumPastDistance;
 
     /// <summary>A refusal with its code and the values its detail was written from.</summary>
     public static ProblemHttpResult Problem(

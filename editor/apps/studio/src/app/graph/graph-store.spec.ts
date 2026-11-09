@@ -156,6 +156,23 @@ describe('GraphStore', () => {
     expect(store.document()?.history.dirty).toBe(true);
   });
 
+  it('settles once an edit is answered and its event applied, which is when Undo and Redo know what they do', async () => {
+    const { store, socket, routes } = await opened();
+    let answer: (response: Response) => void = () => undefined;
+    routes['POST graphs/g1/undo'] = () => new Promise<Response>(done => (answer = done));
+    expect(store.settling()).toBe(false);
+
+    store.undo();
+    expect(store.settling()).toBe(true);
+    await settle();
+    answer(editReply(1));
+    await settle();
+    expect(store.settling()).toBe(true); // answered, but the document has not seen it
+
+    socket().send(edited(1, [node(1)], { canUndo: false, canRedo: true, dirty: false }));
+    expect(store.settling()).toBe(false);
+  });
+
   it("shows a slider's own value until the event for it, and then the document", async () => {
     const { store, socket } = await opened();
 

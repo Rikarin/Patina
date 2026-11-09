@@ -527,6 +527,14 @@ export class ViewportPane implements AfterViewInit {
     handle('frameModel', () => this.viewport.moveCamera(framed(this.viewport.camera()), false));
     handle('nextView', step(1));
     handle('previousView', step(-1));
+    this.commands.handle(
+      'toggleWireframe',
+      {
+        checked: () => this.display().wireframe,
+        run: () => this.viewport.setDisplay({ wireframe: !this.display().wireframe })
+      },
+      this.destroyRef
+    );
     const axes: Readonly<Record<string, AxisView>> = {
       viewFront: 'front',
       viewBack: 'back',

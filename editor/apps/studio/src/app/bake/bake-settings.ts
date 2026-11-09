@@ -1,6 +1,6 @@
 import { DestroyRef, Injectable, computed, inject, linkedSignal, signal } from '@angular/core';
 import type { BakeOptions, BakeRequest, ProjectBakeSettings, ProjectMeshInfo } from '@patina/api-client';
-import { messageOf } from '../core/messages';
+import { messageOf, refusalWords } from '../core/messages';
 import { SystemStatus } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
 import { BakeStore } from './bake-store';
@@ -108,6 +108,18 @@ export class BakeSettings {
     return [first, ...(this.settings()?.high ?? [])].filter(path => path !== '');
   });
 
+  /**
+   * Why the occlusion settings would bake white, in the words the Server's refusal has, or null: the rays of occlusion
+   * and the bent normal start at the minimum occluder distance, so it has to be short of the occluder distance (#228).
+   */
+  readonly occlusionProblem = computed<string | null>(() => {
+    const options = this.options();
+    const occluded = options?.maps.some(map => map === 'ao' || map === 'bent') ?? false;
+    return options && occluded && options.occlusion.minimum >= options.occlusion.distance
+      ? refusalWords('bake-occluder-minimum')
+      : null;
+  });
+
   /** Why a bake cannot start now, said plainly, or null when it can. */
   readonly blocked = computed<string | null>(() => {
     const options = this.options();
@@ -133,6 +145,11 @@ export class BakeSettings {
 
     if (options.maps.length === 0) {
       return 'Turn on at least one map.';
+    }
+
+    const occlusion = this.occlusionProblem();
+    if (occlusion) {
+      return occlusion;
     }
 
     if (this.sets().length > 0 && this.chosen().length === 0) {
@@ -181,7 +198,8 @@ export class BakeSettings {
     }
 
     const pending = this.pending;
-    if (!pending) {
+    // Settings the Server would refuse wait, shown by their field, until they are fixed.
+    if (!pending || this.occlusionProblem() !== null) {
       return;
     }
 
