@@ -38,6 +38,18 @@ public sealed class StackJournalEntry(
 
     public StackSymmetry? Symmetry { get; } = first.Symmetry;
 
+    public StackStrokeSource? Source { get; } = first.Source;
+
+    public StackPicture? Stencil { get; } = first.Stencil;
+
+    public string? Fill { get; } = first.Fill;
+
+    /// <summary>
+    ///     What a clone or a material reads, as a stack written out: the stack as it stood when the stroke began, or a
+    ///     stack of the material alone. In the journal so a replay reads the same whatever was edited since.
+    /// </summary>
+    public string? SourceDocument { get; init; }
+
     public List<StackStamp> Stamps { get; } = [..first.Stamps];
 
     public bool Open { get; set; } = first.Open;

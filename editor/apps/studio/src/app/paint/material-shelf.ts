@@ -121,9 +121,9 @@ const Everything = 'all';
             [title]="
               material.role === 'empty'
                 ? 'This graph has no Output yet.'
-                : material.name + ' · ' + describe(material) + '\\nClick to add, or drag into the stack'
+                : material.name + ' · ' + describe(material) + '\\nClick to add, drag into the stack, or Alt-click to paint with it'
             "
-            (click)="use(material)"
+            (click)="use(material, $event)"
             (dragstart)="carry($event, material)"
             (dragend)="using.carried.set(null)"
           >
@@ -258,8 +258,9 @@ export class MaterialShelf {
     return `${this.roleLabel(material.role)}, ${this.originOf(material)}`;
   }
 
-  protected use(material: MaterialInfo): void {
-    void this.using.use(material);
+  /** A click adds a material; with Alt held, a material the brush can lay becomes the brush's (#125). */
+  protected use(material: MaterialInfo, event?: MouseEvent): void {
+    void (event?.altKey ? this.using.paintWith(material) : this.using.use(material));
   }
 
   protected carry(event: DragEvent, material: MaterialInfo): void {

@@ -186,6 +186,15 @@ export class PaintAtlas {
       return;
     }
 
+    // The clone's source, from Set Clone Source or a Cmd- or Ctrl-click with the clone in hand.
+    if (
+      this.store.settingCloneSource() ||
+      (this.store.tool() === 'clone' && (event.metaKey || event.ctrlKey) && !event.shiftKey)
+    ) {
+      void this.store.setCloneSource(this.stamp(event));
+      return;
+    }
+
     if (!this.store.canPaint()) {
       return;
     }

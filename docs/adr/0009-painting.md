@@ -150,6 +150,36 @@ paints wherever on the atlas the nearest surface is, weighed in the copy's turne
 lands off the mesh paints nothing; whether the model is symmetric is the artist's claim, and nothing checks it. Symmetry needs a mesh in
 either view, and a stack without one refuses it with `stack-no-mesh`.
 
+### What a texel is painted with, and what the camera sees
+
+**A stroke with a view paints only what its camera sees** (#26). Depth under the brush stays a limit, and within it each texel is tested
+against the depth of the nearest surface along the lines of sight round it (Vixen's `PaintOcclusion`). The lines are cast once per cell of
+the picture for the whole stroke, since a stroke keeps its camera: a 47-stamp stroke casts about 8,000 where casting per stamp was 120,000.
+A texel is seen when it is no deeper than the deepest of the four cells round it, so a flat face never hides itself and the far side of a
+silhouette gets through within one cell. A brush's `occlusionTolerance`, in thousandths of the model's size, is how close in front of a texel
+something may lie and not hide it; `occlusion: false` is the old behaviour. A dab on the housing's strap painted the top 0.03 under it
+before (`A_stroke_on_the_strap_leaves_the_top_under_it_alone`).
+
+**A stroke's colour can come from somewhere other than its colour** (#125, #127, #128). A stroke names a source: `smudge` drags what the
+canvas holds along the step the brush just took in the atlas; `clone` reads the stack's composite at an offset in texels; `material` lays
+what a graph makes in the stroke's channel; `picture` paints a picture fixed on the stroke's picture. A `stencil` is a picture there too,
+masking the brush by its brightness. Every placement reports where each texel lands on the stroke's picture, so a projected picture lands as
+a slide projector puts it, whatever the surface's slope or layout.
+
+- **A clone or a material reads a stack written out, and the journal keeps the text.** The Server writes the whole stack (a clone) or the
+  set with the material's graph as its one fill (a material) when the stroke begins. A replay after a lost Worker reads the same, whatever was
+  edited since, which is the flatten's rule. The text goes with a stroke's first part only, and the Worker evaluates it as the stroke's turn
+  comes, since a replay begins every stroke before it stamps any.
+- **A smear reads the canvas it paints**, which a replay brings back to the same state first. It is read for the whole stamp before any of it
+  is written, and moves what is there rather than mixing from what the texel held before the stroke.
+- **A picture a stroke names is read from its file**, as an alpha is: a file changed later replays differently. The same is true of a
+  material's graph.
+
+**A polygon fill is a stroke whose stamps are clicks** (#129): `curve: fill` and a mode, `triangle`, `polygon`, `part` or `shell`. Each click
+fills the piece of the mesh under it whole, at the stroke's opacity, on a layer or a mask, through the same journal, gutter and undo. A mesh
+here is triangles, so a polygon is found: the triangles joined to the one clicked on its island and in its plane. A part is a named mesh of the
+model file.
+
 ### Stamp to frame shown
 
 `pnpm exec playwright test --config apps/desktop/e2e/bench.config.ts paint`, in a real Electron window (565×260 layout pixels, 1130×520
@@ -186,7 +216,8 @@ ops read at most one texel away or it would not be a repair, and an undo, which 
 - A non-local filter above the stroke is slow in proportion to the channels it paints.
 - An export and a viewport both depend on `TextureLocality` being right, and a kernel listed wrongly leaves stale texels. It is short
   for that reason, and `LayerStackEvaluatorDeviceTests` goes red the moment Blur is added to it.
-- Depth under a brush is a limit, not an occlusion test, so a texel hidden by other geometry close under the brush is painted.
+- A texel hidden by other geometry is tested against the depth along the lines of sight round it, cast once per cell of the
+  picture per stroke, so within one cell of a silhouette the far side is still painted (#26).
 - A UV outside the unit square is not wrapped, so a mesh across UDIM tiles paints only the first.
 - A stack paints one texture set, and `TextureSet.Mesh` is not read: the whole model is the surface.
 - While a viewport-worn drag runs, previews stop and the channels' pictures catch up when it ends, since an encode per map per stamp is what

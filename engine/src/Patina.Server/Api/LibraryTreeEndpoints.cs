@@ -80,6 +80,13 @@ static class LibraryTreeEndpoints {
         library.MapPost("/project/pictures", AddPicture)
             .Described("AddProjectPicture", "Brings a picture into a project, for a layer or a mask to read.");
 
+        library.MapGet("/picture", GetPicture)
+            .Produces<byte[]>(StatusCodes.Status200OK, "image/png")
+            .Described(
+                "GetLibraryPicture",
+                "A picture the library holds, as its file: what a client shows of a projection or a stencil it frames."
+            );
+
         library.MapPatch("/project/document", SetDocumentMesh)
             .Described("SetDocumentMesh", "Puts a texturing document on another mesh of its project.");
 
@@ -274,6 +281,34 @@ static class LibraryTreeEndpoints {
             host,
             library => TypedResults.Ok(new ProjectPicture(library.AddPicture(request.Project, request.Picture)))
         );
+
+    /// <summary>
+    ///     A picture file below the library, served as it is. ⚠ Below the library and nowhere else, and only a picture:
+    ///     a path that climbs out of it, or names a document, is not a picture the library holds.
+    /// </summary>
+    static Results<PhysicalFileHttpResult, ProblemHttpResult> GetPicture(LibraryHost host, string path) {
+        if (host.Library is not { } library) {
+            return NoLibrary();
+        }
+
+        var root = Path.GetFullPath(library.RootPath);
+        var file = Path.GetFullPath(path, root);
+        var type = Path.GetExtension(file).ToLowerInvariant() switch {
+            ".png" => "image/png",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            _ => null
+        };
+        if (!file.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+            || type is null
+            || !File.Exists(file)) {
+            return TypedResults.Problem(
+                $"The library holds no picture '{path}'.",
+                statusCode: StatusCodes.Status404NotFound
+            );
+        }
+
+        return TypedResults.PhysicalFile(file, type);
+    }
 
     static Results<Ok<ProjectContents>, ProblemHttpResult> AddDocument(
         LibraryHost host,

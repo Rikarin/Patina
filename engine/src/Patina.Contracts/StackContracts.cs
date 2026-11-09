@@ -784,6 +784,14 @@ public sealed record StackView(
 ///     map whatever the view; or <c>model</c>, thousandths of the model's size (its bounds' diagonal), which needs a
 ///     mesh. A size other than screen is measured where the stroke starts and kept for the whole of it.
 /// </param>
+/// <param name="Occlusion">
+///     Whether a stroke with a view paints only what its camera sees. Off, every texel within the depth under the brush
+///     is painted, hidden or not: a face close under a strap, the inside of a lip.
+/// </param>
+/// <param name="OcclusionTolerance">
+///     How far in front of a texel something may lie and still not hide it, in thousandths of the model's size (its
+///     bounds' diagonal), 0 to 1000: a decal floating a hair over a face is not the face's occluder.
+/// </param>
 public sealed record StackBrush(
     float Radius,
     float Flow = 1f,
@@ -805,9 +813,47 @@ public sealed record StackBrush(
     float FlowJitter = 0f,
     string ScatterAxis = "both",
     bool Accumulate = true,
-    string SizeSpace = "screen"
+    string SizeSpace = "screen",
+    bool Occlusion = true,
+    float OcclusionTolerance = 2f
 );
 #pragma warning restore SK7005
+
+/// <summary>
+///     A picture on a stroke's own picture: fixed on the screen, moved, scaled and turned there. A projection paints
+///     its colours through the brush, and a stencil lets the brush through by its brightness.
+/// </summary>
+/// <param name="Image">A PNG, relative to the stack, to the library or absolute.</param>
+/// <param name="Centre">Where its middle is on the stroke's picture, in the units stamps are in: two numbers.</param>
+/// <param name="Scale">How many of those units one of its pixels covers, above zero.</param>
+/// <param name="Angle">How far it is turned, clockwise on the screen, in radians.</param>
+/// <param name="Tiled">Whether it repeats past its edges, or is nothing there.</param>
+public sealed record StackPicture(
+    string Image,
+    IReadOnlyList<float> Centre,
+    float Scale = 1f,
+    float Angle = 0f,
+    bool Tiled = false
+);
+
+/// <summary>Where a stroke's colour comes from, when it is not one colour.</summary>
+/// <param name="Kind">
+///     <c>smudge</c> drags what the canvas holds along the stroke, with the brush's flow; <c>clone</c> copies the
+///     stack's composite from <paramref name="Offset" /> away, as it stood when the stroke began; <c>material</c> lays
+///     what <paramref name="Graph" /> makes in the stroke's channel; <c>picture</c> projects
+///     <paramref name="Picture" />.
+/// </param>
+/// <param name="Graph">For a material, the graph whose maps are laid, as a graph fill names it.</param>
+/// <param name="Offset">
+///     For a clone, how far the texel read is from the texel painted, in texels of the map: two numbers.
+/// </param>
+/// <param name="Picture">For a picture, the picture and where it stands.</param>
+public sealed record StackStrokeSource(
+    string Kind,
+    string? Graph = null,
+    IReadOnlyList<float>? Offset = null,
+    StackPicture? Picture = null
+);
 
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field.
 #pragma warning disable SK7005
@@ -831,7 +877,10 @@ public sealed record StackBrush(
 ///     The camera, which makes this a stroke on the mesh: stamps are positions on its picture, each one is found on the
 ///     surface by the Worker, and it lands wherever the brush's disc falls, seams or no seams. Null paints the atlas.
 /// </param>
-/// <param name="Curve">free follows the stamps; line and path run through them as control points when it ends.</param>
+/// <param name="Curve">
+///     free follows the stamps; line and path run through them as control points when it ends; fill takes each stamp
+///     as a click and fills the piece of the mesh under it, whole, as <paramref name="Fill" /> says.
+/// </param>
 /// <param name="Symmetry">
 ///     The copies the stroke makes of itself on the mesh, or null. A stroke in the atlas is copied too, wherever its
 ///     place on the surface lands; either way the stack needs a mesh.
@@ -839,6 +888,12 @@ public sealed record StackBrush(
 /// <param name="MaskLayer">
 ///     With <paramref name="Mask" />, the entry of the mask's stack it paints, counted from the bottom, which must be a
 ///     paint entry. Null paints the mask's base.
+/// </param>
+/// <param name="Source">Where each texel's colour comes from, or null for <paramref name="Colour" />.</param>
+/// <param name="Stencil">A picture on the screen that masks the brush by its brightness, or null.</param>
+/// <param name="Fill">
+///     With the fill curve, how much of the mesh a click takes: <c>triangle</c>, <c>polygon</c> (the flat polygon it
+///     is part of), <c>part</c> (the named mesh it belongs to) or <c>shell</c> (its UV island). It needs a mesh.
 /// </param>
 public sealed record StackStroke(
     string Stroke,
@@ -852,7 +907,10 @@ public sealed record StackStroke(
     StackView? View = null,
     string Curve = "free",
     StackSymmetry? Symmetry = null,
-    int? MaskLayer = null
+    int? MaskLayer = null,
+    StackStrokeSource? Source = null,
+    StackPicture? Stencil = null,
+    string? Fill = null
 ) : StackCommand;
 #pragma warning restore SK7005
 

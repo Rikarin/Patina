@@ -19,9 +19,14 @@ static class StrokeShapes {
 
         return (surface ?? throw new IpcException("A stroke with a view needs a mesh.")).Through(
             View(view),
-            symmetry
+            symmetry,
+            Occlusion(part.Brush)
         );
     }
+
+    /// <summary>Whether a stroke paints only what its camera sees, its tolerance a share of the model's size.</summary>
+    public static PaintOcclusion Occlusion(StackBrush brush) =>
+        brush.Occlusion ? new(true, brush.OcclusionTolerance / 1000f) : PaintOcclusion.None;
 
     public static PaintView View(StackView view) =>
         new(

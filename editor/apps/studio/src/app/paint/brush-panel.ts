@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { provideIcons } from '@ng-icons/core';
-import { matAutoFixOff, matBrush, matColorize, matHorizontalRule, matPolyline } from '@ng-icons/material-icons/baseline';
 import type { StackSymmetry, StackTerm } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiColorPickerImports } from '@xui/color-picker';
@@ -12,16 +11,9 @@ import { channelName, termName } from '../core/labels';
 import { degrees, percent, toDegrees, toRadians } from '../core/numbers';
 import { BrushPresets } from './brush-presets';
 import { MaximumRadius } from './paint-commands';
-import { type BrushSettings, PaintStore, type PaintTool } from './paint-store';
-
-/** The tools, by the command that chooses each: the table names them and says their keys (core/command-table.ts). */
-const Tools: readonly { id: PaintTool; command: string; icon: string }[] = [
-  { id: 'brush', command: 'brushTool', icon: 'matBrush' },
-  { id: 'eraser', command: 'eraserTool', icon: 'matAutoFixOff' },
-  { id: 'picker', command: 'pickerTool', icon: 'matColorize' },
-  { id: 'line', command: 'lineTool', icon: 'matHorizontalRule' },
-  { id: 'path', command: 'pathTool', icon: 'matPolyline' }
-];
+import { type BrushSettings, type FillMode, PaintStore } from './paint-store';
+import { FillModes, PaintToolIcons, PaintTools } from './paint-tools';
+import { ProjectStore } from '../library/project-store';
 
 type NumberSetting = {
   [K in keyof BrushSettings]-?: NonNullable<BrushSettings[K]> extends number ? K : never;
@@ -62,7 +54,7 @@ const SizeSteps = 1000;
 /** The brush: everything a stroke carries. A setting is read when a stroke starts, and nothing is sent until then. */
 @Component({
   selector: 'ptn-brush-panel',
-  viewProviders: [provideIcons({ matAutoFixOff, matBrush, matColorize, matHorizontalRule, matPolyline })],
+  viewProviders: [provideIcons(PaintToolIcons)],
   imports: [BrushPresets, IconImports, XuiButtonImports, XuiColorPickerImports, XuiSelectImports, XuiSliderImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex flex-col gap-1.5' },
@@ -96,6 +88,120 @@ const SizeSteps = 1000;
       </button>
     </div>
     <ptn-brush-presets />
+    @switch (store.tool()) {
+      @case ('fill') {
+        <div class="flex items-center gap-2">
+          <span class="text-foreground-muted w-16 shrink-0 text-xs" title="How much of the mesh a click fills">Fills</span>
+          <select
+            class="well h-7 min-w-0 flex-1 px-1 text-sm"
+            aria-label="Fill mode"
+            data-testid="paint-fill-mode"
+            (change)="store.fillMode.set(fillMode($event))"
+          >
+            @for (term of terms().fills; track term.value) {
+              <option [value]="term.value" [selected]="store.fillMode() === term.value">{{ term.label }}</option>
+            }
+          </select>
+        </div>
+      }
+      @case ('clone') {
+        <div class="flex flex-wrap items-center gap-2" data-testid="paint-clone">
+          <span class="text-foreground-muted w-16 shrink-0 text-xs">Source</span>
+          <span class="readout min-w-0 flex-1 truncate text-xs" data-testid="paint-clone-source">{{ cloneWhere() }}</span>
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            data-testid="paint-clone-set"
+            [variant]="store.settingCloneSource() ? 'default' : 'ghost'"
+            [title]="commands.tooltip('setCloneSource')"
+            (click)="commands.run('setCloneSource')"
+          >
+            Set
+          </button>
+          <label
+            class="flex w-full items-center gap-2 text-xs"
+            title="Keeps the step from the source to where the first stroke after it started. Off, every stroke starts at the source."
+          >
+            <input
+              type="checkbox"
+              data-testid="paint-clone-relative"
+              [checked]="store.cloneRelative()"
+              (change)="store.cloneRelative.set(checked($event))"
+            />
+            Relative
+          </label>
+        </div>
+      }
+    }
+    @if ((store.tool() === 'brush' || store.tool() === 'fill') && !store.masking()) {
+      <div class="flex items-center gap-2" data-testid="paint-material">
+        <span
+          class="text-foreground-muted w-16 shrink-0 text-xs"
+          title="A material paints every channel of the layer from its own maps. Alt-click one on the shelf to paint with it."
+          >Material</span
+        >
+        @if (store.material(); as material) {
+          <span class="readout min-w-0 flex-1 truncate text-xs" data-testid="paint-material-name">{{ material.name }}</span>
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            variant="ghost"
+            data-testid="paint-material-clear"
+            title="Paints the colours again"
+            (click)="store.material.set(null)"
+          >
+            Clear
+          </button>
+        } @else {
+          <span class="text-foreground-muted min-w-0 flex-1 truncate text-xs">Colours · Alt-click a shelf material</span>
+        }
+      </div>
+    }
+    <div class="flex items-center gap-2" data-testid="paint-screen-picture">
+      <span
+        class="text-foreground-muted w-16 shrink-0 text-xs"
+        title="A picture fixed on the viewport: the projection tool paints it, and a stencil masks any brush by its brightness"
+        >Picture</span
+      >
+      <span class="readout min-w-0 flex-1 truncate text-xs" data-testid="paint-screen-picture-name">{{ pictureName() }}</span>
+      <button type="button" xuiButton size="sm" variant="ghost" data-testid="paint-screen-picture-choose" (click)="choosePicture()">
+        Choose…
+      </button>
+    </div>
+    @if (store.screenPicture(); as picture) {
+      <div class="flex items-center gap-3 ps-[4.5rem]">
+        <label class="flex items-center gap-1 text-xs" title="Repeats the picture past its edges">
+          <input
+            type="checkbox"
+            data-testid="paint-screen-picture-tiled"
+            [checked]="picture.tiled"
+            (change)="store.screenPicture.set({ ...picture, tiled: checked($event) })"
+          />
+          Tiled
+        </label>
+        <label class="flex items-center gap-1 text-xs" [title]="commands.tooltip('toggleStencil')">
+          <input
+            type="checkbox"
+            data-testid="paint-stencil"
+            [checked]="store.stencil()"
+            (change)="store.stencil.set(checked($event))"
+          />
+          Stencil
+        </label>
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          data-testid="paint-screen-picture-clear"
+          (click)="store.screenPicture.set(null); store.stencil.set(false)"
+        >
+          Clear
+        </button>
+      </div>
+    }
     <div class="flex items-center gap-2">
       <span
         class="text-foreground-muted w-16 shrink-0 text-xs"
@@ -304,6 +410,39 @@ const SizeSteps = 1000;
       />
       Stamps build up where they overlap
     </label>
+    <label
+      class="flex items-center gap-2 text-xs"
+      title="On the mesh, paints only what the camera sees: off, a stroke also reaches what lies close behind the surface under it"
+    >
+      <input
+        type="checkbox"
+        data-testid="paint-occlusion"
+        [checked]="store.brush().occlusion"
+        (change)="set('occlusion', checked($event))"
+      />
+      Only what the camera sees
+    </label>
+    @if (store.brush().occlusion) {
+      <div class="flex items-center gap-2">
+        <span
+          class="text-foreground-muted w-24 shrink-0 truncate text-xs"
+          title="How close in front of the surface something may lie and still not hide it, as a share of the model's size"
+          >Tolerance</span
+        >
+        <xui-slider
+          class="min-w-0 flex-1"
+          labelStepSize="0"
+          aria-label="Occlusion tolerance"
+          data-testid="paint-occlusion-tolerance"
+          [max]="50"
+          [min]="0"
+          [stepSize]="1"
+          [value]="store.brush().occlusionTolerance"
+          (valueChange)="set('occlusionTolerance', $event)"
+        />
+        <span class="readout w-12 shrink-0 text-end text-xs">{{ (store.brush().occlusionTolerance / 10).toFixed(1) }}%</span>
+      </div>
+    }
     <div class="flex flex-col gap-1" data-testid="paint-channels" [hidden]="store.masking()">
       <span class="section-label">Also paints</span>
       @for (channel of others(); track channel.usage) {
@@ -359,7 +498,7 @@ const SizeSteps = 1000;
 export class BrushPanel {
   protected readonly store = inject(PaintStore);
   protected readonly commands = inject(Commands);
-  protected readonly tools = Tools;
+  protected readonly tools = PaintTools;
   protected readonly sliders = Sliders;
   protected readonly sizeSteps = SizeSteps;
   protected readonly choices: readonly {
@@ -371,7 +510,33 @@ export class BrushPanel {
     { key: 'curve', label: 'Falloff', terms: 'falloffs' },
     { key: 'scatterAxis', label: 'Scatter', terms: 'scatterAxes' }
   ];
+  private readonly project = inject(ProjectStore);
   protected readonly nameOf = channelName;
+
+  /** Where the clone reads from, as a place on the map, or what to do about having none. */
+  protected readonly cloneWhere = computed(() => {
+    const source = this.store.cloneSource();
+    return source ? `${percent(source.u)} across, ${percent(source.v)} down` : 'None yet';
+  });
+
+  /** The picture on the viewport by its file's name. */
+  protected readonly pictureName = computed(() => this.store.screenPicture()?.image.split(/[/\\]/u).pop() ?? 'None');
+
+  /** Asks for a picture, brings it into the project, and puts it on the viewport, unplaced until it is drawn. */
+  protected async choosePicture(): Promise<void> {
+    const image = await this.project.pickPicture();
+    if (image) {
+      this.store.screenPicture.set({ image, centre: [0, 0], scale: 0, angle: 0, tiled: false });
+      if (this.store.tool() !== 'projection' && !this.store.stencil()) {
+        this.store.tool.set('projection');
+      }
+    }
+  }
+
+  protected fillMode(event: Event): FillMode {
+    const value = (event.target as HTMLSelectElement).value;
+    return FillModes.find(mode => mode === value) ?? 'polygon';
+  }
   protected readonly termName = termName;
   protected readonly percent = percent;
   protected readonly toRadians = toRadians;
@@ -388,6 +553,7 @@ export class BrushPanel {
       symmetries: brush?.symmetries ?? plain(['mirror', 'radial']),
       axes: brush?.axes ?? plain(['x', 'y', 'z']),
       centres: brush?.centres ?? plain(['model', 'origin']),
+      fills: brush?.fills ?? plain([...FillModes]),
       maximumCount: brush?.maximumCount ?? 64
     };
   });

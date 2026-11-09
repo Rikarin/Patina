@@ -340,10 +340,13 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         /// <summary>What a copy of a canvas does, which is not a stroke.</summary>
         public IAuthoringCommand? Copy { get; init; }
 
+        /// <summary>Whether its stamps are the clicks of a polygon fill, each laid where it is.</summary>
+        public bool Fill { get; init; }
+
         public bool Done { get; set; }
     }
 
-    internal sealed class Session : IDisposable {
+    internal sealed partial class Session : IDisposable {
         const int ThumbnailSide = 64;
         const string ThumbnailMap = "baseColor";
         static readonly NoContext Context = new();
@@ -361,6 +364,9 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         readonly Dictionary<long, Applied> known = [];
         readonly Dictionary<string, PaintMeshSurface> surfaces = new(StringComparer.Ordinal);
         readonly Dictionary<string, IBrushMask> alphas = new(StringComparer.Ordinal);
+        readonly Dictionary<string, PaintImage> pictures = new(StringComparer.Ordinal);
+        readonly Dictionary<string, Dictionary<string, PaintImage>> composites = new(StringComparer.Ordinal);
+        readonly IReadOnlyList<string> imageRoots;
         readonly MeshShelf meshes;
         readonly List<PaintRect> dirtied = [];
         bool unknown = true;
@@ -375,6 +381,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             MeshShelf meshes
         ) {
             this.meshes = meshes;
+            imageRoots = load.ImageRoots;
             path = load.Path;
             set = load.Set;
             folder = Path.GetDirectoryName(Path.GetFullPath(load.Path))!;
@@ -725,20 +732,25 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
 
             touched.Add(part.Paint);
             var surface = Surface(part.Model);
+            var image = canvas.Channel(part.Usage);
+            var coverage = surface?.Coverage ?? PaintCoverage.Everywhere(canvas.Width, canvas.Height);
+            var placement = PlacementOf(part, surface);
             var stroke = new Applied(
                 part.Id,
                 new(
-                    canvas.Channel(part.Usage),
-                    surface?.Coverage ?? PaintCoverage.Everywhere(canvas.Width, canvas.Height),
+                    image,
+                    coverage,
                     Brush(part.Brush) with { Radius = StrokeShapes.Radius(part, surface, Bounds(part.Model)) },
                     part.Colour,
                     surface is null ? 0 : Gutter,
                     // A line or a path runs through its points, and a brush trailing them would stop short of the last.
                     part.Curve == "free" ? part.Brush.Lazy : 0f,
-                    placement: StrokeShapes.Placement(part, surface, Bounds(part.Model))
+                    placement: placement,
+                    source: StrokeSources.Source(part, image, coverage, Picture, Composite),
+                    stencil: StrokeSources.Stencil(part.Stencil, Picture)
                 ),
-                part.Curve == "free" ? null : new()
-            );
+                part.Curve is "free" or "fill" ? null : new()
+            ) { Fill = part.Curve == "fill" };
             known[part.Id] = stroke;
             return stroke;
         }
@@ -822,17 +834,11 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             }
 
             if (stroke.Curve is { } curve) {
+                Bend(stroke.Stroke, curve, part);
+            } else if (stroke.Fill) {
+                // Each click is a place of its own, and the stroke between two would fill whatever it passed over.
                 foreach (var stamp in part.Stamps) {
-                    curve.Add(new(stamp.X, stamp.Y), stamp.Pressure);
-                }
-
-                if (!part.Open) {
-                    List<Vector2> points = [];
-                    List<float> pressures = [];
-                    curve.Sample(points, pressures);
-                    foreach (var (point, pressure) in points.Zip(pressures)) {
-                        stroke.Stroke.MoveTo(point, dirtied, pressure);
-                    }
+                    stroke.Stroke.Dab(new(stamp.X, stamp.Y), dirtied, stamp.Pressure);
                 }
             } else {
                 foreach (var stamp in part.Stamps) {

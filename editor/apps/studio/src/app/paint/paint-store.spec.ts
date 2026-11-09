@@ -941,3 +941,137 @@ describe('PaintStore', () => {
     expect(store.state()?.history.canUndo).toBe(true);
   });
 });
+
+describe('PaintStore tools (#125, #127, #128, #129)', () => {
+  interface Sent {
+    channel: string;
+    curve: string;
+    fill: string | null;
+    symmetry: unknown;
+    source: { kind: string; graph?: string; offset?: number[]; picture?: { image: string } } | null;
+    stencil: { image: string } | null;
+    stamps: { x: number; y: number }[];
+  }
+  const sent = (bodies: unknown[]) => bodies.flatMap(body => (body as { commands: Sent[] }).commands);
+  const aim = {
+    width: 100,
+    height: 100,
+    camera: { yaw: 0, pitch: 0, distance: 2, panX: 0, panY: 0, panZ: 0, exposure: 1, lightRotation: 0 }
+  };
+
+  async function onMesh() {
+    const test = setup();
+    // Every pick lands at the same place on the map, 0 to 1 across and down.
+    test.server.reply = (_method, path) =>
+      path.endsWith('/viewport/pick') ? Response.json({ found: true, view: PickedView, u: 0.5, v: 0.25 }) : null;
+    await test.store.open('/a/Crate.vxlayers', false);
+    test.store.state.update(state =>
+      state
+        ? {
+            ...state,
+            model: 'crate.glb',
+            channels: [
+              { usage: 'baseColor', default: [0, 0, 0, 1] },
+              { usage: 'roughness', default: [0.5, 0.5, 0.5, 1] }
+            ]
+          }
+        : state
+    );
+    return test;
+  }
+
+  it('fills the piece of the mesh under a click as one stroke in its mode, with no symmetry', async () => {
+    const { store, bodies } = await onMesh();
+    store.tool.set('fill');
+    store.fillMode.set('shell');
+    store.symmetry.set({ kind: 'mirror', axis: 'x', centre: 'model', offset: 0, count: 2 });
+    new StrokeGesture(store, () => aim).press({ x: 50, y: 25, pressure: 1 });
+    await vi.waitFor(() => expect(sent(bodies)).toHaveLength(1));
+    expect(sent(bodies)[0]).toMatchObject({ curve: 'fill', fill: 'shell', source: null, stamps: [{ x: 50, y: 25 }] });
+    expect(sent(bodies)[0]?.symmetry).toBeNull();
+  });
+
+  it('smudges each channel it paints, and sends no colour of its own', async () => {
+    const { store, bodies } = await onMesh();
+    store.tool.set('smudge');
+    store.alsoPaints.set(new Map([['roughness', '#808080']]));
+    store.begin({ x: 10, y: 10, pressure: 1 });
+    store.end();
+    await vi.waitFor(() => expect(bodies.length).toBeGreaterThan(0));
+    expect(sent(bodies.slice(0, 1)).map(part => [part.channel, part.source?.kind])).toEqual([
+      ['baseColor', 'smudge'],
+      ['roughness', 'smudge']
+    ]);
+  });
+
+  it('clones from a source, keeping its step when relative and measuring it again when absolute', async () => {
+    const { store, bodies } = await onMesh();
+    store.tool.set('clone');
+    store.begin({ x: 10, y: 10, pressure: 1 }, aim);
+    store.end();
+    await vi.waitFor(() => expect(store.failure()).toContain('clone reads from'));
+    expect(sent(bodies)).toHaveLength(0);
+
+    // The source lands where every pick does here, so the first stroke's step is nothing, and relative keeps it.
+    await store.setCloneSource({ x: 50, y: 25, pressure: 1 }, aim);
+    expect(store.cloneSource()).toEqual({ u: 0.5, v: 0.25 });
+    store.begin({ x: 10, y: 10, pressure: 1 }, aim);
+    store.end();
+    await vi.waitFor(() => expect(sent(bodies).length).toBeGreaterThan(0));
+    expect(sent(bodies).at(-1)?.source).toEqual({ kind: 'clone', offset: [0, 0] });
+
+    // In the 2D view a stroke starts at its stamp, in texels of the 2048 map.
+    const count = sent(bodies).length;
+    store.begin({ x: 1024, y: 1024, pressure: 1 });
+    store.end();
+    await vi.waitFor(() => expect(sent(bodies).length).toBeGreaterThan(count));
+    expect(sent(bodies).at(-1)?.source?.offset).toEqual([0, 0]);
+    store.cloneRelative.set(false);
+    const again = sent(bodies).length;
+    store.begin({ x: 1024, y: 1024, pressure: 1 });
+    store.end();
+    await vi.waitFor(() => expect(sent(bodies).length).toBeGreaterThan(again));
+    expect(sent(bodies).at(-1)?.source?.offset).toEqual([0, -512]);
+  });
+
+  it('lays a material in every channel the layer writes, and a mask never takes one', async () => {
+    const { store, bodies } = await onMesh();
+    store.material.set({ name: 'Rust', graph: 'projects/crate/rust.vxtexgraph' });
+    store.begin({ x: 10, y: 10, pressure: 1 });
+    store.end();
+    await vi.waitFor(() => expect(bodies.length).toBeGreaterThan(0));
+    expect(sent(bodies.slice(0, 1)).map(part => [part.channel, part.source?.graph])).toEqual([
+      ['baseColor', 'projects/crate/rust.vxtexgraph'],
+      ['roughness', 'projects/crate/rust.vxtexgraph']
+    ]);
+
+    await vi.waitFor(() => expect(sent(bodies).at(-1)?.stamps).toEqual([]));
+    const count = bodies.length;
+    store.masking.set(true);
+    store.begin({ x: 10, y: 10, pressure: 1 });
+    store.end();
+    await vi.waitFor(() => expect(bodies.length).toBeGreaterThan(count));
+    expect(sent(bodies.slice(count)).every(part => part.source === null && part.channel === 'baseColor')).toBe(true);
+  });
+
+  it('projects the picture on the viewport only through a camera, and a stencil masks any other brush', async () => {
+    const { store, bodies } = await onMesh();
+    const picture = { image: 'projects/crate/pictures/decal.png', centre: [50, 50], scale: 2, angle: 0, tiled: false };
+    store.screenPicture.set(picture);
+    store.tool.set('projection');
+    store.begin({ x: 10, y: 10, pressure: 1 });
+    store.end();
+    store.begin({ x: 10, y: 10, pressure: 1 }, aim);
+    store.end();
+    await vi.waitFor(() => expect(sent(bodies).length).toBeGreaterThan(0));
+    expect(sent(bodies).every(part => part.source?.picture?.image === picture.image && part.stencil === null)).toBe(true);
+
+    const count = sent(bodies).length;
+    store.tool.set('brush');
+    store.stencil.set(true);
+    store.begin({ x: 10, y: 10, pressure: 1 }, aim);
+    store.end();
+    await vi.waitFor(() => expect(sent(bodies).length).toBeGreaterThan(count));
+    expect(sent(bodies).at(-1)).toMatchObject({ source: null, stencil: { image: picture.image } });
+  });
+});

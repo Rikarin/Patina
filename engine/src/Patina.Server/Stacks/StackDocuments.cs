@@ -33,6 +33,37 @@ public static class StackDocuments {
 
     public static string Text(LayerStackAsset document) => LayerStackYaml.Write(document);
 
+    /// <summary>
+    ///     What a clone or a material reads, written out when the stroke begins so a replay reads it again whatever is
+    ///     edited after: the set as it stands, or the set with the material's graph as its one fill layer. Null for
+    ///     any other stroke.
+    /// </summary>
+    /// <param name="source">Where the stroke's colour comes from.</param>
+    /// <param name="document">The stack.</param>
+    /// <param name="set">The texture set the stroke paints.</param>
+    public static string? SourceText(StackStrokeSource? source, LayerStackAsset document, TextureSetAsset set) =>
+        source?.Kind switch {
+            "clone" => Text(document with { Sets = [set] }),
+            "material" => Text(
+                document with {
+                    Sets = [
+                        set with {
+                            Layers = [
+                                new() {
+                                    Id = "material",
+                                    Name = "Material",
+                                    Kind = LayerKind.Fill,
+                                    Fill = LayerFillSource.Graph,
+                                    Graph = source.Graph!
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ),
+            _ => null
+        };
+
     public static IReadOnlyList<StackLayer> Layers(IEnumerable<LayerAsset> layers) => [..layers.Select(State)];
 
     /// <summary>The words a stack's fields take, from the enumerations and libraries that mean them.</summary>
@@ -61,6 +92,7 @@ public static class StackDocuments {
             Terms.InBrush(StackBrushes.Axes),
             Terms.InBrush(StackBrushes.Centres, true),
             Terms.InBrush(StackBrushes.Tools),
+            Terms.InFill(StackBrushes.Fills),
             StackBrushes.MaximumRadius,
             StackBrushes.MaximumAspect,
             StackBrushes.MaximumCount

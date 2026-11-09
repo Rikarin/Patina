@@ -10,6 +10,10 @@ export const MaximumRadius = 1024;
 const Tools: Readonly<Record<string, PaintTool>> = {
   brushTool: 'brush',
   eraserTool: 'eraser',
+  smudgeTool: 'smudge',
+  cloneTool: 'clone',
+  projectionTool: 'projection',
+  fillTool: 'fill',
   pickerTool: 'picker',
   lineTool: 'line',
   pathTool: 'path'
@@ -47,6 +51,19 @@ export class PaintCommands {
       enabled: () => open() && (this.paint.state()?.layers.length ?? 0) > 0,
       checked: () => this.paint.finding(),
       run: () => this.paint.finding.set(!this.paint.finding())
+    });
+    this.commands.handle('setCloneSource', {
+      enabled: open,
+      checked: () => this.paint.settingCloneSource(),
+      run: () => {
+        this.paint.tool.set('clone');
+        this.paint.settingCloneSource.set(!this.paint.settingCloneSource());
+      }
+    });
+    this.commands.handle('toggleStencil', {
+      enabled: () => open() && this.paint.screenPicture() !== null,
+      checked: () => this.paint.stencil(),
+      run: () => this.paint.stencil.set(!this.paint.stencil())
     });
     this.commands.handle('pickIdColour', {
       enabled: () => open() && this.paint.layer() !== null,

@@ -580,7 +580,9 @@ public sealed class StackEditor : ILayerStackDocument {
         }
 
         step.Strokes.Add(
-            new(nextEntry++, stroke, paint, Channel(stroke), Packed(stroke.Colour), Document.Model, start)
+            new(nextEntry++, stroke, paint, Channel(stroke), Packed(stroke.Colour), Document.Model, start) {
+                SourceDocument = StackDocuments.SourceText(stroke.Source, Document, Set)
+            }
         );
     }
 
@@ -914,16 +916,19 @@ public sealed class StackEditor : ILayerStackDocument {
 
     /// <summary>Refuses what a Worker could not do with a stroke, while nothing has happened yet.</summary>
     void Aimed(StackStroke stroke) {
-        if (stroke.Curve is not ("free" or "line" or "path")) {
+        if (stroke.Curve is not ("free" or "line" or "path" or "fill")) {
             throw new StackEditRefusedException($"'{stroke.Curve}' is not a kind of stroke.");
         }
 
-        if (stroke.Symmetry?.Problem() is { } problem) {
+        if ((stroke.Symmetry?.Problem() ?? stroke.PaintProblem()) is { } problem) {
             throw new StackEditRefusedException(problem, Api.Refusals.BrushRefused, Api.Refusals.Reason(problem));
         }
 
-        // A symmetry, a view and a size in the model's units are all on the mesh.
-        var onMesh = stroke.View is not null || stroke.Symmetry is not null || stroke.Brush.SizeSpace == "model";
+        // A symmetry, a view, a size in the model's units and a polygon fill are all on the mesh.
+        var onMesh = stroke.View is not null
+            || stroke.Symmetry is not null
+            || stroke.Brush.SizeSpace == "model"
+            || stroke.Curve == "fill";
         if (onMesh && Document.Model.Trim().Length == 0) {
             throw new StackEditRefusedException("This stack has no mesh to paint on.", Api.Refusals.NoMesh);
         }
