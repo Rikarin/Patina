@@ -1,9 +1,16 @@
-import { leave } from './projects';
-import { _electron as electron, expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test';
+import {
+  _electron as electron,
+  expect,
+  test,
+  type ElectronApplication,
+  type Locator,
+  type Page
+} from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { leave } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net10.0/patina-bench.dll');
@@ -124,7 +131,9 @@ test('arranges, badges a problem and colours a frame', async () => {
 
   // Line up the noise and the blur on their left edges.
   await choose(1);
-  await node(2).locator('[data-xui-graph-node-header]').click({ modifiers: ['Shift'] });
+  await node(2)
+    .locator('[data-xui-graph-node-header]')
+    .click({ modifiers: ['Shift'] });
   await window.getByTestId('graph-arrange').click();
   await window.getByTestId('arrange-left').click();
   await expect
@@ -142,7 +151,9 @@ test('arranges, badges a problem and colours a frame', async () => {
 
   // A frame round two nodes, in a colour of its own with a description.
   await choose(4);
-  await node(5).locator('[data-xui-graph-node-header]').click({ modifiers: ['Shift'] });
+  await node(5)
+    .locator('[data-xui-graph-node-header]')
+    .click({ modifiers: ['Shift'] });
   await window.getByTestId('graph-group').click();
   await window.getByTestId('graph-settings').click();
   await window.getByTestId('group-colour').getByRole('combobox').click();
@@ -169,7 +180,10 @@ test('describes parameters, hides one by another, and keeps presets', async () =
   await window.getByTestId('parameter-widget-Parameter1').getByRole('combobox').click();
   await window.getByRole('option', { name: 'Toggle' }).click();
   // xUI gap: a button that is not active says nothing, where a toggle should say aria-pressed=false.
-  await expect(flag.getByRole('button', { name: 'Parameter1', exact: true })).not.toHaveAttribute('aria-pressed', 'true');
+  await expect(flag.getByRole('button', { name: 'Parameter1', exact: true })).not.toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
 
   await window.getByTestId('parameter-describe-Parameter2').click();
   await window.getByTestId('parameter-label-Parameter2').fill('Scratch angle');

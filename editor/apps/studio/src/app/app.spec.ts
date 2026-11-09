@@ -22,7 +22,11 @@ async function render(state: ServerState): Promise<HTMLElement> {
     providers: [
       {
         provide: SystemStatus,
-        useValue: { state: signal(state), textureSides: signal([256, 512, 1024, 2048]), defaultTextureSide: signal(2048) }
+        useValue: {
+          state: signal(state),
+          textureSides: signal([256, 512, 1024, 2048]),
+          defaultTextureSide: signal(2048)
+        }
       },
       { provide: SERVER_CONNECTION, useValue: () => Promise.reject(new Error('no server in this test')) },
       { provide: API_CLIENT_FACTORY, useValue: () => null }

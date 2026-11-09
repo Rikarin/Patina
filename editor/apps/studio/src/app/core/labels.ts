@@ -42,7 +42,10 @@ export function labelIn(terms: readonly StackTerm[] | undefined, value: string):
 }
 
 /** What a setting's chosen value is called, from the labels its definition carries. */
-export function choiceName(setting: { accepted: readonly string[]; labels?: readonly string[] | null }, value: string): string {
+export function choiceName(
+  setting: { accepted: readonly string[]; labels?: readonly string[] | null },
+  value: string
+): string {
   const at = setting.accepted.indexOf(value);
   return (at >= 0 ? setting.labels?.[at] : undefined) ?? wordsOf(value);
 }

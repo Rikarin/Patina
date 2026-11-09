@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { type GraphState, createPatinaClient } from '@patina/api-client';
-import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { RecoveryOffers } from '../core/recovery-offers';
+import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { LibrarySelection } from '../library/library-selection';
 import { GRAPH_SOCKET, GraphStore, socketUrl } from './graph-store';
 import { FakeSocket, clean, dirty, edited, evaluated, noDelta, node, noiseType, state } from './graph-testing';
@@ -297,7 +297,11 @@ describe('GraphStore', () => {
     test.routes['POST graphs/g1/commands'] = () =>
       Response.json({ revision: 2, sequence: 1, history: dirty, created: [{ ref: -1, node: 9 }] });
 
-    await test.store.addNode(noiseType, { x: 1, y: 2 }, { kind: 'wire', node: 1, port: 'Out', toNode: 2, toPort: 'Input' });
+    await test.store.addNode(
+      noiseType,
+      { x: 1, y: 2 },
+      { kind: 'wire', node: 1, port: 'Out', toNode: 2, toPort: 'Input' }
+    );
 
     expect(test.commands()[0]?.commands).toEqual([
       { op: 'addNode', type: 'Source/Noise', x: 1, y: 2, ref: -1 },

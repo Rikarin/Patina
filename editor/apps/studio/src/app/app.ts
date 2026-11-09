@@ -22,7 +22,6 @@ import { type CommandHandler, Commands } from './core/commands';
 import { desktop } from './core/desktop';
 import { DiagnosticsDialog } from './core/diagnostics-dialog';
 import { EditCommands } from './core/edit-commands';
-import { PaintCommands } from './paint/paint-commands';
 import { FileConflictDialog } from './core/file-conflict-dialog';
 import { HistoryPane } from './core/history-pane';
 import { PreferencesDialog } from './core/preferences-dialog';
@@ -49,15 +48,16 @@ import { ImageMaterialPane } from './graph/image-material-pane';
 import { NodeLibrary } from './graph/node-library';
 import { TextureView } from './graph/texture-view';
 import { LibraryPane } from './library/library-pane';
-import { ProjectSettingsDialog } from './library/project-settings-dialog';
-import { TextureSets } from './paint/texture-sets';
 import { ProjectCommands } from './library/project-commands';
+import { ProjectSettingsDialog } from './library/project-settings-dialog';
 import { ProjectStore } from './library/project-store';
 import { LayerStack } from './paint/layer-stack';
 import { MaterialShelf } from './paint/material-shelf';
 import { PaintAtlas } from './paint/paint-atlas';
+import { PaintCommands } from './paint/paint-commands';
 import { PaintPane } from './paint/paint-pane';
 import { PaintStore } from './paint/paint-store';
+import { TextureSets } from './paint/texture-sets';
 import { ViewportPane } from './viewport/viewport-pane';
 
 /** The app shell: a title bar, the docked panes and the status bar. `chrome-bar` and `readout` are bezel's. */
@@ -483,11 +483,15 @@ import { ViewportPane } from './viewport/viewport-pane';
         >Some documents of this project have changes that are not saved.</xui-dialog-body
       >
       <xui-dialog-footer>
-        <button type="button" xuiButton variant="ghost" (click)="project.resolveClosingProject('cancel')">Cancel</button>
+        <button type="button" xuiButton variant="ghost" (click)="project.resolveClosingProject('cancel')">
+          Cancel
+        </button>
         <button type="button" xuiButton variant="ghost" (click)="project.resolveClosingProject('discard')">
           Don't Save
         </button>
-        <button type="button" xuiButton color="primary" (click)="project.resolveClosingProject('save')">Save All</button>
+        <button type="button" xuiButton color="primary" (click)="project.resolveClosingProject('save')">
+          Save All
+        </button>
       </xui-dialog-footer>
     </xui-dialog>
   `

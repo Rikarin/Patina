@@ -32,7 +32,9 @@ test.afterEach(async () => {
 
 /** How many pixels of the viewport's picture are clearly blue, as the window composites them. */
 async function blue(): Promise<number> {
-  const png = (await window.getByRole('application', { name: 'Viewport' }).screenshot({ scale: 'css' })).toString('base64');
+  const png = (await window.getByRole('application', { name: 'Viewport' }).screenshot({ scale: 'css' })).toString(
+    'base64'
+  );
   return window.evaluate(async data => {
     const image = new Image();
     image.src = `data:image/png;base64,${data}`;
@@ -58,7 +60,9 @@ async function blue(): Promise<number> {
 /** The project's file, which keeps the limits its sets are held to. */
 function projectFile(): string {
   const projects = join(scratch, 'Game.ptlib', 'projects');
-  const found = readdirSync(projects, { recursive: true, encoding: 'utf8' }).find(path => path.endsWith('project.yaml'));
+  const found = readdirSync(projects, { recursive: true, encoding: 'utf8' }).find(path =>
+    path.endsWith('project.yaml')
+  );
   if (!found) {
     throw new Error('The library has no project.');
   }

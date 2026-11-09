@@ -59,7 +59,9 @@ describe('messages', () => {
     expect(say('stroke-brush-refused', { reason: 'A brush has a radius.' })).toBe(
       'That brush can’t be used. A brush has a radius.'
     );
-    expect(say('anchor-taken', { anchor: 'Ground' })).toBe('Another layer is already the anchor “Ground”. Choose another name.');
+    expect(say('anchor-taken', { anchor: 'Ground' })).toBe(
+      'Another layer is already the anchor “Ground”. Choose another name.'
+    );
     expect(say('flatten-refused', { layer: 'Folder', reason: 'It passes through.' })).toBe(
       'Folder can’t be flattened. It passes through.'
     );
@@ -94,12 +96,18 @@ describe('check words', () => {
     );
     expect(checkWords('uv-overlap', { share: '0.004' }, 'server')).toMatch(/^0\.4% of the laid-out texels/u);
     expect(
-      checkWords('texture-over-budget', { bytes: String(12 * 1024 * 1024), budget: String(8 * 1024 * 1024), preset: 'Unreal' }, '')
+      checkWords(
+        'texture-over-budget',
+        { bytes: String(12 * 1024 * 1024), budget: String(8 * 1024 * 1024), preset: 'Unreal' },
+        ''
+      )
     ).toBe('Takes 12.0 MiB of GPU memory as Unreal writes it, over the budget of 8.0 MiB.');
   });
 
   it('falls back to the Server’s sentence for a code it does not know', () => {
-    expect(checkWords('something-new', { share: '1' }, 'The Server’s own sentence.')).toBe('The Server’s own sentence.');
+    expect(checkWords('something-new', { share: '1' }, 'The Server’s own sentence.')).toBe(
+      'The Server’s own sentence.'
+    );
   });
 });
 

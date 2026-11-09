@@ -184,7 +184,10 @@ describe('Commands', () => {
       providers: [
         { provide: PaintStore, useValue: { state: paintState } },
         { provide: GraphStore, useValue: { document: signal(null) } },
-        { provide: ProjectStore, useValue: { active: signal({ path: 'a', kind: 'texturing' }), graphInFront: signal(false) } }
+        {
+          provide: ProjectStore,
+          useValue: { active: signal({ path: 'a', kind: 'texturing' }), graphInFront: signal(false) }
+        }
       ]
     });
     commands = TestBed.inject(Commands);
@@ -427,7 +430,9 @@ describe('Commands', () => {
     expect(commands.keys().get('brushTool')).toEqual(['B']);
     expect(commands.keys().get('eraserTool')).toEqual(['X']);
     const drag = (button: number, more: Partial<MouseEvent> = {}) =>
-      commands.navigation().drag({ button, altKey: false, shiftKey: false, ctrlKey: false, metaKey: false, ...more }, true);
+      commands
+        .navigation()
+        .drag({ button, altKey: false, shiftKey: false, ctrlKey: false, metaKey: false, ...more }, true);
     expect([drag(0), drag(2), drag(2, { altKey: true }), drag(2, { ctrlKey: true })]).toEqual([
       'stroke',
       'orbit',
@@ -441,7 +446,11 @@ describe('the Keyboard Shortcuts dialog', () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it('binds the chord pressed, modifiers and all, and says who has a key already', async () => {
-    vi.stubGlobal('patina', { platform: 'darwin', readKeys: () => Promise.resolve(null), writeKeys: () => Promise.resolve() });
+    vi.stubGlobal('patina', {
+      platform: 'darwin',
+      readKeys: () => Promise.resolve(null),
+      writeKeys: () => Promise.resolve()
+    });
     TestBed.configureTestingModule({
       providers: [
         { provide: PaintStore, useValue: { state: signal(null) } },

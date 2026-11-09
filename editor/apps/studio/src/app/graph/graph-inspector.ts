@@ -99,209 +99,239 @@ export function keptLanes(held: readonly number[], picked: readonly number[]): r
       <div class="flex flex-col gap-2.5">
         @for (field of group.fields; track field.name) {
           @if (shown(field)) {
-          <div class="flex flex-col gap-1" [attr.data-testid]="'field-' + field.name" [title]="field.summary">
-            <div class="flex items-center justify-between gap-2">
-              <span class="text-foreground-muted truncate text-xs">{{ field.title }}</span>
-              @if (canExposeSetting(field)) {
-                <button
-                  type="button"
-                  xuiButton
-                  size="sm"
-                  variant="ghost"
-                  title="Make this a parameter of the graph"
-                  [attr.aria-label]="'Expose ' + field.name"
-                  [attr.data-testid]="'expose-' + field.name"
-                  [disabled]="!store.editable()"
-                  (click)="exposeSetting(field)"
-                >
-                  ⇱
-                </button>
-              }
-              @if (canShowPort(field)) {
-                <button
-                  type="button"
-                  xuiButton
-                  size="sm"
-                  variant="ghost"
-                  title="Show this as a port, to wire a number into it"
-                  [active]="portShown(field)"
-                  [attr.aria-label]="'Port for ' + field.name"
-                  [attr.data-testid]="'port-' + field.name"
-                  (click)="store.togglePort(node().id, field.name)"
-                >
-                  ○
-                </button>
-              }
-            </div>
-            @if (wireInto(field); as wire) {
-              <div class="flex items-center gap-2" [attr.data-testid]="'wired-' + field.name">
-                <span class="readout min-w-0 flex-1 truncate">{{ wire.fromPort }}</span>
-                <button
-                  type="button"
-                  xuiButton
-                  size="sm"
-                  variant="ghost"
-                  [disabled]="!store.editable()"
-                  (click)="store.disconnect(node().id, field.name)"
-                >
-                  Disconnect
-                </button>
+            <div class="flex flex-col gap-1" [attr.data-testid]="'field-' + field.name" [title]="field.summary">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-foreground-muted truncate text-xs">{{ field.title }}</span>
+                @if (canExposeSetting(field)) {
+                  <button
+                    type="button"
+                    xuiButton
+                    size="sm"
+                    variant="ghost"
+                    title="Make this a parameter of the graph"
+                    [attr.aria-label]="'Expose ' + field.name"
+                    [attr.data-testid]="'expose-' + field.name"
+                    [disabled]="!store.editable()"
+                    (click)="exposeSetting(field)"
+                  >
+                    ⇱
+                  </button>
+                }
+                @if (canShowPort(field)) {
+                  <button
+                    type="button"
+                    xuiButton
+                    size="sm"
+                    variant="ghost"
+                    title="Show this as a port, to wire a number into it"
+                    [active]="portShown(field)"
+                    [attr.aria-label]="'Port for ' + field.name"
+                    [attr.data-testid]="'port-' + field.name"
+                    (click)="store.togglePort(node().id, field.name)"
+                  >
+                    ○
+                  </button>
+                }
               </div>
-            } @else {
-              @switch (field.control) {
-                @case ('number') {
-                  @let current = numberOf(field);
-                  <div class="flex items-center gap-2">
-                    @if (field.source === 'value' && !field.whole) {
-                      @let range = rangeOf(field, current);
-                      <xui-slider
-                        class="min-w-0 flex-1"
-                        labelStepSize="0"
-                        [attr.aria-label]="field.name"
-                        [disabled]="!store.editable()"
-                        [max]="range.max"
-                        [min]="range.min"
-                        [stepSize]="(range.max - range.min) / steps"
-                        [value]="current"
-                        (valueChange)="setNumber(field, $event)"
-                      />
-                    } @else if (field.source === 'text' && field.widget === 'Angle') {
-                      <ptn-angle-dial
-                        [ariaLabel]="field.title"
-                        [disabled]="!store.editable()"
-                        [value]="current"
-                        (released)="release()"
-                        (valueChange)="setNumber(field, $event)"
-                      />
-                      <span class="flex-1"></span>
-                    } @else if (field.source === 'text' && field.minimum !== null && field.maximum !== null) {
-                      <xui-slider
-                        class="min-w-0 flex-1"
-                        labelStepSize="0"
-                        [attr.aria-label]="field.name"
-                        [disabled]="!store.editable()"
-                        [max]="field.maximum"
-                        [min]="field.minimum"
-                        [stepSize]="field.whole ? 1 : (field.maximum - field.minimum) / steps"
-                        [value]="current"
-                        (valueChange)="setNumber(field, $event)"
-                      />
-                    }
-                    <xui-numeric-input
-                      class="w-24 shrink-0"
-                      size="sm"
-                      [ariaLabel]="field.name + ' value'"
-                      [disabled]="!store.editable()"
-                      [stepSize]="field.whole ? 1 : 0.1"
-                      [value]="current"
-                      (valueChange)="setNumber(field, $event)"
-                    />
-                    @if (field.source === 'value') {
-                      <button
-                        type="button"
-                        xuiButton
+              @if (wireInto(field); as wire) {
+                <div class="flex items-center gap-2" [attr.data-testid]="'wired-' + field.name">
+                  <span class="readout min-w-0 flex-1 truncate">{{ wire.fromPort }}</span>
+                  <button
+                    type="button"
+                    xuiButton
+                    size="sm"
+                    variant="ghost"
+                    [disabled]="!store.editable()"
+                    (click)="store.disconnect(node().id, field.name)"
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              } @else {
+                @switch (field.control) {
+                  @case ('number') {
+                    @let current = numberOf(field);
+                    <div class="flex items-center gap-2">
+                      @if (field.source === 'value' && !field.whole) {
+                        @let range = rangeOf(field, current);
+                        <xui-slider
+                          class="min-w-0 flex-1"
+                          labelStepSize="0"
+                          [attr.aria-label]="field.name"
+                          [disabled]="!store.editable()"
+                          [max]="range.max"
+                          [min]="range.min"
+                          [stepSize]="(range.max - range.min) / steps"
+                          [value]="current"
+                          (valueChange)="setNumber(field, $event)"
+                        />
+                      } @else if (field.source === 'text' && field.widget === 'Angle') {
+                        <ptn-angle-dial
+                          [ariaLabel]="field.title"
+                          [disabled]="!store.editable()"
+                          [value]="current"
+                          (released)="release()"
+                          (valueChange)="setNumber(field, $event)"
+                        />
+                        <span class="flex-1"></span>
+                      } @else if (field.source === 'text' && field.minimum !== null && field.maximum !== null) {
+                        <xui-slider
+                          class="min-w-0 flex-1"
+                          labelStepSize="0"
+                          [attr.aria-label]="field.name"
+                          [disabled]="!store.editable()"
+                          [max]="field.maximum"
+                          [min]="field.minimum"
+                          [stepSize]="field.whole ? 1 : (field.maximum - field.minimum) / steps"
+                          [value]="current"
+                          (valueChange)="setNumber(field, $event)"
+                        />
+                      }
+                      <xui-numeric-input
+                        class="w-24 shrink-0"
                         size="sm"
-                        variant="ghost"
-                        title="Drive this from a parameter"
-                        [attr.aria-label]="field.name + ' expression'"
-                        [attr.data-testid]="'expression-toggle-' + field.name"
-                        [active]="showsExpression(field.name)"
-                        (click)="toggleExpression(field.name)"
-                      >
-                        =
-                      </button>
-                      @if (canExpose(field)) {
+                        [ariaLabel]="field.name + ' value'"
+                        [disabled]="!store.editable()"
+                        [stepSize]="field.whole ? 1 : 0.1"
+                        [value]="current"
+                        (valueChange)="setNumber(field, $event)"
+                      />
+                      @if (field.source === 'value') {
                         <button
                           type="button"
                           xuiButton
                           size="sm"
                           variant="ghost"
-                          title="Make this a parameter of the graph"
-                          [attr.aria-label]="'Expose ' + field.name"
-                          [attr.data-testid]="'expose-' + field.name"
-                          [disabled]="!store.editable()"
-                          (click)="expose(field)"
+                          title="Drive this from a parameter"
+                          [attr.aria-label]="field.name + ' expression'"
+                          [attr.data-testid]="'expression-toggle-' + field.name"
+                          [active]="showsExpression(field.name)"
+                          (click)="toggleExpression(field.name)"
                         >
-                          ⇱
+                          =
                         </button>
+                        @if (canExpose(field)) {
+                          <button
+                            type="button"
+                            xuiButton
+                            size="sm"
+                            variant="ghost"
+                            title="Make this a parameter of the graph"
+                            [attr.aria-label]="'Expose ' + field.name"
+                            [attr.data-testid]="'expose-' + field.name"
+                            [disabled]="!store.editable()"
+                            (click)="expose(field)"
+                          >
+                            ⇱
+                          </button>
+                        }
                       }
-                    }
-                  </div>
-                  @if (field.source === 'value' && showsExpression(field.name)) {
-                    <input
-                      xuiInput
-                      size="sm"
-                      placeholder="Parameter * 2"
-                      [attr.aria-label]="field.name + ' expression text'"
-                      [attr.data-testid]="'expression-' + field.name"
-                      [disabled]="!store.editable()"
-                      [value]="expressionOf(field.name)"
-                      (change)="setExpression(field.name, $event)"
-                    />
-                  }
-                }
-                @case ('switch') {
-                  @if (field.widget === 'Toggle') {
-                    <button
-                      class="self-start"
-                      type="button"
-                      xuiButton
-                      size="sm"
-                      [active]="isOn(field)"
-                      [disabled]="!store.editable()"
-                      (click)="setOn(field, !isOn(field))"
-                    >
-                      {{ field.title }}
-                    </button>
-                  } @else {
-                    <xui-switch
-                      [ariaLabel]="field.title"
-                      [checked]="isOn(field)"
-                      [disabled]="!store.editable()"
-                      (checkedChange)="setOn(field, $event)"
-                    />
-                  }
-                }
-                @case ('colour') {
-                  <xui-color-picker
-                    showAlpha
-                    [disabled]="!store.editable()"
-                    [value]="hexOf(field)"
-                    (valueChange)="setHex(field, $event)"
-                  />
-                  <div class="mt-1 grid grid-cols-4 gap-1" data-testid="colour-lanes">
-                    @for (lane of lanes; track lane) {
-                      <xui-numeric-input
+                    </div>
+                    @if (field.source === 'value' && showsExpression(field.name)) {
+                      <input
+                        xuiInput
                         size="sm"
-                        [ariaLabel]="field.name + ' ' + lane"
+                        placeholder="Parameter * 2"
+                        [attr.aria-label]="field.name + ' expression text'"
+                        [attr.data-testid]="'expression-' + field.name"
                         [disabled]="!store.editable()"
-                        buttonPosition="none"
-                        [stepSize]="0.01"
-                        [value]="laneOf(field, $index)"
-                        (valueChange)="setLane(field, $index, $event)"
+                        [value]="expressionOf(field.name)"
+                        (change)="setExpression(field.name, $event)"
                       />
                     }
-                  </div>
-                }
-                @case ('choice') {
-                  <xui-select
-                    [aria-label]="field.name"
-                    [disabled]="!store.editable()"
-                    [itemText]="field.label"
-                    [items]="field.choices"
-                    [value]="textOf(field)"
-                    (valueChange)="setChoice(field, $event)"
-                  />
-                }
-                @case ('curve') {
-                  @if (curvesOf(field); as curves) {
-                    <ptn-curve-editor
-                      [curves]="curves"
+                  }
+                  @case ('switch') {
+                    @if (field.widget === 'Toggle') {
+                      <button
+                        class="self-start"
+                        type="button"
+                        xuiButton
+                        size="sm"
+                        [active]="isOn(field)"
+                        [disabled]="!store.editable()"
+                        (click)="setOn(field, !isOn(field))"
+                      >
+                        {{ field.title }}
+                      </button>
+                    } @else {
+                      <xui-switch
+                        [ariaLabel]="field.title"
+                        [checked]="isOn(field)"
+                        [disabled]="!store.editable()"
+                        (checkedChange)="setOn(field, $event)"
+                      />
+                    }
+                  }
+                  @case ('colour') {
+                    <xui-color-picker
+                      showAlpha
                       [disabled]="!store.editable()"
-                      (curvesChange)="setCurves(field, $event)"
-                      (released)="release()"
+                      [value]="hexOf(field)"
+                      (valueChange)="setHex(field, $event)"
                     />
-                  } @else {
+                    <div class="mt-1 grid grid-cols-4 gap-1" data-testid="colour-lanes">
+                      @for (lane of lanes; track lane) {
+                        <xui-numeric-input
+                          size="sm"
+                          [ariaLabel]="field.name + ' ' + lane"
+                          [disabled]="!store.editable()"
+                          buttonPosition="none"
+                          [stepSize]="0.01"
+                          [value]="laneOf(field, $index)"
+                          (valueChange)="setLane(field, $index, $event)"
+                        />
+                      }
+                    </div>
+                  }
+                  @case ('choice') {
+                    <xui-select
+                      [aria-label]="field.name"
+                      [disabled]="!store.editable()"
+                      [itemText]="field.label"
+                      [items]="field.choices"
+                      [value]="textOf(field)"
+                      (valueChange)="setChoice(field, $event)"
+                    />
+                  }
+                  @case ('curve') {
+                    @if (curvesOf(field); as curves) {
+                      <ptn-curve-editor
+                        [curves]="curves"
+                        [disabled]="!store.editable()"
+                        (curvesChange)="setCurves(field, $event)"
+                        (released)="release()"
+                      />
+                    } @else {
+                      <input
+                        xuiInput
+                        size="sm"
+                        [attr.aria-label]="field.name"
+                        [disabled]="!store.editable()"
+                        [value]="textOf(field)"
+                        (change)="setText(field, $event)"
+                      />
+                    }
+                  }
+                  @case ('ramp') {
+                    @if (stopsOf(field); as stops) {
+                      <ptn-gradient-ramp
+                        [disabled]="!store.editable()"
+                        [stops]="stops"
+                        (released)="release()"
+                        (stopsChange)="setStops(field, $event)"
+                      />
+                    } @else {
+                      <input
+                        xuiInput
+                        size="sm"
+                        [attr.aria-label]="field.name"
+                        [disabled]="!store.editable()"
+                        [value]="textOf(field)"
+                        (change)="setText(field, $event)"
+                      />
+                    }
+                  }
+                  @case ('text') {
                     <input
                       xuiInput
                       size="sm"
@@ -311,39 +341,9 @@ export function keptLanes(held: readonly number[], picked: readonly number[]): r
                       (change)="setText(field, $event)"
                     />
                   }
-                }
-                @case ('ramp') {
-                  @if (stopsOf(field); as stops) {
-                    <ptn-gradient-ramp
-                      [disabled]="!store.editable()"
-                      [stops]="stops"
-                      (released)="release()"
-                      (stopsChange)="setStops(field, $event)"
-                    />
-                  } @else {
-                    <input
-                      xuiInput
-                      size="sm"
-                      [attr.aria-label]="field.name"
-                      [disabled]="!store.editable()"
-                      [value]="textOf(field)"
-                      (change)="setText(field, $event)"
-                    />
-                  }
-                }
-                @case ('text') {
-                  <input
-                    xuiInput
-                    size="sm"
-                    [attr.aria-label]="field.name"
-                    [disabled]="!store.editable()"
-                    [value]="textOf(field)"
-                    (change)="setText(field, $event)"
-                  />
                 }
               }
-            }
-          </div>
+            </div>
           }
         }
       </div>

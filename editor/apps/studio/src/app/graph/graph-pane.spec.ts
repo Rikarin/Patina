@@ -79,7 +79,11 @@ async function render(status: ServerState = online(true), graph: () => GraphStat
     providers: [
       {
         provide: SystemStatus,
-        useValue: { state: signal(status), textureSides: signal([256, 512, 1024, 2048]), defaultTextureSide: signal(2048) }
+        useValue: {
+          state: signal(status),
+          textureSides: signal([256, 512, 1024, 2048]),
+          defaultTextureSide: signal(2048)
+        }
       },
       { provide: SERVER_CONNECTION, useValue: () => Promise.resolve({ baseUrl: 'http://server:1', token: null }) },
       {
@@ -233,7 +237,9 @@ describe('GraphPane', () => {
   });
 
   it('draws no preview box for a type that has no picture worth one', async () => {
-    const { open, sockets, element, fixture } = await render(online(true), state, [{ ...noiseType, hasPreview: false }]);
+    const { open, sockets, element, fixture } = await render(online(true), state, [
+      { ...noiseType, hasPreview: false }
+    ]);
     await open();
 
     sockets[0]?.send(evaluated(1, { 1: 'a'.repeat(64) }));

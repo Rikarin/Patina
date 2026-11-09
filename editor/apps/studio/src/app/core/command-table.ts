@@ -283,9 +283,7 @@ export function overlaps(a: CommandArea, b: CommandArea): boolean {
 
 /** A native menu item: a command's id, `-` for a line, a submenu, or something only the desktop app has. */
 export type MenuEntry =
-  | string
-  | { readonly submenu: string; readonly items: readonly MenuEntry[] }
-  | { readonly native: NativeEntry };
+  string | { readonly submenu: string; readonly items: readonly MenuEntry[] } | { readonly native: NativeEntry };
 
 /**
  * What only the desktop app can put in a menu: the libraries it last opened, the window's own items, and in a

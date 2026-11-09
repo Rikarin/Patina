@@ -12,7 +12,8 @@ const Margin = 0.06;
  */
 export function project(view: StackView, point: Point): [number, number] | null {
   const offset = [0, 1, 2].map(axis => (point[axis] ?? 0) - (view.eye[axis] ?? 0));
-  const dot = (direction: readonly number[]) => offset.reduce((sum, value, axis) => sum + value * (direction[axis] ?? 0), 0);
+  const dot = (direction: readonly number[]) =>
+    offset.reduce((sum, value, axis) => sum + value * (direction[axis] ?? 0), 0);
   const depth = dot(view.forward);
   if (depth <= 1e-6) {
     return null;
@@ -40,7 +41,9 @@ export function symmetryGuide(symmetry: StackSymmetry, view: StackView, bounds: 
   const middle = least.map((low, at) => (low + (most[at] ?? 0)) / 2);
   const radius = Math.hypot(...most.map((high, at) => high - (least[at] ?? 0))) / 2;
   const centre = symmetry.centre === 'origin' ? [0, 0, 0] : middle;
-  const through = centre.map((value, at) => value + (at === axis && symmetry.kind !== 'radial' ? symmetry.offset * radius : 0));
+  const through = centre.map(
+    (value, at) => value + (at === axis && symmetry.kind !== 'radial' ? symmetry.offset * radius : 0)
+  );
   const grow = (low: number, high: number) => [low - (high - low) * Margin, high + (high - low) * Margin] as const;
   const point = (along: number, first: number, second: number): Point => {
     const made = [0, 0, 0];

@@ -95,7 +95,7 @@ export function readMenuModel(value: unknown): MenuModel | null {
     }
 
     const items = held.map(entry => item(entry, depth));
-    return items.every(entry => entry !== null) ? (items) : null;
+    return items.every(entry => entry !== null) ? items : null;
   };
 
   if (!Array.isArray(value)) {
@@ -108,7 +108,7 @@ export function readMenuModel(value: unknown): MenuModel | null {
     const items = list(held['items'], 1);
     return label && items ? { label, items } : null;
   });
-  return menus.every(menu => menu !== null) ? (menus) : null;
+  return menus.every(menu => menu !== null) ? menus : null;
 }
 
 /** The menus before the studio has said what they are, or after it has gone: the app's own items, nothing to act on. */
@@ -123,7 +123,13 @@ export const StartingMenus: MenuModel = [
       { type: 'native', native: 'closeWindow' }
     ]
   },
-  { label: 'View', items: [{ type: 'native', native: 'development' }, { type: 'native', native: 'fullScreen' }] },
+  {
+    label: 'View',
+    items: [
+      { type: 'native', native: 'development' },
+      { type: 'native', native: 'fullScreen' }
+    ]
+  },
   { label: 'Window', items: [{ type: 'native', native: 'windowItems' }] }
 ];
 
@@ -162,7 +168,9 @@ export function template(actions: MenuActions, menus: MenuModel, starting = fals
       case 'fullScreen':
         return [{ role: 'togglefullscreen' }];
       case 'windowItems':
-        return mac ? [{ role: 'minimize' }, { role: 'zoom' }, { type: 'separator' }, { role: 'front' }] : [{ role: 'minimize' }];
+        return mac
+          ? [{ role: 'minimize' }, { role: 'zoom' }, { type: 'separator' }, { role: 'front' }]
+          : [{ role: 'minimize' }];
       case 'development':
         return actions.development ? [{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }] : [];
     }
@@ -207,13 +215,11 @@ export function template(actions: MenuActions, menus: MenuModel, starting = fals
   const shown = preferences ? withoutCommand(menus, PreferencesCommand) : menus;
   return [
     ...(mac ? [appMenu(preferences ? build([preferences]) : [])] : []),
-    ...shown.map(
-      (menu): MenuItemConstructorOptions => ({
-        label: menu.label,
-        ...(menu.label === 'Help' ? { role: 'help' as const } : {}),
-        submenu: build(menu.items)
-      })
-    )
+    ...shown.map((menu): MenuItemConstructorOptions => ({
+      label: menu.label,
+      ...(menu.label === 'Help' ? { role: 'help' as const } : {}),
+      submenu: build(menu.items)
+    }))
   ];
 }
 
@@ -265,8 +271,7 @@ function withoutCommand(menus: MenuModel, id: string): MenuModel {
       .filter(item => !(item.type === 'command' && item.id === id))
       .map(item => (item.type === 'submenu' ? { ...item, items: strip(item.items) } : item));
     return kept.filter(
-      (item, at) =>
-        item.type !== 'separator' || (at > 0 && at < kept.length - 1 && kept[at - 1]?.type !== 'separator')
+      (item, at) => item.type !== 'separator' || (at > 0 && at < kept.length - 1 && kept[at - 1]?.type !== 'separator')
     );
   };
   return menus.map(menu => ({ ...menu, items: strip(menu.items) }));

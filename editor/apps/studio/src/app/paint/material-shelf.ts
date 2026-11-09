@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked
+} from '@angular/core';
 import { type MaterialInfo, type StackTerm, unwrap } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
@@ -6,14 +15,14 @@ import { XuiInputImports } from '@xui/input';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { type XuiSegmentedOption, XuiSegmentedControlImports } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
-import { LibraryStore } from '../library/library-store';
-import { LibraryThumbnails } from '../library/thumbnails';
-import { ProjectStore } from '../library/project-store';
-import { MaterialUse } from './material-use';
 import { Commands } from '../core/commands';
-import { Preferences } from '../core/preferences';
 import { labelIn } from '../core/labels';
 import { messageOf } from '../core/messages';
+import { Preferences } from '../core/preferences';
+import { LibraryStore } from '../library/library-store';
+import { ProjectStore } from '../library/project-store';
+import { LibraryThumbnails } from '../library/thumbnails';
+import { MaterialUse } from './material-use';
 
 const SearchQuiet = 200;
 
@@ -101,7 +110,9 @@ const Everything = 'all';
         view() === 'list'
           ? 'min-h-0 flex-1 overflow-auto'
           : 'grid min-h-0 flex-1 content-start gap-1 overflow-auto px-2 pb-2 ' +
-            (view() === 'small' ? 'grid-cols-[repeat(auto-fill,minmax(4.5rem,1fr))]' : 'grid-cols-[repeat(auto-fill,minmax(8rem,1fr))]')
+            (view() === 'small'
+              ? 'grid-cols-[repeat(auto-fill,minmax(4.5rem,1fr))]'
+              : 'grid-cols-[repeat(auto-fill,minmax(8rem,1fr))]')
       "
     >
       @for (material of shown(); track material.source) {
@@ -121,7 +132,10 @@ const Everything = 'all';
             [title]="
               material.role === 'empty'
                 ? 'This graph has no Output yet.'
-                : material.name + ' · ' + describe(material) + '\\nClick to add, drag into the stack, or Alt-click to paint with it'
+                : material.name +
+                  ' · ' +
+                  describe(material) +
+                  '\\nClick to add, drag into the stack, or Alt-click to paint with it'
             "
             (click)="use(material, $event)"
             (dragstart)="carry($event, material)"
@@ -167,7 +181,10 @@ const Everything = 'all';
               </button>
             </xui-non-ideal-state>
           } @else if (search() || role() !== everything || origin() !== everything) {
-            <xui-non-ideal-state title="Nothing matches" description="No material has every word, type and origin asked for.">
+            <xui-non-ideal-state
+              title="Nothing matches"
+              description="No material has every word, type and origin asked for."
+            >
               <button action type="button" xuiButton size="sm" (click)="clearFilters()">Show Everything</button>
             </xui-non-ideal-state>
           } @else {
@@ -215,7 +232,8 @@ export class MaterialShelf {
   protected readonly shown = computed(() => {
     const [role, origin] = [this.role(), this.origin()];
     return this.materials().filter(
-      material => (role === Everything || material.role === role) && (origin === Everything || material.origin === origin)
+      material =>
+        (role === Everything || material.role === role) && (origin === Everything || material.origin === origin)
     );
   });
 

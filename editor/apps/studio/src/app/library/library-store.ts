@@ -12,10 +12,10 @@ import {
   type TagPage,
   unwrap
 } from '@patina/api-client';
+import { messageOf } from '../core/messages';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { LibrarySelection } from './library-selection';
 import { type Page, PagedList } from './paged-list';
-import { messageOf } from '../core/messages';
 
 export const SearchDebounceMs = 200;
 const IdlePollMs = 5_000;

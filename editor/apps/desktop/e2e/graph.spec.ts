@@ -1,4 +1,3 @@
-import { leave } from './projects';
 import {
   _electron as electron,
   expect,
@@ -11,6 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { leave } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net10.0/patina-bench.dll');
@@ -286,7 +286,10 @@ test('builds a tiling material from a new graph, down to its channels and full s
   await expect(nodes()).toHaveCount(4);
 
   // Each node lands selected, so the next one takes it: the chain is wired as it is made, and nothing is left unwired.
-  const unwired = window.getByTestId('graph-diagnostics').getByRole('listitem').filter({ hasText: 'has no image connected' });
+  const unwired = window
+    .getByTestId('graph-diagnostics')
+    .getByRole('listitem')
+    .filter({ hasText: 'has no image connected' });
   await expect.poll(wiresNow).toEqual(['1>2', '2>3', '3>4']);
   await expect(unwired).toHaveCount(0);
 

@@ -13,7 +13,10 @@ import { StrokeGesture } from './stroke-gesture';
   selector: 'ptn-paint-atlas',
   imports: [XuiButtonImports, XuiNonIdealStateImports, XuiSpinnerImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'relative flex h-full min-h-0 items-center justify-center overflow-hidden p-2', 'data-commands': 'atlas' },
+  host: {
+    class: 'relative flex h-full min-h-0 items-center justify-center overflow-hidden p-2',
+    'data-commands': 'atlas'
+  },
   template: `
     @if (store.state(); as state) {
       <select
@@ -92,7 +95,12 @@ import { StrokeGesture } from './stroke-gesture';
         </button>
       </xui-non-ideal-state>
     } @else if (store.failure(); as reason) {
-      <xui-non-ideal-state class="flex-1" title="The map could not be made" [description]="reason" data-testid="atlas-empty" />
+      <xui-non-ideal-state
+        class="flex-1"
+        title="The map could not be made"
+        [description]="reason"
+        data-testid="atlas-empty"
+      />
     } @else {
       <xui-non-ideal-state
         class="flex-1"

@@ -1,4 +1,14 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, linkedSignal, model, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  linkedSignal,
+  model,
+  signal
+} from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiDialogImports } from '@xui/dialog';
@@ -7,11 +17,11 @@ import { XuiInputImports } from '@xui/input';
 import { XuiSwitchImports } from '@xui/switch';
 import { XuiTagInputImports } from '@xui/tag-input';
 import { desktop } from '../core/desktop';
+import { messageOf } from '../core/messages';
 import { SystemStatus } from '../core/system-status';
 import { LibraryStore } from './library-store';
 import { LibraryTreeStore } from './library-tree-store';
 import { ProjectStore } from './project-store';
-import { messageOf } from '../core/messages';
 
 /** Asks for a new project's name. The Server decides whether it can exist, so its refusal is what this shows. */
 @Component({
@@ -53,8 +63,12 @@ import { messageOf } from '../core/messages';
             <div class="flex flex-col gap-1">
               <span class="section-label">Picture</span>
               <div class="flex items-center gap-2">
-                <span class="min-w-0 flex-1 truncate" data-testid="new-project-image-name">{{ imageName() || 'None yet' }}</span>
-                <button type="button" xuiButton size="sm" data-testid="new-project-image" (click)="pickImage()">Choose…</button>
+                <span class="min-w-0 flex-1 truncate" data-testid="new-project-image-name">{{
+                  imageName() || 'None yet'
+                }}</span>
+                <button type="button" xuiButton size="sm" data-testid="new-project-image" (click)="pickImage()">
+                  Choose…
+                </button>
               </div>
             </div>
           }
@@ -62,8 +76,12 @@ import { messageOf } from '../core/messages';
             <span class="section-label">Mesh</span>
             <div class="flex items-center gap-2">
               @if (canPick) {
-                <span class="min-w-0 flex-1 truncate" data-testid="new-project-mesh-name">{{ meshName() || 'None yet' }}</span>
-                <button type="button" xuiButton size="sm" data-testid="new-project-mesh" (click)="pickMesh()">Choose…</button>
+                <span class="min-w-0 flex-1 truncate" data-testid="new-project-mesh-name">{{
+                  meshName() || 'None yet'
+                }}</span>
+                <button type="button" xuiButton size="sm" data-testid="new-project-mesh" (click)="pickMesh()">
+                  Choose…
+                </button>
               } @else {
                 <input
                   class="w-full"

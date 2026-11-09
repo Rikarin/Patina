@@ -44,7 +44,15 @@ const Lighting: readonly Slider[] = [
     step: Math.PI / 180,
     unit: 'degrees'
   },
-  { key: 'shadows', label: 'Shadows', title: 'How dark the model’s shadow is', min: 0, max: 1, step: 0.01, unit: 'share' },
+  {
+    key: 'shadows',
+    label: 'Shadows',
+    title: 'How dark the model’s shadow is',
+    min: 0,
+    max: 1,
+    step: 0.01,
+    unit: 'share'
+  },
   {
     key: 'backgroundOpacity',
     label: 'Background',
@@ -66,7 +74,15 @@ const Lighting: readonly Slider[] = [
 ];
 
 const Finish: readonly Slider[] = [
-  { key: 'contrast', label: 'Contrast', title: 'Contrast about middle grey', min: 0, max: 2, step: 0.01, unit: 'share' },
+  {
+    key: 'contrast',
+    label: 'Contrast',
+    title: 'Contrast about middle grey',
+    min: 0,
+    max: 2,
+    step: 0.01,
+    unit: 'share'
+  },
   { key: 'saturation', label: 'Saturation', title: 'How much colour', min: 0, max: 2, step: 0.01, unit: 'share' },
   { key: 'vignette', label: 'Vignette', title: 'Darkens the corners', min: 0, max: 1, step: 0.01, unit: 'share' },
   { key: 'grain', label: 'Grain', title: 'Film grain', min: 0, max: 1, step: 0.01, unit: 'share' },
@@ -79,7 +95,15 @@ const Finish: readonly Slider[] = [
     step: 0.01,
     unit: 'share'
   },
-  { key: 'sharpen', label: 'Sharpen', title: 'Contrast-adaptive sharpening', min: 0, max: 1, step: 0.01, unit: 'share' },
+  {
+    key: 'sharpen',
+    label: 'Sharpen',
+    title: 'Contrast-adaptive sharpening',
+    min: 0,
+    max: 1,
+    step: 0.01,
+    unit: 'share'
+  },
   {
     key: 'bloom',
     label: 'Bloom',
@@ -89,8 +113,24 @@ const Finish: readonly Slider[] = [
     step: 0.01,
     unit: 'share'
   },
-  { key: 'warmth', label: 'Warmth', title: 'Takes blue towards red, or red towards blue', min: -1, max: 1, step: 0.01, unit: 'signed' },
-  { key: 'tint', label: 'Tint', title: 'Takes green towards magenta, or magenta towards green', min: -1, max: 1, step: 0.01, unit: 'signed' }
+  {
+    key: 'warmth',
+    label: 'Warmth',
+    title: 'Takes blue towards red, or red towards blue',
+    min: -1,
+    max: 1,
+    step: 0.01,
+    unit: 'signed'
+  },
+  {
+    key: 'tint',
+    label: 'Tint',
+    title: 'Takes green towards magenta, or magenta towards green',
+    min: -1,
+    max: 1,
+    step: 0.01,
+    unit: 'signed'
+  }
 ];
 
 /** The lanes the picture view shows one of, as a grey, or all of as its colour. */
@@ -228,7 +268,10 @@ const Snaps: readonly { view: AxisView; label: string; key: string }[] = [
           }
         </select>
       </div>
-      <div class="flex items-center gap-2" title="What the picture's numbers are multiplied by before they show, for a height or a position">
+      <div
+        class="flex items-center gap-2"
+        title="What the picture's numbers are multiplied by before they show, for a height or a position"
+      >
         <span class="text-foreground-muted w-20 shrink-0 text-xs">Scale</span>
         <input
           type="number"

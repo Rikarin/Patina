@@ -80,7 +80,11 @@ async function page({ worker, mesh, gpu, addon }) {
   await ask({ type: 'viewport.open', mesh });
 
   const cpu = pid => {
-    const parts = execFileSync('ps', ['-o', 'time=', '-p', String(pid)]).toString().trim().split(':').map(Number);
+    const parts = execFileSync('ps', ['-o', 'time=', '-p', String(pid)])
+      .toString()
+      .trim()
+      .split(':')
+      .map(Number);
     return parts.reduce((total, part) => total * 60 + part, 0);
   };
 
@@ -88,7 +92,11 @@ async function page({ worker, mesh, gpu, addon }) {
   document.body.append(canvas);
   canvas.style.cssText = 'width:640px;height:360px';
 
-  for (const [width, height] of [[2560, 1440], [1920, 1080], [1280, 720]]) {
+  for (const [width, height] of [
+    [2560, 1440],
+    [1920, 1080],
+    [1280, 720]
+  ]) {
     canvas.width = width;
     canvas.height = height;
     const gl = canvas.getContext('webgl2', { alpha: false, antialias: false });
@@ -96,7 +104,11 @@ async function page({ worker, mesh, gpu, addon }) {
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, width, height);
     const pixels = new Uint8Array(width * height * 4);
-    const processes = [['worker', child.pid], ['renderer', process.pid], ['gpu', gpu]];
+    const processes = [
+      ['worker', child.pid],
+      ['renderer', process.pid],
+      ['gpu', gpu]
+    ];
     const before = processes.map(([, pid]) => cpu(pid));
     const latency = [];
     const copies = [];
@@ -145,7 +157,9 @@ async function page({ worker, mesh, gpu, addon }) {
       requestAnimationFrame(tick);
     });
 
-    const usage = processes.map(([name, pid], i) => `${name} ${(((cpu(pid) - before[i]) / Seconds) * 100).toFixed(0)}%`);
+    const usage = processes.map(
+      ([name, pid], i) => `${name} ${(((cpu(pid) - before[i]) / Seconds) * 100).toFixed(0)}%`
+    );
     const middle = values => [...values].sort((a, b) => a - b)[values.length >> 1] ?? 0;
     const high = values => [...values].sort((a, b) => a - b)[Math.floor(values.length * 0.95)] ?? 0;
     console.log(

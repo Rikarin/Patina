@@ -21,10 +21,10 @@ import { desktop } from '../core/desktop';
 import { documentKindName } from '../core/labels';
 import { MenuKeys } from '../core/menu-keys';
 import { SystemStatus } from '../core/system-status';
+import { LibraryActions, type LibraryTarget, projectTarget } from './library-actions';
 import { LibrarySelection } from './library-selection';
 import { FolderColours, LibraryTreeStore, type TreeRow, canDrop, parentOf } from './library-tree-store';
 import { type DocumentTab, ProjectStore } from './project-store';
-import { LibraryActions, type LibraryTarget, projectTarget } from './library-actions';
 import { ViewportFit } from './viewport-fit';
 
 const RowHeight = 28;
@@ -121,97 +121,101 @@ interface Closing {
       (dragleave)="dropInto.set(null)"
       (drop)="drop($event)"
     >
-        <div
-          *cdkVirtualFor="let row of tree.rows(); trackBy: byPath"
-          class="flex cursor-default items-center gap-1 pe-2 select-none"
-          role="treeitem"
-          data-testid="tree-row"
-          [attr.data-path]="row.path"
-          [attr.data-kind]="row.kind"
-          [attr.aria-level]="row.depth + 1"
-          [attr.aria-expanded]="row.kind === 'folder' || row.kind === 'project' ? row.expanded : null"
-          [attr.aria-selected]="tree.selected().has(row.path)"
-          [attr.draggable]="(row.kind === 'folder' || row.kind === 'project') && renaming() !== row.path"
-          [class.bg-selection]="tree.selected().has(row.path) || (dropInto() === row.path && row.kind === 'folder')"
-          [style.height.px]="rowHeight"
-          [style.padding-inline-start.px]="row.depth * indent + 4"
-        >
-          @switch (row.kind) {
-            @case ('more') {
-              <span class="text-foreground-muted text-xs" data-testid="tree-more">{{ row.remaining }} more…</span>
-            }
-            @case ('folder') {
-              <button
-                type="button"
-                class="text-foreground-muted grid size-4 shrink-0 place-items-center"
-                tabindex="-1"
-                data-testid="tree-toggle"
-                [attr.aria-label]="row.expanded ? 'Close ' + row.folder.name : 'Open ' + row.folder.name"
-                (click)="toggle($event, row.path)"
-              >
-                <svg viewBox="0 0 16 16" class="size-3" [class.rotate-90]="row.expanded" aria-hidden="true">
-                  <path d="M6 3l5 5-5 5z" fill="currentColor" />
-                </svg>
-              </button>
-              <svg viewBox="0 0 16 16" class="size-4 shrink-0" aria-hidden="true" data-testid="tree-folder-icon">
-                <path
-                  d="M1.5 3.5h5l1.5 2h6.5v7.5h-13z"
-                  [attr.fill]="row.folder.color ?? 'currentColor'"
-                  [attr.fill-opacity]="row.folder.color ? 1 : 0.45"
-                />
-              </svg>
-            }
-            @case ('document') {
-              <span class="size-4 shrink-0"></span>
-              <span class="text-foreground-muted w-4 shrink-0 text-center text-xs" [title]="kindName(row.document.kind)">
-                {{ kindMark(row.document.kind) }}
-              </span>
-            }
-            @case ('project') {
-              <button
-                type="button"
-                class="text-foreground-muted grid size-4 shrink-0 place-items-center"
-                tabindex="-1"
-                data-testid="tree-toggle"
-                [attr.aria-label]="row.expanded ? 'Close ' + row.project.name : 'Open ' + row.project.name"
-                (click)="toggleProject($event, row.path)"
-              >
-                <svg viewBox="0 0 16 16" class="size-3" [class.rotate-90]="row.expanded" aria-hidden="true">
-                  <path d="M6 3l5 5-5 5z" fill="currentColor" />
-                </svg>
-              </button>
-              <svg viewBox="0 0 16 16" class="text-foreground-muted size-4 shrink-0" aria-hidden="true">
-                <path d="M8 1.5l5.5 3v7L8 14.5l-5.5-3v-7zM8 8l5.5-3.5M8 8v6.5M8 8L2.5 4.5" fill="none" stroke="currentColor" />
-              </svg>
-            }
+      <div
+        *cdkVirtualFor="let row of tree.rows(); trackBy: byPath"
+        class="flex cursor-default items-center gap-1 pe-2 select-none"
+        role="treeitem"
+        data-testid="tree-row"
+        [attr.data-path]="row.path"
+        [attr.data-kind]="row.kind"
+        [attr.aria-level]="row.depth + 1"
+        [attr.aria-expanded]="row.kind === 'folder' || row.kind === 'project' ? row.expanded : null"
+        [attr.aria-selected]="tree.selected().has(row.path)"
+        [attr.draggable]="(row.kind === 'folder' || row.kind === 'project') && renaming() !== row.path"
+        [class.bg-selection]="tree.selected().has(row.path) || (dropInto() === row.path && row.kind === 'folder')"
+        [style.height.px]="rowHeight"
+        [style.padding-inline-start.px]="row.depth * indent + 4"
+      >
+        @switch (row.kind) {
+          @case ('more') {
+            <span class="text-foreground-muted text-xs" data-testid="tree-more">{{ row.remaining }} more…</span>
           }
-          @if (row.kind !== 'more') {
-            @if (renaming() === row.path) {
-              <input
-                #renameInput
-                class="min-w-0 flex-1"
-                xuiInput
-                size="sm"
-                autocomplete="off"
-                aria-label="Name"
-                data-testid="tree-rename"
-                [value]="labelOf(row)"
-                (click)="$event.stopPropagation()"
-                (keydown)="renameKey($event)"
-                (blur)="finishRename($event, row)"
+          @case ('folder') {
+            <button
+              type="button"
+              class="text-foreground-muted grid size-4 shrink-0 place-items-center"
+              tabindex="-1"
+              data-testid="tree-toggle"
+              [attr.aria-label]="row.expanded ? 'Close ' + row.folder.name : 'Open ' + row.folder.name"
+              (click)="toggle($event, row.path)"
+            >
+              <svg viewBox="0 0 16 16" class="size-3" [class.rotate-90]="row.expanded" aria-hidden="true">
+                <path d="M6 3l5 5-5 5z" fill="currentColor" />
+              </svg>
+            </button>
+            <svg viewBox="0 0 16 16" class="size-4 shrink-0" aria-hidden="true" data-testid="tree-folder-icon">
+              <path
+                d="M1.5 3.5h5l1.5 2h6.5v7.5h-13z"
+                [attr.fill]="row.folder.color ?? 'currentColor'"
+                [attr.fill-opacity]="row.folder.color ? 1 : 0.45"
               />
-            } @else {
-              <span class="min-w-0 flex-1 truncate" [class.font-semibold]="isOpen(row)" [title]="row.path">
-                {{ labelOf(row) }}
+            </svg>
+          }
+          @case ('document') {
+            <span class="size-4 shrink-0"></span>
+            <span class="text-foreground-muted w-4 shrink-0 text-center text-xs" [title]="kindName(row.document.kind)">
+              {{ kindMark(row.document.kind) }}
+            </span>
+          }
+          @case ('project') {
+            <button
+              type="button"
+              class="text-foreground-muted grid size-4 shrink-0 place-items-center"
+              tabindex="-1"
+              data-testid="tree-toggle"
+              [attr.aria-label]="row.expanded ? 'Close ' + row.project.name : 'Open ' + row.project.name"
+              (click)="toggleProject($event, row.path)"
+            >
+              <svg viewBox="0 0 16 16" class="size-3" [class.rotate-90]="row.expanded" aria-hidden="true">
+                <path d="M6 3l5 5-5 5z" fill="currentColor" />
+              </svg>
+            </button>
+            <svg viewBox="0 0 16 16" class="text-foreground-muted size-4 shrink-0" aria-hidden="true">
+              <path
+                d="M8 1.5l5.5 3v7L8 14.5l-5.5-3v-7zM8 8l5.5-3.5M8 8v6.5M8 8L2.5 4.5"
+                fill="none"
+                stroke="currentColor"
+              />
+            </svg>
+          }
+        }
+        @if (row.kind !== 'more') {
+          @if (renaming() === row.path) {
+            <input
+              #renameInput
+              class="min-w-0 flex-1"
+              xuiInput
+              size="sm"
+              autocomplete="off"
+              aria-label="Name"
+              data-testid="tree-rename"
+              [value]="labelOf(row)"
+              (click)="$event.stopPropagation()"
+              (keydown)="renameKey($event)"
+              (blur)="finishRename($event, row)"
+            />
+          } @else {
+            <span class="min-w-0 flex-1 truncate" [class.font-semibold]="isOpen(row)" [title]="row.path">
+              {{ labelOf(row) }}
+            </span>
+            @if (row.kind === 'folder') {
+              <span class="readout text-foreground-muted shrink-0 text-xs" title="Projects in this folder">
+                {{ row.folder.projectCount }}
               </span>
-              @if (row.kind === 'folder') {
-                <span class="readout text-foreground-muted shrink-0 text-xs" title="Projects in this folder">
-                  {{ row.folder.projectCount }}
-                </span>
-              }
             }
           }
-        </div>
+        }
+      </div>
     </cdk-virtual-scroll-viewport>
 
     <ng-template #treeMenu>
@@ -235,7 +239,13 @@ interface Closing {
           <button type="button" xuiMenuItem data-testid="menu-rename-document" (triggered)="act(rename)">
             Rename <span menuItemLabel>F2</span>
           </button>
-          <button type="button" xuiMenuItem color="error" data-testid="menu-delete-document" (triggered)="act(askDelete)">
+          <button
+            type="button"
+            xuiMenuItem
+            color="error"
+            data-testid="menu-delete-document"
+            (triggered)="act(askDelete)"
+          >
             Delete…
           </button>
         }
@@ -256,7 +266,9 @@ interface Closing {
           }
           <xui-menu-divider />
         }
-        <button type="button" xuiMenuItem data-testid="menu-new-project" (triggered)="act(newProject)">New Project…</button>
+        <button type="button" xuiMenuItem data-testid="menu-new-project" (triggered)="act(newProject)">
+          New Project…
+        </button>
         <button type="button" xuiMenuItem data-testid="menu-new-folder" (triggered)="act(newFolder)">New Folder</button>
         @if (row?.kind === 'folder' || row?.kind === 'project') {
           <xui-menu-divider />
@@ -264,13 +276,21 @@ interface Closing {
             Rename <span menuItemLabel>F2</span>
           </button>
           @if (canReveal()) {
-            <button type="button" xuiMenuItem data-testid="menu-reveal" (triggered)="act(reveal)">Show in File Browser</button>
+            <button type="button" xuiMenuItem data-testid="menu-reveal" (triggered)="act(reveal)">
+              Show in File Browser
+            </button>
           }
         }
         @if (row?.kind === 'project') {
           <button type="button" xuiMenuItem data-testid="menu-duplicate" (triggered)="act(duplicate)">Duplicate</button>
           <xui-menu-divider />
-          <button type="button" xuiMenuItem color="error" data-testid="menu-delete-project" (triggered)="act(askDelete)">
+          <button
+            type="button"
+            xuiMenuItem
+            color="error"
+            data-testid="menu-delete-project"
+            (triggered)="act(askDelete)"
+          >
             Delete Project…
           </button>
         }
@@ -288,7 +308,13 @@ interface Closing {
       <xui-menu aria-label="Folder colour">
         @let row = menuRow();
         @let held = row?.kind === 'folder' ? (row.folder.color ?? null) : null;
-        <button type="button" xuiMenuItem data-testid="menu-colour-none" [selected]="held === null" (triggered)="colour(null)">
+        <button
+          type="button"
+          xuiMenuItem
+          data-testid="menu-colour-none"
+          [selected]="held === null"
+          (triggered)="colour(null)"
+        >
           No Colour
         </button>
         @for (choice of colours; track choice.hex) {
@@ -308,7 +334,12 @@ interface Closing {
       </xui-menu>
     </ng-template>
 
-    <xui-dialog size="sm" title="Delete folder" [open]="deleting() !== null" (openChange)="$event || deleting.set(null)">
+    <xui-dialog
+      size="sm"
+      title="Delete folder"
+      [open]="deleting() !== null"
+      (openChange)="$event || deleting.set(null)"
+    >
       <xui-dialog-body data-testid="tree-delete">
         @if (deleting()?.folder; as folder) {
           @if (folder.projectCount > 0) {
@@ -327,7 +358,12 @@ interface Closing {
       </xui-dialog-footer>
     </xui-dialog>
 
-    <xui-dialog size="sm" title="Close open documents?" [open]="closing() !== null" (openChange)="$event || closing.set(null)">
+    <xui-dialog
+      size="sm"
+      title="Close open documents?"
+      [open]="closing() !== null"
+      (openChange)="$event || closing.set(null)"
+    >
       <xui-dialog-body data-testid="tree-closing">
         @if (closing(); as ask) {
           <p>
@@ -380,8 +416,10 @@ export class LibraryTree {
     () =>
       this.tree
         .rows()
-        .find((row): row is Extract<TreeRow, { kind: 'folder' }> => row.kind === 'folder' && this.tree.selected().has(row.path)) ??
-      null
+        .find(
+          (row): row is Extract<TreeRow, { kind: 'folder' }> =>
+            row.kind === 'folder' && this.tree.selected().has(row.path)
+        ) ?? null
   );
 
   constructor() {
@@ -645,7 +683,6 @@ export class LibraryTree {
       }
     }
   }
-
 
   /** Makes a folder and goes straight to naming it, as a file browser does. */
   async makeFolder(parent: string): Promise<void> {

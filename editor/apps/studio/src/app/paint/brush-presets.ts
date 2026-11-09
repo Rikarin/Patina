@@ -64,10 +64,22 @@ const Origins: Readonly<Record<string, string>> = { shipped: 'Starter', project:
           (keydown.escape)="naming.set(false)"
         />
         <label class="flex items-center gap-1 text-xs" title="The preset paints in this colour when taken up">
-          <input type="checkbox" data-testid="brush-preset-colour" [checked]="withColour()" (change)="withColour.set(checked($event))" />
+          <input
+            type="checkbox"
+            data-testid="brush-preset-colour"
+            [checked]="withColour()"
+            (change)="withColour.set(checked($event))"
+          />
           Colour
         </label>
-        <button type="button" xuiButton size="sm" data-testid="brush-preset-confirm" [disabled]="!name().trim()" (click)="save()">
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          data-testid="brush-preset-confirm"
+          [disabled]="!name().trim()"
+          (click)="save()"
+        >
           Save
         </button>
       </div>

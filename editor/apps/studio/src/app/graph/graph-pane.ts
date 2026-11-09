@@ -12,9 +12,6 @@ import {
   untracked,
   viewChild
 } from '@angular/core';
-import type { GraphDiagnostic, GraphEdgeState, GraphNodeState, GraphNodeType } from '@patina/api-client';
-import { XuiContextMenuImports } from '@xui/context-menu';
-import { XuiMenuImports } from '@xui/menu';
 import { provideIcons } from '@ng-icons/core';
 import {
   matAccountTree,
@@ -30,9 +27,12 @@ import {
   matUndo,
   matWidgets
 } from '@ng-icons/material-icons/baseline';
+import type { GraphDiagnostic, GraphEdgeState, GraphNodeState, GraphNodeType } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
+import { XuiContextMenuImports } from '@xui/context-menu';
 import { XuiDialogImports } from '@xui/dialog';
+import { XuiMenuImports } from '@xui/menu';
 import {
   type XuiGraphConnection,
   type XuiGraphConnectionDrop,
@@ -51,15 +51,15 @@ import { XuiTagImports } from '@xui/tag';
 import { Commands } from '../core/commands';
 import { FileConflictDialog } from '../core/file-conflict-dialog';
 import { IconImports } from '../core/icons';
-import { NodeDragType } from './node-library';
-import { SystemStatus } from '../core/system-status';
-import { isWireable, wireFamily } from './graph-fields';
 import { diagnosticOf } from '../core/messages';
-import { diagnosticsOf, edgeKey, evaluationSummary } from './graph-model';
-import { type Alignment, type NodeBox, aligned, distributed } from './graph-authoring';
+import { SystemStatus } from '../core/system-status';
 import { frameShown } from './frame-colours';
+import { type Alignment, type NodeBox, aligned, distributed } from './graph-authoring';
+import { isWireable, wireFamily } from './graph-fields';
+import { diagnosticsOf, edgeKey, evaluationSummary } from './graph-model';
 import { GraphStore, type NodeLink, type NodeWire, RerouteIn, RerouteOut, RerouteType } from './graph-store';
 import { NewGraphDialog } from './new-graph-dialog';
+import { NodeDragType } from './node-library';
 import { SaveCompoundDialog } from './save-compound-dialog';
 
 const NodeWidth = 176;
@@ -140,13 +140,15 @@ function accentOf(category: string): string {
 }
 
 function portsOf(type: GraphNodeType | undefined, numbers: ReadonlySet<string>): readonly PortView[] {
-  return (type?.ports ?? []).filter(port => isWireable(port) || numbers.has(port.name)).map(port => ({
-    name: port.name,
-    direction: port.direction === 'Output' ? 'output' : 'input',
-    summary: port.summary,
-    dataType: wireFamily(port.kind),
-    maxConnections: port.direction === 'Output' ? Number.POSITIVE_INFINITY : 2
-  }));
+  return (type?.ports ?? [])
+    .filter(port => isWireable(port) || numbers.has(port.name))
+    .map(port => ({
+      name: port.name,
+      direction: port.direction === 'Output' ? 'output' : 'input',
+      summary: port.summary,
+      dataType: wireFamily(port.kind),
+      maxConnections: port.direction === 'Output' ? Number.POSITIVE_INFINITY : 2
+    }));
 }
 
 /**
@@ -350,7 +352,16 @@ export class GraphThumbnail {
       >
         <ng-icon xui size="sm" name="matAdd" />
       </button>
-      <button type="button" xuiButton size="sm" variant="ghost" aria-label="New graph" title="New graph" data-testid="graph-new" (click)="creating.set(true)">
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        aria-label="New graph"
+        title="New graph"
+        data-testid="graph-new"
+        (click)="creating.set(true)"
+      >
         <ng-icon xui size="sm" name="matNoteAdd" />
       </button>
       <button
@@ -499,7 +510,11 @@ export class GraphThumbnail {
           @if (view.bypassed || problem) {
             <xui-graph-node-actions>
               @if (view.bypassed) {
-                <xui-tag minimal size="sm" data-testid="graph-node-bypassed" title="Bypassed: what feeds it passes through"
+                <xui-tag
+                  minimal
+                  size="sm"
+                  data-testid="graph-node-bypassed"
+                  title="Bypassed: what feeds it passes through"
                   >Off</xui-tag
                 >
               }
@@ -621,8 +636,15 @@ export class GraphThumbnail {
 
     <ng-template #nodeMenu>
       <xui-menu aria-label="Node" data-testid="graph-node-menu">
-        <button type="button" xuiMenuItem data-testid="node-bypass" [disabled]="!store.editable()" (triggered)="store.toggleBypass()">
-          {{ menuBypassed() ? 'Stop Bypassing' : 'Bypass' }} <span menuItemLabel>{{ commands.keyText('bypassNodes') }}</span>
+        <button
+          type="button"
+          xuiMenuItem
+          data-testid="node-bypass"
+          [disabled]="!store.editable()"
+          (triggered)="store.toggleBypass()"
+        >
+          {{ menuBypassed() ? 'Stop Bypassing' : 'Bypass' }}
+          <span menuItemLabel>{{ commands.keyText('bypassNodes') }}</span>
         </button>
         <button
           type="button"
@@ -633,7 +655,12 @@ export class GraphThumbnail {
         >
           Delete and Relink <span menuItemLabel>{{ commands.keyText('deleteRelink') }}</span>
         </button>
-        <button type="button" xuiMenuItem [disabled]="!store.editable()" (triggered)="store.remove(selectedNodes(), [])">
+        <button
+          type="button"
+          xuiMenuItem
+          [disabled]="!store.editable()"
+          (triggered)="store.remove(selectedNodes(), [])"
+        >
           Delete <span menuItemLabel>{{ commands.keyText('delete') }}</span>
         </button>
         <xui-menu-divider />
@@ -1132,20 +1159,50 @@ export class GraphCanvas {
     const editable = () => this.store.editable() && this.store.document() !== null;
     const selected = () => here() && this.store.selection().size > 0;
     handle('copy', selected, () => this.store.copySelection());
-    handle('cut', () => selected() && editable(), () => {
-      this.store.copySelection();
-      this.store.remove([...this.store.selection()], []);
-    });
-    handle('paste', () => here() && editable(), () => this.store.paste());
-    handle('duplicate', () => selected() && editable(), () => this.store.duplicate());
-    handle('delete', () => here() && editable() && this.graph().store.selectedNodes().size + this.graph().store.selectedEdges().size > 0, () =>
-      this.remove({ nodes: [...this.graph().store.selectedNodes()], edges: [...this.graph().store.selectedEdges()] })
+    handle(
+      'cut',
+      () => selected() && editable(),
+      () => {
+        this.store.copySelection();
+        this.store.remove([...this.store.selection()], []);
+      }
     );
-    handle('selectAll', () => here() && this.store.document() !== null, () => this.graph().store.selectAll());
-    handle('groupNodes', () => editable() && this.store.selection().size > 0, () => this.store.groupSelection());
-    handle('bypassNodes', () => editable() && this.store.selection().size > 0, () => this.store.toggleBypass());
-    handle('deleteRelink', () => here() && editable() && this.store.selection().size > 0, () =>
-      this.store.removeRelinking(this.selectedNodes())
+    handle(
+      'paste',
+      () => here() && editable(),
+      () => this.store.paste()
+    );
+    handle(
+      'duplicate',
+      () => selected() && editable(),
+      () => this.store.duplicate()
+    );
+    handle(
+      'delete',
+      () =>
+        here() && editable() && this.graph().store.selectedNodes().size + this.graph().store.selectedEdges().size > 0,
+      () =>
+        this.remove({ nodes: [...this.graph().store.selectedNodes()], edges: [...this.graph().store.selectedEdges()] })
+    );
+    handle(
+      'selectAll',
+      () => here() && this.store.document() !== null,
+      () => this.graph().store.selectAll()
+    );
+    handle(
+      'groupNodes',
+      () => editable() && this.store.selection().size > 0,
+      () => this.store.groupSelection()
+    );
+    handle(
+      'bypassNodes',
+      () => editable() && this.store.selection().size > 0,
+      () => this.store.toggleBypass()
+    );
+    handle(
+      'deleteRelink',
+      () => here() && editable() && this.store.selection().size > 0,
+      () => this.store.removeRelinking(this.selectedNodes())
     );
     this.commands.handle(
       'arrangeGraph',
@@ -1157,16 +1214,30 @@ export class GraphCanvas {
       this.destroyed
     );
     for (const { alignment, command, label } of this.alignments) {
-      handle(command, () => editable() && this.store.selection().size > 1, () => this.align(alignment, label));
+      handle(
+        command,
+        () => editable() && this.store.selection().size > 1,
+        () => this.align(alignment, label)
+      );
     }
-    handle('distributeHorizontally', () => editable() && this.store.selection().size > 2, () =>
-      this.distribute('horizontal')
+    handle(
+      'distributeHorizontally',
+      () => editable() && this.store.selection().size > 2,
+      () => this.distribute('horizontal')
     );
-    handle('distributeVertically', () => editable() && this.store.selection().size > 2, () => this.distribute('vertical'));
-    handle('addNode', () => editable() && !this.paletteOpen(), via => {
-      const at = via === 'key' ? this.pointer : null;
-      this.openPalette(at === null ? null : this.graph().store.toGraphPoint(at.x, at.y));
-    });
+    handle(
+      'distributeVertically',
+      () => editable() && this.store.selection().size > 2,
+      () => this.distribute('vertical')
+    );
+    handle(
+      'addNode',
+      () => editable() && !this.paletteOpen(),
+      via => {
+        const at = via === 'key' ? this.pointer : null;
+        this.openPalette(at === null ? null : this.graph().store.toGraphPoint(at.x, at.y));
+      }
+    );
   }
 
   private showPalette(at: XuiGraphPoint | null, link: NodeLink | null, wire: NodeWire): void {

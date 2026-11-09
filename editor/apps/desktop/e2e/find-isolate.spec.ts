@@ -89,7 +89,9 @@ test('a texture set shows alone in the viewport, and the whole model comes back'
   await expect(window.getByTestId('texture-sets')).toBeVisible({ timeout: 60_000 });
   const viewport = window.getByRole('application', { name: 'Viewport' });
   await expect(viewport).toBeVisible();
-  await expect.poll(async () => Number(await viewport.getAttribute('data-frames')), { timeout: 30_000 }).toBeGreaterThan(0);
+  await expect
+    .poll(async () => Number(await viewport.getAttribute('data-frames')), { timeout: 30_000 })
+    .toBeGreaterThan(0);
 
   /** How many pixels of the composited canvas are a quad's pale grey, which the sky never is. */
   const quads = async (): Promise<number> => {

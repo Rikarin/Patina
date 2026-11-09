@@ -4,7 +4,12 @@ import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { LibraryThumbnails, ThumbnailBatch } from './thumbnails';
 
 /** A stand-in for the Server's hash: two sources that look alike, as a project and its document do, share one. */
-const hash = (source: string) => source.replace(/\/$/, '').replace(/[^0-9a-f]/g, '0').padEnd(64, 'a').slice(0, 64);
+const hash = (source: string) =>
+  source
+    .replace(/\/$/, '')
+    .replace(/[^0-9a-f]/g, '0')
+    .padEnd(64, 'a')
+    .slice(0, 64);
 
 /** A Server that draws every source but `blank`, and counts what it is asked. */
 function setup() {
@@ -16,7 +21,9 @@ function setup() {
     if (path.endsWith('/library/thumbnails')) {
       const { sources } = (await request.json()) as { sources: string[] };
       batches.push(sources);
-      return Response.json({ items: sources.map(source => ({ source, hash: source === 'blank' ? null : hash(source) })) });
+      return Response.json({
+        items: sources.map(source => ({ source, hash: source === 'blank' ? null : hash(source) }))
+      });
     }
 
     if (path.includes('/previews/')) {
@@ -35,7 +42,10 @@ function setup() {
       }
     ]
   });
-  vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: () => `blob:${String(previews.length)}`, revokeObjectURL: () => undefined }));
+  vi.stubGlobal(
+    'URL',
+    Object.assign(URL, { createObjectURL: () => `blob:${String(previews.length)}`, revokeObjectURL: () => undefined })
+  );
   return { thumbnails: TestBed.inject(LibraryThumbnails), batches, previews };
 }
 

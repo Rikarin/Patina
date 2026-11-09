@@ -45,7 +45,8 @@ const Choices: { [K in keyof PreferenceValues]: readonly PreferenceValues[K][] }
 
 /** Preferences as read from a file a person may have edited: anything unknown or out of range is the default. */
 export function readPreferences(value: unknown): PreferenceValues {
-  const held = typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  const held =
+    typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
   const read = { ...DefaultPreferences };
   for (const key of Object.keys(Choices) as (keyof PreferenceValues)[]) {
     const given = held[key];

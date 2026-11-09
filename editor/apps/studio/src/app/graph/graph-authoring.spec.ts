@@ -1,6 +1,15 @@
 import type { GraphSettingDefinition } from '@patina/api-client';
 import { describe, expect, it } from 'vitest';
-import { aligned, controlOf, distributed, freePresetName, grouped, holds, titleOf, widgetsFor } from './graph-authoring';
+import {
+  aligned,
+  controlOf,
+  distributed,
+  freePresetName,
+  grouped,
+  holds,
+  titleOf,
+  widgetsFor
+} from './graph-authoring';
 
 const box = (id: number, x: number, y: number, width = 100, height = 50) => ({ id, x, y, width, height });
 

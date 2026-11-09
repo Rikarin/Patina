@@ -21,9 +21,9 @@ import { ViewOptions } from '../core/view-options';
 import { GraphStore } from '../graph/graph-store';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore, pressureOf } from '../paint/paint-store';
-import { symmetryGuide } from '../paint/symmetry-guide';
 import { ScreenPictureOverlay } from '../paint/screen-picture';
 import { StrokeGesture } from '../paint/stroke-gesture';
+import { symmetryGuide } from '../paint/symmetry-guide';
 import { ToolStrip } from '../paint/tool-strip';
 import { FramePainter } from './frame-painter';
 import type { ViewportFrame } from './frame-transport';
@@ -132,7 +132,10 @@ const PickLook = '…';
       <select
         class="well h-6 max-w-28 px-1 text-xs"
         aria-label="View"
-        [title]="'What the model shows: lit, its shape, or one stored channel as the file holds it' + (commands.keyText('nextView') ? ' (' + commands.keyText('nextView') + ' steps through them)' : '')"
+        [title]="
+          'What the model shows: lit, its shape, or one stored channel as the file holds it' +
+          (commands.keyText('nextView') ? ' (' + commands.keyText('nextView') + ' steps through them)' : '')
+        "
         data-testid="viewport-view"
         (change)="chooseView($event)"
       >
@@ -249,11 +252,25 @@ const PickLook = '…';
           ></div>
         }
         @if (guide(); as points) {
-          <svg class="pointer-events-none absolute inset-0 size-full" data-testid="viewport-symmetry" aria-hidden="true">
+          <svg
+            class="pointer-events-none absolute inset-0 size-full"
+            data-testid="viewport-symmetry"
+            aria-hidden="true"
+          >
             @if (paint.symmetry()?.kind === 'radial') {
-              <polyline class="fill-none stroke-sky-300/80" stroke-dasharray="6 4" stroke-width="1.5" [attr.points]="points" />
+              <polyline
+                class="fill-none stroke-sky-300/80"
+                stroke-dasharray="6 4"
+                stroke-width="1.5"
+                [attr.points]="points"
+              />
             } @else {
-              <polygon class="fill-sky-300/10 stroke-sky-300/80" stroke-dasharray="6 4" stroke-width="1.5" [attr.points]="points" />
+              <polygon
+                class="fill-sky-300/10 stroke-sky-300/80"
+                stroke-dasharray="6 4"
+                stroke-width="1.5"
+                [attr.points]="points"
+              />
             }
           </svg>
         }
@@ -371,7 +388,12 @@ export class ViewportPane implements AfterViewInit {
   /** The viewport's keys, for a screen reader, as ARIA writes them. */
   protected readonly keyShortcuts = computed(() =>
     ViewportCommands.flatMap(id => this.commands.keys().get(id) ?? [])
-      .map(chord => chord.replace('Mod+', 'Meta+').replace(/\b(Up|Down|Left|Right)$/u, 'Arrow$1').replace('Plus', '+'))
+      .map(chord =>
+        chord
+          .replace('Mod+', 'Meta+')
+          .replace(/\b(Up|Down|Left|Right)$/u, 'Arrow$1')
+          .replace('Plus', '+')
+      )
       .join(' ')
   );
 
@@ -590,8 +612,16 @@ export class ViewportPane implements AfterViewInit {
 
     handle('zoomIn', move('+', false));
     handle('zoomOut', move('-', false));
-    handle('cancelStroke', () => this.gesture.cancel(), () => this.gesture.points().length > 0 || this.paint.picking() !== null);
-    handle('finishPath', () => this.gesture.finish(), () => this.paint.tool() === 'path' && this.gesture.points().length > 1);
+    handle(
+      'cancelStroke',
+      () => this.gesture.cancel(),
+      () => this.gesture.points().length > 0 || this.paint.picking() !== null
+    );
+    handle(
+      'finishPath',
+      () => this.gesture.finish(),
+      () => this.paint.tool() === 'path' && this.gesture.points().length > 1
+    );
   }
 
   protected press(event: PointerEvent): void {

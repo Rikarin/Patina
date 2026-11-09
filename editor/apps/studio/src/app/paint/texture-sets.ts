@@ -32,7 +32,9 @@ const HeightNormals: readonly XuiSegmentedOption[] = [
           >
             <span class="min-w-0 flex-1 truncate">{{ set.name }}</span>
             @if (set.path === front() && size(); as side) {
-              <span class="readout text-foreground-muted shrink-0 text-xs" data-testid="texture-set-size">{{ side }}</span>
+              <span class="readout text-foreground-muted shrink-0 text-xs" data-testid="texture-set-size">{{
+                side
+              }}</span>
             }
           </button>
           @if (set.material) {
@@ -59,11 +61,21 @@ const HeightNormals: readonly XuiSegmentedOption[] = [
       }
     </div>
     @if (parts().length > 1) {
-      <div class="flex flex-col px-2 py-1" role="group" aria-label="Mesh parts to show alone" data-testid="texture-set-parts">
+      <div
+        class="flex flex-col px-2 py-1"
+        role="group"
+        aria-label="Mesh parts to show alone"
+        data-testid="texture-set-parts"
+      >
         <div class="flex items-center gap-2">
           <span class="text-foreground-muted min-w-0 flex-1 truncate text-xs">Isolate parts</span>
           @if (isolated()) {
-            <button type="button" class="text-xs underline" data-testid="texture-set-show-all" (click)="isolation.showAll()">
+            <button
+              type="button"
+              class="text-xs underline"
+              data-testid="texture-set-show-all"
+              (click)="isolation.showAll()"
+            >
               Show all
             </button>
           }
@@ -118,7 +130,13 @@ export class TextureSets {
   constructor() {
     effect(() => {
       if (this.store.state()?.id) {
-        untracked(() => void this.store.meshParts().then(parts => this.parts.set(parts), () => this.parts.set([])));
+        untracked(
+          () =>
+            void this.store.meshParts().then(
+              parts => this.parts.set(parts),
+              () => this.parts.set([])
+            )
+        );
       } else {
         this.parts.set([]);
       }

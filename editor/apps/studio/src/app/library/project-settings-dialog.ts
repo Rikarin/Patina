@@ -1,12 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import type { UnwrapOptions } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiDialogImports } from '@xui/dialog';
 import { XuiInputImports } from '@xui/input';
-import { XuiSwitchImports } from '@xui/switch';
 import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
-import type { UnwrapOptions } from '@patina/api-client';
+import { XuiSwitchImports } from '@xui/switch';
 import { desktop } from '../core/desktop';
 import { SystemStatus } from '../core/system-status';
 import { ProjectStore } from './project-store';
@@ -80,7 +80,9 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
           <label class="flex items-center justify-between gap-2">
             <span class="flex flex-col">
               <span class="text-sm">Auto Unwrap</span>
-              <span class="text-foreground-muted text-xs">Gives a mesh with no UVs a layout. The original file stays.</span>
+              <span class="text-foreground-muted text-xs"
+                >Gives a mesh with no UVs a layout. The original file stays.</span
+              >
             </span>
             <xui-switch ariaLabel="Auto Unwrap" data-testid="project-settings-unwrap" [(checked)]="autoUnwrap" />
           </label>
@@ -193,7 +195,11 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
                 Moves paint to a new mesh's UVs by where it sits on the surface.
               </span>
             </span>
-            <xui-switch ariaLabel="Preserve Paint" data-testid="project-settings-preserve" [(checked)]="preservePaint" />
+            <xui-switch
+              ariaLabel="Preserve Paint"
+              data-testid="project-settings-preserve"
+              [(checked)]="preservePaint"
+            />
           </label>
           <div class="flex flex-col gap-1" data-testid="project-files">
             <span class="section-label">Files</span>
@@ -204,16 +210,20 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
                   <span class="readout shrink-0">{{ file.kind }}</span>
                 </div>
               } @empty {
-                <span class="text-foreground-muted text-sm">Nothing yet. Use File > Import, or drop files on the window.</span>
+                <span class="text-foreground-muted text-sm"
+                  >Nothing yet. Use File > Import, or drop files on the window.</span
+                >
               }
             </div>
           </div>
           @if (closes(); as documents) {
             <xui-callout color="warning" data-testid="project-settings-closes">
-              Applying closes {{ documents.length === 1 ? documents[0]?.name : documents.length + ' open documents' }} to
-              move {{ documents.length === 1 ? 'it' : 'them' }} onto the new layout, and
-              {{ documents.length === 1 ? 'its' : 'their' }} undo history is lost. Saved
-              work is kept{{ unsaved() ? ', and unsaved edits have to be saved first' : '' }}.
+              Applying closes
+              {{ documents.length === 1 ? documents[0]?.name : documents.length + ' open documents' }} to move
+              {{ documents.length === 1 ? 'it' : 'them' }} onto the new layout, and
+              {{ documents.length === 1 ? 'its' : 'their' }} undo history is lost. Saved work is kept{{
+                unsaved() ? ', and unsaved edits have to be saved first' : ''
+              }}.
             </xui-callout>
           }
           @if (project.settingsFailure(); as failure) {

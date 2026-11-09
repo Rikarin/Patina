@@ -4,9 +4,9 @@ import {
   type Connection,
   type GraphCommand,
   type GraphCompound,
+  type GraphEdgeState,
   type GraphEditResult,
   type GraphEvent,
-  type GraphEdgeState,
   type GraphInterfacePort,
   type GraphNodeType,
   type GraphPresetState,
@@ -17,6 +17,7 @@ import {
   unwrap
 } from '@patina/api-client';
 import { desktop } from '../core/desktop';
+import { messageOf } from '../core/messages';
 import { RecoveryOffers } from '../core/recovery-offers';
 import { EngineRestarts, RestartedNotice, SessionReturn } from '../core/session-return';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
@@ -25,7 +26,6 @@ import { DraftLayer } from './draft-layer';
 import { EditQueue } from './edit-queue';
 import { type GraphDocument, applyEvent, classify, documentOf, edgeKey } from './graph-model';
 import { PreviewLoader } from './preview-loader';
-import { messageOf } from '../core/messages';
 
 export type GraphSessionState =
   | { kind: 'none' }
@@ -156,26 +156,29 @@ export class GraphStore {
   private epoch = 0;
   /** Brings the session back after a drop, by the epoch it dropped in (#226). */
   private readonly recovery = inject(RecoveryOffers);
-  private readonly comeback = new SessionReturn<number>({
-    probe: async epoch => {
-      const document = this.mutableDocument();
-      if (document && epoch === this.epoch && !this.stopped) {
-        const client = await this.reconnect();
-        unwrap(await client.GET('/api/v1/graphs/{id}', { params: { path: { id: document.id } } }));
+  private readonly comeback = new SessionReturn<number>(
+    {
+      probe: async epoch => {
+        const document = this.mutableDocument();
+        if (document && epoch === this.epoch && !this.stopped) {
+          const client = await this.reconnect();
+          unwrap(await client.GET('/api/v1/graphs/{id}', { params: { path: { id: document.id } } }));
+        }
+      },
+      follow: epoch => {
+        this.follow(epoch);
+      },
+      reopen: epoch => this.reopenLost(epoch),
+      lost: (epoch, error) => {
+        const document = this.mutableDocument();
+        if (document && epoch === this.epoch) {
+          this.endSession();
+          this.mutableSession.set({ kind: 'failed', path: document.path, reason: error.message });
+        }
       }
     },
-    follow: epoch => {
-      this.follow(epoch);
-    },
-    reopen: epoch => this.reopenLost(epoch),
-    lost: (epoch, error) => {
-      const document = this.mutableDocument();
-      if (document && epoch === this.epoch) {
-        this.endSession();
-        this.mutableSession.set({ kind: 'failed', path: document.path, reason: error.message });
-      }
-    }
-  }, inject(EngineRestarts));
+    inject(EngineRestarts)
+  );
   private reloading = false;
   private held: GraphEvent[] = [];
   /** The live edit in progress, whose batches after the first fold into one undo step. */

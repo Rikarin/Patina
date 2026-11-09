@@ -54,9 +54,7 @@ function itemOf(entry: MenuEntry, source: MenuSource): MenuModelItem {
 }
 
 function tidy(items: MenuModelItem[]): MenuModelItem[] {
-  const kept = items.filter(
-    (item, at) => item.type !== 'separator' || (at > 0 && items[at - 1]?.type !== 'separator')
-  );
+  const kept = items.filter((item, at) => item.type !== 'separator' || (at > 0 && items[at - 1]?.type !== 'separator'));
   while (kept.at(-1)?.type === 'separator') {
     kept.pop();
   }

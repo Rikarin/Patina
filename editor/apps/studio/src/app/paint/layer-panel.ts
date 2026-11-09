@@ -119,7 +119,10 @@ export function hexOf(colour: readonly number[] | undefined): string {
         @if (usesOf(layer); as uses) {
           <ul class="text-foreground-muted flex flex-col gap-0.5 ps-[4.5rem] text-xs" data-testid="paint-anchor-uses">
             @for (use of uses; track $index) {
-              <li>Read by {{ layerName(use.layer) }} · {{ use.where }}{{ use.channel ? ' · ' + channelName(use.channel) : '' }}</li>
+              <li>
+                Read by {{ layerName(use.layer) }} · {{ use.where
+                }}{{ use.channel ? ' · ' + channelName(use.channel) : '' }}
+              </li>
             } @empty {
               <li>Nothing reads it yet.</li>
             }
@@ -131,7 +134,14 @@ export function hexOf(colour: readonly number[] | undefined): string {
             <span class="min-w-0 flex-1 truncate text-xs" data-testid="paint-instance-source">
               Stands for {{ sourceName(source) }}{{ source.set ? ' in ' + source.set : '' }}
             </span>
-            <button type="button" xuiButton size="sm" variant="ghost" data-testid="paint-instance-go" (click)="goToSource(source)">
+            <button
+              type="button"
+              xuiButton
+              size="sm"
+              variant="ghost"
+              data-testid="paint-instance-go"
+              (click)="goToSource(source)"
+            >
               Go to Source
             </button>
           </div>
@@ -144,326 +154,326 @@ export function hexOf(colour: readonly number[] | undefined): string {
             @for (instance of instances; track instance.id) {
               <li class="flex items-center gap-2">
                 <span class="min-w-0 flex-1 truncate text-xs">{{ instance.name }}</span>
-                <button type="button" xuiButton size="sm" variant="ghost" (click)="store.layer.set(instance.id)">Go</button>
+                <button type="button" xuiButton size="sm" variant="ghost" (click)="store.layer.set(instance.id)">
+                  Go
+                </button>
               </li>
             }
           </ul>
         }
         @if (!layer.instance) {
-        <p class="section-label mt-1">Material Channels</p>
-        <div class="flex flex-wrap items-center gap-1">
-          @for (channel of store.state()?.channels ?? []; track channel.usage) {
-            <button
-              type="button"
-              xuiButton
-              size="sm"
-              [attr.data-testid]="'paint-writes-' + channel.usage"
-              [variant]="writes(layer, channel.usage) ? 'default' : 'ghost'"
-              (click)="toggleChannel(layer, channel.usage)"
-            >
-              {{ channelName(channel.usage) }}
-            </button>
+          <p class="section-label mt-1">Material Channels</p>
+          <div class="flex flex-wrap items-center gap-1">
+            @for (channel of store.state()?.channels ?? []; track channel.usage) {
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                [attr.data-testid]="'paint-writes-' + channel.usage"
+                [variant]="writes(layer, channel.usage) ? 'default' : 'ghost'"
+                (click)="toggleChannel(layer, channel.usage)"
+              >
+                {{ channelName(channel.usage) }}
+              </button>
+            }
+          </div>
+          @if (layer.kind === 'paint' && !store.masking() && !writes(layer, store.channel())) {
+            <p class="text-foreground-muted text-xs" data-testid="paint-not-written">
+              This layer leaves {{ channelName(store.channel()) }} alone, so turn it on here to paint it.
+            </p>
           }
-        </div>
-        @if (layer.kind === 'paint' && !store.masking() && !writes(layer, store.channel())) {
-          <p class="text-foreground-muted text-xs" data-testid="paint-not-written">
-            This layer leaves {{ channelName(store.channel()) }} alone, so turn it on here to paint it.
-          </p>
-        }
-
         }
         @if (!layer.instance) {
-        <p class="section-label mt-1">Content</p>
-        @switch (layer.kind) {
-          @case ('fill') {
-            <div class="flex items-center gap-2">
-              <span class="text-foreground-muted w-16 shrink-0 text-xs">Reads</span>
-              <xui-select
-                class="min-w-0 flex-1"
-                aria-label="Fill source"
-                data-testid="paint-fill-source"
-                [itemText]="termName"
-                [items]="fills()"
-                [value]="layer.fill"
-                (valueChange)="store.edit({ op: 'setLayer', layer: layer.id, fill: $event })"
-              />
-            </div>
-            @if (layer.fill !== 'Constant' && layer.fill !== 'Anchor') {
+          <p class="section-label mt-1">Content</p>
+          @switch (layer.kind) {
+            @case ('fill') {
               <div class="flex items-center gap-2">
-                <span class="text-foreground-muted w-16 shrink-0 text-xs">Projection</span>
-                <select
-                  class="well h-7 min-w-0 flex-1 px-1 text-sm"
-                  aria-label="Projection"
-                  data-testid="paint-fill-projection"
-                  (change)="store.edit({ op: 'setLayer', layer: layer.id, projection: text($event) })"
-                >
-                  @for (option of projections(); track option.value) {
-                    <option [value]="option.value" [selected]="option.value === layer.projection">
-                      {{ option.label }}
-                    </option>
-                  }
-                </select>
+                <span class="text-foreground-muted w-16 shrink-0 text-xs">Reads</span>
+                <xui-select
+                  class="min-w-0 flex-1"
+                  aria-label="Fill source"
+                  data-testid="paint-fill-source"
+                  [itemText]="termName"
+                  [items]="fills()"
+                  [value]="layer.fill"
+                  (valueChange)="store.edit({ op: 'setLayer', layer: layer.id, fill: $event })"
+                />
               </div>
-              @if (layer.projection === 'Planar' || layer.projection === 'Cylindrical') {
+              @if (layer.fill !== 'Constant' && layer.fill !== 'Anchor') {
                 <div class="flex items-center gap-2">
-                  <span class="text-foreground-muted w-16 shrink-0 text-xs">Axis</span>
+                  <span class="text-foreground-muted w-16 shrink-0 text-xs">Projection</span>
                   <select
                     class="well h-7 min-w-0 flex-1 px-1 text-sm"
-                    aria-label="Projection axis"
-                    data-testid="paint-fill-axis"
-                    (change)="store.edit({ op: 'setLayer', layer: layer.id, planarAxis: text($event) })"
+                    aria-label="Projection"
+                    data-testid="paint-fill-projection"
+                    (change)="store.edit({ op: 'setLayer', layer: layer.id, projection: text($event) })"
                   >
-                    @for (axis of axes; track axis) {
-                      <option [value]="axis" [selected]="axis === layer.planarAxis">{{ axis }}</option>
+                    @for (option of projections(); track option.value) {
+                      <option [value]="option.value" [selected]="option.value === layer.projection">
+                        {{ option.label }}
+                      </option>
+                    }
+                  </select>
+                </div>
+                @if (layer.projection === 'Planar' || layer.projection === 'Cylindrical') {
+                  <div class="flex items-center gap-2">
+                    <span class="text-foreground-muted w-16 shrink-0 text-xs">Axis</span>
+                    <select
+                      class="well h-7 min-w-0 flex-1 px-1 text-sm"
+                      aria-label="Projection axis"
+                      data-testid="paint-fill-axis"
+                      (change)="store.edit({ op: 'setLayer', layer: layer.id, planarAxis: text($event) })"
+                    >
+                      @for (axis of axes; track axis) {
+                        <option [value]="axis" [selected]="axis === layer.planarAxis">{{ axis }}</option>
+                      }
+                    </select>
+                  </div>
+                }
+                <p class="section-label mt-1">UV Transformations</p>
+                <div class="flex items-center gap-2">
+                  <span class="text-foreground-muted w-16 shrink-0 text-xs">Scale</span>
+                  <xui-numeric-input
+                    class="min-w-0 flex-1"
+                    size="sm"
+                    ariaLabel="Projection scale"
+                    data-testid="paint-fill-scale"
+                    [stepSize]="0.1"
+                    [value]="layer.placement?.scale ?? 1"
+                    (valueChange)="place(layer, { scale: $event ?? 1 })"
+                  />
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-foreground-muted w-16 shrink-0 text-xs">Rotation</span>
+                  <xui-numeric-input
+                    class="min-w-0 flex-1"
+                    size="sm"
+                    ariaLabel="Projection rotation in degrees"
+                    data-testid="paint-fill-rotation"
+                    [stepSize]="5"
+                    [value]="degrees(layer.placement?.rotation)"
+                    (valueChange)="place(layer, { rotation: radians($event) })"
+                  />
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-foreground-muted w-16 shrink-0 text-xs">Offset</span>
+                  <xui-numeric-input
+                    class="min-w-0 flex-1"
+                    size="sm"
+                    ariaLabel="Projection offset across"
+                    data-testid="paint-fill-offset-x"
+                    [stepSize]="0.05"
+                    [value]="layer.placement?.offsetX ?? 0"
+                    (valueChange)="place(layer, { offsetX: $event ?? 0 })"
+                  />
+                  <xui-numeric-input
+                    class="min-w-0 flex-1"
+                    size="sm"
+                    ariaLabel="Projection offset along"
+                    data-testid="paint-fill-offset-y"
+                    [stepSize]="0.05"
+                    [value]="layer.placement?.offsetY ?? 0"
+                    (valueChange)="place(layer, { offsetY: $event ?? 0 })"
+                  />
+                </div>
+                @if (layer.projection === 'Triplanar') {
+                  <div class="flex items-center gap-2">
+                    <span class="text-foreground-muted w-16 shrink-0 text-xs">Blending</span>
+                    <xui-numeric-input
+                      class="min-w-0 flex-1"
+                      size="sm"
+                      ariaLabel="Projection blending"
+                      data-testid="paint-fill-sharpness"
+                      [stepSize]="0.5"
+                      [value]="layer.placement?.sharpness ?? 4"
+                      (valueChange)="place(layer, { sharpness: $event ?? 4 })"
+                    />
+                  </div>
+                }
+              }
+              @for (channel of layer.fill === 'Anchor' ? [] : (store.state()?.channels ?? []); track channel.usage) {
+                <div class="flex items-center gap-2">
+                  <span class="text-foreground-muted w-20 shrink-0 truncate text-xs">{{
+                    channelName(channel.usage)
+                  }}</span>
+                  @switch (layer.fill) {
+                    @case ('Constant') {
+                      @if (isScalar(channel.usage)) {
+                        <xui-slider
+                          class="min-w-0 flex-1"
+                          labelStepSize="0"
+                          [attr.aria-label]="channelName(channel.usage)"
+                          [attr.data-testid]="'paint-fill-' + channel.usage"
+                          [max]="1"
+                          [min]="0"
+                          [stepSize]="0.01"
+                          [value]="scalar(layer, channel.usage, channel.default)"
+                          (valueChange)="setScalar(layer, channel.usage, $event)"
+                          (pointerup)="scalarDraft.set(null)"
+                        />
+                        <span class="readout w-9 shrink-0 text-end text-xs">{{
+                          amount(scalar(layer, channel.usage, channel.default))
+                        }}</span>
+                      } @else {
+                        <xui-color-picker
+                          [attr.aria-label]="channelName(channel.usage)"
+                          [attr.data-testid]="'paint-fill-' + channel.usage"
+                          [value]="hex(layer, channel.usage, channel.default)"
+                          (valueChange)="setValue(layer, channel.usage, $event)"
+                        />
+                      }
+                    }
+                    @case ('Texture') {
+                      <span class="min-w-0 flex-1 truncate text-xs" [title]="layer.textures[channel.usage] ?? ''">
+                        {{ fileOf(layer.textures[channel.usage]) || 'None' }}
+                      </span>
+                      <button
+                        type="button"
+                        xuiButton
+                        size="sm"
+                        variant="ghost"
+                        [attr.aria-label]="'Choose ' + channel.usage + ' picture'"
+                        [attr.data-testid]="'paint-texture-' + channel.usage"
+                        (click)="chooseTexture(layer, channel.usage)"
+                      >
+                        Choose…
+                      </button>
+                    }
+                  }
+                </div>
+              }
+              @if (layer.fill === 'Graph') {
+                <div class="flex items-center gap-2">
+                  <span class="text-foreground-muted w-16 shrink-0 text-xs">Graph</span>
+                  <xui-select
+                    class="min-w-0 flex-1"
+                    aria-label="Graph"
+                    data-testid="paint-fill-graph"
+                    [items]="graphs(layer)"
+                    [value]="graphOf(layer)"
+                    (valueChange)="chooseGraph(layer, $event)"
+                  />
+                </div>
+              }
+              @if (layer.fill === 'Anchor') {
+                <div class="flex items-center gap-2">
+                  <span class="text-foreground-muted w-16 shrink-0 text-xs">Anchor</span>
+                  <xui-select
+                    class="min-w-0 flex-1"
+                    aria-label="Anchor point the fill reads"
+                    data-testid="paint-fill-anchor"
+                    [items]="anchorNames(layer)"
+                    [value]="layer.anchor?.anchor || null"
+                    (valueChange)="setFillAnchor(layer, { anchor: $event ?? '' })"
+                  />
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-foreground-muted w-16 shrink-0 text-xs">Channel</span>
+                  <select
+                    class="well h-7 min-w-0 flex-1 px-1 text-sm"
+                    aria-label="Channel the fill reads"
+                    data-testid="paint-fill-anchor-channel"
+                    (change)="setFillAnchor(layer, { channel: text($event) })"
+                  >
+                    <option value="" [selected]="!layer.anchor?.channel">Each channel its own</option>
+                    @for (channel of store.state()?.channels ?? []; track channel.usage) {
+                      <option [value]="channel.usage" [selected]="channel.usage === layer.anchor?.channel">
+                        {{ channelName(channel.usage) }}
+                      </option>
                     }
                   </select>
                 </div>
               }
-              <p class="section-label mt-1">UV Transformations</p>
+            }
+            @case ('filter') {
               <div class="flex items-center gap-2">
-                <span class="text-foreground-muted w-16 shrink-0 text-xs">Scale</span>
-                <xui-numeric-input
+                <span class="text-foreground-muted w-16 shrink-0 text-xs">Filter</span>
+                <xui-select
                   class="min-w-0 flex-1"
-                  size="sm"
-                  ariaLabel="Projection scale"
-                  data-testid="paint-fill-scale"
-                  [stepSize]="0.1"
-                  [value]="layer.placement?.scale ?? 1"
-                  (valueChange)="place(layer, { scale: $event ?? 1 })"
+                  ariaLabel="Filter"
+                  data-testid="paint-filter"
+                  [itemText]="filterName"
+                  [items]="filtersWith(layer.filterNode)"
+                  [matchTargetWidth]="false"
+                  [value]="layer.filterNode"
+                  (valueChange)="chooseFilter(layer, $event)"
                 />
               </div>
-              <div class="flex items-center gap-2">
-                <span class="text-foreground-muted w-16 shrink-0 text-xs">Rotation</span>
-                <xui-numeric-input
-                  class="min-w-0 flex-1"
-                  size="sm"
-                  ariaLabel="Projection rotation in degrees"
-                  data-testid="paint-fill-rotation"
-                  [stepSize]="5"
-                  [value]="degrees(layer.placement?.rotation)"
-                  (valueChange)="place(layer, { rotation: radians($event) })"
+              @if (filterOf(layer.filterNode); as kind) {
+                <p class="text-foreground-muted text-xs" data-testid="paint-filter-summary">{{ kind.summary }}</p>
+                <ptn-filter-fields
+                  testId="paint-setting-"
+                  [kind]="kind"
+                  [numbers]="layer.settings"
+                  [texts]="layer.parameters ?? {}"
+                  (numberChange)="setSetting(layer, $event.name, $event.value)"
+                  (textChange)="setKnob(layer, $event.name, $event.value)"
                 />
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="text-foreground-muted w-16 shrink-0 text-xs">Offset</span>
-                <xui-numeric-input
-                  class="min-w-0 flex-1"
-                  size="sm"
-                  ariaLabel="Projection offset across"
-                  data-testid="paint-fill-offset-x"
-                  [stepSize]="0.05"
-                  [value]="layer.placement?.offsetX ?? 0"
-                  (valueChange)="place(layer, { offsetX: $event ?? 0 })"
+                <ptn-filter-inputs
+                  testId="paint-input-"
+                  [anchors]="anchorNames(layer)"
+                  [inputs]="layer.inputs ?? {}"
+                  [kind]="kind"
+                  (inputsChange)="setInputs(layer, $event)"
                 />
-                <xui-numeric-input
-                  class="min-w-0 flex-1"
-                  size="sm"
-                  ariaLabel="Projection offset along"
-                  data-testid="paint-fill-offset-y"
-                  [stepSize]="0.05"
-                  [value]="layer.placement?.offsetY ?? 0"
-                  (valueChange)="place(layer, { offsetY: $event ?? 0 })"
-                />
-              </div>
-              @if (layer.projection === 'Triplanar') {
-                <div class="flex items-center gap-2">
-                  <span class="text-foreground-muted w-16 shrink-0 text-xs">Blending</span>
-                  <xui-numeric-input
-                    class="min-w-0 flex-1"
-                    size="sm"
-                    ariaLabel="Projection blending"
-                    data-testid="paint-fill-sharpness"
-                    [stepSize]="0.5"
-                    [value]="layer.placement?.sharpness ?? 4"
-                    (valueChange)="place(layer, { sharpness: $event ?? 4 })"
-                  />
-                </div>
+              } @else if (layer.filterNode) {
+                <p class="text-foreground-muted text-xs" data-testid="paint-filter-node">
+                  From {{ layer.filterNode.split('/').pop() }}. Choosing a filter above replaces it.
+                </p>
               }
             }
-            @for (channel of layer.fill === 'Anchor' ? [] : (store.state()?.channels ?? []); track channel.usage) {
-              <div class="flex items-center gap-2">
-                <span class="text-foreground-muted w-20 shrink-0 truncate text-xs">{{
-                  channelName(channel.usage)
-                }}</span>
-                @switch (layer.fill) {
-                  @case ('Constant') {
-                    @if (isScalar(channel.usage)) {
-                      <xui-slider
-                        class="min-w-0 flex-1"
-                        labelStepSize="0"
-                        [attr.aria-label]="channelName(channel.usage)"
-                        [attr.data-testid]="'paint-fill-' + channel.usage"
-                        [max]="1"
-                        [min]="0"
-                        [stepSize]="0.01"
-                        [value]="scalar(layer, channel.usage, channel.default)"
-                        (valueChange)="setScalar(layer, channel.usage, $event)"
-                        (pointerup)="scalarDraft.set(null)"
-                      />
-                      <span class="readout w-9 shrink-0 text-end text-xs">{{
-                        amount(scalar(layer, channel.usage, channel.default))
-                      }}</span>
-                    } @else {
-                      <xui-color-picker
-                        [attr.aria-label]="channelName(channel.usage)"
-                        [attr.data-testid]="'paint-fill-' + channel.usage"
-                        [value]="hex(layer, channel.usage, channel.default)"
-                        (valueChange)="setValue(layer, channel.usage, $event)"
-                      />
-                    }
-                  }
-                  @case ('Texture') {
-                    <span class="min-w-0 flex-1 truncate text-xs" [title]="layer.textures[channel.usage] ?? ''">
-                      {{ fileOf(layer.textures[channel.usage]) || 'None' }}
-                    </span>
-                    <button
-                      type="button"
-                      xuiButton
-                      size="sm"
-                      variant="ghost"
-                      [attr.aria-label]="'Choose ' + channel.usage + ' picture'"
-                      [attr.data-testid]="'paint-texture-' + channel.usage"
-                      (click)="chooseTexture(layer, channel.usage)"
-                    >
-                      Choose…
-                    </button>
-                  }
-                }
-              </div>
-            }
-            @if (layer.fill === 'Graph') {
-              <div class="flex items-center gap-2">
-                <span class="text-foreground-muted w-16 shrink-0 text-xs">Graph</span>
-                <xui-select
-                  class="min-w-0 flex-1"
-                  aria-label="Graph"
-                  data-testid="paint-fill-graph"
-                  [items]="graphs(layer)"
-                  [value]="graphOf(layer)"
-                  (valueChange)="chooseGraph(layer, $event)"
-                />
-              </div>
-            }
-            @if (layer.fill === 'Anchor') {
-              <div class="flex items-center gap-2">
-                <span class="text-foreground-muted w-16 shrink-0 text-xs">Anchor</span>
-                <xui-select
-                  class="min-w-0 flex-1"
-                  aria-label="Anchor point the fill reads"
-                  data-testid="paint-fill-anchor"
-                  [items]="anchorNames(layer)"
-                  [value]="layer.anchor?.anchor || null"
-                  (valueChange)="setFillAnchor(layer, { anchor: $event ?? '' })"
-                />
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="text-foreground-muted w-16 shrink-0 text-xs">Channel</span>
+          }
+
+          @for (parameter of knobs(); track parameter.name) {
+            <div class="flex items-center gap-2">
+              <span class="text-foreground-muted w-16 shrink-0 truncate text-xs" [title]="parameter.summary">{{
+                parameter.name
+              }}</span>
+              @if (parameter.accepted.length > 0) {
                 <select
                   class="well h-7 min-w-0 flex-1 px-1 text-sm"
-                  aria-label="Channel the fill reads"
-                  data-testid="paint-fill-anchor-channel"
-                  (change)="setFillAnchor(layer, { channel: text($event) })"
+                  [attr.aria-label]="parameter.name"
+                  [attr.data-testid]="'paint-knob-' + parameter.name"
+                  (change)="setKnob(layer, parameter.name, text($event))"
                 >
-                  <option value="" [selected]="!layer.anchor?.channel">Each channel its own</option>
-                  @for (channel of store.state()?.channels ?? []; track channel.usage) {
-                    <option [value]="channel.usage" [selected]="channel.usage === layer.anchor?.channel">
-                      {{ channelName(channel.usage) }}
+                  @for (value of parameter.accepted; track value) {
+                    <option [value]="value" [selected]="value === knob(layer, parameter)">
+                      {{ choiceName(parameter, value) }}
                     </option>
                   }
                 </select>
-              </div>
-            }
-          }
-          @case ('filter') {
-            <div class="flex items-center gap-2">
-              <span class="text-foreground-muted w-16 shrink-0 text-xs">Filter</span>
-              <xui-select
-                class="min-w-0 flex-1"
-                ariaLabel="Filter"
-                data-testid="paint-filter"
-                [itemText]="filterName"
-                [items]="filtersWith(layer.filterNode)"
-                [matchTargetWidth]="false"
-                [value]="layer.filterNode"
-                (valueChange)="chooseFilter(layer, $event)"
-              />
+              } @else if (parameter.kind === 'Float' || parameter.kind === 'Int') {
+                <xui-numeric-input
+                  class="min-w-0 flex-1"
+                  size="sm"
+                  [ariaLabel]="parameter.name"
+                  [attr.data-testid]="'paint-knob-' + parameter.name"
+                  [stepSize]="parameter.kind === 'Int' ? 1 : 0.1"
+                  [value]="+knob(layer, parameter)"
+                  (valueChange)="setKnob(layer, parameter.name, ($event ?? 0).toString())"
+                />
+              } @else if (parameter.kind === 'Bool') {
+                <input
+                  type="checkbox"
+                  [attr.aria-label]="parameter.name"
+                  [attr.data-testid]="'paint-knob-' + parameter.name"
+                  [checked]="knob(layer, parameter) === 'true'"
+                  (change)="setKnob(layer, parameter.name, checked($event).toString())"
+                />
+              } @else {
+                <input
+                  class="min-w-0 flex-1"
+                  xuiInput
+                  size="sm"
+                  autocomplete="off"
+                  [attr.aria-label]="parameter.name"
+                  [attr.data-testid]="'paint-knob-' + parameter.name"
+                  [value]="knob(layer, parameter)"
+                  (change)="setKnob(layer, parameter.name, text($event))"
+                />
+              }
             </div>
-            @if (filterOf(layer.filterNode); as kind) {
-              <p class="text-foreground-muted text-xs" data-testid="paint-filter-summary">{{ kind.summary }}</p>
-              <ptn-filter-fields
-                testId="paint-setting-"
-                [kind]="kind"
-                [numbers]="layer.settings"
-                [texts]="layer.parameters ?? {}"
-                (numberChange)="setSetting(layer, $event.name, $event.value)"
-                (textChange)="setKnob(layer, $event.name, $event.value)"
-              />
-              <ptn-filter-inputs
-                testId="paint-input-"
-                [anchors]="anchorNames(layer)"
-                [inputs]="layer.inputs ?? {}"
-                [kind]="kind"
-                (inputsChange)="setInputs(layer, $event)"
-              />
-            } @else if (layer.filterNode) {
-              <p class="text-foreground-muted text-xs" data-testid="paint-filter-node">
-                From {{ layer.filterNode.split('/').pop() }}. Choosing a filter above replaces it.
-              </p>
-            }
           }
-        }
-
-        @for (parameter of knobs(); track parameter.name) {
-          <div class="flex items-center gap-2">
-            <span class="text-foreground-muted w-16 shrink-0 truncate text-xs" [title]="parameter.summary">{{
-              parameter.name
-            }}</span>
-            @if (parameter.accepted.length > 0) {
-              <select
-                class="well h-7 min-w-0 flex-1 px-1 text-sm"
-                [attr.aria-label]="parameter.name"
-                [attr.data-testid]="'paint-knob-' + parameter.name"
-                (change)="setKnob(layer, parameter.name, text($event))"
-              >
-                @for (value of parameter.accepted; track value) {
-                  <option [value]="value" [selected]="value === knob(layer, parameter)">
-                    {{ choiceName(parameter, value) }}
-                  </option>
-                }
-              </select>
-            } @else if (parameter.kind === 'Float' || parameter.kind === 'Int') {
-              <xui-numeric-input
-                class="min-w-0 flex-1"
-                size="sm"
-                [ariaLabel]="parameter.name"
-                [attr.data-testid]="'paint-knob-' + parameter.name"
-                [stepSize]="parameter.kind === 'Int' ? 1 : 0.1"
-                [value]="+knob(layer, parameter)"
-                (valueChange)="setKnob(layer, parameter.name, ($event ?? 0).toString())"
-              />
-            } @else if (parameter.kind === 'Bool') {
-              <input
-                type="checkbox"
-                [attr.aria-label]="parameter.name"
-                [attr.data-testid]="'paint-knob-' + parameter.name"
-                [checked]="knob(layer, parameter) === 'true'"
-                (change)="setKnob(layer, parameter.name, checked($event).toString())"
-              />
-            } @else {
-              <input
-                class="min-w-0 flex-1"
-                xuiInput
-                size="sm"
-                autocomplete="off"
-                [attr.aria-label]="parameter.name"
-                [attr.data-testid]="'paint-knob-' + parameter.name"
-                [value]="knob(layer, parameter)"
-                (change)="setKnob(layer, parameter.name, text($event))"
-              />
-            }
-          </div>
-        }
-
         }
         @if (maskEntry(); as entry) {
           <p class="section-label mt-1">Mask Layer</p>
@@ -565,216 +575,220 @@ export function hexOf(colour: readonly number[] | undefined): string {
         }
 
         @if (!layer.instance) {
-        <p class="section-label mt-1">Mask</p>
-        <div class="flex items-center gap-2">
-          <span class="text-foreground-muted w-16 shrink-0 text-xs">Mask</span>
-          <xui-select
-            class="min-w-0 flex-1"
-            aria-label="Mask source"
-            data-testid="paint-mask-source"
-            [itemText]="termName"
-            [items]="masks()"
-            [value]="layer.mask.source"
-            (valueChange)="setMask(layer, { source: $event ?? 'None' })"
-          />
-        </div>
-        @if (store.masking() && store.maskLayer() === null && !store.canPaint()) {
-          <p class="text-foreground-muted text-xs" data-testid="paint-mask-no-brush">
-            A brush would replace this mask. Set Mask to Paint to paint it.
-          </p>
-        }
-        @switch (layer.mask.source) {
-          @case ('Constant') {
-            <div class="flex items-center gap-2">
-              <xui-slider
-                class="min-w-0 flex-1"
-                labelStepSize="0"
-                aria-label="Mask value"
-                data-testid="paint-mask-value"
-                [max]="1"
-                [min]="0"
-                [stepSize]="0.01"
-                [value]="layer.mask.value"
-                (valueChange)="setMask(layer, { value: $event })"
-              />
-              <span class="readout w-9 shrink-0 text-end text-xs" data-testid="paint-mask-value-readout">{{
-                percent(layer.mask.value)
-              }}</span>
-            </div>
-          }
-          @case ('Texture') {
-            <div class="flex items-center gap-2">
-              <span class="min-w-0 flex-1 truncate text-xs" [title]="layer.mask.asset">{{
-                fileOf(layer.mask.asset) || 'None'
-              }}</span>
-              <button
-                type="button"
-                xuiButton
-                size="sm"
-                variant="ghost"
-                data-testid="paint-mask-picture"
-                (click)="chooseMaskPicture(layer)"
-              >
-                Choose…
-              </button>
-            </div>
-          }
-          @case ('Anchor') {
+          <p class="section-label mt-1">Mask</p>
+          <div class="flex items-center gap-2">
+            <span class="text-foreground-muted w-16 shrink-0 text-xs">Mask</span>
             <xui-select
-              aria-label="Anchor point the mask reads"
-              data-testid="paint-mask-anchor"
-              [items]="anchorNames(layer)"
-              [value]="layer.mask.anchor?.anchor || null"
-              (valueChange)="setMaskAnchor(layer, { anchor: $event ?? '' })"
-            />
-            <select
-              class="well h-7 px-1 text-sm"
-              aria-label="Channel the mask reads"
-              data-testid="paint-mask-anchor-channel"
-              (change)="setMaskAnchor(layer, { channel: text($event) })"
-            >
-              @for (channel of store.state()?.channels ?? []; track channel.usage) {
-                <option [value]="channel.usage" [selected]="channel.usage === maskChannel(layer)">
-                  {{ channelName(channel.usage) }}
-                </option>
-              }
-            </select>
-          }
-          @case ('Generator') {
-            <xui-select
-              aria-label="Generator"
-              data-testid="paint-mask-generator"
+              class="min-w-0 flex-1"
+              aria-label="Mask source"
+              data-testid="paint-mask-source"
               [itemText]="termName"
-              [items]="generatorsWith(layer.mask.generator)"
-              [value]="layer.mask.generator"
-              (valueChange)="setMask(layer, { generator: $event ?? '' })"
+              [items]="masks()"
+              [value]="layer.mask.source"
+              (valueChange)="setMask(layer, { source: $event ?? 'None' })"
             />
-            @for (parameter of generatorKnobs(); track parameter.name) {
+          </div>
+          @if (store.masking() && store.maskLayer() === null && !store.canPaint()) {
+            <p class="text-foreground-muted text-xs" data-testid="paint-mask-no-brush">
+              A brush would replace this mask. Set Mask to Paint to paint it.
+            </p>
+          }
+          @switch (layer.mask.source) {
+            @case ('Constant') {
               <div class="flex items-center gap-2">
-                <span class="text-foreground-muted w-16 shrink-0 truncate text-xs" [title]="parameter.summary">{{
-                  parameter.name
+                <xui-slider
+                  class="min-w-0 flex-1"
+                  labelStepSize="0"
+                  aria-label="Mask value"
+                  data-testid="paint-mask-value"
+                  [max]="1"
+                  [min]="0"
+                  [stepSize]="0.01"
+                  [value]="layer.mask.value"
+                  (valueChange)="setMask(layer, { value: $event })"
+                />
+                <span class="readout w-9 shrink-0 text-end text-xs" data-testid="paint-mask-value-readout">{{
+                  percent(layer.mask.value)
                 }}</span>
-                @if (parameter.accepted.length > 0) {
-                  <select
-                    class="well h-7 min-w-0 flex-1 px-1 text-sm"
-                    [attr.aria-label]="parameter.name"
-                    [attr.data-testid]="'paint-mask-knob-' + parameter.name"
-                    (change)="setGeneratorKnob(layer, parameter.name, text($event))"
-                  >
-                    @for (value of parameter.accepted; track value) {
-                      <option [value]="value" [selected]="value === generatorKnob(layer, parameter)">
-                        {{ choiceName(parameter, value) }}
-                      </option>
-                    }
-                  </select>
-                } @else {
-                  <xui-numeric-input
-                    class="min-w-0 flex-1"
-                    size="sm"
-                    [ariaLabel]="parameter.name"
-                    [attr.data-testid]="'paint-mask-knob-' + parameter.name"
-                    [stepSize]="parameter.kind === 'Int' ? 1 : 0.05"
-                    [value]="+generatorKnob(layer, parameter)"
-                    (valueChange)="setGeneratorKnob(layer, parameter.name, ($event ?? 0).toString())"
-                  />
-                }
               </div>
             }
-          }
-          @case ('Bake') {
-            <xui-select
-              aria-label="Mesh map"
-              data-testid="paint-mask-map"
-              [itemText]="termName"
-              [items]="meshMaps()"
-              [value]="layer.mask.map"
-              (valueChange)="setMask(layer, { map: $event ?? '' })"
-            />
-            <div class="flex items-center gap-2">
-              <span class="text-foreground-muted w-16 shrink-0 text-xs" title="Which lane of the map the mask reads">Lane</span>
+            @case ('Texture') {
+              <div class="flex items-center gap-2">
+                <span class="min-w-0 flex-1 truncate text-xs" [title]="layer.mask.asset">{{
+                  fileOf(layer.mask.asset) || 'None'
+                }}</span>
+                <button
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  variant="ghost"
+                  data-testid="paint-mask-picture"
+                  (click)="chooseMaskPicture(layer)"
+                >
+                  Choose…
+                </button>
+              </div>
+            }
+            @case ('Anchor') {
               <xui-select
-                class="min-w-0 flex-1"
-                aria-label="Mask lane"
-                data-testid="paint-mask-lane"
-                [itemText]="termName"
-                [items]="lanes()"
-                [value]="layer.mask.lane"
-                (valueChange)="setMask(layer, { lane: $event ?? 'Red' })"
+                aria-label="Anchor point the mask reads"
+                data-testid="paint-mask-anchor"
+                [items]="anchorNames(layer)"
+                [value]="layer.mask.anchor?.anchor || null"
+                (valueChange)="setMaskAnchor(layer, { anchor: $event ?? '' })"
               />
-            </div>
-            @if (layer.mask.map === 'id') {
-              <div class="flex flex-col gap-1.5" data-testid="paint-colour-selection">
-                <div class="flex flex-wrap items-center gap-1" role="group" aria-label="Colours in the id map">
-                  @for (entry of store.idColours() ?? []; track $index) {
+              <select
+                class="well h-7 px-1 text-sm"
+                aria-label="Channel the mask reads"
+                data-testid="paint-mask-anchor-channel"
+                (change)="setMaskAnchor(layer, { channel: text($event) })"
+              >
+                @for (channel of store.state()?.channels ?? []; track channel.usage) {
+                  <option [value]="channel.usage" [selected]="channel.usage === maskChannel(layer)">
+                    {{ channelName(channel.usage) }}
+                  </option>
+                }
+              </select>
+            }
+            @case ('Generator') {
+              <xui-select
+                aria-label="Generator"
+                data-testid="paint-mask-generator"
+                [itemText]="termName"
+                [items]="generatorsWith(layer.mask.generator)"
+                [value]="layer.mask.generator"
+                (valueChange)="setMask(layer, { generator: $event ?? '' })"
+              />
+              @for (parameter of generatorKnobs(); track parameter.name) {
+                <div class="flex items-center gap-2">
+                  <span class="text-foreground-muted w-16 shrink-0 truncate text-xs" [title]="parameter.summary">{{
+                    parameter.name
+                  }}</span>
+                  @if (parameter.accepted.length > 0) {
+                    <select
+                      class="well h-7 min-w-0 flex-1 px-1 text-sm"
+                      [attr.aria-label]="parameter.name"
+                      [attr.data-testid]="'paint-mask-knob-' + parameter.name"
+                      (change)="setGeneratorKnob(layer, parameter.name, text($event))"
+                    >
+                      @for (value of parameter.accepted; track value) {
+                        <option [value]="value" [selected]="value === generatorKnob(layer, parameter)">
+                          {{ choiceName(parameter, value) }}
+                        </option>
+                      }
+                    </select>
+                  } @else {
+                    <xui-numeric-input
+                      class="min-w-0 flex-1"
+                      size="sm"
+                      [ariaLabel]="parameter.name"
+                      [attr.data-testid]="'paint-mask-knob-' + parameter.name"
+                      [stepSize]="parameter.kind === 'Int' ? 1 : 0.05"
+                      [value]="+generatorKnob(layer, parameter)"
+                      (valueChange)="setGeneratorKnob(layer, parameter.name, ($event ?? 0).toString())"
+                    />
+                  }
+                </div>
+              }
+            }
+            @case ('Bake') {
+              <xui-select
+                aria-label="Mesh map"
+                data-testid="paint-mask-map"
+                [itemText]="termName"
+                [items]="meshMaps()"
+                [value]="layer.mask.map"
+                (valueChange)="setMask(layer, { map: $event ?? '' })"
+              />
+              <div class="flex items-center gap-2">
+                <span class="text-foreground-muted w-16 shrink-0 text-xs" title="Which lane of the map the mask reads"
+                  >Lane</span
+                >
+                <xui-select
+                  class="min-w-0 flex-1"
+                  aria-label="Mask lane"
+                  data-testid="paint-mask-lane"
+                  [itemText]="termName"
+                  [items]="lanes()"
+                  [value]="layer.mask.lane"
+                  (valueChange)="setMask(layer, { lane: $event ?? 'Red' })"
+                />
+              </div>
+              @if (layer.mask.map === 'id') {
+                <div class="flex flex-col gap-1.5" data-testid="paint-colour-selection">
+                  <div class="flex flex-wrap items-center gap-1" role="group" aria-label="Colours in the id map">
+                    @for (entry of store.idColours() ?? []; track $index) {
+                      <button
+                        type="button"
+                        class="border-hairline size-6 rounded-sm border"
+                        data-testid="paint-id-colour"
+                        [attr.aria-label]="
+                          'Select ' + colourName(entry.colour) + ', ' + percent(entry.share) + ' of the map'
+                        "
+                        [class.outline]="same(layer.mask.colour, entry.colour)"
+                        [style.background]="hexOf(entry.colour)"
+                        [title]="colourName(entry.colour) + ', ' + percent(entry.share) + ' of the map'"
+                        (click)="setMask(layer, { colour: [...entry.colour] })"
+                      ></button>
+                    } @empty {
+                      <span class="text-foreground-muted text-xs" data-testid="paint-id-none">
+                        Bake with the ID map on to pick from its colours.
+                      </span>
+                    }
+                  </div>
+                  <div class="flex items-center gap-1">
                     <button
                       type="button"
-                      class="border-hairline size-6 rounded-sm border"
-                      data-testid="paint-id-colour"
-                      [attr.aria-label]="'Select ' + colourName(entry.colour) + ', ' + percent(entry.share) + ' of the map'"
-                      [class.outline]="same(layer.mask.colour, entry.colour)"
-                      [style.background]="hexOf(entry.colour)"
-                      [title]="colourName(entry.colour) + ', ' + percent(entry.share) + ' of the map'"
-                      (click)="setMask(layer, { colour: [...entry.colour] })"
-                    ></button>
-                  } @empty {
-                    <span class="text-foreground-muted text-xs" data-testid="paint-id-none">
-                      Bake with the ID map on to pick from its colours.
-                    </span>
-                  }
+                      xuiButton
+                      size="sm"
+                      data-testid="paint-eyedropper"
+                      [variant]="store.picking() === layer.id ? 'default' : 'ghost'"
+                      (click)="store.picking.set(store.picking() === layer.id ? null : layer.id)"
+                    >
+                      {{ store.picking() === layer.id ? 'Click the mesh or map…' : 'Pick from Mesh' }}
+                    </button>
+                    @if (layer.mask.colour; as colour) {
+                      <span
+                        class="border-hairline size-5 rounded-sm border"
+                        data-testid="paint-picked"
+                        [style.background]="hexOf(colour)"
+                      ></span>
+                    }
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-foreground-muted w-16 shrink-0 text-xs">Tolerance</span>
+                    <xui-slider
+                      class="min-w-0 flex-1"
+                      labelStepSize="0"
+                      aria-label="Colour tolerance"
+                      data-testid="paint-mask-tolerance"
+                      [max]="0.5"
+                      [min]="0"
+                      [stepSize]="0.005"
+                      [value]="layer.mask.tolerance"
+                      (valueChange)="setMask(layer, { tolerance: $event })"
+                    />
+                    <span class="readout w-9 shrink-0 text-end text-xs">{{ percent(layer.mask.tolerance) }}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-foreground-muted w-16 shrink-0 text-xs">Softness</span>
+                    <xui-slider
+                      class="min-w-0 flex-1"
+                      labelStepSize="0"
+                      aria-label="Colour softness"
+                      data-testid="paint-mask-softness"
+                      [max]="0.5"
+                      [min]="0"
+                      [stepSize]="0.005"
+                      [value]="layer.mask.softness"
+                      (valueChange)="setMask(layer, { softness: $event })"
+                    />
+                    <span class="readout w-9 shrink-0 text-end text-xs">{{ percent(layer.mask.softness) }}</span>
+                  </div>
                 </div>
-                <div class="flex items-center gap-1">
-                  <button
-                    type="button"
-                    xuiButton
-                    size="sm"
-                    data-testid="paint-eyedropper"
-                    [variant]="store.picking() === layer.id ? 'default' : 'ghost'"
-                    (click)="store.picking.set(store.picking() === layer.id ? null : layer.id)"
-                  >
-                    {{ store.picking() === layer.id ? 'Click the mesh or map…' : 'Pick from Mesh' }}
-                  </button>
-                  @if (layer.mask.colour; as colour) {
-                    <span
-                      class="border-hairline size-5 rounded-sm border"
-                      data-testid="paint-picked"
-                      [style.background]="hexOf(colour)"
-                    ></span>
-                  }
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="text-foreground-muted w-16 shrink-0 text-xs">Tolerance</span>
-                  <xui-slider
-                    class="min-w-0 flex-1"
-                    labelStepSize="0"
-                    aria-label="Colour tolerance"
-                    data-testid="paint-mask-tolerance"
-                    [max]="0.5"
-                    [min]="0"
-                    [stepSize]="0.005"
-                    [value]="layer.mask.tolerance"
-                    (valueChange)="setMask(layer, { tolerance: $event })"
-                  />
-                  <span class="readout w-9 shrink-0 text-end text-xs">{{ percent(layer.mask.tolerance) }}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="text-foreground-muted w-16 shrink-0 text-xs">Softness</span>
-                  <xui-slider
-                    class="min-w-0 flex-1"
-                    labelStepSize="0"
-                    aria-label="Colour softness"
-                    data-testid="paint-mask-softness"
-                    [max]="0.5"
-                    [min]="0"
-                    [stepSize]="0.005"
-                    [value]="layer.mask.softness"
-                    (valueChange)="setMask(layer, { softness: $event })"
-                  />
-                  <span class="readout w-9 shrink-0 text-end text-xs">{{ percent(layer.mask.softness) }}</span>
-                </div>
-              </div>
+              }
             }
           }
-        }
         }
       </div>
 
@@ -843,7 +857,9 @@ export function hexOf(colour: readonly number[] | undefined): string {
       }
 
       <div class="flex items-center gap-2">
-        <span class="text-foreground-muted w-16 shrink-0 text-xs" title="What the stack's generators and graphs vary by">Seed</span>
+        <span class="text-foreground-muted w-16 shrink-0 text-xs" title="What the stack's generators and graphs vary by"
+          >Seed</span
+        >
         <xui-numeric-input
           class="min-w-0 flex-1"
           size="sm"
@@ -1072,9 +1088,7 @@ export class LayerPanel {
     const layer = this.store.chosen();
     // A filter from the vocabulary has its fields already; only a project's own compound has knobs on the shelf.
     const filter = layer?.kind === 'filter' && !this.filters().has(layer.filterNode) ? layer.filterNode : '';
-    const graph = (layer?.kind === 'filter' ? filter : layer?.fill === 'Graph' ? layer.graph : '')
-      .split('/')
-      .pop();
+    const graph = (layer?.kind === 'filter' ? filter : layer?.fill === 'Graph' ? layer.graph : '').split('/').pop();
     if (!graph) {
       return [];
     }
@@ -1274,11 +1288,7 @@ export class LayerPanel {
   /** What an entry of a mask's stack can be: any mask source but none. */
   protected readonly entrySources = computed(() => this.masks().filter(source => source !== 'None'));
 
-  protected setEntry(
-    layer: StackLayer,
-    index: number,
-    change: Parameters<PaintStore['setMaskLayer']>[2]
-  ): void {
+  protected setEntry(layer: StackLayer, index: number, change: Parameters<PaintStore['setMaskLayer']>[2]): void {
     void this.store.setMaskLayer(layer, index, change);
   }
 

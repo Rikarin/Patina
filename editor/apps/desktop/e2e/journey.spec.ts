@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { answerOpen as answerFile, answerSave as answerAgain, leave, newLibrary, newProject } from './projects';
+import { answerSave as answerAgain, answerOpen as answerFile, leave, newLibrary, newProject } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net10.0/patina-bench.dll');
@@ -177,7 +177,9 @@ test('a shipped material reaches a stack from the shelf', async () => {
   await window.getByTestId('shelf-search').fill('Plastic');
   await window.getByTestId('shelf-material').filter({ hasText: 'Plastic' }).click();
   await expect(window.getByTestId('paint-layer-moulding')).toBeVisible({ timeout: 15_000 });
-  await expect.poll(() => window.getByTestId('paint-picture').getAttribute('src'), { timeout: 30_000 }).not.toBe(before);
+  await expect
+    .poll(() => window.getByTestId('paint-picture').getAttribute('src'), { timeout: 30_000 })
+    .not.toBe(before);
   await window.screenshot({ path: join(shots, 'shelf.png') });
 });
 
@@ -194,7 +196,9 @@ test('the shelf shows each material as a picture, at a size of choice, and narro
 
   await window.getByTestId('shelf-view').getByText('Large').click();
   await expect(window.getByTestId('shelf-materials')).toHaveAttribute('data-view', 'large');
-  await expect(window.getByTestId('shelf-material').filter({ hasText: 'Plastic' }).getByTestId('shelf-picture')).toBeVisible();
+  await expect(
+    window.getByTestId('shelf-material').filter({ hasText: 'Plastic' }).getByTestId('shelf-picture')
+  ).toBeVisible();
   await window.screenshot({ path: join(shots, 'shelf-pictures-large.png') });
 
   await window.getByTestId('shelf-view').getByText('Small').click();
