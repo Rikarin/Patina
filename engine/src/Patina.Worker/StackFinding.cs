@@ -20,12 +20,23 @@ static class StackFinding {
     ///     the layer covers there. A folder is walked rather than found,
     ///     a flattened folder is one layer, and a filter covers nothing of its own, so it is never the answer.
     /// </summary>
-    public static IEnumerable<(string Layer, TextureSetAsset Alone)> Candidates(TextureSetAsset set) {
+    /// <remarks>
+    ///     ⚠ <b>An instance is weighed as what it stands for</b> (#108), resolved in the whole document before any layer
+    ///     is taken alone: alone, its source would be gone and it would cover nothing. An instance of a folder is found
+    ///     as itself, since the layers inside it are copies with ids no document has.
+    /// </remarks>
+    public static IEnumerable<(string Layer, TextureSetAsset Alone)> Candidates(
+        LayerStackAsset document,
+        TextureSetAsset set
+    ) {
         // ⚠ In the set's own channels, each starting from nothing. `LayerStackSplat.Coverage` weighs in one channel
         // called `mask`, and a paint layer weighed there reads its canvas's `mask` channel, which is not its strokes.
         List<ChannelAsset> empty =
             [..set.Channels.Select(static channel => channel with { Default = [0f, 0f, 0f, 1f] })];
-        foreach (var (layer, around) in TopFirst(set.Layers, [])) {
+        HashSet<string> instances = new(StringComparer.Ordinal);
+        Instances(set.Layers, instances);
+        var resolved = LayerStackInstances.Resolve(document, set, out _);
+        foreach (var (layer, around) in TopFirst(resolved.Layers, [], instances)) {
             var wrapped = layer with { Blend = LayerBlendMode.Copy };
             for (var at = around.Count - 1; at >= 0; at--) {
                 wrapped = around[at] with { Blend = LayerBlendMode.Copy, Children = [wrapped] };
@@ -35,9 +46,20 @@ static class StackFinding {
         }
     }
 
+    static void Instances(List<LayerAsset> layers, HashSet<string> found) {
+        foreach (var layer in layers) {
+            if (layer.Kind == LayerKind.Instance) {
+                found.Add(layer.Id);
+            }
+
+            Instances(layer.Children, found);
+        }
+    }
+
     static IEnumerable<(LayerAsset Layer, List<LayerAsset> Around)> TopFirst(
         List<LayerAsset> layers,
-        List<LayerAsset> around
+        List<LayerAsset> around,
+        HashSet<string> instances
     ) {
         for (var at = layers.Count - 1; at >= 0; at--) {
             var layer = layers[at];
@@ -45,8 +67,8 @@ static class StackFinding {
                 continue;
             }
 
-            if (layer.Kind == LayerKind.Group && !layer.Flattened) {
-                foreach (var inside in TopFirst(layer.Children, [..around, layer])) {
+            if (layer is { Kind: LayerKind.Group, Flattened: false } && !instances.Contains(layer.Id)) {
+                foreach (var inside in TopFirst(layer.Children, [..around, layer], instances)) {
                     yield return inside;
                 }
             } else if (layer.Kind != LayerKind.Filter) {

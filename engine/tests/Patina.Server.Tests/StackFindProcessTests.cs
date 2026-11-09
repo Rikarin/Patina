@@ -42,6 +42,31 @@ public sealed partial class StackProcessTests {
         Assert.Null(await FindAsync(state.Id, Bare, Bare, deadline.Token));
     }
 
+    /// <summary>
+    ///     An instance is found as itself, as its source is, and still with its source switched off, since it stands for
+    ///     the source whatever the source's own eye says (#108 with #136). Weighed alone without being resolved first, it
+    ///     stood for nothing and the click found the source beneath it.
+    /// </summary>
+    [Fact]
+    public async Task A_click_finds_an_instance_as_itself() {
+        using var deadline = Deadline(300);
+        var (_, state) = await StartAsync("FindInstance.vxlayers", deadline.Token);
+        const float Bare = 0.9f;
+
+        await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Rust", Tint));
+        var rust = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
+        await EditAsync(state.Id, deadline.Token, new StackAddInstance(new(rust), rust));
+        var copy = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
+        Assert.Equal(copy, await FindAsync(state.Id, Bare, Bare, deadline.Token));
+
+        await EditAsync(state.Id, deadline.Token, new StackSetLayer(copy, Enabled: false));
+        Assert.Equal(rust, await FindAsync(state.Id, Bare, Bare, deadline.Token));
+
+        await EditAsync(state.Id, deadline.Token, new StackSetLayer(copy, Enabled: true));
+        await EditAsync(state.Id, deadline.Token, new StackSetLayer(rust, Enabled: false));
+        Assert.Equal(copy, await FindAsync(state.Id, Bare, Bare, deadline.Token));
+    }
+
     async Task<string?> FindAsync(string id, float u, float v, CancellationToken token) {
         using var response = await http.PostAsJsonAsync(
             $"/api/v1/stacks/{id}/find",

@@ -452,7 +452,7 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
             var chosen = document.Sets.First(candidate => candidate.Name == set);
             var x = Math.Clamp((int)(u * document.BaseWidth), 0, document.BaseWidth - 1);
             var y = Math.Clamp((int)(v * document.BaseHeight), 0, document.BaseHeight - 1);
-            foreach (var (layer, alone) in StackFinding.Candidates(chosen)) {
+            foreach (var (layer, alone) in StackFinding.Candidates(document, chosen)) {
                 using LayerStackEvaluator run = new(evaluator, canvases, path, fill) { Weighing = true };
                 var weighed = document with { Sets = [alone] };
                 if (run.Prepare(weighed, alone, compounds.Registry, compounds.Source).Count > 0) {
