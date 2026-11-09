@@ -185,6 +185,42 @@ public sealed class ViewportRendererTests : IDisposable {
         Assert.NotEqual(before, after);
     }
 
+    /// <summary>
+    ///     An OBJ draws in the colours of the material library beside it (#231): red on the left, blue on the right.
+    ///     Read from its bytes alone, both quads were Assimp's default grey. <c>PATINA_PICTURES</c> keeps the frame.
+    /// </summary>
+    [Fact]
+    public void An_obj_draws_in_the_colours_of_its_material_library() {
+        using var renderer = Open();
+        Directory.CreateDirectory(Path.Combine(cache.FullName, "looks"));
+        File.WriteAllText(Path.Combine(cache.FullName, "looks", "paint.mtl"), "newmtl red\nKd 0.9 0.05 0.05\nnewmtl blue\nKd 0.05 0.1 0.9\n");
+        var mesh = Path.Combine(cache.FullName, "quads.obj");
+        File.WriteAllLines(
+            mesh,
+            [
+                "mtllib looks/paint.mtl",
+                "v -1.1 -0.5 0", "v -0.1 -0.5 0", "v -0.1 0.5 0", "v -1.1 0.5 0",
+                "v 0.1 -0.5 0", "v 1.1 -0.5 0", "v 1.1 0.5 0", "v 0.1 0.5 0",
+                "vt 0 0", "vt 1 0", "vt 1 1", "vt 0 1", "vn 0 0 1",
+                "usemtl red", "f 1/1/1 2/2/1 3/3/1 4/4/1",
+                "usemtl blue", "f 5/1/1 6/2/1 7/3/1 8/4/1"
+            ]
+        );
+        renderer.OpenMesh(mesh);
+
+        var pixels = Render(renderer, OrbitCamera.Default with { Yaw = 0f, Pitch = 0f });
+        if (Environment.GetEnvironmentVariable("PATINA_PICTURES") is { Length: > 0 } pictures) {
+            File.WriteAllBytes(
+                Path.Combine(pictures, "obj-material-library.png"),
+                Vixen.Core.Imaging.PngCodec.Encode8(Width, Height, 4, pixels)
+            );
+        }
+
+        var (left, right) = (At(pixels, Width / 2 - 40, Height / 2), At(pixels, Width / 2 + 40, Height / 2));
+        Assert.True(left.R > left.B + 40, $"The left quad is {left}, not red.");
+        Assert.True(right.B > right.R + 40, $"The right quad is {right}, not blue.");
+    }
+
     [Fact]
     public void Rendering_with_no_mesh_is_refused() {
         using var renderer = Open();

@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { type MeshFacts, unwrap } from '@patina/api-client';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
-import { type MeshFacts, unwrap } from '@patina/api-client';
 import { SystemStatus } from '../core/system-status';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
@@ -36,7 +36,9 @@ const HeightNormals: readonly XuiSegmentedOption[] = [
           >
             <span class="min-w-0 flex-1 truncate">{{ set.name }}</span>
             @if (set.path === front() && size(); as side) {
-              <span class="readout text-foreground-muted shrink-0 text-xs" data-testid="texture-set-size">{{ side }}</span>
+              <span class="readout text-foreground-muted shrink-0 text-xs" data-testid="texture-set-size">{{
+                side
+              }}</span>
             }
           </button>
           @if (set.material) {
@@ -63,11 +65,21 @@ const HeightNormals: readonly XuiSegmentedOption[] = [
       }
     </div>
     @if (parts().length > 1) {
-      <div class="flex flex-col px-2 py-1" role="group" aria-label="Mesh parts to show alone" data-testid="texture-set-parts">
+      <div
+        class="flex flex-col px-2 py-1"
+        role="group"
+        aria-label="Mesh parts to show alone"
+        data-testid="texture-set-parts"
+      >
         <div class="flex items-center gap-2">
           <span class="text-foreground-muted min-w-0 flex-1 truncate text-xs">Isolate parts</span>
           @if (isolated()) {
-            <button type="button" class="text-xs underline" data-testid="texture-set-show-all" (click)="isolation.showAll()">
+            <button
+              type="button"
+              class="text-xs underline"
+              data-testid="texture-set-show-all"
+              (click)="isolation.showAll()"
+            >
               Show all
             </button>
           }
@@ -86,31 +98,40 @@ const HeightNormals: readonly XuiSegmentedOption[] = [
       </div>
     }
     @if (store.state(); as state) {
-      <div class="flex flex-col gap-1 px-2 py-1" role="group" aria-label="Texture set settings" data-testid="texture-set-settings">
+      <div
+        class="flex flex-col gap-1 px-2 py-1"
+        role="group"
+        aria-label="Texture set settings"
+        data-testid="texture-set-settings"
+      >
         <div
-          class="flex items-center gap-2"
+          class="flex flex-col gap-1"
           title="What the set is painted, shown and exported at. Changing it rewrites no paint: a layer painted at another size is sampled at this one, and grows to it, exactly, the next time it is painted."
         >
-          <span class="text-foreground-muted min-w-0 flex-1 truncate text-xs">Resolution</span>
-          <xui-select
-            size="sm"
-            ariaLabel="Texture set width"
-            data-testid="texture-set-width"
-            [items]="sides()"
-            [itemText]="texels"
-            [value]="state.width"
-            (valueChange)="setSize($event, state.height)"
-          />
-          <span class="text-foreground-muted text-xs">×</span>
-          <xui-select
-            size="sm"
-            ariaLabel="Texture set height"
-            data-testid="texture-set-height"
-            [items]="sides()"
-            [itemText]="texels"
-            [value]="state.height"
-            (valueChange)="setSize(state.width, $event)"
-          />
+          <span class="text-foreground-muted truncate text-xs">Resolution</span>
+          <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1">
+            <xui-select
+              class="min-w-0"
+              size="sm"
+              ariaLabel="Texture set width"
+              data-testid="texture-set-width"
+              [items]="sides()"
+              [itemText]="texels"
+              [value]="state.width"
+              (valueChange)="setSize($event, state.height)"
+            />
+            <span class="text-foreground-muted text-xs">×</span>
+            <xui-select
+              class="min-w-0"
+              size="sm"
+              ariaLabel="Texture set height"
+              data-testid="texture-set-height"
+              [items]="sides()"
+              [itemText]="texels"
+              [value]="state.height"
+              (valueChange)="setSize(state.width, $event)"
+            />
+          </div>
         </div>
         @if (uvSets().length > 1) {
           <div
@@ -119,6 +140,7 @@ const HeightNormals: readonly XuiSegmentedOption[] = [
           >
             <span class="text-foreground-muted min-w-0 flex-1 truncate text-xs">UV set</span>
             <xui-select
+              class="min-w-0"
               size="sm"
               ariaLabel="UV set"
               data-testid="texture-set-uv-set"
@@ -205,7 +227,13 @@ export class TextureSets {
     });
     effect(() => {
       if (this.store.state()?.id) {
-        untracked(() => void this.store.meshParts().then(parts => this.parts.set(parts), () => this.parts.set([])));
+        untracked(
+          () =>
+            void this.store.meshParts().then(
+              parts => this.parts.set(parts),
+              () => this.parts.set([])
+            )
+        );
       } else {
         this.parts.set([]);
       }

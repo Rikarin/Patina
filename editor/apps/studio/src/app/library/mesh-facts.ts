@@ -46,9 +46,11 @@ function side(value: number, metresPerUnit: number | null | undefined): string {
         @for (material of facts.materials; track material.name) {
           <div class="flex items-center gap-2" data-testid="mesh-facts-material">
             <span class="min-w-0 flex-1 truncate" [title]="material.name">{{ material.name || 'No material' }}</span>
-            <span class="readout" title="Parts">{{ material.parts }}</span>
-            <span class="readout" title="Triangles">{{ amountOf(material.triangles) }}</span>
-            <span class="readout" title="UV sets every part of this texture set has">UV {{ material.uvSets }}</span>
+            <span class="readout" title="Parts">{{ material.parts === 1 ? '1 part' : material.parts + ' parts' }}</span>
+            <span class="readout" title="Triangles">{{ amountOf(material.triangles) }} tris</span>
+            <span class="readout" title="UV sets every part of this texture set has">
+              {{ material.uvSets === 1 ? '1 UV set' : material.uvSets + ' UV sets' }}
+            </span>
           </div>
         }
       </div>
@@ -70,7 +72,11 @@ export class MeshFactsView {
 
   protected readonly size = computed(() => {
     const facts = this.facts();
-    return facts ? sides(facts).map(value => side(value, facts.metresPerUnit)).join(' × ') : '';
+    return facts
+      ? sides(facts)
+          .map(value => side(value, facts.metresPerUnit))
+          .join(' × ')
+      : '';
   });
 
   protected readonly units = computed(() => {
