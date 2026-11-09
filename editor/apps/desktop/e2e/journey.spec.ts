@@ -218,9 +218,11 @@ test('a material with wear masks shows at once, and a bake sharpens it', async (
   await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 30_000 });
   const blank = await pictureHash();
 
-  // Rusted Iron's wear masks read baked maps. Without a bake they are grey, and the rest of it still shows.
+  // Rusted Iron's wear masks read baked maps. Without a bake they are grey, and the rest of it still shows. The note
+  // comes with the material's first evaluation, which shares the Worker's one GPU lane with the shelf drawing a new
+  // library's pictures: a second or two here, but on CI's software Vulkan it can take as long as a bake.
   await window.getByTestId('shelf-material').filter({ hasText: 'Rusted Iron' }).click();
-  await expect(window.getByTestId('layers-need-bake')).toBeVisible({ timeout: 30_000 });
+  await expect(window.getByTestId('layers-need-bake')).toBeVisible({ timeout: 120_000 });
   await expect.poll(pictureHash, { timeout: 30_000 }).not.toBe(blank);
   const grey = await pictureHash();
 
