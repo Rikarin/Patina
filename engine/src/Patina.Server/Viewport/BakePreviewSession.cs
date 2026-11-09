@@ -89,7 +89,9 @@ public sealed class BakePreviewSession(WorkerLink worker) : IDisposable {
                     }
                 }
                 told = (connection, asked);
-            } catch (IpcException e) {
+            } catch (Exception e) when (e is IpcException || (e is TimeoutException && !throwing)) {
+                // ⚠ A Worker too slow to answer is told once and not on every frame, or the viewport would wait on
+                // the same meshes for ever; a client asking again tells it again.
                 lock (changing) {
                     state = new(showing, [], [e.Message]);
                 }

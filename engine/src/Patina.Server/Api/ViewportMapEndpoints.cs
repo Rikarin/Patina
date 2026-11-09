@@ -167,7 +167,8 @@ static class ViewportMapEndpoints {
         } catch (IpcException e) {
             session.Redraw();
             return TypedResults.Problem(e.Message, statusCode: Refused);
-        } catch (IOException e) {
+        } catch (Exception e) when (e is IOException or TimeoutException) {
+            // The Worker went, or took longer than a reply may to read the meshes: the next frame tells it again.
             return TypedResults.Problem(e.Message, statusCode: Unavailable);
         }
     }

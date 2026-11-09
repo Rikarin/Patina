@@ -165,6 +165,41 @@ test('the bake settings are a section per map and stay in the project', async ()
   await window.screenshot({ path: join(shots, 'bake-common.png') });
 });
 
+test('a bake shows its setup in the viewport before it runs, and the maps that need no high mesh have their settings', async () => {
+  // The Worker reads both meshes before the first frame with the setup on it, which on CI's software Vulkan is slow.
+  test.setTimeout(180_000);
+  await window.getByTestId('open-bake').click();
+  await choose('high', join(scratch, 'meshes', 'housing_high.glb'));
+  await window.getByTestId('bake-match').click();
+
+  const frames = () =>
+    window
+      .getByRole('application', { name: 'Viewport' })
+      .getAttribute('data-frames')
+      .then(count => Number(count));
+  const before = await frames();
+  await window.getByTestId('bake-preview').click();
+
+  // The key names each part on both sides: the housing's low and high parts share a name once their endings are gone.
+  const parts = window.getByTestId('bake-preview-parts');
+  await expect(parts).toBeVisible({ timeout: 120_000 });
+  await expect(parts).toContainText('low,');
+  await expect.poll(frames, { timeout: 30_000 }).toBeGreaterThan(before);
+  mkdirSync(shots, { recursive: true });
+  await window.screenshot({ path: join(shots, 'bake-preview.png') });
+
+  // Off takes it off the viewport for every client.
+  await window.getByTestId('bake-preview').click();
+  await expect(parts).toHaveCount(0);
+
+  await window.getByTestId('bake-section-normal').click();
+  await window.getByTestId('bake-round').click();
+  await expect(window.getByTestId('bake-round-width')).toBeVisible();
+  await window.getByTestId('bake-section-colour').click();
+  await expect(window.getByTestId('bake-colour-source')).toBeVisible();
+  await window.screenshot({ path: join(shots, 'bake-colour.png') });
+});
+
 test('the panel says why the Server refused a high poly mesh', async () => {
   await window.getByTestId('open-bake').click();
   await choose('high', '/nowhere/high.glb');
