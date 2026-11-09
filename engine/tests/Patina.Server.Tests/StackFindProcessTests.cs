@@ -49,7 +49,7 @@ public sealed partial class StackProcessTests {
             ContractsJsonContext.Default.StackFindRequest,
             token
         );
-        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync(token));
+        await SucceededAsync(response, token);
         return (await response.Content.ReadFromJsonAsync(ContractsJsonContext.Default.StackFound, token))!.Layer;
     }
 }

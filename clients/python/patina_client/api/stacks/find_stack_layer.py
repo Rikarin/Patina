@@ -57,6 +57,13 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Res
 
         return response_404
 
+    if response.status_code == 422:
+        response_422 = ProblemDetails.from_dict(response.json())
+
+
+
+        return response_422
+
     if response.status_code == 503:
         response_503 = ProblemDetails.from_dict(response.json())
 

@@ -132,6 +132,7 @@ static class StackEndpoints {
             "The layer on top at a place on the map, as a click on the mesh or the map finds it. Its answer is a layer "
             + "id: the Worker weighs each layer there and no picture leaves it.",
             Missing,
+            Refused,
             Unavailable
         );
         Get(
@@ -352,8 +353,11 @@ static class StackEndpoints {
             return TypedResults.Ok(
                 new StackFound(await evaluator.FindAsync(session, request.U, request.V, cancellationToken))
             );
-        } catch (Exception e) when (e is IpcException or IOException or TimeoutException) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+        } catch (IpcException e) {
+            // The stack would not evaluate, which is the stack's to say and not the Worker's to be missing for.
+            return TypedResults.Problem(e.Message, statusCode: Refused);
+        } catch (Exception e) when (e is IOException or TimeoutException) {
+            return TypedResults.Problem(e.Message, statusCode: Unavailable);
         }
     }
 
