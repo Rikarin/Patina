@@ -409,6 +409,86 @@
         }
       }
     },
+    "/api/v1/viewport/bake-preview": {
+      "put": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "Lays a bake\u0027s setup over the model before it runs: where its rays start and how far they reach, the high meshes see-through, and which parts match by name. An empty low mesh takes it off.",
+        "operationId": "PreviewBakeInViewport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewportBakePreview"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BakePreviewState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "The bake setup the viewport shows, and the key to its colours.",
+        "operationId": "GetBakePreview",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BakePreviewState"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/viewport/graph": {
       "put": {
         "tags": [
@@ -6103,6 +6183,71 @@
           }
         },
         "description": "How a bake runs, with no meshes in it: what a project keeps between bakes and every client sends. Each map\u0027s\nown settings are a part of their own."
+      },
+      "BakePreviewPart": {
+        "required": [
+          "name",
+          "lowFaces",
+          "highFaces",
+          "colour"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name both sides share once their endings are gone."
+          },
+          "lowFaces": {
+            "type": "integer",
+            "description": "The low mesh\u0027s faces of that name, zero for a high part no low part matched.",
+            "format": "int32"
+          },
+          "highFaces": {
+            "type": "integer",
+            "description": "The high mesh\u0027s faces of that name, zero for a low part that matched nothing.",
+            "format": "int32"
+          },
+          "colour": {
+            "type": "string",
+            "description": "How it is drawn, as \u0060#rrggbb\u0060."
+          }
+        },
+        "description": "One part name as matching by name sees it: how many faces each side has and the colour it is drawn in."
+      },
+      "BakePreviewState": {
+        "required": [
+          "parts",
+          "warnings"
+        ],
+        "type": "object",
+        "properties": {
+          "preview": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What was asked for, or null when the preview is off.",
+                "$ref": "#/components/schemas/ViewportBakePreview"
+              }
+            ]
+          },
+          "parts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BakePreviewPart"
+            },
+            "description": "The parts by name, in the low mesh\u0027s order and then the high\u0027s, when parts are matched by name; empty when\nthey are not."
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What the preview left out or could not read."
+          }
+        },
+        "description": "What the viewport shows of a bake\u0027s setup: the key to its colours, and what it could not show."
       },
       "BakeRayOptions": {
         "required": [
@@ -14427,6 +14572,61 @@
           }
         },
         "description": "What one texture set\u0027s unwrap came to."
+      },
+      "ViewportBakePreview": {
+        "required": [
+          "high",
+          "low",
+          "options",
+          "reach",
+          "highMesh",
+          "matches"
+        ],
+        "type": "object",
+        "properties": {
+          "high": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The detailed meshes, in order."
+          },
+          "low": {
+            "type": "string",
+            "description": "The mesh baked onto, or empty to take the preview off."
+          },
+          "cage": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A cage, or null for the ray distances."
+          },
+          "material": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The texture set of the low mesh, or null for the whole mesh."
+          },
+          "options": {
+            "description": "The options the bake would run with: its distances, units, cage correction and matching.",
+            "$ref": "#/components/schemas/BakeOptions"
+          },
+          "reach": {
+            "type": "boolean",
+            "description": "Whether to draw where the rays start and how far they reach: the cage or the ray distances."
+          },
+          "highMesh": {
+            "type": "boolean",
+            "description": "Whether to draw the high meshes, see-through."
+          },
+          "matches": {
+            "type": "boolean",
+            "description": "Whether to colour the parts by which matched which, when parts are matched by name."
+          }
+        },
+        "description": "A bake\u0027s setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,\nand what of it to draw. Paths on the Server\u0027s machine, as in a bake request."
       },
       "ViewportBakeRequest": {
         "required": [

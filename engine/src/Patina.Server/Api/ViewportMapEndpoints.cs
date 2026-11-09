@@ -60,6 +60,20 @@ static class ViewportMapEndpoints {
             .WithSummary("Shows a finished bake's normal and occlusion maps on the mesh it was baked onto.")
             .ProducesProblem(Missing)
             .ProducesProblem(Refused);
+        api.MapPut("/viewport/bake-preview", PreviewBakeAsync)
+            .WithName("PreviewBakeInViewport")
+            .WithTags(Tag)
+            .WithSummary(
+                "Lays a bake's setup over the model before it runs: where its rays start and how far they reach, the "
+                + "high meshes see-through, and which parts match by name. An empty low mesh takes it off."
+            )
+            .ProducesProblem(Missing)
+            .ProducesProblem(Refused)
+            .ProducesProblem(Unavailable);
+        api.MapGet("/viewport/bake-preview", static (BakePreviewSession preview) => TypedResults.Ok(preview.State))
+            .WithName("GetBakePreview")
+            .WithTags(Tag)
+            .WithSummary("The bake setup the viewport shows, and the key to its colours.");
         api.MapPut("/viewport/graph", ShowGraphAsync)
             .WithName("ShowGraphInViewport")
             .WithTags(Tag)
@@ -116,6 +130,45 @@ static class ViewportMapEndpoints {
             return TypedResults.Ok(session.State);
         } catch (FileNotFoundException e) {
             return TypedResults.Problem(e.Message, statusCode: Missing);
+        }
+    }
+
+    /// <summary>
+    ///     Shows a bake's setup, refused for options a bake would refuse and for files that are not there, so what is
+    ///     shown is a bake that could run.
+    /// </summary>
+    static async Task<Results<Ok<BakePreviewState>, ProblemHttpResult>> PreviewBakeAsync(
+        ViewportBakePreview request,
+        BakePreviewSession preview,
+        ViewportSession session,
+        CancellationToken cancellationToken
+    ) {
+        if (request.Low.Length > 0) {
+            if (request.Options.Rays.Problem() is { } wrong) {
+                return TypedResults.Problem(wrong, statusCode: Refused);
+            }
+
+            string[] files = [request.Low, ..request.High, request.Cage ?? string.Empty, request.Options.Rays.DistanceMap];
+            if (files.FirstOrDefault(static file => file.Length > 0 && !File.Exists(file)) is { } missing) {
+                return TypedResults.Problem($"There is no file at '{missing}'.", statusCode: Missing);
+            }
+
+            if (request.High.Count == 0) {
+                return TypedResults.Problem("A bake needs a high mesh, which may be the low mesh itself.", statusCode: Refused);
+            }
+        }
+
+        try {
+            var shown = await preview.ShowAsync(request, cancellationToken);
+            session.Redraw();
+            return TypedResults.Ok(shown);
+        } catch (RendererMissingException e) {
+            return TypedResults.Problem(e.Message, statusCode: Unavailable);
+        } catch (IpcException e) {
+            session.Redraw();
+            return TypedResults.Problem(e.Message, statusCode: Refused);
+        } catch (IOException e) {
+            return TypedResults.Problem(e.Message, statusCode: Unavailable);
         }
     }
 

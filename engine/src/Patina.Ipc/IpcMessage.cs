@@ -33,6 +33,13 @@ public static class IpcTypes {
     public const string ViewportDisplay = "viewport.display";
 
     /// <summary>
+    ///     Server to Worker: lay a bake's setup over the model, as <see cref="IpcMessage.BakePreview" /> says, or take it
+    ///     off for an empty low mesh; answers with <see cref="IpcMessage.BakePreviewShown" />. Paths, not shapes: the
+    ///     Worker reads the meshes and keeps what it drew.
+    /// </summary>
+    public const string ViewportBakePreview = "viewport.bake-preview";
+
+    /// <summary>
     ///     Server to Worker: render <see cref="IpcMessage.Render" /> into shared memory; answers with
     ///     <see cref="IpcMessage.Frame" />. The pixels are not in the message.
     /// </summary>
@@ -193,6 +200,12 @@ public sealed class IpcMessage {
 
     /// <summary>viewport.display: how frames are lit, shown and finished.</summary>
     public ViewportDisplaySet? Display { get; set; }
+
+    /// <summary>viewport.bake-preview: the bake's setup to show.</summary>
+    public ViewportBakePreview? BakePreview { get; set; }
+
+    /// <summary>The reply to viewport.bake-preview: the key to what is drawn.</summary>
+    public BakePreviewState? BakePreviewShown { get; set; }
 
     /// <summary>viewport.render: what to render and where to put it.</summary>
     public ViewportRender? Render { get; set; }

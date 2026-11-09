@@ -81,6 +81,7 @@ builder.Services.AddHostedService(static s => s.GetRequiredService<WorkerLink>()
 builder.Services.AddSingleton<LibraryHost>();
 builder.Services.AddHostedService(static s => s.GetRequiredService<LibraryHost>());
 builder.Services.AddSingleton<FrameMemory>();
+builder.Services.AddSingleton<BakePreviewSession>();
 builder.Services.AddSingleton<ViewportSession>();
 builder.Services.AddHostedService(static s => s.GetRequiredService<ViewportSession>());
 builder.Services.AddSingleton<GraphSessions>();

@@ -53,6 +53,12 @@ sealed class ViewportShaders(ShaderCache cache) {
         );
 
     /// <summary>The curve to the screen, one variant per operator, in the order Vixen numbers them.</summary>
+    public EffectData Overlay() =>
+        cache.Get(
+            EffectKey.Of("ViewportOverlay"),
+            [..Core, ..Read(static name => name.EndsWith("Shaders.ViewportOverlay.rvn", StringComparison.Ordinal))]
+        );
+
     public EffectData Tonemap(ViewportToneMapping curve) =>
         cache.Get(
             EffectKey.Of(

@@ -163,7 +163,7 @@ public static class MeshMapBakeRun {
             }
         );
 
-    static BakeSettings Settings(BakeRequest request, FlatModel high, FlatModel low, EditMesh? cage, int threads) {
+    internal static BakeSettings Settings(BakeRequest request, FlatModel high, FlatModel low, EditMesh? cage, int threads) {
         var options = request.Options;
         var rays = options.Rays;
         var occlusion = options.Occlusion;
@@ -224,7 +224,7 @@ public static class MeshMapBakeRun {
     }
 
     /// <summary>A name ending as the matching takes it: one ending, or none for an empty field.</summary>
-    static string[] Suffixes(string suffix) => suffix.Trim() is { Length: > 0 } trimmed ? [trimmed] : [];
+    internal static string[] Suffixes(string suffix) => suffix.Trim() is { Length: > 0 } trimmed ? [trimmed] : [];
 
     static MeshMaps Maps(IReadOnlyList<string> names) {
         var maps = MeshMaps.None;

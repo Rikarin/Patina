@@ -51,6 +51,7 @@ public sealed class ViewportRenderer : IDisposable {
     readonly ConstantBlock frameBlock;
     readonly ConstantBlock skyBlock;
     readonly ViewportWire wire;
+    readonly ViewportOverlay overlay;
     Geometry? geometry;
     ViewportTargets? targets;
     string? meshFolder;
@@ -101,6 +102,17 @@ public sealed class ViewportRenderer : IDisposable {
             Samples
         );
         cleanup.Add(wire.Dispose);
+        var overlayEffect = loader.Load(shaders.Overlay());
+        overlay = new(
+            device,
+            overlayEffect,
+            Module(overlayEffect, ShaderStage.Vertex),
+            Module(overlayEffect, ShaderStage.Fragment),
+            HdrFormat,
+            DepthFormat,
+            Samples
+        );
+        cleanup.Add(overlay.Dispose);
         post = new(
             device,
             shaders,
@@ -137,6 +149,9 @@ public sealed class ViewportRenderer : IDisposable {
 
     /// <summary>How the model is lit, shown and finished, from the next frame on.</summary>
     public ViewportShading Shading { get; set; } = new();
+
+    /// <summary>Lays shapes over the model from the next frame on, such as a bake's preview, or takes them off.</summary>
+    public void SetOverlay(ViewportShapes shapes) => overlay.Set(shapes);
 
 
     /// <summary>The adapter's name, for logs.</summary>
@@ -522,6 +537,7 @@ public sealed class ViewportRenderer : IDisposable {
         device.Write(skyConstants, 0, skyBlock.Bytes);
 
         wire.Write(viewProjection, eye, radius);
+        overlay.Write(viewProjection, eye, radius);
     }
 
     /// <summary>In <c>ShCoefficients</c>' order, which is the basis's: l00, then m from -l to l in each band.</summary>
@@ -575,6 +591,8 @@ public sealed class ViewportRenderer : IDisposable {
         if (wireframe && scene.Edges is { } edges) {
             wire.Record(commands, scene.Vertices, edges, scene.EdgeIndexCount);
         }
+
+        overlay.Record(commands);
 
         commands.EndRenderPass();
 
