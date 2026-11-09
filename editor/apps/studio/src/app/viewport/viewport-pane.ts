@@ -23,6 +23,7 @@ import { ProjectStore } from '../library/project-store';
 import { PaintStore, pressureOf } from '../paint/paint-store';
 import { symmetryGuide } from '../paint/symmetry-guide';
 import { ScreenPictureOverlay } from '../paint/screen-picture';
+import { SurfaceGuide } from '../paint/surface-guide';
 import { StrokeGesture } from '../paint/stroke-gesture';
 import { ToolStrip } from '../paint/tool-strip';
 import { FramePainter } from './frame-painter';
@@ -91,7 +92,7 @@ const PickLook = '…';
 /** The docked viewport: frames from the Worker on a canvas, and orbit input going the other way. */
 @Component({
   selector: 'ptn-viewport',
-  imports: [XuiButtonImports, ViewportDisplayPanel, ToolStrip, ScreenPictureOverlay],
+  imports: [XuiButtonImports, ViewportDisplayPanel, ToolStrip, ScreenPictureOverlay, SurfaceGuide],
   providers: [ViewportClient],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
@@ -234,6 +235,7 @@ const PickLook = '…';
       ></canvas>
       @if (paint.worn() && project.active()?.kind === 'texturing') {
         <ptn-screen-picture />
+        <ptn-surface-guide />
         <ptn-tool-strip class="absolute start-2 top-2" />
       }
       @if (paints()) {
@@ -326,6 +328,7 @@ export class ViewportPane implements AfterViewInit {
     () =>
       this.paints() ||
       this.paint.picking() !== null ||
+      this.paint.placing() !== null ||
       (this.paint.worn() && (this.paint.tool() === 'picker' || this.paint.finding()))
   );
   private panning = false;
@@ -590,13 +593,30 @@ export class ViewportPane implements AfterViewInit {
 
     handle('zoomIn', move('+', false));
     handle('zoomOut', move('-', false));
-    handle('cancelStroke', () => this.gesture.cancel(), () => this.gesture.points().length > 0 || this.paint.picking() !== null);
-    handle('finishPath', () => this.gesture.finish(), () => this.paint.tool() === 'path' && this.gesture.points().length > 1);
+    handle(
+      'cancelStroke',
+      () => {
+        this.gesture.cancel();
+        this.paint.placing.set(null);
+      },
+      () => this.gesture.points().length > 0 || this.paint.picking() !== null || this.paint.placing() !== null
+    );
+    handle(
+      'finishPath',
+      () => (this.paint.placing() === 'path' ? this.paint.placing.set(null) : this.gesture.finish()),
+      () => this.paint.placing() === 'path' || (this.paint.tool() === 'path' && this.gesture.points().length > 1)
+    );
   }
 
   protected press(event: PointerEvent): void {
     if (this.paint.finding() && event.button === 0) {
       void this.paint.findLayerOnMesh(this.stamp(event), this.aim());
+      return;
+    }
+
+    // A decal goes where the click lands, and a path gains a point there (#130, #133).
+    if (this.paint.placing() !== null && event.button === 0 && !event.altKey) {
+      void this.paint.placeOnMesh(this.stamp(event), this.aim());
       return;
     }
 

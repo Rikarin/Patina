@@ -38,6 +38,9 @@ class ViewportPick:
             bounds (list[float] | None | Unset): The box the mesh fits inside, in its own space: the least corner's three
                 numbers, then the greatest's. A
                 symmetry's model centre is its middle, and a client draws a symmetry's plane across it.
+            normal (list[float] | None | Unset): The face it met, as a unit direction out of the side the camera sees: three
+                numbers. A decal placed there faces
+                it, and a path drawn through it keeps to faces that turn the same way.
      """
 
     found: bool
@@ -47,6 +50,7 @@ class ViewportPick:
     v: float = 0.0
     position: list[float] | None | Unset = UNSET
     bounds: list[float] | None | Unset = UNSET
+    normal: list[float] | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -85,6 +89,16 @@ class ViewportPick:
         else:
             bounds = self.bounds
 
+        normal: list[float] | None | Unset
+        if isinstance(self.normal, Unset):
+            normal = UNSET
+        elif isinstance(self.normal, list):
+            normal = self.normal
+
+
+        else:
+            normal = self.normal
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -99,6 +113,8 @@ class ViewportPick:
             field_dict["position"] = position
         if bounds is not UNSET:
             field_dict["bounds"] = bounds
+        if normal is not UNSET:
+            field_dict["normal"] = normal
 
         return field_dict
 
@@ -157,6 +173,24 @@ class ViewportPick:
         bounds = _parse_bounds(d.pop("bounds", UNSET))
 
 
+        def _parse_normal(data: object) -> list[float] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                normal_type_1 = cast(list[float], data)
+
+                return normal_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[float] | None | Unset, data)
+
+        normal = _parse_normal(d.pop("normal", UNSET))
+
+
         viewport_pick = cls(
             found=found,
             view=view,
@@ -165,6 +199,7 @@ class ViewportPick:
             v=v,
             position=position,
             bounds=bounds,
+            normal=normal,
         )
 
 

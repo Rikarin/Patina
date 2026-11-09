@@ -21,3 +21,4 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0016](0016-commands.md): accepted: one command table that the menus, the keys, the shortcuts dialog and tooltips read.
 - [0017](0017-filter-inputs.md): accepted: a filter's first image is its subject, every image names where it reads, and a node says when it is no filter.
 - [0018](0018-library-care.md): accepted: a bin in the library, one thumbnail service for every list, and preferences in plain files.
+- [0019](0019-decals-and-paths.md): accepted: a decal and a path are a fill's projection, kept as numbers and evaluated, never stamped.

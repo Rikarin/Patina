@@ -21,6 +21,9 @@ static class StackLayerEdits {
             case StackSetInstance repoint:
                 run(new StackInstanceEdits(editor).Repointed(repoint, set));
                 return true;
+            case StackApplyMask applying:
+                run(StackSmartAssets.ApplyMask(editor, applying, set));
+                return true;
             case StackAddMaskLayer or StackRemoveMaskLayer or StackMoveMaskLayer or StackSetMaskLayer:
                 run(new StackMaskLayerEdits(editor).MaskLayers(command, set));
                 return true;
@@ -28,6 +31,14 @@ static class StackLayerEdits {
                 return false;
         }
     }
+
+    /// <summary>A layer's decal as a change asks for it (#133): the one sent, or the one it had.</summary>
+    public static LayerDecal? Decal(StackSetLayer change, LayerAsset layer) =>
+        change.Decal is { } decal ? StackSurfaces.Kept(decal) : layer.Decal;
+
+    /// <summary>A layer's path as a change asks for it (#130): the one sent, or the one it had.</summary>
+    public static LayerSurfacePath? SurfacePath(StackSetLayer change, LayerAsset layer) =>
+        change.Path is { } path ? StackSurfaces.Kept(path) : layer.SurfacePath;
 
     /// <summary>A layer's mask as a change asks for it, which <see cref="StackMaskLayers.Masked" /> says.</summary>
     public static MaskAsset Masked(MaskAsset held, StackMask? mask) => StackMaskLayers.Masked(held, mask);

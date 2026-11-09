@@ -227,6 +227,10 @@ public sealed record ViewportPickRequest(
 ///     The box the mesh fits inside, in its own space: the least corner's three numbers, then the greatest's. A
 ///     symmetry's model centre is its middle, and a client draws a symmetry's plane across it.
 /// </param>
+/// <param name="Normal">
+///     The face it met, as a unit direction out of the side the camera sees: three numbers. A decal placed there faces
+///     it, and a path drawn through it keeps to faces that turn the same way.
+/// </param>
 public sealed record ViewportPick(
     bool Found,
     StackView View,
@@ -234,7 +238,8 @@ public sealed record ViewportPick(
     float U = 0f,
     float V = 0f,
     IReadOnlyList<float>? Position = null,
-    IReadOnlyList<float>? Bounds = null
+    IReadOnlyList<float>? Bounds = null,
+    IReadOnlyList<float>? Normal = null
 );
 
 /// <summary>

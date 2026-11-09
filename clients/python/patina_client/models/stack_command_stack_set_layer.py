@@ -19,9 +19,11 @@ if TYPE_CHECKING:
   from ..models.stack_command_stack_set_layer_settings_type_1 import StackCommandStackSetLayerSettingsType1
   from ..models.stack_command_stack_set_layer_textures_type_1 import StackCommandStackSetLayerTexturesType1
   from ..models.stack_command_stack_set_layer_values_type_1 import StackCommandStackSetLayerValuesType1
+  from ..models.stack_decal import StackDecal
   from ..models.stack_mask import StackMask
   from ..models.stack_mesh_mask import StackMeshMask
   from ..models.stack_placement import StackPlacement
+  from ..models.stack_surface_path import StackSurfacePath
 
 
 
@@ -49,7 +51,7 @@ class StackCommandStackSetLayer:
             textures (None | StackCommandStackSetLayerTexturesType1 | Unset): What a texture fill reads, replacing what
                 these channels held.
             graph (None | str | Unset): The graph a graph fill reads.
-            projection (None | str | Unset): How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical.
+            projection (None | str | Unset): How a fill lands: Uv, Triplanar, Planar, Spherical, Cylindrical, Decal or Path.
             filter_ (None | str | Unset): What a filter does, one of the five named filters.
             settings (None | StackCommandStackSetLayerSettingsType1 | Unset): A filter's numbers, replacing what these names
                 held. Choosing another filter starts it from its own defaults.
@@ -66,6 +68,8 @@ class StackCommandStackSetLayer:
             anchor (None | StackAnchorRef | Unset):
             inputs (None | StackCommandStackSetLayerInputsType1 | Unset): Where the image inputs of a graph fill or a filter
                 read, by port, replacing all of them.
+            decal (None | StackDecal | Unset):
+            path (None | StackSurfacePath | Unset):
      """
 
     op: StackCommandStackSetLayerOp
@@ -91,6 +95,8 @@ class StackCommandStackSetLayer:
     anchor_point: None | str | Unset = UNSET
     anchor: None | StackAnchorRef | Unset = UNSET
     inputs: None | StackCommandStackSetLayerInputsType1 | Unset = UNSET
+    decal: None | StackDecal | Unset = UNSET
+    path: None | StackSurfacePath | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -104,9 +110,11 @@ class StackCommandStackSetLayer:
         from ..models.stack_command_stack_set_layer_settings_type_1 import StackCommandStackSetLayerSettingsType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_layer_textures_type_1 import StackCommandStackSetLayerTexturesType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_layer_values_type_1 import StackCommandStackSetLayerValuesType1 # noqa: PLC0415
+        from ..models.stack_decal import StackDecal # noqa: PLC0415
         from ..models.stack_mask import StackMask # noqa: PLC0415
         from ..models.stack_mesh_mask import StackMeshMask # noqa: PLC0415
         from ..models.stack_placement import StackPlacement # noqa: PLC0415
+        from ..models.stack_surface_path import StackSurfacePath # noqa: PLC0415
         op = self.op.value
 
         layer = self.layer
@@ -259,6 +267,22 @@ class StackCommandStackSetLayer:
         else:
             inputs = self.inputs
 
+        decal: dict[str, Any] | None | Unset
+        if isinstance(self.decal, Unset):
+            decal = UNSET
+        elif isinstance(self.decal, StackDecal):
+            decal = self.decal.to_dict()
+        else:
+            decal = self.decal
+
+        path: dict[str, Any] | None | Unset
+        if isinstance(self.path, Unset):
+            path = UNSET
+        elif isinstance(self.path, StackSurfacePath):
+            path = self.path.to_dict()
+        else:
+            path = self.path
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -308,6 +332,10 @@ class StackCommandStackSetLayer:
             field_dict["anchor"] = anchor
         if inputs is not UNSET:
             field_dict["inputs"] = inputs
+        if decal is not UNSET:
+            field_dict["decal"] = decal
+        if path is not UNSET:
+            field_dict["path"] = path
 
         return field_dict
 
@@ -321,9 +349,11 @@ class StackCommandStackSetLayer:
         from ..models.stack_command_stack_set_layer_settings_type_1 import StackCommandStackSetLayerSettingsType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_layer_textures_type_1 import StackCommandStackSetLayerTexturesType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_layer_values_type_1 import StackCommandStackSetLayerValuesType1 # noqa: PLC0415
+        from ..models.stack_decal import StackDecal # noqa: PLC0415
         from ..models.stack_mask import StackMask # noqa: PLC0415
         from ..models.stack_mesh_mask import StackMeshMask # noqa: PLC0415
         from ..models.stack_placement import StackPlacement # noqa: PLC0415
+        from ..models.stack_surface_path import StackSurfacePath # noqa: PLC0415
         d = dict(src_dict)
         op = StackCommandStackSetLayerOp(d.pop("op"))
 
@@ -640,6 +670,46 @@ class StackCommandStackSetLayer:
         inputs = _parse_inputs(d.pop("inputs", UNSET))
 
 
+        def _parse_decal(data: object) -> None | StackDecal | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                decal_type_1 = StackDecal.from_dict(data)
+
+
+
+                return decal_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackDecal | Unset, data)
+
+        decal = _parse_decal(d.pop("decal", UNSET))
+
+
+        def _parse_path(data: object) -> None | StackSurfacePath | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                path_type_1 = StackSurfacePath.from_dict(data)
+
+
+
+                return path_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackSurfacePath | Unset, data)
+
+        path = _parse_path(d.pop("path", UNSET))
+
+
         stack_command_stack_set_layer = cls(
             op=op,
             layer=layer,
@@ -664,6 +734,8 @@ class StackCommandStackSetLayer:
             anchor_point=anchor_point,
             anchor=anchor,
             inputs=inputs,
+            decal=decal,
+            path=path,
         )
 
 

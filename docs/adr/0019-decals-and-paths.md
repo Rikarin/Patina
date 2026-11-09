@@ -1,0 +1,88 @@
+# ADR 0019: Decals and paths are a fill's projection, evaluated, never stamped
+
+**Status:** accepted, 2026-11-09 (#130, #131, #133, #134, with #135 alongside).
+
+## Context
+
+Four parity issues ask for things placed on the model and changed later. #133: a projection placed in 3D, moved,
+scaled and turned again. #134: a warp on it before it lands. #130: a path whose points can be edited after the stroke
+is seen. #131: a ribbon, a strip of a material or a picture laid along a path. Before this, a path was points on a
+picture rasterised when the stroke finished, gone into the canvas; a projection was the brush painting a picture on the
+screen, also gone into the canvas; and the fill projections (triplanar, planar, spherical, cylindrical) were fixed to
+world axes or the model's bounds.
+
+There were three places such a thing could live:
+
+1. **A layer type of its own**, with a canvas the Worker stamps from the decal or the path whenever it changes.
+2. **A mask entry**, so a path or a decal says where a layer shows.
+3. **A fill's projection**, beside the four the stack already has.
+
+## Decision
+
+**A decal and a path are two more members of `LayerProjection`: `Decal` and `Path`.** A fill layer reads its box from
+`LayerAsset.Decal` (a `LayerDecal`) or its curve from `LayerAsset.SurfacePath` (a `LayerSurfacePath`), and Vixen's
+stack compiler wires the fill's content through one node, `Space/Decal` or `Space/Surface Path`, over the same
+`position` and `world` bakes a triplanar fill reads. The node's output is transparent wherever the decal or the path
+does not reach, so the layer composites nothing there, under its own blend, opacity and mask.
+
+- **Nothing is stamped.** Moving a decal or a point is a `setLayer` with the new numbers: an edit to the document that
+  undoes, redoes, saves, syncs to every client and replays after a lost Worker like any other, with no journal entry and
+  no canvas. Undo and history need nothing new: the History list names the step *Move decal* or *Edit path*.
+- **It is evaluated on the device, by the one evaluator** (plan §3.2). A decal is a box projection: a texel's place on
+  the model, read from the `position` bake, is taken into the box's frame, culled by its normal against the box's
+  facing and faded through the depth. A path covers each texel by its distance in space from the polyline, against the
+  width there, with the path's normal as the guard against the far side of a thin wall; a ribbon reads its picture along
+  the arc length and across the side. The curve is `PaintPath`'s centripetal Catmull-Rom, now evaluated in three
+  dimensions, and reaches the kernel as a small 32-bit table carried in the plan, so no host resolves anything.
+- **The fill decides what lands.** A constant fill along a path is a stroke of that colour, a texture fill a picture, a
+  graph fill a material in every channel: #131's "a strip of a material or a picture" is a graph or texture fill with
+  Ribbon on. A constant fill is meaningful here, unlike under the axis projections, because a decal and a path decide
+  where the layer covers.
+- **The warp is part of the decal**: a 3 by 3 grid of where the picture's grid lands on the decal's square, inverted
+  cell by cell in the kernel with the four-corner warp's quadratic.
+
+### Why not a layer type with a canvas
+
+A canvas stamped from data is a cache of a document, and every host that evaluates a stack would have to make it: the
+Worker, `patina build` and a Blender client's export alike. It would be resolution-bound (#19), stale whenever the
+mesh or its bake changes (#204), and an edit to a point would replay strokes. The projection is a pure function of the
+document and the bake, which every host already has.
+
+**What it costs:** a path is a distance field and not a stamped brush. It has a radius, a hardness, pressure per point
+and an angle limit, but no brush alpha, spacing or jitter. A stamped path with the full brush engine is still the
+`path` curve of a stroke, which rasterises into a paint layer as before. Distance is in space, not along the surface,
+so on a sharply curved part a wide path cuts across rather than following the surface; the normal guard keeps it off
+faces turned away.
+
+### Why not a mask entry
+
+A mask entry has no content of its own, and #131 asks for a material laid along the path. As a projection the same
+path is a mask too: a fill with a path projection in a layer's mask stack is not built, but the node is a graph node, so
+a mask generator can use it.
+
+## The box
+
+`position` is 0 to 1 along each axis of the bake's own bounds, so a decal written in that space is stretched on any
+model that is not a cube. **A decal and a path are written in the model's own units, with the box the bake is
+normalised in beside them** (`Box`, six numbers). The client sends the model's bounds as `POST /viewport/pick` gives
+them, which is the bake's box when the maps are baked from the model itself. ⚠ A bake from a high mesh whose bounds
+differ from the low mesh's moves a decal by the difference, and a model swapped for one with other bounds leaves the
+stored box stale: nothing rewrites it yet.
+
+## #204 and the mesh
+
+#204 (strokes bound to the surface surviving mesh edits) is the owner's to decide. This keeps it open and makes it no
+harder: a decal and a path are stored in the model's space, not in the atlas, so a new unwrap or a new resolution
+changes nothing about them, and a remesh that keeps the shape keeps them where they were. The stored box is the one
+thing a mesh change must update, and a future `StackSetModel` could do that when it binds a model with other bounds.
+
+## Smart materials and masks (#135)
+
+Saving a layer, a folder or a mask goes through Vixen's `SmartMaterial.Extract`, the one place that decides what
+survives a change of model (painted pixels do not; a mask that read them becomes a zero). A smart mask is a layered
+material document with the role `mask` (a role a layered material may now carry), holding one fill layer whose mask is
+the one saved. Applying one to a layer that has a mask merges by default: its base multiplies over the layer's mask as
+one more entry, its entries follow with their own operators, and its effects run after the layer's own, over the whole
+mask. That last part is a compromise: a mask's effects apply to the whole composited mask and an entry carries none, so
+a merged smart mask's blur also blurs the mask it joined. A decal or a path saved in a smart material goes with it,
+placed where it was on the model it was saved from.

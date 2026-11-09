@@ -150,9 +150,7 @@ public static class MaterialShelf {
     /// </summary>
     static bool Maybe(ProjectDocumentInfo document, string project, string[] words) {
         var graph = document.Kind is DocumentKinds.Graph or DocumentKinds.ImageMaterial;
-        var role = document.Kind == DocumentKinds.LayeredMaterial
-            ? GraphRoles.Material
-            : document.Role ?? GraphRoles.Material;
+        var role = document.Role ?? GraphRoles.Material;
         return Has(
             words,
             document.Name,
@@ -426,7 +424,7 @@ public static class MaterialShelf {
                 document.Name,
                 document.Kind,
                 document.Path,
-                "material",
+                document.Role ?? GraphRoles.Material,
                 "project",
                 []
             ),

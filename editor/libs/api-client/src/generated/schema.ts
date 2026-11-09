@@ -1280,6 +1280,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/stacks/{id}/save-material': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Saves layers, or one layer's mask, into a project as a smart material or smart mask its shelf offers. */
+    post: operations['SaveStackMaterial'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/stacks': {
     parameters: {
       query?: never;
@@ -4662,7 +4679,8 @@ export interface components {
       | components['schemas']['StackCommandStackMoveMaskLayer']
       | components['schemas']['StackCommandStackSetMaskLayer']
       | components['schemas']['StackCommandStackAddInstance']
-      | components['schemas']['StackCommandStackSetInstance'];
+      | components['schemas']['StackCommandStackSetInstance']
+      | components['schemas']['StackCommandStackApplyMask'];
     /** @description Edits applied whole or not at all, as one undo step. */
     StackCommandBatch: {
       /** @description The edits, in order. */
@@ -4734,6 +4752,24 @@ export interface components {
       index?: null | number;
       /** @description The compound, for a generator entry, or null for the first the vocabulary offers. */
       generator?: null | string;
+    };
+    /**
+     * @description Gives a layer a smart mask from the shelf (#135). Merged, it narrows the mask the layer has: the smart mask's
+     *     base multiplies over it as one more entry, its entries follow, and its effects run after the layer's own. Not
+     *     merged, it replaces the mask.
+     */
+    StackCommandStackApplyMask: {
+      /** @enum {string} */
+      op: 'applyMask';
+      /** @description The layer. */
+      layer: string;
+      /** @description The smart mask, as the shelf names it. */
+      source: string;
+      /**
+       * @description Whether it joins the layer's mask rather than replacing it. A layer with no mask simply takes it.
+       * @default true
+       */
+      merge: boolean;
     };
     /**
      * @description Duplicates layers, each just above itself, with everything inside it. A painted canvas is copied, never shared:
@@ -4889,7 +4925,7 @@ export interface components {
       };
       /** @description The graph a graph fill reads. */
       graph?: null | string;
-      /** @description How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical. */
+      /** @description How a fill lands: Uv, Triplanar, Planar, Spherical, Cylindrical, Decal or Path. */
       projection?: null | string;
       /** @description What a filter does, one of the five named filters. */
       filter?: null | string;
@@ -4918,6 +4954,8 @@ export interface components {
       inputs?: null | {
         [key: string]: components['schemas']['StackInput'];
       };
+      decal?: null | components['schemas']['StackDecal'];
+      path?: null | components['schemas']['StackSurfacePath'];
     };
     /** @description Changes an entry of a layer's mask stack. What is null stays. */
     StackCommandStackSetMaskLayer: {
@@ -5050,6 +5088,66 @@ export interface components {
        * @description Its height in texels.
        */
       height: number;
+    };
+    /**
+     * @description stack as numbers, so it can be moved, scaled and turned again. Every length is in the model's own units, the
+     *     ones `POST /viewport/pick` answers in.
+     *     `POST /viewport/pick` answers in.
+     */
+    StackDecal: {
+      /** @description The box's middle: three numbers. */
+      centre: number[];
+      /** @description The way the decal faces, out of the surface it lands on: three numbers, any length. */
+      facing: number[];
+      /** @description Which way is up on the picture: three numbers, made square to the facing. */
+      up: number[];
+      /**
+       * Format: float
+       * @description How wide the picture lands. Above zero.
+       */
+      width: number;
+      /**
+       * Format: float
+       * @description How tall it lands. Above zero.
+       */
+      height: number;
+      /**
+       * Format: float
+       * @description How deep the box reaches, through and out of the surface. Above zero.
+       */
+      depth: number;
+      /**
+       * Format: float
+       * @description How far a face may turn from the facing and still take the picture, in radians, 0 to π: the backface cull.
+       * @default 1.3
+       */
+      angle: number;
+      /**
+       * Format: float
+       * @description How much of the box's depth, from each face inwards, the picture fades over, 0 to 1.
+       * @default 0.25
+       */
+      fade: number;
+      /**
+       * @description Whether the picture repeats past its edges, or is nothing there.
+       * @default false
+       */
+      tiled: boolean;
+      /**
+       * @description How the picture is read between its pixels: `Bilinear` or `Point`.
+       * @default Bilinear
+       */
+      sampling: string;
+      /**
+       * @description The box the mesh's `position` bake is normalised in: the least corner's three numbers, then the greatest's.
+       *     It is the model's bounds as `POST /viewport/pick` gives them. Null or empty is the unit cube.
+       */
+      box?: null | number[];
+      /**
+       * @description A warp (#134): where each point of a 3 by 3 grid over the picture lands on the decal's square, row by row from
+       *     the top left, as eighteen numbers 0 to 1 across and down. Null or empty bends nothing.
+       */
+      warp?: null | number[];
     };
     /** @description What an edit changed, so that a client need not read the whole stack again. */
     StackDelta: {
@@ -5302,7 +5400,7 @@ export interface components {
       };
       /** @description The graph a graph fill reads. */
       graph: string;
-      /** @description How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical. */
+      /** @description How a fill lands: Uv, Triplanar, Planar, Spherical, Cylindrical, Decal or Path. */
       projection: string;
       /** @description The named filter a file holds: Levels, Hsl, Blur, Invert or Grayscale. */
       filter: string;
@@ -5344,6 +5442,8 @@ export interface components {
        */
       flattened: boolean;
       instance?: null | components['schemas']['StackInstanceRef'];
+      decal?: null | components['schemas']['StackDecal'];
+      path?: null | components['schemas']['StackSurfacePath'];
     };
     /** @description What decides where a layer shows. */
     StackMask: {
@@ -5537,6 +5637,19 @@ export interface components {
       /** @description The channel. */
       channel: string;
     };
+    /** @description One point a path passes through, as `POST /viewport/pick` found it on the model. */
+    StackPathPoint: {
+      /** @description Where, in the model's own units: three numbers. */
+      position: number[];
+      /** @description The surface's normal there: three numbers. */
+      normal: number[];
+      /**
+       * Format: float
+       * @description How much of the width and strength the path has here, 0 to 1.
+       * @default 1
+       */
+      pressure: number;
+    };
     /**
      * @description A picture on a stroke's own picture: fixed on the screen, moved, scaled and turned there. A projection paints
      *     its colours through the brush, and a stencil lets the brush through by its brightness.
@@ -5641,6 +5754,38 @@ export interface components {
       severity: string;
       /** @description What is wrong. */
       message: string;
+    };
+    /** @description What a save made. */
+    StackSavedMaterial: {
+      /** @description The document, below the library, as the shelf names it. */
+      path: string;
+      /** @description `material` or `mask`, as the shelf files it. */
+      role: string;
+      /**
+       * @description What came and what did not: painted pixels stay with the model they were painted on, and a reference to an
+       *     anchor point that did not come reads nothing until a layer publishes that name where it is used.
+       */
+      status: string;
+    };
+    /**
+     * @description Saves layers or a mask of an open stack into a project, as a layered material its shelf lists (#135): layers
+     *     become a smart material that unfolds into another stack, and a mask becomes a smart mask another layer takes.
+     */
+    StackSaveMaterialRequest: {
+      /** @description The project it goes into, by its path below `projects/`. */
+      project: string;
+      /** @description What it is called on the shelf. */
+      name: string;
+      /**
+       * @description The layers, by id: a folder brings its children. With Mask, exactly one, whose mask is
+       *     saved.
+       */
+      layers: string[];
+      /**
+       * @description Whether to save the layer's mask, with its entries and effects, rather than the layers.
+       * @default false
+       */
+      mask: boolean;
     };
     /** @description Where the brush goes: in texels of the image, or on the picture of a stroke with a view. */
     StackStamp: {
@@ -5754,6 +5899,46 @@ export interface components {
       revision: number;
       /** @description Whether it has edits no file holds. */
       dirty: boolean;
+    };
+    /**
+     * @description A curve on the model that a fill with the `Path` projection is laid along (#130, #131): the points stay in
+     *     the stack, so they can be moved after the stroke is seen, and the stroke follows. It passes through each point.
+     */
+    StackSurfacePath: {
+      /** @description The points, in order. */
+      points: components['schemas']['StackPathPoint'][];
+      /**
+       * Format: float
+       * @description Half the path's width at full pressure, in the model's units. Above zero.
+       */
+      radius: number;
+      /**
+       * Format: float
+       * @description How much of the width is at full strength before the edge falls away, 0 to 1.
+       * @default 0.5
+       */
+      hardness: number;
+      /**
+       * @description Whether the fill's picture runs along the path, its height across the path's width, rather than showing through
+       *     the path where it lies on the map.
+       * @default false
+       */
+      ribbon: boolean;
+      /**
+       * Format: float
+       * @description For a ribbon, how far along the path one repeat of the picture runs, in the model's units. Zero keeps the
+       *     picture's own shape at the path's width.
+       * @default 0
+       */
+      repeat: number;
+      /**
+       * Format: float
+       * @description How far a face may turn from the path's normal and still take it, in radians, 0 to π.
+       * @default 1.3
+       */
+      angle: number;
+      /** @description The box the mesh's `position` bake is normalised in, as a decal's is. */
+      box?: null | number[];
     };
     /**
      * @description How a stroke on a mesh copies itself: through a plane, or round an axis. The plane or the axis passes through
@@ -6320,6 +6505,11 @@ export interface components {
        *     symmetry's model centre is its middle, and a client draws a symmetry's plane across it.
        */
       bounds?: null | number[];
+      /**
+       * @description The face it met, as a unit direction out of the side the camera sees: three numbers. A decal placed there faces
+       *     it, and a path drawn through it keeps to faces that turn the same way.
+       */
+      normal?: null | number[];
     };
     /** @description Asks what is under a position in the viewport. */
     ViewportPickRequest: {
@@ -10474,6 +10664,50 @@ export interface operations {
       };
       /** @description Service Unavailable */
       503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SaveStackMaterial: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StackSaveMaterialRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackSavedMaterial'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
         headers: {
           [name: string]: unknown;
         };

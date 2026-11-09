@@ -151,6 +151,13 @@ public static class GraphRoles {
     public const string Filter = "filter";
 
     public static bool Known(string role) => role is Material or Mask or Brush or Filter;
+
+    /// <summary>
+    ///     Whether a kind of document can have a role: a graph any of them, and a layered material a material or a
+    ///     mask, which is a smart mask saved from a layer (#135).
+    /// </summary>
+    public static bool Fits(string kind, string role) =>
+        kind == DocumentKinds.Graph ? Known(role) : kind == DocumentKinds.LayeredMaterial && role is Material or Mask;
 }
 
 /// <summary>What a document is for, which decides the workspace it opens in (ADR 0012).</summary>

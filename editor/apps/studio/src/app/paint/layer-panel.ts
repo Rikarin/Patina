@@ -26,9 +26,13 @@ import { FilterFields } from './filter-fields';
 import { FilterInputs, type FilterSources } from './filter-inputs';
 import { LayerDraft } from './live-value';
 import { MaterialUse } from './material-use';
+import { SurfaceFields } from './surface-fields';
 import { colourOf, PaintStore, writesChannel } from './paint-store';
 
 const Axes: readonly string[] = ['X', 'Y', 'Z'];
+
+/** The projections that decide where a fill covers: a decal and a path (#130, #133). */
+const SurfaceProjections: ReadonlySet<string> = new Set(['Decal', 'Path']);
 
 /** Four numbers as a swatch's value. */
 /** Channels that hold one number, which a slider says better than a colour. */
@@ -67,6 +71,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
   imports: [
     FilterFields,
     FilterInputs,
+    SurfaceFields,
     XuiButtonImports,
     XuiColorPickerImports,
     XuiInputImports,
@@ -188,7 +193,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
                 (valueChange)="store.edit({ op: 'setLayer', layer: layer.id, fill: $event })"
               />
             </div>
-            @if (layer.fill !== 'Constant' && layer.fill !== 'Anchor') {
+            @if (layer.fill !== 'Anchor') {
               <div class="flex items-center gap-2">
                 <span class="text-foreground-muted w-16 shrink-0 text-xs">Projection</span>
                 <select
@@ -197,13 +202,17 @@ export function hexOf(colour: readonly number[] | undefined): string {
                   data-testid="paint-fill-projection"
                   (change)="store.edit({ op: 'setLayer', layer: layer.id, projection: text($event) })"
                 >
-                  @for (option of projections(); track option.value) {
+                  @for (option of projectionsFor(layer); track option.value) {
                     <option [value]="option.value" [selected]="option.value === layer.projection">
                       {{ option.label }}
                     </option>
                   }
                 </select>
               </div>
+            }
+            @if (layer.projection === 'Decal' || layer.projection === 'Path') {
+              <ptn-surface-fields [layer]="layer" />
+            } @else if (layer.fill !== 'Constant' && layer.fill !== 'Anchor') {
               @if (layer.projection === 'Planar' || layer.projection === 'Cylindrical') {
                 <div class="flex items-center gap-2">
                   <span class="text-foreground-muted w-16 shrink-0 text-xs">Axis</span>
@@ -874,6 +883,12 @@ export class LayerPanel {
   private readonly using = inject(MaterialUse);
   protected readonly fills = computed(() => this.store.vocabulary()?.fills.map(term => term.value) ?? []);
   protected readonly projections = computed(() => this.store.vocabulary()?.projections ?? []);
+  /** A constant is the same colour wherever it lands, so it is only put on by what decides where it covers. */
+  protected projectionsFor(layer: StackLayer) {
+    return layer.fill === 'Constant'
+      ? this.projections().filter(option => SurfaceProjections.has(option.value) || option.value === 'Uv')
+      : this.projections();
+  }
   protected readonly axes = Axes;
   protected readonly blends = computed(() => this.store.vocabulary()?.blends.map(term => term.value) ?? []);
   /** Every filter, by the node it runs. */

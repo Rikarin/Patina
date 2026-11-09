@@ -1034,6 +1034,15 @@ const MaskMarks: Readonly<Record<string, string>> = {
           <button
             type="button"
             xuiMenuItem
+            data-testid="mask-menu-save"
+            [disabled]="!project.current()"
+            (triggered)="saveToShelf(layer, true)"
+          >
+            Save as Smart Mask
+          </button>
+          <button
+            type="button"
+            xuiMenuItem
             data-testid="mask-menu-paste"
             [disabled]="!store.clip()"
             (triggered)="store.pasteInto('Mask')"
@@ -1150,6 +1159,15 @@ const MaskMarks: Readonly<Record<string, string>> = {
           <button type="button" xuiMenuItem data-testid="layer-menu-duplicate" (triggered)="store.duplicateLayers()">
             Duplicate Layers <span menuItemLabel>{{ commands.keyText('duplicate') }}</span>
           </button>
+          <button
+            type="button"
+            xuiMenuItem
+            data-testid="layer-menu-save-material"
+            [disabled]="!project.current()"
+            (triggered)="saveToShelf(layer, false)"
+          >
+            Save as Smart Material
+          </button>
           <button type="button" xuiMenuItem data-testid="layer-menu-copy" (triggered)="store.copyLayers()">
             Copy <span menuItemLabel>{{ commands.keyText('copy') }}</span>
           </button>
@@ -1240,6 +1258,21 @@ export class LayerStack {
   protected readonly project = inject(ProjectStore);
 
   protected readonly percent = percent;
+
+  /**
+   * The layers chosen with this one, or this layer's mask, onto the project's shelf as a smart material or a smart
+   * mask, named after the layer (#135). A folder brings its layers.
+   */
+  protected saveToShelf(layer: StackLayer, mask: boolean): void {
+    const project = this.project.current();
+    if (!project) {
+      return;
+    }
+
+    const chosen = this.store.selection();
+    const layers = mask || !chosen.has(layer.id) ? [layer.id] : [...chosen];
+    void this.store.saveToShelf(layers, mask, mask ? `${layer.name} Mask` : layer.name, project.path);
+  }
 
   protected opacityOf(layer: StackLayer): number {
     const draft = this.draft();

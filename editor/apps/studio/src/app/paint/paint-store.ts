@@ -32,6 +32,7 @@ import { RecoveryOffers } from '../core/recovery-offers';
 import { EngineRestarts, RestartedNotice, SessionReturn } from '../core/session-return';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
+import { extendedPath, placedDecal } from './surface-frame';
 
 /** The most recent colours a project keeps, which is the Server's limit. */
 const RecentColours = 16;
@@ -295,6 +296,13 @@ export class PaintStore {
   readonly picking = signal<string | null>(null);
   /** Whether the next click on the mesh or the map chooses the layer on top there (#136). */
   readonly finding = signal(false);
+  /**
+   * What a click on the mesh does to the chosen fill (#130, #133): places its decal there, or adds a point to the end of
+   * its path, until it is set back to null.
+   */
+  readonly placing = signal<'decal' | 'path' | null>(null);
+  /** Whether the viewport shows the chosen decal's warp grid, whose points drag the picture (#134). */
+  readonly warping = signal(false);
   /** The mesh maps layers want and no bake has given, which read as grey until one does. */
   readonly unbaked = signal<string | null>(null);
   /** Whether the viewport is wearing this stack, so a stroke can be made on the mesh. */
@@ -545,6 +553,64 @@ export class PaintStore {
       await this.findLayerAt(hit.u, hit.v);
     } else {
       this.finding.set(false);
+    }
+  }
+
+  /**
+   * A click on the mesh while {@link placing}: the chosen fill's decal goes where it landed, facing out of the face it
+   * met, or its path gains a point there. Each is one edit to the stack, which undoes like any other (#130, #133).
+   */
+  async placeOnMesh(stamp: StackStamp, aim: Aim): Promise<void> {
+    const layer = this.chosen();
+    const placing = this.placing();
+    if (!layer || !placing) {
+      return;
+    }
+
+    try {
+      const hit = await this.picked(stamp, aim);
+      if (!hit.found) {
+        return;
+      }
+
+      if (placing === 'decal') {
+        this.placing.set(null);
+        await this.edit({ op: 'setLayer', layer: layer.id, projection: 'Decal', decal: placedDecal(hit, layer.decal) });
+      } else {
+        await this.edit({ op: 'setLayer', layer: layer.id, projection: 'Path', path: extendedPath(hit, layer.path) });
+      }
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+    }
+  }
+
+  /** What is under a place on the viewport, for a handle dragged over the mesh. */
+  pickOnMesh(stamp: StackStamp, aim: Aim): Promise<ViewportPick> {
+    return this.picked(stamp, aim);
+  }
+
+  /**
+   * Saves the chosen layers, or one layer's mask, to the project's shelf as a smart material or smart mask (#135), named
+   * after the layer. What could not come is said in the notice.
+   */
+  async saveToShelf(layers: readonly string[], mask: boolean, name: string, project: string): Promise<void> {
+    const id = this.state()?.id;
+    if (!id || layers.length === 0) {
+      return;
+    }
+
+    this.startAction();
+    try {
+      const client = await this.api();
+      const saved = unwrap(
+        await client.POST('/api/v1/stacks/{id}/save-material', {
+          params: { path: { id } },
+          body: { project, name, layers: [...layers], mask }
+        })
+      );
+      this.notice.set(`Saved ${name} to the shelf as a smart ${saved.role}. ${saved.status}`);
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
     }
   }
 

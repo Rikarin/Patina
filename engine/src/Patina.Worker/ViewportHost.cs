@@ -105,7 +105,8 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
                     hit.Coordinate.X,
                     hit.Coordinate.Y,
                     Numbers(hit.Point),
-                    extent
+                    extent,
+                    Numbers(Facing(through, hit.Triangle, ray.Direction))
                 )
                 : new(false, wire, Bounds: extent)
         };
@@ -258,6 +259,18 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
     }
 
     static float[] Numbers(Vector3 vector) => [vector.X, vector.Y, vector.Z];
+
+    /// <summary>A triangle's face normal, turned to the side a ray came from: what a decal there faces.</summary>
+    static Vector3 Facing(PaintProjection mesh, int triangle, Vector3 towards) {
+        mesh.Triangle(triangle, out var a, out var b, out var c, out _, out _, out _);
+        var face = Vector3.Cross(b - a, c - a);
+        if (!(face.LengthSquared() > 0f)) {
+            return -Vector3.Normalize(towards);
+        }
+
+        face = Vector3.Normalize(face);
+        return Vector3.Dot(face, towards) > 0f ? -face : face;
+    }
 
     public IpcMessage SetCamera(IpcMessage request) {
         var next = request.Camera ?? throw new IpcException("viewport.camera has no camera.");
