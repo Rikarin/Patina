@@ -12,6 +12,7 @@ import { LibraryStore } from './library-store';
 import { LibraryTreeStore } from './library-tree-store';
 import { ProjectStore } from './project-store';
 import { messageOf } from '../core/messages';
+import { MeshFactsView } from './mesh-facts';
 
 /** Asks for a new project's name. The Server decides whether it can exist, so its refusal is what this shows. */
 @Component({
@@ -23,7 +24,8 @@ import { messageOf } from '../core/messages';
     XuiFormFieldImports,
     XuiInputImports,
     XuiSwitchImports,
-    XuiTagInputImports
+    XuiTagInputImports,
+    MeshFactsView
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -76,6 +78,31 @@ import { messageOf } from '../core/messages';
                 />
               }
             </div>
+            @if (kind() === 'texturing' && mesh().trim()) {
+              <ptn-mesh-facts [path]="mesh().trim()" />
+            }
+          </div>
+          <div class="flex flex-col gap-1" [hidden]="kind() !== 'texturing'">
+            <span class="section-label">High poly mesh, to bake from</span>
+            <div class="flex items-center gap-2">
+              @if (canPick) {
+                <span class="min-w-0 flex-1 truncate" data-testid="new-project-high-name">{{ highName() || 'None' }}</span>
+                @if (high()) {
+                  <button type="button" xuiButton size="sm" variant="ghost" (click)="high.set('')">Clear</button>
+                }
+                <button type="button" xuiButton size="sm" data-testid="new-project-high" (click)="pickHigh()">Choose…</button>
+              } @else {
+                <input
+                  class="w-full"
+                  xuiInput
+                  autocomplete="off"
+                  aria-label="High poly mesh file"
+                  data-testid="new-project-high-path"
+                  [value]="high()"
+                  (input)="high.set(text($event))"
+                />
+              }
+            </div>
           </div>
           @if (kind() === 'texturing') {
             <label class="flex items-center justify-between gap-2">
@@ -122,6 +149,13 @@ export class NewProjectDialog {
     }
   }
 
+  protected async pickHigh(): Promise<void> {
+    const high = await desktop()?.openMesh(this.status.meshes());
+    if (high) {
+      this.high.set(high);
+    }
+  }
+
   protected async pickImage(): Promise<void> {
     const image = await desktop()?.openImage(this.status.pictures());
     if (image) {
@@ -159,6 +193,9 @@ export class NewProjectDialog {
   protected readonly imageName = computed(() => this.image().split(/[\\/]/u).pop() ?? '');
   protected readonly resolution = linkedSignal(() => this.status.defaultTextureSide());
   protected readonly meshName = computed(() => this.mesh().split(/[\\/]/).pop() ?? '');
+  /** The detailed mesh a texturing project bakes from, which can wait until the Bake dialog. */
+  protected readonly high = signal('');
+  protected readonly highName = computed(() => this.high().split(/[\\/]/u).pop() ?? '');
   protected readonly tags = signal<string[]>([]);
   protected readonly autoUnwrap = signal(true);
   protected readonly refused = signal<string | null>(null);
@@ -198,6 +235,7 @@ export class NewProjectDialog {
         folder: this.folder() || null,
         tags: this.tags(),
         mesh: this.mesh().trim() || null,
+        high: (this.kind() === 'texturing' && this.high().trim()) || null,
         resolution: this.resolution(),
         kind: this.kind(),
         image: this.image() || null
@@ -208,6 +246,7 @@ export class NewProjectDialog {
 
       this.name.set('');
       this.mesh.set('');
+      this.high.set('');
       this.image.set('');
       this.tags.set([]);
       this.open.set(false);
