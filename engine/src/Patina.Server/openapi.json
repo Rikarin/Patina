@@ -7772,6 +7772,25 @@
         },
         "description": "What to build."
       },
+      "CacheInfo": {
+        "required": [
+          "path",
+          "bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The folder."
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "The room it takes on disk.",
+            "format": "int64"
+          }
+        },
+        "description": "The library\u0027s cache: what deleting it would cost is time, and nothing else."
+      },
       "CheckProblem": {
         "required": [
           "code",
@@ -7854,25 +7873,6 @@
           }
         },
         "description": "Where a problem is, for a client to go to it."
-      },
-      "CacheInfo": {
-        "required": [
-          "path",
-          "bytes"
-        ],
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": "string",
-            "description": "The folder."
-          },
-          "bytes": {
-            "type": "integer",
-            "description": "The room it takes on disk.",
-            "format": "int64"
-          }
-        },
-        "description": "The library\u0027s cache: what deleting it would cost is time, and nothing else."
       },
       "DocumentRecovery": {
         "type": "object",

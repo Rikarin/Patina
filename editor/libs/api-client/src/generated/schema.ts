@@ -2367,6 +2367,16 @@ export interface components {
       folder?: null | string;
       options?: null | components['schemas']['ExportOptions'];
     };
+    /** @description The library's cache: what deleting it would cost is time, and nothing else. */
+    CacheInfo: {
+      /** @description The folder. */
+      path: string;
+      /**
+       * Format: int64
+       * @description The room it takes on disk.
+       */
+      bytes: number;
+    };
     /** @description One problem a texture set has before it is exported. */
     CheckProblem: {
       /** @description One of CheckCodes. */
@@ -2402,16 +2412,6 @@ export interface components {
        *     `export.preset`), or null.
        */
       setting?: null | string;
-    };
-    /** @description The library's cache: what deleting it would cost is time, and nothing else. */
-    CacheInfo: {
-      /** @description The folder. */
-      path: string;
-      /**
-       * Format: int64
-       * @description The room it takes on disk.
-       */
-      bytes: number;
     };
     /** @description Whether a document has work autosaved after its last save. */
     DocumentRecovery: {
