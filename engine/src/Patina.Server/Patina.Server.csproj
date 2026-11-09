@@ -9,6 +9,7 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi"/>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../Patina.Content/Patina.Content.csproj"/>
     <ProjectReference Include="../Patina.Contracts/Patina.Contracts.csproj"/>
     <!-- For presets, plans and delivery. Encoding is the Worker's: the Server never runs ExportRun.Run. -->
     <ProjectReference Include="../Patina.Export/Patina.Export.csproj"/>

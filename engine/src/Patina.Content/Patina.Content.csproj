@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Patina's factory compounds: the CC0 graphs under content/compounds, shipped as node types beside Vixen's own. Every process that reads a graph registers them through this, so a compound means the same in the Server, the Worker and `patina bake`.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../external/Vixen/Tools/Vixen.TextureGraph/Vixen.TextureGraph.csproj"/>
+  </ItemGroup>
+  <ItemGroup>
+    <!-- A compound's folders are dots in a resource name, which is how Vixen reads its own; a dot in a file name
+         would be a phantom folder, so the content test refuses one. -->
+    <EmbeddedResource Include="../../../content/compounds/**/*.vxtexgraph"
+                      LogicalName="$([System.String]::Concat('Patina.Content.Compounds.', $([System.String]::Copy('%(RecursiveDir)').Replace('/', '.').Replace('\', '.')), '%(Filename)%(Extension)'))"/>
+  </ItemGroup>
+</Project>

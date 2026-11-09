@@ -1,0 +1,96 @@
+version: 1
+name: Speckle
+nodes:
+  - id: 1
+    type: Source/Noise
+    x: 0
+    y: 0
+    values:
+      Octaves: [1]
+    texts:
+      'Basis': 'White'
+      '=Scale': '128f + scale * 384f'
+  - id: 2
+    type: Colour/Threshold
+    x: 300
+    y: 0
+    values:
+      Softness: [0.02]
+    texts:
+      '=Level': '0.995f - amount * 0.05f'
+  - id: 3
+    type: Source/Noise
+    x: 0
+    y: 250
+    values:
+      Octaves: [1]
+    texts:
+      'Basis': 'White'
+      '=Scale': '48f + scale * 128f'
+  - id: 4
+    type: Colour/Threshold
+    x: 300
+    y: 250
+    values:
+      Softness: [0.01]
+    texts:
+      '=Level': '0.998f - amount * 0.02f'
+  - id: 5
+    type: Filters/Blur HQ
+    x: 600
+    y: 250
+    values:
+      Sigma: [0.7]
+    texts: {}
+  - id: 6
+    type: Colour/Levels
+    x: 900
+    y: 250
+    values:
+      'Input White': [0.35]
+    texts: {}
+  - id: 7
+    type: Colour/Blend
+    x: 1200
+    y: 0
+    values: {}
+    texts:
+      'Mode': 'Lighten'
+  - id: 99
+    type: Sub-graph/Output
+    x: 1600
+    y: 0
+    values: {}
+    texts: {}
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 4, fromPort: Out, toNode: 5, toPort: Input }
+  - { fromNode: 5, fromPort: Out, toNode: 6, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 7, toPort: Background }
+  - { fromNode: 6, fromPort: Out, toNode: 7, toPort: Foreground }
+  - { fromNode: 7, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'Fine specks of two sizes scattered evenly, as dust settles or paint spatters finely. White is a speck.'
+settings: { baseWidth: '1024', baseHeight: '1024', seed: '1' }
+parameters:
+  - name: scale
+    default: '0.5'
+    summary: 'How large the features are: low is fewer, bigger ones, high is many small ones.'
+    kind: Float
+    minimum: 0
+    maximum: 1
+    group: Grunge
+  - name: amount
+    default: '0.5'
+    summary: 'How much of the surface the grunge covers.'
+    kind: Float
+    minimum: 0
+    maximum: 1
+    group: Grunge
