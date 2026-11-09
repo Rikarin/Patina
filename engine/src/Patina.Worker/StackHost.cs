@@ -452,16 +452,22 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
             var chosen = document.Sets.First(candidate => candidate.Name == set);
             var x = Math.Clamp((int)(u * document.BaseWidth), 0, document.BaseWidth - 1);
             var y = Math.Clamp((int)(v * document.BaseHeight), 0, document.BaseHeight - 1);
-            foreach (var (layer, alone) in StackFinding.Candidates(document, chosen)) {
-                using LayerStackEvaluator run = new(evaluator, canvases, path, fill) { Weighing = true };
-                var weighed = document with { Sets = [alone] };
-                if (run.Prepare(weighed, alone, compounds.Registry, compounds.Source).Count > 0) {
+            foreach (var (layer, alone, inPicture) in StackFinding.Candidates(document, chosen)) {
+                // A layer whose mask reads the picture is weighed in it, the layers beneath it drawn as they are (#113).
+                using LayerStackEvaluator run = new(evaluator, canvases, path, fill) {
+                    Weighing = !inPicture,
+                    Asked = inPicture ? layer : ""
+                };
+                var refused = inPicture
+                    ? run.Prepare(document, chosen, compounds.Registry, compounds.Source)
+                    : run.Prepare(document with { Sets = [alone] }, alone, compounds.Registry, compounds.Source);
+                if (refused.Count > 0) {
                     continue;
                 }
 
                 // In any channel it writes: a layer that sets roughness alone is still on top where it does.
                 using var bake = run.Evaluate();
-                if (StackFinding.Covered(bake, run.Outputs, alone, x, y)) {
+                if (StackFinding.Covered(bake, run.Outputs, inPicture ? chosen : alone, x, y)) {
                     return layer;
                 }
             }

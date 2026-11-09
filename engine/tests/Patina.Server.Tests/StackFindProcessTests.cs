@@ -67,6 +67,36 @@ public sealed partial class StackProcessTests {
         Assert.Equal(copy, await FindAsync(state.Id, Bare, Bare, deadline.Token));
     }
 
+    /// <summary>
+    ///     A layer whose mask reads the layers beneath is found where the picture shows it: its mask step takes the
+    ///     red of the grey base, so it covers half of every texel. Weighed alone, as Find weighed every layer, the step
+    ///     read nothing beneath, the layer covered nothing, and the click found the base under it.
+    /// </summary>
+    [Fact]
+    public async Task A_click_finds_a_layer_by_what_its_mask_reads_beneath() {
+        using var deadline = Deadline(300);
+        var (_, state) = await StartAsync("FindBeneath.vxlayers", deadline.Token);
+        const float Bare = 0.9f;
+
+        await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Rust", Tint));
+        var rust = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
+        StackMaskEffect beneath = new(
+            "Colour/Channel Shuffle",
+            Texts: new Dictionary<string, string> { ["Red From"] = "SecondRed" },
+            Inputs: new Dictionary<string, StackInput> { ["Second"] = new("Beneath", "baseColor") }
+        );
+        await EditAsync(state.Id, deadline.Token, new StackSetLayer(rust, Mask: new("Constant", 1f, Effects: [beneath])));
+        Assert.Equal(rust, await FindAsync(state.Id, Bare, Bare, deadline.Token));
+
+        // And the step reads the picture as it is: under a black base it masks everything, and the base is found.
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer("base", Values: new Dictionary<string, IReadOnlyList<float>> { ["baseColor"] = [0f, 0f, 0f, 1f] })
+        );
+        Assert.Equal("base", await FindAsync(state.Id, Bare, Bare, deadline.Token));
+    }
+
     async Task<string?> FindAsync(string id, float u, float v, CancellationToken token) {
         using var response = await http.PostAsJsonAsync(
             $"/api/v1/stacks/{id}/find",
