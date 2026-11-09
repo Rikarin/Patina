@@ -39,8 +39,8 @@ public static class SharedFile {
     }
 
     /// <summary>
-    ///     Reads the files a model names beside itself, such as an OBJ's material library or a glTF's buffers: a path as
-    ///     the model spells it, relative to the model's folder, read whole, or null for one that is not there.
+    ///     Reads the files a model names beside itself, such as an OBJ's material library or a glTF's buffers: a path
+    ///     as the model spells it, relative to the model's folder, read whole, or null for one that is not there.
     /// </summary>
     /// <param name="model">The model file.</param>
     /// <remarks>

@@ -12,8 +12,8 @@ public sealed partial class StackProcessTests {
     }
 
     /// <summary>
-    ///     A set made twice as large keeps its paint where it was: the canvas is not touched by the change, and the next
-    ///     stroke enlarges it so that each texel painted before is a block of four the same.
+    ///     A set made twice as large keeps its paint where it was: the canvas is not touched by the change, and the
+    ///     next stroke enlarges it so that each texel painted before is a block of four the same.
     /// </summary>
     [Fact]
     public async Task A_set_made_larger_keeps_its_paint_exactly_and_paints_at_the_new_size() {

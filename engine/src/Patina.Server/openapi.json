@@ -7336,7 +7336,7 @@
               "null",
               "integer"
             ],
-            "description": "The low mesh\u0027s texture coordinate set the maps are baked in, by the file\u0027s number: zero for the first (#210).\nNull bakes a texture set in the set it is laid out in, when the low mesh is a project\u0027s and\nstring? BakeRequest.Material names one of its texture sets, and in the first otherwise. The high mesh is read\nwhole, so its sets do not matter, but for a picture moved from its layout, which is always its first.",
+            "description": "The low mesh\u0027s texture coordinate set the maps are baked in, by the file\u0027s number: zero for the first\n(#210). Null bakes a texture set in the set it is laid out in, when the low mesh is a project\u0027s and\nstring? BakeRequest.Material names one of its texture sets, and in the first otherwise. The high mesh is read\nwhole, so its sets do not matter, but for a picture moved from its layout, which is always its first.",
             "format": "int32"
           },
           "name": {
@@ -11433,7 +11433,7 @@
               "type": "number",
               "format": "double"
             },
-            "description": "The corner of the box round the model with the least of each axis, in the file\u0027s units."
+            "description": "The least corner of the box round the model, in the file\u0027s units."
           },
           "maximum": {
             "type": "array",
@@ -11441,7 +11441,7 @@
               "type": "number",
               "format": "double"
             },
-            "description": "The corner with the most of each axis."
+            "description": "The greatest corner of the box."
           },
           "metresPerUnit": {
             "type": [
@@ -11456,7 +11456,7 @@
             "description": "Whether any part carries vertex colours."
           }
         },
-        "description": "What a mesh file is, as the engine reads it (#146): the answer to \u0060GET /api/v1/library/project/mesh\u0060."
+        "description": "What a mesh file is, as the engine reads it (#146): the answer to \u0060GET /library/mesh\u0060."
       },
       "MeshMaterialFacts": {
         "required": [
@@ -15760,7 +15760,7 @@
           },
           "uvSet": {
             "type": "integer",
-            "description": "The mesh\u0027s texture coordinate set the set is painted, baked and drawn in, by the file\u0027s number.",
+            "description": "The mesh\u0027s coordinate set the set is painted, baked and drawn in, by the file\u0027s number.",
             "format": "int32",
             "default": 0
           }

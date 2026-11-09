@@ -523,7 +523,7 @@ public sealed class StackEditor : ILayerStackDocument {
     /// <summary>The highest coordinate set a model can have: Assimp keeps eight.</summary>
     const int MostUvSets = 8;
 
-    /// <summary>The set's settings as one step: the resolution, the coordinate set and how height becomes a normal.</summary>
+    /// <summary>The set's settings as one step: its resolution, its UV set and how height becomes a normal.</summary>
     /// <exception cref="StackEditRefusedException">A value is not one a set can have.</exception>
     SetDocumentCommand Settings(StackSetSettings settings) {
         var width = settings.Width ?? Document.BaseWidth;

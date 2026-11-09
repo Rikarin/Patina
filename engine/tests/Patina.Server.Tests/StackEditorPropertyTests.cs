@@ -153,7 +153,8 @@ public sealed class StackEditorPropertyTests {
 
         session.Undo();
         session.Undo();
-        Assert.Equal((width, height, 0, "Smooth"), (session.State.Width, session.State.Height, session.State.UvSet, session.State.HeightNormal));
+        var back = session.State;
+        Assert.Equal((width, height, 0, "Smooth"), (back.Width, back.Height, back.UvSet, back.HeightNormal));
     }
 
     /// <summary>

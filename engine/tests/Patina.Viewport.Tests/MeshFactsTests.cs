@@ -110,7 +110,7 @@ public sealed class MeshFactsTests : IDisposable {
         Assert.Null(MeshFactsReader.Read(Write(".stl")).MetresPerUnit);
     }
 
-    /// <summary>A mesh's parts, materials and coordinate sets: two parts on two materials, one with a second set.</summary>
+    /// <summary>A mesh's parts, materials and UV sets: two parts on two materials, one with a second set.</summary>
     [Fact]
     public void A_mesh_says_its_parts_materials_and_coordinate_sets() {
         var path = Path.Combine(folder.FullName, "two.gltf");
@@ -139,8 +139,9 @@ public sealed class MeshFactsTests : IDisposable {
         var first = ViewportGeometry.Read(path, "Body", 0);
         var second = ViewportGeometry.Read(path, "Body", 1);
 
-        Assert.Contains(second.Indices, corner => second.Coordinates[corner] == new Vixen.Core.Mathematics.Vector2(0.5f, 0.25f));
-        Assert.DoesNotContain(first.Indices, corner => first.Coordinates[corner] == new Vixen.Core.Mathematics.Vector2(0.5f, 0.25f));
+        var middle = new Vixen.Core.Mathematics.Vector2(0.5f, 0.25f);
+        Assert.Contains(second.Indices, corner => second.Coordinates[corner] == middle);
+        Assert.DoesNotContain(first.Indices, corner => first.Coordinates[corner] == middle);
         Assert.Throws<Vixen.Interchange.ModelFormatException>(() => ViewportGeometry.Read(path, "Strap", 1));
     }
 
@@ -184,7 +185,8 @@ public sealed class MeshFactsTests : IDisposable {
     }
 
     const string OneMesh =
-        "\"meshes\": [{ \"name\": \"Tri\", \"primitives\": [{ \"attributes\": { \"POSITION\": 0, \"TEXCOORD_0\": 1 }, \"indices\": 3 }] }],";
+        "\"meshes\": [{ \"name\": \"Tri\", \"primitives\": "
+        + "[{ \"attributes\": { \"POSITION\": 0, \"TEXCOORD_0\": 1 }, \"indices\": 3 }] }],";
 
     static string Gltf(string uri, string meshes = OneMesh) =>
         $$"""
@@ -202,7 +204,10 @@ public sealed class MeshFactsTests : IDisposable {
               { "buffer": 0, "byteOffset": 84, "byteLength": 6 }
             ],
             "accessors": [
-              { "bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3", "min": [0, 0, 0], "max": [1, 1, 0] },
+              {
+                "bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3",
+                "min": [0, 0, 0], "max": [1, 1, 0]
+              },
               { "bufferView": 1, "componentType": 5126, "count": 3, "type": "VEC2" },
               { "bufferView": 2, "componentType": 5126, "count": 3, "type": "VEC2" },
               { "bufferView": 3, "componentType": 5123, "count": 3, "type": "SCALAR" }

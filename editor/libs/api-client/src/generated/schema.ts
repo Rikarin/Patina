@@ -2137,8 +2137,8 @@ export interface components {
       material?: null | string;
       /**
        * Format: int32
-       * @description The low mesh's texture coordinate set the maps are baked in, by the file's number: zero for the first (#210).
-       *     Null bakes a texture set in the set it is laid out in, when the low mesh is a project's and
+       * @description The low mesh's texture coordinate set the maps are baked in, by the file's number: zero for the first
+       *     (#210). Null bakes a texture set in the set it is laid out in, when the low mesh is a project's and
        *     string? BakeRequest.Material names one of its texture sets, and in the first otherwise. The high mesh is read
        *     whole, so its sets do not matter, but for a picture moved from its layout, which is always its first.
        */
@@ -3870,7 +3870,7 @@ export interface components {
       /** @description The graph, below the library. */
       source: string;
     };
-    /** @description What a mesh file is, as the engine reads it (#146): the answer to `GET /api/v1/library/project/mesh`. */
+    /** @description What a mesh file is, as the engine reads it (#146): the answer to `GET /library/mesh`. */
     MeshFacts: {
       /** @description The file's name. */
       file: string;
@@ -3895,9 +3895,9 @@ export interface components {
        * @description The most texture coordinate sets any part has. Zero is a mesh with no layout.
        */
       uvSets: number;
-      /** @description The corner of the box round the model with the least of each axis, in the file's units. */
+      /** @description The least corner of the box round the model, in the file's units. */
       minimum: number[];
-      /** @description The corner with the most of each axis. */
+      /** @description The greatest corner of the box. */
       maximum: number[];
       /**
        * Format: double
@@ -5859,7 +5859,7 @@ export interface components {
       anchors?: null | components['schemas']['StackAnchor'][];
       /**
        * Format: int32
-       * @description The mesh's texture coordinate set the set is painted, baked and drawn in, by the file's number.
+       * @description The mesh's coordinate set the set is painted, baked and drawn in, by the file's number.
        * @default 0
        */
       uvSet: number;

@@ -162,6 +162,9 @@ from .material_info import MaterialInfo
 from .material_list import MaterialList
 from .material_use import MaterialUse
 from .material_use_request import MaterialUseRequest
+from .mesh_facts import MeshFacts
+from .mesh_material_facts import MeshMaterialFacts
+from .mesh_part_facts import MeshPartFacts
 from .output_report import OutputReport
 from .problem_details import ProblemDetails
 from .project_bake_request import ProjectBakeRequest
@@ -253,6 +256,8 @@ from .stack_command_stack_set_model import StackCommandStackSetModel
 from .stack_command_stack_set_model_op import StackCommandStackSetModelOp
 from .stack_command_stack_set_seed import StackCommandStackSetSeed
 from .stack_command_stack_set_seed_op import StackCommandStackSetSeedOp
+from .stack_command_stack_set_settings import StackCommandStackSetSettings
+from .stack_command_stack_set_settings_op import StackCommandStackSetSettingsOp
 from .stack_command_stack_stroke import StackCommandStackStroke
 from .stack_command_stack_stroke_op import StackCommandStackStrokeOp
 from .stack_command_stack_unflatten_layer import StackCommandStackUnflattenLayer
@@ -500,6 +505,9 @@ __all__ = (
     "MaterialList",
     "MaterialUse",
     "MaterialUseRequest",
+    "MeshFacts",
+    "MeshMaterialFacts",
+    "MeshPartFacts",
     "OutputReport",
     "ProblemDetails",
     "ProjectBakeRequest",
@@ -591,6 +599,8 @@ __all__ = (
     "StackCommandStackSetModelOp",
     "StackCommandStackSetSeed",
     "StackCommandStackSetSeedOp",
+    "StackCommandStackSetSettings",
+    "StackCommandStackSetSettingsOp",
     "StackCommandStackStroke",
     "StackCommandStackStrokeOp",
     "StackCommandStackUnflattenLayer",

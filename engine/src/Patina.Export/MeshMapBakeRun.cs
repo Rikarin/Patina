@@ -135,9 +135,9 @@ public static class MeshMapBakeRun {
     /// <summary>Reads a mesh file, keeping only one material's parts, laid out in one of its coordinate sets.</summary>
     /// <param name="path">The file.</param>
     /// <param name="material">The material, or null for the whole mesh.</param>
-    /// <param name="uvSet">The coordinate set, by the file's number: what a texture set is painted and baked in.</param>
+    /// <param name="uvSet">The coordinate set, by the file's number, a texture set is painted and baked in.</param>
     /// <exception cref="ModelFormatException">It is not a readable model.</exception>
-    /// <exception cref="InvalidDataException">It has no such material, or a part of it has no such coordinate set.</exception>
+    /// <exception cref="InvalidDataException">It has no such material, or a part of it has no such set.</exception>
     public static FlatModel Read(string path, string? material, int uvSet) {
         var read = Model(path, uvSet != 0);
         var names = MaterialNames.Unique(read.Model.Materials);
@@ -173,7 +173,8 @@ public static class MeshMapBakeRun {
             var sets = at < read.TexCoordSets.Length ? read.TexCoordSets[at] : [];
             if (uvSet >= sets.Length || sets[uvSet].Length == 0) {
                 throw new InvalidDataException(
-                    $"'{file}' has no UV set {uvSet + 1} on '{name}', which has {sets.Count(static s => s.Length > 0)}. "
+                    $"'{file}' has no UV set {uvSet + 1} on '{name}', "
+                    + $"which has {sets.Count(static s => s.Length > 0)}. "
                     + "Choose a UV set every part of the texture set has."
                 );
             }

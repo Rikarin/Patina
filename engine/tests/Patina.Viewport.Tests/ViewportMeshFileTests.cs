@@ -13,7 +13,10 @@ public sealed class ViewportMeshFileTests : IDisposable {
         var path = Path.Combine(folder.FullName, "quad.obj");
         File.WriteAllLines(
             path,
-            ["mtllib paint.mtl", "v 0 0 0", "v 1 0 0", "v 1 1 0", "vt 0 0", "vt 1 0", "vt 1 1", "usemtl Red", "f 1/1 2/2 3/3"]
+            [
+                "mtllib paint.mtl", "v 0 0 0", "v 1 0 0", "v 1 1 0", "vt 0 0", "vt 1 0", "vt 1 1", "usemtl Red",
+                "f 1/1 2/2 3/3"
+            ]
         );
 
         var mesh = ViewportMesh.Read(path);

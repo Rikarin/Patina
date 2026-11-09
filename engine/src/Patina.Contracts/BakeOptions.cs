@@ -23,8 +23,8 @@ public sealed record BakeRequest {
     public string? Material { get; set; }
 
     /// <summary>
-    ///     The low mesh's texture coordinate set the maps are baked in, by the file's number: zero for the first (#210).
-    ///     Null bakes a texture set in the set it is laid out in, when the low mesh is a project's and
+    ///     The low mesh's texture coordinate set the maps are baked in, by the file's number: zero for the first
+    ///     (#210). Null bakes a texture set in the set it is laid out in, when the low mesh is a project's and
     ///     <see cref="Material" /> names one of its texture sets, and in the first otherwise. The high mesh is read
     ///     whole, so its sets do not matter, but for a picture moved from its layout, which is always its first.
     /// </summary>

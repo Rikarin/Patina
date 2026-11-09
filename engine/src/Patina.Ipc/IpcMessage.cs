@@ -594,7 +594,7 @@ public sealed record StackLoad(
 /// <param name="SourceDocument">
 ///     What a clone or a material reads, as a stack written out, sent with a stroke's first part only.
 /// </param>
-/// <param name="Width">The set's width when the stroke began, which its stamps are texels of, or 0 for the set's now.</param>
+/// <param name="Width">The set's width when the stroke began, which its stamps are texels of; 0 is today's.</param>
 /// <param name="Height">The set's height when the stroke began.</param>
 public sealed record StackPaintPart(
     long Id,

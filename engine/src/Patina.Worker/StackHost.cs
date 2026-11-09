@@ -711,7 +711,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         BoundingBox? Bounds(string model) =>
             model.Trim().Length == 0 ? null : meshes.Of(Path.GetFullPath(model, folder)).Projection.Bounds;
 
-        /// <summary>The mesh as a stroke reaches it, at the size of the canvas it paints and in the set's layout.</summary>
+        /// <summary>The mesh as a stroke reaches it, at the size of its canvas, in the set's layout.</summary>
         PaintMeshSurface? Surface(string model, int width, int height) {
             if (model.Trim().Length == 0) {
                 return null;
@@ -727,8 +727,8 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         }
 
         /// <summary>
-        ///     A canvas made the size a stroke paints at (#19). Larger is exact and loses nothing, and is done only to a
-        ///     canvas no stroke of this session has begun on, since a stroke's undo holds the pixels it painted over.
+        ///     A canvas made the size a stroke paints at (#19). Larger is exact and loses nothing, and is done only to
+        ///     a canvas no stroke of this session has begun on, since a stroke's undo holds the pixels it painted over.
         ///     A canvas larger than its set keeps its size and is sampled at the set's, so it is never made smaller.
         /// </summary>
         /// <exception cref="IpcException">The canvas cannot be painted at that size here.</exception>

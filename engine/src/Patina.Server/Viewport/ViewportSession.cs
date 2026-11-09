@@ -63,7 +63,7 @@ public sealed class ViewportSession(
     string? stack;
     IReadOnlyList<string> also = [];
 
-    /// <summary>The coordinate set each worn texture set is laid out in, by its material, when it is not the first.</summary>
+    /// <summary>The UV set each worn texture set is laid out in, by its material, when it is not the first.</summary>
     readonly SortedDictionary<string, int> layouts = new(StringComparer.Ordinal);
     readonly HashSet<string> held = new(StringComparer.Ordinal);
     long painted;

@@ -193,7 +193,10 @@ public sealed class ViewportRendererTests : IDisposable {
     public void An_obj_draws_in_the_colours_of_its_material_library() {
         using var renderer = Open();
         Directory.CreateDirectory(Path.Combine(cache.FullName, "looks"));
-        File.WriteAllText(Path.Combine(cache.FullName, "looks", "paint.mtl"), "newmtl red\nKd 0.9 0.05 0.05\nnewmtl blue\nKd 0.05 0.1 0.9\n");
+        File.WriteAllText(
+            Path.Combine(cache.FullName, "looks", "paint.mtl"),
+            "newmtl red\nKd 0.9 0.05 0.05\nnewmtl blue\nKd 0.05 0.1 0.9\n"
+        );
         var mesh = Path.Combine(cache.FullName, "quads.obj");
         File.WriteAllLines(
             mesh,

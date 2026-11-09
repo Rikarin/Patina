@@ -184,7 +184,7 @@ sealed class ViewportMesh {
 
     /// <summary>Reads a model, each material laid out in the coordinate set its texture set chose (#210).</summary>
     /// <param name="path">The file.</param>
-    /// <param name="uvSets">The coordinate set of each material, by name. A material it does not name has the first.</param>
+    /// <param name="uvSets">The coordinate set of each material, by name. One it does not name has the first.</param>
     /// <exception cref="ModelFormatException">
     ///     The file is not a readable model, or a part has no coordinate set of the number its material asks for.
     /// </exception>
@@ -228,7 +228,7 @@ sealed class ViewportMesh {
         return new([..vertices], [..indices], [..parts], materials, bounds, hasCoordinates, false);
     }
 
-    /// <summary>A mesh's coordinates in one of its sets: the first as the mesh has it, or another the file holds.</summary>
+    /// <summary>A mesh's coordinates in one of its sets: the first as the mesh has it, or another one.</summary>
     /// <exception cref="ModelFormatException">The mesh has no such set.</exception>
     static Vector2[] Layout(ReadModel read, MeshData mesh, int at, int uvSet, string material) {
         if (uvSet == 0) {

@@ -496,7 +496,7 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
     }
 
     [Theory]
-    [InlineData("model.dae")]
+    [InlineData("model.blend")]
     [InlineData("scene.usd")]
     [InlineData("notes.txt")]
     [InlineData("height.tif")]

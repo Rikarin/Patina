@@ -174,7 +174,8 @@ static class ProjectFiles {
             AddPicture(root, path, file);
         } else {
             throw new ProjectRefusedException(
-                $"Nothing in Patina reads '{Path.GetFileName(file)}'. A project takes meshes ({Known(MeshFormats.Meshes)}) "
+                $"Nothing in Patina reads '{Path.GetFileName(file)}'. "
+                + $"A project takes meshes ({Known(MeshFormats.Meshes)}) "
                 + $"and pictures ({Known(PictureFormats.Pictures)})."
             );
         }

@@ -405,7 +405,7 @@ public sealed record StackEvaluation(
 ///     height channel, and then it writes a normal whether or not it declares one.
 /// </param>
 /// <param name="Anchors">The anchor points its set publishes, by name, and who reads each.</param>
-/// <param name="UvSet">The mesh's texture coordinate set the set is painted, baked and drawn in, by the file's number.</param>
+/// <param name="UvSet">The mesh's coordinate set the set is painted, baked and drawn in, by the file's number.</param>
 public sealed record StackState(
     string Id,
     string Path,

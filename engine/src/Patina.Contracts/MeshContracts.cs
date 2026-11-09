@@ -1,6 +1,6 @@
 namespace Patina.Contracts;
 
-/// <summary>What a mesh file is, as the engine reads it (#146): the answer to <c>GET /api/v1/library/project/mesh</c>.</summary>
+/// <summary>What a mesh file is, as the engine reads it (#146): the answer to <c>GET /library/mesh</c>.</summary>
 /// <param name="File">The file's name.</param>
 /// <param name="Format">What the format is called, for a person.</param>
 /// <param name="Triangles">How many triangles, every part counted where it stands.</param>
@@ -8,8 +8,8 @@ namespace Patina.Contracts;
 /// <param name="Parts">Each named mesh where the file places it.</param>
 /// <param name="Materials">Each material a triangle uses, which is each texture set the mesh has.</param>
 /// <param name="UvSets">The most texture coordinate sets any part has. Zero is a mesh with no layout.</param>
-/// <param name="Minimum">The corner of the box round the model with the least of each axis, in the file's units.</param>
-/// <param name="Maximum">The corner with the most of each axis.</param>
+/// <param name="Minimum">The least corner of the box round the model, in the file's units.</param>
+/// <param name="Maximum">The greatest corner of the box.</param>
 /// <param name="MetresPerUnit">
 ///     How long the file's unit is, in metres, when the file or its format says: glTF is in metres, and an FBX states
 ///     its unit. Null for a file that does not say, as OBJ, PLY and STL never do.

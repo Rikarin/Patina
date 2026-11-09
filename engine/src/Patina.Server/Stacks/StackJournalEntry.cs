@@ -52,7 +52,7 @@ public sealed class StackJournalEntry(
 
     /// <summary>
     ///     The texture set's size when the stroke began, which its stamps are texels of (#19). In the journal so a
-    ///     replay after the set's resolution changed still lands where the brush went. Zero for an entry with no stamps.
+    ///     replay after the set's resolution changed still lands where the brush went. Zero for one with no stamps.
     /// </summary>
     public (int Width, int Height) Side { get; init; }
 

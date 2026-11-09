@@ -136,13 +136,13 @@ test('File > Import says what it did, lists the file, and refuses what nothing r
   await window.keyboard.press('Escape');
   await expect(window.getByTestId('project-files')).toHaveCount(0);
 
-  const model = join(scratch, 'model.dae');
-  writeFileSync(model, '<COLLADA/>');
+  const model = join(scratch, 'model.blend');
+  writeFileSync(model, 'BLENDER-v300');
   await answerOpen(app, model);
   await command('import');
-  await expect(window.getByTestId('app-failure')).toContainText("Nothing in Patina reads 'model.dae'");
+  await expect(window.getByTestId('app-failure')).toContainText("Nothing in Patina reads 'model.blend'");
   await expect(window.getByTestId('app-notice')).toHaveCount(0);
-  expect(existsSync(join(library, 'projects', 'crate', 'pictures', 'model.dae'))).toBe(false);
+  expect(existsSync(join(library, 'projects', 'crate', 'pictures', 'model.blend'))).toBe(false);
 });
 
 test('Reloading a mesh asks first, keeps paint on the same layout and moves it on a new one', async () => {

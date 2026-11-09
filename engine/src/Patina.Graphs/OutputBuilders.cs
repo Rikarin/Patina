@@ -153,7 +153,7 @@ public sealed class OutputBuilders(
         );
 
         var manifest = Pictures(step, folder, usages, raw, GreenOf(step, GreenAxis.Down));
-        return manifest.Maps.Count > 0 && Coverage(step, set.UvSet, manifest.Maps[0].Width, manifest.Maps[0].Height) is { } islands
+        return manifest.Maps is [var first, ..] && Coverage(step, set.UvSet, first.Width, first.Height) is { } islands
             ? manifest with {
                 Maps = [..manifest.Maps, MapPictures.Write(folder, ExportMaps.Coverage, islands, true, null)]
             }

@@ -34,7 +34,10 @@ public sealed partial class StackProcessTests {
         );
         Assert.Equal(facts.Triangles, held!.Triangles);
 
-        using var picture = await http.GetAsync("/api/v1/library/mesh?path=projects/housing/project.yaml", deadline.Token);
+        using var picture = await http.GetAsync(
+            "/api/v1/library/mesh?path=projects/housing/project.yaml",
+            deadline.Token
+        );
         Assert.Equal(HttpStatusCode.BadRequest, picture.StatusCode);
     }
 }
