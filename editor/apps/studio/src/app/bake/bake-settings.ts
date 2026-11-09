@@ -225,6 +225,14 @@ export class BakeSettings {
       this.preview.set(await this.bakes.showSetup(on ? setup : { ...setup, low: '' }));
     } catch (error) {
       this.previewFailure.set(messageOf(error));
+      return;
+    }
+
+    // A change while the Server was reading the meshes found the preview not on yet, so nothing followed it: the
+    // high mesh chosen a moment before Show was drawn as the low mesh it replaced.
+    const now = this.setup();
+    if (on && now !== null && now !== setup) {
+      await this.setPreviewing(true);
     }
   }
 

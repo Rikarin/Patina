@@ -84,6 +84,7 @@ function setup(documents: ProjectDocumentInfo[], front: ProjectDocumentInfo | nu
   const written: { project: string; bake: ProjectBakeSettings }[] = [];
   const started: unknown[][] = [];
   const shown: ViewportBakePreview[] = [];
+  const answers: { gate: Promise<void> } = { gate: Promise.resolve() };
   const project = {
     current,
     mesh: signal(front?.mesh ? mesh : null),
@@ -110,15 +111,16 @@ function setup(documents: ProjectDocumentInfo[], front: ProjectDocumentInfo | nu
             started.push(requests);
             return Promise.resolve([]);
           },
-          showSetup: (preview: ViewportBakePreview) => {
+          showSetup: async (preview: ViewportBakePreview) => {
             shown.push(preview);
-            return Promise.resolve({ preview: preview.low ? preview : null, parts: [], warnings: [] });
+            await answers.gate;
+            return { preview: preview.low ? preview : null, parts: [], warnings: [] };
           }
         }
       }
     ]
   });
-  return { settings: TestBed.inject(BakeSettings), written, started, project, shown };
+  return { settings: TestBed.inject(BakeSettings), written, started, project, shown, answers };
 }
 
 describe('BakeSettings', () => {
@@ -144,6 +146,23 @@ describe('BakeSettings', () => {
     await settings.setPreviewing(false);
     expect(shown.at(-1)?.low).toBe('');
     expect(settings.previewing()).toBe(false);
+  });
+
+  it('shows an edit made while the Server was still reading the meshes for the first time', async () => {
+    const texturing = document('Crate', 'texturing', null, true);
+    const { settings, shown, answers } = setup([texturing], texturing);
+    let answer: () => void = () => undefined;
+    answers.gate = new Promise<void>(resolve => {
+      answer = resolve;
+    });
+
+    const showing = settings.setPreviewing(true);
+    settings.set(options => ({ ...options, rays: { ...options.rays, front: 0.3 } }));
+    answer();
+    await showing;
+
+    expect(shown.map(each => each.options.rays.front)).toEqual([0.05, 0.3]);
+    expect(settings.previewing()).toBe(true);
   });
 
   it('keeps an edit in the project a moment later, once, with every setting', async () => {
