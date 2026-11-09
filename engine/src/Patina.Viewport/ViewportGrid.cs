@@ -39,7 +39,7 @@ sealed class ViewportGrid : IDisposable {
         int samples
     ) {
         this.device = device;
-        pass = new(device, effect, vertex, fragment, colourFormat, depthFormat, samples);
+        pass = new(device, (effect, vertex, fragment), colourFormat, depthFormat, samples);
     }
 
     /// <summary>

@@ -20,9 +20,7 @@ sealed class ViewportLines : IDisposable {
 
     public ViewportLines(
         VulkanDevice device,
-        Effect effect,
-        ShaderHandle vertex,
-        ShaderHandle fragment,
+        (Effect Effect, ShaderHandle Vertex, ShaderHandle Fragment) shader,
         PixelFormat colourFormat,
         PixelFormat depthFormat,
         int samples,
@@ -30,6 +28,7 @@ sealed class ViewportLines : IDisposable {
         PrimitiveTopology topology = PrimitiveTopology.LineList
     ) {
         this.device = device;
+        var (effect, vertex, fragment) = shader;
         pipeline = device.CreateGraphicsPipeline(
             new(
                 vertex,

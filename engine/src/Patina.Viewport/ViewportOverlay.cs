@@ -66,16 +66,14 @@ sealed class ViewportOverlay : IDisposable {
         var layout = new VertexBufferLayout(FloatsPerVertex * sizeof(float), elements);
         fill = new(
             device,
-            effect,
-            vertex,
-            fragment,
+            (effect, vertex, fragment),
             colourFormat,
             depthFormat,
             samples,
             layout,
             PrimitiveTopology.TriangleList
         );
-        lines = new(device, effect, vertex, fragment, colourFormat, depthFormat, samples, layout);
+        lines = new(device, (effect, vertex, fragment), colourFormat, depthFormat, samples, layout);
     }
 
     /// <summary>Whether there is anything to draw.</summary>

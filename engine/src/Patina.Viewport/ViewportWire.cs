@@ -25,8 +25,7 @@ sealed class ViewportWire(
     /// <summary>How far the edges are lifted towards the eye, in bounding radii.</summary>
     const float Lift = 0.002f;
 
-    readonly ViewportLines lines =
-        new(device, edges.Effect, edges.Vertex, edges.Fragment, colourFormat, depthFormat, samples);
+    readonly ViewportLines lines = new(device, edges, colourFormat, depthFormat, samples);
 
     readonly ViewportGrid grid =
         new(device, floor.Effect, floor.Vertex, floor.Fragment, colourFormat, depthFormat, samples);

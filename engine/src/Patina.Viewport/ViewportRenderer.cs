@@ -147,7 +147,7 @@ public sealed class ViewportRenderer : IDisposable {
     /// <summary>How the model is lit, shown and finished, from the next frame on.</summary>
     public ViewportShading Shading { get; set; } = new();
 
-    /// <summary>Lays shapes over the model from the next frame on, such as a bake's preview, or takes them off.</summary>
+    /// <summary>Lays shapes over the model from the next frame on, such as a bake's preview, or none.</summary>
     /// <param name="triangles">See-through triangles, three vertices each of position, colour and opacity.</param>
     /// <param name="lines">Lines, two vertices each, laid out the same.</param>
     public void SetOverlay(float[] triangles, float[] lines) => wire.SetOverlay(triangles, lines);
