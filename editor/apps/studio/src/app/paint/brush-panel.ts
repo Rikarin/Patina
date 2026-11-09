@@ -159,21 +159,23 @@ const SizeSteps = 1000;
         }
       </div>
     }
-    <div class="flex flex-wrap items-center gap-2" data-testid="paint-picture">
+    <div class="flex items-center gap-2" data-testid="paint-screen-picture">
       <span
         class="text-foreground-muted w-16 shrink-0 text-xs"
         title="A picture fixed on the viewport: the projection tool paints it, and a stencil masks any brush by its brightness"
         >Picture</span
       >
-      <span class="readout min-w-0 flex-1 truncate text-xs" data-testid="paint-picture-name">{{ pictureName() }}</span>
-      <button type="button" xuiButton size="sm" variant="ghost" data-testid="paint-picture-choose" (click)="choosePicture()">
+      <span class="readout min-w-0 flex-1 truncate text-xs" data-testid="paint-screen-picture-name">{{ pictureName() }}</span>
+      <button type="button" xuiButton size="sm" variant="ghost" data-testid="paint-screen-picture-choose" (click)="choosePicture()">
         Choose…
       </button>
-      @if (store.screenPicture(); as picture) {
+    </div>
+    @if (store.screenPicture(); as picture) {
+      <div class="flex items-center gap-3 ps-[4.5rem]">
         <label class="flex items-center gap-1 text-xs" title="Repeats the picture past its edges">
           <input
             type="checkbox"
-            data-testid="paint-picture-tiled"
+            data-testid="paint-screen-picture-tiled"
             [checked]="picture.tiled"
             (change)="store.screenPicture.set({ ...picture, tiled: checked($event) })"
           />
@@ -193,13 +195,13 @@ const SizeSteps = 1000;
           xuiButton
           size="sm"
           variant="ghost"
-          data-testid="paint-picture-clear"
+          data-testid="paint-screen-picture-clear"
           (click)="store.screenPicture.set(null); store.stencil.set(false)"
         >
           Clear
         </button>
-      }
-    </div>
+      </div>
+    }
     <div class="flex items-center gap-2">
       <span
         class="text-foreground-muted w-16 shrink-0 text-xs"

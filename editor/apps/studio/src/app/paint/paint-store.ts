@@ -70,6 +70,9 @@ const ThumbnailQuiet = 400;
 /** What a clone stroke with nowhere to read from says. */
 export const CloneFirst = 'Set where the clone reads from first: Cmd- or Ctrl-click the model or the map.';
 
+/** What a clone stroke that starts off the model says: its step to the source is measured from where it starts. */
+export const CloneOnModel = 'Start a clone stroke on the model, so it knows how far it is from where it reads.';
+
 /** How many stamp-to-frame times are kept, which is what the readout and the bench read. */
 const StampTimes = 2048;
 
@@ -1156,7 +1159,7 @@ export class PaintStore {
       !view && brush.sizeSpace === 'screen' ? Math.max(0.5, brush.radius * this.atlasScale()) : brush.radius;
     const source = this.sourceOf(tool, view, curve);
     if (tool === 'clone' && !source) {
-      this.failure.set(CloneFirst);
+      this.failure.set(this.cloneSource() ? CloneOnModel : CloneFirst);
       return;
     }
 
