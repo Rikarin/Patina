@@ -12,6 +12,7 @@ import type {
 import { XuiButtonImports } from '@xui/button';
 import { XuiColorPickerImports } from '@xui/color-picker';
 import { XuiInputImports } from '@xui/input';
+import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
@@ -69,6 +70,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
     XuiButtonImports,
     XuiColorPickerImports,
     XuiInputImports,
+    XuiNonIdealStateImports,
     XuiNumericInputImports,
     XuiSelectImports,
     XuiSliderImports,
@@ -856,6 +858,12 @@ export function hexOf(colour: readonly number[] | undefined): string {
       <p class="text-foreground-muted text-xs" data-testid="paint-mesh-maps">
         {{ store.state()?.meshMaps ? 'Using the bake.' : 'No bake yet.' }}
       </p>
+    } @else {
+      <xui-non-ideal-state
+        title="No layer chosen"
+        description="Choose a layer in Layers to see what it reads, its mask and how it blends."
+        data-testid="layer-none"
+      />
     }
   `
 })

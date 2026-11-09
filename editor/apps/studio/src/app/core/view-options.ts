@@ -1,22 +1,15 @@
-import { Injectable, signal } from '@angular/core';
-
-const StatsKey = 'patina.view.stats';
-
-function saved(): boolean {
-  try {
-    return globalThis.localStorage.getItem(StatsKey) === 'true';
-  } catch {
-    return false;
-  }
-}
+import { Injectable, inject } from '@angular/core';
+import { Preferences } from './preferences';
 
 /** What the View menu turns on. Render statistics are for checking the engine, so they start hidden. */
 @Injectable({ providedIn: 'root' })
 export class ViewOptions {
-  readonly stats = signal(saved());
+  private readonly preferences = inject(Preferences);
+
+  /** Whether the viewport shows render statistics, which the person's preferences keep. */
+  readonly stats = this.preferences.stats;
 
   toggleStats(): void {
-    this.stats.update(shown => !shown);
-    globalThis.localStorage.setItem(StatsKey, String(this.stats()));
+    this.preferences.set({ stats: !this.stats() });
   }
 }

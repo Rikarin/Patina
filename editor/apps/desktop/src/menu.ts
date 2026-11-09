@@ -202,9 +202,12 @@ export function template(actions: MenuActions, menus: MenuModel, starting = fals
       }
     });
 
+  // A Mac keeps Preferences in the app menu, where every Mac app has it; elsewhere it stays where the studio put it.
+  const preferences = mac ? findCommand(menus, PreferencesCommand) : null;
+  const shown = preferences ? withoutCommand(menus, PreferencesCommand) : menus;
   return [
-    ...(mac ? [{ role: 'appMenu' as const }] : []),
-    ...menus.map(
+    ...(mac ? [appMenu(preferences ? build([preferences]) : [])] : []),
+    ...shown.map(
       (menu): MenuItemConstructorOptions => ({
         label: menu.label,
         ...(menu.label === 'Help' ? { role: 'help' as const } : {}),
@@ -212,4 +215,59 @@ export function template(actions: MenuActions, menus: MenuModel, starting = fals
       })
     )
   ];
+}
+
+/** The command a Mac lifts into the app menu. */
+export const PreferencesCommand = 'preferences';
+
+/** A Mac's app menu, with the items Electron's `appMenu` role gives it and Preferences where a Mac has it. */
+function appMenu(preferences: MenuItemConstructorOptions[]): MenuItemConstructorOptions {
+  return {
+    label: 'Patina',
+    submenu: [
+      { role: 'about' },
+      { type: 'separator' },
+      ...preferences,
+      ...(preferences.length ? [{ type: 'separator' as const }] : []),
+      { role: 'services' },
+      { type: 'separator' },
+      { role: 'hide' },
+      { role: 'hideOthers' },
+      { role: 'unhide' },
+      { type: 'separator' },
+      { role: 'quit' }
+    ]
+  };
+}
+
+function findCommand(menus: MenuModel, id: string): MenuModelItem | null {
+  const inside = (items: readonly MenuModelItem[]): MenuModelItem | null => {
+    for (const item of items) {
+      if (item.type === 'command' && item.id === id) {
+        return item;
+      }
+
+      const below = item.type === 'submenu' ? inside(item.items) : null;
+      if (below) {
+        return below;
+      }
+    }
+
+    return null;
+  };
+  return menus.reduce<MenuModelItem | null>((found, menu) => found ?? inside(menu.items), null);
+}
+
+/** The menus without a command, and without a line the command leaves leading, trailing or doubled. */
+function withoutCommand(menus: MenuModel, id: string): MenuModel {
+  const strip = (items: readonly MenuModelItem[]): MenuModelItem[] => {
+    const kept = items
+      .filter(item => !(item.type === 'command' && item.id === id))
+      .map(item => (item.type === 'submenu' ? { ...item, items: strip(item.items) } : item));
+    return kept.filter(
+      (item, at) =>
+        item.type !== 'separator' || (at > 0 && at < kept.length - 1 && kept[at - 1]?.type !== 'separator')
+    );
+  };
+  return menus.map(menu => ({ ...menu, items: strip(menu.items) }));
 }

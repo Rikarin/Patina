@@ -92,4 +92,34 @@ describe('menus from the studio', () => {
     expect(sent.openLibrary).toHaveBeenCalled();
     expect(sent.sent).toEqual([]);
   });
+
+  it('keeps Preferences in the app menu on a Mac, and where the studio put it elsewhere', () => {
+    const menus = [
+      {
+        label: 'Edit',
+        items: [
+          { type: 'command' as const, id: 'undo', label: 'Undo', enabled: true },
+          { type: 'separator' as const },
+          { type: 'command' as const, id: 'preferences', label: 'Preferences…', enabled: true }
+        ]
+      }
+    ];
+    const built = (platform: string) => {
+      const was = process.platform;
+      Object.defineProperty(process, 'platform', { value: platform });
+      try {
+        return template(actions(), menus);
+      } finally {
+        Object.defineProperty(process, 'platform', { value: was });
+      }
+    };
+    const ids = (menu: { submenu?: unknown } | undefined) =>
+      ((menu?.submenu ?? []) as { id?: string; role?: string; type?: string }[]).map(item => item.id ?? item.role ?? item.type);
+
+    const mac = built('darwin');
+    expect(ids(mac[0])).toContain('preferences');
+    expect(ids(mac.find(menu => menu.label === 'Edit'))).toEqual(['undo']);
+    const other = built('linux');
+    expect(ids(other.find(menu => menu.label === 'Edit'))).toEqual(['undo', 'separator', 'preferences']);
+  });
 });

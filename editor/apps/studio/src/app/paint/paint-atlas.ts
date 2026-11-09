@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
+import { XuiSpinnerImports } from '@xui/spinner';
 import { Commands } from '../core/commands';
 import { channelName } from '../core/labels';
 import { ProjectStore } from '../library/project-store';
@@ -10,7 +11,7 @@ import { StrokeGesture } from './stroke-gesture';
 /** The stack flat, in UV space. It paints like the mesh does, and it is the whole picture for a layered material. */
 @Component({
   selector: 'ptn-paint-atlas',
-  imports: [XuiButtonImports, XuiNonIdealStateImports],
+  imports: [XuiButtonImports, XuiNonIdealStateImports, XuiSpinnerImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'relative flex h-full min-h-0 items-center justify-center overflow-hidden p-2', 'data-commands': 'atlas' },
   template: `
@@ -72,12 +73,35 @@ import { StrokeGesture } from './stroke-gesture';
           />
         </div>
       }
+    } @else if (!store.state()) {
+      <xui-non-ideal-state
+        class="flex-1"
+        title="No stack open"
+        description="This shows a texturing document or a layered material flat, as its maps lie, to paint on. Open one from the Library, or make a project."
+        data-testid="atlas-empty"
+      >
+        <button
+          action
+          type="button"
+          xuiButton
+          size="sm"
+          [disabled]="!commands.enabled('newProject')"
+          (click)="commands.run('newProject')"
+        >
+          New Project…
+        </button>
+      </xui-non-ideal-state>
+    } @else if (store.failure(); as reason) {
+      <xui-non-ideal-state class="flex-1" title="The map could not be made" [description]="reason" data-testid="atlas-empty" />
     } @else {
       <xui-non-ideal-state
         class="flex-1"
-        title="Nothing to show yet"
-        description="The map appears when it has been made."
-      />
+        title="Making the map"
+        description="The layers are being worked out on the GPU. The map shows here as soon as it is ready."
+        data-testid="atlas-empty"
+      >
+        <xui-spinner action size="md" aria-label="Making the map" />
+      </xui-non-ideal-state>
     }
   `
 })

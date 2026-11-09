@@ -76,6 +76,10 @@ export interface DesktopBridge {
   readKeys(): Promise<unknown>;
   /** Writes the person's key settings. */
   writeKeys(settings: unknown): Promise<void>;
+  /** The person's app-wide preferences (`preferences.json` beside `keys.json`), or null when there are none. */
+  readPreferences(): Promise<unknown>;
+  /** Writes the person's app-wide preferences. */
+  writePreferences(settings: unknown): Promise<void>;
   /** Asks the user for a mesh file: its path, or null if they cancelled. */
   openMesh(): Promise<string | null>;
   /** Asks the user for a picture of these formats: its path, or null if they cancelled. */

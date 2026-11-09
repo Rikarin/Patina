@@ -3,7 +3,7 @@ import { colourName, hexColourName } from './colour-names';
 import { blendName, choiceName, kindName, learnTerms, termName, wordsOf } from './labels';
 import { asksForMenu } from './menu-keys';
 import { diagnosticOf, messageOf } from './messages';
-import { amount, degrees, percent } from './numbers';
+import { amount, bytes, degrees, percent } from './numbers';
 
 const term = (value: string, label: string) => ({ value, label });
 
@@ -93,6 +93,13 @@ describe('numbers', () => {
     expect(percent(0.42)).toBe('42%');
     expect(degrees(Math.PI / 2)).toBe('90°');
     expect(amount(0.5)).toBe('0.50');
+  });
+
+  it('shows sizes on disk in the largest unit that keeps them at 1 or more', () => {
+    expect(bytes(512)).toBe('512 bytes');
+    expect(bytes(1536)).toBe('1.5 KB');
+    expect(bytes(300 * 1024 * 1024)).toBe('300 MB');
+    expect(bytes(2.25 * 1024 ** 3)).toBe('2.3 GB');
   });
 });
 

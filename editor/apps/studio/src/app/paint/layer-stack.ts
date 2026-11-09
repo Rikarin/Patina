@@ -13,6 +13,7 @@ import {
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, inject, signal } from '@angular/core';
 import type { StackFilterKind, StackLayer, StackMaskLayer } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
+import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiContextMenuImports } from '@xui/context-menu';
 import { XuiMenuImports } from '@xui/menu';
 import { XuiPopoverImports } from '@xui/popover';
@@ -81,6 +82,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
     XuiButtonImports,
     XuiContextMenuImports,
     XuiMenuImports,
+    XuiNonIdealStateImports,
     XuiPopoverImports,
     XuiSelectImports,
     XuiSliderImports
@@ -793,7 +795,30 @@ const MaskMarks: Readonly<Record<string, string>> = {
           </div>
         }
       } @empty {
-        <p class="text-foreground-muted p-3 text-sm">Nothing open.</p>
+        @if (store.state()) {
+          <xui-non-ideal-state
+            title="No layers yet"
+            description="Layers stack paint, fills and filters into the maps this document makes. Add one, or drag a material from the shelf."
+            data-testid="layers-empty"
+          >
+            <button
+              action
+              type="button"
+              xuiButton
+              size="sm"
+              [disabled]="!commands.enabled('addFillLayer')"
+              (click)="commands.run('addFillLayer')"
+            >
+              {{ commands.label('addFillLayer') }}
+            </button>
+          </xui-non-ideal-state>
+        } @else {
+          <xui-non-ideal-state
+            title="No stack open"
+            description="Open a texturing document or a layered material to see its layers here."
+            data-testid="layers-empty"
+          />
+        }
       }
     </div>
     }

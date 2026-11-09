@@ -67,6 +67,8 @@ export const CommandTable: readonly CommandSpec[] = [
   { id: 'duplicate', label: 'Duplicate', section: 'Edit', keys: ['Mod+D'] },
   { id: 'delete', label: 'Delete', section: 'Edit', keys: ['Backspace', 'Delete'] },
   { id: 'selectAll', label: 'Select All', section: 'Edit', keys: ['Mod+A'] },
+  // In the Edit menu, and on a Mac in the app menu, where the desktop app moves it (apps/desktop/src/menu.ts).
+  { id: 'preferences', label: 'Preferences…', section: 'Edit', keys: ['Mod+,'] },
 
   { id: 'brushTool', label: 'Brush', section: 'Painting', keys: ['B'], area: 'stack', hint: 'Paints' },
   { id: 'eraserTool', label: 'Eraser', section: 'Painting', keys: ['E'], area: 'stack', hint: 'Takes paint away' },
@@ -262,7 +264,7 @@ export const MenuBar: readonly {
   },
   {
     label: 'Edit',
-    items: ['undo', 'redo', '-', 'cut', 'copy', 'paste', 'duplicate', 'delete', '-', 'selectAll']
+    items: ['undo', 'redo', '-', 'cut', 'copy', 'paste', 'duplicate', 'delete', '-', 'selectAll', '-', 'preferences']
   },
   {
     label: 'View',

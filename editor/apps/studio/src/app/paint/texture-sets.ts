@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { ProjectStore } from '../library/project-store';
 import { IsolationStore } from '../viewport/isolation-store';
@@ -13,7 +14,7 @@ const HeightNormals: readonly XuiSegmentedOption[] = [
 /** The model's texture sets: a document per material, of which one is being painted. */
 @Component({
   selector: 'ptn-texture-sets',
-  imports: [XuiSegmentedControlImports],
+  imports: [XuiNonIdealStateImports, XuiSegmentedControlImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col overflow-auto p-1' },
   template: `
@@ -50,7 +51,11 @@ const HeightNormals: readonly XuiSegmentedOption[] = [
           }
         </div>
       } @empty {
-        <p class="text-foreground-muted p-2 text-sm">Nothing open.</p>
+        <xui-non-ideal-state
+          title="No texture sets"
+          description="A texturing document's mesh has a texture set for each of its materials, each painted on its own. Open a texturing document to see them."
+          data-testid="texture-sets-empty"
+        />
       }
     </div>
     @if (parts().length > 1) {

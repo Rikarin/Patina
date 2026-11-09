@@ -23,3 +23,18 @@ export function toDegrees(radians: number): number {
 export function amount(value: number): string {
   return value.toFixed(2);
 }
+
+const ByteUnits = ['bytes', 'KB', 'MB', 'GB', 'TB'] as const;
+
+/** A size on disk, in the largest unit that keeps it at 1 or more: one place below 10, none above. */
+export function bytes(count: number): string {
+  let value = Math.max(0, count);
+  let unit = 0;
+  while (value >= 1024 && unit < ByteUnits.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+
+  const shown = unit === 0 || value >= 10 ? Math.round(value).toString() : value.toFixed(1);
+  return `${shown} ${ByteUnits[unit]}`;
+}
