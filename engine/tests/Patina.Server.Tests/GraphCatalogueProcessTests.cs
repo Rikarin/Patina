@@ -26,7 +26,25 @@ public sealed class GraphCatalogueProcessTests : IDisposable {
         ["Generators/Grunge Rough Dirty"] = MeshBake,
         ["Generators/Mask Editor"] = MeshBake,
         ["Generators/Metal Edge Wear"] = MeshBake,
-        ["Generators/Position Gradient"] = MeshBake
+        ["Generators/Position Gradient"] = MeshBake,
+        ["Generators/Cavity Select"] = MeshBake,
+        ["Generators/Direction"] = MeshBake,
+        ["Generators/Distance From Point"] = MeshBake,
+        ["Generators/Drips"] = MeshBake,
+        ["Generators/Edge Select"] = MeshBake,
+        ["Generators/Ground Grime"] = MeshBake,
+        ["Generators/Light"] = MeshBake,
+        ["Generators/Linear Gradient"] = MeshBake,
+        ["Generators/Moss"] = MeshBake,
+        ["Generators/Paint Chips"] = MeshBake,
+        ["Generators/Sun Fade"] = MeshBake,
+        ["Stylised/Baked Lighting"] = MeshBake,
+        ["Weathering/Edge Damage"] = MeshBake,
+        ["Weathering/Peeling Paint"] = MeshBake,
+        ["Weathering/Rust"] = MeshBake,
+        ["Weathering/Shut Lines"] = MeshBake,
+        ["Weathering/Water Drops"] = MeshBake,
+        ["Weathering/Worn Edges"] = MeshBake
     };
 
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-catalogue-");

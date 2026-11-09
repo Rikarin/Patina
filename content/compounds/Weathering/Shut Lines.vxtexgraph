@@ -7,6 +7,10 @@ nodes:
   - { id: 3, type: Analysis/Edge Detect, x: -960, y: 0, values: { Threshold: [0.01] }, texts: { '=Width': 'width' } }
   - { id: 4, type: Filters/Blur HQ, x: -640, y: 0, texts: { '=Sigma': 'softness * 2f' } }
   - { id: 5, type: Colour/Levels, x: -320, y: 0, values: { Input Black: [0.02], Input White: [0.25] } }
+  - { id: 11, type: Colour/Levels, x: -960, y: 200, values: { Input Black: [0.0002], Input White: [0.0006] } }
+  - { id: 12, type: Filters/Blur HQ, x: -640, y: 200, texts: { '=Sigma': '1f + width' } }
+  - { id: 13, type: Colour/Levels, x: -320, y: 200, values: { Input Black: [0.97], Input White: [0.995] } }
+  - { id: 14, type: Colour/Blend, x: -160, y: 100, texts: { Mode: Multiply } }
   - id: 6
     type: Filters/Pixel Processor
     x: 0
@@ -33,12 +37,17 @@ edges:
   - { fromNode: 10, fromPort: Out, toNode: 3, toPort: Input }
   - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Input }
   - { fromNode: 4, fromPort: Out, toNode: 5, toPort: Input }
+  - { fromNode: 10, fromPort: Out, toNode: 11, toPort: Input }
+  - { fromNode: 11, fromPort: Out, toNode: 12, toPort: Input }
+  - { fromNode: 12, fromPort: Out, toNode: 13, toPort: Input }
+  - { fromNode: 5, fromPort: Out, toNode: 14, toPort: Background }
+  - { fromNode: 13, fromPort: Out, toNode: 14, toPort: Foreground }
   - { fromNode: 1, fromPort: baseColor, toNode: 6, toPort: A }
-  - { fromNode: 5, fromPort: Out, toNode: 6, toPort: B }
+  - { fromNode: 14, fromPort: Out, toNode: 6, toPort: B }
   - { fromNode: 1, fromPort: roughness, toNode: 7, toPort: A }
-  - { fromNode: 5, fromPort: Out, toNode: 7, toPort: B }
+  - { fromNode: 14, fromPort: Out, toNode: 7, toPort: B }
   - { fromNode: 1, fromPort: height, toNode: 8, toPort: A }
-  - { fromNode: 5, fromPort: Out, toNode: 8, toPort: B }
+  - { fromNode: 14, fromPort: Out, toNode: 8, toPort: B }
   - { fromNode: 6, fromPort: Out, toNode: 99, toPort: baseColor }
   - { fromNode: 7, fromPort: Out, toNode: 99, toPort: roughness }
   - { fromNode: 8, fromPort: Out, toNode: 99, toPort: height }
@@ -55,7 +64,7 @@ settings:
   baseWidth: '1024'
   baseHeight: '1024'
   seed: '1'
-  summary: 'Shut lines: a dark groove wherever two parts of the model meet, read from the borders of the id bake.'
+  summary: 'Shut lines: a dark groove wherever two parts of the model meet, read from the borders of the id bake. The edge of an island, where the id meets the empty atlas, is no seam.'
   doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
 parameters:
   - { name: width, label: Width, default: '2', summary: 'How wide a groove is, in texels.', kind: Float, minimum: 1, maximum: 16, group: Seams }
