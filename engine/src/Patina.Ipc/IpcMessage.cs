@@ -142,7 +142,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 10;
+    public const int ProtocolVersion = 11;
 
     public string Type { get; set; } = string.Empty;
 
