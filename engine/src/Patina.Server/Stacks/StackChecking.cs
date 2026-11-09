@@ -44,7 +44,7 @@ public static class StackChecking {
 
     /// <summary>The density a project holds its sets to: its own, or the library's.</summary>
     public static double TargetDensity(ProjectContents? project, double library) =>
-        project?.Checks.TexelDensity is > 0 and var own ? own : library;
+        project?.Checks?.TexelDensity is > 0 and var own ? own : library;
 
     /// <summary>
     ///     What the texel density view measures a worn stack against: its project's density, and its maps' side for a

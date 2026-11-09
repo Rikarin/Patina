@@ -9,7 +9,8 @@ import {
   shell,
   type IpcMainEvent,
   type IpcMainInvokeEvent,
-  type OpenDialogOptions
+  type OpenDialogOptions,
+  type SaveDialogOptions
 } from 'electron';
 import { existsSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
@@ -415,6 +416,20 @@ function handleIpc(): void {
     const options: OpenDialogOptions = { properties: ['openDirectory', 'createDirectory'] };
     const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
     return picked.canceled ? null : (picked.filePaths[0] ?? null);
+  });
+  handle('patina:saveScreenshot', async () => {
+    const options: SaveDialogOptions = {
+      title: 'Save Screenshot',
+      defaultPath: 'Viewport.png',
+      filters: [{ name: 'PNG', extensions: ['png'] }],
+      properties: ['createDirectory', 'showOverwriteConfirmation']
+    };
+    const picked = await (window ? dialog.showSaveDialog(window, options) : dialog.showSaveDialog(options));
+    if (picked.canceled || !picked.filePath) {
+      return null;
+    }
+
+    return picked.filePath.toLowerCase().endsWith('.png') ? picked.filePath : `${picked.filePath}.png`;
   });
 }
 

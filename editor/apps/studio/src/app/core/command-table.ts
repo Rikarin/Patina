@@ -193,6 +193,19 @@ export const CommandTable: readonly CommandSpec[] = [
     area: 'viewport',
     hint: 'Draws the triangles’ edges over the model'
   },
+  {
+    id: 'toggleGrid',
+    label: 'Grid',
+    section: 'Viewport',
+    area: 'viewport',
+    hint: 'Draws a grid on the floor the model stands on, with the world’s axes'
+  },
+  {
+    id: 'saveScreenshot',
+    label: 'Save Screenshot…',
+    section: 'Viewport',
+    hint: 'Writes the picture as it is now to a PNG file'
+  },
 
   { id: 'toggleStats', label: 'Show Statistics', section: 'View' },
 
@@ -202,6 +215,12 @@ export const CommandTable: readonly CommandSpec[] = [
   { id: 'layout3', label: 'Third Layout', section: 'Window', keys: ['Mod+3'] },
   { id: 'resetLayout', label: 'Reset Layout', section: 'Window' },
   { id: 'showHistory', label: 'History', section: 'Window', hint: 'Shows every undo step' },
+  {
+    id: 'showChecks',
+    label: 'Checks',
+    section: 'Window',
+    hint: 'Lists what the texture set in front would get wrong in an export'
+  },
 
   { id: 'shortcuts', label: 'Keyboard Shortcuts…', section: 'Help', keys: ['Mod+/'] },
   { id: 'diagnostics', label: 'Diagnostics…', section: 'Help' },
@@ -354,7 +373,10 @@ export const MenuBar: readonly {
       'zoomIn',
       'zoomOut',
       '-',
-      'toggleWireframe'
+      'toggleWireframe',
+      'toggleGrid',
+      '-',
+      'saveScreenshot'
     ]
   },
   {
@@ -362,6 +384,7 @@ export const MenuBar: readonly {
     items: [
       { submenu: 'Layout', items: ['layout1', 'layout2', 'layout3', '-', 'resetLayout'] },
       'showHistory',
+      'showChecks',
       '-',
       { native: 'windowItems' }
     ]

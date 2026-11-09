@@ -10473,8 +10473,7 @@
           "exportSets",
           "preservePaint",
           "unwrap",
-          "bake",
-          "checks"
+          "bake"
         ],
         "type": "object",
         "properties": {
@@ -10580,8 +10579,15 @@
             ]
           },
           "checks": {
-            "description": "What its texture sets are held to before export: a memory budget, a size limit, a texel density.",
-            "$ref": "#/components/schemas/ProjectCheckSettings"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What its texture sets are held to before export: a memory budget, a size limit, a texel density. Null holds\nthem to nothing but the library\u0027s density.",
+                "$ref": "#/components/schemas/ProjectCheckSettings"
+              }
+            ]
           }
         },
         "description": "A project as it opens."

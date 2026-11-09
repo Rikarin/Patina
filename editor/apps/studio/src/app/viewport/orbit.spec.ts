@@ -32,13 +32,34 @@ describe('framing', () => {
   it('snaps to an axis and frames the model there', () => {
     expect(snapped(away, 'front')).toEqual({ ...framed(away), yaw: 0, pitch: 0 });
     expect(snapped(away, 'right').yaw).toBeCloseTo(Math.PI / 2);
-    expect(snapped(away, 'top').pitch).toBeGreaterThan(1.56);
-    expect(snapped(away, 'top').pitch).toBeLessThan(Math.PI / 2);
+    expect(snapped(away, 'top').pitch).toBe(Math.PI / 2);
+    expect(snapped(away, 'bottom').pitch).toBe(-Math.PI / 2);
   });
 
   it('keeps a top view when a drag starts from it, rather than jumping to the drag limit', () => {
     const top = snapped(away, 'top');
     expect(orbit(top, 10, 0).pitch).toBe(top.pitch);
+  });
+});
+
+describe('free orbit', () => {
+  it('tips on over the pole rather than stopping at it', () => {
+    const top = snapped(DefaultCamera, 'top');
+    expect(orbit(top, 0, 100).pitch).toBeCloseTo(Math.PI / 2 + 0.8);
+  });
+
+  it('spins the other way round the up axis once the view has turned over, so the model follows the pointer', () => {
+    const over = { ...DefaultCamera, pitch: 2.4 };
+    expect(orbit(over, 10, 0).yaw).toBeGreaterThan(over.yaw);
+    expect(orbit(DefaultCamera, 10, 0).yaw).toBeLessThan(DefaultCamera.yaw);
+  });
+
+  it('keeps the pitch within half a turn of level however far it goes', () => {
+    let camera = DefaultCamera;
+    for (let step = 0; step < 40; step++) {
+      camera = orbit(camera, 0, 100);
+      expect(Math.abs(camera.pitch)).toBeLessThanOrEqual(Math.PI);
+    }
   });
 
   it('reads the number pad as Blender does', () => {

@@ -615,7 +615,7 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
     public async Task A_project_keeps_its_checks_and_refuses_ones_that_mean_nothing() {
         await MakeCrateAsync();
         var before = await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=crate", Token);
-        Assert.Equal(new ProjectCheckSettings(), before!.Checks);
+        Assert.Null(before!.Checks);
         var checks = new ProjectCheckSettings { MemoryBudget = 16, MaxSize = 2048, TexelDensity = 512 };
 
         using var kept = await client.PutAsJsonAsync(

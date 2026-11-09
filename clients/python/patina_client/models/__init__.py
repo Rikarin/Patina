@@ -20,6 +20,9 @@ from .brush_preset_update_request import BrushPresetUpdateRequest
 from .build_preview import BuildPreview
 from .build_preview_project import BuildPreviewProject
 from .build_request import BuildRequest
+from .check_problem import CheckProblem
+from .check_problem_values import CheckProblemValues
+from .check_target import CheckTarget
 from .document_recovery import DocumentRecovery
 from .document_recovery_request import DocumentRecoveryRequest
 from .export_file_choice import ExportFileChoice
@@ -155,6 +158,8 @@ from .output_report import OutputReport
 from .problem_details import ProblemDetails
 from .project_bake_request import ProjectBakeRequest
 from .project_bake_settings import ProjectBakeSettings
+from .project_check_settings import ProjectCheckSettings
+from .project_checks_request import ProjectChecksRequest
 from .project_contents import ProjectContents
 from .project_create_request import ProjectCreateRequest
 from .project_document_copy_request import ProjectDocumentCopyRequest
@@ -187,6 +192,7 @@ from .stack_anchor_use import StackAnchorUse
 from .stack_brush import StackBrush
 from .stack_brush_terms import StackBrushTerms
 from .stack_channel import StackChannel
+from .stack_checks import StackChecks
 from .stack_clip import StackClip
 from .stack_clip_request import StackClipRequest
 from .stack_command_batch import StackCommandBatch
@@ -305,6 +311,8 @@ from .viewport_map_paths import ViewportMapPaths
 from .viewport_mesh_request import ViewportMeshRequest
 from .viewport_pick import ViewportPick
 from .viewport_pick_request import ViewportPickRequest
+from .viewport_screenshot import ViewportScreenshot
+from .viewport_screenshot_request import ViewportScreenshotRequest
 from .viewport_stack_request import ViewportStackRequest
 from .viewport_state import ViewportState
 from .worker_status import WorkerStatus
@@ -330,6 +338,9 @@ __all__ = (
     "BuildPreview",
     "BuildPreviewProject",
     "BuildRequest",
+    "CheckProblem",
+    "CheckProblemValues",
+    "CheckTarget",
     "DocumentRecovery",
     "DocumentRecoveryRequest",
     "ExportFileChoice",
@@ -465,6 +476,8 @@ __all__ = (
     "ProblemDetails",
     "ProjectBakeRequest",
     "ProjectBakeSettings",
+    "ProjectCheckSettings",
+    "ProjectChecksRequest",
     "ProjectContents",
     "ProjectCreateRequest",
     "ProjectDocumentCopyRequest",
@@ -497,6 +510,7 @@ __all__ = (
     "StackBrush",
     "StackBrushTerms",
     "StackChannel",
+    "StackChecks",
     "StackClip",
     "StackClipRequest",
     "StackCommandBatch",
@@ -615,6 +629,8 @@ __all__ = (
     "ViewportMeshRequest",
     "ViewportPick",
     "ViewportPickRequest",
+    "ViewportScreenshot",
+    "ViewportScreenshotRequest",
     "ViewportStackRequest",
     "ViewportState",
     "WorkerStatus",

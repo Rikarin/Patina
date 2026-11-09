@@ -82,6 +82,8 @@ export interface DesktopBridge {
   openImage(formats?: readonly string[]): Promise<string | null>;
   /** Asks the user for a folder: its path, or null if they cancelled. */
   openFolder(): Promise<string | null>;
+  /** Asks where a screenshot of the viewport goes, as a PNG: its path, or null if they cancelled. */
+  saveScreenshot(): Promise<string | null>;
   /** Tells the app whether quitting would lose anything, which is what decides whether it asks. */
   setUnsaved(unsaved: boolean): void;
   /** The user asked to quit with something unsaved. The app waits for {@link quit}. */

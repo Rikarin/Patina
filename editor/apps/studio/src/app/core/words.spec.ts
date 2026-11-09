@@ -2,7 +2,7 @@ import { ApiError, type StackVocabulary } from '@patina/api-client';
 import { colourName, hexColourName } from './colour-names';
 import { blendName, choiceName, kindName, learnTerms, termName, wordsOf } from './labels';
 import { asksForMenu } from './menu-keys';
-import { diagnosticOf, messageOf } from './messages';
+import { checkWords, diagnosticOf, messageOf } from './messages';
 import { amount, degrees, percent } from './numbers';
 
 const term = (value: string, label: string) => ({ value, label });
@@ -84,6 +84,22 @@ describe('messages', () => {
       detail: 'There is no literal image.'
     });
     expect(diagnosticOf('One sentence')).toEqual({ summary: 'One sentence', code: null, detail: '' });
+  });
+});
+
+describe('check words', () => {
+  it('says a problem in the app’s words, with shares as percentages and bytes as mebibytes', () => {
+    expect(checkWords('pbr-albedo-dark', { share: '0.25' }, 'server')).toBe(
+      'In 25% of texels a surface that is not metal is darker than sRGB 30.'
+    );
+    expect(checkWords('uv-overlap', { share: '0.004' }, 'server')).toMatch(/^0\.4% of the laid-out texels/u);
+    expect(
+      checkWords('texture-over-budget', { bytes: String(12 * 1024 * 1024), budget: String(8 * 1024 * 1024), preset: 'Unreal' }, '')
+    ).toBe('Takes 12.0 MiB of GPU memory as Unreal writes it, over the budget of 8.0 MiB.');
+  });
+
+  it('falls back to the Server’s sentence for a code it does not know', () => {
+    expect(checkWords('something-new', { share: '1' }, 'The Server’s own sentence.')).toBe('The Server’s own sentence.');
   });
 });
 

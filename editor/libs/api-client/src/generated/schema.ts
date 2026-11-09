@@ -141,6 +141,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/viewport/screenshot': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Writes the picture the viewport shows now to a PNG on the Server's machine, with its camera, display settings and look, at the size asked for or the one clients asked for. */
+    post: operations['TakeViewportScreenshot'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/viewport/isolation': {
     parameters: {
       query?: never;
@@ -514,6 +531,23 @@ export interface paths {
     get?: never;
     /** Keeps how the viewport is to open in a project, in its project.yaml. It is kept, not shown: PUT /viewport/display shows it. */
     put: operations['SetProjectViewport'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/project/checks': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Keeps what a project's texture sets are held to before export in its project.yaml: a GPU memory budget, a size limit and a texel density, which GET /stacks/{id}/checks and the texel density view measure against. */
+    put: operations['SetProjectChecks'];
     post?: never;
     delete?: never;
     options?: never;
@@ -1279,6 +1313,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/stacks/{id}/checks': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Checks the texture set before export, against its project's budget, size limit, texel density and export preset, and its layout and values against what a mesh and a physical material can have. Each problem has a stable code and where it is. */
+    get: operations['GetStackChecks'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/stacks/{id}/thumbnails': {
     parameters: {
       query?: never;
@@ -1986,6 +2037,42 @@ export interface components {
       /** @description Where exports go, or null for `exports/` in the library. */
       folder?: null | string;
       options?: null | components['schemas']['ExportOptions'];
+    };
+    /** @description One problem a texture set has before it is exported. */
+    CheckProblem: {
+      /** @description One of CheckCodes. */
+      code: string;
+      /** @description `error` stops an engine taking it; `warning` needs a look. */
+      severity: string;
+      /** @description The Server's own sentence. */
+      detail: string;
+      /** @description The numbers and names the sentence was written from, by name. */
+      values: {
+        [key: string]: string;
+      };
+      /** @description Where it is. */
+      target: components['schemas']['CheckTarget'];
+    };
+    /** @description Where a problem is, for a client to go to it. */
+    CheckTarget: {
+      /** @description A viewport view that shows it, one of IReadOnlyList&lt;string&gt; ViewportViews.All, or null. */
+      view?: null | string;
+      camera?: null | components['schemas']['ViewportCameraState'];
+      /**
+       * Format: float
+       * @description A texture coordinate across where it is, or null.
+       */
+      u?: null | number;
+      /**
+       * Format: float
+       * @description A texture coordinate down where it is, or null.
+       */
+      v?: null | number;
+      /**
+       * @description The project's setting that decides it, as `block.field` (`checks.memoryBudget`,
+       *     `export.preset`), or null.
+       */
+      setting?: null | string;
     };
     /** @description Whether a document has work autosaved after its last save. */
     DocumentRecovery: {
@@ -3478,6 +3565,40 @@ export interface components {
       /** @description A cage, as a path on the Server's machine, or empty for none. */
       cage: string;
     };
+    /**
+     * @description What a project holds its texture sets to before they are exported (#159), kept in its `project.yaml`. A
+     *     zero is no limit, and a texel density of zero is the library's.
+     */
+    ProjectCheckSettings: {
+      /**
+       * Format: double
+       * @description The most GPU memory one texture set's exported files may take, in mebibytes, or zero for no limit.
+       */
+      memoryBudget: number;
+      /**
+       * Format: int32
+       * @description The longest side a texture set's maps may have, in texels, or zero for no limit.
+       */
+      maxSize: number;
+      /**
+       * Format: double
+       * @description The texel density the sets are held to, in texels per unit of the model (a metre in glTF), or zero for the
+       *     library's.
+       */
+      texelDensity: number;
+      /**
+       * Format: double
+       * @description How far a set's density may stray from it before it is flagged, as a share: 0.25 is a quarter.
+       */
+      densityTolerance: number;
+    };
+    /** @description The body of `PUT /api/v1/library/project/checks`. */
+    ProjectChecksRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /** @description What its texture sets are held to now. */
+      checks: components['schemas']['ProjectCheckSettings'];
+    };
     /** @description A project as it opens. */
     ProjectContents: {
       /**
@@ -3515,6 +3636,7 @@ export interface components {
       bake: components['schemas']['ProjectBakeSettings'];
       viewport?: null | components['schemas']['ViewportDisplay'];
       paint?: null | components['schemas']['ProjectPaintSettings'];
+      checks?: null | components['schemas']['ProjectCheckSettings'];
     };
     /** @description The body of `POST /api/v1/library/projects`. */
     ProjectCreateRequest: {
@@ -4053,6 +4175,47 @@ export interface components {
       usage: string;
       /** @description What it starts as. */
       default: number[];
+    };
+    /** @description The reply to `GET /api/v1/stacks/{id}/checks`: one texture set measured against its project. */
+    StackChecks: {
+      /** @description The stack session. */
+      stack: string;
+      /** @description The texture set, or empty for a model with no named sets. */
+      set: string;
+      /**
+       * Format: int32
+       * @description Its maps' width, in texels.
+       */
+      width: number;
+      /**
+       * Format: int32
+       * @description Their height.
+       */
+      height: number;
+      /**
+       * Format: double
+       * @description Texels per unit of the model across the whole set, or zero where it has no area.
+       */
+      texelDensity: number;
+      /**
+       * Format: double
+       * @description What the project holds it to, or zero for nothing.
+       */
+      targetDensity: number;
+      /**
+       * Format: int64
+       * @description The GPU memory its exported files take with the project's preset, mips included.
+       */
+      memoryBytes: number;
+      /**
+       * Format: int64
+       * @description The project's budget in bytes, or zero for none.
+       */
+      memoryBudget: number;
+      /** @description The export preset measured against. */
+      preset: string;
+      /** @description What is wrong, in the order of IReadOnlyList&lt;string&gt; CheckCodes.All, which puts the project's limits, the errors, first. */
+      problems: components['schemas']['CheckProblem'][];
     };
     /** @description Layers copied out of a stack, which a StackPasteLayers names. */
     StackClip: {
@@ -5524,6 +5687,47 @@ export interface components {
        * @default 0
        */
       sharpen: number;
+      /**
+       * Format: double
+       * @description How much light spills past what the curve takes to white, 0 none to 1.
+       * @default 0
+       */
+      bloom: number;
+      /**
+       * Format: double
+       * @description Blue towards red, -1 to 1, where zero leaves the picture alone. A grade, not a temperature.
+       * @default 0
+       */
+      warmth: number;
+      /**
+       * Format: double
+       * @description Green towards magenta, -1 to 1, where zero leaves the picture alone.
+       * @default 0
+       */
+      tint: number;
+      /**
+       * @description What shows where the environment does not, as `#rrggbb` in sRGB: the background fades to it as
+       *     BackgroundOpacity falls. It is lit by nothing and seen through the same curve as the model.
+       * @default #000000
+       */
+      backgroundColor: string;
+      /**
+       * @description Whether a grid is drawn on the floor the model stands on, with the world's x and z axes.
+       * @default false
+       */
+      grid: boolean;
+      /**
+       * @description Which lane of the picture shows: one of IReadOnlyList&lt;string&gt; ViewportLanes.All.
+       * @default rgb
+       */
+      pictureLane: string;
+      /**
+       * Format: double
+       * @description What the picture's numbers are multiplied by before they are shown, 0.001 to 1000, so a height in the model's
+       *     units or a position comes into view.
+       * @default 1
+       */
+      pictureScale: number;
     };
     /** @description Asks the viewport to lay a graph's Output nodes over the mesh it is showing, as they stand now. */
     ViewportGraphRequest: {
@@ -5620,6 +5824,39 @@ export interface components {
       /**
        * Format: int32
        * @description Its height.
+       */
+      height?: null | number;
+    };
+    /** @description A picture of the viewport that is now a file. */
+    ViewportScreenshot: {
+      /** @description The file. */
+      path: string;
+      /**
+       * Format: int32
+       * @description Its width in pixels.
+       */
+      width: number;
+      /**
+       * Format: int32
+       * @description Its height in pixels.
+       */
+      height: number;
+    };
+    /**
+     * @description Asks for the viewport's picture as a PNG on the Server's machine: the camera, display settings and look it has
+     *     now, at a size of its own. Nothing about it reaches a client's stream.
+     */
+    ViewportScreenshotRequest: {
+      /** @description Where to write it, ending in `.png`. */
+      path: string;
+      /**
+       * Format: int32
+       * @description Its width in pixels, or null for the size clients asked for.
+       */
+      width?: null | number;
+      /**
+       * Format: int32
+       * @description Its height in pixels, or null for the size clients asked for.
        */
       height?: null | number;
     };
@@ -5958,6 +6195,48 @@ export interface operations {
       };
       /** @description Unprocessable Entity */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  TakeViewportScreenshot: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportScreenshotRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportScreenshot'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
         headers: {
           [name: string]: unknown;
         };
@@ -7217,6 +7496,57 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': components['schemas']['ProjectViewportRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetProjectChecks: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectChecksRequest'];
       };
     };
     responses: {
@@ -9518,6 +9848,55 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['StackFound'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetStackChecks: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackChecks'];
         };
       };
       /** @description Not Found */

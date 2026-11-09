@@ -65,7 +65,7 @@ static class ProjectFiles {
             Bake = document.Bake ?? new(),
             Viewport = document.Viewport,
             Paint = document.Paint,
-            Checks = document.Checks ?? new()
+            Checks = document.Checks
         };
     }
 

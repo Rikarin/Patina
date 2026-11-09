@@ -66,3 +66,55 @@ export function diagnosticOf(text: string): { summary: string; code: string | nu
   const summary = end >= 0 ? body.slice(0, end + 1) : body;
   return { summary, code: coded?.[1] ?? null, detail: body.slice(summary.length).trim() };
 }
+
+/**
+ * What the app says for a problem a check before export finds (#159), by its code (`CheckCodes` in
+ * engine/src/Patina.Contracts/CheckContracts.cs). Values the Server measured fill the braces, shares as percentages and
+ * bytes as mebibytes.
+ */
+const CheckWords: Readonly<Record<string, string>> = {
+  'texture-over-budget': 'Takes {bytes} of GPU memory as {preset} writes it, over the budget of {budget}.',
+  'texture-too-large': 'Is {width} × {height} texels, larger than the limit of {limit}.',
+  'channel-missing': '{preset} reads {map} into {file}, and this set has no {map}, so a default fills it.',
+  'density-low': 'Has {density} texels per unit, short of the {target} the project asks for.',
+  'density-high': 'Has {density} texels per unit, more than the {target} the project asks for.',
+  'uv-outside': '{count} triangles reach past the first UV tile, which is the only one painted.',
+  'uv-overlap': '{share} of the laid-out texels are under more than one triangle, so a stroke lands twice.',
+  'uv-degenerate': '{count} triangles have no area in the UV layout, so no texel lands on them.',
+  'uv-flipped': '{count} triangles are turned over in the UV layout, so a normal map reads them backwards.',
+  'pbr-albedo-dark': 'In {share} of texels a surface that is not metal is darker than sRGB 30.',
+  'pbr-albedo-bright': 'In {share} of texels a surface that is not metal is brighter than sRGB 240.',
+  'pbr-metal-dark': 'In {share} of texels bare metal is darker than sRGB 180.',
+  'pbr-metal-partial': 'In {share} of texels metalness is between 0.1 and 0.9, neither metal nor not.'
+};
+
+/** A check's measured number as a person reads it: shares as percentages, bytes as mebibytes, the rest as given. */
+function measured(name: string, value: string): string {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return value;
+  }
+
+  switch (name) {
+    case 'share':
+      return `${(number * 100).toFixed(number < 0.1 ? 1 : 0)}%`;
+    case 'bytes':
+    case 'budget':
+      return `${(number / (1024 * 1024)).toFixed(1)} MiB`;
+    default:
+      return value;
+  }
+}
+
+/** This app's words for a problem a check found, or the Server's sentence for a code it does not know. */
+export function checkWords(code: string, values: Readonly<Record<string, string>>, detail: string): string {
+  const words = CheckWords[code];
+  if (words === undefined) {
+    return detail;
+  }
+
+  return words.replace(/\{(\w+)\}/gu, (whole, name: string) => {
+    const value = values[name];
+    return value === undefined ? whole : measured(name, value);
+  });
+}
