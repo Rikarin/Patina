@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { type MaterialInfo, createPatinaClient } from '@patina/api-client';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
+import { LibraryThumbnails } from '../library/thumbnails';
 import { MaterialShelf } from './material-shelf';
 import { MaterialUse } from './material-use';
 
@@ -36,6 +37,12 @@ const origins = [
 
 function setup() {
   const searches: string[] = [];
+  const using = { failure: signal(null), carried: signal(null), use: vi.fn(), paintWith: vi.fn() };
+  const wanted: string[] = [];
+  const pictures = {
+    want: (sources: readonly string[]) => wanted.push(...sources),
+    url: (source: string) => (source === plastic.source ? 'blob:plastic' : null)
+  };
   const fetcher = ((input: Request) => {
     const url = new URL(input.url);
     if (url.pathname.endsWith('/library/materials')) {
@@ -53,13 +60,14 @@ function setup() {
     providers: [
       { provide: LibraryStore, useValue: { api: () => Promise.resolve(client), changes: signal(0) } },
       { provide: ProjectStore, useValue: { current: signal({ path: 'alpha' }), active: signal(null) } },
-      { provide: MaterialUse, useValue: { failure: signal(null), carried: signal(null), use: vi.fn() } }
+      { provide: MaterialUse, useValue: using },
+      { provide: LibraryThumbnails, useValue: pictures }
     ]
   });
   const fixture = TestBed.createComponent(MaterialShelf);
   const page = fixture.nativeElement as HTMLElement;
   const names = () => [...page.querySelectorAll('[data-testid="shelf-material"]')].map(row => row.textContent.trim());
-  return { fixture, page, names, searches };
+  return { fixture, page, names, searches, using, wanted };
 }
 
 async function settled(fixture: ReturnType<typeof setup>['fixture']): Promise<void> {
@@ -104,5 +112,27 @@ describe('MaterialShelf', () => {
     await settled(fixture);
 
     expect(names()).toEqual(['RustProps']);
+  });
+
+  it('shows the pictures the Library draws, adds on a click and paints on an Alt-click (#125, #202)', async () => {
+    const { fixture, page, names, using, wanted } = setup();
+    await vi.waitFor(async () => {
+      await settled(fixture);
+      expect(names()).toEqual(['PlasticStarter', 'RustProps']);
+    });
+
+    // One service draws for the shelf and the Library alike, and the shelf only asks it.
+    expect(wanted).toEqual([plastic.source, rust.source]);
+    const [first, second] = page.querySelectorAll<HTMLElement>('[data-testid="shelf-material"]');
+    expect(first?.querySelector('img')?.getAttribute('src')).toBe('blob:plastic');
+    expect(second?.querySelector('img')).toBeNull();
+
+    first?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(using.use).toHaveBeenCalledWith(plastic);
+    expect(using.paintWith).not.toHaveBeenCalled();
+
+    second?.dispatchEvent(new MouseEvent('click', { bubbles: true, altKey: true }));
+    expect(using.paintWith).toHaveBeenCalledWith(rust);
+    expect(using.use).toHaveBeenCalledTimes(1);
   });
 });
