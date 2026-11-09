@@ -10,9 +10,7 @@ static class StackLabels {
             StackRemoveLayer => "Remove layer",
             StackNestLayer => "Move layer",
             StackMoveLayer => "Move layer",
-            StackSetLayer { Inputs: not null, Filter: null, FilterNode: null, Graph: null } => "Change input",
-            StackSetLayer { Mask: not null } => "Change mask",
-            StackSetLayer => "Change layer",
+            StackSetLayer set => Changed(set),
             StackSetModel => "Bind mesh",
             StackAddChannel add => $"Add {add.Usage}",
             StackSetSeed => "Change seed",
@@ -31,5 +29,13 @@ static class StackLabels {
             StackMoveMaskLayer => "Move mask layer",
             StackSetMaskLayer => "Change mask layer",
             _ => "Edit"
+        };
+
+    /// <summary>A layer's change, named for what it changes when that is one thing a person would name.</summary>
+    static string Changed(StackSetLayer set) =>
+        set switch {
+            { Inputs: not null, Filter: null, FilterNode: null, Graph: null } => "Change input",
+            { Mask: not null } => "Change mask",
+            _ => "Change layer"
         };
 }
