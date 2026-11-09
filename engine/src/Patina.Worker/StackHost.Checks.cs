@@ -26,7 +26,7 @@ sealed partial class StackHost {
         MeshShelf.Mesh? mesh = null;
         BoundingBox whole = default;
         if (model is not null) {
-            mesh = Meshes.Of(model, stack.SetName);
+            mesh = Meshes.Of(model, stack.SetName, stack.UvSet);
             whole = Meshes.Of(model).Geometry.Bounds;
             var geometry = mesh.Geometry;
             layout = LayoutCheck.Measure(

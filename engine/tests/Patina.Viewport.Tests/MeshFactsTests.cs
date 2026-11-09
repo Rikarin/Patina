@@ -127,6 +127,23 @@ public sealed class MeshFactsTests : IDisposable {
         Assert.False(facts.VertexColours);
     }
 
+    /// <summary>
+    ///     A texture set laid out in its second coordinate set is painted and drawn there (#210), and one whose part
+    ///     lacks the set says so rather than painting in the first.
+    /// </summary>
+    [Fact]
+    public void A_texture_set_is_drawn_in_the_coordinate_set_it_chose() {
+        var path = Path.Combine(folder.FullName, "two.gltf");
+        File.WriteAllText(path, TwoParts());
+
+        var first = ViewportGeometry.Read(path, "Body", 0);
+        var second = ViewportGeometry.Read(path, "Body", 1);
+
+        Assert.Contains(second.Indices, corner => second.Coordinates[corner] == new Vixen.Core.Mathematics.Vector2(0.5f, 0.25f));
+        Assert.DoesNotContain(first.Indices, corner => first.Coordinates[corner] == new Vixen.Core.Mathematics.Vector2(0.5f, 0.25f));
+        Assert.Throws<Vixen.Interchange.ModelFormatException>(() => ViewportGeometry.Read(path, "Strap", 1));
+    }
+
     string Write(string extension) {
         var path = Path.Combine(folder.FullName, "tri" + extension);
         if (extension == ".glb") {

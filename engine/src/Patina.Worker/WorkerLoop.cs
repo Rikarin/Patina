@@ -186,7 +186,8 @@ sealed class WorkerLoop(
     /// </summary>
     IpcMessage MovePaint(IpcMessage request) {
         var ask = request.MeshMovePaint ?? throw new IpcException("mesh.move-paint moves nothing.");
-        var (from, to) = (meshes.Of(ask.From, ask.Set).Projection, meshes.Of(ask.To, ask.Set).Projection);
+        var from = meshes.Of(ask.From, ask.Set, ask.UvSet).Projection;
+        var to = meshes.Of(ask.To, ask.Set, ask.UvSet).Projection;
         if (PaintTransfer.SameLayout(from, to)) {
             return IpcMessage.Ok(request.Id);
         }

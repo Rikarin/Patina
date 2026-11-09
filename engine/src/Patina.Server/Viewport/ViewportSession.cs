@@ -62,6 +62,9 @@ public sealed class ViewportSession(
     string? mesh;
     string? stack;
     IReadOnlyList<string> also = [];
+
+    /// <summary>The coordinate set each worn texture set is laid out in, by its material, when it is not the first.</summary>
+    readonly SortedDictionary<string, int> layouts = new(StringComparer.Ordinal);
     readonly HashSet<string> held = new(StringComparer.Ordinal);
     long painted;
     string? toldStack;
@@ -79,6 +82,7 @@ public sealed class ViewportSession(
     long rendered;
     IpcConnection? told;
     string? toldMesh;
+    string toldLayouts = string.Empty;
     ViewportMapSet? toldMaps;
     ViewportDisplaySet? toldDisplay;
     ViewportCamera? toldCamera;
@@ -154,7 +158,14 @@ public sealed class ViewportSession(
     /// <param name="path">The mesh.</param>
     /// <param name="others">The other sets.</param>
     /// <param name="opened">Those of them only this opened.</param>
-    public void Wear(string session, string path, IReadOnlyList<string> others, IEnumerable<string> opened) {
+    /// <param name="sets">Each worn set's material and the coordinate set it is laid out in (#210).</param>
+    public void Wear(
+        string session,
+        string path,
+        IReadOnlyList<string> others,
+        IEnumerable<string> opened,
+        IEnumerable<(string Material, int UvSet)> sets
+    ) {
         lock (changing) {
             also = others;
             held.UnionWith(opened);
@@ -164,6 +175,34 @@ public sealed class ViewportSession(
             painted = 0;
             error = null;
             mapsError = null;
+            layouts.Clear();
+            foreach (var (material, uvSet) in sets.Where(static set => set.UvSet != 0)) {
+                layouts[material] = uvSet;
+            }
+
+            revision++;
+        }
+
+        Wake();
+    }
+
+    /// <summary>A worn texture set may have moved to another coordinate set, which reads the mesh again.</summary>
+    public void Laid(string session, string material, int uvSet) {
+        lock (changing) {
+            if (stack != session && !also.Contains(session)) {
+                return;
+            }
+
+            if (layouts.GetValueOrDefault(material) == uvSet) {
+                return;
+            }
+
+            if (uvSet == 0) {
+                layouts.Remove(material);
+            } else {
+                layouts[material] = uvSet;
+            }
+
             revision++;
         }
 
@@ -191,6 +230,7 @@ public sealed class ViewportSession(
             mesh = path;
             stack = null;
             also = [];
+            layouts.Clear();
             maps = pictures;
             error = null;
             mapsError = null;
@@ -371,7 +411,8 @@ public sealed class ViewportSession(
                 Lens(camera, display.Display),
                 (request.Width ?? width, request.Height ?? height, 1d),
                 false,
-                lastInput
+                lastInput,
+                new Dictionary<string, int>(layouts, StringComparer.Ordinal)
             );
         }
 
@@ -421,10 +462,19 @@ public sealed class ViewportSession(
     /// <summary>Tells the Worker the mesh, maps, settings, stacks and camera it does not yet know.</summary>
     async Task<IpcConnection> TellAsync(Work work, CancellationToken cancellationToken) {
         var connection = await worker.ConnectionAsync(cancellationToken);
-        if (!ReferenceEquals(connection, told) || work.Mesh != toldMesh) {
+        // A texture set moved to another coordinate set is the mesh read again with it (#210).
+        var layouts = string.Join(';', work.UvSets.Select(static pair => $"{pair.Key}={pair.Value}"));
+        if (!ReferenceEquals(connection, told) || work.Mesh != toldMesh || layouts != toldLayouts) {
             (toldMesh, toldCamera, toldMaps, toldStack, toldDisplay) = (null, null, null, null, null);
-            await connection.SendAsync(new() { Type = IpcTypes.ViewportOpen, Mesh = work.Mesh }, cancellationToken);
-            (told, toldMesh, toldMaps) = (connection, work.Mesh, new());
+            await connection.SendAsync(
+                new() {
+                    Type = IpcTypes.ViewportOpen,
+                    Mesh = work.Mesh,
+                    UvSets = work.UvSets.Count == 0 ? null : work.UvSets
+                },
+                cancellationToken
+            );
+            (told, toldMesh, toldMaps, toldLayouts) = (connection, work.Mesh, new(), layouts);
         }
 
         if (work.Maps != toldMaps) {
@@ -564,7 +614,8 @@ public sealed class ViewportSession(
                     Lens(camera, display.Display),
                     (width, height, scale.Value),
                     interacting,
-                    lastInput
+                    lastInput,
+                    new Dictionary<string, int>(layouts, StringComparer.Ordinal)
                 ),
                     revision);
         }
@@ -689,6 +740,7 @@ public sealed class ViewportSession(
         ViewportCamera Camera,
         (int Width, int Height, double Scale) Size,
         bool Interacting,
-        uint Input
+        uint Input,
+        IReadOnlyDictionary<string, int> UvSets
     );
 }

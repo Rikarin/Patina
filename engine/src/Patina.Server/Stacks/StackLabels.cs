@@ -15,6 +15,7 @@ static class StackLabels {
             StackAddChannel add => $"Add {add.Usage}",
             StackSetSeed => "Change seed",
             StackSetHeightNormal => "Height to normal",
+            StackSetSettings => "Texture set settings",
             StackStroke => "Stroke",
             StackDuplicateLayers => "Duplicate layers",
             StackPasteLayers { AsInstances: true } => "Paste as instances",

@@ -34,7 +34,7 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
         // A material index means nothing on another mesh, so what it wore comes off and is sent again.
         renderer?.ClearLive();
         followed.Clear();
-        Renderer().OpenMesh(path);
+        Renderer().OpenMesh(path, request.UvSets);
         return IpcMessage.Ok(request.Id);
     }
 

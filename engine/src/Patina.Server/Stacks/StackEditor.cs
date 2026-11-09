@@ -293,6 +293,9 @@ public sealed class StackEditor : ILayerStackDocument {
             case StackSetHeightNormal height:
                 Do(HeightNormal(height.Method));
                 break;
+            case StackSetSettings settings:
+                Do(Settings(settings));
+                break;
             case StackStroke stroke:
                 Stroke(stroke, step, set, Do);
                 break;
@@ -517,14 +520,55 @@ public sealed class StackEditor : ILayerStackDocument {
         );
     }
 
-    SetDocumentCommand HeightNormal(string method) {
-        if (!Enum.TryParse<LayerHeightNormal>(method, false, out var chosen) || !Enum.IsDefined(chosen)) {
+    /// <summary>The highest coordinate set a model can have: Assimp keeps eight.</summary>
+    const int MostUvSets = 8;
+
+    /// <summary>The set's settings as one step: the resolution, the coordinate set and how height becomes a normal.</summary>
+    /// <exception cref="StackEditRefusedException">A value is not one a set can have.</exception>
+    SetDocumentCommand Settings(StackSetSettings settings) {
+        var width = settings.Width ?? Document.BaseWidth;
+        var height = settings.Height ?? Document.BaseHeight;
+        if (!TextureSizes.Sides.Contains(width) || !TextureSizes.Sides.Contains(height)) {
             throw new StackEditRefusedException(
-                $"'{method}' is no way to turn height into a normal. "
-                + $"Use {string.Join(" or ", Enum.GetNames<LayerHeightNormal>())}."
+                $"{width}×{height} is no resolution a texture set has. Each side is one of "
+                + $"{string.Join(", ", TextureSizes.Sides)}."
             );
         }
 
+        var uvSet = settings.UvSet ?? Set.UvSet;
+        if (uvSet is < 0 or >= MostUvSets) {
+            throw new StackEditRefusedException(
+                $"UV set {uvSet + 1} is not one a mesh can have: they run from 1 to {MostUvSets}."
+            );
+        }
+
+        var set = Set;
+        var changed = set with { UvSet = uvSet };
+        if (settings.HeightNormal is { } method) {
+            changed = changed with { HeightNormal = Method(method) };
+        }
+
+        return new(
+            this,
+            Document with {
+                BaseWidth = width,
+                BaseHeight = height,
+                Sets = [..Document.Sets.Select(held => held == set ? changed : held)]
+            },
+            "Texture set settings"
+        );
+    }
+
+    static LayerHeightNormal Method(string method) =>
+        Enum.TryParse<LayerHeightNormal>(method, false, out var chosen) && Enum.IsDefined(chosen)
+            ? chosen
+            : throw new StackEditRefusedException(
+                $"'{method}' is no way to turn height into a normal. "
+                + $"Use {string.Join(" or ", Enum.GetNames<LayerHeightNormal>())}."
+            );
+
+    SetDocumentCommand HeightNormal(string method) {
+        var chosen = Method(method);
         var set = Set;
         var changed = set with { HeightNormal = chosen };
         return new(
@@ -581,7 +625,8 @@ public sealed class StackEditor : ILayerStackDocument {
 
         step.Strokes.Add(
             new(nextEntry++, stroke, paint, Channel(stroke), Packed(stroke.Colour), Document.Model, start) {
-                SourceDocument = StackDocuments.SourceText(stroke.Source, Document, Set)
+                SourceDocument = StackDocuments.SourceText(stroke.Source, Document, Set),
+                Side = (Document.BaseWidth, Document.BaseHeight)
             }
         );
     }

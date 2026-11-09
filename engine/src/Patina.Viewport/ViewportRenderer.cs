@@ -182,8 +182,14 @@ public sealed class ViewportRenderer : IDisposable {
     /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
     /// <exception cref="InvalidDataException">A material's image is not one this reads.</exception>
     /// <exception cref="IOException">A material's image cannot be read.</exception>
-    public void OpenMesh(string path) {
-        var mesh = ViewportMesh.Read(path);
+    public void OpenMesh(string path) => OpenMesh(path, null);
+
+    /// <summary>Replaces the mesh, each material drawn in the coordinate set its texture set is laid out in (#210).</summary>
+    /// <exception cref="ModelFormatException">The file is not a readable model, or a part lacks its set.</exception>
+    /// <exception cref="InvalidDataException">A material's image is not one this reads.</exception>
+    /// <exception cref="IOException">A material's image cannot be read.</exception>
+    public void OpenMesh(string path, IReadOnlyDictionary<string, int>? uvSets) {
+        var mesh = ViewportMesh.Read(path, uvSets);
         maps = ViewportMaps.None;
         meshFolder = Path.GetDirectoryName(Path.GetFullPath(path));
         Show(mesh);

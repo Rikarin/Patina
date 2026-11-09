@@ -131,6 +131,32 @@ public sealed class StackEditorPropertyTests {
     }
 
     /// <summary>
+    ///     A set's settings change together as one step, what is left out stays, a side no set has is refused, and undo
+    ///     puts every one back (#19, #210).
+    /// </summary>
+    [Fact]
+    public void A_sets_settings_change_as_one_step_and_undo_together() {
+        var session = new StackSession("/tmp/Settings.vxlayers", StackDocuments.Text(Sample()), static () => { });
+        var (width, height) = (session.State.Width, session.State.Height);
+
+        session.Apply(new([new StackSetSettings(Width: 4096, Height: 1024, UvSet: 1, HeightNormal: "Sharp")]));
+        var state = session.State;
+        Assert.Equal((4096, 1024, 1, "Sharp"), (state.Width, state.Height, state.UvSet, state.HeightNormal));
+        Assert.Contains("uvSet: 1", session.Text, StringComparison.Ordinal);
+        Assert.Equal("Texture set settings", session.Steps.Done[^1].Label);
+
+        session.Apply(new([new StackSetSettings(UvSet: 0)]));
+        Assert.Equal((4096, 1024, 0), (session.State.Width, session.State.Height, session.State.UvSet));
+
+        Assert.Throws<StackEditRefusedException>(() => session.Apply(new([new StackSetSettings(Width: 3000)])));
+        Assert.Throws<StackEditRefusedException>(() => session.Apply(new([new StackSetSettings(UvSet: 8)])));
+
+        session.Undo();
+        session.Undo();
+        Assert.Equal((width, height, 0, "Smooth"), (session.State.Width, session.State.Height, session.State.UvSet, session.State.HeightNormal));
+    }
+
+    /// <summary>
     ///     A stack's history is a list with labels, and a jump through it is one event that lands where single steps
     ///     would.
     /// </summary>

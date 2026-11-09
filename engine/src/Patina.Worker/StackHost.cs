@@ -313,10 +313,16 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
 
         readonly string path;
         readonly string set;
+
+        /// <summary>The coordinate set this texture set is laid out in, which every stroke lands in (#210).</summary>
+        public int UvSet => LayerStackEdit.SetFor(document, set)?.UvSet ?? 0;
         readonly string folder;
         readonly PublishedCompounds compounds;
         readonly PaintCanvasStore canvases = new(long.MaxValue);
         readonly HashSet<string> touched = new(StringComparer.Ordinal);
+
+        /// <summary>The canvases a stroke of this session began on, whose old pixels its undo holds.</summary>
+        readonly HashSet<string> stroked = new(StringComparer.Ordinal);
         readonly TexturePlanEvaluator evaluator;
         readonly LayerStackPictures fill;
         readonly List<Applied> applied = [];
@@ -466,7 +472,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             }
 
             try {
-                return meshes.Of(Path.GetFullPath(document.Model, folder), set).Tiles;
+                return meshes.Of(Path.GetFullPath(document.Model, folder), set, UvSet).Tiles;
             } catch (IpcException) {
                 return null;
             }
@@ -654,10 +660,16 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
                 return known[part.Id] = new(part.Id, null, null) { Copy = copy };
             }
 
+            // The stamps are texels of the set as it was when the stroke began, which a replay keeps (#19).
+            var side = part.Width > 0 && part.Height > 0
+                ? (part.Width, part.Height)
+                : (document.BaseWidth, document.BaseHeight);
             var canvas = canvases.Open(file);
             if (canvas is null) {
-                canvas = new(document.BaseWidth, document.BaseHeight);
+                canvas = new(side.Item1, side.Item2);
                 canvases.Adopt(file, canvas);
+            } else if ((canvas.Width, canvas.Height) != side) {
+                canvas = Resized(file, part.Paint, canvas, side);
             }
 
             // Before anything reads it. A file a stroke starts is new, or left by strokes that can never stand again.
@@ -666,7 +678,8 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             }
 
             touched.Add(part.Paint);
-            var surface = Surface(part.Model);
+            stroked.Add(file);
+            var surface = Surface(part.Model, canvas.Width, canvas.Height);
             var image = canvas.Channel(part.Usage);
             var coverage = surface?.Coverage ?? PaintCoverage.Everywhere(canvas.Width, canvas.Height);
             var placement = PlacementOf(part, surface);
@@ -698,18 +711,46 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         BoundingBox? Bounds(string model) =>
             model.Trim().Length == 0 ? null : meshes.Of(Path.GetFullPath(model, folder)).Projection.Bounds;
 
-        PaintMeshSurface? Surface(string model) {
+        /// <summary>The mesh as a stroke reaches it, at the size of the canvas it paints and in the set's layout.</summary>
+        PaintMeshSurface? Surface(string model, int width, int height) {
             if (model.Trim().Length == 0) {
                 return null;
             }
 
             var file = Path.GetFullPath(model, folder);
-            if (!surfaces.TryGetValue(file, out var surface)) {
-                surfaces[file] = surface =
-                    new(meshes.Of(file, set).Projection, document.BaseWidth, document.BaseHeight);
+            var key = $"{file}\n{UvSet}\n{width}x{height}";
+            if (!surfaces.TryGetValue(key, out var surface)) {
+                surfaces[key] = surface = new(meshes.Of(file, set, UvSet).Projection, width, height);
             }
 
             return surface;
+        }
+
+        /// <summary>
+        ///     A canvas made the size a stroke paints at (#19). Larger is exact and loses nothing, and is done only to a
+        ///     canvas no stroke of this session has begun on, since a stroke's undo holds the pixels it painted over.
+        ///     A canvas larger than its set keeps its size and is sampled at the set's, so it is never made smaller.
+        /// </summary>
+        /// <exception cref="IpcException">The canvas cannot be painted at that size here.</exception>
+        PaintCanvas Resized(string file, string name, PaintCanvas canvas, (int Width, int Height) side) {
+            var (width, height) = side;
+            if (canvas.Width > width || canvas.Height > height) {
+                throw new IpcException(
+                    $"'{name}' holds {canvas.Width}×{canvas.Height} texels and the texture set is {width}×{height}. "
+                    + "Painting it smaller would throw its detail away, so set the resolution back to paint this layer."
+                );
+            }
+
+            if (stroked.Contains(file)) {
+                throw new IpcException(
+                    $"'{name}' was painted at {canvas.Width}×{canvas.Height} earlier in this session. Save, close and "
+                    + $"open the document again to paint it at {width}×{height}."
+                );
+            }
+
+            var enlarged = canvas.Enlarged(width, height);
+            canvases.Adopt(file, enlarged);
+            return enlarged;
         }
 
         PaintBrush Brush(StackBrush brush) => StrokeShapes.Brush(brush, Alpha(brush.Alpha));

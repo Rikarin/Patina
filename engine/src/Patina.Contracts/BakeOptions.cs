@@ -22,6 +22,13 @@ public sealed record BakeRequest {
     /// <summary>The material of the low mesh to bake, for one texture set of a model that has several.</summary>
     public string? Material { get; set; }
 
+    /// <summary>
+    ///     The low mesh's texture coordinate set the maps are baked in, by the file's number: zero for the first. A
+    ///     texture set laid out in another set bakes in that one (#210). The high mesh is read whole, so its sets do not
+    ///     matter, but for a picture moved from its layout, which is always its first.
+    /// </summary>
+    public int UvSet { get; set; }
+
     /// <summary>The stem of each file's name, or null for the low mesh's.</summary>
     public string? Name { get; set; }
 

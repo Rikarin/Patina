@@ -152,7 +152,8 @@ static class PatinaApi {
         // A model's other texture sets are worn with it, or the rest of it would show nothing while one is painted.
         HashSet<string> before = [..stacks.All.Select(static open => open.Id)];
         string[] others = [..OtherSets(host.Library, stack).Select(path => stacks.Open(path).Id)];
-        session.Wear(stack.Id, file, others, others.Except(before));
+        var worn = (IEnumerable<StackSession>)[stack, ..others.Select(stacks.Find).OfType<StackSession>()];
+        session.Wear(stack.Id, file, others, others.Except(before), [..worn.Select(static s => (s.Set, s.UvSet))]);
         var (target, resolution) = StackChecking.Density(host.Library, stack);
         session.SetDensity(target, resolution);
         foreach (var closing in session.Release([..others]).Select(stacks.Find).OfType<StackSession>()) {

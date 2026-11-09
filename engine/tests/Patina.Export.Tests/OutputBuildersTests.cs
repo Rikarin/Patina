@@ -319,7 +319,7 @@ public sealed class OutputBuildersTests : IDisposable {
         var mesh = Path.Combine(folder.FullName, "half.obj");
         File.WriteAllText(mesh, "v 0 0 0\nv 1 0 0\nv 0 1 0\nvt 0 0\nvt 1 0\nvt 0 1\nf 1/1 2/2 3/3\n");
 
-        var coverage = MeshCoverage.Of(mesh, null, 16, 16)!;
+        var coverage = MeshCoverage.Of(mesh, null, 0, 16, 16)!;
 
         Assert.Equal(1f, coverage.Samples[15 * 16]);
         Assert.Equal(1f, coverage.Samples[15 * 16 + 14]);

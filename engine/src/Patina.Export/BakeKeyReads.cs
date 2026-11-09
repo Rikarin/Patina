@@ -44,7 +44,7 @@ public static class BakeKeyReads {
 
         // ⚠ A low mesh that is also a high mesh is still keyed by its bytes in that role, which the rays read whole.
         try {
-            reads["low"] = Geometry(MeshMapBakeRun.Read(request.Low, request.Material));
+            reads["low"] = Geometry(MeshMapBakeRun.Read(request.Low, request.Material, request.UvSet));
         } catch (Exception e) when (e is ModelFormatException or InvalidDataException or IOException) {
             // The bake refuses it with its own words; the bytes key it until then.
         }

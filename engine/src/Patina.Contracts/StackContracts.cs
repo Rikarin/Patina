@@ -405,6 +405,7 @@ public sealed record StackEvaluation(
 ///     height channel, and then it writes a normal whether or not it declares one.
 /// </param>
 /// <param name="Anchors">The anchor points its set publishes, by name, and who reads each.</param>
+/// <param name="UvSet">The mesh's texture coordinate set the set is painted, baked and drawn in, by the file's number.</param>
 public sealed record StackState(
     string Id,
     string Path,
@@ -424,7 +425,8 @@ public sealed record StackState(
     string? MeshMaps = null,
     uint Seed = 0,
     string HeightNormal = "Smooth",
-    IReadOnlyList<StackAnchor>? Anchors = null
+    IReadOnlyList<StackAnchor>? Anchors = null,
+    int UvSet = 0
 );
 #pragma warning restore SK7005
 
@@ -447,7 +449,8 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackSetSeed), "setSeed"), JsonDerivedType(typeof(StackDuplicateLayers), "duplicateLayers")]
 [JsonDerivedType(typeof(StackPasteLayers), "pasteLayers"), JsonDerivedType(typeof(StackFlattenLayer), "flattenLayer")]
 [JsonDerivedType(typeof(StackUnflattenLayer), "unflattenLayer")]
-[JsonDerivedType(typeof(StackSetHeightNormal), "setHeightNormal")]
+[JsonDerivedType(typeof(StackSetHeightNormal), "setHeightNormal"),
+ JsonDerivedType(typeof(StackSetSettings), "setSettings")]
 [JsonDerivedType(typeof(StackAddMaskLayer), "addMaskLayer"),
  JsonDerivedType(typeof(StackRemoveMaskLayer), "removeMaskLayer")]
 [JsonDerivedType(typeof(StackMoveMaskLayer), "moveMaskLayer"),
@@ -709,6 +712,28 @@ public sealed record StackSetSeed(uint Seed) : StackCommand;
 ///     hides an eight-bit height's steps.
 /// </param>
 public sealed record StackSetHeightNormal(string Method) : StackCommand;
+
+/// <summary>
+///     Changes the texture set's settings, any of them, as one undo step. What is left out stays as it is. Together
+///     with its channels and its name these are the set's settings, and the stack file is the one place they live.
+/// </summary>
+/// <param name="Width">
+///     The width the set is painted, evaluated and exported at, one of the sides the system offers. A canvas painted at
+///     another resolution is never rewritten by this: it is sampled at the set's, and a smaller one is enlarged exactly
+///     when it is next painted (#19).
+/// </param>
+/// <param name="Height">The height, which may differ from the width.</param>
+/// <param name="UvSet">
+///     Which of the mesh's texture coordinate sets the set is painted, baked and drawn in, by the file's number: 0 is
+///     the first (#210). Every part of the set has to have it.
+/// </param>
+/// <param name="HeightNormal">How height becomes the normal: <c>Sharp</c> or <c>Smooth</c>.</param>
+public sealed record StackSetSettings(
+    int? Width = null,
+    int? Height = null,
+    int? UvSet = null,
+    string? HeightNormal = null
+) : StackCommand;
 
 /// <summary>Where the brush goes: in texels of the image, or on the picture of a stroke with a view.</summary>
 /// <param name="X">Its column.</param>

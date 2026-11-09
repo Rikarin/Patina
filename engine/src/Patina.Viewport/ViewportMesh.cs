@@ -45,7 +45,13 @@ public sealed record ViewportGeometry(
 
     /// <summary>Reads the triangles of one material, or all of them if the file has no material of that name.</summary>
     /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
-    public static ViewportGeometry Read(string path, string material) => ViewportMesh.Read(path).Geometry(material);
+    public static ViewportGeometry Read(string path, string material) => Read(path, material, 0);
+
+    /// <summary>One material's triangles, laid out in one of the file's coordinate sets (#210).</summary>
+    /// <exception cref="ModelFormatException">The file is not a readable model, or a part has no such set.</exception>
+    public static ViewportGeometry Read(string path, string material, int uvSet) =>
+        ViewportMesh.Read(path, uvSet == 0 ? null : new Dictionary<string, int> { [material] = uvSet })
+            .Geometry(material);
 
     /// <summary>The named meshes in a file, in one texture set if it is one of the file's materials.</summary>
     /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
@@ -174,9 +180,18 @@ sealed class ViewportMesh {
     }
 
     /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
-    public static ViewportMesh Read(string path) {
+    public static ViewportMesh Read(string path) => Read(path, null);
+
+    /// <summary>Reads a model, each material laid out in the coordinate set its texture set chose (#210).</summary>
+    /// <param name="path">The file.</param>
+    /// <param name="uvSets">The coordinate set of each material, by name. A material it does not name has the first.</param>
+    /// <exception cref="ModelFormatException">
+    ///     The file is not a readable model, or a part has no coordinate set of the number its material asks for.
+    /// </exception>
+    public static ViewportMesh Read(string path, IReadOnlyDictionary<string, int>? uvSets) {
+        var other = uvSets?.Values.Any(static set => set != 0) ?? false;
         var options = new ModelReadOptions {
-            GenerateTangents = false, ImportAnimations = false, ImportBlendShapes = false
+            GenerateTangents = false, ImportAnimations = false, ImportBlendShapes = false, ImportAllTexCoords = other
         };
         var read = ModelReader.Read(
             SharedFile.ReadAllBytes(path),
@@ -186,7 +201,9 @@ sealed class ViewportMesh {
             sideFiles: SharedFile.Beside(path)
         );
         var world = WorldTransforms(read.Model.Nodes);
-        var meshes = read.Meshes.ToDictionary(static mesh => mesh.Name, StringComparer.Ordinal);
+        var meshes = read.Meshes.Select(static (mesh, at) => (mesh, at))
+            .ToDictionary(static pair => pair.mesh.Name, StringComparer.Ordinal);
+        var materials = ReadMaterials(read);
         var vertices = new List<float>();
         var indices = new List<uint>();
         var parts = new List<ViewportPart>();
@@ -194,11 +211,13 @@ sealed class ViewportMesh {
         var hasCoordinates = false;
 
         foreach (var part in read.Model.Parts) {
-            var mesh = meshes[part.Mesh];
+            var (mesh, at) = meshes[part.Mesh];
             var first = indices.Count;
             var offset = (uint)(vertices.Count / FloatsPerVertex);
-            bounds = Append(mesh, world[part.Node], vertices, bounds);
-            hasCoordinates |= mesh.TexCoords.Length == mesh.Positions.Length;
+            var name = part.Material >= 0 && part.Material < materials.Length ? materials[part.Material].Name : "";
+            var coordinates = Layout(read, mesh, at, uvSets?.GetValueOrDefault(name) ?? 0, name);
+            bounds = Append(mesh, coordinates, world[part.Node], vertices, bounds);
+            hasCoordinates |= coordinates.Length == mesh.Positions.Length;
             foreach (var index in mesh.Indices) {
                 indices.Add(offset + (uint)index);
             }
@@ -206,7 +225,23 @@ sealed class ViewportMesh {
             parts.Add(new(first, mesh.Indices.Length, part.Material, part.Mesh));
         }
 
-        return new([..vertices], [..indices], [..parts], ReadMaterials(read), bounds, hasCoordinates, false);
+        return new([..vertices], [..indices], [..parts], materials, bounds, hasCoordinates, false);
+    }
+
+    /// <summary>A mesh's coordinates in one of its sets: the first as the mesh has it, or another the file holds.</summary>
+    /// <exception cref="ModelFormatException">The mesh has no such set.</exception>
+    static Vector2[] Layout(ReadModel read, MeshData mesh, int at, int uvSet, string material) {
+        if (uvSet == 0) {
+            return mesh.TexCoords;
+        }
+
+        var sets = at < read.TexCoordSets.Length ? read.TexCoordSets[at] : [];
+        return uvSet < sets.Length && sets[uvSet].Length == mesh.Positions.Length
+            ? sets[uvSet]
+            : throw new ModelFormatException(
+                $"Texture set '{material}' is laid out in UV set {uvSet + 1}, and its part '{mesh.Name}' has "
+                + $"{sets.Count(static set => set.Length > 0)}. Choose a UV set every part of it has."
+            );
     }
 
     /// <summary>The materials some part is drawn with.</summary>
@@ -359,15 +394,21 @@ sealed class ViewportMesh {
         return world;
     }
 
-    static BoundingBox Append(MeshData mesh, Matrix4x4 world, List<float> vertices, BoundingBox bounds) {
+    static BoundingBox Append(
+        MeshData mesh,
+        Vector2[] coordinates,
+        Matrix4x4 world,
+        List<float> vertices,
+        BoundingBox bounds
+    ) {
         var normals = Matrix4x4.Invert(world, out var inverse) ? Matrix4x4.Transpose(inverse) : world;
-        var hasCoordinates = mesh.TexCoords.Length == mesh.Positions.Length;
+        var hasCoordinates = coordinates.Length == mesh.Positions.Length;
         for (var i = 0; i < mesh.Positions.Length; i++) {
             var position = Matrix4x4.TransformPosition(mesh.Positions[i], world);
             var normal = mesh.Normals.Length > i
                 ? Vector3.Normalize(Matrix4x4.TransformDirection(mesh.Normals[i], normals))
                 : Vector3.UnitY;
-            var coordinate = hasCoordinates ? mesh.TexCoords[i] : default;
+            var coordinate = hasCoordinates ? coordinates[i] : default;
             vertices.AddRange(
                 [
                     position.X, position.Y, position.Z, normal.X, normal.Y, normal.Z, coordinate.X, coordinate.Y, 0f,
