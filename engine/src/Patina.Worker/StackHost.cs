@@ -389,8 +389,10 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             var y = Math.Clamp((int)(v * document.BaseHeight), 0, document.BaseHeight - 1);
             foreach (var (layer, alone, inPicture) in StackFinding.Candidates(document, chosen)) {
                 // A layer whose mask reads the picture is weighed in it, with the layers beneath it as they are (#113).
+                // A draft, as the picture the click landed on is one: a layer half set up is weighed as that picture
+                // draws it, rather than refusing the stack so that nothing above it is found.
                 using LayerStackEvaluator run = new(evaluator, canvases, path, fill) {
-                    Weighing = !inPicture, Asked = inPicture ? layer : string.Empty
+                    Draft = true, Weighing = !inPicture, Asked = inPicture ? layer : string.Empty
                 };
                 var refused = inPicture
                     ? run.Prepare(document, chosen, compounds.Registry, compounds.Source)

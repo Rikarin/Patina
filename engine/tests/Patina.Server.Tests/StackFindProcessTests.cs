@@ -70,7 +70,8 @@ public sealed partial class StackProcessTests {
     /// <summary>
     ///     A layer whose mask reads the layers beneath is found where the picture shows it: its mask step takes the
     ///     red of the grey base, so it covers half of every texel. Weighed alone, as Find weighed every layer, the step
-    ///     read nothing beneath, the layer covered nothing, and the click found the base under it.
+    ///     read nothing beneath, the layer covered nothing, and the click found the base under it. A layer half set up
+    ///     beneath it leaves the picture working, and Find with it.
     /// </summary>
     [Fact]
     public async Task A_click_finds_a_layer_by_what_its_mask_reads_beneath() {
@@ -102,6 +103,16 @@ public sealed partial class StackProcessTests {
             )
         );
         Assert.Equal("base", await FindAsync(state.Id, Bare, Bare, deadline.Token));
+
+        // A fill beneath it whose mask is half set up draws whole in the picture, as the viewport draws it, and the step
+        // reads its red over the black. Weighed as a build is, the empty slot refused the whole stack and the click
+        // found the base again.
+        await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Half", Tint));
+        var half = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
+        await EditAsync(state.Id, deadline.Token, new StackSetLayer(half, Mask: new("Generator")));
+        await EditAsync(state.Id, deadline.Token, new StackMoveLayer(half, -1));
+        Assert.Equal(half, (await StateAsync(state.Id, deadline.Token)).Layers[^2].Id);
+        Assert.Equal(rust, await FindAsync(state.Id, Bare, Bare, deadline.Token));
     }
 
     async Task<string?> FindAsync(string id, float u, float v, CancellationToken token) {
