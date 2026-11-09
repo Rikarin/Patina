@@ -230,6 +230,10 @@ public static class StackBrushes {
             return "A lazy mouse trails the pointer by a distance of 0 or more.";
         }
 
+        if (!(brush.OcclusionTolerance >= 0f) || brush.OcclusionTolerance > 1000f) {
+            return "An occlusion tolerance is 0 to 1000 thousandths of the model's size.";
+        }
+
         if (!(brush.Aspect >= 1f) || brush.Aspect > MaximumAspect) {
             return $"A stamp is 1 to {MaximumAspect:0} times as long as it is wide.";
         }

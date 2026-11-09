@@ -58,7 +58,9 @@ export const NewBrush: StackBrush = {
   flowJitter: 0,
   scatterAxis: 'both',
   accumulate: true,
-  sizeSpace: 'screen'
+  sizeSpace: 'screen',
+  occlusion: true,
+  occlusionTolerance: 2
 };
 
 const ThumbnailQuiet = 400;

@@ -11176,7 +11176,9 @@
           "flowJitter",
           "scatterAxis",
           "accumulate",
-          "sizeSpace"
+          "sizeSpace",
+          "occlusion",
+          "occlusionTolerance"
         ],
         "type": "object",
         "properties": {
@@ -11300,6 +11302,17 @@
             "type": "string",
             "description": "What the radius is measured in: \u0060screen\u0060, the stroke\u0027s own picture or map; \u0060texture\u0060, texels of the\nmap whatever the view; or \u0060model\u0060, thousandths of the model\u0027s size (its bounds\u0027 diagonal), which needs a\nmesh. A size other than screen is measured where the stroke starts and kept for the whole of it.",
             "default": "screen"
+          },
+          "occlusion": {
+            "type": "boolean",
+            "description": "Whether a stroke with a view paints only what its camera sees. Off, every texel within the depth under the brush\nis painted, hidden or not: a face close under a strap, the inside of a lip.",
+            "default": true
+          },
+          "occlusionTolerance": {
+            "type": "number",
+            "description": "How far in front of a texel something may lie and still not hide it, in thousandths of the model\u0027s size (its\nbounds\u0027 diagonal), 0 to 1000: a decal floating a hair over a face is not the face\u0027s occluder.",
+            "format": "float",
+            "default": 2
           }
         },
         "description": "A brush. Everything but the radius has the value a new brush has."

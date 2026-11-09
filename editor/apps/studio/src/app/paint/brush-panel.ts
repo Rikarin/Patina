@@ -304,6 +304,39 @@ const SizeSteps = 1000;
       />
       Stamps build up where they overlap
     </label>
+    <label
+      class="flex items-center gap-2 text-xs"
+      title="On the mesh, paints only what the camera sees: off, a stroke also reaches what lies close behind the surface under it"
+    >
+      <input
+        type="checkbox"
+        data-testid="paint-occlusion"
+        [checked]="store.brush().occlusion"
+        (change)="set('occlusion', checked($event))"
+      />
+      Only what the camera sees
+    </label>
+    @if (store.brush().occlusion) {
+      <div class="flex items-center gap-2">
+        <span
+          class="text-foreground-muted w-24 shrink-0 truncate text-xs"
+          title="How close in front of the surface something may lie and still not hide it, as a share of the model's size"
+          >Tolerance</span
+        >
+        <xui-slider
+          class="min-w-0 flex-1"
+          labelStepSize="0"
+          aria-label="Occlusion tolerance"
+          data-testid="paint-occlusion-tolerance"
+          [max]="50"
+          [min]="0"
+          [stepSize]="1"
+          [value]="store.brush().occlusionTolerance"
+          (valueChange)="set('occlusionTolerance', $event)"
+        />
+        <span class="readout w-12 shrink-0 text-end text-xs">{{ (store.brush().occlusionTolerance / 10).toFixed(1) }}%</span>
+      </div>
+    }
     <div class="flex flex-col gap-1" data-testid="paint-channels" [hidden]="store.masking()">
       <span class="section-label">Also paints</span>
       @for (channel of others(); track channel.usage) {

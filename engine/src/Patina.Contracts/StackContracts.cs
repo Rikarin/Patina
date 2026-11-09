@@ -765,6 +765,14 @@ public sealed record StackView(
 ///     map whatever the view; or <c>model</c>, thousandths of the model's size (its bounds' diagonal), which needs a
 ///     mesh. A size other than screen is measured where the stroke starts and kept for the whole of it.
 /// </param>
+/// <param name="Occlusion">
+///     Whether a stroke with a view paints only what its camera sees. Off, every texel within the depth under the brush
+///     is painted, hidden or not: a face close under a strap, the inside of a lip.
+/// </param>
+/// <param name="OcclusionTolerance">
+///     How far in front of a texel something may lie and still not hide it, in thousandths of the model's size (its
+///     bounds' diagonal), 0 to 1000: a decal floating a hair over a face is not the face's occluder.
+/// </param>
 public sealed record StackBrush(
     float Radius,
     float Flow = 1f,
@@ -786,7 +794,9 @@ public sealed record StackBrush(
     float FlowJitter = 0f,
     string ScatterAxis = "both",
     bool Accumulate = true,
-    string SizeSpace = "screen"
+    string SizeSpace = "screen",
+    bool Occlusion = true,
+    float OcclusionTolerance = 2f
 );
 #pragma warning restore SK7005
 

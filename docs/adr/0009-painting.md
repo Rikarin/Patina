@@ -186,7 +186,8 @@ ops read at most one texel away or it would not be a repair, and an undo, which 
 - A non-local filter above the stroke is slow in proportion to the channels it paints.
 - An export and a viewport both depend on `TextureLocality` being right, and a kernel listed wrongly leaves stale texels. It is short
   for that reason, and `LayerStackEvaluatorDeviceTests` goes red the moment Blur is added to it.
-- Depth under a brush is a limit, not an occlusion test, so a texel hidden by other geometry close under the brush is painted.
+- A texel hidden by other geometry is tested against the depth along the lines of sight round it, cast once per cell of the
+  picture per stroke, so within one cell of a silhouette the far side is still painted (#26).
 - A UV outside the unit square is not wrapped, so a mesh across UDIM tiles paints only the first.
 - A stack paints one texture set, and `TextureSet.Mesh` is not read: the whole model is the surface.
 - While a viewport-worn drag runs, previews stop and the channels' pictures catch up when it ends, since an encode per map per stamp is what

@@ -58,6 +58,12 @@ class StackBrush:
                 map whatever the view; or `model`, thousandths of the model's size (its bounds' diagonal), which needs a
                 mesh. A size other than screen is measured where the stroke starts and kept for the whole of it. Default:
                 'screen'.
+            occlusion (bool): Whether a stroke with a view paints only what its camera sees. Off, every texel within the
+                depth under the brush
+                is painted, hidden or not: a face close under a strap, the inside of a lip. Default: True.
+            occlusion_tolerance (float): How far in front of a texel something may lie and still not hide it, in thousandths
+                of the model's size (its
+                bounds' diagonal), 0 to 1000: a decal floating a hair over a face is not the face's occluder. Default: 2.0.
             alpha (None | str | Unset): A named alpha (Round, Square, Chisel, Cross) or an image relative to the stack, or
                 null.
      """
@@ -82,6 +88,8 @@ class StackBrush:
     scatter_axis: str = 'both'
     accumulate: bool = True
     size_space: str = 'screen'
+    occlusion: bool = True
+    occlusion_tolerance: float = 2.0
     alpha: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -130,6 +138,10 @@ class StackBrush:
 
         size_space = self.size_space
 
+        occlusion = self.occlusion
+
+        occlusion_tolerance = self.occlusion_tolerance
+
         alpha: None | str | Unset
         if isinstance(self.alpha, Unset):
             alpha = UNSET
@@ -160,6 +172,8 @@ class StackBrush:
             "scatterAxis": scatter_axis,
             "accumulate": accumulate,
             "sizeSpace": size_space,
+            "occlusion": occlusion,
+            "occlusionTolerance": occlusion_tolerance,
         })
         if alpha is not UNSET:
             field_dict["alpha"] = alpha
@@ -211,6 +225,10 @@ class StackBrush:
 
         size_space = d.pop("sizeSpace")
 
+        occlusion = d.pop("occlusion")
+
+        occlusion_tolerance = d.pop("occlusionTolerance")
+
         def _parse_alpha(data: object) -> None | str | Unset:
             if data is None:
                 return data
@@ -242,6 +260,8 @@ class StackBrush:
             scatter_axis=scatter_axis,
             accumulate=accumulate,
             size_space=size_space,
+            occlusion=occlusion,
+            occlusion_tolerance=occlusion_tolerance,
             alpha=alpha,
         )
 

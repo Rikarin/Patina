@@ -4010,6 +4010,19 @@ export interface components {
        * @default screen
        */
       sizeSpace: string;
+      /**
+       * @description Whether a stroke with a view paints only what its camera sees. Off, every texel within the depth under the brush
+       *     is painted, hidden or not: a face close under a strap, the inside of a lip.
+       * @default true
+       */
+      occlusion: boolean;
+      /**
+       * Format: float
+       * @description How far in front of a texel something may lie and still not hide it, in thousandths of the model's size (its
+       *     bounds' diagonal), 0 to 1000: a decal floating a hair over a face is not the face's occluder.
+       * @default 2
+       */
+      occlusionTolerance: number;
     };
     /** @description What a brush's fields take and how a new brush starts, so a client keeps no list or default of its own. */
     StackBrushTerms: {
