@@ -104,7 +104,9 @@ async function openOnMesh(): Promise<void> {
 
 /** Waits for the picture to stop changing: the mesh opens first, and the stack's maps reach it after that. */
 async function settled(): Promise<void> {
-  await expect.poll(async () => Number(await canvas().getAttribute('data-frames')), { timeout: 30_000 }).toBeGreaterThan(0);
+  await expect
+    .poll(async () => Number(await canvas().getAttribute('data-frames')), { timeout: 30_000 })
+    .toBeGreaterThan(0);
   await expect
     .poll(
       async () => {
@@ -488,6 +490,9 @@ test('a preset takes up its brush, a radial symmetry paints its copies, and the 
   await window.mouse.move(0, 0);
   const plain = await shot();
   await drag(0.42, 0.42, 0.46, 0.44);
+  // ⚠ Waited for as the first stroke was: a picture that has not changed yet is a settled one, so `settled` alone
+  // passed on the frame before the stroke arrived whenever the Worker was slow, and the copies were counted as none.
+  await expect.poll(async () => changed(plain, await shot()), { timeout: 30_000 }).toBeGreaterThan(one);
   await settled();
   // Four copies round the up axis, of which the camera sees two or three: more than one stroke's worth either way.
   expect(await changed(plain, await shot())).toBeGreaterThan(one * 1.5);
