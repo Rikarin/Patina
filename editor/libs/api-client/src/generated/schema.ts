@@ -4382,7 +4382,7 @@ export interface components {
       subject: boolean;
       /** @description Whether the filter runs with nothing there. */
       optional: boolean;
-      /** @description The channel it is named after, which it reads beneath until the layer says otherwise, or empty. */
+      /** @description The channel it is named after, which it reads beneath until told otherwise, or empty. */
       channel: string;
     };
     /**
@@ -4931,7 +4931,10 @@ export interface components {
       };
       /** @description What a brush's fields take, and the brush a new one starts as. */
       brush: components['schemas']['StackBrushTerms'];
-      /** @description Where an image input can read: the layers beneath, an anchor point, a generator, an image or a mesh map. */
+      /**
+       * @description Where an image input can read: the layers beneath, an anchor point, a generator, an image or a
+       *     mesh map.
+       */
       inputs: components['schemas']['StackTerm'][];
       /** @description The generators an image input can read: noises, patterns, grunges and the rest. */
       sources: components['schemas']['StackFilterKind'][];

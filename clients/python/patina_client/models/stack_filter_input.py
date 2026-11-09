@@ -29,7 +29,7 @@ class StackFilterInput:
                 written until the
                 layer says otherwise, and on a mask it is always the mask.
             optional (bool): Whether the filter runs with nothing there.
-            channel (str): The channel it is named after, which it reads beneath until the layer says otherwise, or empty.
+            channel (str): The channel it is named after, which it reads beneath until told otherwise, or empty.
      """
 
     port: str

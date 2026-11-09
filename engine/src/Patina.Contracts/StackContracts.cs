@@ -195,7 +195,7 @@ public sealed record StackFilterKind(
 ///     layer says otherwise, and on a mask it is always the mask.
 /// </param>
 /// <param name="Optional">Whether the filter runs with nothing there.</param>
-/// <param name="Channel">The channel it is named after, which it reads beneath until the layer says otherwise, or empty.</param>
+/// <param name="Channel">The channel it is named after, which it reads beneath until told otherwise, or empty.</param>
 public sealed record StackFilterInput(string Port, string Summary, bool Subject, bool Optional, string Channel);
 
 /// <summary>Where one image input of a filter, a mask step or a graph fill reads.</summary>
@@ -236,7 +236,10 @@ public sealed record StackTerm(string Value, string Label);
 /// <param name="Usages">The channels a stack can have.</param>
 /// <param name="GeneratorParameters">The knobs each generator has, by its path.</param>
 /// <param name="Brush">What a brush's fields take, and the brush a new one starts as.</param>
-/// <param name="Inputs">Where an image input can read: the layers beneath, an anchor point, a generator, an image or a mesh map.</param>
+/// <param name="Inputs">
+///     Where an image input can read: the layers beneath, an anchor point, a generator, an image or a
+///     mesh map.
+/// </param>
 /// <param name="Sources">The generators an image input can read: noises, patterns, grunges and the rest.</param>
 public sealed record StackVocabulary(
     IReadOnlyList<StackTerm> Blends,

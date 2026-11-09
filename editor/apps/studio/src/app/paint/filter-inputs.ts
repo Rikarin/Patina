@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import type { StackFilterInput, StackFilterKind, StackInput } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
-import { channelName, termName } from '../core/labels';
+import { channelName, labelIn } from '../core/labels';
 import { ProjectStore } from '../library/project-store';
 import { FilterFields } from './filter-fields';
 import { PaintStore } from './paint-store';
@@ -207,11 +207,11 @@ export class FilterInputs {
   /** What a slot reads when the layer says nothing, which is what its first choice says. */
   protected unset(slot: StackFilterInput): string {
     if (slot.channel) {
-      return `${termName('Beneath')} · ${channelName(slot.channel)}`;
+      return `${labelIn(this.sourceTerms(), 'Beneath')} · ${channelName(slot.channel)}`;
     }
 
     if (slot.subject) {
-      return `${termName('Beneath')} · this channel`;
+      return `${labelIn(this.sourceTerms(), 'Beneath')} · this channel`;
     }
 
     return slot.optional ? 'Nothing' : 'Choose what it reads';

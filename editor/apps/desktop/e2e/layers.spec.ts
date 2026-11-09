@@ -341,6 +341,30 @@ test('a filter layer runs any filter, with the fields its node declares', async 
   await expect(window.getByTestId('paint-setting-Axis')).toBeVisible();
 });
 
+test('a filter that reads a second image has a slot for it, which a generator fills', async () => {
+  test.setTimeout(90_000);
+  await window.getByTestId('paint-add-filter').click();
+  const filter = window.getByTestId('paint-filter');
+  await filter.click();
+  await window.getByRole('option', { name: /^Warp/ }).first().click();
+
+  // The subject reads the layers beneath until it is told otherwise; the field reads nothing yet, which a draft says.
+  await expect(window.getByTestId('paint-input-Input-source')).toContainText('this channel');
+  const field = window.getByTestId('paint-input-Warp-source');
+  await expect(field).toBeVisible();
+  await expect(window.locator('[data-testid^=paint-layer-filter] [data-testid=layer-fault]')).not.toHaveCount(0, {
+    timeout: 30_000
+  });
+
+  await field.selectOption('Generator');
+  await expect(window.getByTestId('paint-input-Warp-generator')).toHaveValue('Noise/Clouds');
+  await expect(window.getByTestId('layers-evaluation')).toHaveText(/ran|Up to date/, { timeout: 30_000 });
+  await expect(window.locator('[data-testid^=paint-layer-filter] [data-testid=layer-fault]')).toHaveCount(0, {
+    timeout: 30_000
+  });
+  await window.screenshot({ path: join(shots, 'filter-second-image.png') });
+});
+
 /** How green the map is at a place across it. */
 const greenAt = (across: number) =>
   window.getByTestId('paint-picture').evaluate((image, x) => {

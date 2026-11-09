@@ -43,7 +43,8 @@ class StackVocabulary:
             brush (StackBrushTerms): What a brush's fields take and how a new brush starts, so a client keeps no list or
                 default of its own.
             inputs (list[StackTerm]): Where an image input can read: the layers beneath, an anchor point, a generator, an
-                image or a mesh map.
+                image or a
+                mesh map.
             sources (list[StackFilterKind]): The generators an image input can read: noises, patterns, grunges and the rest.
      """
 

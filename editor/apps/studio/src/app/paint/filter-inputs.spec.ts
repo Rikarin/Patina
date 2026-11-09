@@ -25,7 +25,10 @@ const clouds: StackFilterKind = {
 function render(mask = false, inputs: FilterSources = {}) {
   const store = {
     vocabulary: signal({
-      inputs: ['Beneath', 'Anchor', 'Generator', 'Texture', 'Bake'].map(value => ({ value, label: value })),
+      inputs: ['Beneath', 'Anchor', 'Generator', 'Texture', 'Bake'].map(value => ({
+        value,
+        label: value === 'Beneath' ? 'Layers Beneath' : value
+      })),
       meshMaps: [{ value: 'curvature', label: 'Curvature' }],
       sources: [clouds]
     }),
@@ -61,7 +64,7 @@ function render(mask = false, inputs: FilterSources = {}) {
 describe('a filter input slot', () => {
   it('offers a slot for each image, the subject reading the layers beneath until told otherwise', () => {
     const { source } = render();
-    expect(source('Input')?.options[0]?.text).toContain('this channel');
+    expect(source('Input')?.options[0]?.text).toContain('Layers Beneath · this channel');
     expect(source('Warp')?.options[0]?.text).toBe('Choose what it reads');
   });
 

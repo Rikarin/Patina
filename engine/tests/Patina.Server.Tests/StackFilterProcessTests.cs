@@ -137,9 +137,12 @@ public sealed partial class StackProcessTests {
     /// </summary>
     static readonly HashSet<string> SameOnAGreyMask = ["Colour/Channel Shuffle", "Filters/Pixel Processor"];
 
-    /// <summary>Every map of a stack in one string, so a filter that writes roughness alone is seen to change it.</summary>
+    /// <summary>Every map of a stack in one string, so a filter writing roughness alone is seen to change it.</summary>
     static string Whole(IReadOnlyList<StackPixels> maps) =>
-        string.Join('|', maps.OrderBy(static map => map.Usage, StringComparer.Ordinal).Select(map => Digest(maps, map.Usage)));
+        string.Join(
+            '|',
+            maps.OrderBy(static map => map.Usage, StringComparer.Ordinal).Select(map => Digest(maps, map.Usage))
+        );
 
     /// <summary>
     ///     Away from a default that leaves the picture alone, as a person would move it: a curve that bends, a choice

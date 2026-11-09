@@ -258,7 +258,7 @@ public sealed class StackVocabularyTests {
     }
 
     /// <summary>
-    ///     Where an input reads goes into the file and comes back out as it went in, a new filter starts reading nothing
+    ///     Where an input reads goes into the file and comes back as it went in, a new filter starts reading nothing
     ///     the last one read, and a source a stack does not know is refused with a sentence.
     /// </summary>
     [Fact]
@@ -300,7 +300,9 @@ public sealed class StackVocabularyTests {
         Assert.Empty(editor.Set.Layers[0].Inputs);
 
         Assert.Throws<StackEditRefusedException>(() => editor.Apply(
-                new([new StackSetLayer("warp", Inputs: new Dictionary<string, StackInput> { ["Slope"] = new("Noise") })])
+                new(
+                    [new StackSetLayer("warp", Inputs: new Dictionary<string, StackInput> { ["Slope"] = new("Noise") })]
+                )
             )
         );
     }

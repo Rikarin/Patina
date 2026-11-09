@@ -12220,7 +12220,7 @@
           },
           "channel": {
             "type": "string",
-            "description": "The channel it is named after, which it reads beneath until the layer says otherwise, or empty."
+            "description": "The channel it is named after, which it reads beneath until told otherwise, or empty."
           }
         },
         "description": "One image a filter reads, as Properties offers a slot for it."
@@ -13444,7 +13444,7 @@
             "items": {
               "$ref": "#/components/schemas/StackTerm"
             },
-            "description": "Where an image input can read: the layers beneath, an anchor point, a generator, an image or a mesh map."
+            "description": "Where an image input can read: the layers beneath, an anchor point, a generator, an image or a\nmesh map."
           },
           "sources": {
             "type": "array",
