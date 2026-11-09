@@ -1,6 +1,9 @@
 import { signal } from '@angular/core';
 import type { StackStamp } from '@patina/api-client';
-import type { Aim, PaintStore } from './paint-store';
+import type { Aim, PaintStore, PaintTool } from './paint-store';
+
+/** The tools a drag paints with as it moves, each with the brush. */
+export const DragTools: ReadonlySet<PaintTool> = new Set(['brush', 'eraser', 'smudge', 'clone', 'projection']);
 
 /** The steps a line snaps to with Cmd or Ctrl held, in radians. */
 const SnapStep = Math.PI / 36;
@@ -40,8 +43,7 @@ export class StrokeGesture {
 
   /** Whether a Shift-click here would draw a line, which needs a stroke that ended under this same view. */
   canLine(): boolean {
-    const tool = this.store.tool();
-    return (tool === 'brush' || tool === 'eraser') && this.ended !== null && sameAim(this.ended.aim, this.aim());
+    return DragTools.has(this.store.tool()) && this.ended !== null && sameAim(this.ended.aim, this.aim());
   }
 
   press(stamp: StackStamp, keys: PressKeys = {}): void {
@@ -50,23 +52,25 @@ export class StrokeGesture {
       return;
     }
 
+    const tool = this.store.tool();
+    if (tool === 'fill') {
+      void this.store.fillAt(stamp, this.aim());
+      return;
+    }
+
     this.pressed = true;
-    switch (this.store.tool()) {
-      case 'brush':
-      case 'eraser':
-        this.brushAt = stamp;
-        this.store.begin(stamp, this.aim());
-        break;
-      case 'line':
-        this.placedOn = this.aim();
-        this.points.set([stamp, stamp]);
-        break;
-      case 'path':
-        this.placedOn = this.points().length > 0 ? this.placedOn : this.aim();
-        this.points.update(points => (sameSpot(points.at(-1), stamp) ? points : [...points, stamp]));
-        break;
-      case 'picker':
-        break;
+    if (DragTools.has(tool)) {
+      this.brushAt = stamp;
+      this.store.begin(stamp, this.aim());
+      return;
+    }
+
+    if (tool === 'line') {
+      this.placedOn = this.aim();
+      this.points.set([stamp, stamp]);
+    } else if (tool === 'path') {
+      this.placedOn = this.points().length > 0 ? this.placedOn : this.aim();
+      this.points.update(points => (sameSpot(points.at(-1), stamp) ? points : [...points, stamp]));
     }
   }
 
@@ -88,18 +92,15 @@ export class StrokeGesture {
       return;
     }
 
-    switch (this.store.tool()) {
-      case 'brush':
-      case 'eraser':
-        this.brushAt = this.brushAt ? trailed(this.brushAt, stamp, this.store.brush().lazy) : stamp;
-        this.store.move(stamp);
-        break;
-      case 'line':
-        this.points.update(([start]) => (start ? [start, stamp] : []));
-        break;
-      case 'path':
-      case 'picker':
-        break;
+    const tool = this.store.tool();
+    if (DragTools.has(tool)) {
+      this.brushAt = this.brushAt ? trailed(this.brushAt, stamp, this.store.brush().lazy) : stamp;
+      this.store.move(stamp);
+      return;
+    }
+
+    if (tool === 'line') {
+      this.points.update(([start]) => (start ? [start, stamp] : []));
     }
   }
 
@@ -109,7 +110,7 @@ export class StrokeGesture {
     }
 
     this.pressed = false;
-    if (this.store.tool() === 'brush' || this.store.tool() === 'eraser') {
+    if (DragTools.has(this.store.tool())) {
       this.ended = this.brushAt ? { stamp: this.brushAt, aim: this.aim() } : null;
       this.brushAt = null;
       this.store.end();

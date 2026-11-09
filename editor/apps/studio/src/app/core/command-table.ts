@@ -71,6 +71,50 @@ export const CommandTable: readonly CommandSpec[] = [
   { id: 'brushTool', label: 'Brush', section: 'Painting', keys: ['B'], area: 'stack', hint: 'Paints' },
   { id: 'eraserTool', label: 'Eraser', section: 'Painting', keys: ['E'], area: 'stack', hint: 'Takes paint away' },
   {
+    id: 'smudgeTool',
+    label: 'Smudge',
+    section: 'Painting',
+    keys: ['R'],
+    area: 'stack',
+    hint: 'Drags the paint under the brush along the stroke'
+  },
+  {
+    id: 'cloneTool',
+    label: 'Clone',
+    section: 'Painting',
+    area: 'stack',
+    hint: 'Paints the picture as it lies at the clone source; Set Clone Source, or a Cmd- or Ctrl-click, chooses it'
+  },
+  {
+    id: 'setCloneSource',
+    label: 'Set Clone Source',
+    section: 'Painting',
+    area: 'stack',
+    hint: 'The next click on the mesh or the map is where the clone reads from'
+  },
+  {
+    id: 'projectionTool',
+    label: 'Projection',
+    section: 'Painting',
+    area: 'stack',
+    hint: 'Paints the picture on the viewport through the brush'
+  },
+  {
+    id: 'fillTool',
+    label: 'Polygon Fill',
+    section: 'Painting',
+    keys: ['G'],
+    area: 'stack',
+    hint: 'Fills the triangle, polygon, mesh part or UV shell under a click'
+  },
+  {
+    id: 'toggleStencil',
+    label: 'Stencil',
+    section: 'Painting',
+    area: 'stack',
+    hint: 'The picture on the viewport masks the brush by its brightness'
+  },
+  {
     id: 'pickerTool',
     label: 'Colour Picker',
     section: 'Painting',
@@ -297,10 +341,16 @@ export const MenuBar: readonly {
     items: [
       'brushTool',
       'eraserTool',
+      'smudgeTool',
+      'cloneTool',
+      'projectionTool',
+      'fillTool',
       'pickerTool',
       'lineTool',
       'pathTool',
       '-',
+      'setCloneSource',
+      'toggleStencil',
       'finishPath',
       'pickIdColour',
       '-',

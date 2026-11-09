@@ -22,7 +22,9 @@ import { GraphStore } from '../graph/graph-store';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore, pressureOf } from '../paint/paint-store';
 import { symmetryGuide } from '../paint/symmetry-guide';
+import { ScreenPictureOverlay } from '../paint/screen-picture';
 import { StrokeGesture } from '../paint/stroke-gesture';
+import { ToolStrip } from '../paint/tool-strip';
 import { FramePainter } from './frame-painter';
 import type { ViewportFrame } from './frame-transport';
 import { type AxisView, framed, nudge, orbit, pan, snapped, zoom } from './orbit';
@@ -83,7 +85,7 @@ const PickLook = '…';
 /** The docked viewport: frames from the Worker on a canvas, and orbit input going the other way. */
 @Component({
   selector: 'ptn-viewport',
-  imports: [XuiButtonImports, ViewportDisplayPanel],
+  imports: [XuiButtonImports, ViewportDisplayPanel, ToolStrip, ScreenPictureOverlay],
   providers: [ViewportClient],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
@@ -224,6 +226,10 @@ const PickLook = '…';
         (dblclick)="gesture.finish()"
         (wheel)="wheel($event)"
       ></canvas>
+      @if (paint.worn() && project.active()?.kind === 'texturing') {
+        <ptn-screen-picture />
+        <ptn-tool-strip class="absolute start-2 top-2" />
+      }
       @if (paints()) {
         @if (brushAt(); as at) {
           <div
@@ -569,6 +575,17 @@ export class ViewportPane implements AfterViewInit {
   protected press(event: PointerEvent): void {
     if (this.paint.finding() && event.button === 0) {
       void this.paint.findLayerOnMesh(this.stamp(event), this.aim());
+      return;
+    }
+
+    // The clone's source, from Set Clone Source or a Cmd- or Ctrl-click with the clone in hand.
+    if (
+      event.button === 0 &&
+      this.paint.worn() &&
+      (this.paint.settingCloneSource() ||
+        (this.paint.tool() === 'clone' && (event.metaKey || event.ctrlKey) && !event.shiftKey))
+    ) {
+      void this.paint.setCloneSource(this.stamp(event), this.aim());
       return;
     }
 

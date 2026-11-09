@@ -13,10 +13,12 @@ import {
   type StackLayer,
   type StackMask,
   type StackMaskEffect,
+  type StackPicture,
   type StackPreview,
   type StackProblem,
   type StackStamp,
   type StackState,
+  type StackStrokeSource,
   type StackSymmetry,
   type StackView,
   type StackVocabulary,
@@ -65,13 +67,37 @@ export const NewBrush: StackBrush = {
 
 const ThumbnailQuiet = 400;
 
+/** What a clone stroke with nowhere to read from says. */
+export const CloneFirst = 'Set where the clone reads from first: Cmd- or Ctrl-click the model or the map.';
+
 /** How many stamp-to-frame times are kept, which is what the readout and the bench read. */
 const StampTimes = 2048;
 
 /** What a stroke draws with, beyond its radius. */
 export type BrushSettings = Omit<StackBrush, 'radius'>;
 
-export type PaintTool = 'brush' | 'eraser' | 'line' | 'path' | 'picker';
+export type PaintTool = 'brush' | 'eraser' | 'smudge' | 'clone' | 'projection' | 'fill' | 'line' | 'path' | 'picker';
+
+/** How much of the mesh a click of the fill tool takes: the Server's words (`StackBrushes.Fills`). */
+export type FillMode = 'triangle' | 'polygon' | 'part' | 'shell';
+
+/**
+ * Where a clone reads from: a place on the map, 0 to 1 across and down. Relative keeps the step from it to where the
+ * first stroke after it started, so later strokes read beside themselves; absolute reads from it at every stroke's start.
+ */
+export interface CloneSource {
+  u: number;
+  v: number;
+}
+
+/** A picture on the viewport, fixed on the screen: what the projection tool paints and a stencil masks with. */
+export type ScreenPicture = StackPicture;
+
+/** A material from the shelf that a brush paints every channel of, by the graph its maps come from. */
+export interface BrushMaterial {
+  name: string;
+  graph: string;
+}
 
 /** Where a stroke on the mesh is aimed: a picture of this size through this camera. */
 export interface Aim {
@@ -166,6 +192,11 @@ export class PaintStore {
   private strokes = 0;
   private pending: StackStamp[] = [];
   private view: StackView | null = null;
+  /** Where the stroke under way started on the map, 0 to 1, which a clone measures its step from. */
+  private startedAt: CloneSource | null = null;
+  /** The clone's step for the stroke under way, and the one a relative clone keeps, in texels. */
+  private cloneStep: [number, number] | null = null;
+  private keptStep: [number, number] | null = null;
   private aiming = false;
   private ending = false;
   private oldestStamp = 0;
@@ -207,6 +238,20 @@ export class PaintStore {
   readonly tool = signal<PaintTool>('brush');
   /** How strokes copy themselves on the mesh, or null for not at all. Needs a mesh, in either view. */
   readonly symmetry = signal<StackSymmetry | null>(null);
+  /** How much of the mesh a click of the fill tool takes. */
+  readonly fillMode = signal<FillMode>('polygon');
+  /** Where the clone tool reads from, or null until one is set. */
+  readonly cloneSource = signal<CloneSource | null>(null);
+  /** Whether the clone keeps its step from the first stroke after the source was set, or starts at the source each time. */
+  readonly cloneRelative = signal(true);
+  /** Whether the next click on the mesh or the map sets where the clone reads from. */
+  readonly settingCloneSource = signal(false);
+  /** The material the brush paints every channel of, from the shelf, or null for its colours. */
+  readonly material = signal<BrushMaterial | null>(null);
+  /** The picture on the viewport that the projection tool paints and a stencil masks with, or null. */
+  readonly screenPicture = signal<ScreenPicture | null>(null);
+  /** Whether the picture on the viewport masks every brush, by its brightness. */
+  readonly stencil = signal(false);
   /**
    * Texels of the map per pixel of the 2D view as it is drawn, so that a size in the screen's units is the same under
    * the pointer at any zoom. The 2D view sets it as a stroke starts.
@@ -886,7 +931,9 @@ export class PaintStore {
     this.strokes += 1;
     this.stroke = `drag-${Date.now()}-${this.strokes}`;
     this.view = null;
-    if (this.tool() !== 'eraser' && !this.masking()) {
+    this.cloneStep = null;
+    this.startedAt = aim ? null : this.onMap(stamp);
+    if (this.tool() === 'brush' && !this.masking()) {
       this.remember(this.colour());
     }
 
@@ -895,6 +942,59 @@ export class PaintStore {
     }
 
     this.move(stamp);
+  }
+
+  /** A position in the 2D view's texels as a place on the map, 0 to 1. */
+  private onMap(stamp: StackStamp): CloneSource | null {
+    const state = this.state();
+    return state ? { u: stamp.x / state.width, v: stamp.y / state.height } : null;
+  }
+
+  /**
+   * Sets where the clone reads from: a place on the mesh in the viewport, or in the 2D view's texels. A relative clone
+   * measures its step again from the next stroke.
+   */
+  async setCloneSource(stamp: StackStamp, aim?: Aim): Promise<void> {
+    this.settingCloneSource.set(false);
+    try {
+      const place = aim ? await this.hitAt(stamp, aim) : this.onMap(stamp);
+      if (place) {
+        this.cloneSource.set(place);
+        this.keptStep = null;
+      }
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+    }
+  }
+
+  /** Fills the piece of the mesh under a click, as the fill tool's mode says, as one undo step. */
+  async fillAt(stamp: StackStamp, aim?: Aim): Promise<void> {
+    const layer = this.layer();
+    if (!layer || !this.state()?.model.trim()) {
+      return;
+    }
+
+    this.startAction();
+    this.strokes += 1;
+    const stroke = `fill-${Date.now()}-${this.strokes}`;
+    try {
+      const view = aim ? await this.pick(stamp, aim) : null;
+      await this.send(stroke, layer, [stamp], false, view, 'fill', performance.now());
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+    }
+  }
+
+  /** Where on the map a position on the viewport lands, or null off the mesh. */
+  private async hitAt(stamp: StackStamp, aim: Aim): Promise<CloneSource | null> {
+    const client = await this.api();
+    const { width, height, camera } = aim;
+    const hit = unwrap(
+      await client.POST('/api/v1/viewport/pick', {
+        body: { x: stamp.x / width, y: stamp.y / height, camera, width, height }
+      })
+    );
+    return hit.found ? { u: hit.u, v: hit.v } : null;
   }
 
   private remember(colour: string): void {
@@ -966,7 +1066,9 @@ export class PaintStore {
   private async aimAt(stamp: StackStamp, aim: Aim): Promise<void> {
     this.aiming = true;
     try {
-      this.view = await this.pick(stamp, aim);
+      const hit = await this.picked(stamp, aim);
+      this.view = hit.view;
+      this.startedAt = hit.found ? { u: hit.u, v: hit.v } : null;
     } catch (failure) {
       this.failure.set(messageOf(failure));
       this.stroke = null;
@@ -989,13 +1091,17 @@ export class PaintStore {
   }
 
   private async pick(stamp: StackStamp, aim: Aim): Promise<StackView> {
+    return (await this.picked(stamp, aim)).view;
+  }
+
+  private async picked(stamp: StackStamp, aim: Aim): Promise<ViewportPick> {
     const client = await this.api();
     const { width, height, camera } = aim;
     return unwrap(
       await client.POST('/api/v1/viewport/pick', {
         body: { x: stamp.x / width, y: stamp.y / height, camera, width, height }
       })
-    ).view;
+    );
   }
 
   private flush(open: boolean): void {
@@ -1033,25 +1139,46 @@ export class PaintStore {
     stamps: StackStamp[],
     open: boolean,
     view: StackView | null,
-    curve: 'free' | 'line' | 'path',
+    curve: 'free' | 'line' | 'path' | 'fill',
     since: number
   ): Promise<void> {
-    const symmetry = this.state()?.model.trim() ? this.symmetry() : null;
+    const tool = this.tool();
+    const picture = this.screenPicture();
+    // A picture on the screen is in the viewport's units, so the 2D view has none to project or mask with.
+    if (tool === 'projection' && (!view || !picture)) {
+      return;
+    }
+
+    const symmetry = this.state()?.model.trim() && curve !== 'fill' ? this.symmetry() : null;
     // A size in the screen's units is pixels of the 2D view as drawn, which the stroke takes as texels of the map.
     const brush = this.wholeBrush();
     const radius =
       !view && brush.sizeSpace === 'screen' ? Math.max(0.5, brush.radius * this.atlasScale()) : brush.radius;
-    // A material brush writes every channel it holds, each in the one stroke and the one undo step. A mask has one.
+    const source = this.sourceOf(tool, view, curve);
+    if (tool === 'clone' && !source) {
+      this.failure.set(CloneFirst);
+      return;
+    }
+
+    // A material writes every channel the layer has, from its own maps. A brush writes its colour and every channel
+    // it also paints, each in the one stroke and the one undo step. A mask has one.
     const grey = this.maskGrey();
     const target = this.layers().find(row => row.layer.id === layer)?.layer;
+    const writes = (usage: string) => !target || writesChannel(target, usage);
     const channels: [string, number[]][] = this.masking()
       ? [[this.channel(), [grey, grey, grey, 1]]]
-      : [
-          [this.channel(), colourOf(this.colour())],
-          ...[...this.alsoPaints()]
-            .filter(([usage]) => usage !== this.channel() && (!target || writesChannel(target, usage)))
-            .map(([usage, colour]): [string, number[]] => [usage, colourOf(colour)])
-        ];
+      : source?.kind === 'material'
+        ? (this.state()?.channels ?? [])
+            .filter(channel => writes(channel.usage))
+            .map((channel): [string, number[]] => [channel.usage, colourOf(this.colour())])
+        : [
+            [this.channel(), colourOf(this.colour())],
+            ...(tool === 'projection'
+              ? []
+              : [...this.alsoPaints()]
+                  .filter(([usage]) => usage !== this.channel() && writes(usage))
+                  .map(([usage, colour]): [string, number[]] => [usage, colourOf(colour)]))
+          ];
     const revision = await this.command({
       commands: channels.map(([channel, colour]) => ({
         op: 'stroke' as const,
@@ -1060,19 +1187,72 @@ export class PaintStore {
         channel,
         brush: { ...brush, radius },
         // A stamp mixes towards its colour, so towards nothing at all takes paint away.
-        colour: this.tool() === 'eraser' ? [0, 0, 0, 0] : colour,
+        colour: tool === 'eraser' ? [0, 0, 0, 0] : colour,
         stamps,
         open,
         mask: this.masking(),
         maskLayer: this.masking() ? this.maskLayer() : null,
         view,
         curve,
-        symmetry
+        symmetry,
+        source,
+        stencil: view && this.stencil() && tool !== 'projection' ? picture : null,
+        fill: curve === 'fill' ? this.fillMode() : null
       }))
     });
     if (revision !== null && revision > this.lastShown) {
       this.sentAt.set(revision, since);
     }
+  }
+
+  /**
+   * Where a stroke's colour comes from, for the tool in hand: a smudge drags the canvas, a clone reads the composite
+   * from its source, the projection tool paints the picture on the screen, and a brush or a fill with a material lays
+   * the material's maps. Null paints the colours. A mask takes a grey, a smudge or a picture, never a material.
+   */
+  private sourceOf(tool: PaintTool, view: StackView | null, curve: string): StackStrokeSource | null {
+    switch (tool) {
+      case 'smudge':
+        return { kind: 'smudge' };
+      case 'clone': {
+        const step = this.stepOfClone();
+        return step ? { kind: 'clone', offset: step } : null;
+      }
+      case 'projection':
+        return view && this.screenPicture() ? { kind: 'picture', picture: this.screenPicture() } : null;
+      case 'brush':
+      case 'fill': {
+        const material = this.material();
+        return material && !this.masking() && (tool === 'brush' || curve === 'fill')
+          ? { kind: 'material', graph: material.graph }
+          : null;
+      }
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * The clone's step for the stroke under way, in texels, from where it started to the source: kept from the first
+   * stroke after the source was set when relative, measured at each stroke's start when absolute.
+   */
+  private stepOfClone(): [number, number] | null {
+    const source = this.cloneSource();
+    const state = this.state();
+    if (this.cloneStep || !source || !state) {
+      return this.cloneStep;
+    }
+
+    const kept = this.cloneRelative() ? this.keptStep : null;
+    const start = this.startedAt;
+    const step: [number, number] | null =
+      kept ?? (start ? [(source.u - start.u) * state.width, (source.v - start.v) * state.height] : null);
+    this.cloneStep = step;
+    if (this.cloneRelative() && step) {
+      this.keptStep = step;
+    }
+
+    return step;
   }
 
   /** Sends a batch, and answers the revision it made, or null when it was refused. */

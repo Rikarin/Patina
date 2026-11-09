@@ -46,6 +46,33 @@ export class MaterialUse {
     }
   }
 
+  /**
+   * Makes a material the brush's, so a stroke lays every channel of it from its own maps (#125). Only a material with
+   * maps can: a graph or a picture material, not a brush, a mask or a filter.
+   */
+  async paintWith(material: MaterialInfo): Promise<void> {
+    const project = this.project.current();
+    if (!project) {
+      return;
+    }
+
+    this.failure.set(null);
+    if (material.role !== 'material' || (material.kind !== 'graph' && material.kind !== 'image-material')) {
+      this.failure.set(`${material.name} has no maps to paint with.`);
+      return;
+    }
+
+    try {
+      const graph = await this.publish(project.path, material);
+      this.paint.material.set({ name: material.name, graph });
+      if (this.paint.tool() !== 'fill') {
+        this.paint.tool.set('brush');
+      }
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+    }
+  }
+
   /** Makes a graph fill read this graph, keeping the layer it is on. */
   async fillWith(layer: StackLayer, material: MaterialInfo): Promise<void> {
     const project = this.project.current();
