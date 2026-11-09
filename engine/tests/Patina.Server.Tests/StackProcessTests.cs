@@ -65,7 +65,11 @@ public sealed partial class StackProcessTests : IDisposable {
         await EvaluatedAsync(socket, state.Revision, deadline.Token);
         var blank = await PixelsAsync(state.Id, false, deadline.Token);
 
-        await PaintAsync(state.Id, "drag", Line(100, 100, 12), true, deadline.Token);
+        // ⚠ The first part is evaluated before the second is sent, as a drag's parts arrive over time. The first stroke
+        // on a layer compiles and runs whole, and the Server evaluates only the newest revision, so two parts that
+        // reached it together under load were one whole run with no tile repaired.
+        var opened = await PaintAsync(state.Id, "drag", Line(100, 100, 12), true, deadline.Token);
+        await EvaluatedAsync(socket, opened.Revision, deadline.Token);
         var part = await PaintAsync(state.Id, "drag", Line(220, 100, 12), false, deadline.Token);
         var painted = await EvaluatedAsync(socket, part.Revision, deadline.Token);
 
