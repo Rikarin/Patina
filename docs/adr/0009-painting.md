@@ -64,6 +64,8 @@ replay makes the same bytes.
 
 - **The Worker is told the state, not the steps.** `stack.sync` carries the strokes that should stand, in order, and the stamps it
   has not been sent. The Worker undoes back to what it shares and goes forward, so an undo, a redo and a replay are one code path.
+  It stamps each stroke it is told before it begins the next: a stroke's undo puts back the layer as it was when the stroke began,
+  so one begun before the strokes ahead of it had stamped would take them away with it.
 - **A checkpoint bounds a replay.** After 2048 stamps, between strokes, the Worker writes the canvases it touched to
   `.ptcache/paint/<session>/<guid>`, and a new Worker starts from the newest one on the way to the strokes that stand. A checkpoint
   holding an undone stroke is not used, so undo reaches behind one, at the cost of a longer replay.
@@ -169,7 +171,7 @@ a slide projector puts it, whatever the surface's slope or layout.
 - **A clone or a material reads a stack written out, and the journal keeps the text.** The Server writes the whole stack (a clone) or the
   set with the material's graph as its one fill (a material) when the stroke begins. A replay after a lost Worker reads the same, whatever was
   edited since, which is the flatten's rule. The text goes with a stroke's first part only, and the Worker evaluates it as the stroke's turn
-  comes, since a replay begins every stroke before it stamps any.
+  comes, after the strokes ahead of it have stamped.
 - **A smear reads the canvas it paints**, which a replay brings back to the same state first. It is read for the whole stamp before any of it
   is written, and moves what is there rather than mixing from what the texel held before the stroke.
 - **A picture a stroke names is read from its file**, as an alpha is: a file changed later replays differently. The same is true of a
