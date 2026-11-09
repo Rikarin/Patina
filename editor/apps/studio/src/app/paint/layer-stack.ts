@@ -25,7 +25,7 @@ import { diagnosticOf } from '../core/messages';
 import { percent } from '../core/numbers';
 import { blendName as blendLabelOf, channelName, termName } from '../core/labels';
 import { ProjectStore } from '../library/project-store';
-import { type DropZone, dropManyCommands } from './layer-drag';
+import { type DropZone, dropManyCommands, nudgeCommands } from './layer-drag';
 import { hexOf } from './layer-panel';
 import { MaterialUse } from './material-use';
 import { type LayerRow, PaintStore, toggledEffect } from './paint-store';
@@ -1368,6 +1368,8 @@ export class LayerStack {
     handle('paste', () => here() && this.store.clip() !== null, () => this.store.pasteLayers());
     handle('duplicate', selected, () => this.store.duplicateLayers());
     handle('groupLayers', () => open() && this.store.selection().size > 0, () => this.groupSelected());
+    handle('moveLayerUp', () => open() && this.nudges(1).length > 0, () => this.nudge(1));
+    handle('moveLayerDown', () => open() && this.nudges(-1).length > 0, () => this.nudge(-1));
     handle('renameLayer', () => open() && this.store.chosen() !== null, () => {
       const layer = this.store.chosen();
       if (layer) {
@@ -1765,6 +1767,19 @@ export class LayerStack {
       parent: held.parent,
       folder: held.layer.kind === 'group'
     }));
+  }
+
+  /** The steps that move the chosen layers a place up or down, as one undo step (#106). */
+  private nudges(delta: 1 | -1) {
+    return nudgeCommands(this.dragRows(), this.store.selection(), delta);
+  }
+
+  private async nudge(delta: 1 | -1): Promise<void> {
+    const commands = this.nudges(delta);
+    if (commands.length > 0) {
+      await this.store.edit(...commands);
+      this.focusChosen();
+    }
   }
 
   private dropCommands(row: LayerRow, zone: DropZone) {
