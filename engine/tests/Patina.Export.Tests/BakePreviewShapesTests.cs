@@ -1,5 +1,3 @@
-using Patina.Contracts;
-
 namespace Patina.Export.Tests;
 
 /// <summary>What a bake's preview draws (#149), from files, against numbers worked out before it ran.</summary>
@@ -91,7 +89,10 @@ public sealed class BakePreviewShapesTests : IDisposable {
         Assert.NotEqual(colours[4], colours[6]);
     }
 
-    /// <summary>Asked to show matches that are not on, the preview says every ray may strike all of the high mesh.</summary>
+    /// <summary>
+    ///     Asked to show matches that are not on, the preview says every ray may strike all of the high
+    ///     mesh.
+    /// </summary>
     [Fact]
     public void Matches_asked_for_without_matching_by_name_say_so() {
         var quad = Quads("quad.obj", "plate");

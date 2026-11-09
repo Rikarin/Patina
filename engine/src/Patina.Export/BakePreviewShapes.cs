@@ -8,7 +8,10 @@ using Vixen.Interchange;
 namespace Patina.Export;
 
 /// <summary>What a bake's preview draws, as coloured vertices, and the key to its colours.</summary>
-/// <param name="Triangles">See-through triangles, three vertices each of position then red, green, blue and opacity.</param>
+/// <param name="Triangles">
+///     See-through triangles, three vertices each of position then red, green, blue and
+///     opacity.
+/// </param>
 /// <param name="Lines">Lines, two vertices each, laid out the same.</param>
 /// <param name="Parts">The parts by name, when parts are matched by name.</param>
 /// <param name="Warnings">What the preview left out or could not read.</param>
@@ -104,7 +107,10 @@ public static class BakePreviewShapes {
         return new([..triangles], [..lines], parts, warnings);
     }
 
-    /// <summary>The high mesh see-through, in its parts' colours or neutral, thinned evenly past the most drawn.</summary>
+    /// <summary>
+    ///     The high mesh see-through, in its parts' colours or neutral, thinned evenly past the most
+    ///     drawn.
+    /// </summary>
     static void Ghosted(EditMesh mesh, Vector4[]? colours, List<float> triangles, List<string> warnings) {
         var count = Faces(mesh).Count();
         var step = Math.Max(1, (count + MostHighTriangles - 1) / MostHighTriangles);
@@ -125,7 +131,10 @@ public static class BakePreviewShapes {
         }
     }
 
-    /// <summary>The cage or the ray distances: the outer shell, see-through with its edges, and each point's ray.</summary>
+    /// <summary>
+    ///     The cage or the ray distances: the outer shell, see-through with its edges, and each point's
+    ///     ray.
+    /// </summary>
     static void Reach(
         ViewportBakePreview preview,
         FlatModel high,

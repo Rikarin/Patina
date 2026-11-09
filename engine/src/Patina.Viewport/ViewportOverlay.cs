@@ -13,9 +13,12 @@ namespace Patina.Viewport;
 ///     match (#149): see-through triangles and lines, each vertex with its own colour, tested against the model's
 ///     depth and not written to it.
 /// </summary>
-/// <param name="Triangles">Three vertices a triangle, each <see cref="ViewportOverlay.FloatsPerVertex" /> floats.</param>
+/// <param name="Triangles">
+///     Three vertices a triangle, each <see cref="ViewportOverlay.FloatsPerVertex" />
+///     floats.
+/// </param>
 /// <param name="Lines">Two vertices a line, laid out the same.</param>
-public sealed record ViewportShapes(float[] Triangles, float[] Lines) {
+sealed record ViewportShapes(float[] Triangles, float[] Lines) {
     /// <summary>Nothing to draw.</summary>
     public static ViewportShapes None { get; } = new([], []);
 
@@ -24,14 +27,17 @@ public sealed record ViewportShapes(float[] Triangles, float[] Lines) {
 }
 
 /// <summary>
-///     Draws <see cref="ViewportShapes" /> in the forward pass after the model and its wireframe. Its own pass, pipelines
-///     and buffers, so nothing about how the model is shaded reaches it or is reached by it.
+///     Draws <see cref="ViewportShapes" /> in the forward pass after the model and its wireframe. Its own pass,
+///     pipelines and buffers, so nothing about how the model is shaded reaches it or is reached by it.
 /// </summary>
 sealed class ViewportOverlay : IDisposable {
     /// <summary>Position 3, then red, green, blue and opacity.</summary>
     public const int FloatsPerVertex = 7;
 
-    /// <summary>How far shapes are lifted towards the eye, in bounding radii: more than the wireframe, so they sit over it.</summary>
+    /// <summary>
+    ///     How far shapes are lifted towards the eye, in bounding radii: more than the wireframe, so they sit over
+    ///     it.
+    /// </summary>
     const float Lift = 0.003f;
 
     readonly VulkanDevice device;

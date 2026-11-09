@@ -170,7 +170,10 @@ public sealed class BakeInputsTests : IDisposable {
         Assert.NotEqual(Key(one), Key(other));
     }
 
-    /// <summary>The distance map and the picture a colour map carries are inputs by their bytes, as the skew map is.</summary>
+    /// <summary>
+    ///     The distance map and the picture a colour map carries are inputs by their bytes, as the skew map
+    ///     is.
+    /// </summary>
     [Theory]
     [InlineData("distance")]
     [InlineData("colour")]

@@ -51,7 +51,6 @@ public sealed class ViewportRenderer : IDisposable {
     readonly ConstantBlock frameBlock;
     readonly ConstantBlock skyBlock;
     readonly ViewportWire wire;
-    readonly ViewportOverlay overlay;
     Geometry? geometry;
     ViewportTargets? targets;
     string? meshFolder;
@@ -103,16 +102,11 @@ public sealed class ViewportRenderer : IDisposable {
         );
         cleanup.Add(wire.Dispose);
         var overlayEffect = loader.Load(shaders.Overlay());
-        overlay = new(
-            device,
+        wire.UseOverlay(
             overlayEffect,
             Module(overlayEffect, ShaderStage.Vertex),
-            Module(overlayEffect, ShaderStage.Fragment),
-            HdrFormat,
-            DepthFormat,
-            Samples
+            Module(overlayEffect, ShaderStage.Fragment)
         );
-        cleanup.Add(overlay.Dispose);
         post = new(
             device,
             shaders,
@@ -150,8 +144,13 @@ public sealed class ViewportRenderer : IDisposable {
     /// <summary>How the model is lit, shown and finished, from the next frame on.</summary>
     public ViewportShading Shading { get; set; } = new();
 
-    /// <summary>Lays shapes over the model from the next frame on, such as a bake's preview, or takes them off.</summary>
-    public void SetOverlay(ViewportShapes shapes) => overlay.Set(shapes);
+    /// <summary>
+    ///     Lays shapes over the model from the next frame on, such as a bake's preview, or takes them
+    ///     off.
+    /// </summary>
+    /// <param name="triangles">See-through triangles, three vertices each of position, colour and opacity.</param>
+    /// <param name="lines">Lines, two vertices each, laid out the same.</param>
+    public void SetOverlay(float[] triangles, float[] lines) => wire.SetOverlay(triangles, lines);
 
 
     /// <summary>The adapter's name, for logs.</summary>
@@ -537,7 +536,6 @@ public sealed class ViewportRenderer : IDisposable {
         device.Write(skyConstants, 0, skyBlock.Bytes);
 
         wire.Write(viewProjection, eye, radius);
-        overlay.Write(viewProjection, eye, radius);
     }
 
     /// <summary>In <c>ShCoefficients</c>' order, which is the basis's: l00, then m from -l to l in each band.</summary>
@@ -592,7 +590,7 @@ public sealed class ViewportRenderer : IDisposable {
             wire.Record(commands, scene.Vertices, edges, scene.EdgeIndexCount);
         }
 
-        overlay.Record(commands);
+        wire.RecordOverlay(commands);
 
         commands.EndRenderPass();
 

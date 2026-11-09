@@ -8,11 +8,8 @@ using Vixen.Interchange;
 namespace Patina.Export;
 
 /// <summary>
-///     What a bake reads of its files, where that is less than the bytes: so a mesh change rebakes only the texture sets
-///     it touched (#151).
-///     <see
-///         cref="Patina.Jobs.BakeInputs.KeyOf(BakeRequest, Patina.Library.ToolCatalog, Func{BakeRequest, IReadOnlyDictionary{string, Revision}})" />
-///     takes these in place of the bytes.
+///     What a bake reads of its files, where that is less than the bytes: so a mesh change rebakes only the texture
+///     sets it touched (#151). The key in <see cref="Patina.Jobs.BakeInputs" /> takes these in place of the bytes.
 /// </summary>
 /// <remarks>
 ///     <para>
@@ -38,9 +35,9 @@ public static class BakeKeyReads {
     /// <returns>The key.</returns>
     public static BuildKey KeyOf(BakeRequest request, ToolCatalog tools) => Jobs.BakeInputs.KeyOf(request, tools, Of);
 
-    /// <summary>Revisions that stand in for bytes or add to them, by role. A file that cannot be read keeps its bytes.</summary>
+    /// <summary>Revisions standing in for bytes or adding to them, by role. A file not read keeps its bytes.</summary>
     /// <param name="request">The bake.</param>
-    /// <returns>The low mesh's geometry for the texture set, and the pictures a colour bake reads from materials.</returns>
+    /// <returns>The low mesh's geometry for its texture set, and the pictures a colour bake reads.</returns>
     public static IReadOnlyDictionary<string, Revision> Of(BakeRequest request) {
         ArgumentNullException.ThrowIfNull(request);
         Dictionary<string, Revision> reads = new(StringComparer.Ordinal);

@@ -55,7 +55,10 @@ public static class MapPictures {
     /// <exception cref="InvalidDataException">It is not a picture this reads.</exception>
     public static FloatImage ReadFile(string path) => Decode(File.ReadAllBytes(path), Path.GetExtension(path));
 
-    /// <summary>An encoded picture as numbers at whatever depth it has, as a model file carries one inside it.</summary>
+    /// <summary>
+    ///     An encoded picture as numbers at whatever depth it has, as a model file carries one inside
+    ///     it.
+    /// </summary>
     /// <param name="data">The encoded bytes.</param>
     /// <param name="extension">What they are encoded as, with its leading dot.</param>
     /// <exception cref="InvalidDataException">It is not a picture this reads.</exception>

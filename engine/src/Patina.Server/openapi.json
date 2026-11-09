@@ -6212,7 +6212,7 @@
             "description": "How it is drawn, as \u0060#rrggbb\u0060."
           }
         },
-        "description": "One part name as matching by name sees it: how many faces each side has and the colour it is drawn in."
+        "description": "One part name as matching by name sees it: how many faces each side has and the colour it is drawn\nin."
       },
       "BakePreviewState": {
         "required": [

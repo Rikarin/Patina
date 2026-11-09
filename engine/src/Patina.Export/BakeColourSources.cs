@@ -107,7 +107,10 @@ public static class BakeColourSources {
         return (images, read);
     }
 
-    /// <summary>A material's base colour picture in linear light, or null when it names none or it cannot be read.</summary>
+    /// <summary>
+    ///     A material's base colour picture in linear light, or null when it names none or it cannot be
+    ///     read.
+    /// </summary>
     static BakeImage? Picture(ReadModel file, int material, string path, List<string> warnings) {
         if (material < 0
             || material >= file.MaterialTextures.Length

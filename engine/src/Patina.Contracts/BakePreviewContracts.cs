@@ -30,7 +30,10 @@ public sealed record ViewportBakePreview {
     public bool Matches { get; set; } = true;
 }
 
-/// <summary>One part name as matching by name sees it: how many faces each side has and the colour it is drawn in.</summary>
+/// <summary>
+///     One part name as matching by name sees it: how many faces each side has and the colour it is drawn
+///     in.
+/// </summary>
 /// <param name="Name">The name both sides share once their endings are gone.</param>
 /// <param name="LowFaces">The low mesh's faces of that name, zero for a high part no low part matched.</param>
 /// <param name="HighFaces">The high mesh's faces of that name, zero for a low part that matched nothing.</param>

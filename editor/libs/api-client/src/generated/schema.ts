@@ -1785,7 +1785,10 @@ export interface components {
       /** @description Where the colour map's colour comes from. */
       colour: components['schemas']['BakeColourOptions'];
     };
-    /** @description One part name as matching by name sees it: how many faces each side has and the colour it is drawn in. */
+    /**
+     * @description One part name as matching by name sees it: how many faces each side has and the colour it is drawn
+     *     in.
+     */
     BakePreviewPart: {
       /** @description The name both sides share once their endings are gone. */
       name: string;

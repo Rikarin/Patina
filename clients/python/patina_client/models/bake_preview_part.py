@@ -20,7 +20,8 @@ T = TypeVar("T", bound="BakePreviewPart")
 
 @_attrs_define
 class BakePreviewPart:
-    """ One part name as matching by name sees it: how many faces each side has and the colour it is drawn in.
+    """ One part name as matching by name sees it: how many faces each side has and the colour it is drawn
+    in.
 
         Attributes:
             name (str): The name both sides share once their endings are gone.

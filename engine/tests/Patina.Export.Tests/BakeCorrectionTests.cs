@@ -64,8 +64,9 @@ public sealed class BakeCorrectionTests : IDisposable {
     static int Red(Bitmap picture, int x, int y) => picture.Pixels[(y * picture.Width + x) * 4];
 
     /// <summary>
-    ///     A picture made for the high mesh's layout lands on the low mesh's, which here is the same quad mirrored: a red
-    ///     ramp rising left to right falls left to right on the low mesh, and its numbers are carried, not converted.
+    ///     A picture made for the high mesh's layout lands on the low mesh's, which here is the same quad mirrored: a
+    ///     red ramp rising left to right falls left to right on the low mesh, and its numbers are carried, not
+    ///     converted.
     /// </summary>
     [Fact]
     public void A_picture_moves_from_the_high_meshes_layout_to_the_low_meshes() {
@@ -93,7 +94,7 @@ public sealed class BakeCorrectionTests : IDisposable {
     /// <summary>Vertex colours are carried in linear light and written in sRGB, as a base colour is stored.</summary>
     [Fact]
     public void Vertex_colours_are_written_in_srgb() {
-        var high = Quad("high.obj", 0f, Straight, grey: 0.2f);
+        var high = Quad("high.obj", 0f, Straight, 0.2f);
         var low = Quad("low.obj", 0f, Straight);
 
         Bake(Request(high, low, static options => options with { Colour = new() { Source = "vertex-colour" } }));
@@ -120,7 +121,10 @@ public sealed class BakeCorrectionTests : IDisposable {
         Assert.Equal(255, Red(PngCodec.Load(Path.Combine(Into("bake"), "colour.png")), 32, 32));
     }
 
-    /// <summary>A material's colour bakes when the high mesh has no vertex colours, which is what auto falls to.</summary>
+    /// <summary>
+    ///     A material's colour bakes when the high mesh has no vertex colours, which is what auto falls
+    ///     to.
+    /// </summary>
     [Fact]
     public void Auto_colour_falls_to_the_materials() {
         // A GLB, because an OBJ read from its bytes cannot find the material library beside it.
@@ -176,7 +180,10 @@ public sealed class BakeCorrectionTests : IDisposable {
         return File.ReadAllBytes(Path.Combine(Into(into), "normal.png"));
     }
 
-    /// <summary>Rounding reaches the bake: the low mesh baked onto itself is flat without it and bevelled with it.</summary>
+    /// <summary>
+    ///     Rounding reaches the bake: the low mesh baked onto itself is flat without it and bevelled with
+    ///     it.
+    /// </summary>
     [Fact]
     public void Rounded_edges_reach_the_bake_of_a_low_mesh_onto_itself() {
         var flat = PngCodec.Decode(Normals(false, "flat"));
@@ -190,7 +197,10 @@ public sealed class BakeCorrectionTests : IDisposable {
         Assert.True(differ < flat.Pixels.Length / 4 / 2, $"{differ} texels changed: the bevel reached everywhere.");
     }
 
-    /// <summary>A distance map that is not square has no texel for every texel of the atlas, and is refused by name.</summary>
+    /// <summary>
+    ///     A distance map that is not square has no texel for every texel of the atlas, and is refused by
+    ///     name.
+    /// </summary>
     [Fact]
     public void A_distance_map_that_is_not_square_is_refused_by_name() {
         var quad = Quad("quad.obj", 0f, Straight);
@@ -210,7 +220,10 @@ public sealed class BakeCorrectionTests : IDisposable {
         Assert.Contains("distance map", refused.Message, StringComparison.Ordinal);
     }
 
-    /// <summary>The two-material low mesh with its strap lifted, so one texture set changed and the other did not.</summary>
+    /// <summary>
+    ///     The two-material low mesh with its strap lifted, so one texture set changed and the other did
+    ///     not.
+    /// </summary>
     string TwoSets(string name, float strap, string body = "1 0 0") {
         var path = Into(name);
         var lifted = strap.ToString(CultureInfo.InvariantCulture);
@@ -268,7 +281,7 @@ public sealed class BakeCorrectionTests : IDisposable {
 
         Assert.Equal(Key(before, "Body"), Key(after, "Body"));
         Assert.NotEqual(Key(before, "Strap"), Key(after, "Strap"));
-        Assert.NotEqual(Key(before, "Body", bytes: true), Key(after, "Body", bytes: true));
+        Assert.NotEqual(Key(before, "Body", true), Key(after, "Body", true));
     }
 
     /// <summary>A low mesh's material colour is read by no map of it, so changing it rebakes nothing.</summary>
@@ -281,7 +294,10 @@ public sealed class BakeCorrectionTests : IDisposable {
         Assert.Equal(Key(red, "Strap"), Key(green, "Strap"));
     }
 
-    /// <summary>A low mesh that is its own high mesh is struck by its own rays, so its bytes decide, as before.</summary>
+    /// <summary>
+    ///     A low mesh that is its own high mesh is struck by its own rays, so its bytes decide, as
+    ///     before.
+    /// </summary>
     [Fact]
     public void A_low_mesh_that_is_also_the_high_mesh_is_keyed_by_its_bytes() {
         var before = TwoSets("before.obj", 0f);
@@ -296,7 +312,10 @@ public sealed class BakeCorrectionTests : IDisposable {
         );
     }
 
-    /// <summary>A bake taken from the cache says it was made on the mesh as it is now, so it is not out of date.</summary>
+    /// <summary>
+    ///     A bake taken from the cache says it was made on the mesh as it is now, so it is not out of
+    ///     date.
+    /// </summary>
     [Fact]
     public void A_cached_bake_delivered_onto_a_changed_mesh_names_the_mesh_as_it_is() {
         var high = Quad("high.obj", 0f, Straight);

@@ -33,9 +33,9 @@ public static class IpcTypes {
     public const string ViewportDisplay = "viewport.display";
 
     /// <summary>
-    ///     Server to Worker: lay a bake's setup over the model, as <see cref="IpcMessage.BakePreview" /> says, or take it
-    ///     off for an empty low mesh; answers with <see cref="IpcMessage.BakePreviewShown" />. Paths, not shapes: the
-    ///     Worker reads the meshes and keeps what it drew.
+    ///     Server to Worker: lay a bake's setup over the model, as <see cref="IpcMessage.BakePreview" /> says, or take
+    ///     it off for an empty low mesh; answers with <see cref="IpcMessage.BakePreviewShown" />. Paths, not shapes:
+    ///     the Worker reads the meshes and keeps what it drew.
     /// </summary>
     public const string ViewportBakePreview = "viewport.bake-preview";
 

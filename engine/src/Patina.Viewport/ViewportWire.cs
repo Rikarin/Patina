@@ -20,6 +20,10 @@ sealed class ViewportWire : IDisposable {
     readonly ConstantBlock block;
     readonly BufferHandle constants;
     readonly DescriptorSetHandle set;
+    readonly PixelFormat colourFormat;
+    readonly PixelFormat depthFormat;
+    readonly int samples;
+    ViewportOverlay? overlay;
 
     public ViewportWire(
         VulkanDevice device,
@@ -31,6 +35,7 @@ sealed class ViewportWire : IDisposable {
         int samples
     ) {
         this.device = device;
+        (this.colourFormat, this.depthFormat, this.samples) = (colourFormat, depthFormat, samples);
         pipeline = device.CreateGraphicsPipeline(
             new(
                 vertex,
@@ -63,7 +68,24 @@ sealed class ViewportWire : IDisposable {
             .Set("lift", radius * Lift)
             .Set("wireColor", new Vector4(0f, 0f, 0f, 0.55f));
         device.Write(constants, 0, block.Bytes);
+        overlay?.Write(viewProjection, eye, radius);
     }
+
+    /// <summary>
+    ///     Draws coloured shapes over the model as well, from <see cref="SetOverlay" />, in a pass of their own: the
+    ///     wireframe's lift and depth rule, each vertex with its own colour.
+    /// </summary>
+    public void UseOverlay(Effect effect, ShaderHandle vertex, ShaderHandle fragment) {
+        overlay?.Dispose();
+        overlay = new(device, effect, vertex, fragment, colourFormat, depthFormat, samples);
+    }
+
+    /// <summary>Takes these shapes in place of the last, or none for empty arrays.</summary>
+    public void SetOverlay(float[] triangles, float[] lines) =>
+        (overlay ?? throw new InvalidOperationException("No overlay is in use.")).Set(new(triangles, lines));
+
+    /// <summary>Draws the overlay's shapes inside the forward pass, after the model and its edges.</summary>
+    public void RecordOverlay(ICommandList commands) => overlay?.Record(commands);
 
     /// <summary>Draws the edges inside the forward pass, after the model.</summary>
     public void Record(ICommandList commands, BufferHandle vertices, BufferHandle edges, int count) {
@@ -75,6 +97,7 @@ sealed class ViewportWire : IDisposable {
     }
 
     public void Dispose() {
+        overlay?.Dispose();
         device.Destroy(set);
         device.Destroy(constants);
         device.Destroy(pipeline);
