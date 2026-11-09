@@ -25,6 +25,9 @@ public static class Refusals {
     /// <summary>No graph session has the id. Values: <c>id</c>.</summary>
     public const string GraphNotOpen = "graph-not-open";
 
+    /// <summary>No stack session has the id: it was closed, or the Server restarted. Values: <c>id</c>.</summary>
+    public const string StackNotOpen = "stack-not-open";
+
     /// <summary>A brush on a layer that has no pixels of its own. Values: <c>layer</c>, <c>kind</c>.</summary>
     public const string NotPaintLayer = "stroke-not-paint-layer";
 

@@ -132,9 +132,11 @@ static class PatinaApi {
         LibraryHost host
     ) {
         if (stacks.Find(request.Stack) is not { } stack) {
-            return TypedResults.Problem(
-                $"There is no stack session '{request.Stack}'.",
-                statusCode: StatusCodes.Status404NotFound
+            return Refusals.Problem(
+                $"There is no open stack '{request.Stack}'.",
+                StatusCodes.Status404NotFound,
+                Refusals.StackNotOpen,
+                new Dictionary<string, string> { ["id"] = request.Stack }
             );
         }
 

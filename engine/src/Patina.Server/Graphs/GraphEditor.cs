@@ -397,6 +397,15 @@ public sealed class GraphEditor {
 
     SetGroupCommand BuildSetGroup(GraphSetGroup set, Dictionary<int, int> refs) {
         var group = GroupOf(set.Id);
+        if (set.Color is { } color) {
+            set = set with {
+                Color = GraphDocuments.FrameColour(color)
+                    ?? throw new GraphEditRefusedException(
+                        $"A frame's colour is #rrggbb, or empty for the client's own choice, and '{color}' is neither."
+                    )
+            };
+        }
+
         return new(group, set, [..set.Nodes is { } nodes ? Members(nodes, refs) : group.Nodes]);
     }
 
@@ -507,7 +516,7 @@ sealed class SetGroupCommand(GraphGroup group, GraphSetGroup set, NodeId[] nodes
     readonly GroupState next = new(
         set.Title ?? group.Title,
         nodes,
-        set.Color?.Trim() ?? group.Color,
+        set.Color ?? group.Color,
         set.Description ?? group.Description
     );
 

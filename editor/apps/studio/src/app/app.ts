@@ -278,6 +278,17 @@ import { ViewportPane } from './viewport/viewport-pane';
       </div>
     }
 
+    @if (paint.notice(); as notice) {
+      <div
+        class="bg-warning-subtle flex shrink-0 items-center gap-2 px-3 py-1 text-sm"
+        role="status"
+        data-testid="paint-notice"
+      >
+        <span class="min-w-0 flex-1 truncate" [title]="notice">{{ notice }}</span>
+        <button type="button" xuiButton size="sm" variant="ghost" (click)="paint.notice.set(null)">Dismiss</button>
+      </div>
+    }
+
     <footer class="chrome-bar flex h-7 shrink-0 items-center gap-4 px-3" role="status" aria-label="Server status">
       @let current = status.state();
       @switch (current.kind) {

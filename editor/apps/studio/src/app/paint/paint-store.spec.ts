@@ -84,9 +84,16 @@ function setup() {
   const posts: string[] = [];
   /** What the Server answers to an undo, a redo or a save, when a test wants it to refuse. */
   const steps: { reply: (() => Response) | null; queries: string[] } = { reply: null, queries: [] };
+  /** What a test's Server answers before the usual, by method and path, such as one that has restarted. */
+  const server: { reply: ((method: string, path: string) => Response | null) | null } = { reply: null };
   const fetcher = (async (input: Request) => {
     const { pathname: path, search } = new URL(input.url);
     posts.push(path);
+    const answered = server.reply?.(input.method, path);
+    if (answered) {
+      return answered;
+    }
+
     if (/\/(?:undo|redo|save)$/u.test(path)) {
       steps.queries.push(search);
       if (steps.reply) {
@@ -133,7 +140,18 @@ function setup() {
       }
     ]
   });
-  return { store: TestBed.inject(PaintStore), bodies, picks, posts, sockets, steps };
+  return { store: TestBed.inject(PaintStore), bodies, picks, posts, sockets, steps, server };
+}
+
+const notOpen = () =>
+  Response.json(
+    { detail: "There is no open stack 's1'.", code: 'stack-not-open', values: { id: 's1' } },
+    { status: 404 }
+  );
+
+/** What a socket does when its Server goes away. */
+function drop(socket: GraphSocket | undefined): void {
+  (socket?.onclose as unknown as (() => void) | null)?.();
 }
 
 const problem = (status: number, detail: string) => () => Response.json({ detail }, { status });
@@ -383,6 +401,54 @@ describe('PaintStore', () => {
     expect(stackSummary({ revision: 2, settled: 2, evaluation: { ...evaluation, ran: 0 } })).toBe('Up to date');
     const stopped = { ...evaluation, problems: [{ layer: 'a', severity: 'Error', message: 'No.' }] };
     expect(stackSummary({ revision: 2, settled: 2, evaluation: stopped })).toBe('Not evaluated');
+  });
+
+  it('opens the stack again from its file after the Server restarts, keeping the layer chosen (#226)', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { store, sockets, server, posts } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    store.layer.set('paint');
+    store.state.update(state => (state ? { ...state, history: { ...state.history, dirty: true } } : state));
+    const reopened = stack({ id: 's2', sequence: 0 });
+    server.reply = (method, path) =>
+      path === '/api/v1/stacks/s1' ? notOpen() : method === 'POST' && path === '/api/v1/stacks' ? Response.json(reopened) : null;
+
+    drop(sockets[0]);
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    expect(posts).toContain('/api/v1/stacks/s1');
+    expect(store.state()?.id).toBe('s2');
+    expect(store.layer()).toBe('paint');
+    expect(store.notice()).toBe('Patina restarted its engine. Edits since the last save are gone.');
+    expect(sockets.at(-1)).not.toBe(sockets[0]);
+    expect(sockets).toHaveLength(2);
+    vi.useRealTimers();
+  });
+
+  it('keeps asking while the Server is down, and follows the same stack when it kept it', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { store, sockets, server, posts } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    let down = true;
+    server.reply = (_method, path) => {
+      if (down && path === '/api/v1/stacks/s1') {
+        throw new TypeError('fetch failed');
+      }
+
+      return null;
+    };
+
+    drop(sockets[0]);
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(posts.filter(path => path === '/api/v1/stacks/s1').length).toBeGreaterThan(1);
+    expect(sockets).toHaveLength(1);
+
+    down = false;
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(sockets).toHaveLength(2);
+    expect(store.state()?.id).toBe('s1');
+    expect(store.notice()).toBeNull();
+    vi.useRealTimers();
   });
 
   it('hears what a compile said, and keeps the worst for each row', async () => {

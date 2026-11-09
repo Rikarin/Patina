@@ -48,7 +48,13 @@ public sealed record LibraryDocument(
     IReadOnlyList<string> Channels,
     string DefaultShader,
     IReadOnlyList<string> ExportTargets
-);
+) {
+    /// <summary>
+    ///     What an export of the whole library was last set to, so the next one starts there, or null. A project's own
+    ///     export is in its <c>project.yaml</c>; this one belongs to no project.
+    /// </summary>
+    public ProjectExportSettings? Export { get; init; }
+}
 
 /// <summary><c>project.yaml</c>.</summary>
 public sealed record ProjectDocument(

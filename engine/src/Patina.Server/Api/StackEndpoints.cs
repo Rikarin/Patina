@@ -535,5 +535,10 @@ static class StackEndpoints {
         );
 
     static ProblemHttpResult NoSession(string id) =>
-        TypedResults.Problem($"There is no open stack '{id}'.", statusCode: Missing);
+        Refusals.Problem(
+            $"There is no open stack '{id}'.",
+            Missing,
+            Refusals.StackNotOpen,
+            new Dictionary<string, string> { ["id"] = id }
+        );
 }

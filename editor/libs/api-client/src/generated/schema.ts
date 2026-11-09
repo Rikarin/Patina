@@ -436,6 +436,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/export': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Keeps what an export of the whole library is set to in library.yaml, where any client's next library export starts. GET /library reads it back. */
+    put: operations['SetLibraryExport'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/project/export': {
     parameters: {
       query?: never;
@@ -665,7 +682,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** What a project's layers can be filled with. */
+    /** What a project's layers can be filled with. A search keeps those with every word in their name, type, kind, origin, project or path, wherever they are from. */
     get: operations['GetMaterials'];
     put?: never;
     post?: never;
@@ -2428,7 +2445,10 @@ export interface components {
       title?: null | string;
       /** @description Its new members. */
       nodes?: null | number[];
-      /** @description Its frame's CSS colour, or empty for the client's own choice. */
+      /**
+       * @description Its frame's colour as `#rrggbb`, or empty for the client's own choice. Anything else is refused, so the
+       *     file stays readable by any client.
+       */
       color?: null | string;
       /** @description What its nodes do together. */
       description?: null | string;
@@ -2767,7 +2787,8 @@ export interface components {
       /** @description Its members. */
       nodes: number[];
       /**
-       * @description The CSS colour its frame is drawn in, or empty for the client's own choice.
+       * @description The colour its frame is drawn in, as `#rrggbb`, or empty for the client's own choice. A client that
+       *     follows a theme maps the colours it offers to its own.
        * @default
        */
       color: string;
@@ -3192,6 +3213,11 @@ export interface components {
       /** @description Whether a client has asked for it to stop. */
       cancelRequested: boolean;
     };
+    /** @description The body of `PUT /api/v1/library/export`. */
+    LibraryExportRequest: {
+      /** @description What an export of the whole library is set to now. */
+      export: components['schemas']['ProjectExportSettings'];
+    };
     /** @description The reply to `GET /api/v1/library`: what opening a library reads, and nothing more. */
     LibraryInfo: {
       /**
@@ -3231,6 +3257,7 @@ export interface components {
       assetCount: number;
       /** @description Whether a rescan is running; counts and pages may lag the files until it ends. */
       indexing: boolean;
+      export?: null | components['schemas']['ProjectExportSettings'];
     };
     /** @description Where things went. */
     LibraryMoved: {
@@ -3334,8 +3361,12 @@ export interface components {
     };
     /** @description The materials a project can use. */
     MaterialList: {
-      /** @description Them. */
+      /** @description Them, every one with each word of the search, if there was one. */
       items: components['schemas']['MaterialInfo'][];
+      /** @description The types a shelf can narrow to, with what to call them. */
+      roles: components['schemas']['StackTerm'][];
+      /** @description Where a material can be from, with what to call each. */
+      origins: components['schemas']['StackTerm'][];
     };
     /** @description A material's picture in the preview cache. The pixels are at `/previews/{hash}`. */
     MaterialThumbnail: {
@@ -6627,6 +6658,57 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProjectMeshChange'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetLibraryExport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LibraryExportRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryInfo'];
         };
       };
       /** @description Bad Request */

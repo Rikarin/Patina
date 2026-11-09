@@ -8,10 +8,17 @@ namespace Patina.Server.Api;
 ///     A project's settings blocks in its <c>project.yaml</c>: how it exports, how it bakes, how its viewport opens and
 ///     how its painting was left.
 ///     Each is written whole by a PUT of the project and the block, checked first, kept in the file, and answered with
-///     the project's contents, so any client starts from where another left it.
+///     the project's contents, so any client starts from where another left it. An export of the whole library keeps
+///     its settings beside them, in <c>library.yaml</c>.
 /// </summary>
 static class ProjectBlockEndpoints {
     public static void MapProjectBlocks(this RouteGroupBuilder library) {
+        library.MapPut("/export", SetLibraryExport)
+            .Described(
+                "SetLibraryExport",
+                "Keeps what an export of the whole library is set to in library.yaml, where any client's next "
+                + "library export starts. GET /library reads it back."
+            );
         library.MapPut("/project/export", SetExport)
             .Described(
                 "SetProjectExport",
@@ -46,6 +53,18 @@ static class ProjectBlockEndpoints {
                 Refusals.Reason(problem)
             )
             : Keep(host, request.Project, null, library => library.SetPaint(request.Project, request.Paint));
+
+    static Results<Ok<LibraryInfo>, ProblemHttpResult> SetLibraryExport(
+        LibraryHost host,
+        LibraryExportRequest request
+    ) =>
+        LibraryTreeEndpoints.Guarded(
+            host,
+            library => {
+                library.SetExport(request.Export);
+                return TypedResults.Ok(library.Describe());
+            }
+        );
 
     static Results<Ok<ProjectContents>, ProblemHttpResult> SetExport(LibraryHost host, ProjectExportRequest request) =>
         Keep(host, request.Project, null, library => library.SetExport(request.Project, request.Export));

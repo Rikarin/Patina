@@ -18,7 +18,11 @@ static class MaterialEndpoints {
 
     public static void MapMaterialRoutes(this RouteGroupBuilder library) {
         library.MapGet("/materials", GetMaterials)
-            .Described("GetMaterials", "What a project's layers can be filled with.");
+            .Described(
+                "GetMaterials",
+                "What a project's layers can be filled with. A search keeps those with every word in their name, "
+                + "type, kind, origin, project or path, wherever they are from."
+            );
 
         library.MapPost("/materials/thumbnails", DrawMaterials)
             .Described(
@@ -43,7 +47,7 @@ static class MaterialEndpoints {
     ) =>
         LibraryTreeEndpoints.Guarded(
             host,
-            library => TypedResults.Ok(new MaterialList(MaterialShelf.List(library, project, search)))
+            library => TypedResults.Ok(MaterialShelf.Listed(MaterialShelf.List(library, project, search)))
         );
 
     static async Task<Results<Ok<MaterialThumbnails>, ProblemHttpResult>> DrawMaterials(
@@ -89,7 +93,7 @@ static class MaterialEndpoints {
             library => {
                 MaterialShelf.RefreshOpen(library, stacks);
                 MaterialShelf.Refresh(library, project);
-                return TypedResults.Ok(new MaterialList(MaterialShelf.List(library, project)));
+                return TypedResults.Ok(MaterialShelf.Listed(MaterialShelf.List(library, project)));
             }
         );
 

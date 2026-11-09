@@ -99,13 +99,18 @@ export class BrushStore {
     this.chosen.set(info.source);
   }
 
-  /** Takes up the preset in a file, which is what opening one from the library does. */
-  async useFile(project: string, path: string): Promise<void> {
+  /**
+   * Takes up the preset in a file, which is what opening one from the library does. With no painting taken up yet, the
+   * project's own is taken up first from `paint`, its `project.yaml` block, so the preset changes only the brush and
+   * the project's colours, palette and symmetry are never written back from a state that was not loaded (#222).
+   */
+  async useFile(project: string, path: string, paint: ProjectPaintSettings | null | undefined): Promise<void> {
     if (this.project() === null) {
-      this.project.set(project);
+      await this.adopt(project, paint);
+    } else {
+      await this.refresh();
     }
 
-    await this.refresh();
     const found = this.presets().find(preset => preset.source === path);
     if (found) {
       this.use(found);

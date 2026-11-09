@@ -1700,6 +1700,67 @@
         }
       }
     },
+    "/api/v1/library/export": {
+      "put": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Keeps what an export of the whole library is set to in library.yaml, where any client\u0027s next library export starts. GET /library reads it back.",
+        "operationId": "SetLibraryExport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LibraryExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/project/export": {
       "put": {
         "tags": [
@@ -2557,7 +2618,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "What a project\u0027s layers can be filled with.",
+        "summary": "What a project\u0027s layers can be filled with. A search keeps those with every word in their name, type, kind, origin, project or path, wherever they are from.",
         "operationId": "GetMaterials",
         "parameters": [
           {
@@ -7659,7 +7720,7 @@
               "null",
               "string"
             ],
-            "description": "Its frame\u0027s CSS colour, or empty for the client\u0027s own choice."
+            "description": "Its frame\u0027s colour as \u0060#rrggbb\u0060, or empty for the client\u0027s own choice. Anything else is refused, so the\nfile stays readable by any client."
           },
           "description": {
             "type": [
@@ -8447,7 +8508,7 @@
           },
           "color": {
             "type": "string",
-            "description": "The CSS colour its frame is drawn in, or empty for the client\u0027s own choice.",
+            "description": "The colour its frame is drawn in, as \u0060#rrggbb\u0060, or empty for the client\u0027s own choice. A client that\nfollows a theme maps the colours it offers to its own.",
             "default": ""
           },
           "description": {
@@ -9442,6 +9503,19 @@
         },
         "description": "A piece of work the Server owns, which outlives the Worker running it and the Server itself."
       },
+      "LibraryExportRequest": {
+        "required": [
+          "export"
+        ],
+        "type": "object",
+        "properties": {
+          "export": {
+            "description": "What an export of the whole library is set to now.",
+            "$ref": "#/components/schemas/ProjectExportSettings"
+          }
+        },
+        "description": "The body of \u0060PUT /api/v1/library/export\u0060."
+      },
       "LibraryInfo": {
         "required": [
           "id",
@@ -9512,6 +9586,17 @@
           "indexing": {
             "type": "boolean",
             "description": "Whether a rescan is running; counts and pages may lag the files until it ends."
+          },
+          "export": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What an export of the whole library was last set to, from \u0060library.yaml\u0060, or null. A project\u0027s export is\nin its own contents.",
+                "$ref": "#/components/schemas/ProjectExportSettings"
+              }
+            ]
           }
         },
         "description": "The reply to \u0060GET /api/v1/library\u0060: what opening a library reads, and nothing more."
@@ -9722,7 +9807,9 @@
       },
       "MaterialList": {
         "required": [
-          "items"
+          "items",
+          "roles",
+          "origins"
         ],
         "type": "object",
         "properties": {
@@ -9731,7 +9818,21 @@
             "items": {
               "$ref": "#/components/schemas/MaterialInfo"
             },
-            "description": "Them."
+            "description": "Them, every one with each word of the search, if there was one."
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "The types a shelf can narrow to, with what to call them."
+          },
+          "origins": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "Where a material can be from, with what to call each."
           }
         },
         "description": "The materials a project can use."

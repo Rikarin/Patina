@@ -81,6 +81,11 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A texturing document or layered material comes back when the engine restarts, as a graph does. It opens again from its file with the layer that was chosen, the channel and the viewport's camera and display, says so when edits that were not saved are gone, and takes a brush again. It used to stay on its last picture and refuse every edit with the session's id. A stack the Server does not have is refused with the code `stack-not-open`.
+- A frame's colour is saved in the graph file as a plain `#rrggbb`, which any program can draw, where it used to be the studio's own stylesheet token. The studio still shows its eight frame colours in the theme's shades, and the Server refuses a frame colour that is not plain.
+- The shelf's search finds another project's materials by every word it finds this project's by: a type ("mask", "masks"), where it is from ("other projects") or the project's name, as well as the name, kind and path. The Server does the matching for every material, and names the types and origins the shelf shows.
+- Export settings stay with what they belong to. A project that has never exported starts from its preset, where it used to take the last project's folder, texture sets and files. A library export keeps its settings in the library's `library.yaml` (through `PUT /api/v1/library/export`), so switching the scope to a project and back no longer resets them, and a change made just before another project comes to the front is still kept in the project it was made in.
+- Opening a brush preset from the library before any texturing document of its project keeps the project's recent colours, palette and symmetry. It used to write them back empty.
 - A layer's Name field no longer writes the next layer's name onto the one being renamed when another row is pressed before the field loses focus.
 - File > Import, or files dropped on the window, just after a project is made or opened bring the files into it, where they said to open a project while its tab was already showing.
 - Ambient Occlusion and Height to AO tile on every GPU. On some drivers, Linux's software Vulkan among them, the first column and row read the far edge and left a seam where the picture repeats.

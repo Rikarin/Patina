@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   type OnInit,
   computed,
   effect,
@@ -24,11 +25,13 @@ import { LibrarySelection } from '../library/library-selection';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore } from '../paint/paint-store';
 import {
+  type ExportOwner,
   type ExportScope,
   type ExportSettings,
   ExportStore,
   type FileChoice,
   requestFor,
+  sameOwner,
   settingsFor,
   settingsOf,
   usesDistance
@@ -679,18 +682,30 @@ export class ExportPane implements OnInit {
   private readonly stack = computed(() => this.paint.state()?.id ?? null);
 
   /**
-   * The project whose settings are being edited, by path; null for a library export, whose settings belong to no
-   * project and last only while the app is open.
+   * Whose settings are being edited: the project's, by path, or for a library export the library's, which belong to
+   * no project. Null with neither, which keeps nothing.
    */
-  private readonly settingsOwner = computed(() => (this.scope() === 'library' ? null : (this.target()?.path ?? null)));
+  private readonly settingsOwner = computed<ExportOwner | null>(
+    () => {
+      if (this.scope() === 'library') {
+        return 'library';
+      }
+      const path = this.target()?.path;
+      return path === undefined ? null : { project: path };
+    },
+    { equal: sameOwner }
+  );
 
   /** A build that has stopped is read once, whichever way it stopped. */
   private read = '';
-  /** The project whose settings the dialog holds, which is the only one a change may be written to. */
-  private restored: string | null = null;
+  /** Whose settings the dialog holds, which is the only owner a change may be written to. */
+  private restored: ExportOwner | null = null;
   private saving: ReturnType<typeof setTimeout> | null = null;
+  private pending: { owner: ExportOwner; settings: ExportSettings } | null = null;
 
   constructor() {
+    // A change made just before the dialog closes is still kept.
+    inject(DestroyRef).onDestroy(() => this.flush());
     effect(() => {
       const build = this.store.build();
       if (build && ['done', 'failed', 'cancelled'].includes(build.state) && this.read !== build.id) {
@@ -869,39 +884,53 @@ export class ExportPane implements OnInit {
     }
   }
 
-  private async restore(owner: string | null, presets: readonly ExportPresetInfo[]): Promise<void> {
+  /**
+   * Takes up what an owner's export was last set to. One that has kept nothing starts from the first preset alone:
+   * nothing of another project's, or of the library's, carries into it (#227).
+   */
+  private async restore(owner: ExportOwner | null, presets: readonly ExportPresetInfo[]): Promise<void> {
+    this.flush();
     this.restored = null;
     const saved = owner ? await this.store.settings(owner) : null;
-    if (owner !== this.settingsOwner()) {
+    if (!sameOwner(owner, this.settingsOwner())) {
       return; // Another project came to the front while this one was read.
     }
-    const preset =
-      presets.find(known => known.id === saved?.preset) ??
-      presets.find(known => known.id === this.settings().preset) ??
-      presets[0];
+    const preset = presets.find(known => known.id === saved?.preset) ?? presets[0];
     if (!preset) {
       return;
     }
-    this.settings.set(saved ? settingsOf(saved, preset) : settingsFor(preset, this.settings()));
+    this.settings.set(saved ? settingsOf(saved, preset) : settingsFor(preset));
     this.restored = owner;
   }
 
   /**
-   * Writes a project's settings to its project.yaml, once the changes pause: a slider dragged across its range is
-   * one write and not sixty. A library export's settings belong to no project and are not written.
+   * Writes the settings to their owner's file, once the changes pause: a slider dragged across its range is one write
+   * and not sixty. What is written is taken now, with its owner, so a write still waiting when another owner comes to
+   * the front goes out at once with this owner's settings, not the next one's.
    */
   private keep(): void {
     const owner = this.restored;
-    if (owner === null || owner !== this.settingsOwner()) {
+    if (owner === null || !sameOwner(owner, this.settingsOwner())) {
       return;
     }
+    this.pending = { owner, settings: this.settings() };
     if (this.saving) {
       clearTimeout(this.saving);
     }
-    this.saving = setTimeout(() => {
+    this.saving = setTimeout(() => this.flush(), SaveDelay);
+  }
+
+  /** Sends the write that is waiting, if one is. */
+  private flush(): void {
+    if (this.saving) {
+      clearTimeout(this.saving);
       this.saving = null;
-      void this.attempt(() => this.store.keep(owner, this.settings()));
-    }, SaveDelay);
+    }
+    const pending = this.pending;
+    this.pending = null;
+    if (pending) {
+      void this.attempt(() => this.store.keep(pending.owner, pending.settings));
+    }
   }
 
   private async attempt(work: () => Promise<void>): Promise<void> {

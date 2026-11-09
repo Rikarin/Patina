@@ -134,15 +134,45 @@ public sealed class GraphAuthoringTests {
         var editor = Editor();
         var group = editor.Document.Groups[0];
 
-        editor.Apply(new([new GraphSetGroup(group.Id, Color: "var(--color-chart-3)", Description: "The ground")]));
+        editor.Apply(new([new GraphSetGroup(group.Id, Color: " #1BAF7A ", Description: "The ground")]));
         editor.Apply(new([new GraphSetGroup(group.Id, "Base coat")]));
 
         var after = editor.Document.Groups[0];
-        Assert.Equal(
-            ("Base coat", "var(--color-chart-3)", "The ground"),
-            (after.Title, after.Color, after.Description)
-        );
+        Assert.Equal(("Base coat", "#1baf7a", "The ground"), (after.Title, after.Color, after.Description));
         Assert.Equal(group.Nodes, after.Nodes);
+    }
+
+    /// <summary>
+    ///     A frame's colour is a plain <c>#rrggbb</c> that any client can draw, never a theme's token, a name or a CSS
+    ///     function only a browser understands, so each of those is refused and the frame keeps its colour (#225).
+    /// </summary>
+    [Theory]
+    [InlineData("var(--color-chart-3)")]
+    [InlineData("red")]
+    [InlineData("rgb(1, 2, 3)")]
+    [InlineData("#abc")]
+    [InlineData("#1baf7a80")]
+    [InlineData("#1baf7g")]
+    public void A_frame_refuses_a_colour_that_is_not_plain(string colour) {
+        var editor = Editor();
+        var group = editor.Document.Groups[0];
+        editor.Apply(new([new GraphSetGroup(group.Id, Color: "#2a78d6")]));
+
+        var refused = Assert.Throws<GraphEditRefusedException>(() =>
+            editor.Apply(new([new GraphSetGroup(group.Id, Color: colour)]))
+        );
+
+        Assert.Contains("#rrggbb", refused.Message, StringComparison.Ordinal);
+        Assert.Equal("#2a78d6", editor.Document.Groups[0].Color);
+        editor.Apply(new([new GraphSetGroup(group.Id, Color: string.Empty)]));
+        Assert.Equal(string.Empty, editor.Document.Groups[0].Color);
+    }
+
+    /// <summary>A file written before colours were plain shows its frame in the client's own choice.</summary>
+    [Fact]
+    public void A_frame_colour_no_client_could_draw_reaches_clients_as_none() {
+        Assert.Equal(string.Empty, GraphDocuments.State(new GraphGroupAsset { Color = "var(--color-chart-3)" }).Color);
+        Assert.Equal("#1baf7a", GraphDocuments.State(new GraphGroupAsset { Color = "#1BAF7A" }).Color);
     }
 
     [Fact]

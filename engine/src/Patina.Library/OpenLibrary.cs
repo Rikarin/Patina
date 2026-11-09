@@ -14,13 +14,15 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     readonly LibraryDocumentState state;
     readonly Lock rescanGate = new();
     readonly Lock createGate = new();
-    readonly int fileSchema;
+    readonly Lock documentGate = new();
+    int fileSchema;
+    LibraryDocument document;
     int rescans;
     int unscannedWrites;
 
     OpenLibrary(string root, ReadDocument<LibraryDocument> read) {
         RootPath = root;
-        Document = read.Document;
+        document = read.Document;
         fileSchema = read.FileSchema;
         state = LibraryDocumentState.Of(read);
         database = new(LibraryLayout.IndexPath(root));
@@ -33,7 +35,7 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     public string RootPath { get; }
 
     /// <summary>The library's settings.</summary>
-    public LibraryDocument Document { get; }
+    public LibraryDocument Document => Volatile.Read(ref document);
 
     /// <summary>
     ///     Whether the index lags what this process knows of: a rescan is running, or a write awaits one.
@@ -382,23 +384,40 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     public AssetImpact? Impact(AssetId asset, int offset = 0, int limit = 50) => queries.Impact(asset, offset, limit);
 
     /// <summary>
+    ///     Keeps what an export of the whole library is set to, in <c>library.yaml</c>, where any client's next one
+    ///     starts. Writing the file brings it to the current schema.
+    /// </summary>
+    public void SetExport(ProjectExportSettings settings) {
+        ArgumentNullException.ThrowIfNull(settings);
+        lock (documentGate) {
+            var text = DocumentCodec.Write(Document with { Export = settings });
+            LibraryFiles.Replace(Path.Combine(RootPath, LibraryLayout.LibraryFile), text);
+            // What the file now holds, in its order, is what is reported, as it would be after opening it again.
+            Volatile.Write(ref document, DocumentCodec.ReadLibrary(text, LibraryLayout.LibraryFile).Document);
+            Volatile.Write(ref fileSchema, SchemaChain.Library.Current);
+        }
+    }
+
+    /// <summary>
     ///     The library as <c>GET /api/v1/library</c> reports it. <see cref="Indexing" /> is read before the counts:
     ///     read after them, a scan that ends in between reports old counts as caught up.
     /// </summary>
     public LibraryInfo Describe() {
         var indexing = Indexing;
+        var settings = Document;
         return new(
-            Document.Id.Value,
-            Document.Name,
+            settings.Id.Value,
+            settings.Name,
             RootPath,
-            fileSchema,
-            Document.TexelDensity,
-            Document.Channels,
-            Document.DefaultShader,
-            Document.ExportTargets,
+            Volatile.Read(ref fileSchema),
+            settings.TexelDensity,
+            settings.Channels,
+            settings.DefaultShader,
+            settings.ExportTargets,
             queries.CountProjects(),
             queries.CountAssets(),
-            indexing
+            indexing,
+            settings.Export
         );
     }
 
