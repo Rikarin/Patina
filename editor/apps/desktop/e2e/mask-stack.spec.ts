@@ -186,3 +186,18 @@ test('a mask switches off and on from its own menu and Shift-click, and pastes i
   await expect(window.getByTestId('paint-undo')).toHaveAttribute('aria-label', 'Undo Paste mask');
   await window.screenshot({ path: join(shots, 'mask-switch-2-pasted.png') });
 });
+
+test('the layer rows go compact, a line each, and back', async () => {
+  const paint = window.getByTestId('paint-layer-paint');
+  await expect(paint).toHaveCSS('height', '56px');
+
+  await window.getByTestId('layers-compact').click();
+  await expect(paint).toHaveCSS('height', '36px');
+  await expect(window.getByTestId('layers-compact')).toHaveAttribute('aria-pressed', 'true');
+  await expect(paint.getByTestId('paint-layer-blend')).toBeVisible();
+  await expect(paint.getByTestId('paint-layer-opacity')).toBeVisible();
+  await window.screenshot({ path: join(shots, 'layers-compact.png') });
+
+  await window.getByTestId('layers-compact').click();
+  await expect(window.getByTestId('paint-layer-paint')).toHaveCSS('height', '56px');
+});

@@ -31,7 +31,19 @@ import { MaterialUse } from './material-use';
 import { type LayerRow, PaintStore, maskOn, toggledEffect } from './paint-store';
 
 const RowHeight = 56;
+/** A row in the compact list (#106): its thumbnails and its blending on one line. */
+const CompactHeight = 36;
 const EffectHeight = 32;
+const CompactKey = 'patina.layers.compact';
+
+/** Whether this machine last chose compact rows. A choice of the viewer's, so it stays in this browser. */
+function savedCompact(): boolean {
+  try {
+    return globalThis.localStorage.getItem(CompactKey) === 'true';
+  } catch {
+    return false;
+  }
+}
 
 /** One thing added to a layer's mask. No effect index means the generator that is the mask. */
 interface LayerWork {
@@ -136,6 +148,23 @@ const MaskMarks: Readonly<Record<string, string>> = {
         (click)="store.finding.set(!store.finding())"
       >
         <ng-icon xui size="sm" name="matAdsClick" />
+      </button>
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        class="w-6 shrink-0 px-0"
+        data-testid="layers-compact"
+        [title]="compact() ? 'Tall rows, with each layer’s blend above its opacity' : 'Compact rows, a line each'"
+        aria-label="Compact rows"
+        [attr.aria-pressed]="compact()"
+        [class.bg-selection]="compact()"
+        (click)="setCompact(!compact())"
+      >
+        <svg viewBox="0 0 16 16" class="size-3.5" aria-hidden="true">
+          <path d="M2 3h12M2 6.5h12M2 10h12M2 13.5h12" stroke="currentColor" stroke-width="1.4" />
+        </svg>
       </button>
       <button
         type="button"
@@ -524,7 +553,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
           [attr.tabindex]="row.layer.id === (store.layer() ?? rows()[0]?.layer?.id) ? 0 : -1"
           [class.bg-selection]="store.selection().has(row.layer.id)"
           [class.opacity-50]="!row.layer.enabled"
-          [style.height.px]="row.effect ? effectHeight : rowHeight"
+          [style.height.px]="row.effect ? effectHeight : compact() ? compactHeight : rowHeight"
           [style.padding-inline-start.px]="row.depth * 14 + 4"
           (click)="click($event, row.layer)"
           (dragstart)="start($event, row.layer.id)"
@@ -621,6 +650,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
               <span
                 class="h-[3px] w-8 rounded-full"
                 data-testid="layer-content-mark"
+                [class.hidden]="compact()"
                 [class.bg-surface-sunken]="!hasContent(row.layer)"
                 [class.bg-warning]="hasContent(row.layer)"
               ></span>
@@ -653,6 +683,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
               <span
                 class="h-[3px] w-8 rounded-full"
                 data-testid="layer-mask-mark"
+                [class.hidden]="compact()"
                 [class.bg-surface-sunken]="!hasMaskWork(row.layer)"
                 [class.bg-warning]="hasMaskWork(row.layer)"
               ></span>
@@ -718,11 +749,12 @@ const MaskMarks: Readonly<Record<string, string>> = {
 
           <span
             class="flex shrink-0"
-            [class.flex-col]="!row.effect"
-            [class.gap-1]="row.effect"
-            [class.gap-2]="!row.effect"
-            [class.items-center]="row.effect"
-            [class.w-20]="!row.effect"
+            [class.flex-col]="!row.effect && !compact()"
+            [class.gap-1]="row.effect || compact()"
+            [class.gap-2]="!row.effect && !compact()"
+            [class.items-center]="row.effect || compact()"
+            [class.w-20]="!row.effect && !compact()"
+            [class.w-28]="compact() && !row.effect"
             [class.w-40]="row.effect"
             role="group"
             tabindex="-1"
@@ -739,7 +771,8 @@ const MaskMarks: Readonly<Record<string, string>> = {
               [ariaLabel]="'Blend mode of ' + row.layer.name"
               [filterable]="false"
               [class.w-20]="row.effect"
-              [class.w-full]="!row.effect"
+              [class.w-16]="compact() && !row.effect"
+              [class.w-full]="!row.effect && !compact()"
               [itemText]="blendLabel"
               [items]="blends()"
               [matchTargetWidth]="false"
@@ -758,7 +791,11 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 [value]="opacityOf(row.layer)"
                 (valueChange)="setOpacity(row.layer, $event)"
               />
-              <span class="readout w-9 shrink-0 ps-1 text-end text-xs" data-testid="paint-layer-opacity-readout">{{
+              <span
+                class="readout w-9 shrink-0 ps-1 text-end text-xs"
+                data-testid="paint-layer-opacity-readout"
+                [class.hidden]="compact() && !row.effect"
+                >{{
                 percent(opacityOf(row.layer))
               }}</span>
             </span>
@@ -1249,6 +1286,18 @@ export class LayerStack {
     }
   }
   protected readonly rowHeight = RowHeight;
+  protected readonly compactHeight = CompactHeight;
+  /** Rows a line each, so that more of a long stack shows at once (#106). */
+  protected readonly compact = signal(savedCompact());
+
+  protected setCompact(compact: boolean): void {
+    this.compact.set(compact);
+    try {
+      globalThis.localStorage.setItem(CompactKey, String(compact));
+    } catch {
+      // Only this machine's choice is lost.
+    }
+  }
   protected readonly maskLayerSources = MaskLayerSources;
   /** The layer whose mask the list shows as a stack of its own, in place of the layers (#109), or null. */
   protected readonly maskStack = signal<string | null>(null);
