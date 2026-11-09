@@ -35,7 +35,12 @@ sealed class ViewportPost : IDisposable {
 
     readonly VulkanDevice device;
     readonly ViewportShaders shaders;
-    readonly Func<EffectData, (Effect Effect, PipelineHandle Pipeline)> build;
+    readonly Func<EffectData, PixelFormat, (Effect Effect, PipelineHandle Pipeline)> build;
+    readonly ViewportBloom bloom;
+
+    /// <summary>Whether the next frame blooms, which <see cref="Plan" /> chose.</summary>
+    bool blooms;
+
     readonly SamplerHandle linear;
     readonly SamplerHandle point;
     readonly BufferHandle meteredExposure;
@@ -47,11 +52,12 @@ sealed class ViewportPost : IDisposable {
     public ViewportPost(
         VulkanDevice device,
         ViewportShaders shaders,
-        Func<EffectData, (Effect Effect, PipelineHandle Pipeline)> build
+        Func<EffectData, PixelFormat, (Effect Effect, PipelineHandle Pipeline)> build
     ) {
         this.device = device;
         this.shaders = shaders;
         this.build = build;
+        bloom = new(device, mode => build(shaders.Bloom(mode), ViewportTargets.HdrFormat));
         linear = device.CreateSampler(SamplerDescription.LinearClamp);
         point = device.CreateSampler(SamplerDescription.PointClamp);
 
@@ -62,9 +68,18 @@ sealed class ViewportPost : IDisposable {
         device.Write(meteredExposure, 0, BitConverter.GetBytes(1f));
     }
 
-    /// <summary>Chooses the stages the next frame runs after the forward pass and writes their numbers.</summary>
-    public void Plan(ViewportShading shading, int width, int height) {
+    /// <summary>
+    ///     Chooses the stages the next frame runs after the forward pass and writes their numbers: the bloom over its
+    ///     light when it is asked for, then the curve and the effects.
+    /// </summary>
+    public void Plan(ViewportShading shading, ViewportTargets target) {
+        var (width, height) = (target.Width, target.Height);
         var data = shading.ShowsData;
+        blooms = shading.Bloom > 0f && !data;
+        if (blooms) {
+            bloom.Plan(target, shading.Bloom, ExposureScale(shading.Exposure));
+        }
+
         var tonemap = Get(
             $"tonemap {(data ? ViewportToneMapping.None : shading.ToneMapping)}",
             () => shaders.Tonemap(data ? ViewportToneMapping.None : shading.ToneMapping),
@@ -142,14 +157,14 @@ sealed class ViewportPost : IDisposable {
     /// </summary>
     /// <param name="commands">The frame's commands.</param>
     /// <param name="target">The frame.</param>
-    /// <param name="light">The light the curve reads, as a colour target: the forward pass's, or the bloom's over it.</param>
     /// <returns>The picture the last stage wrote, as a colour target.</returns>
-    public TextureHandle Record(
-        ICommandList commands,
-        ViewportTargets target,
-        (TextureHandle Texture, TextureViewHandle View) light
-    ) {
-        var (reading, readingView) = light;
+    public TextureHandle Record(ICommandList commands, ViewportTargets target) {
+        var (reading, readingView) = (target.Hdr, target.HdrView);
+        if (blooms && bloom.Result is { } bloomed) {
+            bloom.Record(commands, target);
+            (reading, readingView) = bloomed;
+        }
+
         for (var at = 0; at < planned.Count; at++) {
             var stage = planned[at];
             var (writing, writingView) =
@@ -175,14 +190,16 @@ sealed class ViewportPost : IDisposable {
         return reading;
     }
 
-    /// <summary>Lets go of every set that reads a picture of the old size.</summary>
+    /// <summary>Lets go of every set that reads a picture of the old size, and the bloom's chain.</summary>
     public void Forget() {
+        bloom.Forget();
         foreach (var stage in stages.Values) {
             stage.Forget();
         }
     }
 
     public void Dispose() {
+        bloom.Dispose();
         foreach (var stage in stages.Values) {
             stage.Dispose();
         }
@@ -194,7 +211,7 @@ sealed class ViewportPost : IDisposable {
 
     Stage Get(string key, Func<EffectData> data, string source, string sampler, SamplerHandle filter) {
         if (!stages.TryGetValue(key, out var stage)) {
-            var (effect, pipeline) = build(data());
+            var (effect, pipeline) = build(data(), ViewportTargets.OutputFormat);
             stages[key] = stage = new(device, effect, pipeline, source, sampler, filter, meteredExposure);
         }
 

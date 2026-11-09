@@ -110,7 +110,8 @@ public static class IpcTypes {
     public const string StackFind = "stack.find";
 
     /// <summary>
-    ///     Measures a stack's set before export: its layout on the mesh, and the share of its texels a physical material
+    ///     Measures a stack's set before export: its layout on the mesh, and the share of its texels a physical
+    ///     material
     ///     cannot have. Numbers come back, never the maps.
     /// </summary>
     public const string StackCheck = "stack.check";

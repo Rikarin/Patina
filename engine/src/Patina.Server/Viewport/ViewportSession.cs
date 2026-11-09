@@ -49,8 +49,11 @@ public sealed class ViewportSession(
     readonly Lock changing = new();
     readonly SemaphoreSlim dirty = new(0, 1);
 
-    /// <summary>One draw at a time: the loop's frames and a screenshot both tell the Worker what it has to know.</summary>
+    /// <summary>
+    ///     One draw at a time: the loop's frames and a screenshot both tell the Worker what it has to know.
+    /// </summary>
     readonly SemaphoreSlim drawing = new(1, 1);
+
     readonly List<IFrameSubscriber> subscribers = [];
     readonly RenderScale scale = new();
     readonly string framesPath = options.Value.Worker.FramesPath;
@@ -342,7 +345,8 @@ public sealed class ViewportSession(
     }
 
     /// <summary>
-    ///     Writes the picture the viewport shows now to a PNG, at a size of its own: the Worker is told what it does not
+    ///     Writes the picture the viewport shows now to a PNG, at a size of its own: the Worker is told what it does
+    ///     not
     ///     know, renders into a frame slot no viewer is offered, and the Server writes the slot's pixels to the file.
     /// </summary>
     /// <exception cref="IpcException">No mesh is open, or the Worker cannot draw it.</exception>

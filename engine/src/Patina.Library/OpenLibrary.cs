@@ -293,7 +293,9 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
-    /// <summary>Keeps what a project's texture sets are held to before export: budgets, a size limit, a density.</summary>
+    /// <summary>
+    ///     Keeps what a project's texture sets are held to before export: budgets, a size limit, a density.
+    /// </summary>
     /// <exception cref="FileNotFoundException">The project is not there.</exception>
     public void SetChecks(string path, ProjectCheckSettings checks) {
         lock (createGate) {

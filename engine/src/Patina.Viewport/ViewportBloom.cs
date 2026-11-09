@@ -36,7 +36,9 @@ sealed class ViewportBloom : IDisposable {
         sampler = device.CreateSampler(SamplerDescription.LinearClamp);
     }
 
-    /// <summary>The frame's light with the bloom over it, which the curve reads, or null before the first frame.</summary>
+    /// <summary>
+    ///     The frame's light with the bloom over it, which the curve reads, or null before the first frame.
+    /// </summary>
     public (TextureHandle Texture, TextureViewHandle View)? Result { get; private set; }
 
     /// <summary>
@@ -71,18 +73,22 @@ sealed class ViewportBloom : IDisposable {
     public void Record(ICommandList commands, ViewportTargets target) {
         Dictionary<TextureHandle, ResourceState> states = new() { [target.Hdr] = ResourceState.ColourTarget };
         foreach (var pass in passes) {
-            List<TextureBarrier> barriers = [new(pass.Writes, ResourceState.Undefined, ResourceState.ColourTarget)];
-            states[pass.Writes] = ResourceState.ColourTarget;
-            foreach (var read in pass.Reads) {
-                if (states.GetValueOrDefault(read, ResourceState.ColourTarget) != ResourceState.ShaderRead) {
-                    barriers.Add(new(read, ResourceState.ColourTarget, ResourceState.ShaderRead));
-                    states[read] = ResourceState.ShaderRead;
-                }
+            List<TextureBarrier> barriers = [
+                new(pass.Writes.Texture, ResourceState.Undefined, ResourceState.ColourTarget)
+            ];
+            states[pass.Writes.Texture] = ResourceState.ColourTarget;
+            // A pass's reads are distinct, so marking one read as it goes changes nothing for the next.
+            var unread = pass.Reads.Where(read =>
+                states.GetValueOrDefault(read, ResourceState.ColourTarget) != ResourceState.ShaderRead
+            );
+            foreach (var read in unread) {
+                barriers.Add(new(read, ResourceState.ColourTarget, ResourceState.ShaderRead));
+                states[read] = ResourceState.ShaderRead;
             }
 
             commands.Barrier(new BarrierGroup([], [..barriers]));
-            commands.BeginRenderPass(new([new(pass.WritesView, LoadAction.DontCare)], name: "viewport bloom"));
-            ViewportShadows.Cover(commands, pass.Width, pass.Height);
+            commands.BeginRenderPass(new([new(pass.Writes.View, LoadAction.DontCare)], name: "viewport bloom"));
+            ViewportShadows.Cover(commands, pass.Writes.Width, pass.Writes.Height);
             commands.BindPipeline(pass.Pipeline);
             commands.BindDescriptorSet(DescriptorSetSlot.PerMaterial, pass.Set);
             commands.Draw(3);
@@ -109,12 +115,9 @@ sealed class ViewportBloom : IDisposable {
         size = default;
     }
 
+    /// <summary>Lets go of the chain and the sampler. The passes' pipelines are their builder's to destroy.</summary>
     public void Dispose() {
         Forget();
-        foreach (var (_, pipeline) in modes.Values) {
-            device.Destroy(pipeline);
-        }
-
         device.Destroy(sampler);
     }
 
@@ -144,7 +147,16 @@ sealed class ViewportBloom : IDisposable {
         var coming = down[^1];
         for (var level = down.Count - 2; level >= 0; level--) {
             var up = Picture(down[level].Width, down[level].Height, $"viewport bloom up {level}");
-            Add(3, up, coming.View, down[level].View, [coming.Texture, down[level].Texture], coming.Width, coming.Height, false);
+            Add(
+                3,
+                up,
+                coming.View,
+                down[level].View,
+                [coming.Texture, down[level].Texture],
+                coming.Width,
+                coming.Height,
+                false
+            );
             coming = up;
         }
 
@@ -204,11 +216,8 @@ sealed class ViewportBloom : IDisposable {
                 set,
                 constants,
                 block,
-                writes.Texture,
-                writes.View,
+                writes,
                 reads,
-                writes.Width,
-                writes.Height,
                 new(1f / sourceWidth, 1f / sourceHeight),
                 last
             )
@@ -220,11 +229,8 @@ sealed class ViewportBloom : IDisposable {
         DescriptorSetHandle Set,
         BufferHandle Constants,
         ConstantBlock Block,
-        TextureHandle Writes,
-        TextureViewHandle WritesView,
+        (TextureHandle Texture, TextureViewHandle View, int Width, int Height) Writes,
         TextureHandle[] Reads,
-        int Width,
-        int Height,
         Vector2 Texel,
         bool Last
     );

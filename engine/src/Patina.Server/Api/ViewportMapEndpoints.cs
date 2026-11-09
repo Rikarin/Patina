@@ -133,14 +133,16 @@ static class ViewportMapEndpoints {
         ViewportSession session,
         CancellationToken cancellationToken
     ) {
-        if (!request.Path.EndsWith(".png", StringComparison.OrdinalIgnoreCase) || !Path.IsPathFullyQualified(request.Path)) {
+        if (!request.Path.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+            || !Path.IsPathFullyQualified(request.Path)) {
             return TypedResults.Problem(
                 $"'{request.Path}' is not a full path to a .png file.",
                 statusCode: Refused
             );
         }
 
-        if (request is { Width: < 2 } or { Height: < 2 }
+        if (request is { Width: < 2 }
+            or { Height: < 2 }
             or { Width: > FrameMemory.MaxWidth }
             or { Height: > FrameMemory.MaxHeight }) {
             return TypedResults.Problem(

@@ -58,14 +58,16 @@ public static class StackChecking {
     }
 
     /// <summary>
-    ///     The preset a project exports with: the one it last chose, or the first there is, which with no library is the
-    ///     first factory preset.
+    ///     The preset a project exports with: the one it last chose, or the first there is, which with no library is
+    ///     the first factory preset.
     /// </summary>
     public static ExportPreset? PresetOf(ProjectContents? project, string? libraryRoot) {
         var found = ExportPresetCatalog.Read(libraryRoot);
         return project?.Export?.Preset is { } chosen && found.Find(chosen) is { } preset
             ? preset
-            : found.Presets.Count > 0 ? found.Presets[0] : null;
+            : found.Presets.Count > 0
+                ? found.Presets[0]
+                : null;
     }
 
     /// <summary>Judges what the Worker measured.</summary>
@@ -90,54 +92,9 @@ public static class StackChecking {
         var density = measured.Layout is { } layout ? LayoutCheck.Density(layout, Math.Max(width, height)) : 0;
         var bytes = preset is null ? 0 : Memory(preset, project?.Export, state, width, height);
         var budget = (long)(settings.MemoryBudget * 1024 * 1024);
-        List<CheckProblem> problems = [];
-
-        if (budget > 0 && bytes > budget) {
-            problems.Add(
-                Problem(
-                    CheckCodes.OverBudget,
-                    Error,
-                    $"{name} takes {Mebibytes(bytes)} MiB of GPU memory as {preset!.Name} writes it, over the budget of "
-                    + $"{Mebibytes(budget)} MiB.",
-                    new() { ["bytes"] = Number(bytes), ["budget"] = Number(budget), ["preset"] = preset.Name },
-                    new(Setting: "checks.memoryBudget")
-                )
-            );
-        }
-
-        if (settings.MaxSize > 0 && Math.Max(width, height) > settings.MaxSize) {
-            problems.Add(
-                Problem(
-                    CheckCodes.TooLarge,
-                    Error,
-                    $"{name} is {width} by {height} texels, larger than the limit of {settings.MaxSize}.",
-                    new() { ["width"] = Number(width), ["height"] = Number(height), ["limit"] = Number(settings.MaxSize) },
-                    new(Setting: "checks.maxSize")
-                )
-            );
-        }
-
+        List<CheckProblem> problems = [..Limits(settings, name, (width, height), (bytes, budget), preset)];
         problems.AddRange(Missing(preset, project?.Export, state, name));
-        if (target > 0 && density > 0) {
-            var ratio = density / target;
-            var code = ratio < 1 - settings.DensityTolerance
-                ? CheckCodes.DensityLow
-                : ratio > 1 + settings.DensityTolerance
-                    ? CheckCodes.DensityHigh
-                    : null;
-            if (code is not null) {
-                problems.Add(
-                    Problem(
-                        code,
-                        Warning,
-                        $"{name} has {Round(density)} texels per unit where the project asks for {Round(target)}.",
-                        new() { ["density"] = Round(density), ["target"] = Round(target) },
-                        new(ViewportViews.TexelDensity, Setting: "checks.texelDensity")
-                    )
-                );
-            }
-        }
-
+        problems.AddRange(Density(density, target, settings.DensityTolerance, name));
         if (measured.Layout is { } measures) {
             problems.AddRange(Layout(measures, name));
         }
@@ -157,6 +114,69 @@ public static class StackChecking {
             preset?.Name ?? string.Empty,
             problems
         );
+    }
+
+    /// <summary>The project's limits a set breaks: its memory budget and its size limit, which are errors.</summary>
+    static IEnumerable<CheckProblem> Limits(
+        ProjectCheckSettings settings,
+        string name,
+        (int Width, int Height) size,
+        (long Bytes, long Budget) memory,
+        ExportPreset? preset
+    ) {
+        if (memory.Budget > 0 && memory.Bytes > memory.Budget && preset is not null) {
+            yield return Problem(
+                CheckCodes.OverBudget,
+                Error,
+                $"{name} takes {Mebibytes(memory.Bytes)} MiB of GPU memory as {preset.Name} writes it, over the budget "
+                + $"of {Mebibytes(memory.Budget)} MiB.",
+                new() {
+                    ["bytes"] = Number(memory.Bytes), ["budget"] = Number(memory.Budget), ["preset"] = preset.Name
+                },
+                new(Setting: "checks.memoryBudget")
+            );
+        }
+
+        if (settings.MaxSize > 0 && Math.Max(size.Width, size.Height) > settings.MaxSize) {
+            yield return Problem(
+                CheckCodes.TooLarge,
+                Error,
+                $"{name} is {size.Width} by {size.Height} texels, larger than the limit of {settings.MaxSize}.",
+                new() {
+                    ["width"] = Number(size.Width),
+                    ["height"] = Number(size.Height),
+                    ["limit"] = Number(settings.MaxSize)
+                },
+                new(Setting: "checks.maxSize")
+            );
+        }
+    }
+
+    /// <summary>
+    ///     A density further from the project's than its tolerance, either way, shown in the density view.
+    /// </summary>
+    static IEnumerable<CheckProblem> Density(double density, double target, double tolerance, string name) {
+        if (target <= 0 || density <= 0) {
+            yield break;
+        }
+
+        var ratio = density / target;
+        string? code = null;
+        if (ratio < 1 - tolerance) {
+            code = CheckCodes.DensityLow;
+        } else if (ratio > 1 + tolerance) {
+            code = CheckCodes.DensityHigh;
+        }
+
+        if (code is not null) {
+            yield return Problem(
+                code,
+                Warning,
+                $"{name} has {Round(density)} texels per unit where the project asks for {Round(target)}.",
+                new() { ["density"] = Round(density), ["target"] = Round(target) },
+                new(ViewportViews.TexelDensity, Setting: "checks.texelDensity")
+            );
+        }
     }
 
     /// <summary>
@@ -182,20 +202,27 @@ public static class StackChecking {
                 continue;
             }
 
-            var format = export?.Files.FirstOrDefault(file => file.Preset == preset.Id && file.Template == texture.File)
-                ?.Format is { Length: > 0 } other
+            var format = SettingOf(export, preset.Id, texture.File)?.Format is { Length: > 0 } other
                 ? other
                 : texture.Format;
-            total += (double)across * down * BytesPerTexel(format, texture.Compression, texture.Channels.Count)
+            total += (double)across
+                * down
+                * BytesPerTexel(format, texture.Compression, texture.Channels.Count)
                 * (texture.Mips ? 4d / 3d : 1d);
         }
 
         return (long)Math.Ceiling(total);
     }
 
-    /// <summary>What one texel takes on a GPU: a block-compressed size, or each lane at its depth, three lanes as four.</summary>
+    /// <summary>
+    ///     What one texel takes on a GPU: a block-compressed size, or each lane at its depth, three lanes as four.
+    /// </summary>
     public static double BytesPerTexel(string format, string compression, int lanes) {
-        var held = lanes switch { <= 1 => 1, 2 => 2, _ => 4 };
+        var held = lanes switch {
+            <= 1 => 1,
+            2 => 2,
+            _ => 4
+        };
         return compression switch {
             ExportCompressions.Bc1 or ExportCompressions.Bc4 => 0.5,
             ExportCompressions.Bc3 or ExportCompressions.Bc5 or ExportCompressions.Bc6H or ExportCompressions.Bc7 => 1,
@@ -210,10 +237,18 @@ public static class StackChecking {
     }
 
     static IEnumerable<ExportTexture> Written(ExportPreset preset, ProjectExportSettings? export) =>
-        preset.Textures.Where(texture =>
-            export?.Files.FirstOrDefault(file => file.Preset == preset.Id && file.Template == texture.File) is not
-                { Enabled: false }
-        );
+        preset.Textures.Where(texture => SettingOf(export, preset.Id, texture.File) is not { Enabled: false });
+
+    /// <summary>What the project says of one file of a preset: off, or in another format, or nothing.</summary>
+    static ExportFileSetting? SettingOf(ProjectExportSettings? export, string preset, string template) {
+        foreach (var file in export?.Files ?? []) {
+            if (file.Preset == preset && file.Template == template) {
+                return file;
+            }
+        }
+
+        return null;
+    }
 
     /// <summary>The maps a set makes. One with a height channel makes a normal whether or not it says so.</summary>
     static HashSet<string> Maps(StackState state) {
@@ -276,7 +311,8 @@ public static class StackChecking {
             yield return Problem(
                 CheckCodes.UvOutside,
                 Warning,
-                $"{measures.Outside} of {name}'s triangles reach past UDIM tile 1001, which is the only tile Patina paints.",
+                $"{measures.Outside} of {name}'s triangles reach past UDIM tile 1001, which is the only tile Patina "
+                + "paints.",
                 new() { ["count"] = Number(measures.Outside) },
                 At(CheckCodes.UvOutside)
             );
@@ -286,8 +322,8 @@ public static class StackChecking {
             yield return Problem(
                 CheckCodes.UvOverlap,
                 Warning,
-                $"{Percent(measures.Overlap)} of the texels {name} covers are under more than one triangle, so a stroke "
-                + "on one lands on the other.",
+                $"{Percent(measures.Overlap)} of the texels {name} covers are under more than one triangle, so a "
+                + "stroke on one lands on the other.",
                 new() { ["share"] = Share(measures.Overlap) },
                 At(CheckCodes.UvOverlap)
             );
@@ -349,6 +385,5 @@ public static class StackChecking {
 
     static string Percent(double value) => (value * 100).ToString("0.#", CultureInfo.InvariantCulture) + "%";
 
-    static string Mebibytes(long bytes) =>
-        (bytes / (1024d * 1024d)).ToString("0.#", CultureInfo.InvariantCulture);
+    static string Mebibytes(long bytes) => (bytes / (1024d * 1024d)).ToString("0.#", CultureInfo.InvariantCulture);
 }

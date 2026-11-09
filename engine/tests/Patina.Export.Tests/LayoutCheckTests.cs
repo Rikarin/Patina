@@ -65,7 +65,9 @@ public sealed class LayoutCheckTests {
 
     [Fact]
     public void A_spot_looks_at_its_triangle_along_the_way_it_faces() {
-        var spot = Assert.Single(Measure(Square, [..Tile.Select(static uv => uv + new Vector2(1f, 0f))], [0, 1, 2]).Spots);
+        var spot = Assert.Single(
+            Measure(Square, [..Tile.Select(static uv => uv + new Vector2(1f, 0f))], [0, 1, 2]).Spots
+        );
         var camera = spot.Camera!;
 
         // The square faces +z: a camera at yaw 0 and pitch 0 looks down -z at it.

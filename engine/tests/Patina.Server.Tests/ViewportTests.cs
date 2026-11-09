@@ -382,7 +382,8 @@ public sealed class ViewportProcessTests : IDisposable {
     }
 
     /// <summary>
-    ///     A screenshot is the picture as the viewport shows it, at a size of its own, written by the Server from a frame
+    ///     A screenshot is the picture as the viewport shows it, at a size of its own, written by the Server from a
+    ///     frame
     ///     slot: no client has to be watching, and none is sent the frame. A path that is no PNG is refused first.
     /// </summary>
     [Fact]

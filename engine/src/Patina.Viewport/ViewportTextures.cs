@@ -122,8 +122,8 @@ sealed class ViewportTextures : IDisposable {
     }
 
     /// <summary>
-    ///     The width of the texture behind a view, or zero for one of the stand-ins with no picture of its own and for a
-    ///     view this did not make.
+    ///     The width of the texture behind a view, or zero for one of the stand-ins with no picture of its own and for
+    ///     a view this did not make.
     /// </summary>
     public int WidthOf(TextureViewHandle view) {
         foreach (var entry in entries.Values) {

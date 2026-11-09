@@ -132,13 +132,17 @@ public sealed record ViewportShading {
     /// <summary>Whether the floor's grid and the world's axes are drawn.</summary>
     public bool Grid { get; init; }
 
-    /// <summary>Which lane of the picture shows: 0 its colour, then 1 red, 2 green, 3 blue and 4 alpha as greys.</summary>
+    /// <summary>
+    ///     Which lane of the picture shows: 0 its colour, then 1 red, 2 green, 3 blue and 4 alpha as greys.
+    /// </summary>
     public int PictureLane { get; init; }
 
     /// <summary>What the picture's numbers are multiplied by before they are shown.</summary>
     public float PictureScale { get; init; } = 1f;
 
-    /// <summary>The texel density the texel density view measures against, in texels per unit, or zero for none.</summary>
+    /// <summary>
+    ///     The texel density the texel density view measures against, in texels per unit, or zero for none.
+    /// </summary>
     public float DensityTarget { get; init; }
 
     /// <summary>The side of a map, in texels, for a material that wears none whose size can be read.</summary>

@@ -25,6 +25,7 @@ public sealed partial class ViewportDisplayTests {
         renderer.OpenMesh(Square());
         renderer.SetLive(ViewportSlot.Occlusion, Map, Map, Solid(0, 0, 0));
         var camera = new OrbitCamera(0f, 0f, 0.5f);
+
         double Lit(float rotation) {
             renderer.Shading = new() {
                 View = ViewportView.Clay, ToneMapping = ViewportToneMapping.None, LightRotation = rotation, Shadows = 0f
@@ -80,7 +81,8 @@ public sealed partial class ViewportDisplayTests {
     }
 
     /// <summary>
-    ///     Blur softens the background and not the light on the model (#30): the frames at no blur and at full blur part
+    ///     Blur softens the background and not the light on the model (#30): the frames at no blur and at full blur
+    ///     part
     ///     on the background, and no pixel of the model, which the frame with no background shows, moves.
     /// </summary>
     [Fact]
@@ -132,12 +134,14 @@ public sealed partial class ViewportDisplayTests {
         renderer.Shading = new() { Exposure = 2f, Bloom = 1f };
         var bloomed = Render(renderer, OrbitCamera.Default, 160, 100);
 
-        var darker = Enumerable.Range(0, plain.Length).Count(i => i % 4 != 3 && bloomed[i] + 1 < plain[i]);
+        var darker = Enumerable.Range(0, plain.Length).Count(i => (i & 3) != 3 && bloomed[i] + 1 < plain[i]);
         Assert.Equal(0, darker);
         Assert.True(Brightness(bloomed) > Brightness(plain) * 1.02, "Bloom added no light.");
     }
 
-    /// <summary>Warmth takes blue towards red and tint takes green out, and neither moves the frame much in all.</summary>
+    /// <summary>
+    ///     Warmth takes blue towards red and tint takes green out, and neither moves the frame much in all.
+    /// </summary>
     [Fact]
     public void Warmth_and_tint_move_the_colour_and_not_the_brightness() {
         using var renderer = Open();
@@ -173,6 +177,7 @@ public sealed partial class ViewportDisplayTests {
         using var renderer = Open();
         renderer.OpenMesh(Square());
         var camera = new OrbitCamera(0f, 0f, 0.5f);
+
         (int R, int G, int B) Middle(float target) {
             renderer.Shading = new() {
                 View = ViewportView.TexelDensity, DensityTarget = target, DensityResolution = 1024f
@@ -196,7 +201,8 @@ public sealed partial class ViewportDisplayTests {
     }
 
     /// <summary>
-    ///     The orbit is free over the poles. Past straight down the camera sits where the opposite yaw would put it short
+    ///     The orbit is free over the poles. Past straight down the camera sits where the opposite yaw would put it
+    ///     short
     ///     of the pole, upside down, so its picture is that one turned half round. With up held level it was that
     ///     picture the right way up.
     /// </summary>
@@ -231,6 +237,7 @@ public sealed partial class ViewportDisplayTests {
         File.WriteAllBytes(picture, PngCodec.Encode(new(Map, Map, Solid(33, 166, 222))));
         renderer.SetPicture(new(picture, "lanes"));
         var camera = new OrbitCamera(0f, 0f, 0.5f);
+
         (int, int, int) Shown(int lane, float scale) {
             renderer.Shading = new() { View = ViewportView.Picture, PictureLane = lane, PictureScale = scale };
             return At(Render(renderer, camera, 64, 64), 64, 32, 32);

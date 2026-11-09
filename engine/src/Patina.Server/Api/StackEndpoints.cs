@@ -24,6 +24,7 @@ static class StackEndpoints {
 
     public static void MapStackApi(this IEndpointRouteBuilder api) {
         var stacks = api.MapGroup("/stacks").WithTags(Tag);
+        stacks.MapStackChecks();
 
         void Post(string route, Delegate handler, string name, string summary, params int[] problems) =>
             stacks.MapPost(route, handler).Describe(name, summary, problems);
@@ -131,17 +132,6 @@ static class StackEndpoints {
             "FindStackLayer",
             "The layer on top at a place on the map, as a click on the mesh or the map finds it. Its answer is a layer "
             + "id: the Worker weighs each layer there and no picture leaves it.",
-            Missing,
-            Refused,
-            Unavailable
-        );
-        Get(
-            "/{id}/checks",
-            GetChecks,
-            "GetStackChecks",
-            "Checks the texture set before export, against its project's budget, size limit, texel density and export "
-            + "preset, and its layout and values against what a mesh and a physical material can have. Each problem "
-            + "has a stable code and where it is.",
             Missing,
             Refused,
             Unavailable
@@ -349,53 +339,34 @@ static class StackEndpoints {
         }
     }
 
-    static async Task<Results<Ok<StackFound>, ProblemHttpResult>> FindLayer(
+    static Task<Results<Ok<StackFound>, ProblemHttpResult>> FindLayer(
         string id,
         StackFindRequest request,
         StackSessions sessions,
         StackEvaluator evaluator,
         CancellationToken cancellationToken
-    ) {
-        if (sessions.Find(id) is not { } session) {
-            return NoSession(id);
-        }
+    ) =>
+        AskWorkerAsync(
+            id,
+            sessions,
+            async session => new StackFound(await evaluator.FindAsync(session, request.U, request.V, cancellationToken))
+        );
 
-        try {
-            return TypedResults.Ok(
-                new StackFound(await evaluator.FindAsync(session, request.U, request.V, cancellationToken))
-            );
-        } catch (IpcException e) {
-            // The stack would not evaluate, which is the stack's to say and not the Worker's to be missing for.
-            return TypedResults.Problem(e.Message, statusCode: Refused);
-        } catch (Exception e) when (e is IOException or TimeoutException) {
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
-        }
-    }
-
-    static async Task<Results<Ok<StackChecks>, ProblemHttpResult>> GetChecks(
+    /// <summary>
+    ///     A question the Worker answers about an open stack. A stack that would not evaluate is the stack's to say and
+    ///     not the Worker's to be missing for, so it is refused; a Worker that is missing or went is unavailable.
+    /// </summary>
+    internal static async Task<Results<Ok<T>, ProblemHttpResult>> AskWorkerAsync<T>(
         string id,
         StackSessions sessions,
-        StackEvaluator evaluator,
-        LibraryHost host,
-        CancellationToken cancellationToken
+        Func<StackSession, Task<T>> ask
     ) {
         if (sessions.Find(id) is not { } session) {
             return NoSession(id);
         }
 
         try {
-            var measured = await evaluator.MeasureAsync(session, cancellationToken);
-            var library = host.Library;
-            var project = StackChecking.ProjectOf(library, session.Path);
-            return TypedResults.Ok(
-                StackChecking.Judge(
-                    session.State,
-                    measured,
-                    project,
-                    library?.Describe().TexelDensity ?? 0,
-                    StackChecking.PresetOf(project, library?.RootPath)
-                )
-            );
+            return TypedResults.Ok(await ask(session));
         } catch (IpcException e) {
             return TypedResults.Problem(e.Message, statusCode: Refused);
         } catch (TimeoutException e) {

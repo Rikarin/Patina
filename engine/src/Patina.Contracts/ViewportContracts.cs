@@ -95,7 +95,9 @@ public static class ViewportToneMappings {
 /// <param name="Aberration">How far red and blue part towards the edges, 0 to 1.</param>
 /// <param name="Sharpen">Contrast-adaptive sharpening, 0 to 1.</param>
 /// <param name="Bloom">How much light spills past what the curve takes to white, 0 none to 1.</param>
-/// <param name="Warmth">Blue towards red, -1 to 1, where zero leaves the picture alone. A grade, not a temperature.</param>
+/// <param name="Warmth">
+///     Blue towards red, -1 to 1, where zero leaves the picture alone. A grade, not a temperature.
+/// </param>
 /// <param name="Tint">Green towards magenta, -1 to 1, where zero leaves the picture alone.</param>
 /// <param name="BackgroundColor">
 ///     What shows where the environment does not, as <c>#rrggbb</c> in sRGB: the background fades to it as

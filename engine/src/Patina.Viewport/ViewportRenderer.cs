@@ -17,7 +17,6 @@ namespace Patina.Viewport;
 public sealed class ViewportRenderer : IDisposable {
     const PixelFormat HdrFormat = ViewportTargets.HdrFormat;
     const PixelFormat DepthFormat = ViewportTargets.DepthFormat;
-    const PixelFormat OutputFormat = ViewportTargets.OutputFormat;
     const int Samples = ViewportTargets.Samples;
 
     /// <summary>How bright the background is at full opacity, against the light it gives the model.</summary>
@@ -51,8 +50,6 @@ public sealed class ViewportRenderer : IDisposable {
     readonly ConstantBlock frameBlock;
     readonly ConstantBlock skyBlock;
     readonly ViewportWire wire;
-    readonly ViewportGrid grid;
-    readonly ViewportBloom bloom;
     Geometry? geometry;
     ViewportTargets? targets;
     string? meshFolder;
@@ -92,54 +89,20 @@ public sealed class ViewportRenderer : IDisposable {
         var hdr = new[] { new ColourTargetState(HdrFormat, BlendState.Opaque) };
         forward = Pipeline(shaders.Forward(), hdr, Samples, DepthStencilState.Default, DepthFormat, true);
         // The sky is added to the background colour the frame is cleared to, each scaled by its share.
-        var added = new BlendState(true, BlendFactor.One, BlendFactor.One, BlendOperation.Add, BlendFactor.One);
         sky = Pipeline(
             shaders.Sky(),
-            [new(HdrFormat, added)],
+            [new(HdrFormat, ViewportTargets.Added)],
             Samples,
             DepthStencilState.Disabled,
             DepthFormat,
             false
         );
-        var gridEffect = loader.Load(shaders.Grid());
-        grid = new(
-            device,
-            gridEffect,
-            Module(gridEffect, ShaderStage.Vertex),
-            Module(gridEffect, ShaderStage.Fragment),
-            HdrFormat,
-            DepthFormat,
-            Samples
-        );
-        cleanup.Add(grid.Dispose);
-        bloom = new(
-            device,
-            mode => {
-                var effect = loader.Load(shaders.Bloom(mode));
-                var pipeline = device.CreateGraphicsPipeline(
-                    new(
-                        Module(effect, ShaderStage.Vertex),
-                        Module(effect, ShaderStage.Fragment),
-                        effect.Layout,
-                        [new(HdrFormat, BlendState.Opaque)],
-                        [],
-                        Rasterizer: RasterizerState.TwoSided,
-                        DepthStencil: DepthStencilState.Disabled,
-                        DepthFormat: PixelFormat.Undefined,
-                        SampleCount: 1,
-                        Name: effect.Key.ShaderName
-                    )
-                );
-                return (effect, pipeline);
-            }
-        );
-        cleanup.Add(bloom.Dispose);
         var wireEffect = loader.Load(shaders.Wire());
+        var gridEffect = loader.Load(shaders.Grid());
         wire = new(
             device,
-            wireEffect,
-            Module(wireEffect, ShaderStage.Vertex),
-            Module(wireEffect, ShaderStage.Fragment),
+            (wireEffect, Module(wireEffect, ShaderStage.Vertex), Module(wireEffect, ShaderStage.Fragment)),
+            (gridEffect, Module(gridEffect, ShaderStage.Vertex), Module(gridEffect, ShaderStage.Fragment)),
             HdrFormat,
             DepthFormat,
             Samples
@@ -148,10 +111,10 @@ public sealed class ViewportRenderer : IDisposable {
         post = new(
             device,
             shaders,
-            data => {
+            (data, format) => {
                 var pass = Pipeline(
                     data,
-                    [new(OutputFormat, BlendState.Opaque)],
+                    [new(format, BlendState.Opaque)],
                     1,
                     DepthStencilState.Disabled,
                     PixelFormat.Undefined,
@@ -365,17 +328,12 @@ public sealed class ViewportRenderer : IDisposable {
         if (targets is not { } current || current.Width != width || current.Height != height) {
             targets?.Dispose();
             post.Forget();
-            bloom.Forget();
             current = targets = new(device, width, height);
         }
 
         var shading = Shading;
         WriteFrame(camera, shading, scene.Mesh.Bounds, (float)width / height);
-        post.Plan(shading, width, height);
-        var blooms = shading.Bloom > 0f && !shading.ShowsData;
-        if (blooms) {
-            bloom.Plan(current, shading.Bloom, ViewportPost.ExposureScale(shading.Exposure));
-        }
+        post.Plan(shading, current);
 
         if (shading.Wireframe) {
             scene.EnsureEdges();
@@ -383,7 +341,7 @@ public sealed class ViewportRenderer : IDisposable {
 
         device.BeginFrame();
         using (var commands = device.BeginCommandList(QueueKind.Graphics, "viewport")) {
-            Record(commands, current, scene, shading, blooms);
+            Record(commands, current, scene, shading);
             commands.Finish();
             device.GraphicsQueue.Submit([commands]);
         }
@@ -447,7 +405,14 @@ public sealed class ViewportRenderer : IDisposable {
             : textures.Open;
         var laidOver = Covered(worn, ViewportSlot.Normal, maps.Normal);
         var hasNormal = mesh.HasTangents && (laidOver || own.Normal is not null);
-        var colourMap = Slot(worn, ViewportSlot.BaseColor, maps.BaseColor, own.BaseColor, MapMeaning.Colour, textures.White);
+        var colourMap = Slot(
+            worn,
+            ViewportSlot.BaseColor,
+            maps.BaseColor,
+            own.BaseColor,
+            MapMeaning.Colour,
+            textures.White
+        );
 
         return new(
             new(colour.X, colour.Y, colour.Z),
@@ -457,7 +422,6 @@ public sealed class ViewportRenderer : IDisposable {
             hasNormal,
             // A stack's normal is what its graph fills made, and those run down as any graph's does (ADR 0011).
             worn[(int)ViewportSlot.Normal] is not null || (laidOver && maps.GreenDown) ? -1f : 1f,
-            SizeOf(worn, colourMap),
             new(
                 colourMap,
                 normal,
@@ -486,7 +450,8 @@ public sealed class ViewportRenderer : IDisposable {
                     textures.Open
                 ),
                 Slot(worn, ViewportSlot.Emissive, maps.Emissive, null, MapMeaning.Colour, textures.Black),
-                Slot(worn, ViewportSlot.Opacity, maps.Opacity, null, MapMeaning.Measurement, textures.Open)
+                Slot(worn, ViewportSlot.Opacity, maps.Opacity, null, MapMeaning.Measurement, textures.Open),
+                SizeOf(worn, colourMap)
             ),
             mapSampler
         );
@@ -586,7 +551,7 @@ public sealed class ViewportRenderer : IDisposable {
 
         wire.Write(viewProjection, eye, radius);
         if (shading.Grid) {
-            grid.Write(viewProjection, bounds);
+            wire.WriteGrid(viewProjection, bounds);
         }
     }
 
@@ -603,8 +568,7 @@ public sealed class ViewportRenderer : IDisposable {
         ICommandList commands,
         ViewportTargets target,
         Geometry scene,
-        ViewportShading shading,
-        bool blooms
+        ViewportShading shading
     ) {
         var shown = Shown(scene.Mesh);
         shadows.Record(commands, scene.Vertices, scene.Indices, shown);
@@ -621,15 +585,7 @@ public sealed class ViewportRenderer : IDisposable {
         var behind = shading.BackgroundColour * (1f - Math.Clamp(shading.BackgroundOpacity, 0f, 1f));
         commands.BeginRenderPass(
             new(
-                [
-                    new(
-                        target.HdrSamplesView,
-                        LoadAction.Clear,
-                        StoreAction.Resolve,
-                        new Color4(behind.X, behind.Y, behind.Z, 1f),
-                        target.HdrView
-                    )
-                ],
+                [target.Cleared(behind)],
                 new DepthStencilAttachment(target.DepthView, LoadAction.Clear, StoreAction.DontCare),
                 "viewport forward"
             )
@@ -653,18 +609,12 @@ public sealed class ViewportRenderer : IDisposable {
         }
 
         if (shading.Grid) {
-            grid.Record(commands);
+            wire.RecordGrid(commands);
         }
 
         commands.EndRenderPass();
 
-        var light = (target.Hdr, target.HdrView);
-        if (blooms && bloom.Result is { } bloomed) {
-            bloom.Record(commands, target);
-            light = bloomed;
-        }
-
-        var reading = post.Record(commands, target, light);
+        var reading = post.Record(commands, target);
         commands.Barrier(new BarrierGroup([], [new(reading, ResourceState.ColourTarget, ResourceState.CopySource)]));
         commands.CopyTextureToBuffer(new(reading), new(target.Width, target.Height, 1), target.Readback, 0);
     }
@@ -735,12 +685,11 @@ public sealed class ViewportRenderer : IDisposable {
         float NormalScale,
         bool UsesNormalMap,
         float NormalGreen,
-        float MapSize,
         MaterialMaps Maps,
         SamplerHandle Sampler
     );
 
-    /// <summary>One material's textures.</summary>
+    /// <summary>One material's textures, and the side they are painted at, which its texel density is in.</summary>
     readonly record struct MaterialMaps(
         TextureViewHandle BaseColor,
         TextureViewHandle Normal,
@@ -748,7 +697,8 @@ public sealed class ViewportRenderer : IDisposable {
         TextureViewHandle Metallic,
         TextureViewHandle Occlusion,
         TextureViewHandle Emissive,
-        TextureViewHandle Opacity
+        TextureViewHandle Opacity,
+        float Side
     );
 
     /// <summary>The GPU's copy of a mesh, and one descriptor set per material in it.</summary>
@@ -837,7 +787,7 @@ public sealed class ViewportRenderer : IDisposable {
                 .Set("normalScale", material.NormalScale)
                 .Set("usesNormalMap", material.UsesNormalMap ? 1f : 0f)
                 .Set("normalGreen", material.NormalGreen)
-                .Set("mapSize", material.MapSize);
+                .Set("mapSize", material.Maps.Side);
             var buffer = Upload(constants.Bytes, BufferUsage.Uniform, "viewport material");
             var set = device.CreateDescriptorSet(
                 forward.Effect.SetLayouts[(int)DescriptorSetSlot.PerMaterial],

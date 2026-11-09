@@ -1072,6 +1072,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/stacks/{id}/checks': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Checks the texture set before export, against its project's budget, size limit, texel density and export preset, and its layout and values against what a mesh and a physical material can have. Each problem has a stable code and where it is. */
+    get: operations['GetStackChecks'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/stacks': {
     parameters: {
       query?: never;
@@ -1307,23 +1324,6 @@ export interface paths {
     put?: never;
     /** The layer on top at a place on the map, as a click on the mesh or the map finds it. Its answer is a layer id: the Worker weighs each layer there and no picture leaves it. */
     post: operations['FindStackLayer'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/stacks/{id}/checks': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Checks the texture set before export, against its project's budget, size limit, texel density and export preset, and its layout and values against what a mesh and a physical material can have. Each problem has a stable code and where it is. */
-    get: operations['GetStackChecks'];
-    put?: never;
-    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -4214,7 +4214,10 @@ export interface components {
       memoryBudget: number;
       /** @description The export preset measured against. */
       preset: string;
-      /** @description What is wrong, in the order of IReadOnlyList&lt;string&gt; CheckCodes.All, which puts the project's limits, the errors, first. */
+      /**
+       * @description What is wrong, in the order of IReadOnlyList&lt;string&gt; CheckCodes.All, which puts the project's limits, the errors,
+       *     first.
+       */
       problems: components['schemas']['CheckProblem'][];
     };
     /** @description Layers copied out of a stack, which a StackPasteLayers names. */
@@ -9232,6 +9235,55 @@ export interface operations {
       };
     };
   };
+  GetStackChecks: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackChecks'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   GetStacks: {
     parameters: {
       query?: never;
@@ -9848,55 +9900,6 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['StackFound'];
-        };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Unprocessable Entity */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Service Unavailable */
-      503: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-    };
-  };
-  GetStackChecks: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['StackChecks'];
         };
       };
       /** @description Not Found */

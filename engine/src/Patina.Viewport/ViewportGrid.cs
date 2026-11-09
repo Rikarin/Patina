@@ -24,10 +24,7 @@ sealed class ViewportGrid : IDisposable {
     static readonly Vector4 AxisZ = new(0.16f, 0.32f, 0.9f, 0.9f);
 
     readonly VulkanDevice device;
-    readonly PipelineHandle pipeline;
-    readonly ConstantBlock block;
-    readonly BufferHandle constants;
-    readonly DescriptorSetHandle set;
+    readonly ViewportLines pass;
     BufferHandle? lines;
     int count;
     BoundingBox drawn;
@@ -42,32 +39,12 @@ sealed class ViewportGrid : IDisposable {
         int samples
     ) {
         this.device = device;
-        pipeline = device.CreateGraphicsPipeline(
-            new(
-                vertex,
-                fragment,
-                effect.Layout,
-                [new(colourFormat, BlendState.AlphaBlend)],
-                [ViewportMesh.Layout(effect)],
-                PrimitiveTopology.LineList,
-                RasterizerState.TwoSided,
-                DepthStencilState.TestOnly,
-                depthFormat,
-                samples,
-                effect.Key.ShaderName
-            )
-        );
-
-        var layout = effect.BlockOf(DescriptorSetSlot.PerMaterial);
-        block = new(layout);
-        constants = device.CreateBuffer(
-            new(block.Bytes.Length, BufferUsage.Uniform, MemoryAccess.HostUpload, "viewport grid")
-        );
-        set = device.CreateDescriptorSet(effect.SetLayouts[(int)DescriptorSetSlot.PerMaterial], "viewport grid");
-        device.UpdateDescriptorSet(set, [DescriptorWrite.Uniform(layout.Binding, constants)]);
+        pass = new(device, effect, vertex, fragment, colourFormat, depthFormat, samples);
     }
 
-    /// <summary>The spacing of the lines for a model of this size: the power of ten nearest a third of its radius.</summary>
+    /// <summary>
+    ///     The spacing of the lines for a model of this size: the power of ten nearest a third of its radius.
+    /// </summary>
     public static float Spacing(BoundingBox bounds) {
         var radius = Math.Max(bounds.Extent.Length(), 1e-4f);
         return MathF.Pow(10f, MathF.Round(MathF.Log10(radius / 3f)));
@@ -107,8 +84,8 @@ sealed class ViewportGrid : IDisposable {
 
     /// <summary>The frame's camera, and the lines for the model's bounds when they have changed.</summary>
     public void Write(Matrix4x4 viewProjection, BoundingBox bounds) {
-        block.Set("viewProjection", viewProjection);
-        device.Write(constants, 0, block.Bytes);
+        pass.Block.Set("viewProjection", viewProjection);
+        pass.Commit();
         if (lines is not null && bounds == drawn) {
             return;
         }
@@ -132,8 +109,7 @@ sealed class ViewportGrid : IDisposable {
             return;
         }
 
-        commands.BindPipeline(pipeline);
-        commands.BindDescriptorSet(DescriptorSetSlot.PerMaterial, set);
+        pass.Bind(commands);
         commands.BindVertexBuffer(0, buffer);
         commands.Draw(count);
     }
@@ -143,8 +119,6 @@ sealed class ViewportGrid : IDisposable {
             device.Destroy(buffer);
         }
 
-        device.Destroy(set);
-        device.Destroy(constants);
-        device.Destroy(pipeline);
+        pass.Dispose();
     }
 }

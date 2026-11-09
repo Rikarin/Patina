@@ -64,12 +64,18 @@ public sealed class StackCheckingTests {
     [InlineData("ktx2", "bc7", 4, 1)]
     [InlineData("dds", "bc1", 3, 0.5)]
     [InlineData("ktx2", "half", 3, 8)]
-    public void A_texel_takes_what_its_format_holds_on_a_gpu(string format, string compression, int lanes, double bytes) =>
+    public void A_texel_takes_what_its_format_holds_on_a_gpu(
+        string format,
+        string compression,
+        int lanes,
+        double bytes
+    ) =>
         Assert.Equal(bytes, StackChecking.BytesPerTexel(format, compression, lanes));
 
     /// <summary>
     ///     Over budget and over the size limit are errors and come first; the maps the preset reads that the set does
-    ///     not make, and a density half the library's, are warnings after them, each once and in the order of the codes.
+    ///     not make, and a density half the library's, are warnings after them, each once and in the order of the
+    ///     codes.
     /// </summary>
     [Fact]
     public void The_projects_limits_come_first_and_each_problem_has_its_code() {
@@ -88,22 +94,34 @@ public sealed class StackCheckingTests {
             ],
             checks.Problems.Select(static problem => problem.Code)
         );
-        Assert.Equal(["error", "error", "warning", "warning", "warning"], checks.Problems.Select(static p => p.Severity));
-        Assert.Equal(["opacity", "occlusion"], checks.Problems.Where(static p => p.Code == CheckCodes.ChannelMissing).Select(static p => p.Values["map"]));
+        Assert.Equal(
+            ["error", "error", "warning", "warning", "warning"],
+            checks.Problems.Select(static p => p.Severity)
+        );
+        Assert.Equal(
+            ["opacity", "occlusion"],
+            checks.Problems.Where(static p => p.Code == CheckCodes.ChannelMissing).Select(static p => p.Values["map"])
+        );
         Assert.Equal(512, checks.TexelDensity, 1e-9);
         Assert.Equal(1024, checks.TargetDensity);
         Assert.Equal(8L * 1024 * 1024, checks.MemoryBudget);
         Assert.Equal(ViewportViews.TexelDensity, checks.Problems[^1].Target.View);
     }
 
-    /// <summary>A project's own density wins over the library's, and a density within the tolerance is no problem.</summary>
+    /// <summary>
+    ///     A project's own density wins over the library's, and a density within the tolerance is no problem.
+    /// </summary>
     [Theory]
     [InlineData(512, 0.25, null)]
     [InlineData(600, 0.25, null)]
     [InlineData(700, 0.25, CheckCodes.DensityLow)]
     [InlineData(700, 0.5, null)]
     [InlineData(300, 0.25, CheckCodes.DensityHigh)]
-    public void A_density_is_held_to_the_projects_own_within_its_tolerance(double target, double tolerance, string? code) {
+    public void A_density_is_held_to_the_projects_own_within_its_tolerance(
+        double target,
+        double tolerance,
+        string? code
+    ) {
         var checks = StackChecking.Judge(
             Set("baseColor", "opacity", "roughness", "metalness", "normal", "occlusion"),
             Square,
@@ -115,7 +133,9 @@ public sealed class StackCheckingTests {
         Assert.Equal(code is null ? [] : [code], checks.Problems.Select(static problem => problem.Code));
     }
 
-    /// <summary>A value on a few stray texels is not worth a line; on more it is, with the place it was found.</summary>
+    /// <summary>
+    ///     A value on a few stray texels is not worth a line; on more it is, with the place it was found.
+    /// </summary>
     [Fact]
     public void A_few_stray_texels_say_nothing() {
         CheckSpot spot = new(CheckCodes.AlbedoDark, 3, 0.25f, 0.75f, new(1, 0.5, 0.3));

@@ -14,7 +14,9 @@ public static class MapCheck {
     const float MetalBelow = 0.1f;
     const float MetalAbove = 0.9f;
 
-    /// <summary>The luminance thresholds, decoded: sRGB 30 and 240 for a surface that is not metal, and 180 for metal.</summary>
+    /// <summary>
+    ///     The luminance thresholds, decoded: sRGB 30 and 240 for a surface that is not metal, and 180 for metal.
+    /// </summary>
     static readonly float Darkest = Linear(30f / 255f);
 
     static readonly float Brightest = Linear(240f / 255f);
@@ -28,7 +30,9 @@ public static class MapCheck {
     /// </summary>
     /// <param name="baseColour">The base colour, RGBA with colour in sRGB, top row first, or null.</param>
     /// <param name="metalness">Metalness in red, or null.</param>
-    /// <param name="covered">Which texels of a square grid the layout covers, row by row, or null for every one.</param>
+    /// <param name="covered">
+    ///     Which texels of a square grid the layout covers, row by row, or null for every one.
+    /// </param>
     /// <param name="side">The grid's side.</param>
     public static IReadOnlyList<MapMeasure> Measure(Bitmap? baseColour, Bitmap? metalness, bool[]? covered, int side) {
         var (width, height) = baseColour is { } colour
@@ -36,39 +40,17 @@ public static class MapCheck {
             : metalness is { } metal
                 ? (metal.Width, metal.Height)
                 : (0, 0);
-        int[] counts = new int[CheckCodes.All.Count];
-        var first = new (int X, int Y)?[CheckCodes.All.Count];
-        var total = 0;
+        var tally = new Tally(width, height);
         for (var y = 0; y < height; y++) {
             for (var x = 0; x < width; x++) {
-                if (covered is not null && !covered[y * side / height * side + x * side / width]) {
-                    continue;
+                if (covered is null || covered[y * side / height * side + x * side / width]) {
+                    var m = metalness is { } map ? Level(map, x, y, width, height) / 255f : 0f;
+                    tally.Add(x, y, Judged(baseColour, x, y, width, height, m));
                 }
-
-                total++;
-                var m = metalness is { } map ? Level(map, x, y, width, height) / 255f : 0f;
-                var code = Judged(baseColour, x, y, width, height, m);
-                if (code is null) {
-                    continue;
-                }
-
-                var at = IndexOf(code);
-                counts[at]++;
-                first[at] ??= (x, y);
             }
         }
 
-        List<MapMeasure> found = [];
-        for (var at = 0; at < counts.Length; at++) {
-            if (counts[at] > 0 && first[at] is var (x, y)) {
-                var code = CheckCodes.All[at];
-                found.Add(
-                    new(code, (double)counts[at] / total, new(code, -1, (x + 0.5f) / width, (y + 0.5f) / height, null))
-                );
-            }
-        }
-
-        return found;
+        return tally.Found();
     }
 
     /// <summary>What is wrong with one texel, or null.</summary>
@@ -81,32 +63,52 @@ public static class MapCheck {
             return null;
         }
 
-        var (cx, cy) = (x * colour.Width / width, y * colour.Height / height);
-        var at = colour.Offset(cx, cy);
+        var at = colour.Offset(x * colour.Width / width, y * colour.Height / height);
         var luminance = 0.2126f * Decoded[colour.Pixels[at]]
             + 0.7152f * Decoded[colour.Pixels[at + 1]]
             + 0.0722f * Decoded[colour.Pixels[at + 2]];
-        return metal >= MetalAbove
-            ? luminance < DarkestMetal ? CheckCodes.MetalDark : null
-            : luminance < Darkest
-                ? CheckCodes.AlbedoDark
-                : luminance > Brightest
-                    ? CheckCodes.AlbedoBright
-                    : null;
+        if (metal >= MetalAbove) {
+            return luminance < DarkestMetal ? CheckCodes.MetalDark : null;
+        }
+
+        if (luminance < Darkest) {
+            return CheckCodes.AlbedoDark;
+        }
+
+        return luminance > Brightest ? CheckCodes.AlbedoBright : null;
     }
 
     static byte Level(Bitmap map, int x, int y, int width, int height) =>
         map.Pixels[map.Offset(x * map.Width / width, y * map.Height / height)];
 
-    static int IndexOf(string code) {
-        for (var at = 0; at < CheckCodes.All.Count; at++) {
-            if (CheckCodes.All[at] == code) {
-                return at;
+    static float Linear(float c) => c <= 0.04045f ? c / 12.92f : MathF.Pow((c + 0.055f) / 1.055f, 2.4f);
+
+    /// <summary>How many covered texels each problem has, and the first of them.</summary>
+    sealed class Tally(int width, int height) {
+        readonly Dictionary<string, (int Count, int X, int Y)> found = new(StringComparer.Ordinal);
+        int total;
+
+        public void Add(int x, int y, string? code) {
+            total++;
+            if (code is not null) {
+                found[code] = found.TryGetValue(code, out var known)
+                    ? known with { Count = known.Count + 1 }
+                    : (1, x, y);
             }
         }
 
-        return -1;
+        /// <summary>The problems in the order of <see cref="CheckCodes.All" />.</summary>
+        public IReadOnlyList<MapMeasure> Found() => [
+            ..CheckCodes.All.Where(found.ContainsKey)
+                .Select(code => {
+                        var (count, x, y) = found[code];
+                        return new MapMeasure(
+                            code,
+                            (double)count / total,
+                            new(code, -1, (x + 0.5f) / width, (y + 0.5f) / height, null)
+                        );
+                    }
+                )
+        ];
     }
-
-    static float Linear(float c) => c <= 0.04045f ? c / 12.92f : MathF.Pow((c + 0.055f) / 1.055f, 2.4f);
 }

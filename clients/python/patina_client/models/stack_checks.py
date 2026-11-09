@@ -36,7 +36,8 @@ class StackChecks:
             memory_budget (int): The project's budget in bytes, or zero for none.
             preset (str): The export preset measured against.
             problems (list[CheckProblem]): What is wrong, in the order of IReadOnlyList&lt;string&gt; CheckCodes.All, which
-                puts the project's limits, the errors, first.
+                puts the project's limits, the errors,
+                first.
      """
 
     stack: str

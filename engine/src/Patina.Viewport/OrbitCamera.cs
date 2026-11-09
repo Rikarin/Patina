@@ -57,7 +57,8 @@ public readonly record struct OrbitCamera(
     }
 
     /// <summary>
-    ///     Which way is up in the picture: the way the eye moves as the pitch grows. It is the world's up tipped towards
+    ///     Which way is up in the picture: the way the eye moves as the pitch grows. It is the world's up tipped
+    ///     towards
     ///     the camera, so the orbit is free over the poles: straight down has an up, and past it the model turns over.
     /// </summary>
     public Vector3 Up {

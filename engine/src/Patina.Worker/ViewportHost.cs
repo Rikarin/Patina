@@ -164,13 +164,14 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
         return IpcMessage.Ok(request.Id);
     }
 
-    /// <summary>An sRGB <c>#rrggbb</c> as the linear light the frame is cleared to, or black for anything else.</summary>
+    /// <summary>
+    ///     An sRGB <c>#rrggbb</c> as the linear light the frame is cleared to, or black for anything else.
+    /// </summary>
     static Vector3 Linear(string colour) {
         var (r, g, b) = ViewportDisplay.Colour(colour) ?? (0, 0, 0);
         return new(Decode(r), Decode(g), Decode(b));
 
-        static float Decode(double c) =>
-            (float)(c <= 0.04045 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4));
+        static float Decode(double c) => (float)(c <= 0.04045 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4));
     }
 
     /// <summary>The renderer's settings from the wire's: names become numbers, in the order the lists give.</summary>

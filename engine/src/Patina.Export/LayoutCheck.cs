@@ -6,14 +6,14 @@ namespace Patina.Export;
 /// <summary>
 ///     Measures a texture set's UV layout before it is exported (#159): its area on the model and in the map, which is
 ///     its texel density, and the triangles a brush or a bake cannot use as they are. Overlap is found by drawing every
-///     triangle into a grid of texels and counting the texels drawn twice; a texel centre on an edge two triangles share
-///     belongs to neither, so neighbours never count as an overlap.
+///     triangle into a grid of texels and counting the texels drawn twice; a texel centre on an edge two triangles
+///     share belongs to neither, so neighbours never count as an overlap.
 /// </summary>
 public static class LayoutCheck {
     /// <summary>The side of the grid overlap is counted on, in texels, at most.</summary>
     public const int Grid = 1024;
 
-    /// <summary>A triangle with less area than this in the layout, in tiles, has none: about a millionth of a texel at 8K.</summary>
+    /// <summary>Less area than this in the layout, in tiles, is none: about a millionth of a texel at 8K.</summary>
     const double NoArea = 1e-14;
 
     /// <summary>How close a jump goes, in framings: a tenth of the model either side of the place.</summary>
@@ -30,7 +30,9 @@ public static class LayoutCheck {
     /// <param name="coordinates">Their texture coordinates, v down the map.</param>
     /// <param name="indices">Three corners a triangle.</param>
     /// <param name="model">The whole model's bounds, which a camera's pan is measured in.</param>
-    /// <param name="side">The side of the set's maps, in texels; the grid is no larger than <see cref="Grid" />.</param>
+    /// <param name="side">
+    ///     The side of the set's maps, in texels; the grid is no larger than <see cref="Grid" />.
+    /// </param>
     public static Result Measure(
         ReadOnlySpan<Vector3> positions,
         ReadOnlySpan<Vector2> coordinates,
@@ -38,92 +40,22 @@ public static class LayoutCheck {
         BoundingBox model,
         int side
     ) {
-        var grid = Math.Clamp(side, 16, Grid);
-        var counts = new byte[grid * grid];
-        var triangles = indices.Length / 3;
-        var (surface, map) = (0d, 0d);
-        var (outside, degenerate) = (0, 0);
-        var (forward, backward) = (0, 0);
-        var signs = new sbyte[triangles];
-        Dictionary<string, CheckSpot> spots = new(StringComparer.Ordinal);
-        for (var triangle = 0; triangle < triangles; triangle++) {
-            var (a, b, c) = (indices[triangle * 3], indices[triangle * 3 + 1], indices[triangle * 3 + 2]);
-            var (pa, pb, pc) = (positions[a], positions[b], positions[c]);
-            var (ta, tb, tc) = (coordinates[a], coordinates[b], coordinates[c]);
-            var area = Vector3.Cross(pb - pa, pc - pa).Length() * 0.5;
-            var signed = Signed(ta, tb, tc);
-            surface += area;
-            map += Math.Abs(signed);
-            if (!Inside(ta) || !Inside(tb) || !Inside(tc)) {
-                outside++;
-                Spot(spots, CheckCodes.UvOutside, triangle, pa, pb, pc, ta, tb, tc, model);
-                continue;
-            }
-
-            if (Math.Abs(signed) < NoArea) {
-                if (area > 0) {
-                    degenerate++;
-                    Spot(spots, CheckCodes.UvDegenerate, triangle, pa, pb, pc, ta, tb, tc, model);
-                }
-
-                continue;
-            }
-
-            signs[triangle] = (sbyte)Math.Sign(signed);
-            if (signed > 0) {
-                forward++;
-            } else {
-                backward++;
-            }
-
-            if (Draw(counts, grid, ta, tb, tc)) {
-                Spot(spots, CheckCodes.UvOverlap, triangle, pa, pb, pc, ta, tb, tc, model);
-            }
+        var tally = new Tally(Math.Clamp(side, 16, Grid), indices.Length / 3, model);
+        for (var triangle = 0; triangle < tally.Triangles; triangle++) {
+            tally.Add(triangle, Corners(positions, indices, triangle), Corners(coordinates, indices, triangle));
         }
 
         // Turned over is turned against the most of the set: a layout drawn the other way round is still one way.
-        var against = forward >= backward ? (sbyte)-1 : (sbyte)1;
-        var flipped = 0;
-        for (var triangle = 0; triangle < triangles; triangle++) {
-            if (signs[triangle] != against) {
-                continue;
-            }
-
-            flipped++;
-            var (a, b, c) = (indices[triangle * 3], indices[triangle * 3 + 1], indices[triangle * 3 + 2]);
-            Spot(
-                spots,
+        foreach (var triangle in tally.TurnedOver()) {
+            tally.Spot(
                 CheckCodes.UvFlipped,
                 triangle,
-                positions[a],
-                positions[b],
-                positions[c],
-                coordinates[a],
-                coordinates[b],
-                coordinates[c],
-                model
+                Corners(positions, indices, triangle),
+                Corners(coordinates, indices, triangle)
             );
         }
 
-        var (covered, twice) = (0, 0);
-        var mask = new bool[counts.Length];
-        for (var at = 0; at < counts.Length; at++) {
-            mask[at] = counts[at] > 0;
-            covered += counts[at] > 0 ? 1 : 0;
-            twice += counts[at] > 1 ? 1 : 0;
-        }
-
-        var measures = new LayoutMeasures(
-            triangles,
-            surface,
-            map,
-            outside,
-            degenerate,
-            flipped,
-            covered == 0 ? 0 : (double)twice / covered,
-            [..CheckCodes.All.Where(spots.ContainsKey).Select(code => spots[code])]
-        );
-        return new(measures, mask, grid);
+        return tally.Result();
     }
 
     /// <summary>Texels per unit of the model: the side times the square root of map area over surface area.</summary>
@@ -146,8 +78,8 @@ public static class LayoutCheck {
     }
 
     /// <summary>
-    ///     A place on the map put on the model: the first triangle whose layout holds it, with a camera that looks at the
-    ///     point it lands on. A place no triangle holds is given back as it came.
+    ///     A place on the map put on the model: the first triangle whose layout holds it, with a camera that looks at
+    ///     the point it lands on. A place no triangle holds is given back as it came.
     /// </summary>
     public static CheckSpot Located(
         CheckSpot spot,
@@ -159,20 +91,20 @@ public static class LayoutCheck {
         ArgumentNullException.ThrowIfNull(spot);
         var place = new Vector2(spot.U, spot.V);
         for (var triangle = 0; triangle < indices.Length / 3; triangle++) {
-            var (a, b, c) = (indices[triangle * 3], indices[triangle * 3 + 1], indices[triangle * 3 + 2]);
-            var whole = Signed(coordinates[a], coordinates[b], coordinates[c]);
+            var (ta, tb, tc) = Corners(coordinates, indices, triangle);
+            var whole = Signed(ta, tb, tc);
             if (Math.Abs(whole) < NoArea) {
                 continue;
             }
 
-            var u = Signed(place, coordinates[b], coordinates[c]) / whole;
-            var v = Signed(coordinates[a], place, coordinates[c]) / whole;
+            var u = Signed(place, tb, tc) / whole;
+            var v = Signed(ta, place, tc) / whole;
             var w = 1 - u - v;
             if (u < 0 || v < 0 || w < 0) {
                 continue;
             }
 
-            var (pa, pb, pc) = (positions[a], positions[b], positions[c]);
+            var (pa, pb, pc) = Corners(positions, indices, triangle);
             var point = pa * (float)u + pb * (float)v + pc * (float)w;
             return spot with { Triangle = triangle, Camera = Looking(point, Vector3.Cross(pb - pa, pc - pa), model) };
         }
@@ -180,32 +112,13 @@ public static class LayoutCheck {
         return spot;
     }
 
-    static bool Inside(Vector2 coordinate) =>
-        coordinate.X is >= 0f and <= 1f && coordinate.Y is >= 0f and <= 1f;
+    static (T A, T B, T C) Corners<T>(ReadOnlySpan<T> values, ReadOnlySpan<int> indices, int triangle) =>
+        (values[indices[triangle * 3]], values[indices[triangle * 3 + 1]], values[indices[triangle * 3 + 2]]);
+
+    static bool Inside(Vector2 coordinate) => coordinate.X is >= 0f and <= 1f && coordinate.Y is >= 0f and <= 1f;
 
     static double Signed(Vector2 a, Vector2 b, Vector2 c) =>
         0.5 * ((double)(b.X - a.X) * (c.Y - a.Y) - (double)(c.X - a.X) * (b.Y - a.Y));
-
-    static void Spot(
-        Dictionary<string, CheckSpot> spots,
-        string code,
-        int triangle,
-        Vector3 pa,
-        Vector3 pb,
-        Vector3 pc,
-        Vector2 ta,
-        Vector2 tb,
-        Vector2 tc,
-        BoundingBox model
-    ) {
-        if (spots.ContainsKey(code)) {
-            return;
-        }
-
-        var middle = (ta + tb + tc) / 3f;
-        var camera = Looking((pa + pb + pc) / 3f, Vector3.Cross(pb - pa, pc - pa), model);
-        spots[code] = new(code, triangle, middle.X, middle.Y, camera);
-    }
 
     /// <summary>
     ///     Counts the texel centres strictly inside a triangle. A centre on an edge, within a hair, is left to neither
@@ -242,4 +155,109 @@ public static class LayoutCheck {
 
     static double Edge(double x0, double y0, double x1, double y1, double px, double py) =>
         (x1 - x0) * (py - y0) - (y1 - y0) * (px - x0);
+
+    /// <summary>What one set's triangles come to, a triangle at a time.</summary>
+    sealed class Tally(int grid, int triangles, BoundingBox model) {
+        readonly byte[] counts = new byte[grid * grid];
+        readonly sbyte[] signs = new sbyte[triangles];
+        readonly Dictionary<string, CheckSpot> spots = new(StringComparer.Ordinal);
+        double surface;
+        double map;
+        int outside;
+        int degenerate;
+        int forward;
+        int backward;
+        int flipped;
+
+        public int Triangles => triangles;
+
+        /// <summary>
+        ///     Counts a triangle's areas, and draws it into the grid where it is in the tile with area there.
+        /// </summary>
+        public void Add(int triangle, (Vector3 A, Vector3 B, Vector3 C) at, (Vector2 A, Vector2 B, Vector2 C) laid) {
+            var area = Vector3.Cross(at.B - at.A, at.C - at.A).Length() * 0.5;
+            var signed = Signed(laid.A, laid.B, laid.C);
+            surface += area;
+            map += Math.Abs(signed);
+            if (!Inside(laid.A) || !Inside(laid.B) || !Inside(laid.C)) {
+                outside++;
+                Spot(CheckCodes.UvOutside, triangle, at, laid);
+            } else if (Math.Abs(signed) < NoArea) {
+                Flat(triangle, area, at, laid);
+            } else {
+                signs[triangle] = (sbyte)Math.Sign(signed);
+                forward += signed > 0 ? 1 : 0;
+                backward += signed > 0 ? 0 : 1;
+                if (Draw(counts, grid, laid.A, laid.B, laid.C)) {
+                    Spot(CheckCodes.UvOverlap, triangle, at, laid);
+                }
+            }
+        }
+
+        /// <summary>
+        ///     A triangle with no area in the layout, which is a problem only if it has some on the model.
+        /// </summary>
+        void Flat(
+            int triangle,
+            double area,
+            (Vector3 A, Vector3 B, Vector3 C) at,
+            (Vector2 A, Vector2 B, Vector2 C) laid
+        ) {
+            if (area > 0) {
+                degenerate++;
+                Spot(CheckCodes.UvDegenerate, triangle, at, laid);
+            }
+        }
+
+        /// <summary>
+        ///     The triangles laid out the other way round from most of the set, counted as they are given.
+        /// </summary>
+        public IEnumerable<int> TurnedOver() {
+            var against = forward >= backward ? (sbyte)-1 : (sbyte)1;
+            for (var triangle = 0; triangle < triangles; triangle++) {
+                if (signs[triangle] == against) {
+                    flipped++;
+                    yield return triangle;
+                }
+            }
+        }
+
+        /// <summary>Keeps the first example of a kind of problem, with a camera that looks at it.</summary>
+        public void Spot(
+            string code,
+            int triangle,
+            (Vector3 A, Vector3 B, Vector3 C) at,
+            (Vector2 A, Vector2 B, Vector2 C) laid
+        ) {
+            if (spots.ContainsKey(code)) {
+                return;
+            }
+
+            var middle = (laid.A + laid.B + laid.C) / 3f;
+            var camera = Looking((at.A + at.B + at.C) / 3f, Vector3.Cross(at.B - at.A, at.C - at.A), model);
+            spots[code] = new(code, triangle, middle.X, middle.Y, camera);
+        }
+
+        public Result Result() {
+            var (covered, twice) = (0, 0);
+            var mask = new bool[counts.Length];
+            for (var at = 0; at < counts.Length; at++) {
+                mask[at] = counts[at] > 0;
+                covered += counts[at] > 0 ? 1 : 0;
+                twice += counts[at] > 1 ? 1 : 0;
+            }
+
+            var measures = new LayoutMeasures(
+                triangles,
+                surface,
+                map,
+                outside,
+                degenerate,
+                flipped,
+                covered == 0 ? 0 : (double)twice / covered,
+                [..CheckCodes.All.Where(spots.ContainsKey).Select(code => spots[code])]
+            );
+            return new(measures, mask, grid);
+        }
+    }
 }

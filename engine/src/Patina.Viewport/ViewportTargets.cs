@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+using Vixen.Core.Mathematics;
 using Vixen.Graphics;
 using Vixen.Graphics.Vulkan;
 
@@ -19,6 +20,9 @@ sealed class ViewportTargets : IDisposable {
 
     /// <summary>The forward pass's samples a pixel.</summary>
     public const int Samples = 4;
+
+    /// <summary>A draw added to what is there: the sky over the background colour the frame is cleared to.</summary>
+    public static BlendState Added => new(true, BlendFactor.One, BlendFactor.One, BlendOperation.Add, BlendFactor.One);
 
     public ViewportTargets(VulkanDevice device, int width, int height) {
         this.device = device;
@@ -72,6 +76,18 @@ sealed class ViewportTargets : IDisposable {
     public TextureViewHandle SpareView { get; }
 
     public BufferHandle Readback { get; }
+
+    /// <summary>
+    ///     The forward pass's light, cleared to a colour in linear light and resolved into <see cref="Hdr" />.
+    /// </summary>
+    public ColourAttachment Cleared(Vector3 colour) =>
+        new(
+            HdrSamplesView,
+            LoadAction.Clear,
+            StoreAction.Resolve,
+            new Color4(colour.X, colour.Y, colour.Z, 1f),
+            HdrView
+        );
 
     public void Dispose() {
         device.WaitIdle();

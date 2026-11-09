@@ -4166,6 +4166,67 @@
         }
       }
     },
+    "/api/v1/stacks/{id}/checks": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Checks the texture set before export, against its project\u0027s budget, size limit, texel density and export preset, and its layout and values against what a mesh and a physical material can have. Each problem has a stable code and where it is.",
+        "operationId": "GetStackChecks",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackChecks"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stacks": {
       "get": {
         "tags": [
@@ -4974,67 +5035,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/StackFound"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Unprocessable Entity",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Service Unavailable",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/stacks/{id}/checks": {
-      "get": {
-        "tags": [
-          "Stacks"
-        ],
-        "summary": "Checks the texture set before export, against its project\u0027s budget, size limit, texel density and export preset, and its layout and values against what a mesh and a physical material can have. Each problem has a stable code and where it is.",
-        "operationId": "GetStackChecks",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StackChecks"
                 }
               }
             }
@@ -11800,7 +11800,7 @@
             "items": {
               "$ref": "#/components/schemas/CheckProblem"
             },
-            "description": "What is wrong, in the order of IReadOnlyList\u0026lt;string\u0026gt; CheckCodes.All, which puts the project\u0027s limits, the errors, first."
+            "description": "What is wrong, in the order of IReadOnlyList\u0026lt;string\u0026gt; CheckCodes.All, which puts the project\u0027s limits, the errors,\nfirst."
           }
         },
         "description": "The reply to \u0060GET /api/v1/stacks/{id}/checks\u0060: one texture set measured against its project."

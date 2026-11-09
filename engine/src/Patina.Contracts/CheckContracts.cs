@@ -5,7 +5,9 @@ namespace Patina.Contracts;
 ///     zero is no limit, and a texel density of zero is the library's.
 /// </summary>
 public sealed record ProjectCheckSettings {
-    /// <summary>The most GPU memory one texture set's exported files may take, in mebibytes, or zero for no limit.</summary>
+    /// <summary>
+    ///     The most GPU memory one texture set's exported files may take, in mebibytes, or zero for no limit.
+    /// </summary>
     public double MemoryBudget { get; init; }
 
     /// <summary>The longest side a texture set's maps may have, in texels, or zero for no limit.</summary>
@@ -17,7 +19,9 @@ public sealed record ProjectCheckSettings {
     /// </summary>
     public double TexelDensity { get; init; }
 
-    /// <summary>How far a set's density may stray from it before it is flagged, as a share: 0.25 is a quarter.</summary>
+    /// <summary>
+    ///     How far a set's density may stray from it before it is flagged, as a share: 0.25 is a quarter.
+    /// </summary>
     public double DensityTolerance { get; init; } = 0.25;
 
     /// <summary>What is wrong with these settings, or null when they can be used.</summary>
@@ -26,7 +30,8 @@ public sealed record ProjectCheckSettings {
             (!(MemoryBudget >= 0 && double.IsFinite(MemoryBudget)), "A memory budget is zero or more mebibytes."),
             (MaxSize is < 0 or > 65536, $"A size limit is 0 to 65536 texels, not {MaxSize}."),
             (!(TexelDensity >= 0 && double.IsFinite(TexelDensity)), "A texel density is zero or more."),
-            (!(DensityTolerance is > 0 and <= 10), $"A density tolerance is above 0 and at most 10, not {DensityTolerance}.")
+            (!(DensityTolerance is > 0 and <= 10),
+                $"A density tolerance is above 0 and at most 10, not {DensityTolerance}.")
         ];
         return checks.FirstOrDefault(static check => check.Wrong).Why;
     }
@@ -42,7 +47,9 @@ public sealed record ProjectChecksRequest(string Project, ProjectCheckSettings C
 ///     after the text changes; the Server's sentence is beside it, and the numbers it was written from.
 /// </summary>
 public static class CheckCodes {
-    /// <summary>The set's exported files take more GPU memory than the budget. Values: <c>bytes</c>, <c>budget</c>.</summary>
+    /// <summary>
+    ///     The set's exported files take more GPU memory than the budget. Values: <c>bytes</c>, <c>budget</c>.
+    /// </summary>
     public const string OverBudget = "texture-over-budget";
 
     /// <summary>The set's maps are larger than the limit. Values: <c>width</c>, <c>height</c>, <c>limit</c>.</summary>
@@ -54,16 +61,30 @@ public static class CheckCodes {
     /// </summary>
     public const string ChannelMissing = "channel-missing";
 
-    /// <summary>The set has fewer texels per unit than the project asks. Values: <c>density</c>, <c>target</c>.</summary>
+    /// <summary>
+    ///     The set has fewer texels per unit than the project asks. Values: <c>density</c>, <c>target</c>.
+    /// </summary>
     public const string DensityLow = "density-low";
 
-    /// <summary>The set has more texels per unit than the project asks. Values: <c>density</c>, <c>target</c>.</summary>
+    /// <summary>
+    ///     The set has more texels per unit than the project asks. Values: <c>density</c>, <c>target</c>.
+    /// </summary>
     public const string DensityHigh = "density-high";
+
+    // Between the groups, as ExportMaps has it: SK7020 honours no suppression, and reads thirteen constants in a row as
+    // a clone of another list of them.
+    /// <summary>Every code, in the order a list shows them.</summary>
+    public static IReadOnlyList<string> All { get; } = [
+        OverBudget, TooLarge, ChannelMissing, DensityLow, DensityHigh, UvOutside, UvOverlap, UvDegenerate, UvFlipped,
+        AlbedoDark, AlbedoBright, MetalDark, MetalPartial
+    ];
 
     /// <summary>Triangles laid out past UDIM tile 1001, which is all Patina paints. Values: <c>count</c>.</summary>
     public const string UvOutside = "uv-outside";
 
-    /// <summary>Triangles that cover the same texels, so a stroke on one lands on the other. Values: <c>share</c>.</summary>
+    /// <summary>
+    ///     Triangles that cover the same texels, so a stroke on one lands on the other. Values: <c>share</c>.
+    /// </summary>
     public const string UvOverlap = "uv-overlap";
 
     /// <summary>Triangles with no area in the layout, which no texel lands on. Values: <c>count</c>.</summary>
@@ -92,12 +113,6 @@ public static class CheckCodes {
     ///     <c>share</c>.
     /// </summary>
     public const string MetalPartial = "pbr-metal-partial";
-
-    /// <summary>Every code, in the order a list shows them.</summary>
-    public static IReadOnlyList<string> All { get; } = [
-        OverBudget, TooLarge, ChannelMissing, DensityLow, DensityHigh, UvOutside, UvOverlap, UvDegenerate, UvFlipped,
-        AlbedoDark, AlbedoBright, MetalDark, MetalPartial
-    ];
 }
 
 /// <summary>Where a problem is, for a client to go to it.</summary>
@@ -182,8 +197,11 @@ public sealed record MapMeasure(string Code, double Share, CheckSpot Spot);
 /// <param name="MemoryBudget">The project's budget in bytes, or zero for none.</param>
 /// <param name="Preset">The export preset measured against.</param>
 /// <param name="Problems">
-///     What is wrong, in the order of <see cref="CheckCodes.All" />, which puts the project's limits, the errors, first.
+///     What is wrong, in the order of <see cref="CheckCodes.All" />, which puts the project's limits, the errors,
+///     first.
 /// </param>
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field.
+#pragma warning disable SK7005
 public sealed record StackChecks(
     string Stack,
     string Set,
@@ -196,3 +214,4 @@ public sealed record StackChecks(
     string Preset,
     IReadOnlyList<CheckProblem> Problems
 );
+#pragma warning restore SK7005
