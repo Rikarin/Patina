@@ -5877,6 +5877,24 @@
         },
         "description": "One document other projects can use, as the browser shows it."
       },
+      "BakeColourOptions": {
+        "required": [
+          "source",
+          "texture"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "\u0060auto\u0060: the high mesh\u0027s vertex colours, else its materials. \u0060vertex-colour\u0060; \u0060material\u0060, each\n            material\u0027s base colour and base colour picture; or \u0060texture\u0060, the picture at string BakeColourOptions.Texture\n            read at the high mesh\u0027s own coordinates, which moves any map from one UV layout to another."
+          },
+          "texture": {
+            "type": "string",
+            "description": "For \u0060texture\u0060: the picture to carry across, as a path on the Server\u0027s machine."
+          }
+        },
+        "description": "Where a colour map\u0027s colour comes from."
+      },
       "BakedMapFile": {
         "required": [
           "map",
@@ -6019,7 +6037,9 @@
           "height",
           "occlusion",
           "thickness",
-          "id"
+          "id",
+          "rounding",
+          "colour"
         ],
         "type": "object",
         "properties": {
@@ -6047,7 +6067,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Which maps to write: \u0060normal\u0060, \u0060height\u0060, \u0060ao\u0060, \u0060bent\u0060, \u0060curvature\u0060,\n\u0060thickness\u0060, \u0060position\u0060, \u0060world\u0060, \u0060id\u0060. The default is what a project\u0027s masks read."
+            "description": "Which maps to write: \u0060normal\u0060, \u0060height\u0060, \u0060ao\u0060, \u0060bent\u0060, \u0060curvature\u0060,\n\u0060thickness\u0060, \u0060position\u0060, \u0060world\u0060, \u0060id\u0060, \u0060colour\u0060. The default is what a project\u0027s\nmasks read."
           },
           "space": {
             "type": "string",
@@ -6072,6 +6092,14 @@
           "id": {
             "description": "What the ID map labels and how it colours them.",
             "$ref": "#/components/schemas/BakeIdOptions"
+          },
+          "rounding": {
+            "description": "Edges baked round into the normal, with no high poly to give them a bevel.",
+            "$ref": "#/components/schemas/BakeRoundingOptions"
+          },
+          "colour": {
+            "description": "Where the colour map\u0027s colour comes from.",
+            "$ref": "#/components/schemas/BakeColourOptions"
           }
         },
         "description": "How a bake runs, with no meshes in it: what a project keeps between bakes and every client sends. Each map\u0027s\nown settings are a part of their own."
@@ -6084,6 +6112,7 @@
           "ignoreBackfaces",
           "skew",
           "skewMap",
+          "distanceMap",
           "matchByName",
           "lowSuffix",
           "highSuffix"
@@ -6116,6 +6145,10 @@
           "skewMap": {
             "type": "string",
             "description": "A grey image saying where to apply the skew, or empty for everywhere."
+          },
+          "distanceMap": {
+            "type": "string",
+            "description": "A grey image correcting how far the rays reach over the atlas, or empty for as set: mid grey leaves them,\nblack pulls them onto the low mesh and white sends them twice as far, front, rear and cage alike."
           },
           "matchByName": {
             "type": "boolean",
@@ -6232,6 +6265,36 @@
           }
         },
         "description": "What a finished bake made."
+      },
+      "BakeRoundingOptions": {
+        "required": [
+          "enabled",
+          "width",
+          "edges",
+          "angle"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether edges are rounded at all."
+          },
+          "width": {
+            "type": "number",
+            "description": "How far either side of an edge the bevel reaches, in the rays\u0027 units.",
+            "format": "double"
+          },
+          "edges": {
+            "type": "string",
+            "description": "Which edges: \u0060angle\u0060, every edge whose faces meet at double BakeRoundingOptions.Angle or more, or \u0060hard\u0060, the\nedges the mesh\u0027s own normals split, which is the nearest a mesh file has to an edge weight."
+          },
+          "angle": {
+            "type": "number",
+            "description": "For \u0060angle\u0060: the least angle between two faces that is an edge, in degrees.",
+            "format": "double"
+          }
+        },
+        "description": "Edges baked round into the normal map, the bevel a hard-surface model was not modelled with."
       },
       "BakeThicknessOptions": {
         "required": [

@@ -63,7 +63,13 @@ public sealed class BakeCache(string root) {
         LibraryFiles.Replace(
             Path.Combine(request.Output, $"{stem}.{ManifestFile}"),
             JsonSerializer.SerializeToUtf8Bytes(
-                manifest with { Name = stem, Result = manifest.Result with { Maps = relative } },
+                // ⚠ The mesh as it is now, not as it was when the cached bake was made: a set a mesh change did not
+                // touch comes back from the cache (#151), and its maps are as current as a fresh bake's.
+                manifest with {
+                    Name = stem,
+                    Result = manifest.Result with { Maps = relative },
+                    Mesh = File.Exists(request.Low) ? LibraryFiles.Digest(request.Low) : manifest.Mesh
+                },
                 ContractsJsonContext.Default.BakeManifest
             )
         );

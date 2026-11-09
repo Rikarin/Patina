@@ -53,9 +53,16 @@ public static class MapPictures {
 
     /// <summary>A picture as numbers at whatever depth it has: any of <see cref="PictureFormats.Pictures" />.</summary>
     /// <exception cref="InvalidDataException">It is not a picture this reads.</exception>
-    public static FloatImage ReadFile(string path) {
-        var data = File.ReadAllBytes(path);
-        var kind = Path.GetExtension(path).ToLowerInvariant();
+    public static FloatImage ReadFile(string path) => Decode(File.ReadAllBytes(path), Path.GetExtension(path));
+
+    /// <summary>An encoded picture as numbers at whatever depth it has, as a model file carries one inside it.</summary>
+    /// <param name="data">The encoded bytes.</param>
+    /// <param name="extension">What they are encoded as, with its leading dot.</param>
+    /// <exception cref="InvalidDataException">It is not a picture this reads.</exception>
+    public static FloatImage Decode(byte[] data, string extension) {
+        ArgumentNullException.ThrowIfNull(data);
+        ArgumentNullException.ThrowIfNull(extension);
+        var kind = extension.ToLowerInvariant();
         if (kind == ".exr") {
             return ExrCodec.Decode(data);
         }
