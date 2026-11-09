@@ -259,8 +259,8 @@ describe('PaintStore copies', () => {
   it('copies a mask or a content and pastes it into each chosen layer, then pastes whole layers after a copy of them', async () => {
     const { store, bodies } = setup();
     await store.open('/a/Crate.vxlayers', false);
-    store.state.set(stack({ layers: [layer('base', 'fill'), layer('rust', 'fill'), layer('paint', 'paint')] }));
-    const paint = store.layers().find(row => row.layer.id === 'paint')!.layer;
+    const paint = layer('paint', 'paint');
+    store.state.set(stack({ layers: [layer('base', 'fill'), layer('rust', 'fill'), paint] }));
 
     await store.copyPart(paint, 'Mask');
     store.layer.set('base');
@@ -282,8 +282,8 @@ describe('PaintStore copies', () => {
   it('switches a mask off keeping it, and gives the chosen layers one blend', async () => {
     const { store, bodies } = setup();
     await store.open('/a/Crate.vxlayers', false);
-    store.state.set(stack({ layers: [layer('base', 'fill'), { ...layer('rust', 'fill'), blend: 'Multiply' }] }));
-    const rust = store.layers().find(row => row.layer.id === 'rust')!.layer;
+    const rust = { ...layer('rust', 'fill'), blend: 'Multiply' };
+    store.state.set(stack({ layers: [layer('base', 'fill'), rust] }));
     store.layer.set('rust');
     store.marked.set(new Set(['base']));
 
