@@ -132,9 +132,10 @@ public sealed partial class StackProcessTests {
     static readonly HashSet<string> PassesWhatIsInRange = ["Adjust/PBR Validate"];
 
     /// <summary>
-    ///     Weathering whose picture is the mesh's own: an edge, a crease, a seam between parts. This stack has no bake, so
-    ///     its maps stand in as a flat grey with none of those, and each changes nothing however it is set. They run here
-    ///     with nothing to say all the same; <c>MeshCompoundTests</c> holds each to changing a picture over a bake.
+    ///     Weathering whose picture is the mesh's own: an edge, a crease, a seam between parts. This stack has no bake,
+    ///     so its maps stand in as a flat grey with none of those, and each changes nothing however it is set. They run
+    ///     here with nothing to say all the same; <c>MeshCompoundTests</c> holds each to changing a picture over a
+    ///     bake.
     /// </summary>
     static readonly HashSet<string> DrawsFromTheBake = [
         "Weathering/Edge Damage", "Weathering/Shut Lines", "Weathering/Worn Edges"

@@ -18,24 +18,23 @@ static class RenderBench {
     /// <param name="png">Where the first frame goes.</param>
     /// <param name="width">The frame's width.</param>
     /// <param name="height">The frame's height.</param>
-    /// <param name="bake">A folder a bake was delivered to, to lay over the mesh, or null.</param>
+    /// <param name="maps">
+    ///     A folder a bake was delivered to, to lay over the mesh, and a folder <c>patina bake</c> wrote a graph's
+    ///     outputs to, as <c>baseColor.png</c>, <c>roughness.png</c>, <c>metalness.png</c> and <c>normal.png</c>, laid
+    ///     over it in turn. Either may be null.
+    /// </param>
     /// <param name="camera">The first frame's camera.</param>
     /// <param name="shading">How the frames are lit, shown and finished.</param>
     /// <param name="environment">A room or a panorama, or null for the studio.</param>
-    /// <param name="material">
-    ///     A folder <c>patina bake</c> wrote a graph's outputs to, as <c>baseColor.png</c>, <c>roughness.png</c>,
-    ///     <c>metalness.png</c> and <c>normal.png</c>, laid over the mesh on top of the bake, or null.
-    /// </param>
     public static int Run(
         string mesh,
         string png,
         int width,
         int height,
-        string? bake,
+        (string? Bake, string? Material) maps,
         OrbitCamera camera,
         ViewportShading shading,
-        string? environment,
-        string? material = null
+        string? environment
     ) {
         var start = Stopwatch.StartNew();
         var cache = new ShaderCache(ShaderCache.DefaultDirectory);
@@ -57,9 +56,9 @@ static class RenderBench {
             Say($"environment baked in {start.Elapsed.TotalMilliseconds:F0} ms");
         }
 
-        if (bake is not null || material is not null) {
+        if (maps.Bake is not null || maps.Material is not null) {
             start.Restart();
-            renderer.SetMaps(Maps(bake, material));
+            renderer.SetMaps(Maps(maps.Bake, maps.Material));
             Say($"maps on in {start.Elapsed.TotalMilliseconds:F0} ms");
         }
 

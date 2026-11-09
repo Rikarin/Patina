@@ -251,17 +251,23 @@ public sealed class StackVocabularyTests {
     }
 
     /// <summary>
-    ///     Patina #118 to #120 and #177: a weathering filter writes every channel it is named for, so it is a filter and
-    ///     no mask step, and reads each channel beneath by itself; a stylised filter is both; and a generator's knobs,
-    ///     its seed among them, reach a client with their labels.
+    ///     Patina #118 to #120 and #177: a weathering filter writes every channel it is named for, so it is a filter
+    ///     and no mask step, and reads each channel beneath by itself; a stylised filter is both; and a generator's
+    ///     knobs, its seed among them, reach a client with their labels.
     /// </summary>
     [Fact]
     public void Weathering_stylised_filters_and_generators_are_offered_as_what_they_are() {
         var vocabulary = StackDocuments.Vocabulary;
         var rust = Assert.Single(vocabulary.Filters, static filter => filter.Node == "Weathering/Rust");
 
-        Assert.DoesNotContain(vocabulary.MaskEffects, static filter => filter.Node.StartsWith("Weathering/", StringComparison.Ordinal));
-        Assert.Equal(["baseColor", "roughness", "metalness", "height"], rust.Inputs!.Select(static input => input.Channel));
+        Assert.DoesNotContain(
+            vocabulary.MaskEffects,
+            static filter => filter.Node.StartsWith("Weathering/", StringComparison.Ordinal)
+        );
+        Assert.Equal(
+            ["baseColor", "roughness", "metalness", "height"],
+            rust.Inputs!.Select(static input => input.Channel)
+        );
         Assert.True(rust.Inputs![0].Subject);
         Assert.Contains(vocabulary.MaskEffects, static filter => filter.Node == "Stylised/Comic");
         Assert.Contains(vocabulary.Generators, static term => term is { Value: "Generators/Drips", Label: "Drips" });

@@ -51,14 +51,17 @@ public sealed class FactoryCompoundTests {
             var document = YamlSerializer.Parse<NodeGraphAsset>(text);
 
             Assert.Equal(path[(path.LastIndexOf('/') + 1)..], document.Name);
-            Assert.Contains(document.Interface, static port => port is { Direction: PortDirection.Output, Kind: PortKind.Image });
+            Assert.Contains(
+                document.Interface,
+                static port => port is { Direction: PortDirection.Output, Kind: PortKind.Image }
+            );
             Assert.All(document.Interface, static port => Assert.False(string.IsNullOrWhiteSpace(port.Summary)));
         }
     }
 
     /// <summary>
-    ///     Every knob a factory compound shows says what it is in the product's words: a label, a sentence, a group, and
-    ///     a range its default sits in.
+    ///     Every knob a factory compound shows says what it is in the product's words: a label, a sentence, a group,
+    ///     and a range its default sits in.
     /// </summary>
     [Fact]
     public void Every_knob_has_a_label_a_summary_and_a_range_its_default_is_in() {
@@ -78,7 +81,9 @@ public sealed class FactoryCompoundTests {
                 }
 
                 if (!(knob.Minimum < knob.Maximum) || value < knob.Minimum || value > knob.Maximum) {
-                    problems.Add($"{path}: '{knob.Name}' defaults to {knob.Default}, outside {knob.Minimum}..{knob.Maximum}");
+                    problems.Add(
+                        $"{path}: '{knob.Name}' defaults to {knob.Default}, outside {knob.Minimum}..{knob.Maximum}"
+                    );
                 }
             }
         }
@@ -112,8 +117,8 @@ public sealed class FactoryCompoundTests {
     static string Here([CallerFilePath] string path = "") => path;
 
     /// <summary>
-    ///     Every factory compound compiles with nothing to say, with each image input it has fed. Nothing to say includes
-    ///     <c>TG0025</c>, so a number or a setting under a name its node has not got is a typo found here.
+    ///     Every factory compound compiles with nothing to say, with each image input it has fed. Nothing to say
+    ///     includes <c>TG0025</c>, so a number or a setting under a name its node has not got is a typo found here.
     /// </summary>
     [Fact]
     public void Every_factory_compound_is_a_graph_of_nodes_Patina_has() {
@@ -131,7 +136,9 @@ public sealed class FactoryCompoundTests {
         }
     }
 
-    /// <summary>Every starter material compiles with nothing to say, since a bake refuses a key nothing reads.</summary>
+    /// <summary>
+    ///     Every starter material compiles with nothing to say, since a bake refuses a key nothing reads.
+    /// </summary>
     [Fact]
     public void Every_starter_material_compiles_with_nothing_to_say() {
         FactoryCompounds.Register();
@@ -150,10 +157,9 @@ public sealed class FactoryCompoundTests {
             var diagnostics = compiler.Compile(model).Diagnostics;
 
             Assert.Empty(repairs);
-            Assert.True(
-                diagnostics.IsEmpty,
-                $"{Path.GetFileName(file)}: {string.Join("; ", diagnostics.Select(static diagnostic => diagnostic.Message))}"
-            );
+            var said = string.Join("; ", diagnostics.Select(static diagnostic => diagnostic.Message));
+
+            Assert.True(diagnostics.IsEmpty, $"{Path.GetFileName(file)}: {said}");
         }
     }
 

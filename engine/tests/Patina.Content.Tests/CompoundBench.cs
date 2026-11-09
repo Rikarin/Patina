@@ -13,7 +13,9 @@ static class CompoundBench {
     /// <summary>How wide and tall a bench graph is.</summary>
     public const int Side = 128;
 
-    /// <summary>Columns of <see cref="Curvature" /> that are a soft convex edge, as a real bake's rounded edge reads.</summary>
+    /// <summary>
+    ///     Columns of <see cref="Curvature" /> that are a soft convex edge, as a real bake's rounded edge reads.
+    /// </summary>
     public static readonly Range Convex = 40..56;
 
     /// <summary>Columns that are a soft concave crease.</summary>
@@ -22,7 +24,9 @@ static class CompoundBench {
     /// <summary>The rows whose world normal points up; the rest face sideways.</summary>
     public const int Upward = Side / 2;
 
-    /// <summary>A graph holding one compound, every image input fed a noise, and its first picture as the output.</summary>
+    /// <summary>
+    ///     A graph holding one compound, every image input fed a noise, and its first picture as the output.
+    /// </summary>
     /// <param name="path">The compound.</param>
     /// <param name="used">The compound's node, to set its knobs on.</param>
     /// <param name="subject">The noise its first image input reads, or null when it reads none.</param>
@@ -44,7 +48,8 @@ static class CompoundBench {
         used = graph.Add(path);
         subject = null;
         var output = graph.Add("Output/Output");
-        var picture = type.Ports.First(static port => port is { Direction: PortDirection.Output, Kind: PortKind.Image });
+        var picture = type.Ports.First(static port => port is { Direction: PortDirection.Output, Kind: PortKind.Image }
+        );
 
         output.SetText("Usage", "baseColor");
         graph.Connect(new(used.Id, picture.Name), new(output.Id, "Input"));
@@ -79,7 +84,11 @@ static class CompoundBench {
     /// <param name="compiler">The compiler.</param>
     /// <param name="graph">The graph.</param>
     /// <returns>Each output's picture, by usage.</returns>
-    public static Dictionary<string, Bitmap> Bake(VulkanDevice device, TextureGraphCompiler compiler, NodeGraphModel graph) {
+    public static Dictionary<string, Bitmap> Bake(
+        VulkanDevice device,
+        TextureGraphCompiler compiler,
+        NodeGraphModel graph
+    ) {
         var compilation = compiler.Compile(graph);
 
         Assert.True(
@@ -136,8 +145,8 @@ static class CompoundBench {
     /// <param name="usage">What the map measures.</param>
     /// <returns>The texels.</returns>
     /// <remarks>
-    ///     Curvature is flat at a half, with a soft convex band and a soft concave one at 0.53 and 0.47 and one texel at
-    ///     the top of the range, as a bake scaled by its sharpest texel reads. The top half faces up and the rest
+    ///     Curvature is flat at a half, with a soft convex band and a soft concave one at 0.53 and 0.47 and one texel
+    ///     at the top of the range, as a bake scaled by its sharpest texel reads. The top half faces up and the rest
     ///     sideways; the bottom quarter is sheltered; position climbs up the picture; the id map is two parts.
     /// </remarks>
     static byte[] Map(string usage) {

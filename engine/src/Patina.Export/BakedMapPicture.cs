@@ -44,8 +44,8 @@ public static class BakedMapPicture {
     }
 
     /// <summary>
-    ///     The picture at the depth it was stored, centred as <see cref="Read" /> centres it. A 16-bit position map read
-    ///     at eight bits holds 256 places across the model, which a volume noise finer than that draws as steps.
+    ///     The picture at the depth it was stored, centred as <see cref="Read" /> centres it. A 16-bit position map
+    ///     read at eight bits holds 256 places across the model, which a volume noise finer than that draws as steps.
     /// </summary>
     /// <exception cref="InvalidDataException">The file is not one this reads.</exception>
     public static FloatImage ReadDeep(string path, BakedMapFile map, string format) {

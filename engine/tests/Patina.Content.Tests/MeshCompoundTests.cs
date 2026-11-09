@@ -12,7 +12,7 @@ namespace Patina.Content.Tests;
 /// </summary>
 public sealed class MeshCompoundTests {
     /// <summary>The compounds the issues ask for by name, each of which has to ship.</summary>
-    public static readonly string[] Named = [
+    public static IReadOnlyList<string> Named { get; } = [
         "Generators/Cavity Select",
         "Generators/Direction",
         "Generators/Distance From Point",
@@ -40,7 +40,10 @@ public sealed class MeshCompoundTests {
     public void Every_named_compound_ships() {
         FactoryCompounds.Register();
 
-        Assert.Subset(FactoryCompounds.Paths.ToHashSet(StringComparer.Ordinal), Named.ToHashSet(StringComparer.Ordinal));
+        Assert.Subset(
+            FactoryCompounds.Paths.ToHashSet(StringComparer.Ordinal),
+            Named.ToHashSet(StringComparer.Ordinal)
+        );
     }
 
     /// <summary>
@@ -75,7 +78,10 @@ public sealed class MeshCompoundTests {
         }
     }
 
-    /// <summary>Patina #120's seed on every generator: every factory compound that declares one draws another picture under another.</summary>
+    /// <summary>
+    ///     Patina #120's seed on every generator: every factory compound that declares one draws another picture under
+    ///     another.
+    /// </summary>
     [Fact]
     public void A_seed_draws_another_picture() {
         if (Device() is not { } device) {
@@ -103,7 +109,9 @@ public sealed class MeshCompoundTests {
         }
     }
 
-    /// <summary>A direction picks the faces turned towards it: the stand-in's upper half faces up, its lower half sideways.</summary>
+    /// <summary>
+    ///     A direction picks the faces turned towards it: the stand-in's upper half faces up, its lower half sideways.
+    /// </summary>
     [Fact]
     public void Direction_picks_the_faces_turned_towards_it() {
         if (Device() is not { } device) {
@@ -128,9 +136,9 @@ public sealed class MeshCompoundTests {
     }
 
     /// <summary>
-    ///     ⚠ The edge and cavity selections find a soft edge and a soft crease on a bake scaled by its sharpest texel, as
-    ///     a real one is, and leave a flat alone although a flat ties most of the atlas at one value, which ranks it
-    ///     half way up and within reach of an amount of one.
+    ///     ⚠ The edge and cavity selections find a soft edge and a soft crease on a bake scaled by its sharpest
+    ///     texel, as a real one is, and leave a flat alone although a flat ties most of the atlas at one value, which
+    ///     ranks it half way up and within reach of an amount of one.
     /// </summary>
     [Theory]
     [InlineData("Generators/Edge Select", true, "0.3")]

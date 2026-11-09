@@ -98,7 +98,7 @@ switch (args) {
             png,
             int.Parse(width, CultureInfo.InvariantCulture),
             int.Parse(height, CultureInfo.InvariantCulture),
-            Option(options, "--bake="),
+            (Option(options, "--bake="), Option(options, "--material=")),
             OrbitCamera.Default with {
                 Yaw = Real(options, "--yaw=", OrbitCamera.Default.Yaw),
                 Pitch = Real(options, "--pitch=", OrbitCamera.Default.Pitch),
@@ -119,8 +119,7 @@ switch (args) {
                 Aberration = Real(options, "--aberration=", 0f),
                 Sharpen = Real(options, "--sharpen=", 0f)
             },
-            Option(options, "--environment="),
-            Option(options, "--material=")
+            Option(options, "--environment=")
         );
     default:
         await Console.Error.WriteLineAsync(
