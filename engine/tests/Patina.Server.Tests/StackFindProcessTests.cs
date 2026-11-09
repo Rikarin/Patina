@@ -104,9 +104,9 @@ public sealed partial class StackProcessTests {
         );
         Assert.Equal("base", await FindAsync(state.Id, Bare, Bare, deadline.Token));
 
-        // A fill beneath it whose mask is half set up draws whole in the picture, as the viewport draws it, and the step
-        // reads its red over the black. Weighed as a build is, the empty slot refused the whole stack and the click
-        // found the base again.
+        // A fill beneath it whose mask is half set up draws whole in the picture, as the viewport draws it, and the
+        // step reads its red over the black. Weighed as a build is, the empty slot refused the whole stack and the
+        // click found the base again.
         await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Half", Tint));
         var half = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
         await EditAsync(state.Id, deadline.Token, new StackSetLayer(half, Mask: new("Generator")));
