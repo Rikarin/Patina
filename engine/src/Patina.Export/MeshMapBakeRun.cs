@@ -160,7 +160,8 @@ public static class MeshMapBakeRun {
                 ImportAnimations = false,
                 ImportBlendShapes = false,
                 ImportVertexColours = true
-            }
+            },
+            sideFiles: SharedFile.Beside(path)
         );
 
     internal static BakeSettings Settings(

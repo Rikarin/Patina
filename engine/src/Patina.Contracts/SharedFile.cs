@@ -38,6 +38,26 @@ public static class SharedFile {
         return bytes.Length == bytes.Capacity ? bytes.GetBuffer() : bytes.ToArray();
     }
 
+    /// <summary>
+    ///     Reads the files a model names beside itself, such as an OBJ's material library or a glTF's buffers: a path as
+    ///     the model spells it, relative to the model's folder, read whole, or null for one that is not there.
+    /// </summary>
+    /// <param name="model">The model file.</param>
+    /// <remarks>
+    ///     A model written on Windows spells its folders with backslashes, which are a folder on every platform here.
+    /// </remarks>
+    public static Func<string, byte[]?> Beside(string model) {
+        var folder = Path.GetDirectoryName(Path.GetFullPath(model)) ?? string.Empty;
+        return name => {
+            var file = Path.GetFullPath(name.Replace('\\', Path.DirectorySeparatorChar), folder);
+            try {
+                return ReadAllBytes(file);
+            } catch (Exception missing) when (missing is FileNotFoundException or DirectoryNotFoundException) {
+                return null;
+            }
+        };
+    }
+
     /// <summary>A whole file's text, UTF-8 unless a byte order mark says otherwise.</summary>
     public static string ReadAllText(string path) {
         using StreamReader reader = new(OpenRead(path), Encoding.UTF8, true);

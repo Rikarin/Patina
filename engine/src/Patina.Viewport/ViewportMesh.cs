@@ -182,7 +182,8 @@ sealed class ViewportMesh {
             SharedFile.ReadAllBytes(path),
             Path.GetExtension(path),
             Path.GetFileNameWithoutExtension(path),
-            options
+            options,
+            sideFiles: SharedFile.Beside(path)
         );
         var world = WorldTransforms(read.Model.Nodes);
         var meshes = read.Meshes.ToDictionary(static mesh => mesh.Name, StringComparer.Ordinal);

@@ -125,6 +125,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- An OBJ finds its material library (`mtllib`), so the viewport draws its parts in their own colours and a Colour map with materials as its source bakes them rather than grey. A `.gltf` whose buffer is a `.bin` beside it reads too. Files a mesh names beside itself are read the way the engine reads every library file, letting others write over them meanwhile.
 - On Windows, saving a library file from another program, or a git checkout, no longer fails with "being used by another process" because the engine was reading it at that moment. The engine reads library files letting others write over or delete them meanwhile, as it already did for pictures.
 - A paint canvas rewritten by another program just after the engine read it is read again, even when the rewrite kept the file's time and size. A file the clock may not yet have stamped apart is checked by its bytes until it is a couple of seconds old.
 - A bake that came back from the cache after the mesh changed said the maps were out of date for ever, because it named the mesh the bake was first made on. It names the mesh as it is now.
