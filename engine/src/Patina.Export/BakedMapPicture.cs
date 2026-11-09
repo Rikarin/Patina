@@ -61,7 +61,7 @@ public static class BakedMapPicture {
                 samples[at] = Math.Clamp(signed ? value / scale * 0.5f + 0.5f : value, 0f, 1f);
             }
 
-            return new(image.Width, image.Height, image.Channels, samples);
+            return image with { Samples = samples };
         }
 
         var (width, height, channels, words) = PngCodec.Decode16(data);

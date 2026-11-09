@@ -86,11 +86,11 @@ static class RenderBench {
 
     static ViewportMaps Maps(string? folder, string? material) {
         return new(
-            BaseColor: Painted("baseColor"),
-            Normal: Painted("normal") ?? Of("normal"),
-            Roughness: Painted("roughness"),
-            Metallic: Painted("metalness"),
-            Occlusion: Of("ao")
+            Painted("baseColor"),
+            Painted("normal") ?? Of("normal"),
+            Painted("roughness"),
+            Painted("metalness"),
+            Of("ao")
         );
 
         ViewportMapFile? Of(string map) =>

@@ -111,7 +111,7 @@ static class CompoundBench {
     }
 
     /// <summary>The red of a picture at a texel, from nought to one.</summary>
-    public static double At(Bitmap picture, int x, int y) => picture.Pixels[((y * picture.Width) + x) * 4] / 255.0;
+    public static double At(Bitmap picture, int x, int y) => picture.Pixels[(y * picture.Width + x) * 4] / 255.0;
 
     /// <summary>The mean red over a block of texels.</summary>
     public static double Mean(Bitmap picture, Range columns, Range rows) {
@@ -158,12 +158,12 @@ static class CompoundBench {
                     "curvature" => Grey(Curvature(x, y)),
                     "ao" => Grey(y >= Side * 3 / 4 ? 0.4 : 1.0),
                     "world" => y < Upward ? (0.5, 1.0, 0.5) : (1.0, 0.5, 0.5),
-                    "position" => (x / (double)Side, 1.0 - (y / (double)Side), 0.5),
+                    "position" => (x / (double)Side, 1.0 - y / (double)Side, 0.5),
                     "id" => x < Side / 2 ? (1.0, 0.0, 0.0) : (0.0, 0.0, 1.0),
                     "normal" or "bent" => (0.5, 0.5, 1.0),
                     _ => Grey(0.5)
                 };
-                var at = ((y * Side) + x) * 4;
+                var at = (y * Side + x) * 4;
 
                 texels[at] = Byte(r);
                 texels[at + 1] = Byte(g);

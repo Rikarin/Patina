@@ -24,8 +24,8 @@ public sealed class GraphMeshMapDepthTests : IDisposable {
         // A ramp across four eight-bit levels, stored in sixteen bits: read at eight it is four steps.
         var samples = new ushort[Width * 3];
         for (var x = 0; x < Width; x++) {
-            var value = 0.5 + (x / (double)(Width - 1) * 4.0 / 255.0);
-            samples[x * 3] = samples[(x * 3) + 1] = samples[(x * 3) + 2] = (ushort)Math.Round(value * ushort.MaxValue);
+            var value = 0.5 + x / (double)(Width - 1) * 4.0 / 255.0;
+            samples[x * 3] = samples[x * 3 + 1] = samples[x * 3 + 2] = (ushort)Math.Round(value * ushort.MaxValue);
         }
 
         File.WriteAllBytes(Path.Combine(folder, "position.png"), PngCodec.Encode16(Width, 1, 3, samples));
@@ -47,7 +47,7 @@ public sealed class GraphMeshMapDepthTests : IDisposable {
         var output = graph.Add("Output/Output");
         map.SetText("Map", "position");
         levels.SetValue("Input Black", 0.5f);
-        levels.SetValue("Input White", 0.5f + (4f / 255f));
+        levels.SetValue("Input White", 0.5f + 4f / 255f);
         output.SetText("Usage", "baseColor");
         graph.Connect(new(map.Id, "Out"), new(levels.Id, "Input"));
         graph.Connect(new(levels.Id, "Out"), new(output.Id, "Input"));
