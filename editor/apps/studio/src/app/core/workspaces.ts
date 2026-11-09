@@ -3,7 +3,7 @@ import type { XuiDockContentPane, XuiDockManagerLayout, XuiDockPane } from '@xui
 /** What the app is doing, which decides what is on screen (ADR 0012). */
 export type WorkspaceName = 'start' | 'texturing' | 'layered-material' | 'image-material' | 'graph';
 
-const Version = 8;
+const Version = 9;
 
 type Part = XuiDockPane;
 
