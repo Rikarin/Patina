@@ -14,7 +14,7 @@ usages or a bake's map under its own name, so `curvature`, `thickness`, `id`, `p
 missing takes what a surface without it would be, with a warning in the report. Unknown fields, values the reader cannot read (`mips: True`) and lane counts a block cannot hold
 are refused: the alternative is an uncompressed texture in a shipped game. An export's key holds the bytes of the preset's file.
 
-`{project}`, `{preset}` and `{set}` are the whole naming language. A value cannot make a folder. In a project of several texture
+The naming language is in [ADR 0019](0019-export-presets.md), with the rest of the preset language. A value cannot make a folder. In a project of several texture
 sets every file has to say which it is, so a template with no `{set}` gets the set's name after `{project}`, or at its end when it
 has neither. A project of one set keeps the name its preset gives, and `{set}` is then the project's name if the set has none.
 

@@ -84,7 +84,7 @@ static class PresetEndpoints {
                 Refusals.ExportUnbuilt,
                 new Dictionary<string, string> { ["project"] = request.Project }
             );
-        } catch (BuildRefusedException e) {
+        } catch (Exception e) when (e is BuildRefusedException or InvalidDataException) {
             return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
         } finally {
             Compressing.Release();
