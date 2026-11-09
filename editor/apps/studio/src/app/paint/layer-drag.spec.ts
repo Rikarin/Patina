@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type DragRow, dropCommands, dropManyCommands } from './layer-drag';
+import { type DragRow, dropCommands, dropManyCommands, nudgeCommands } from './layer-drag';
 
 const rows: DragRow[] = [
   { id: 'top', parent: null, folder: false },
@@ -104,5 +104,29 @@ describe('dropping several layers', () => {
     expect(dropManyCommands(rows, ['folder', 'in'], 'last', 'below')).toEqual(
       dropCommands(rows, 'folder', 'last', 'below')
     );
+  });
+});
+
+describe('moving the chosen layers from the keyboard', () => {
+  it('moves one layer a place up or down', () => {
+    expect(nudgeCommands(rows, new Set(['middle']), 1)).toEqual([up('middle')]);
+    expect(nudgeCommands(rows, new Set(['middle']), -1)).toEqual([down('middle')]);
+  });
+
+  it('leaves a layer at the end it moves to, and the block stacked against it', () => {
+    expect(nudgeCommands(rows, new Set(['top']), 1)).toEqual([]);
+    expect(nudgeCommands(rows, new Set(['base']), -1)).toEqual([]);
+    expect(nudgeCommands(rows, new Set(['middle', 'base']), -1)).toEqual([]);
+    expect(nudgeCommands(rows, new Set(['top', 'middle']), 1)).toEqual([up('middle')]);
+  });
+
+  it('moves a block top first going up and bottom first going down', () => {
+    expect(nudgeCommands(rows, new Set(['middle', 'base']), 1)).toEqual([up('middle'), up('base')]);
+    expect(nudgeCommands(rows, new Set(['folder', 'middle']), -1)).toEqual([down('middle'), down('folder')]);
+  });
+
+  it('moves a layer among the siblings of its folder, and one inside a chosen folder with the folder', () => {
+    expect(nudgeCommands(rows, new Set(['inner']), -1)).toEqual([down('inner')]);
+    expect(nudgeCommands(rows, new Set(['folder', 'inner']), 1)).toEqual([up('folder')]);
   });
 });

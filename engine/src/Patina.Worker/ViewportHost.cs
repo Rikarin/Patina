@@ -54,6 +54,15 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
             camera.Orthographic
         );
 
+    /// <summary>The named meshes and materials the viewport draws alone, both empty for the whole model.</summary>
+    string[] isolatedParts = [];
+
+    string[] isolatedMaterials = [];
+
+    /// <summary>
+    ///     What is under a place on the picture. ⚠ Through what the viewport draws (#136): a part isolated away is not
+    ///     there to be clicked, so the ray goes on to what is shown behind it.
+    /// </summary>
     public IpcMessage Pick(IpcMessage request) {
         var pick = request.Pick ?? throw new IpcException("viewport.pick says nothing.");
         var shelf = meshes.Of(pick.Mesh);
@@ -79,13 +88,25 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
             view.Height
         );
         var ray = view.RayAt(new((float)(pick.X * pick.Width), (float)(pick.Y * pick.Height)));
-        var found = shelf.Projection.TryHit(ray, out var hit);
+        var isolated = isolatedParts.Length > 0 || isolatedMaterials.Length > 0;
+        var (through, triangles) = isolated
+            ? meshes.Shown(pick.Mesh, isolatedParts, isolatedMaterials)
+            : (shelf.Projection, null);
+        var found = through.TryHit(ray, out var hit);
         var box = shelf.Projection.Bounds;
         IReadOnlyList<float> extent = [..Numbers(box.Minimum), ..Numbers(box.Maximum)];
         return new() {
             Type = IpcTypes.Ok,
             Picked = found
-                ? new(true, wire, hit.Triangle, hit.Coordinate.X, hit.Coordinate.Y, Numbers(hit.Point), extent)
+                ? new(
+                    true,
+                    wire,
+                    triangles?[hit.Triangle] ?? hit.Triangle,
+                    hit.Coordinate.X,
+                    hit.Coordinate.Y,
+                    Numbers(hit.Point),
+                    extent
+                )
                 : new(false, wire, Bounds: extent)
         };
     }
@@ -140,7 +161,9 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
         var told = request.Display ?? throw new IpcException("viewport.display says nothing.");
         var settings = told.Display;
         var renderer = Renderer();
-        renderer.Isolate(told.Isolation?.Parts ?? [], told.Isolation?.Materials ?? []);
+        isolatedParts = [..told.Isolation?.Parts ?? []];
+        isolatedMaterials = [..told.Isolation?.Materials ?? []];
+        renderer.Isolate(isolatedParts, isolatedMaterials);
         SetEnvironment(settings.Environment);
         try {
             SetLook(told.Look?.Path, told.Look?.Hash);

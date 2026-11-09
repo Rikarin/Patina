@@ -54,6 +54,27 @@ async function changed(before: string | null): Promise<string | null> {
   return picture.getAttribute('src');
 }
 
+/** The mean of the 2D view's red, green and blue, 0 to 255, which tells two different pictures apart. */
+async function mean(): Promise<number> {
+  return window.getByTestId('paint-picture').evaluate(async (element: HTMLImageElement) => {
+    await element.decode();
+    const surface = new OffscreenCanvas(element.naturalWidth, element.naturalHeight);
+    const context = surface.getContext('2d');
+    if (!context) {
+      throw new Error('No 2D context.');
+    }
+
+    context.drawImage(element, 0, 0);
+    const pixels = context.getImageData(0, 0, element.naturalWidth, element.naturalHeight).data;
+    let sum = 0;
+    for (let i = 0; i < pixels.length; i += 4) {
+      sum += (pixels[i] ?? 0) + (pixels[i + 1] ?? 0) + (pixels[i + 2] ?? 0);
+    }
+
+    return sum / ((pixels.length / 4) * 3);
+  });
+}
+
 test('a mask opens as a stack of its own, takes paint over its base, and goes back to the layers', async () => {
   // Bigger setup than most, and every step waits on an evaluation.
   test.setTimeout(180_000);
@@ -118,4 +139,65 @@ test('a mask opens as a stack of its own, takes paint over its base, and goes ba
   await expect(window.getByTestId('mask-stack-effect')).toContainText('Warp');
   await expect(window.getByTestId('paint-effect-0-input-Warp-source')).toBeVisible();
   await expect(window.getByTestId('paint-effect-0-input-Input')).toHaveCount(0);
+});
+
+test('a mask switches off and on from its own menu and Shift-click, and pastes into another layer', async () => {
+  // Every step waits on an evaluation.
+  test.setTimeout(180_000);
+  const picture = window.getByTestId('paint-picture');
+  const paint = window.getByTestId('paint-layer-paint');
+
+  // A band on the paint layer, hidden by a black mask.
+  await paint.click();
+  const bare = await picture.getAttribute('src');
+  await drag([0.1, 0.5], [0.9, 0.5]);
+  const band = await changed(bare);
+  const withBand = await mean();
+  await paint.click({ button: 'right' });
+  await window.getByTestId('layer-menu-mask-black').click();
+  const hidden = await changed(band);
+  const withoutBand = await mean();
+  expect(Math.abs(withBand - withoutBand)).toBeGreaterThan(1);
+
+  // Switched off from the mask's own menu, the band is back and the mask is still there, struck through.
+  const mask = paint.getByTestId('layer-mask');
+  await mask.click({ button: 'right' });
+  await expect(window.getByTestId('layer-menu')).toHaveAttribute('aria-label', 'Mask');
+  await window.getByTestId('mask-menu-switch').click();
+  let shown = await changed(hidden);
+  expect(await mean()).toBeCloseTo(withBand, 0);
+  await expect(mask).toHaveAttribute('data-off', '');
+  await window.screenshot({ path: join(shots, 'mask-switch-1-off.png') });
+
+  // Shift-click switches it on again.
+  await mask.click({ modifiers: ['Shift'] });
+  shown = await changed(shown);
+  expect(await mean()).toBeCloseTo(withoutBand, 0);
+  await expect(mask).not.toHaveAttribute('data-off', '');
+
+  // Copied from the mask's menu and pasted into the base's: the base takes the same black mask, as its own.
+  await mask.click({ button: 'right' });
+  await window.getByTestId('mask-menu-copy').click();
+  const base = window.getByTestId('paint-layer-base');
+  await base.click({ button: 'right' });
+  await window.getByTestId('layer-menu-paste-mask').click();
+  await changed(shown);
+  await expect(base.getByTestId('layer-mask')).toHaveAttribute('title', /^Uniform mask\./);
+  await expect(window.getByTestId('paint-undo')).toHaveAttribute('aria-label', 'Undo Paste mask');
+  await window.screenshot({ path: join(shots, 'mask-switch-2-pasted.png') });
+});
+
+test('the layer rows go compact, a line each, and back', async () => {
+  const paint = window.getByTestId('paint-layer-paint');
+  await expect(paint).toHaveCSS('height', '56px');
+
+  await window.getByTestId('layers-compact').click();
+  await expect(paint).toHaveCSS('height', '36px');
+  await expect(window.getByTestId('layers-compact')).toHaveAttribute('aria-pressed', 'true');
+  await expect(paint.getByTestId('paint-layer-blend')).toBeVisible();
+  await expect(paint.getByTestId('paint-layer-opacity')).toBeVisible();
+  await window.screenshot({ path: join(shots, 'layers-compact.png') });
+
+  await window.getByTestId('layers-compact').click();
+  await expect(window.getByTestId('paint-layer-paint')).toHaveCSS('height', '56px');
 });

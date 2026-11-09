@@ -13350,7 +13350,8 @@
         "required": [
           "clip",
           "op",
-          "asInstances"
+          "asInstances",
+          "part"
         ],
         "properties": {
           "op": {
@@ -13374,6 +13375,18 @@
             "type": "boolean",
             "description": "Whether each comes in as an instance of the layer that was copied rather than as a copy, so that an edit to the\noriginal shows in it. The original has to be in this stack or another texture set of its model.",
             "default": false
+          },
+          "into": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A layer to paste part of the first copied layer into, rather than adding layers: its mask, or its content."
+          },
+          "part": {
+            "type": "string",
+            "description": "With Into: Mask takes the copied layer\u0027s mask, entries, effects and painted canvases, and\nkeeps the layer\u0027s own limit to some meshes; Content takes what the copied layer puts on top (its kind, its fill\nor canvas, its filter, a folder\u0027s layers) and keeps the layer\u0027s name, mask, blend, opacity and anchor point.",
+            "default": "Mask"
           }
         },
         "description": "Pastes what a copy holds, as new layers with canvases of their own, in this stack or another. Limits to named\nmeshes stay only in the stack they were made for."
@@ -14646,7 +14659,8 @@
           "map",
           "tolerance",
           "softness",
-          "lane"
+          "lane",
+          "enabled"
         ],
         "type": "object",
         "properties": {
@@ -14763,6 +14777,11 @@
             "type": "string",
             "description": "Which lane of its picture the base reads: Red, Green, Blue or Alpha. A mesh map that measures a direction keeps\nits X, Y and Z in the first three.",
             "default": "Red"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether the mask applies. Switched off, the layer composites unmasked, keeping every source, layer and effect of\nits mask for when it is switched on again, and still keeps to the meshes it is limited to.",
+            "default": true
           }
         },
         "description": "What decides where a layer shows."

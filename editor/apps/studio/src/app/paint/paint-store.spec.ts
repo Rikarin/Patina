@@ -1,8 +1,9 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { type StackLayer, type StackState, createPatinaClient } from '@patina/api-client';
-import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { RecoveryOffers } from '../core/recovery-offers';
+import { EngineRestarts } from '../core/session-return';
+import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
 import { hexOf } from './layer-panel';
 import { LiveValue } from './live-value';
@@ -51,7 +52,7 @@ function layer(id: string, kind: string, children: StackLayer[] = []): StackLaye
     planarAxis: 'Y',
     filter: 'Levels',
     settings: {},
-    mask: { source: 'None', value: 1, asset: '', generator: '', map: '', tolerance: 0.02, softness: 0, lane: 'Red' }
+    mask: { source: 'None', value: 1, asset: '', generator: '', map: '', tolerance: 0.02, softness: 0, lane: 'Red', enabled: true }
   };
 }
 
@@ -251,8 +252,48 @@ describe('PaintStore copies', () => {
     await store.duplicateLayers();
 
     expect(bodies.slice(1)).toEqual([
-      { commands: [{ op: 'pasteLayers', clip: 'c1', above: 'paint', asInstances: false }] },
+      { commands: [{ op: 'pasteLayers', clip: 'c1', above: 'paint', asInstances: false, into: null, part: 'Mask' }] },
       { commands: [{ op: 'duplicateLayers', layers: ['paint'] }] }
+    ]);
+  });
+
+  it('copies a mask or a content and pastes it into each chosen layer, then pastes whole layers after a copy of them', async () => {
+    const { store, bodies } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    const paint = layer('paint', 'paint');
+    store.state.set(stack({ layers: [layer('base', 'fill'), layer('rust', 'fill'), paint] }));
+
+    await store.copyPart(paint, 'Mask');
+    store.layer.set('base');
+    store.marked.set(new Set(['rust']));
+    await store.pasteLayers();
+    store.marked.set(new Set());
+    await store.copyLayers();
+    await store.pasteLayers();
+
+    const into = (layer: string) => ({ op: 'pasteLayers', clip: 'c1', above: null, asInstances: false, into: layer, part: 'Mask' });
+    expect(bodies).toEqual([
+      { layers: ['paint'] },
+      { commands: [into('rust'), into('base')] },
+      { layers: ['base'] },
+      { commands: [{ op: 'pasteLayers', clip: 'c1', above: 'base', asInstances: false, into: null, part: 'Mask' }] }
+    ]);
+  });
+
+  it('switches a mask off keeping it, and gives the chosen layers one blend', async () => {
+    const { store, bodies } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    const rust = { ...layer('rust', 'fill'), blend: 'Multiply' };
+    store.state.set(stack({ layers: [layer('base', 'fill'), rust] }));
+    store.layer.set('rust');
+    store.marked.set(new Set(['base']));
+
+    await store.blendEverywhere(rust);
+    await store.switchMask(rust);
+
+    expect(bodies).toEqual([
+      { commands: [{ op: 'setLayer', layer: 'base', blend: 'Multiply' }] },
+      { commands: [{ op: 'setLayer', layer: 'rust', mask: { ...rust.mask, enabled: false } }] }
     ]);
   });
 
@@ -462,6 +503,8 @@ describe('PaintStore', () => {
     expect(store.notice()).toBe('Patina restarted its engine and opened this document again from its last save.');
     // What autosave kept of the unsaved edits is offered back (#162).
     expect(TestBed.inject(RecoveryOffers).asked()?.path).toBe('/a/Crate.vxlayers');
+    // And the tabs behind hear of it, since their sessions went with the old Server too.
+    expect(TestBed.inject(EngineRestarts).count()).toBe(1);
     expect(sockets.at(-1)).not.toBe(sockets[0]);
     expect(sockets).toHaveLength(2);
     vi.useRealTimers();

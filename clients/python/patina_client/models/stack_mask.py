@@ -41,6 +41,9 @@ class StackMask:
             lane (str): Which lane of its picture the base reads: Red, Green, Blue or Alpha. A mesh map that measures a
                 direction keeps
                 its X, Y and Z in the first three. Default: 'Red'.
+            enabled (bool): Whether the mask applies. Switched off, the layer composites unmasked, keeping every source,
+                layer and effect of
+                its mask for when it is switched on again, and still keeps to the meshes it is limited to. Default: True.
             anchor (None | StackAnchorRef | Unset):
             colour (list[float] | None | Unset): The colour a bake mask selects from its map, as three numbers, or null for
                 all of it.
@@ -63,6 +66,7 @@ class StackMask:
     tolerance: float = 0.02
     softness: float = 0.0
     lane: str = 'Red'
+    enabled: bool = True
     anchor: None | StackAnchorRef | Unset = UNSET
     colour: list[float] | None | Unset = UNSET
     effects: list[StackMaskEffect] | None | Unset = UNSET
@@ -97,6 +101,8 @@ class StackMask:
         softness = self.softness
 
         lane = self.lane
+
+        enabled = self.enabled
 
         anchor: dict[str, Any] | None | Unset
         if isinstance(self.anchor, Unset):
@@ -180,6 +186,7 @@ class StackMask:
             "tolerance": tolerance,
             "softness": softness,
             "lane": lane,
+            "enabled": enabled,
         })
         if anchor is not UNSET:
             field_dict["anchor"] = anchor
@@ -223,6 +230,8 @@ class StackMask:
         softness = d.pop("softness")
 
         lane = d.pop("lane")
+
+        enabled = d.pop("enabled")
 
         def _parse_anchor(data: object) -> None | StackAnchorRef | Unset:
             if data is None:
@@ -379,6 +388,7 @@ class StackMask:
             tolerance=tolerance,
             softness=softness,
             lane=lane,
+            enabled=enabled,
             anchor=anchor,
             colour=colour,
             effects=effects,

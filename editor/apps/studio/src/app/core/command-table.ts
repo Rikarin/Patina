@@ -108,6 +108,8 @@ export const CommandTable: readonly CommandSpec[] = [
   { id: 'addFilterLayer', label: 'New Filter Layer', section: 'Layers', area: 'stack' },
   { id: 'addLayerFolder', label: 'New Layer Folder', section: 'Layers', area: 'stack' },
   { id: 'groupLayers', label: 'Group into Folder', section: 'Layers', keys: ['Mod+G'], area: 'stack' },
+  { id: 'moveLayerUp', label: 'Move Layer Up', section: 'Layers', keys: ['Mod+]'], area: 'stack' },
+  { id: 'moveLayerDown', label: 'Move Layer Down', section: 'Layers', keys: ['Mod+['], area: 'stack' },
   { id: 'renameLayer', label: 'Rename Layer', section: 'Layers', area: 'stack' },
   {
     id: 'flattenFolder',
@@ -302,6 +304,8 @@ export const MenuBar: readonly {
       '-',
       'groupLayers',
       'renameLayer',
+      'moveLayerUp',
+      'moveLayerDown',
       '-',
       'flattenFolder',
       'unflattenFolder',

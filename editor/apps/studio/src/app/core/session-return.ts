@@ -1,3 +1,4 @@
+import { Injectable, signal } from '@angular/core';
 import { ApiError } from '@patina/api-client';
 
 /** What a document says when it came back from its file and the edits the Server held went with the old one. */
@@ -5,6 +6,15 @@ export const RestartedNotice = 'Patina restarted its engine and opened this docu
 
 const FirstWaitMs = 250;
 const LastWaitMs = 4_000;
+
+/**
+ * How many times a document found the Server restarted without its session. The tabs behind hear it here: their
+ * sessions went with the old Server too, and so did their edits, so a tab that showed unsaved changes no longer has any.
+ */
+@Injectable({ providedIn: 'root' })
+export class EngineRestarts {
+  readonly count = signal(0);
+}
 
 /** What a document store does at each step of coming back, for the session a drop happened in. */
 export interface SessionSteps<T> {
@@ -29,7 +39,10 @@ export class SessionReturn<T> {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private waitMs = FirstWaitMs;
 
-  constructor(private readonly steps: SessionSteps<T>) {}
+  constructor(
+    private readonly steps: SessionSteps<T>,
+    private readonly restarts?: EngineRestarts
+  ) {}
 
   /** The socket is open again, so the next drop starts with a short wait. */
   opened(): void {
@@ -74,6 +87,8 @@ export class SessionReturn<T> {
   }
 
   private async reopen(session: T): Promise<void> {
+    // The Server answered and has never heard of the session, which is a Server that started again.
+    this.restarts?.count.update(count => count + 1);
     try {
       await this.steps.reopen(session);
     } catch (error) {

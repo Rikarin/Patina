@@ -128,6 +128,10 @@ public sealed record StackAnchorUse(string Layer, string Where, string Channel);
 ///     Which lane of its picture the base reads: Red, Green, Blue or Alpha. A mesh map that measures a direction keeps
 ///     its X, Y and Z in the first three.
 /// </param>
+/// <param name="Enabled">
+///     Whether the mask applies. Switched off, the layer composites unmasked, keeping every source, layer and effect of
+///     its mask for when it is switched on again, and still keeps to the meshes it is limited to.
+/// </param>
 public sealed record StackMask(
     string Source,
     float Value = 1f,
@@ -143,7 +147,8 @@ public sealed record StackMask(
     IReadOnlyList<string>? MeshParts = null,
     IReadOnlyDictionary<string, StackAnchorRef>? Inputs = null,
     IReadOnlyList<StackMaskLayer>? Layers = null,
-    string Lane = "Red"
+    string Lane = "Red",
+    bool Enabled = true
 );
 
 /// <summary>
@@ -588,7 +593,21 @@ public sealed record StackDuplicateLayers(IReadOnlyList<string> Layers) : StackC
 ///     Whether each comes in as an instance of the layer that was copied rather than as a copy, so that an edit to the
 ///     original shows in it. The original has to be in this stack or another texture set of its model.
 /// </param>
-public sealed record StackPasteLayers(string Clip, string? Above = null, bool AsInstances = false) : StackCommand;
+/// <param name="Into">
+///     A layer to paste part of the first copied layer into, rather than adding layers: its mask, or its content.
+/// </param>
+/// <param name="Part">
+///     With <paramref name="Into" />: Mask takes the copied layer's mask, entries, effects and painted canvases, and
+///     keeps the layer's own limit to some meshes; Content takes what the copied layer puts on top (its kind, its fill
+///     or canvas, its filter, a folder's layers) and keeps the layer's name, mask, blend, opacity and anchor point.
+/// </param>
+public sealed record StackPasteLayers(
+    string Clip,
+    string? Above = null,
+    bool AsInstances = false,
+    string? Into = null,
+    string Part = "Mask"
+) : StackCommand;
 
 /// <summary>
 ///     Flattens a group into a canvas that composites what its children did, keeping them, unread, as the way back. The

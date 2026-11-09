@@ -17,8 +17,8 @@ import {
   unwrap
 } from '@patina/api-client';
 import { desktop } from '../core/desktop';
-import { RestartedNotice, SessionReturn } from '../core/session-return';
 import { RecoveryOffers } from '../core/recovery-offers';
+import { EngineRestarts, RestartedNotice, SessionReturn } from '../core/session-return';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { LibrarySelection } from '../library/library-selection';
 import { DraftLayer } from './draft-layer';
@@ -175,7 +175,7 @@ export class GraphStore {
         this.mutableSession.set({ kind: 'failed', path: document.path, reason: error.message });
       }
     }
-  });
+  }, inject(EngineRestarts));
   private reloading = false;
   private held: GraphEvent[] = [];
   /** The live edit in progress, whose batches after the first fold into one undo step. */
@@ -1336,6 +1336,14 @@ export class GraphStore {
         }
       }
     };
+  }
+
+  /**
+   * Says that the Server restarted and this graph came back from its file, for a tab that was behind then and has
+   * come to the front.
+   */
+  restarted(): void {
+    this.mutableNotice.set(RestartedNotice);
   }
 
   /** The Server restarted, and edits it had not saved went with it. The file is the truth (plan §3.1). */

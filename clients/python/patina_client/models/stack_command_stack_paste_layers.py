@@ -32,13 +32,21 @@ class StackCommandStackPasteLayers:
             as_instances (bool): Whether each comes in as an instance of the layer that was copied rather than as a copy, so
                 that an edit to the
                 original shows in it. The original has to be in this stack or another texture set of its model. Default: False.
+            part (str): With Into: Mask takes the copied layer's mask, entries, effects and painted canvases, and
+                keeps the layer's own limit to some meshes; Content takes what the copied layer puts on top (its kind, its fill
+                or canvas, its filter, a folder's layers) and keeps the layer's name, mask, blend, opacity and anchor point.
+                Default: 'Mask'.
             above (None | str | Unset): The layer they go just above, or null for the top of the stack.
+            into (None | str | Unset): A layer to paste part of the first copied layer into, rather than adding layers: its
+                mask, or its content.
      """
 
     op: StackCommandStackPasteLayersOp
     clip: str
     as_instances: bool = False
+    part: str = 'Mask'
     above: None | str | Unset = UNSET
+    into: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -52,11 +60,19 @@ class StackCommandStackPasteLayers:
 
         as_instances = self.as_instances
 
+        part = self.part
+
         above: None | str | Unset
         if isinstance(self.above, Unset):
             above = UNSET
         else:
             above = self.above
+
+        into: None | str | Unset
+        if isinstance(self.into, Unset):
+            into = UNSET
+        else:
+            into = self.into
 
 
         field_dict: dict[str, Any] = {}
@@ -65,9 +81,12 @@ class StackCommandStackPasteLayers:
             "op": op,
             "clip": clip,
             "asInstances": as_instances,
+            "part": part,
         })
         if above is not UNSET:
             field_dict["above"] = above
+        if into is not UNSET:
+            field_dict["into"] = into
 
         return field_dict
 
@@ -85,6 +104,8 @@ class StackCommandStackPasteLayers:
 
         as_instances = d.pop("asInstances")
 
+        part = d.pop("part")
+
         def _parse_above(data: object) -> None | str | Unset:
             if data is None:
                 return data
@@ -95,11 +116,23 @@ class StackCommandStackPasteLayers:
         above = _parse_above(d.pop("above", UNSET))
 
 
+        def _parse_into(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        into = _parse_into(d.pop("into", UNSET))
+
+
         stack_command_stack_paste_layers = cls(
             op=op,
             clip=clip,
             as_instances=as_instances,
+            part=part,
             above=above,
+            into=into,
         )
 
 

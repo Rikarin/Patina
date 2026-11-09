@@ -783,6 +783,11 @@ public sealed class StackEditor : ILayerStackDocument {
             );
         }
 
+        if (paste.Into is { } into) {
+            StackLayerEdits.PasteInto(this, Require(into), layers, paste.Part, set, step, clip.Folder, run);
+            return;
+        }
+
         StackLayerCopies copies = new(this, set);
         List<LayerAsset> made = [
             ..layers.Select(layer => copies.Of(
@@ -901,7 +906,7 @@ public sealed class StackEditor : ILayerStackDocument {
         run(new SetLayerCommand(this, new(set, id), group, group with { Paint = string.Empty }, "Unflatten folder"));
     }
 
-    void Journal(StackLayerCopies copies, UndoStep step) {
+    internal void Journal(StackLayerCopies copies, UndoStep step) {
         foreach (var (from, to) in copies.Canvases) {
             step.Strokes.Add(StackJournalEntry.Copy(nextEntry++, to, from, Document.Model));
         }

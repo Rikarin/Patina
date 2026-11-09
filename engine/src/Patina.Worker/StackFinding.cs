@@ -25,12 +25,17 @@ static class StackFinding {
     ///     layer is taken alone: alone, its source would be gone and it would cover nothing. An instance of a folder is
     ///     found as itself, since the layers inside it are copies with ids no document has.
     /// </remarks>
-    public static IEnumerable<(string Layer, TextureSetAsset Alone)> Candidates(
+    /// <remarks>
+    ///     ⚠ <b>A layer whose mask reads the picture is not weighed alone</b> (<see cref="ReadsThePicture" />):
+    ///     alone, a step reading the layers beneath read nothing and an anchor resolved nothing, so the click found
+    ///     what the picture shows beneath it. Such a candidate says so, and is weighed in the picture through
+    ///     <c>LayerStackGraph.Amount</c>; the rest stay alone, which costs one layer rather than the stack beneath.
+    /// </remarks>
+    public static IEnumerable<(string Layer, TextureSetAsset Alone, bool InPicture)> Candidates(
         LayerStackAsset document,
         TextureSetAsset set
     ) {
-        // ⚠ In the set's own channels, each starting from nothing. `LayerStackSplat.Coverage` weighs in one channel
-        // called `mask`, and a paint layer weighed there reads its canvas's `mask` channel, which is not its strokes.
+        // In the set's own channels, each starting from nothing, so that a layer is found in any channel it writes.
         List<ChannelAsset> empty =
             [..set.Channels.Select(static channel => channel with { Default = [0f, 0f, 0f, 1f] })];
         HashSet<string> instances = new(StringComparer.Ordinal);
@@ -42,9 +47,31 @@ static class StackFinding {
                 wrapped = around[at] with { Blend = LayerBlendMode.Copy, Children = [wrapped] };
             }
 
-            yield return (layer.Id, set with { Channels = empty, Layers = [wrapped] });
+            yield return (
+                layer.Id,
+                set with { Channels = empty, Layers = [wrapped] },
+                ReadsThePicture(layer) || around.Exists(ReadsThePicture)
+            );
         }
     }
+
+    /// <summary>
+    ///     Whether a layer's mask, or a step or entry of it, reads the layers beneath or an anchor point (#113, #111),
+    ///     or its fill reads an anchor: something a layer weighed alone has nothing of. An effect inside it counts too.
+    /// </summary>
+    public static bool ReadsThePicture(LayerAsset layer) {
+        var mask = layer.Mask;
+        return mask.Source == LayerMaskSource.Anchor
+            || mask.GeneratorInputs.Count > 0
+            || mask.Effects.Exists(static effect => effect.Enabled && effect.Inputs.Values.Any(Reads))
+            || mask.Layers.Exists(static entry =>
+                entry.Enabled && (entry.Source == LayerMaskSource.Anchor || entry.GeneratorInputs.Count > 0)
+            )
+            || layer is { Kind: LayerKind.Fill, Fill: LayerFillSource.Anchor }
+            || (layer.Kind != LayerKind.Group && layer.Children.Exists(ReadsThePicture));
+    }
+
+    static bool Reads(LayerInputAsset input) => input.Source is LayerInputSource.Beneath or LayerInputSource.Anchor;
 
     static void Instances(List<LayerAsset> layers, HashSet<string> found) {
         foreach (var layer in layers) {

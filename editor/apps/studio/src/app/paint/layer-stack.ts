@@ -26,13 +26,25 @@ import { diagnosticOf } from '../core/messages';
 import { percent } from '../core/numbers';
 import { blendName as blendLabelOf, channelName, termName } from '../core/labels';
 import { ProjectStore } from '../library/project-store';
-import { type DropZone, dropManyCommands } from './layer-drag';
+import { type DropZone, dropManyCommands, nudgeCommands } from './layer-drag';
 import { hexOf } from './layer-panel';
 import { MaterialUse } from './material-use';
-import { type LayerRow, PaintStore, toggledEffect } from './paint-store';
+import { type LayerRow, PaintStore, maskOn, toggledEffect } from './paint-store';
 
 const RowHeight = 56;
+/** A row in the compact list (#106): its thumbnails and its blending on one line. */
+const CompactHeight = 36;
 const EffectHeight = 32;
+const CompactKey = 'patina.layers.compact';
+
+/** Whether this machine last chose compact rows. A choice of the viewer's, so it stays in this browser. */
+function savedCompact(): boolean {
+  try {
+    return globalThis.localStorage.getItem(CompactKey) === 'true';
+  } catch {
+    return false;
+  }
+}
 
 /** One thing added to a layer's mask. No effect index means the generator that is the mask. */
 interface LayerWork {
@@ -138,6 +150,23 @@ const MaskMarks: Readonly<Record<string, string>> = {
         (click)="store.finding.set(!store.finding())"
       >
         <ng-icon xui size="sm" name="matAdsClick" />
+      </button>
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        class="w-6 shrink-0 px-0"
+        data-testid="layers-compact"
+        [title]="compact() ? 'Tall rows, with each layer’s blend above its opacity' : 'Compact rows, a line each'"
+        aria-label="Compact rows"
+        [attr.aria-pressed]="compact()"
+        [class.bg-selection]="compact()"
+        (click)="setCompact(!compact())"
+      >
+        <svg viewBox="0 0 16 16" class="size-3.5" aria-hidden="true">
+          <path d="M2 3h12M2 6.5h12M2 10h12M2 13.5h12" stroke="currentColor" stroke-width="1.4" />
+        </svg>
       </button>
       <button
         type="button"
@@ -357,6 +386,26 @@ const MaskMarks: Readonly<Record<string, string>> = {
               <span class="min-w-0 flex-1 truncate text-xs">{{ item.name }}</span>
               <button
                 type="button"
+                class="text-foreground-muted grid size-5 shrink-0 place-items-center disabled:opacity-30"
+                data-testid="mask-stack-effect-up"
+                [attr.aria-label]="'Move ' + item.name + ' up'"
+                [disabled]="item.effect === 0"
+                (click)="moveWork(owner, item.effect, -1)"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                class="text-foreground-muted grid size-5 shrink-0 place-items-center disabled:opacity-30"
+                data-testid="mask-stack-effect-down"
+                [attr.aria-label]="'Move ' + item.name + ' down'"
+                [disabled]="item.effect === (owner.mask.effects?.length ?? 0) - 1"
+                (click)="moveWork(owner, item.effect, 1)"
+              >
+                ↓
+              </button>
+              <button
+                type="button"
                 class="text-foreground-muted grid size-5 shrink-0 place-items-center"
                 [attr.aria-label]="'Take off ' + item.name"
                 (click)="removeWork(owner, item.effect)"
@@ -516,7 +565,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
           [attr.tabindex]="row.layer.id === (store.layer() ?? rows()[0]?.layer?.id) ? 0 : -1"
           [class.bg-selection]="store.selection().has(row.layer.id)"
           [class.opacity-50]="!row.layer.enabled"
-          [style.height.px]="row.effect ? effectHeight : rowHeight"
+          [style.height.px]="row.effect ? effectHeight : compact() ? compactHeight : rowHeight"
           [style.padding-inline-start.px]="row.depth * 14 + 4"
           (click)="click($event, row.layer)"
           (dragstart)="start($event, row.layer.id)"
@@ -613,6 +662,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
               <span
                 class="h-[3px] w-8 rounded-full"
                 data-testid="layer-content-mark"
+                [class.hidden]="compact()"
                 [class.bg-surface-sunken]="!hasContent(row.layer)"
                 [class.bg-warning]="hasContent(row.layer)"
               ></span>
@@ -627,19 +677,25 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 data-testid="layer-mask"
                 [attr.aria-label]="'Mask of ' + row.layer.name"
                 [class.outline]="row.layer.id === store.layer() && store.masking()"
+                [class.opacity-40]="!maskOn(row.layer)"
+                [attr.data-off]="maskOn(row.layer) ? null : ''"
                 [style.background]="maskColour(row.layer)"
-                [title]="termName(row.layer.mask.source) + ' mask. Double-click to open it as a stack'"
-                (click)="$event.stopPropagation(); choose(row.layer, true)"
+                [title]="maskTitle(row.layer)"
+                (click)="$event.stopPropagation(); maskClicked($event, row.layer)"
                 (dblclick)="$event.stopPropagation(); openMaskStack(row.layer)"
               >
                 <svg viewBox="0 0 16 16" class="size-5" aria-hidden="true">
                   <path d="M1 1h14v14H1z" fill="currentColor" fill-opacity="0.35" />
                   <circle cx="8" cy="8" r="4.5" fill="currentColor" />
+                  @if (!maskOn(row.layer)) {
+                    <path d="M2 14L14 2" stroke="var(--color-error)" stroke-width="2" />
+                  }
                 </svg>
               </button>
               <span
                 class="h-[3px] w-8 rounded-full"
                 data-testid="layer-mask-mark"
+                [class.hidden]="compact()"
                 [class.bg-surface-sunken]="!hasMaskWork(row.layer)"
                 [class.bg-warning]="hasMaskWork(row.layer)"
               ></span>
@@ -705,11 +761,12 @@ const MaskMarks: Readonly<Record<string, string>> = {
 
           <span
             class="flex shrink-0"
-            [class.flex-col]="!row.effect"
-            [class.gap-1]="row.effect"
-            [class.gap-2]="!row.effect"
-            [class.items-center]="row.effect"
-            [class.w-20]="!row.effect"
+            [class.flex-col]="!row.effect && !compact()"
+            [class.gap-1]="row.effect || compact()"
+            [class.gap-2]="!row.effect && !compact()"
+            [class.items-center]="row.effect || compact()"
+            [class.w-20]="!row.effect && !compact()"
+            [class.w-28]="compact() && !row.effect"
             [class.w-40]="row.effect"
             role="group"
             tabindex="-1"
@@ -726,7 +783,8 @@ const MaskMarks: Readonly<Record<string, string>> = {
               [ariaLabel]="'Blend mode of ' + row.layer.name"
               [filterable]="false"
               [class.w-20]="row.effect"
-              [class.w-full]="!row.effect"
+              [class.w-16]="compact() && !row.effect"
+              [class.w-full]="!row.effect && !compact()"
               [itemText]="blendLabel"
               [items]="blends()"
               [matchTargetWidth]="false"
@@ -745,7 +803,11 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 [value]="opacityOf(row.layer)"
                 (valueChange)="setOpacity(row.layer, $event)"
               />
-              <span class="readout w-9 shrink-0 ps-1 text-end text-xs" data-testid="paint-layer-opacity-readout">{{
+              <span
+                class="readout w-9 shrink-0 ps-1 text-end text-xs"
+                data-testid="paint-layer-opacity-readout"
+                [class.hidden]="compact() && !row.effect"
+                >{{
                 percent(opacityOf(row.layer))
               }}</span>
             </span>
@@ -954,7 +1016,45 @@ const MaskMarks: Readonly<Record<string, string>> = {
     </ng-template>
 
     <ng-template #layerMenu>
-      <xui-menu data-testid="layer-menu" [attr.aria-label]="menuLayer() ? 'Layer' : 'Layers'">
+      <xui-menu data-testid="layer-menu" [attr.aria-label]="menuLabel()">
+        @if (menuPart() === 'mask' && menuLayer(); as layer) {
+          <button type="button" xuiMenuItem data-testid="mask-menu-switch" (triggered)="store.switchMask(layer)">
+            {{ maskOn(layer) ? 'Switch Mask Off' : 'Switch Mask On' }}
+          </button>
+          <button type="button" xuiMenuItem data-testid="mask-menu-open" (triggered)="openMaskStack(layer)">
+            {{ commands.label('openMaskStack') }}
+          </button>
+          <button type="button" xuiMenuItem data-testid="mask-menu-invert" (triggered)="invertMask(layer)">
+            Invert Mask
+          </button>
+          <xui-menu-divider />
+          <button type="button" xuiMenuItem data-testid="mask-menu-copy" (triggered)="store.copyPart(layer, 'Mask')">
+            Copy Mask
+          </button>
+          <button
+            type="button"
+            xuiMenuItem
+            data-testid="mask-menu-paste"
+            [disabled]="!store.clip()"
+            (triggered)="store.pasteInto('Mask')"
+          >
+            Paste into Mask
+          </button>
+          <xui-menu-divider />
+          <button type="button" xuiMenuItem color="error" data-testid="mask-menu-remove" (triggered)="addMask(layer, 'None')">
+            Remove Mask
+          </button>
+        } @else if (menuPart() === 'blend' && menuLayer(); as layer) {
+          <button
+            type="button"
+            xuiMenuItem
+            data-testid="blend-menu-apply"
+            [disabled]="store.selection().size < 2"
+            (triggered)="store.blendEverywhere(layer)"
+          >
+            Apply {{ blendLabel(layer.blend) }} to the Chosen Layers
+          </button>
+        } @else {
         @if (menuLayer(); as layer) {
           <button type="button" xuiMenuItem data-testid="layer-menu-rename" (triggered)="startRename(layer)">Rename</button>
           <xui-menu-divider />
@@ -986,8 +1086,14 @@ const MaskMarks: Readonly<Record<string, string>> = {
             <button type="button" xuiMenuItem data-testid="layer-menu-mask-open" (triggered)="openMaskStack(layer)">
               {{ commands.label('openMaskStack') }}
             </button>
+            <button type="button" xuiMenuItem data-testid="layer-menu-mask-switch" (triggered)="store.switchMask(layer)">
+              {{ maskOn(layer) ? 'Switch Mask Off' : 'Switch Mask On' }}
+            </button>
             <button type="button" xuiMenuItem data-testid="layer-menu-mask-invert" (triggered)="invertMask(layer)">
               Invert Mask
+            </button>
+            <button type="button" xuiMenuItem data-testid="layer-menu-mask-copy" (triggered)="store.copyPart(layer, 'Mask')">
+              Copy Mask
             </button>
             <button type="button" xuiMenuItem data-testid="layer-menu-mask-remove" (triggered)="addMask(layer, 'None')">
               Remove Mask
@@ -1050,6 +1156,36 @@ const MaskMarks: Readonly<Record<string, string>> = {
           <button type="button" xuiMenuItem data-testid="layer-menu-cut" (triggered)="store.cutLayers()">
             Cut <span menuItemLabel>{{ commands.keyText('cut') }}</span>
           </button>
+          @if (layer.kind !== 'group') {
+            <button
+              type="button"
+              xuiMenuItem
+              data-testid="layer-menu-copy-content"
+              (triggered)="store.copyPart(layer, 'Content')"
+            >
+              Copy Content
+            </button>
+          }
+          <button
+            type="button"
+            xuiMenuItem
+            data-testid="layer-menu-paste-mask"
+            [disabled]="!store.clip()"
+            (triggered)="store.pasteInto('Mask')"
+          >
+            Paste into Mask
+          </button>
+          @if (layer.kind !== 'group') {
+            <button
+              type="button"
+              xuiMenuItem
+              data-testid="layer-menu-paste-content"
+              [disabled]="!store.clip()"
+              (triggered)="store.pasteInto('Content')"
+            >
+              Paste as Content
+            </button>
+          }
         } @else {
           <button type="button" xuiMenuItem data-testid="layer-menu-new-paint" (triggered)="add('paint', 'Paint')">
             New Paint Layer
@@ -1093,6 +1229,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
           <button type="button" xuiMenuItem color="error" data-testid="paint-remove" (triggered)="remove(layer)">
             Delete Layers <span menuItemLabel>{{ commands.keyText('delete') }}</span>
           </button>
+        }
         }
       </xui-menu>
     </ng-template>
@@ -1184,6 +1321,18 @@ export class LayerStack {
     }
   }
   protected readonly rowHeight = RowHeight;
+  protected readonly compactHeight = CompactHeight;
+  /** Rows a line each, so that more of a long stack shows at once (#106). */
+  protected readonly compact = signal(savedCompact());
+
+  protected setCompact(compact: boolean): void {
+    this.compact.set(compact);
+    try {
+      globalThis.localStorage.setItem(CompactKey, String(compact));
+    } catch {
+      // Only this machine's choice is lost.
+    }
+  }
   protected readonly maskLayerSources = MaskLayerSources;
   /** The layer whose mask the list shows as a stack of its own, in place of the layers (#109), or null. */
   protected readonly maskStack = signal<string | null>(null);
@@ -1195,6 +1344,22 @@ export class LayerStack {
   private sendingEntryOpacity = false;
 
   /** Shows a layer's mask as a stack: its effects, its entries top first, and its base. */
+  /** A click on a mask puts it in front of the brush; with Shift it switches the mask off or on (#109). */
+  protected maskClicked(event: MouseEvent, layer: StackLayer): void {
+    if (event.shiftKey) {
+      void this.store.switchMask(layer);
+    } else {
+      this.choose(layer, true);
+    }
+  }
+
+  protected maskTitle(layer: StackLayer): string {
+    const kind = `${termName(layer.mask.source)} mask`;
+    return maskOn(layer)
+      ? `${kind}. Double-click to open it as a stack, Shift-click to switch it off`
+      : `${kind}, switched off. Shift-click to switch it on`;
+  }
+
   protected openMaskStack(layer: StackLayer): void {
     this.maskStack.set(layer.id);
     this.store.chooseMask(layer);
@@ -1272,6 +1437,12 @@ export class LayerStack {
   protected readonly closed = signal<ReadonlySet<string>>(new Set());
   /** The layer a menu is about, or null for the stack itself. */
   protected readonly menuId = signal<string | null>(null);
+  /** Which part of the row a menu is about: the layer, its mask, or how it blends (#106). */
+  protected readonly menuPart = signal<'layer' | 'mask' | 'blend'>('layer');
+  protected readonly menuLabel = computed(() =>
+    this.menuLayer() === null ? 'Layers' : { layer: 'Layer', mask: 'Mask', blend: 'Blending' }[this.menuPart()]
+  );
+  protected readonly maskOn = maskOn;
   protected readonly menuLayer = computed(() => {
     const id = this.menuId();
     return this.store.layers().find(row => row.layer.id === id)?.layer ?? null;
@@ -1403,6 +1574,8 @@ export class LayerStack {
     handle('paste', () => here() && this.store.clip() !== null, () => this.store.pasteLayers());
     handle('duplicate', selected, () => this.store.duplicateLayers());
     handle('groupLayers', () => open() && this.store.selection().size > 0, () => this.groupSelected());
+    handle('moveLayerUp', () => open() && this.nudges(1).length > 0, () => this.nudge(1));
+    handle('moveLayerDown', () => open() && this.nudges(-1).length > 0, () => this.nudge(-1));
     handle('renameLayer', () => open() && this.store.chosen() !== null, () => {
       const layer = this.store.chosen();
       if (layer) {
@@ -1534,7 +1707,11 @@ export class LayerStack {
   }
 
   protected aimMenu(event: { target: EventTarget | null }): void {
-    const id = (event.target as HTMLElement).closest<HTMLElement>('[data-layer]')?.dataset['layer'] ?? null;
+    const target = event.target as HTMLElement;
+    this.menuPart.set(
+      target.closest('[data-testid="layer-mask"]') ? 'mask' : target.closest('[data-testid="layer-blending"]') ? 'blend' : 'layer'
+    );
+    const id = target.closest<HTMLElement>('[data-layer]')?.dataset['layer'] ?? null;
     const layer = this.store.layers().find(row => row.layer.id === id)?.layer ?? null;
     if (layer && !this.store.selection().has(layer.id)) {
       this.choose(layer, false);
@@ -1658,6 +1835,20 @@ export class LayerStack {
         ? { ...layer.mask, source: 'None' }
         : { ...layer.mask, effects: (layer.mask.effects ?? []).filter((_, index) => index !== effect) }
     );
+  }
+
+  /** Moves a step of a mask a place earlier or later in the order the steps run (#109). */
+  protected moveWork(layer: StackLayer, effect: number, delta: -1 | 1): void {
+    const effects = [...(layer.mask.effects ?? [])];
+    const to = effect + delta;
+    const moving = effects[effect];
+    if (moving === undefined || to < 0 || to >= effects.length) {
+      return;
+    }
+
+    effects.splice(effect, 1);
+    effects.splice(to, 0, moving);
+    void this.store.setMask(layer, { ...layer.mask, effects });
   }
 
   /** Adds a step to the mask, which needs a mask to run on, so a layer with none gets a white one. */
@@ -1800,6 +1991,19 @@ export class LayerStack {
       parent: held.parent,
       folder: held.layer.kind === 'group'
     }));
+  }
+
+  /** The steps that move the chosen layers a place up or down, as one undo step (#106). */
+  private nudges(delta: 1 | -1) {
+    return nudgeCommands(this.dragRows(), this.store.selection(), delta);
+  }
+
+  private async nudge(delta: 1 | -1): Promise<void> {
+    const commands = this.nudges(delta);
+    if (commands.length > 0) {
+      await this.store.edit(...commands);
+      this.focusChosen();
+    }
   }
 
   private dropCommands(row: LayerRow, zone: DropZone) {

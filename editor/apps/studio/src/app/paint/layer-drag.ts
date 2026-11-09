@@ -108,3 +108,32 @@ export function dropManyCommands(
     return commands;
   });
 }
+
+/**
+ * The commands that move the chosen layers one place up (towards the top of the stack) or down among their siblings,
+ * from the keyboard (#106). A layer at the end it is moving to stays, and so do the chosen layers stacked against it,
+ * so a block keeps its shape. A layer inside a folder that is also chosen goes with the folder. Empty when nothing can
+ * move.
+ */
+export function nudgeCommands(rows: readonly DragRow[], chosen: ReadonlySet<string>, delta: 1 | -1): StackCommand[] {
+  const moving = rows.filter(
+    row => chosen.has(row.id) && ![...chosen].some(other => other !== row.id && isWithin(rows, row.id, other))
+  );
+  const parents = [...new Set(moving.map(row => row.parent))];
+  return parents.flatMap(parent => {
+    // Top first going up, bottom first going down, so each step lands where the one before it left room.
+    const held = siblings(rows, parent);
+    const order = delta === 1 ? held : [...held].reverse();
+    const commands: StackCommand[] = [];
+    let walled = true;
+    for (const id of order) {
+      if (!moving.some(row => row.id === id)) {
+        walled = false;
+      } else if (!walled) {
+        commands.push({ op: 'moveLayer', layer: id, delta });
+      }
+    }
+
+    return commands;
+  });
+}
