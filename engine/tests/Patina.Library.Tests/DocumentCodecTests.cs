@@ -294,9 +294,9 @@ public sealed class DocumentCodecTests {
         );
 
     /// <summary>
-    ///     A project.yaml holds its export, bake, viewport, paint and checks blocks and its documents side by side, each
-    ///     written by the one record mechanism, and all of them come back whole, every field a change made since the
-    ///     cache stopped holding them among them, with nothing unread and no byte changed by a second save.
+    ///     A project.yaml holds its export, bake, viewport, paint and checks blocks and its documents side by side,
+    ///     each written by the one record mechanism, and all of them come back whole, every field a change made since
+    ///     the cache stopped holding them among them, with nothing unread and no byte changed by a second save.
     /// </summary>
     [Fact]
     public void Every_block_and_document_field_survives_the_round_trip_together() {
