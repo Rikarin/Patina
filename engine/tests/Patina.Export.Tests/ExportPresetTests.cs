@@ -28,7 +28,12 @@ public sealed class ExportPresetTests : IDisposable {
         var found = ExportPresetCatalog.Read(null);
 
         Assert.Empty(found.Problems);
-        Assert.Equal(["godot", "unity-hdrp", "unity-urp", "unreal", "vixen"], found.Presets.Select(static p => p.Id));
+        Assert.Equal(
+            ["blender", "gltf", "godot", "pbr", "spec-gloss", "unity-hdrp", "unity-urp", "unreal", "vixen"],
+            found.Presets.Select(static p => p.Id)
+        );
+        Assert.Equal(GreenAxis.Up, found.Find("gltf")!.Normal);
+        Assert.Equal(GreenAxis.Up, found.Find("blender")!.Normal);
         Assert.Equal(GreenAxis.Down, found.Find("unreal")!.Normal);
         Assert.Equal(GreenAxis.Up, found.Find("unity-urp")!.Normal);
         Assert.Equal(GreenAxis.Up, found.Find("unity-hdrp")!.Normal);
@@ -62,7 +67,7 @@ public sealed class ExportPresetTests : IDisposable {
 
         var found = ExportPresetCatalog.Read(library.FullName);
 
-        Assert.Equal(6, found.Presets.Count);
+        Assert.Equal(ExportPresetCatalog.Read(null).Presets.Count + 1, found.Presets.Count);
         Assert.Equal(Minimal, ExportPresetCatalog.TextOf(found.Find("mine")!));
     }
 
@@ -85,7 +90,7 @@ public sealed class ExportPresetTests : IDisposable {
 
         var found = ExportPresetCatalog.Read(library.FullName);
 
-        Assert.Equal(5, found.Presets.Count);
+        Assert.Equal(ExportPresetCatalog.Read(null).Presets.Count, found.Presets.Count);
         Assert.Contains("broken.yaml", Assert.Single(found.Problems), StringComparison.Ordinal);
     }
 

@@ -1,0 +1,41 @@
+# Generic metal-roughness: one file per map, nothing packed, for a tool this has no preset for. See
+# docs/adr/0019-export-presets.md.
+version: 1
+id: pbr
+name: PBR Metal Roughness
+engine: Any
+normal: y-up
+padding: infinite
+textures:
+  - file: "{project}_{set}_BaseColor"
+    format: png8
+    space: srgb
+    channels: [baseColor.r, baseColor.g, baseColor.b]
+  - file: "{project}_{set}_Normal"
+    format: png8
+    space: linear
+    channels: [normal.r, normal.g, normal.b]
+  - file: "{project}_{set}_Roughness"
+    format: png8
+    space: linear
+    channels: [roughness.r]
+  - file: "{project}_{set}_Metallic"
+    format: png8
+    space: linear
+    channels: [metalness.r]
+  - file: "{project}_{set}_AmbientOcclusion"
+    format: png8
+    space: linear
+    channels: [occlusion.r]
+  - file: "{project}_{set}_Height"
+    format: png16
+    space: linear
+    channels: [height.r]
+  - file: "{project}_{set}_Emissive"
+    format: png8
+    space: srgb
+    channels: [emissive.r, emissive.g, emissive.b]
+  - file: "{project}_{set}_Opacity"
+    format: png8
+    space: linear
+    channels: [opacity.r]

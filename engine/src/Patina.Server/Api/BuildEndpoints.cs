@@ -48,12 +48,20 @@ static class BuildEndpoints {
             .ProducesProblem(Missing);
     }
 
-    static Results<Ok<ExportPresetList>, ProblemHttpResult> GetPresets(LibraryHost host) {
+    /// <param name="host">The library.</param>
+    /// <param name="project">A project whose own presets are listed too, winning by id, or null for the library's.</param>
+    static Results<Ok<ExportPresetList>, ProblemHttpResult> GetPresets(LibraryHost host, string? project = null) {
         if (host.Library is not { } library) {
             return NoLibrary();
         }
 
-        var found = ExportPresetCatalog.Read(library.RootPath);
+        ExportPresetCatalog.Found found;
+        try {
+            found = ExportPresetCatalog.Read(library.RootPath, project);
+        } catch (ArgumentException e) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status404NotFound);
+        }
+
         return TypedResults.Ok(
             new ExportPresetList([..found.Presets.Select(Describe)], found.Problems) {
                 Formats = [
@@ -68,7 +76,11 @@ static class BuildEndpoints {
                     )
                 ],
                 Paddings = Terms.InExport(ExportPadding.Names),
-                Filters = Terms.InExport(ExportFilters.All)
+                Filters = Terms.InExport(ExportFilters.All),
+                Compressions = Terms.InExport(ExportCompressions.All),
+                Maps = Terms.InExport(ExportMaps.All),
+                Materials = Terms.InExport(ExportMaterials.All),
+                Tokens = [..NamingTemplate.Names]
             }
         );
     }
@@ -79,7 +91,7 @@ static class BuildEndpoints {
             preset.Name,
             preset.Engine,
             preset.Normal == GreenAxis.Up ? "y-up" : "y-down",
-            preset.Path is null ? "factory" : "library",
+            preset.Origin,
             preset.Revision,
             [
                 ..preset.Textures.Select(static t => new ExportPresetFile(
@@ -91,10 +103,13 @@ static class BuildEndpoints {
                         [..t.Maps],
                         t.Channels.Count,
                         t.Quality
-                    )
+                    ) {
+                        Scale = t.Scale
+                    }
                 )
             ]
         ) {
+            Materials = preset.Materials,
             Padding = new(ExportPadding.NameOf(preset.Padding.Mode), preset.Padding.Distance, preset.Padding.Colour),
             Dither = preset.Dither,
             Size = preset.Size,

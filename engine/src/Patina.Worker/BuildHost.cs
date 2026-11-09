@@ -42,7 +42,12 @@ sealed class BuildHost : OneAtATime {
             var threads = Math.Max(1, Environment.ProcessorCount - ReservedCores);
             ending = ask switch {
                 { Output: { } output } => new(ask.Ticket, builders.Build(output, threads, stop.Token), null, null),
-                { Export: { } export } => new(ask.Ticket, null, ExportSteps.Run(export, stop.Token), null),
+                { Export: { } export } => new(
+                    ask.Ticket,
+                    null,
+                    ExportSteps.Run(export, (fraction, file) => Tell(link, ask.Ticket, fraction, file), stop.Token),
+                    null
+                ),
                 _ => new(ask.Ticket, null, null, "build.start says nothing to do.")
             };
         } catch (OperationCanceledException) {
@@ -61,6 +66,21 @@ sealed class BuildHost : OneAtATime {
                                         or TimeoutException
                                         or OperationCanceledException) {
             // The Server has gone, and it plans again when it is back.
+        }
+    }
+
+    /// <summary>
+    ///     Says how far a step is, without waiting for the answer: a step must not stop because the Server is slow to
+    ///     hear it, and a report nobody got changes nothing.
+    /// </summary>
+    static void Tell(IpcConnection link, BakeTicket ticket, double fraction, string file) =>
+        _ = SendAsync(link, new() { Type = IpcTypes.BuildProgress, BuildProgress = new(ticket, fraction, file) });
+
+    static async Task SendAsync(IpcConnection link, IpcMessage message) {
+        try {
+            await link.SendAsync(message, CancellationToken.None).ConfigureAwait(false);
+        } catch (Exception e) when (e is IOException or IpcException or TimeoutException or OperationCanceledException) {
+            // A report nobody got. The link's own loss is what stops the step.
         }
     }
 }

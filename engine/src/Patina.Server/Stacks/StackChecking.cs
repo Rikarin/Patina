@@ -62,7 +62,7 @@ public static class StackChecking {
     ///     the first factory preset.
     /// </summary>
     public static ExportPreset? PresetOf(ProjectContents? project, string? libraryRoot) {
-        var found = ExportPresetCatalog.Read(libraryRoot);
+        var found = ExportPresetCatalog.Read(libraryRoot, libraryRoot is null ? null : project?.Path);
         return project?.Export?.Preset is { } chosen && found.Find(chosen) is { } preset
             ? preset
             : found.Presets.Count > 0
@@ -194,60 +194,31 @@ public static class StackChecking {
         ArgumentNullException.ThrowIfNull(preset);
         ArgumentNullException.ThrowIfNull(state);
         var maps = Maps(state);
-        var (across, down) = Sized(export?.Size ?? preset.Size, width, height);
+        var written = Written(preset, export).For(state.Set);
         double total = 0;
-        foreach (var texture in Written(preset, export)) {
+        foreach (var texture in written.Textures) {
             var reads = texture.Maps.ToArray();
             if (reads.Length > 0 && !reads.Any(maps.Contains)) {
                 continue;
             }
 
-            var format = SettingOf(export, preset.Id, texture.File)?.Format is { Length: > 0 } other
-                ? other
-                : texture.Format;
-            total += (double)across
-                * down
-                * BytesPerTexel(format, texture.Compression, texture.Channels.Count)
-                * (texture.Mips ? 4d / 3d : 1d);
+            var (across, down) = ExportMemory.Sized(written, texture, width, height);
+            total += ExportMemory.Bytes(texture, across, down);
         }
 
         return (long)Math.Ceiling(total);
     }
 
     /// <summary>
-    ///     What one texel takes on a GPU: a block-compressed size, or each lane at its depth, three lanes as four.
+    ///     The preset as the project's export writes it, with the files it turned off left out and the formats and
+    ///     compression it chose. Settings the preset can no longer take leave it as it is.
     /// </summary>
-    public static double BytesPerTexel(string format, string compression, int lanes) {
-        var held = lanes switch {
-            <= 1 => 1,
-            2 => 2,
-            _ => 4
-        };
-        return compression switch {
-            ExportCompressions.Bc1 or ExportCompressions.Bc4 => 0.5,
-            ExportCompressions.Bc3 or ExportCompressions.Bc5 or ExportCompressions.Bc6H or ExportCompressions.Bc7 => 1,
-            ExportCompressions.Half => 2 * held,
-            ExportCompressions.Wide => 4 * held,
-            _ => format switch {
-                ExportFormats.Png16 or ExportFormats.Tiff16 or ExportFormats.Exr16 => 2 * held,
-                ExportFormats.Exr32 or ExportFormats.Tiff32 or ExportFormats.Hdr => 4 * held,
-                _ => held
-            }
-        };
-    }
-
-    static IEnumerable<ExportTexture> Written(ExportPreset preset, ProjectExportSettings? export) =>
-        preset.Textures.Where(texture => SettingOf(export, preset.Id, texture.File) is not { Enabled: false });
-
-    /// <summary>What the project says of one file of a preset: off, or in another format, or nothing.</summary>
-    static ExportFileSetting? SettingOf(ProjectExportSettings? export, string preset, string template) {
-        foreach (var file in export?.Files ?? []) {
-            if (file.Preset == preset && file.Template == template) {
-                return file;
-            }
+    static ExportPreset Written(ExportPreset preset, ProjectExportSettings? export) {
+        try {
+            return ExportOverrides.Apply(preset, ExportOverrides.OptionsOf(export, preset.Id));
+        } catch (ExportPresetException) {
+            return preset;
         }
-
-        return null;
     }
 
     /// <summary>The maps a set makes. One with a height channel makes a normal whether or not it says so.</summary>
@@ -258,15 +229,6 @@ public static class StackChecking {
         }
 
         return maps;
-    }
-
-    static (int Width, int Height) Sized(int? longest, int width, int height) {
-        if (longest is not > 0 || Math.Max(width, height) == 0) {
-            return (width, height);
-        }
-
-        var scale = (double)longest.Value / Math.Max(width, height);
-        return (Math.Max(1, (int)Math.Round(width * scale)), Math.Max(1, (int)Math.Round(height * scale)));
     }
 
     /// <summary>A map the preset reads that the set does not make, once, under the first file that reads it.</summary>
@@ -282,7 +244,7 @@ public static class StackChecking {
 
         var maps = Maps(state);
         HashSet<string> said = new(StringComparer.Ordinal);
-        foreach (var texture in Written(preset, export)) {
+        foreach (var texture in Written(preset, export).Textures) {
             var reads = texture.Maps.ToArray();
             if (!reads.Any(maps.Contains)) {
                 continue;

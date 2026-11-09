@@ -27,6 +27,18 @@ sealed class BuildRunner(LibraryHost libraries, ToolCatalog tools) {
         }
     }
 
+    /// <summary>Takes how far the Worker says a step is.</summary>
+    public void Hear(BuildProgressNote note) {
+        Step? step;
+        lock (waiting) {
+            step = current;
+        }
+
+        if (step is not null && step.Ticket == note.Ticket) {
+            step.Progress?.Invoke(note.Fraction, note.File);
+        }
+    }
+
     /// <summary>The folder a build's reports are in.</summary>
     public static string FolderOf(string library, string job) => Path.Combine(LibraryLayout.ReportsPath(library), job);
 
@@ -64,9 +76,10 @@ sealed class BuildRunner(LibraryHost libraries, ToolCatalog tools) {
         IpcConnection connection,
         IpcMessage message,
         BakeTicket ticket,
+        Action<double, string>? progress,
         CancellationToken cancellationToken
     ) {
-        var step = new Step(ticket, new(TaskCreationOptions.RunContinuationsAsynchronously));
+        var step = new Step(ticket, new(TaskCreationOptions.RunContinuationsAsynchronously), progress);
         lock (waiting) {
             current = step;
         }
@@ -108,24 +121,37 @@ sealed class BuildRunner(LibraryHost libraries, ToolCatalog tools) {
         }
     }
 
-    sealed record Step(BakeTicket Ticket, TaskCompletionSource<BuildEnding> Ended);
+    sealed record Step(
+        BakeTicket Ticket,
+        TaskCompletionSource<BuildEnding> Ended,
+        Action<double, string>? Progress
+    );
 
     sealed class Executor(BuildRunner runner, IpcConnection connection, BakeTicket ticket) : IBuildExecutor {
         public async Task<BuildManifest> OutputAsync(OutputStep work, CancellationToken cancellationToken) {
-            var ending = await Run(new(ticket, work, null), cancellationToken);
+            var ending = await Run(new(ticket, work, null), null, cancellationToken);
             return ending.Output ?? throw Refused(ending);
         }
 
-        public async Task<ExportManifest> ExportAsync(ExportStep work, CancellationToken cancellationToken) {
-            var ending = await Run(new(ticket, null, work), cancellationToken);
+        public async Task<ExportManifest> ExportAsync(
+            ExportStep work,
+            Action<double, string>? progress,
+            CancellationToken cancellationToken
+        ) {
+            var ending = await Run(new(ticket, null, work), progress, cancellationToken);
             return ending.Export ?? throw Refused(ending);
         }
 
-        Task<BuildEnding> Run(BuildStart start, CancellationToken cancellationToken) =>
+        Task<BuildEnding> Run(
+            BuildStart start,
+            Action<double, string>? progress,
+            CancellationToken cancellationToken
+        ) =>
             runner.SendAsync(
                 connection,
                 new() { Type = IpcTypes.BuildStart, BuildStart = start },
                 ticket,
+                progress,
                 cancellationToken
             );
 

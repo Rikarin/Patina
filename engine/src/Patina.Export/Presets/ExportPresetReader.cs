@@ -65,16 +65,65 @@ public static class ExportPresetReader {
             ExportFilters.All.Contains(filter, StringComparer.Ordinal),
             $"{where}: filter '{filter}' is not one of {string.Join(", ", ExportFilters.All)}."
         );
-        var dither = Optional(root, "dither") ?? "false";
-        Require(dither is "true" or "false", $"{where}: dither is true or false, not '{dither}'.");
+        var dither = Flag(Optional(root, "dither"), "dither", where) ?? false;
+        foreach (var key in root.Children.Keys.OfType<YamlScalarNode>()) {
+            Require(
+                PresetFields.Contains(key.Value, StringComparer.Ordinal),
+                $"{where}: '{key.Value}' is not a field of a preset. The fields are {string.Join(", ", PresetFields)}."
+            );
+        }
 
         return new(id, name, engine, normal, read, Revision.Of(System.Text.Encoding.UTF8.GetBytes(text)).Text, path) {
             Padding = ReadPadding(Child(root, "padding"), where),
-            Dither = dither == "true",
+            Dither = dither,
             Size = size,
-            Filter = filter
+            Filter = filter,
+            Materials = ReadMaterials(Child(root, "materials"), where)
         };
     }
+
+    /// <summary>The fields a preset has, in the order the preset editor writes them.</summary>
+    public static IReadOnlyList<string> PresetFields { get; } = [
+        "version", "id", "name", "engine", "normal", "size", "filter", "dither", "padding", "materials", "textures"
+    ];
+
+    /// <summary>The fields a texture has, in the order the preset editor writes them.</summary>
+    public static IReadOnlyList<string> TextureFields { get; } = [
+        "file", "format", "compression", "quality", "space", "mips", "scale", "dither", "padding", "channels"
+    ];
+
+    /// <summary>The material files beside the textures: a list of <see cref="ExportMaterials" />, each once.</summary>
+    static List<string> ReadMaterials(YamlNode? node, string where) {
+        if (node is null) {
+            return [];
+        }
+
+        if (node is not YamlSequenceNode list) {
+            throw new ExportPresetException($"{where}: materials is a list, such as [gltf, usda].");
+        }
+
+        List<string> kinds = [];
+        foreach (var item in list) {
+            var kind = (item as YamlScalarNode)?.Value ?? string.Empty;
+            Require(
+                ExportMaterials.All.Contains(kind, StringComparer.Ordinal),
+                $"{where}: material '{kind}' is not one of {string.Join(", ", ExportMaterials.All)}."
+            );
+            Require(!kinds.Contains(kind, StringComparer.Ordinal), $"{where}: material '{kind}' is listed twice.");
+            kinds.Add(kind);
+        }
+
+        return kinds;
+    }
+
+    /// <summary>true, false, or null when the field is absent. YAML's other spellings are refused.</summary>
+    static bool? Flag(string? text, string field, string where) =>
+        text switch {
+            null => null,
+            "true" => true,
+            "false" => false,
+            _ => throw new ExportPresetException($"{where}: {field} is true or false, not '{text}'.")
+        };
 
     /// <summary>The largest side a file is made at, which is also the largest a stack paints.</summary>
     public const int MaxSize = 8192;
@@ -163,7 +212,7 @@ public static class ExportPresetReader {
         // A misspelt key would otherwise quietly mean "uncompressed" in a shipped game.
         foreach (var key in node.Children.Keys.OfType<YamlScalarNode>()) {
             Require(
-                key.Value is "file" or "format" or "compression" or "quality" or "space" or "mips" or "channels",
+                TextureFields.Contains(key.Value, StringComparer.Ordinal),
                 $"{where}: '{key.Value}' is not a field of a texture."
             );
         }
@@ -185,10 +234,13 @@ public static class ExportPresetReader {
         Require(QualityProblem(format, quality) is null, $"{where}: {QualityProblem(format, quality)}");
         var space = Field(node, "space", where);
         Require(space is "srgb" or "linear", $"{where}: space '{space}' is neither srgb nor linear.");
-        var mipsText = Optional(node, "mips") ?? "false";
-        Require(mipsText is "true" or "false", $"{where}: mips is true or false, not '{mipsText}'.");
-        var mips = mipsText == "true";
+        var mips = Flag(Optional(node, "mips"), "mips", where) ?? false;
         Require(!mips || container, $"{where}: only ktx2 and dds carry mips.");
+        var scale = Optional(node, "scale") is { } scaleText ? Number(scaleText, "scale", where) : 1f;
+        Require(
+            ExportTexture.Scales.Contains(scale),
+            $"{where}: scale is one of {string.Join(", ", ExportTexture.Scales.Select(Text))}, not {Text(scale)}."
+        );
 
         var lanes = Child(node, "channels") as YamlSequenceNode;
         Require(lanes is { Children.Count: >= 1 and <= 4 }, $"{where}: channels must list one to four lanes.");
@@ -197,8 +249,14 @@ public static class ExportPresetReader {
             throw new ExportPresetException($"{where}: {problem}");
         }
 
-        return new(file, format, compression, quality, space, mips, channels);
+        return new(file, format, compression, quality, space, mips, channels) {
+            Scale = scale,
+            Dither = Flag(Optional(node, "dither"), "dither", where),
+            Padding = Child(node, "padding") is { } padding ? ReadPadding(padding, where) : null
+        };
     }
+
+    static string Text(double value) => value.ToString(CultureInfo.InvariantCulture);
 
     /// <summary>
     ///     Why a file of this shape cannot be written, or null. Compressed blocks hold fixed lanes, and a file format

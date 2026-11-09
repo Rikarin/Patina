@@ -260,7 +260,7 @@ public sealed class ExportOptionsTests : IDisposable {
         ];
 
         var manifest = ExportRun.Run(preset, sets, Path("object"), null, Token);
-        var delivered = ExportRun.Deliver("key", Path("object"), manifest, Path("out"), new("Crate", "test"));
+        var delivered = ExportRun.Deliver("key", Path("object"), manifest, Path("out"), new("Crate", "test")).Files;
 
         Assert.All(manifest.Files, static file => Assert.Equal("Body", file.Set));
         Assert.Contains("Body", System.IO.Path.GetFileName(Assert.Single(delivered)), StringComparison.Ordinal);

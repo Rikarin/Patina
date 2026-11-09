@@ -73,13 +73,13 @@ public sealed class BuildPlan {
     /// <summary>Makes a plan.</summary>
     /// <param name="scan">The library's outputs.</param>
     /// <param name="objects">What has been built.</param>
-    /// <param name="presets">What to export through.</param>
+    /// <param name="presets">What each project exports through, which its own presets can change.</param>
     /// <param name="exports">The folder exports go under.</param>
     /// <param name="tools">The installed tool versions.</param>
     public static BuildPlan Make(
         OutputScan scan,
         ObjectStore objects,
-        IReadOnlyList<PlannedPreset> presets,
+        Func<ScannedProject, IReadOnlyList<PlannedPreset>> presets,
         string exports,
         ToolCatalog tools
     ) {
@@ -87,7 +87,11 @@ public sealed class BuildPlan {
         ArgumentNullException.ThrowIfNull(objects);
         ArgumentNullException.ThrowIfNull(presets);
         var planned = new PlannedProject[scan.Projects.Count];
-        Parallel.For(0, planned.Length, at => planned[at] = Plan(scan.Projects[at], objects, presets, exports, tools));
+        Parallel.For(
+            0,
+            planned.Length,
+            at => planned[at] = Plan(scan.Projects[at], objects, presets(scan.Projects[at]), exports, tools)
+        );
         return new(planned);
     }
 

@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Export;
 using Patina.Export.Presets;
 using Patina.Ipc;
 using Patina.Server.Stacks;
@@ -70,7 +71,7 @@ public sealed class StackCheckingTests {
         int lanes,
         double bytes
     ) =>
-        Assert.Equal(bytes, StackChecking.BytesPerTexel(format, compression, lanes));
+        Assert.Equal(bytes, ExportMemory.BytesPerTexel(format, compression, lanes));
 
     /// <summary>
     ///     Over budget and over the size limit are errors and come first; the maps the preset reads that the set does

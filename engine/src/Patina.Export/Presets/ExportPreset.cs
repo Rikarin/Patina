@@ -41,6 +41,21 @@ public sealed record ExportTexture(
     /// <summary>The maps it reads.</summary>
     public IEnumerable<string> Maps =>
         Channels.Where(static c => c.Map is not null).Select(static c => c.Map!).Distinct(StringComparer.Ordinal);
+
+    /// <summary>
+    ///     Its side as a share of the side every other file is written at: one, or a half, a quarter, an eighth or a
+    ///     sixteenth, so that a file the eye reads less of costs less without breaking a power of two.
+    /// </summary>
+    public double Scale { get; init; } = 1;
+
+    /// <summary>Whether this file is dithered, or null for what the preset and the export say.</summary>
+    public bool? Dither { get; init; }
+
+    /// <summary>What fills this file's background, or null for what the preset and the export say.</summary>
+    public ExportPadding? Padding { get; init; }
+
+    /// <summary>The scales a file can take, largest first.</summary>
+    public static IReadOnlyList<double> Scales { get; } = [1, 0.5, 0.25, 0.125, 0.0625];
 }
 
 /// <summary>What fills the texels a mesh's layout does not cover, before a file is written.</summary>
@@ -115,6 +130,42 @@ public sealed record ExportPreset(
 
     /// <summary>The texture sets exported, or null for all of them.</summary>
     public IReadOnlyList<string>? Sets { get; init; }
+
+    /// <summary>The material files written beside the textures: any of <see cref="ExportMaterials" />.</summary>
+    public IReadOnlyList<string> Materials { get; init; } = [];
+
+    /// <summary>One set's changes over the whole export's, by set name (<c>ExportOptions.PerSet</c>).</summary>
+    public IReadOnlyDictionary<string, ExportPreset> PerSet { get; init; } =
+        new Dictionary<string, ExportPreset>(StringComparer.Ordinal);
+
+    /// <summary>Where it was read from: factory, library or project (<see cref="ExportPresetCatalog.Origins" />).</summary>
+    public string Origin { get; init; } = ExportPresetCatalog.Origins.Factory;
+
+    /// <summary>The preset a set is written with: its own changes, or this.</summary>
+    public ExportPreset For(string set) => PerSet.GetValueOrDefault(set) ?? this;
+}
+
+/// <summary>The material files a preset can write beside its textures, which name them by their slots.</summary>
+public static class ExportMaterials {
+    /// <summary>A glTF 2.0 file holding only materials, images and textures.</summary>
+    public const string Gltf = "gltf";
+
+    /// <summary>A USD layer in text, with a UsdPreviewSurface material.</summary>
+    public const string Usd = "usda";
+
+    /// <summary>A MaterialX document with a standard_surface material.</summary>
+    public const string MaterialX = "mtlx";
+
+    public static IReadOnlyList<string> All { get; } = [Gltf, Usd, MaterialX];
+
+    /// <summary>A material file's name for a person.</summary>
+    public static string LabelOf(string kind) =>
+        kind switch {
+            Gltf => "glTF material",
+            Usd => "USD preview surface",
+            MaterialX => "MaterialX standard surface",
+            _ => kind
+        };
 }
 
 /// <summary>The file formats a preset can name.</summary>
@@ -229,8 +280,23 @@ public static class ExportMaps {
     // row as a clone of IpcTypes.
     public static IReadOnlyList<string> All { get; } = [
         BaseColor, Normal, Roughness, Metalness, Occlusion, Height, Emissive, Opacity, Mask, Curvature, Thickness, Id,
-        Position, WorldNormal, BentNormal, Coverage
+        Position, WorldNormal, BentNormal, Coverage, Specular, Diffuse, Glossiness
     ];
+
+    /// <summary>
+    ///     The maps a preset can read that no output makes: each is worked out from others when a file reads it
+    ///     (<see cref="DerivedMaps" />), so a specular-glossiness file comes from a metal-roughness project.
+    /// </summary>
+    public static IReadOnlyList<string> Derived { get; } = [Specular, Diffuse, Glossiness];
+
+    /// <summary>The colour at normal incidence: four per cent for a dielectric, the base colour for a metal. sRGB.</summary>
+    public const string Specular = "specular";
+
+    /// <summary>The colour a dielectric scatters: the base colour, black where it is metal. sRGB.</summary>
+    public const string Diffuse = "diffuse";
+
+    /// <summary>One minus roughness.</summary>
+    public const string Glossiness = "glossiness";
 
     // The maps only a bake makes, under the names the bake gives them.
     public const string Curvature = "curvature";
@@ -256,7 +322,8 @@ public static class ExportMaps {
             (Normal or WorldNormal or BentNormal, not 3) => 0.5f,
             (Opacity or Occlusion or Mask or Coverage, _) => 1f,
             (_, 3) => 1f,
-            (BaseColor or Roughness or Height or Curvature or Position, _) => 0.5f,
+            (BaseColor or Roughness or Height or Curvature or Position or Diffuse or Glossiness, _) => 0.5f,
+            (Specular, _) => DerivedMaps.DielectricSrgb,
             _ => 0f
         };
 
@@ -268,5 +335,5 @@ public static class ExportMaps {
     ///     viewport showed. Emissive is radiance, which goes past one, and no viewport shows it yet, so its numbers are
     ///     linear.
     /// </remarks>
-    public static bool IsColour(string map) => map == BaseColor;
+    public static bool IsColour(string map) => map is BaseColor or Specular or Diffuse;
 }

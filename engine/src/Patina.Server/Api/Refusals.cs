@@ -43,6 +43,24 @@ public static class Refusals {
     /// </summary>
     public const string BrushRefused = "stroke-brush-refused";
 
+    /// <summary>
+    ///     A preset the editor sent that is not one a file could hold. Values: <c>preset</c>, and <c>reason</c>, which is
+    ///     the reader's own sentence naming the field.
+    /// </summary>
+    public const string PresetInvalid = "preset-invalid";
+
+    /// <summary>A factory preset, which lives in Patina and cannot be changed or removed. Values: <c>preset</c>.</summary>
+    public const string PresetFactory = "preset-factory";
+
+    /// <summary>No preset of that id is where it was asked for. Values: <c>preset</c>.</summary>
+    public const string PresetMissing = "preset-missing";
+
+    /// <summary>
+    ///     A compression preview of a project whose maps are not built under their current keys, so there is nothing to
+    ///     compress yet. Values: <c>project</c>.
+    /// </summary>
+    public const string ExportUnbuilt = "export-unbuilt";
+
     /// <summary>The values of a refusal whose detail is the Server's own sentence, as <c>reason</c>.</summary>
     public static IReadOnlyDictionary<string, string> Reason(string reason) =>
         new Dictionary<string, string> { ["reason"] = reason };
