@@ -31,7 +31,8 @@ public static class ExportSteps {
     ///     Each texture set's maps, merged by set so that one set's maps cannot replace another's. A source with no
     ///     set is every set's, under what each makes for itself.
     /// </summary>
-    static List<ExportSet> SetsOf(IReadOnlyList<ExportSource> sources) {
+    public static List<ExportSet> SetsOf(IReadOnlyList<ExportSource> sources) {
+        ArgumentNullException.ThrowIfNull(sources);
         var named = sources.Select(static s => s.Set).Where(static s => s.Length > 0).Distinct(StringComparer.Ordinal);
         List<string> sets = [..named.DefaultIfEmpty(string.Empty)];
         return [

@@ -34,6 +34,9 @@ from .cache_info import CacheInfo
 from .check_problem import CheckProblem
 from .check_problem_values import CheckProblemValues
 from .check_target import CheckTarget
+from .compression_lane_error import CompressionLaneError
+from .compression_preview_info import CompressionPreviewInfo
+from .compression_preview_request import CompressionPreviewRequest
 from .document_recovery import DocumentRecovery
 from .document_recovery_request import DocumentRecoveryRequest
 from .export_file_choice import ExportFileChoice
@@ -41,10 +44,19 @@ from .export_file_setting import ExportFileSetting
 from .export_format_info import ExportFormatInfo
 from .export_options import ExportOptions
 from .export_padding_info import ExportPaddingInfo
+from .export_preset_check import ExportPresetCheck
+from .export_preset_check_request import ExportPresetCheckRequest
+from .export_preset_document import ExportPresetDocument
 from .export_preset_file import ExportPresetFile
+from .export_preset_file_name import ExportPresetFileName
+from .export_preset_import import ExportPresetImport
 from .export_preset_info import ExportPresetInfo
 from .export_preset_list import ExportPresetList
+from .export_preset_source import ExportPresetSource
+from .export_preset_texture_document import ExportPresetTextureDocument
+from .export_preset_write import ExportPresetWrite
 from .export_report import ExportReport
+from .export_set_options import ExportSetOptions
 from .file_formats import FileFormats
 from .folder_create_request import FolderCreateRequest
 from .folder_list import FolderList
@@ -372,6 +384,9 @@ __all__ = (
     "CheckProblem",
     "CheckProblemValues",
     "CheckTarget",
+    "CompressionLaneError",
+    "CompressionPreviewInfo",
+    "CompressionPreviewRequest",
     "DocumentRecovery",
     "DocumentRecoveryRequest",
     "ExportFileChoice",
@@ -379,10 +394,19 @@ __all__ = (
     "ExportFormatInfo",
     "ExportOptions",
     "ExportPaddingInfo",
+    "ExportPresetCheck",
+    "ExportPresetCheckRequest",
+    "ExportPresetDocument",
     "ExportPresetFile",
+    "ExportPresetFileName",
+    "ExportPresetImport",
     "ExportPresetInfo",
     "ExportPresetList",
+    "ExportPresetSource",
+    "ExportPresetTextureDocument",
+    "ExportPresetWrite",
     "ExportReport",
+    "ExportSetOptions",
     "FileFormats",
     "FolderCreateRequest",
     "FolderList",

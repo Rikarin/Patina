@@ -296,7 +296,7 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                 status = BuildStatuses.Built;
                 journal.Start(step);
                 manifest = await executor.ExportAsync(
-                    new(PresetText(preset), Sources(project), folder, options),
+                    new(PresetText(preset), SourcesOf(objects, project), folder, options),
                     progress,
                     cancellationToken
                 );
@@ -358,7 +358,9 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
     ///     The objects a project's presets read. A bake is the floor and a stack the top: an output that composes the
     ///     others wins a map they share, and a project's own names settle the rest.
     /// </summary>
-    List<ExportSource> Sources(PlannedProject project) {
+    public static List<ExportSource> SourcesOf(ObjectStore objects, PlannedProject project) {
+        ArgumentNullException.ThrowIfNull(objects);
+        ArgumentNullException.ThrowIfNull(project);
         List<ExportSource> sources = [];
         foreach (var output in project.Project.Outputs
                      .Where(static o => o.Key is not null)

@@ -32,12 +32,13 @@ class ExportPresetInfo:
             name (str): Its label.
             engine (str): What it is for.
             normal (str): The green its target reads: y-up or y-down.
-            origin (str): Where it comes from: factory or library.
+            origin (str): Where it comes from: factory, library or project.
             revision (str): The hash of its file.
             files (list[ExportPresetFile]): What it makes.
             padding (ExportPaddingInfo): What fills the texels a mesh's layout leaves empty.
             dither (bool): Whether 8-bit files are dithered.
             filter_ (str): How a file changes size.
+            materials (list[str]): The material files it writes beside its textures: gltf, usda or mtlx.
             size (int | None | Unset): The longest side of every file, or null for the maps' own size.
      """
 
@@ -51,6 +52,7 @@ class ExportPresetInfo:
     padding: ExportPaddingInfo
     dither: bool
     filter_: str
+    materials: list[str]
     size: int | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -86,6 +88,10 @@ class ExportPresetInfo:
 
         filter_ = self.filter_
 
+        materials = self.materials
+
+
+
         size: int | None | Unset
         if isinstance(self.size, Unset):
             size = UNSET
@@ -106,6 +112,7 @@ class ExportPresetInfo:
             "padding": padding,
             "dither": dither,
             "filter": filter_,
+            "materials": materials,
         })
         if size is not UNSET:
             field_dict["size"] = size
@@ -150,6 +157,9 @@ class ExportPresetInfo:
 
         filter_ = d.pop("filter")
 
+        materials = cast(list[str], d.pop("materials"))
+
+
         def _parse_size(data: object) -> int | None | Unset:
             if data is None:
                 return data
@@ -171,6 +181,7 @@ class ExportPresetInfo:
             padding=padding,
             dither=dither,
             filter_=filter_,
+            materials=materials,
             size=size,
         )
 

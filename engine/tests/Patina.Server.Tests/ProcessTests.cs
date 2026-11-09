@@ -216,6 +216,28 @@ public sealed class ProcessTests : IDisposable {
         return (cli.ExitCode, output + await error);
     }
 
+    /// <summary>
+    ///     <c>patina build</c> takes the Export dialog's settings as flags (#153), held to what a preset can take before
+    ///     anything runs, as the API holds a request's.
+    /// </summary>
+    [Fact]
+    public async Task The_cli_builds_with_the_export_dialogs_settings() {
+        var library = Path.Combine(folder.FullName, "Flags.ptlib");
+        Assert.Equal(0, (await PatinaAsync("library", "new", library)).ExitCode);
+        string[] build = ["build", "--library", library, "--dry-run", "--preset", "unreal"];
+
+        var small = await PatinaAsync([..build, "--size", "0"]);
+        var packed = await PatinaAsync([..build, "--file", "T_{project}_N=ktx2:bc4"]);
+        var fine = await PatinaAsync([..build, "--size", "1024", "--file", "T_{project}_ORM=ktx2:bc7", "--dither"]);
+        var kept = await PatinaAsync([..build, "--kept", "--project", Guid.NewGuid().ToString(), "--project", Guid.NewGuid().ToString()]);
+
+        Assert.Equal((2, true), (small.ExitCode, small.Output.Contains("size is a side", StringComparison.Ordinal)));
+        Assert.Equal((2, true), (packed.ExitCode, packed.Output.Contains("bc4 takes 1 to 1 lanes", StringComparison.Ordinal)));
+        Assert.Equal(2, kept.ExitCode);
+        Assert.Contains("one project", kept.Output, StringComparison.Ordinal);
+        Assert.Equal(0, fine.ExitCode);
+    }
+
     [Fact]
     public async Task The_cli_creates_and_checks_a_library() {
         var library = Path.Combine(folder.FullName, "Made.ptlib");

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
 using Patina.Export.Builds;
 using Patina.Export.Presets;
+using Patina.Jobs;
 using Patina.Library;
 
 namespace Patina.Server.Api;
@@ -34,11 +35,70 @@ static class PresetEndpoints {
             .WithName("CheckExportPreset")
             .WithSummary("What a preset would be and the files it would write for a project, keeping nothing.")
             .ProducesProblem(StatusCodes.Status404NotFound);
+        var compression = api.MapGroup("/export/compression").WithTags(Tag);
+        compression.MapPost("/", CompressAsync)
+            .WithName("PreviewCompression")
+            .WithSummary("A region of one exported file as the file holds it, beside its source, with the error per lane.")
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+        compression.MapGet("/{id}/{picture}", GetPicture)
+            .WithName("GetCompressionPicture")
+            .WithSummary("One picture of a compression preview as a PNG: source, written or difference.")
+            .ProducesProblem(StatusCodes.Status404NotFound);
         presets.MapPost("/import", Import)
             .WithName("ImportExportPreset")
             .WithSummary("Brings a preset file into the library's or a project's export-presets, after reading it.")
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+    }
+
+    /// <summary>One at a time: a preview is a moment of every core, and a second waits for the first.</summary>
+    static readonly SemaphoreSlim Compressing = new(1, 1);
+
+    static async Task<Results<Ok<CompressionPreviewInfo>, ProblemHttpResult>> CompressAsync(
+        CompressionPreviewRequest request,
+        LibraryHost host,
+        CancellationToken cancellationToken
+    ) {
+        if (host.Library is not { } library) {
+            return Refusals.NoLibraryOpen();
+        }
+
+        if (Folder(library, request.Project) is null) {
+            return NoProject(request.Project);
+        }
+
+        await Compressing.WaitAsync(cancellationToken);
+        try {
+            return TypedResults.Ok(
+                await Task.Run(
+                    () => ExportPreviews.Make(library, request, ToolCatalog.Default, cancellationToken),
+                    cancellationToken
+                )
+            );
+        } catch (ExportUnbuiltException e) {
+            return Refusals.Problem(
+                e.Message,
+                StatusCodes.Status409Conflict,
+                Refusals.ExportUnbuilt,
+                new Dictionary<string, string> { ["project"] = request.Project }
+            );
+        } catch (BuildRefusedException e) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+        } finally {
+            Compressing.Release();
+        }
+    }
+
+    static Results<PhysicalFileHttpResult, ProblemHttpResult> GetPicture(string id, string picture, LibraryHost host) {
+        if (host.Library is not { } library) {
+            return Refusals.NoLibraryOpen();
+        }
+
+        return ExportPreviews.PictureOf(library.RootPath, id, picture) is { } path
+            ? TypedResults.PhysicalFile(path, "image/png")
+            : TypedResults.Problem($"There is no picture '{picture}' of preview '{id}'.", statusCode: StatusCodes.Status404NotFound);
     }
 
     static Results<Ok<ExportPresetSource>, ProblemHttpResult> Get(string id, LibraryHost host, string? project = null) {

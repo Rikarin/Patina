@@ -10,22 +10,32 @@ from ... import errors
 
 from ...models.export_preset_list import ExportPresetList
 from ...models.problem_details import ProblemDetails
+from ...types import UNSET, Unset
 from typing import cast
 
 
 
 def _get_kwargs(
-    
+    *,
+    project: str | Unset = UNSET,
+
 ) -> dict[str, Any]:
     
 
     
 
-    
+    params: dict[str, Any] = {}
+
+    params["project"] = project
+
+
+    params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
+
 
     _kwargs: dict[str, Any] = {
         "method": "get",
         "url": "/api/v1/export/presets",
+        "params": params,
     }
 
 
@@ -66,9 +76,13 @@ def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Res
 def sync_detailed(
     *,
     client: AuthenticatedClient | Client,
+    project: str | Unset = UNSET,
 
 ) -> Response[ExportPresetList | ProblemDetails]:
     """ Every preset this library can use: the factory ones and those in shared/export-presets.
+
+    Args:
+        project (str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -80,7 +94,8 @@ def sync_detailed(
 
 
     kwargs = _get_kwargs(
-        
+        project=project,
+
     )
 
     response = client.get_httpx_client().request(
@@ -92,9 +107,13 @@ def sync_detailed(
 def sync(
     *,
     client: AuthenticatedClient | Client,
+    project: str | Unset = UNSET,
 
 ) -> ExportPresetList | ProblemDetails | None:
     """ Every preset this library can use: the factory ones and those in shared/export-presets.
+
+    Args:
+        project (str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -107,15 +126,20 @@ def sync(
 
     return sync_detailed(
         client=client,
+project=project,
 
     ).parsed
 
 async def asyncio_detailed(
     *,
     client: AuthenticatedClient | Client,
+    project: str | Unset = UNSET,
 
 ) -> Response[ExportPresetList | ProblemDetails]:
     """ Every preset this library can use: the factory ones and those in shared/export-presets.
+
+    Args:
+        project (str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -127,7 +151,8 @@ async def asyncio_detailed(
 
 
     kwargs = _get_kwargs(
-        
+        project=project,
+
     )
 
     response = await client.get_async_httpx_client().request(
@@ -139,9 +164,13 @@ async def asyncio_detailed(
 async def asyncio(
     *,
     client: AuthenticatedClient | Client,
+    project: str | Unset = UNSET,
 
 ) -> ExportPresetList | ProblemDetails | None:
     """ Every preset this library can use: the factory ones and those in shared/export-presets.
+
+    Args:
+        project (str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -154,5 +183,6 @@ async def asyncio(
 
     return (await asyncio_detailed(
         client=client,
+project=project,
 
     )).parsed

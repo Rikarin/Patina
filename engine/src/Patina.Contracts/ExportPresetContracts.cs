@@ -109,3 +109,76 @@ public sealed record ExportPresetCheck(string? Problem, IReadOnlyList<ExportPres
 /// <param name="File">A preset file on the Server's machine.</param>
 /// <param name="Project">The project it goes into, below <c>projects/</c>, or null for the library.</param>
 public sealed record ExportPresetImport(string File, string? Project = null);
+
+/// <summary>
+///     The body of <c>POST /api/v1/export/compression</c> (#217): one file of an export, to see a region of it as the
+///     file holds it beside what it was made from.
+/// </summary>
+/// <param name="Project">The project, below <c>projects/</c>.</param>
+/// <param name="Preset">The preset's id.</param>
+/// <param name="File">The file, by its template.</param>
+public sealed record CompressionPreviewRequest(string Project, string Preset, string File) {
+    /// <summary>The texture set, or null for the project's first.</summary>
+    public string? Set { get; init; }
+
+    /// <summary>The export's changes, as a build would be sent them: another compression, size or quality.</summary>
+    public ExportOptions? Options { get; init; }
+
+    /// <summary>The mip level, from zero.</summary>
+    public int Level { get; init; }
+
+    /// <summary>Where the region is centred across the level, from 0 to 1.</summary>
+    public double X { get; init; } = 0.5;
+
+    /// <summary>Where the region is centred down the level, from 0 to 1.</summary>
+    public double Y { get; init; } = 0.5;
+
+    /// <summary>The region's largest side in texels, 4 to 512.</summary>
+    public int Side { get; init; } = 256;
+}
+
+/// <summary>How far one lane of a file is from what it was made from.</summary>
+/// <param name="Lane">r, g, b or a.</param>
+/// <param name="Psnr">Peak signal-to-noise ratio in decibels, or null where nothing changed.</param>
+/// <param name="MaxError">The largest difference, in the file's numbers from 0 to 1.</param>
+/// <param name="MeanError">The mean difference.</param>
+public sealed record CompressionLaneError(string Lane, double? Psnr, double MaxError, double MeanError);
+
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field.
+#pragma warning disable SK7005
+/// <summary>
+///     What a file's encoding does to a region of it. The pictures are not in this: each is a PNG at
+///     <c>GET /api/v1/export/compression/{id}/{picture}</c>, for <c>source</c>, <c>written</c> and <c>difference</c>.
+/// </summary>
+/// <param name="Id">The preview, by the hash of what it was made from, for its pictures.</param>
+/// <param name="Format">The file's format.</param>
+/// <param name="Compression">What it holds.</param>
+/// <param name="Level">The level shown.</param>
+/// <param name="Levels">How many levels the file has.</param>
+/// <param name="Width">The level's width.</param>
+/// <param name="Height">The level's height.</param>
+/// <param name="Region">The region shown, as x, y, width and height in the level's texels.</param>
+/// <param name="Lanes">How far each lane is.</param>
+/// <param name="Gain">What the difference picture's errors are multiplied by.</param>
+public sealed record CompressionPreviewInfo(
+    string Id,
+    string Format,
+    string Compression,
+    int Level,
+    int Levels,
+    int Width,
+    int Height,
+    IReadOnlyList<int> Region,
+    IReadOnlyList<CompressionLaneError> Lanes,
+    double Gain
+) {
+    /// <summary>
+    ///     What the whole file takes in GPU memory as written, by the measure the pre-export checks use
+    ///     (<c>texture-over-budget</c>).
+    /// </summary>
+    public long Bytes { get; init; }
+
+    /// <summary>What the same file would take with no block compression, by the same measure.</summary>
+    public long Uncompressed { get; init; }
+}
+#pragma warning restore SK7005
