@@ -126,6 +126,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 
 - On Windows, saving a library file from another program, or a git checkout, no longer fails with "being used by another process" because the engine was reading it at that moment. The engine reads library files letting others write over or delete them meanwhile, as it already did for pictures.
+- A paint canvas rewritten by another program just after the engine read it is read again, even when the rewrite kept the file's time and size. A file the clock may not yet have stamped apart is checked by its bytes until it is a couple of seconds old.
 - A bake that came back from the cache after the mesh changed said the maps were out of date for ever, because it named the mesh the bake was first made on. It names the mesh as it is now.
 - Find Layer Under Cursor finds a layer whose mask reads the layers beneath it, or an anchor point, where the picture shows it. Such a layer is weighed in the picture, with what lies beneath it; it used to be weighed alone, read nothing, and the click found the layer under it.
 - Find Layer Under Cursor finds such a layer with a layer beneath it half set up as well. The picture draws that layer without the mask it has not finished, and Find now weighs it the same way; it used to give up on the whole stack and find the base.
