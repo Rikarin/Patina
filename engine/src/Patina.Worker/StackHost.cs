@@ -74,44 +74,6 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         return new() { Type = IpcTypes.Ok, FoundLayer = Find(ask.Session).LayerAt(ask.U, ask.V) };
     }
 
-    public IpcMessage Thumbnails(IpcMessage request) {
-        var ask = request.StackThumbnails ?? throw new IpcException("stack.thumbnails names no stack.");
-        return new() { Type = IpcTypes.Ok, StackLayerThumbnails = Find(ask.Session).Thumbnails(previews, ask.Folder) };
-    }
-
-    /// <summary>
-    ///     A layered material's first set, composited once for the shelf. Its paint is read from beside its file, as an
-    ///     open stack's is, and nothing is kept but the picture.
-    /// </summary>
-    public IpcMessage Thumbnail(MaterialThumbnailAsk ask) {
-        var document = LayerStackYaml.Read(ask.Document);
-        if (document.Sets.FirstOrDefault() is not { } set) {
-            return GraphHost.Drawn(null);
-        }
-
-        var shelf = compounds.Of(ask.Folder is null ? null : Path.Combine(ask.Folder, LibraryLayout.CompoundsFolder));
-        SortedSet<string> unbaked = new(StringComparer.Ordinal);
-        using LayerStackEvaluator run = new(
-            gpu.Evaluator,
-            new PaintCanvasStore(long.MaxValue),
-            ask.Path,
-            (uploads, plan, owed) => pictures.Fill(uploads, plan, [..owed], ask.ImageRoots, null, unbaked)
-                .Refusals.Select(static refusal => refusal.Message)
-                .ToArray()
-        ) { Draft = true };
-        if (run.Prepare(document with { Sets = [set] }, set, shelf.Registry, shelf.Source).Count > 0) {
-            return GraphHost.Drawn(null);
-        }
-
-        var output = run.Outputs.FirstOrDefault(output => output.Usage == ask.Usage);
-        if (output.Usage is null) {
-            return GraphHost.Drawn(null);
-        }
-
-        using var bake = run.Evaluate();
-        return GraphHost.Drawn(previews.Write(bake, [output.Image], ask.PreviewFolder)[0].Hash);
-    }
-
     public IpcMessage Sync(IpcMessage request) {
         var sync = request.StackSync ?? throw new IpcException("stack.sync says nothing.");
         Find(sync.Session).Sync(sync, watch);
@@ -347,8 +309,6 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
     }
 
     internal sealed partial class Session : IDisposable {
-        const int ThumbnailSide = 64;
-        const string ThumbnailMap = "baseColor";
         static readonly NoContext Context = new();
 
         readonly string path;
@@ -357,7 +317,6 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         readonly PublishedCompounds compounds;
         readonly PaintCanvasStore canvases = new(long.MaxValue);
         readonly HashSet<string> touched = new(StringComparer.Ordinal);
-        readonly Dictionary<string, string> thumbnails = new(StringComparer.Ordinal);
         readonly TexturePlanEvaluator evaluator;
         readonly LayerStackPictures fill;
         readonly List<Applied> applied = [];
@@ -418,46 +377,6 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
 
         /// <summary>The model it is painted on, or null for a stack on no mesh.</summary>
         public string? ModelFile => document.Model.Trim().Length == 0 ? null : Path.GetFullPath(document.Model, folder);
-
-        /// <summary>
-        ///     Each fill with something to show, alone and small. It is its own stack, so a stroke's plan pays nothing,
-        ///     and a layer that has not changed is not drawn again.
-        /// </summary>
-        public IReadOnlyList<StackLayerThumbnail> Thumbnails(PreviewWriter writer, string folder) {
-            List<StackLayerThumbnail> drawn = [];
-            var chosen = document.Sets.First(candidate => candidate.Name == set);
-            foreach (var layer in Fills(chosen.Layers)) {
-                var alone = chosen with {
-                    Layers = [layer with { Mask = new(), Opacity = 1f, Blend = LayerBlendMode.Copy, Enabled = true }]
-                };
-                var small = document with { BaseWidth = ThumbnailSide, BaseHeight = ThumbnailSide, Sets = [alone] };
-                var key = LayerStackYaml.Write(small);
-                if (!thumbnails.TryGetValue(key, out var hash) && Draw(small, alone, writer, folder) is { } made) {
-                    hash = thumbnails[key] = made;
-                }
-
-                if (hash is not null) {
-                    drawn.Add(new(layer.Id, hash));
-                }
-            }
-
-            return drawn;
-        }
-
-        string? Draw(LayerStackAsset small, TextureSetAsset alone, PreviewWriter writer, string folder) {
-            using LayerStackEvaluator run = new(evaluator, canvases, path, fill) { Draft = true };
-            if (run.Prepare(small, alone, compounds.Registry, compounds.Source).Count > 0) {
-                return null;
-            }
-
-            var output = run.Outputs.FirstOrDefault(static output => output.Usage == ThumbnailMap);
-            if (output.Usage is null) {
-                return null;
-            }
-
-            using var bake = run.Evaluate();
-            return writer.Write(bake, [output.Image], folder)[0].Hash;
-        }
 
         /// <summary>
         ///     The topmost layer that covers a place on the map, inside its folders (#136). Each candidate, top first,
