@@ -80,6 +80,43 @@ public sealed partial class ViewportDisplayTests {
     }
 
     /// <summary>
+    ///     Blur softens the background and not the light on the model (#30): the frames at no blur and at full blur part
+    ///     on the background, and no pixel of the model, which the frame with no background shows, moves.
+    /// </summary>
+    [Fact]
+    public void Blur_softens_the_background_and_not_the_light_on_the_model() {
+        using var renderer = Open();
+        renderer.OpenMesh(Fixture);
+        renderer.SetEnvironment("sunset");
+        renderer.Shading = new() { BackgroundOpacity = 0f };
+        var model = Render(renderer, OrbitCamera.Default, 160, 100);
+        renderer.Shading = new() { BackgroundBlur = 0f };
+        var sharp = Render(renderer, OrbitCamera.Default, 160, 100);
+        renderer.Shading = new() { BackgroundBlur = 1f };
+        var hazy = Render(renderer, OrbitCamera.Default, 160, 100);
+
+        bool On(int x, int y) =>
+            x is >= 0 and < 160 && y is >= 0 and < 100 && At(model, 160, x, y) is var (r, g, b) && r + g + b > 6;
+
+        var (background, moved, within) = (0, 0, 0);
+        for (var y = 0; y < 100; y++) {
+            for (var x = 0; x < 160; x++) {
+                var ((r, _, b), (hr, _, hb)) = (At(sharp, 160, x, y), At(hazy, 160, x, y));
+                var apart = Math.Abs(r - hr) + Math.Abs(b - hb) > 6;
+                background += !On(x, y) && apart ? 1 : 0;
+                // Inside the silhouette, which is antialiased over the background at its edge.
+                var inside = On(x, y) && On(x - 1, y) && On(x + 1, y) && On(x, y - 1) && On(x, y + 1);
+                moved += inside && apart ? 1 : 0;
+                within += inside ? 1 : 0;
+            }
+        }
+
+        Assert.InRange(background, 160, 160 * 100);
+        // A few pixels between the knot's turns see the background past a thin edge.
+        Assert.InRange(moved, 0, within / 100);
+    }
+
+    /// <summary>
     ///     Bloom adds the light past white back over the frame before the curve, so it brightens and never darkens a
     ///     pixel, and at zero it does not run.
     /// </summary>
