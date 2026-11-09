@@ -104,10 +104,15 @@ test('a mask opens as a stack of its own, takes paint over its base, and goes ba
   await expect(paint.getByTestId('layer-mask')).toHaveClass(/outline/);
 
   // A filter on the mask keeps a slot for each image it reads but the mask, in the mask's own stack too (#109, #113).
+  // Submenus open from the keyboard, as the layers spec walks them.
   await paint.click({ button: 'right' });
-  await window.getByTestId('layer-menu-filter').click();
-  await window.getByTestId('layer-menu-category-Filters').click();
-  await window.getByTestId('layer-menu-step-Warp').click();
+  await window.getByTestId('layer-menu-filter').focus();
+  await window.keyboard.press('ArrowRight');
+  await expect(window.getByTestId('layer-menu-filters')).toHaveAttribute('aria-label', 'Filters for the mask');
+  await window.getByTestId('layer-menu-category-Filters').focus();
+  await window.keyboard.press('ArrowRight');
+  await window.getByTestId('layer-menu-step-Warp').focus();
+  await window.keyboard.press('Enter');
   await paint.click({ button: 'right' });
   await window.getByTestId('layer-menu-mask-open').click();
   await expect(window.getByTestId('mask-stack-effect')).toContainText('Warp');
