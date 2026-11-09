@@ -118,8 +118,9 @@ public sealed class GraphPictures {
             return (stamp, known);
         }
 
-        var bitmap = BakedMapPicture.Read(found.Path, found.Map, found.Format);
-        return (stamp, Keep(stamp, new(bitmap.Width, bitmap.Height, bitmap.Pixels)));
+        // ⚠ At the depth it was baked, as half-floats: read at eight bits, a position map held 256 places across the
+        // model and a volume noise finer than that drew stairs.
+        return (stamp, Keep(stamp, Widened(BakedMapPicture.ReadDeep(found.Path, found.Map, found.Format))));
     }
 
     static PictureStamp StampOf(string path) {
