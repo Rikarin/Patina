@@ -120,9 +120,9 @@ public sealed class GraphMeshMapDepthTests : IDisposable {
     }
 
     /// <summary>
-    ///     A mesh map with no bake stands in as mid grey when the caller asks for that, as a layer stack does. The grey is
-    ///     eight bits and the node declares half-floats (Rikarin/Vixen#1534), so it goes up at its own depth: through the
-    ///     plan's declaration it was refused.
+    ///     A mesh map with no bake stands in as mid grey when the caller asks for that, as a layer stack does. The
+    ///     grey is eight bits and the node declares half-floats (Rikarin/Vixen#1534), so it goes up at its own
+    ///     depth: through the plan's declaration it was refused.
     /// </summary>
     [Fact]
     public void A_mesh_map_with_no_bake_stands_in_as_mid_grey() {
