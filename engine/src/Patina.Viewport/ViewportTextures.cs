@@ -121,6 +121,20 @@ sealed class ViewportTextures : IDisposable {
         }
     }
 
+    /// <summary>
+    ///     The width of the texture behind a view, or zero for one of the stand-ins with no picture of its own and for
+    ///     a view this did not make.
+    /// </summary>
+    public int WidthOf(TextureViewHandle view) {
+        foreach (var entry in entries.Values) {
+            if (entry.View == view) {
+                return entry.Permanent ? 0 : entry.Width;
+            }
+        }
+
+        return 0;
+    }
+
     /// <summary>Lets go of everything not used since <see cref="BeginUse" />.</summary>
     public void EndUse() {
         device.WaitIdle();
@@ -193,7 +207,7 @@ sealed class ViewportTextures : IDisposable {
 
         device.WaitIdle();
         device.Destroy(staging);
-        return new(texture, device.CreateTextureView(texture), true, false);
+        return new(texture, device.CreateTextureView(texture), true, false, data.Width);
     }
 
     void Destroy(Entry entry) {
@@ -201,5 +215,5 @@ sealed class ViewportTextures : IDisposable {
         device.Destroy(entry.Texture);
     }
 
-    readonly record struct Entry(TextureHandle Texture, TextureViewHandle View, bool Used, bool Permanent);
+    readonly record struct Entry(TextureHandle Texture, TextureViewHandle View, bool Used, bool Permanent, int Width);
 }

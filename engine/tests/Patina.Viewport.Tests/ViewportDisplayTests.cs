@@ -9,7 +9,7 @@ namespace Patina.Viewport.Tests;
 ///     The display settings, judged by the numbers in the frames they make: framing, the views of stored values, the
 ///     curves, the wireframe and the post effects. Skipped where there is no Vulkan.
 /// </summary>
-public sealed class ViewportDisplayTests : IDisposable {
+public sealed partial class ViewportDisplayTests : IDisposable {
     const int Map = 64;
 
     static readonly string Fixture = Path.Combine(Root(), "content", "fixtures", "viewport-test.glb");

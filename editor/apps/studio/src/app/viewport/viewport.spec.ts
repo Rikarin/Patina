@@ -32,13 +32,13 @@ describe('parseHeader', () => {
 });
 
 describe('orbit', () => {
-  it('turns with the drag and stops short of the poles', () => {
+  it('turns with the drag, and goes on over the poles within half a turn of level', () => {
     const right = orbit(DefaultCamera, 100, 0);
     expect(right.yaw).toBeLessThan(DefaultCamera.yaw);
     expect(right.pitch).toBe(DefaultCamera.pitch);
 
-    expect(orbit(DefaultCamera, 0, 100_000).pitch).toBeLessThan(Math.PI / 2);
-    expect(orbit(DefaultCamera, 0, -100_000).pitch).toBeGreaterThan(-Math.PI / 2);
+    expect(Math.abs(orbit(DefaultCamera, 0, 100_000).pitch)).toBeLessThanOrEqual(Math.PI);
+    expect(orbit(DefaultCamera, 0, 200).pitch).toBeGreaterThan(Math.PI / 2);
   });
 
   it('zooms by a share of the distance, inside its limits', () => {

@@ -14,6 +14,7 @@ from uuid import UUID
 
 if TYPE_CHECKING:
   from ..models.project_bake_settings import ProjectBakeSettings
+  from ..models.project_check_settings import ProjectCheckSettings
   from ..models.project_document_info import ProjectDocumentInfo
   from ..models.project_export_settings import ProjectExportSettings
   from ..models.project_file import ProjectFile
@@ -55,6 +56,7 @@ class ProjectContents:
             export (None | ProjectExportSettings | Unset):
             viewport (None | Unset | ViewportDisplay):
             paint (None | ProjectPaintSettings | Unset):
+            checks (None | ProjectCheckSettings | Unset):
      """
 
     id: UUID
@@ -73,6 +75,7 @@ class ProjectContents:
     export: None | ProjectExportSettings | Unset = UNSET
     viewport: None | Unset | ViewportDisplay = UNSET
     paint: None | ProjectPaintSettings | Unset = UNSET
+    checks: None | ProjectCheckSettings | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -81,6 +84,7 @@ class ProjectContents:
 
     def to_dict(self) -> dict[str, Any]:
         from ..models.project_bake_settings import ProjectBakeSettings # noqa: PLC0415
+        from ..models.project_check_settings import ProjectCheckSettings # noqa: PLC0415
         from ..models.project_document_info import ProjectDocumentInfo # noqa: PLC0415
         from ..models.project_export_settings import ProjectExportSettings # noqa: PLC0415
         from ..models.project_file import ProjectFile # noqa: PLC0415
@@ -160,6 +164,14 @@ class ProjectContents:
         else:
             paint = self.paint
 
+        checks: dict[str, Any] | None | Unset
+        if isinstance(self.checks, Unset):
+            checks = UNSET
+        elif isinstance(self.checks, ProjectCheckSettings):
+            checks = self.checks.to_dict()
+        else:
+            checks = self.checks
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -184,6 +196,8 @@ class ProjectContents:
             field_dict["viewport"] = viewport
         if paint is not UNSET:
             field_dict["paint"] = paint
+        if checks is not UNSET:
+            field_dict["checks"] = checks
 
         return field_dict
 
@@ -192,6 +206,7 @@ class ProjectContents:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.project_bake_settings import ProjectBakeSettings # noqa: PLC0415
+        from ..models.project_check_settings import ProjectCheckSettings # noqa: PLC0415
         from ..models.project_document_info import ProjectDocumentInfo # noqa: PLC0415
         from ..models.project_export_settings import ProjectExportSettings # noqa: PLC0415
         from ..models.project_file import ProjectFile # noqa: PLC0415
@@ -328,6 +343,26 @@ class ProjectContents:
         paint = _parse_paint(d.pop("paint", UNSET))
 
 
+        def _parse_checks(data: object) -> None | ProjectCheckSettings | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                checks_type_1 = ProjectCheckSettings.from_dict(data)
+
+
+
+                return checks_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | ProjectCheckSettings | Unset, data)
+
+        checks = _parse_checks(d.pop("checks", UNSET))
+
+
         project_contents = cls(
             id=id,
             name=name,
@@ -345,6 +380,7 @@ class ProjectContents:
             export=export,
             viewport=viewport,
             paint=paint,
+            checks=checks,
         )
 
 

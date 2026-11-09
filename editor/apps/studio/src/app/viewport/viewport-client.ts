@@ -1,5 +1,5 @@
 import { DestroyRef, Injectable, InjectionToken, effect, inject, signal, untracked } from '@angular/core';
-import type { ViewportCameraState, ViewportDisplay, ViewportInput } from '@patina/api-client';
+import type { ViewportCameraState, ViewportDisplay, ViewportInput, ViewportScreenshot } from '@patina/api-client';
 import { unwrap } from '@patina/api-client';
 import { BakeStore } from '../bake/bake-store';
 import { messageOf } from '../core/messages';
@@ -13,6 +13,7 @@ import {
 } from './frame-transport';
 import { IsolationStore } from './isolation-store';
 import { DefaultCamera } from './orbit';
+import { ViewportJump } from './viewport-jump';
 
 /** Makes the frame transport; tests replace it. */
 export const FRAME_TRANSPORT_FACTORY = new InjectionToken<FrameTransportFactory>('FRAME_TRANSPORT_FACTORY', {
@@ -40,8 +41,18 @@ export const DefaultDisplay: ViewportDisplay = {
   vignette: 0,
   grain: 0,
   aberration: 0,
-  sharpen: 0
+  sharpen: 0,
+  bloom: 0,
+  warmth: 0,
+  tint: 0,
+  backgroundColor: '#000000',
+  grid: false,
+  pictureLane: 'rgb',
+  pictureScale: 1
 };
+
+/** The largest picture a screenshot can be, which is the largest the Server's frame slots hold. */
+const MaxShot = { width: 3840, height: 2160 };
 
 /** How long the display waits after the last change before the project keeps it. */
 const KeepAfterMs = 600;
@@ -105,6 +116,14 @@ export class ViewportClient {
         void this.refresh();
       }
     });
+    // Another pane asked to look at something, such as a problem Checks found.
+    const jump = inject(ViewportJump);
+    effect(() => {
+      const target = jump.target();
+      if (target) {
+        untracked(() => this.go(target.to.view ?? null, target.to.camera ?? null));
+      }
+    });
     // A project opens its viewport as it was left, once its contents have been read. Only a change of project puts
     // it back, not a save.
     effect(() => {
@@ -121,6 +140,39 @@ export class ViewportClient {
     this.display.set(next);
     this.sendDisplay(next);
     this.keepLater();
+  }
+
+  /** Shows a view and looks through a camera, for another pane: either left out stays as it is. */
+  private go(view: string | null, camera: ViewportCameraState | null): void {
+    if (view !== null && view !== this.display().view) {
+      this.setDisplay({ view, picture: null });
+    }
+
+    if (camera !== null) {
+      this.moveCamera(camera, false);
+    }
+  }
+
+  /**
+   * Writes the picture as it is now to a PNG on the Server's machine, at the size it is drawn at, or says why it could
+   * not.
+   */
+  async screenshot(path: string): Promise<ViewportScreenshot | null> {
+    try {
+      const client = this.createClient(await this.connection());
+      const size = this.size;
+      // The Server's frame slots hold 4K at most, so a larger canvas is taken at the most a slot holds.
+      const fit = size ? Math.min(1, MaxShot.width / size.width, MaxShot.height / size.height) : 1;
+      const body = size
+        ? { path, width: Math.max(2, Math.floor(size.width * fit)), height: Math.max(2, Math.floor(size.height * fit)) }
+        : { path };
+      const shot = unwrap(await client.POST('/api/v1/viewport/screenshot', { body }));
+      this.error.set(null);
+      return shot;
+    } catch (error) {
+      this.error.set(messageOf(error));
+      return null;
+    }
   }
 
   /** Lays a graph's outputs over the mesh on screen. */

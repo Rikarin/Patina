@@ -1,8 +1,8 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { leave, newLibrary, newProject } from './projects';
+import { answerSave, leave, newLibrary, newProject } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const mesh = resolve(__dirname, '../../../../content/fixtures/viewport-test.glb');
@@ -198,7 +198,33 @@ test('the display settings change the picture, and the project keeps them', asyn
   // The layout comes back too, with Preview still maximized.
   await window.getByTestId('viewport-display-toggle').click();
   await expect(window.getByTestId('viewport-tonemap')).toHaveValue('agx', { timeout: 30_000 });
-  await expect(window.getByTestId('viewport-display').getByRole('switch')).toBeChecked();
+  await expect(window.getByTestId('viewport-wireframe')).toBeChecked();
+});
+
+/**
+ * The grid draws round the model and comes back with the project (#137), and a screenshot is the picture as it is,
+ * written where the save dialog says.
+ */
+test('the grid draws round the model, and a screenshot writes the picture to a file', async () => {
+  await openMesh();
+  await expect.poll(frames, { timeout: 30_000 }).toBeGreaterThan(0);
+  await window.getByTestId('viewport-display-toggle').click();
+
+  const before = await frames();
+  await window.getByTestId('viewport-grid').click();
+  await expect(window.getByTestId('viewport-grid')).toBeChecked();
+  await expect.poll(frames).toBeGreaterThan(before);
+  await expect.poll(() => readFileSync(projectFile(), 'utf8'), { timeout: 10_000 }).toMatch(/grid: true/u);
+
+  const picture = join(scratch, 'shots', 'view.png');
+  await answerSave(app, picture);
+  await window.getByTestId('viewport-screenshot').click();
+  await expect.poll(() => existsSync(picture), { timeout: 30_000 }).toBe(true);
+  // A PNG, of the size the canvas is drawn at.
+  const bytes = readFileSync(picture);
+  expect(bytes.subarray(1, 4).toString('latin1')).toBe('PNG');
+  expect(bytes.readUInt32BE(16)).toBeGreaterThan(100);
+  await window.screenshot({ path: join(shots, 'viewport-grid.png'), scale: 'css' });
 });
 
 test('killing the Worker keeps the view, and frames come back from its successor', async () => {

@@ -52,8 +52,21 @@ public readonly record struct OrbitCamera(
     /// <summary>The camera's axes: Vixen's look-at, right-handed.</summary>
     public (Vector3 Right, Vector3 Up, Vector3 Forward) Axes() {
         var forward = Direction;
-        var right = Vector3.Normalize(Vector3.Cross(forward, new(0f, 1f, 0f)));
+        var right = Vector3.Normalize(Vector3.Cross(forward, Up));
         return (right, Vector3.Cross(right, forward), forward);
+    }
+
+    /// <summary>
+    ///     Which way is up in the picture: the way the eye moves as the pitch grows. It is the world's up tipped
+    ///     towards
+    ///     the camera, so the orbit is free over the poles: straight down has an up, and past it the model turns over.
+    /// </summary>
+    public Vector3 Up {
+        get {
+            var (sinPitch, cosPitch) = MathF.SinCos(Pitch);
+            var (sinYaw, cosYaw) = MathF.SinCos(Yaw);
+            return new(-sinPitch * sinYaw, cosPitch, -sinPitch * cosYaw);
+        }
     }
 
     /// <summary>
@@ -73,7 +86,7 @@ public readonly record struct OrbitCamera(
     public Matrix4x4 ViewProjection(BoundingBox bounds, float aspectRatio) {
         var radius = Radius(bounds);
         var reach = Reach(bounds, aspectRatio);
-        var view = Matrix4x4.LookAt(Eye(bounds, aspectRatio), Target(bounds), new(0f, 1f, 0f));
+        var view = Matrix4x4.LookAt(Eye(bounds, aspectRatio), Target(bounds), Up);
         var near = Math.Max(0.01f * radius, reach - (1.5f + Pan.Length()) * radius);
         var far = reach + (2f + Pan.Length()) * radius;
         return view * Matrix4x4.PerspectiveFieldOfView(Lens, aspectRatio, near, far);
@@ -85,7 +98,11 @@ public readonly record struct OrbitCamera(
     ///     is orthographic, since a sky seen through half a degree is one colour.
     /// </summary>
     public Matrix4x4 SkyViewProjection(float aspectRatio, float environmentRotation) {
-        var view = Matrix4x4.LookAt(Vector3.Zero, TurnedBack(Direction, environmentRotation), new(0f, 1f, 0f));
+        var view = Matrix4x4.LookAt(
+            Vector3.Zero,
+            TurnedBack(Direction, environmentRotation),
+            TurnedBack(Up, environmentRotation)
+        );
         return view * Matrix4x4.PerspectiveFieldOfView(FieldOfView, aspectRatio, 0.1f, 10f);
     }
 

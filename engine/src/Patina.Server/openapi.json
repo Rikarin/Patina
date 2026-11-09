@@ -327,6 +327,57 @@
         }
       }
     },
+    "/api/v1/viewport/screenshot": {
+      "post": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "Writes the picture the viewport shows now to a PNG on the Server\u0027s machine, with its camera, display settings and look, at the size asked for or the one clients asked for.",
+        "operationId": "TakeViewportScreenshot",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewportScreenshotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportScreenshot"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/viewport/isolation": {
       "put": {
         "tags": [
@@ -1926,6 +1977,67 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ProjectViewportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project/checks": {
+      "put": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Keeps what a project\u0027s texture sets are held to before export in its project.yaml: a GPU memory budget, a size limit and a texel density, which GET /stacks/{id}/checks and the texel density view measure against.",
+        "operationId": "SetProjectChecks",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectChecksRequest"
               }
             }
           },
@@ -4043,6 +4155,67 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/checks": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Checks the texture set before export, against its project\u0027s budget, size limit, texel density and export preset, and its layout and values against what a mesh and a physical material can have. Each problem has a stable code and where it is.",
+        "operationId": "GetStackChecks",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackChecks"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -6545,6 +6718,89 @@
           }
         },
         "description": "What to build."
+      },
+      "CheckProblem": {
+        "required": [
+          "code",
+          "severity",
+          "detail",
+          "values",
+          "target"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "One of CheckCodes."
+          },
+          "severity": {
+            "type": "string",
+            "description": "\u0060error\u0060 stops an engine taking it; \u0060warning\u0060 needs a look."
+          },
+          "detail": {
+            "type": "string",
+            "description": "The Server\u0027s own sentence."
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "The numbers and names the sentence was written from, by name."
+          },
+          "target": {
+            "description": "Where it is.",
+            "$ref": "#/components/schemas/CheckTarget"
+          }
+        },
+        "description": "One problem a texture set has before it is exported."
+      },
+      "CheckTarget": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A viewport view that shows it, one of IReadOnlyList\u0026lt;string\u0026gt; ViewportViews.All, or null."
+          },
+          "camera": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "A camera that looks at it on the mesh, or null where it is no place on the mesh.",
+                "$ref": "#/components/schemas/ViewportCameraState"
+              }
+            ]
+          },
+          "u": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "A texture coordinate across where it is, or null.",
+            "format": "float"
+          },
+          "v": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "A texture coordinate down where it is, or null.",
+            "format": "float"
+          },
+          "setting": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The project\u0027s setting that decides it, as \u0060block.field\u0060 (\u0060checks.memoryBudget\u0060,\n\u0060export.preset\u0060), or null."
+          }
+        },
+        "description": "Where a problem is, for a client to go to it."
       },
       "DocumentRecovery": {
         "type": "object",
@@ -10153,6 +10409,56 @@
         },
         "description": "What a project keeps about baking, in its own file: the options, which texture sets to bake, and the files\nbeyond the project\u0027s mesh that a bake reads."
       },
+      "ProjectCheckSettings": {
+        "required": [
+          "memoryBudget",
+          "maxSize",
+          "texelDensity",
+          "densityTolerance"
+        ],
+        "type": "object",
+        "properties": {
+          "memoryBudget": {
+            "type": "number",
+            "description": "The most GPU memory one texture set\u0027s exported files may take, in mebibytes, or zero for no limit.",
+            "format": "double"
+          },
+          "maxSize": {
+            "type": "integer",
+            "description": "The longest side a texture set\u0027s maps may have, in texels, or zero for no limit.",
+            "format": "int32"
+          },
+          "texelDensity": {
+            "type": "number",
+            "description": "The texel density the sets are held to, in texels per unit of the model (a metre in glTF), or zero for the\nlibrary\u0027s.",
+            "format": "double"
+          },
+          "densityTolerance": {
+            "type": "number",
+            "description": "How far a set\u0027s density may stray from it before it is flagged, as a share: 0.25 is a quarter.",
+            "format": "double"
+          }
+        },
+        "description": "What a project holds its texture sets to before they are exported (#159), kept in its \u0060project.yaml\u0060. A\nzero is no limit, and a texel density of zero is the library\u0027s."
+      },
+      "ProjectChecksRequest": {
+        "required": [
+          "project",
+          "checks"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "checks": {
+            "description": "What its texture sets are held to now.",
+            "$ref": "#/components/schemas/ProjectCheckSettings"
+          }
+        },
+        "description": "The body of \u0060PUT /api/v1/library/project/checks\u0060."
+      },
       "ProjectContents": {
         "required": [
           "id",
@@ -10269,6 +10575,17 @@
               {
                 "description": "How its painting was left: recent colours, palette, brush and symmetry, or null for none yet.",
                 "$ref": "#/components/schemas/ProjectPaintSettings"
+              }
+            ]
+          },
+          "checks": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What its texture sets are held to before export: a memory budget, a size limit, a texel density. Null holds\nthem to nothing but the library\u0027s density.",
+                "$ref": "#/components/schemas/ProjectCheckSettings"
               }
             ]
           }
@@ -11420,6 +11737,73 @@
           }
         },
         "description": "A channel a stack writes."
+      },
+      "StackChecks": {
+        "required": [
+          "stack",
+          "set",
+          "width",
+          "height",
+          "texelDensity",
+          "targetDensity",
+          "memoryBytes",
+          "memoryBudget",
+          "preset",
+          "problems"
+        ],
+        "type": "object",
+        "properties": {
+          "stack": {
+            "type": "string",
+            "description": "The stack session."
+          },
+          "set": {
+            "type": "string",
+            "description": "The texture set, or empty for a model with no named sets."
+          },
+          "width": {
+            "type": "integer",
+            "description": "Its maps\u0027 width, in texels.",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "description": "Their height.",
+            "format": "int32"
+          },
+          "texelDensity": {
+            "type": "number",
+            "description": "Texels per unit of the model across the whole set, or zero where it has no area.",
+            "format": "double"
+          },
+          "targetDensity": {
+            "type": "number",
+            "description": "What the project holds it to, or zero for nothing.",
+            "format": "double"
+          },
+          "memoryBytes": {
+            "type": "integer",
+            "description": "The GPU memory its exported files take with the project\u0027s preset, mips included.",
+            "format": "int64"
+          },
+          "memoryBudget": {
+            "type": "integer",
+            "description": "The project\u0027s budget in bytes, or zero for none.",
+            "format": "int64"
+          },
+          "preset": {
+            "type": "string",
+            "description": "The export preset measured against."
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CheckProblem"
+            },
+            "description": "What is wrong, in the order of IReadOnlyList\u0026lt;string\u0026gt; CheckCodes.All, which puts the project\u0027s limits, the errors,\nfirst."
+          }
+        },
+        "description": "The reply to \u0060GET /api/v1/stacks/{id}/checks\u0060: one texture set measured against its project."
       },
       "StackClip": {
         "required": [
@@ -14444,7 +14828,14 @@
           "vignette",
           "grain",
           "aberration",
-          "sharpen"
+          "sharpen",
+          "bloom",
+          "warmth",
+          "tint",
+          "backgroundColor",
+          "grid",
+          "pictureLane",
+          "pictureScale"
         ],
         "type": "object",
         "properties": {
@@ -14564,6 +14955,45 @@
             "description": "Contrast-adaptive sharpening, 0 to 1.",
             "format": "double",
             "default": 0
+          },
+          "bloom": {
+            "type": "number",
+            "description": "How much light spills past what the curve takes to white, 0 none to 1.",
+            "format": "double",
+            "default": 0
+          },
+          "warmth": {
+            "type": "number",
+            "description": "Blue towards red, -1 to 1, where zero leaves the picture alone. A grade, not a temperature.",
+            "format": "double",
+            "default": 0
+          },
+          "tint": {
+            "type": "number",
+            "description": "Green towards magenta, -1 to 1, where zero leaves the picture alone.",
+            "format": "double",
+            "default": 0
+          },
+          "backgroundColor": {
+            "type": "string",
+            "description": "What shows where the environment does not, as \u0060#rrggbb\u0060 in sRGB: the background fades to it as\nBackgroundOpacity falls. It is lit by nothing and seen through the same curve as the model.",
+            "default": "#000000"
+          },
+          "grid": {
+            "type": "boolean",
+            "description": "Whether a grid is drawn on the floor the model stands on, with the world\u0027s x and z axes.",
+            "default": false
+          },
+          "pictureLane": {
+            "type": "string",
+            "description": "Which lane of the picture shows: one of IReadOnlyList\u0026lt;string\u0026gt; ViewportLanes.All.",
+            "default": "rgb"
+          },
+          "pictureScale": {
+            "type": "number",
+            "description": "What the picture\u0027s numbers are multiplied by before they are shown, 0.001 to 1000, so a height in the model\u0027s\nunits or a position comes into view.",
+            "format": "double",
+            "default": 1
           }
         },
         "description": "How the viewport is lit, shown and finished. None of it reaches a file that is exported; a project keeps it, so\nit opens as it was left. Angles are radians and exposure is in stops; an effect at zero is off. A field left out\nof a request is the one the viewport opens with."
@@ -14780,6 +15210,60 @@
           }
         },
         "description": "Asks what is under a position in the viewport."
+      },
+      "ViewportScreenshot": {
+        "required": [
+          "path",
+          "width",
+          "height"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The file."
+          },
+          "width": {
+            "type": "integer",
+            "description": "Its width in pixels.",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "description": "Its height in pixels.",
+            "format": "int32"
+          }
+        },
+        "description": "A picture of the viewport that is now a file."
+      },
+      "ViewportScreenshotRequest": {
+        "required": [
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Where to write it, ending in \u0060.png\u0060."
+          },
+          "width": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Its width in pixels, or null for the size clients asked for.",
+            "format": "int32"
+          },
+          "height": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Its height in pixels, or null for the size clients asked for.",
+            "format": "int32"
+          }
+        },
+        "description": "Asks for the viewport\u0027s picture as a PNG on the Server\u0027s machine: the camera, display settings and look it has\nnow, at a size of its own. Nothing about it reaches a client\u0027s stream."
       },
       "ViewportStackRequest": {
         "required": [

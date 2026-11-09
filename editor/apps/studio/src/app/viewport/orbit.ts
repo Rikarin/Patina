@@ -2,7 +2,6 @@ import type { ViewportCameraState } from '@patina/api-client';
 
 const RadiansPerPixel = 0.008;
 const ZoomPerWheelPixel = 0.001;
-const MaxPitch = 1.5;
 /** Distances are in framings: one is the whole model just inside the pane, whatever its shape. */
 const MinDistance = 0.02;
 /** A pan is in bounding radii and a distance in framings, about three radii at the opening lens. */
@@ -10,8 +9,8 @@ const PanPerPixel = 0.0035;
 const MaxDistance = 6;
 /** The distance the Server opens at and F goes back to, with a little room round the model. */
 export const Framed = 1.05;
-/** Straight down or up, short of the pole by a hair, where an orbit that keeps up level has no direction. */
-const Pole = Math.PI / 2 - 0.001;
+/** Straight down or up. The camera's up is the way it moves as it tips, so it has one even at the pole. */
+const Pole = Math.PI / 2;
 
 const PixelsPerKey = 24;
 const WheelPixelsPerKey = 120;
@@ -48,12 +47,23 @@ export function snapped(camera: ViewportCameraState, view: AxisView): ViewportCa
   return { ...framed(camera), ...AxisViews[view] };
 }
 
-/** A drag turns the model under the pointer: right spins it right, down tips it towards the viewer. */
+/**
+ * A drag turns the model under the pointer: right spins it right, down tips it towards the viewer. The pitch is free over
+ * the poles, as the Server's camera is (#137): past straight down the view turns over, so a sideways drag spins the other
+ * way round the up axis to keep the model moving with the pointer. The pitch stays within a turn either side.
+ */
 export function orbit(camera: ViewportCameraState, dx: number, dy: number): ViewportCameraState {
-  // A snapped top view sits past the drag's limit, and the first drag should not jump it back.
-  const limit = Math.max(MaxPitch, Math.abs(camera.pitch));
-  const pitch = Math.max(-limit, Math.min(limit, camera.pitch + dy * RadiansPerPixel));
-  return { ...camera, yaw: camera.yaw - dx * RadiansPerPixel, pitch };
+  const upright = Math.cos(camera.pitch) >= 0 ? 1 : -1;
+  return {
+    ...camera,
+    yaw: camera.yaw - dx * RadiansPerPixel * upright,
+    pitch: wrapped(camera.pitch + dy * RadiansPerPixel)
+  };
+}
+
+/** An angle brought within half a turn of zero. */
+function wrapped(angle: number): number {
+  return angle - 2 * Math.PI * Math.round(angle / (2 * Math.PI));
 }
 
 /** The wheel moves the camera by a share of its distance, so zooming feels the same near and far. */

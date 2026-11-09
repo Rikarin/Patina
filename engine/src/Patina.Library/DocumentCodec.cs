@@ -27,6 +27,7 @@ public static class DocumentCodec {
     const string BakeKey = "bake";
     const string ViewportKey = "viewport";
     const string PaintKey = "paint";
+    const string ChecksKey = "checks";
     const string UnwrappedKey = "unwrapped";
     const string ExportKey = "export";
     const string DocumentsKey = "documents";
@@ -88,6 +89,7 @@ public static class DocumentCodec {
                     ..Block(BakeKey, document.Bake, LibraryTreeJsonContext.Default.ProjectBakeSettings),
                     ..Block(ViewportKey, document.Viewport, LibraryTreeJsonContext.Default.ViewportDisplay),
                     ..Block(PaintKey, document.Paint, LibraryTreeJsonContext.Default.ProjectPaintSettings),
+                    ..Block(ChecksKey, document.Checks, LibraryTreeJsonContext.Default.ProjectCheckSettings),
                     Pair(ReferencesKey, References(document.References)),
                     Pair(
                         OutputsKey,
@@ -315,7 +317,8 @@ public static class DocumentCodec {
                     Export = ReadBlock(fields, ExportKey, LibraryTreeJsonContext.Default.ProjectExportSettings, new()),
                     Bake = ReadBake(fields),
                     Viewport = ReadBlock(fields, ViewportKey, LibraryTreeJsonContext.Default.ViewportDisplay, new()),
-                    Paint = ReadPaint(fields)
+                    Paint = ReadPaint(fields),
+                    Checks = ReadBlock(fields, ChecksKey, LibraryTreeJsonContext.Default.ProjectCheckSettings, new())
                 };
             }
         );

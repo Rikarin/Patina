@@ -109,6 +109,13 @@ public static class IpcTypes {
     /// </summary>
     public const string StackFind = "stack.find";
 
+    /// <summary>
+    ///     Measures a stack's set before export: its layout on the mesh, and the share of its texels a physical
+    ///     material
+    ///     cannot have. Numbers come back, never the maps.
+    /// </summary>
+    public const string StackCheck = "stack.check";
+
     /// <summary>Draws a material small for the shelf, from a copy of its document that nothing keeps.</summary>
     public const string MaterialThumbnail = "material.thumbnail";
 
@@ -254,6 +261,12 @@ public sealed class IpcMessage {
 
     public StackFindAsk? StackFind { get; set; }
 
+    /// <summary>stack.check: the session to measure.</summary>
+    public string? StackCheck { get; set; }
+
+    /// <summary>The reply to stack.check.</summary>
+    public StackMeasured? StackMeasured { get; set; }
+
     /// <summary>The reply to stack.find: the layer on top there, or null when none covers it.</summary>
     public string? FoundLayer { get; set; }
 
@@ -325,6 +338,13 @@ public sealed record WorkerHello(int Protocol, string Version, int ProcessId);
 /// <summary>The Worker's health: enough for a client to tell that it is alive and what it costs.</summary>
 public sealed record WorkerHealth(double UptimeSeconds, long WorkingSetBytes, double BusySeconds = 0);
 
+/// <summary>What a stack's set measures before export.</summary>
+/// <param name="Width">Its maps' width.</param>
+/// <param name="Height">Their height.</param>
+/// <param name="Layout">Its layout on the mesh, or null for a set with no mesh.</param>
+/// <param name="Maps">The values no physical material has, each with its share and its first texel.</param>
+public sealed record StackMeasured(int Width, int Height, LayoutMeasures? Layout, IReadOnlyList<MapMeasure> Maps);
+
 /// <summary>A picture on a disk the Worker can read, and the hash of what is in it.</summary>
 public sealed record ViewportMapFile(string Path, string Hash);
 
@@ -350,11 +370,18 @@ public sealed record ViewportMapSet(
 /// <param name="Look">The <c>.cube</c> table, or null.</param>
 /// <param name="Picture">The picture, or null.</param>
 /// <param name="Isolation">The parts and materials drawn alone, or null for the whole model.</param>
+/// <param name="TexelDensity">
+///     The texel density the texel density view measures against, in texels per unit of the model, from the project of
+///     the stack worn; zero for none.
+/// </param>
+/// <param name="Resolution">The side of a map for a material whose own size cannot be read, in texels.</param>
 public sealed record ViewportDisplaySet(
     ViewportDisplay Display,
     ViewportMapFile? Look,
     ViewportMapFile? Picture,
-    ViewportIsolation? Isolation = null
+    ViewportIsolation? Isolation = null,
+    double TexelDensity = 0,
+    int Resolution = 2048
 );
 
 /// <summary>

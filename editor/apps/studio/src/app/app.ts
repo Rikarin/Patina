@@ -39,6 +39,7 @@ import {
   resetLayout,
   showing
 } from './core/workspaces';
+import { ChecksPane } from './export/checks-pane';
 import { ExportPane } from './export/export-pane';
 import { Inspector } from './graph/graph-inspector';
 import { GraphPane } from './graph/graph-pane';
@@ -63,6 +64,7 @@ import { ViewportPane } from './viewport/viewport-pane';
   selector: 'ptn-root',
   imports: [
     BakePane,
+    ChecksPane,
     ExportPane,
     GraphPane,
     HistoryPane,
@@ -238,6 +240,11 @@ import { ViewportPane } from './viewport/viewport-pane';
       <ng-template xuiDockContent="history">
         @defer (on immediate) {
           <ptn-history />
+        }
+      </ng-template>
+      <ng-template xuiDockContent="checks">
+        @defer (on immediate) {
+          <ptn-checks />
         }
       </ng-template>
     </xui-dock-manager>
@@ -650,6 +657,10 @@ export class App {
     handle('showHistory', {
       enabled: () => holds(this.layout(), 'history'),
       run: () => this.layout.update(layout => showing(layout, 'history'))
+    });
+    handle('showChecks', {
+      enabled: () => holds(this.layout(), 'checks'),
+      run: () => this.layout.update(layout => showing(layout, 'checks'))
     });
     handle('shortcuts', { run: () => this.keys.set(true) });
     handle('diagnostics', { run: () => this.diagnosing.set(true) });

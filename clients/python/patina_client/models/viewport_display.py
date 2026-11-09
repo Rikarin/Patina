@@ -50,6 +50,20 @@ class ViewportDisplay:
             grain (float): Film grain, 0 to 1. Default: 0.0.
             aberration (float): How far red and blue part towards the edges, 0 to 1. Default: 0.0.
             sharpen (float): Contrast-adaptive sharpening, 0 to 1. Default: 0.0.
+            bloom (float): How much light spills past what the curve takes to white, 0 none to 1. Default: 0.0.
+            warmth (float): Blue towards red, -1 to 1, where zero leaves the picture alone. A grade, not a temperature.
+                Default: 0.0.
+            tint (float): Green towards magenta, -1 to 1, where zero leaves the picture alone. Default: 0.0.
+            background_color (str): What shows where the environment does not, as `#rrggbb` in sRGB: the background fades to
+                it as
+                BackgroundOpacity falls. It is lit by nothing and seen through the same curve as the model. Default: '#000000'.
+            grid (bool): Whether a grid is drawn on the floor the model stands on, with the world's x and z axes. Default:
+                False.
+            picture_lane (str): Which lane of the picture shows: one of IReadOnlyList&lt;string&gt; ViewportLanes.All.
+                Default: 'rgb'.
+            picture_scale (float): What the picture's numbers are multiplied by before they are shown, 0.001 to 1000, so a
+                height in the model's
+                units or a position comes into view. Default: 1.0.
             look (None | str | Unset): A `.cube` table the frame is viewed through after the curve, or null.
             picture (None | str | Unset): The picture the `picture` view shows, on the Server's machine, or null.
      """
@@ -72,6 +86,13 @@ class ViewportDisplay:
     grain: float = 0.0
     aberration: float = 0.0
     sharpen: float = 0.0
+    bloom: float = 0.0
+    warmth: float = 0.0
+    tint: float = 0.0
+    background_color: str = '#000000'
+    grid: bool = False
+    picture_lane: str = 'rgb'
+    picture_scale: float = 1.0
     look: None | str | Unset = UNSET
     picture: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -117,6 +138,20 @@ class ViewportDisplay:
 
         sharpen = self.sharpen
 
+        bloom = self.bloom
+
+        warmth = self.warmth
+
+        tint = self.tint
+
+        background_color = self.background_color
+
+        grid = self.grid
+
+        picture_lane = self.picture_lane
+
+        picture_scale = self.picture_scale
+
         look: None | str | Unset
         if isinstance(self.look, Unset):
             look = UNSET
@@ -151,6 +186,13 @@ class ViewportDisplay:
             "grain": grain,
             "aberration": aberration,
             "sharpen": sharpen,
+            "bloom": bloom,
+            "warmth": warmth,
+            "tint": tint,
+            "backgroundColor": background_color,
+            "grid": grid,
+            "pictureLane": picture_lane,
+            "pictureScale": picture_scale,
         })
         if look is not UNSET:
             field_dict["look"] = look
@@ -200,6 +242,20 @@ class ViewportDisplay:
 
         sharpen = d.pop("sharpen")
 
+        bloom = d.pop("bloom")
+
+        warmth = d.pop("warmth")
+
+        tint = d.pop("tint")
+
+        background_color = d.pop("backgroundColor")
+
+        grid = d.pop("grid")
+
+        picture_lane = d.pop("pictureLane")
+
+        picture_scale = d.pop("pictureScale")
+
         def _parse_look(data: object) -> None | str | Unset:
             if data is None:
                 return data
@@ -239,6 +295,13 @@ class ViewportDisplay:
             grain=grain,
             aberration=aberration,
             sharpen=sharpen,
+            bloom=bloom,
+            warmth=warmth,
+            tint=tint,
+            background_color=background_color,
+            grid=grid,
+            picture_lane=picture_lane,
+            picture_scale=picture_scale,
             look=look,
             picture=picture,
         )

@@ -24,6 +24,7 @@ static class StackEndpoints {
 
     public static void MapStackApi(this IEndpointRouteBuilder api) {
         var stacks = api.MapGroup("/stacks").WithTags(Tag);
+        stacks.MapStackChecks();
 
         void Post(string route, Delegate handler, string name, string summary, params int[] problems) =>
             stacks.MapPost(route, handler).Describe(name, summary, problems);
@@ -338,25 +339,39 @@ static class StackEndpoints {
         }
     }
 
-    static async Task<Results<Ok<StackFound>, ProblemHttpResult>> FindLayer(
+    static Task<Results<Ok<StackFound>, ProblemHttpResult>> FindLayer(
         string id,
         StackFindRequest request,
         StackSessions sessions,
         StackEvaluator evaluator,
         CancellationToken cancellationToken
+    ) =>
+        AskWorkerAsync(
+            id,
+            sessions,
+            async session => new StackFound(await evaluator.FindAsync(session, request.U, request.V, cancellationToken))
+        );
+
+    /// <summary>
+    ///     A question the Worker answers about an open stack. A stack that would not evaluate is the stack's to say and
+    ///     not the Worker's to be missing for, so it is refused; a Worker that is missing or went is unavailable.
+    /// </summary>
+    internal static async Task<Results<Ok<T>, ProblemHttpResult>> AskWorkerAsync<T>(
+        string id,
+        StackSessions sessions,
+        Func<StackSession, Task<T>> ask
     ) {
         if (sessions.Find(id) is not { } session) {
             return NoSession(id);
         }
 
         try {
-            return TypedResults.Ok(
-                new StackFound(await evaluator.FindAsync(session, request.U, request.V, cancellationToken))
-            );
+            return TypedResults.Ok(await ask(session));
         } catch (IpcException e) {
-            // The stack would not evaluate, which is the stack's to say and not the Worker's to be missing for.
             return TypedResults.Problem(e.Message, statusCode: Refused);
-        } catch (Exception e) when (e is IOException or TimeoutException) {
+        } catch (TimeoutException e) {
+            return Refusals.Of(e, Unavailable);
+        } catch (IOException e) {
             return TypedResults.Problem(e.Message, statusCode: Unavailable);
         }
     }

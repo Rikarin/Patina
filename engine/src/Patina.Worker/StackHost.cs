@@ -22,7 +22,7 @@ namespace Patina.Worker;
 ///     stamp
 ///     again (ADR 0009). All the painting is Vixen's; what is here is holding sessions and answering the socket.
 /// </summary>
-sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, DeviceWatch watch)
+sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, DeviceWatch watch)
     : SessionHost<StackHost.Session> {
     /// <summary>How a note about missing bakes starts, which a client reads the map names after.</summary>
     const string NeedsBake = "Needs a bake: ";
@@ -38,6 +38,9 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
     readonly GraphPictures pictures = new();
 
     protected override string Kind => "stack";
+
+    /// <summary>The model files strokes and checks read.</summary>
+    MeshShelf Meshes => meshes;
 
     public IpcMessage Load(IpcMessage request) {
         var load = request.StackLoad ?? throw new IpcException("stack.load holds no stack.");
@@ -402,6 +405,12 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
 
         /// <summary>The texture set this paints, which is a material's name on a model that has several.</summary>
         public string SetName => set;
+
+        /// <summary>The size of its maps.</summary>
+        public (int Width, int Height) Size => (document.BaseWidth, document.BaseHeight);
+
+        /// <summary>The model it is painted on, or null for a stack on no mesh.</summary>
+        public string? ModelFile => document.Model.Trim().Length == 0 ? null : Path.GetFullPath(document.Model, folder);
 
         /// <summary>
         ///     Each fill with something to show, alone and small. It is its own stack, so a stroke's plan pays nothing,

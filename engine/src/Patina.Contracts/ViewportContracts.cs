@@ -43,8 +43,20 @@ public static class ViewportViews {
     /// <summary>The file in <see cref="ViewportDisplay.Picture" />, as stored: a bake's mesh map, or a mask.</summary>
     public const string Picture = "picture";
 
+    /// <summary>
+    ///     Texels per unit of the model against the project's density (<see cref="ProjectCheckSettings" />): green on
+    ///     it, blue at half or less, red at twice or more, under a checker of 32 texels that shows stretch.
+    /// </summary>
+    public const string TexelDensity = "texelDensity";
+
     /// <summary>Every view, in the order the Worker numbers them.</summary>
-    public static IReadOnlyList<string> All { get; } = [Lit, Clay, Unlit, ..Channels, Picture];
+    public static IReadOnlyList<string> All { get; } = [Lit, Clay, Unlit, ..Channels, Picture, TexelDensity];
+}
+
+/// <summary>The lanes <see cref="ViewportDisplay.PictureLane" /> takes: the colour, or one lane as a grey.</summary>
+public static class ViewportLanes {
+    /// <summary>Every lane, in the order the Worker numbers them.</summary>
+    public static IReadOnlyList<string> All { get; } = ["rgb", "r", "g", "b", "a"];
 }
 
 /// <summary>The curves <see cref="ViewportDisplay.ToneMapping" /> takes: Vixen's four, and none.</summary>
@@ -82,6 +94,21 @@ public static class ViewportToneMappings {
 /// <param name="Grain">Film grain, 0 to 1.</param>
 /// <param name="Aberration">How far red and blue part towards the edges, 0 to 1.</param>
 /// <param name="Sharpen">Contrast-adaptive sharpening, 0 to 1.</param>
+/// <param name="Bloom">How much light spills past what the curve takes to white, 0 none to 1.</param>
+/// <param name="Warmth">
+///     Blue towards red, -1 to 1, where zero leaves the picture alone. A grade, not a temperature.
+/// </param>
+/// <param name="Tint">Green towards magenta, -1 to 1, where zero leaves the picture alone.</param>
+/// <param name="BackgroundColor">
+///     What shows where the environment does not, as <c>#rrggbb</c> in sRGB: the background fades to it as
+///     <paramref name="BackgroundOpacity" /> falls. It is lit by nothing and seen through the same curve as the model.
+/// </param>
+/// <param name="Grid">Whether a grid is drawn on the floor the model stands on, with the world's x and z axes.</param>
+/// <param name="PictureLane">Which lane of the picture shows: one of <see cref="ViewportLanes.All" />.</param>
+/// <param name="PictureScale">
+///     What the picture's numbers are multiplied by before they are shown, 0.001 to 1000, so a height in the model's
+///     units or a position comes into view.
+/// </param>
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field, and a default on each is what makes a
 // field left out of a request mean the viewport's own; init-only properties would come through as nothing.
 #pragma warning disable SK7005
@@ -105,9 +132,33 @@ public sealed record ViewportDisplay(
     double Vignette = 0,
     double Grain = 0,
     double Aberration = 0,
-    double Sharpen = 0
+    double Sharpen = 0,
+    double Bloom = 0,
+    double Warmth = 0,
+    double Tint = 0,
+    string BackgroundColor = "#000000",
+    bool Grid = false,
+    string PictureLane = "rgb",
+    double PictureScale = 1
 ) {
 #pragma warning restore SK7005
+    /// <summary>
+    ///     A colour as <c>#rrggbb</c>, each lane 0 to 1 and still in sRGB, or null for text that is not one.
+    /// </summary>
+    public static (double R, double G, double B)? Colour(string text) {
+        if (text is not ['#', _, _, _, _, _, _]
+            || !int.TryParse(
+                text.AsSpan(1),
+                System.Globalization.NumberStyles.AllowHexSpecifier,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var packed
+            )) {
+            return null;
+        }
+
+        return ((packed >> 16 & 0xFF) / 255.0, (packed >> 8 & 0xFF) / 255.0, (packed & 0xFF) / 255.0);
+    }
+
     /// <summary>Why this cannot be shown, or null when it can. Files are checked where they are read.</summary>
     public string? Problem() {
         if (!ViewportViews.All.Contains(View)) {
@@ -122,13 +173,22 @@ public sealed record ViewportDisplay(
             return "The picture view needs a picture.";
         }
 
+        if (!ViewportLanes.All.Contains(PictureLane)) {
+            return $"'{PictureLane}' is no lane. Choose one of {string.Join(", ", ViewportLanes.All)}.";
+        }
+
+        if (Colour(BackgroundColor) is null) {
+            return $"'{BackgroundColor}' is no colour. Write one as #rrggbb.";
+        }
+
         (string Name, double Value, double Low, double High)[] ranges = [
             (nameof(FieldOfView), FieldOfView, 0.1, 2.6), (nameof(Exposure), Exposure, -10, 10),
             (nameof(BackgroundBlur), BackgroundBlur, 0, 1), (nameof(BackgroundOpacity), BackgroundOpacity, 0, 1),
             (nameof(Shadows), Shadows, 0, 1), (nameof(Contrast), Contrast, 0, 2),
             (nameof(Saturation), Saturation, 0, 2),
             (nameof(Vignette), Vignette, 0, 1), (nameof(Grain), Grain, 0, 1), (nameof(Aberration), Aberration, 0, 1),
-            (nameof(Sharpen), Sharpen, 0, 1)
+            (nameof(Sharpen), Sharpen, 0, 1), (nameof(Bloom), Bloom, 0, 1), (nameof(Warmth), Warmth, -1, 1),
+            (nameof(Tint), Tint, -1, 1), (nameof(PictureScale), PictureScale, 0.001, 1000)
         ];
         foreach (var (name, value, low, high) in ranges) {
             if (!double.IsFinite(value) || value < low || value > high) {
@@ -188,6 +248,21 @@ public sealed record ViewportIsolation(IReadOnlyList<string> Parts, IReadOnlyLis
     [System.Text.Json.Serialization.JsonIgnore]
     public bool Whole => Parts.Count == 0 && Materials.Count == 0;
 }
+
+/// <summary>
+///     Asks for the viewport's picture as a PNG on the Server's machine: the camera, display settings and look it has
+///     now, at a size of its own. Nothing about it reaches a client's stream.
+/// </summary>
+/// <param name="Path">Where to write it, ending in <c>.png</c>.</param>
+/// <param name="Width">Its width in pixels, or null for the size clients asked for.</param>
+/// <param name="Height">Its height in pixels, or null for the size clients asked for.</param>
+public sealed record ViewportScreenshotRequest(string Path, int? Width = null, int? Height = null);
+
+/// <summary>A picture of the viewport that is now a file.</summary>
+/// <param name="Path">The file.</param>
+/// <param name="Width">Its width in pixels.</param>
+/// <param name="Height">Its height in pixels.</param>
+public sealed record ViewportScreenshot(string Path, int Width, int Height);
 
 /// <summary>Asks the viewport to wear a stack: its mesh, and its maps as the strokes leave them.</summary>
 /// <param name="Stack">The stack session.</param>

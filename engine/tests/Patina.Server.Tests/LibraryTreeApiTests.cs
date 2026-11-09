@@ -607,6 +607,34 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
         Assert.Equal(left, contents!.Viewport);
     }
 
+    /// <summary>
+    ///     A project keeps what its texture sets are held to before export, and a project that has said nothing holds
+    ///     them to nothing; a limit that is no limit is refused before anything is kept.
+    /// </summary>
+    [Fact]
+    public async Task A_project_keeps_its_checks_and_refuses_ones_that_mean_nothing() {
+        await MakeCrateAsync();
+        var before = await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=crate", Token);
+        Assert.Null(before!.Checks);
+        var checks = new ProjectCheckSettings { MemoryBudget = 16, MaxSize = 2048, TexelDensity = 512 };
+
+        using var kept = await client.PutAsJsonAsync(
+            "/api/v1/library/project/checks",
+            new ProjectChecksRequest("crate", checks),
+            Token
+        );
+        using var refused = await client.PutAsJsonAsync(
+            "/api/v1/library/project/checks",
+            new ProjectChecksRequest("crate", checks with { MaxSize = -1 }),
+            Token
+        );
+
+        Assert.Equal(HttpStatusCode.OK, kept.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        var contents = await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=crate", Token);
+        Assert.Equal(checks, contents!.Checks);
+    }
+
     [Fact]
     public async Task Another_file_of_a_different_name_is_a_change_even_with_the_same_bytes() {
         var (source, _) = await MakeProjectOnMeshAsync();

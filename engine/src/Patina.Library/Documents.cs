@@ -90,6 +90,9 @@ public sealed record ProjectDocument(
 
     /// <summary>How its painting was left: recent colours, palette, brush and symmetry. Null writes nothing.</summary>
     public ProjectPaintSettings? Paint { get; init; }
+
+    /// <summary>What its texture sets are held to before export, or null for no limits, which writes nothing.</summary>
+    public ProjectCheckSettings? Checks { get; init; }
 }
 
 /// <summary>A mesh a project owns.</summary>

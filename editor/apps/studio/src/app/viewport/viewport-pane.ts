@@ -39,7 +39,12 @@ const Rooms: readonly { value: string; label: string }[] = [
  * The views, in the order V steps through them: the whole picture, then each stored channel, which goes by the label
  * the stack vocabulary gives it. A picture is chosen from the mesh maps, so V passes it by.
  */
-const ViewNames: Readonly<Record<string, string>> = { lit: 'Lit', clay: 'Clay', unlit: 'Unlit' };
+const ViewNames: Readonly<Record<string, string>> = {
+  lit: 'Lit',
+  clay: 'Clay',
+  unlit: 'Unlit',
+  texelDensity: 'Texel density'
+};
 
 const Views: readonly string[] = [
   'lit',
@@ -51,7 +56,8 @@ const Views: readonly string[] = [
   'normal',
   'occlusion',
   'emissive',
-  'opacity'
+  'opacity',
+  'texelDensity'
 ];
 
 /** The viewport's own commands, for the keys a screen reader is told about. */
@@ -537,6 +543,22 @@ export class ViewportPane implements AfterViewInit {
         run: () => this.viewport.setDisplay({ wireframe: !this.display().wireframe })
       },
       this.destroyRef
+    );
+    this.commands.handle(
+      'toggleGrid',
+      { checked: () => this.display().grid, run: () => this.viewport.setDisplay({ grid: !this.display().grid }) },
+      this.destroyRef
+    );
+    // The picture is written where the Server runs, so it needs a path the Server can reach: the desktop's.
+    handle(
+      'saveScreenshot',
+      async () => {
+        const path = await desktop()?.saveScreenshot();
+        if (path) {
+          await this.viewport.screenshot(path);
+        }
+      },
+      () => this.canPick && this.viewport.mesh() !== null
     );
     const axes: Readonly<Record<string, AxisView>> = {
       viewFront: 'front',

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+using Vixen.Core.Mathematics;
+
 namespace Patina.Viewport;
 
 /// <summary>What the viewport shows of the model.</summary>
@@ -35,7 +37,13 @@ public enum ViewportView {
     Opacity,
 
     /// <summary>A picture set by <see cref="ViewportRenderer.SetPicture" />, as stored: a mesh map or a mask.</summary>
-    Picture
+    Picture,
+
+    /// <summary>
+    ///     Texels per unit of the model against the project's density: green on it, blue at half or less, red at twice
+    ///     or more, under a checker of 32 texels that shows stretch.
+    /// </summary>
+    TexelDensity
 }
 
 /// <summary>The curve that takes the frame's light to the screen: Vixen's four, and a clamp.</summary>
@@ -105,6 +113,40 @@ public sealed record ViewportShading {
 
     /// <summary>Contrast-adaptive sharpening, 0 to 1.</summary>
     public float Sharpen { get; init; }
+
+    /// <summary>How much light spills past what is brighter than white, 0 none to 1.</summary>
+    public float Bloom { get; init; }
+
+    /// <summary>Blue towards red, -1 to 1, with zero leaving the frame alone.</summary>
+    public float Warmth { get; init; }
+
+    /// <summary>Green towards magenta, -1 to 1, with zero leaving the frame alone.</summary>
+    public float Tint { get; init; }
+
+    /// <summary>
+    ///     What shows where the environment does not, in the scene's linear light: the background fades to it as its
+    ///     opacity falls. It is seen through the same curve as the model, as the environment is.
+    /// </summary>
+    public Vector3 BackgroundColour { get; init; }
+
+    /// <summary>Whether the floor's grid and the world's axes are drawn.</summary>
+    public bool Grid { get; init; }
+
+    /// <summary>
+    ///     Which lane of the picture shows: 0 its colour, then 1 red, 2 green, 3 blue and 4 alpha as greys.
+    /// </summary>
+    public int PictureLane { get; init; }
+
+    /// <summary>What the picture's numbers are multiplied by before they are shown.</summary>
+    public float PictureScale { get; init; } = 1f;
+
+    /// <summary>
+    ///     The texel density the texel density view measures against, in texels per unit, or zero for none.
+    /// </summary>
+    public float DensityTarget { get; init; }
+
+    /// <summary>The side of a map, in texels, for a material that wears none whose size can be read.</summary>
+    public float DensityResolution { get; init; } = 2048f;
 
     /// <summary>The view as the forward shader numbers it, in the order of <see cref="ViewportView" />.</summary>
     public float ViewNumber => (float)View;

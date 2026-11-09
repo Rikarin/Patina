@@ -16,12 +16,31 @@ sealed class ViewportPost : IDisposable {
     /// <summary>What the viewport opens with, and what the curve is scaled by: a touch under one.</summary>
     const float BaseExposure = 0.9f;
 
+    /// <summary>What the curve multiplies the frame's light by at this many stops.</summary>
+    public static float ExposureScale(float stops) => BaseExposure * MathF.Pow(2f, stops);
+
+    /// <summary>
+    ///     The gains warmth and tint make, with their luminance kept at one so neither brightens the frame. Warmth
+    ///     takes blue towards red, and tint green towards magenta. It is a grade, not a white balance to a temperature.
+    /// </summary>
+    public static Vector3 Balance(float warmth, float tint) {
+        var (w, t) = (Math.Clamp(warmth, -1f, 1f), Math.Clamp(tint, -1f, 1f));
+        var gains = new Vector3((1f + 0.2f * w) * (1f + 0.1f * t), 1f - 0.2f * t, (1f - 0.2f * w) * (1f + 0.1f * t));
+        var luminance = 0.2126f * gains.X + 0.7152f * gains.Y + 0.0722f * gains.Z;
+        return gains / luminance;
+    }
+
     /// <summary>The white point Reinhard and Hable are normalised to.</summary>
     const float WhitePoint = 4f;
 
     readonly VulkanDevice device;
     readonly ViewportShaders shaders;
-    readonly Func<EffectData, (Effect Effect, PipelineHandle Pipeline)> build;
+    readonly Func<EffectData, PixelFormat, (Effect Effect, PipelineHandle Pipeline)> build;
+    readonly ViewportBloom bloom;
+
+    /// <summary>Whether the next frame blooms, which <see cref="Plan" /> chose.</summary>
+    bool blooms;
+
     readonly SamplerHandle linear;
     readonly SamplerHandle point;
     readonly BufferHandle meteredExposure;
@@ -33,11 +52,12 @@ sealed class ViewportPost : IDisposable {
     public ViewportPost(
         VulkanDevice device,
         ViewportShaders shaders,
-        Func<EffectData, (Effect Effect, PipelineHandle Pipeline)> build
+        Func<EffectData, PixelFormat, (Effect Effect, PipelineHandle Pipeline)> build
     ) {
         this.device = device;
         this.shaders = shaders;
         this.build = build;
+        bloom = new(device, mode => build(shaders.Bloom(mode), ViewportTargets.HdrFormat));
         linear = device.CreateSampler(SamplerDescription.LinearClamp);
         point = device.CreateSampler(SamplerDescription.PointClamp);
 
@@ -48,9 +68,18 @@ sealed class ViewportPost : IDisposable {
         device.Write(meteredExposure, 0, BitConverter.GetBytes(1f));
     }
 
-    /// <summary>Chooses the stages the next frame runs after the forward pass and writes their numbers.</summary>
-    public void Plan(ViewportShading shading, int width, int height) {
+    /// <summary>
+    ///     Chooses the stages the next frame runs after the forward pass and writes their numbers: the bloom over its
+    ///     light when it is asked for, then the curve and the effects.
+    /// </summary>
+    public void Plan(ViewportShading shading, ViewportTargets target) {
+        var (width, height) = (target.Width, target.Height);
         var data = shading.ShowsData;
+        blooms = shading.Bloom > 0f && !data;
+        if (blooms) {
+            bloom.Plan(target, shading.Bloom, ExposureScale(shading.Exposure));
+        }
+
         var tonemap = Get(
             $"tonemap {(data ? ViewportToneMapping.None : shading.ToneMapping)}",
             () => shaders.Tonemap(data ? ViewportToneMapping.None : shading.ToneMapping),
@@ -59,11 +88,11 @@ sealed class ViewportPost : IDisposable {
             linear
         );
         var neutral = new Vector3(1f, 1f, 1f);
-        tonemap.Block.Set("exposure", data ? 1f : BaseExposure * MathF.Pow(2f, shading.Exposure))
+        tonemap.Block.Set("exposure", data ? 1f : ExposureScale(shading.Exposure))
             .Set("whitePoint", WhitePoint)
             .Set("contrast", data ? 1f : shading.Contrast)
             .Set("saturation", data ? 1f : shading.Saturation)
-            .Set("whiteBalance", neutral)
+            .Set("whiteBalance", data ? neutral : Balance(shading.Warmth, shading.Tint))
             .Set("colorFilter", neutral)
             .Set("shadowTint", neutral)
             .Set("highlightTint", neutral)
@@ -126,9 +155,16 @@ sealed class ViewportPost : IDisposable {
     ///     Draws the stages after the forward pass. Each reads the last picture and writes the other of the two the
     ///     frame has, however many run.
     /// </summary>
+    /// <param name="commands">The frame's commands.</param>
+    /// <param name="target">The frame.</param>
     /// <returns>The picture the last stage wrote, as a colour target.</returns>
     public TextureHandle Record(ICommandList commands, ViewportTargets target) {
         var (reading, readingView) = (target.Hdr, target.HdrView);
+        if (blooms && bloom.Result is { } bloomed) {
+            bloom.Record(commands, target);
+            (reading, readingView) = bloomed;
+        }
+
         for (var at = 0; at < planned.Count; at++) {
             var stage = planned[at];
             var (writing, writingView) =
@@ -154,14 +190,16 @@ sealed class ViewportPost : IDisposable {
         return reading;
     }
 
-    /// <summary>Lets go of every set that reads a picture of the old size.</summary>
+    /// <summary>Lets go of every set that reads a picture of the old size, and the bloom's chain.</summary>
     public void Forget() {
+        bloom.Forget();
         foreach (var stage in stages.Values) {
             stage.Forget();
         }
     }
 
     public void Dispose() {
+        bloom.Dispose();
         foreach (var stage in stages.Values) {
             stage.Dispose();
         }
@@ -173,7 +211,7 @@ sealed class ViewportPost : IDisposable {
 
     Stage Get(string key, Func<EffectData> data, string source, string sampler, SamplerHandle filter) {
         if (!stages.TryGetValue(key, out var stage)) {
-            var (effect, pipeline) = build(data());
+            var (effect, pipeline) = build(data(), ViewportTargets.OutputFormat);
             stages[key] = stage = new(device, effect, pipeline, source, sampler, filter, meteredExposure);
         }
 

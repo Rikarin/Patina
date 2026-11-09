@@ -20,8 +20,8 @@ interface Slider {
   min: number;
   max: number;
   step: number;
-  /** What the readout says: angles in degrees, exposure in stops, the rest as shares. */
-  unit: 'degrees' | 'stops' | 'share';
+  /** What the readout says: angles in degrees, exposure in stops, a grade either way of none, the rest as shares. */
+  unit: 'degrees' | 'stops' | 'signed' | 'share';
 }
 
 const Lighting: readonly Slider[] = [
@@ -79,7 +79,27 @@ const Finish: readonly Slider[] = [
     step: 0.01,
     unit: 'share'
   },
-  { key: 'sharpen', label: 'Sharpen', title: 'Contrast-adaptive sharpening', min: 0, max: 1, step: 0.01, unit: 'share' }
+  { key: 'sharpen', label: 'Sharpen', title: 'Contrast-adaptive sharpening', min: 0, max: 1, step: 0.01, unit: 'share' },
+  {
+    key: 'bloom',
+    label: 'Bloom',
+    title: 'Spills light past what is brighter than white, as a lens does',
+    min: 0,
+    max: 1,
+    step: 0.01,
+    unit: 'share'
+  },
+  { key: 'warmth', label: 'Warmth', title: 'Takes blue towards red, or red towards blue', min: -1, max: 1, step: 0.01, unit: 'signed' },
+  { key: 'tint', label: 'Tint', title: 'Takes green towards magenta, or magenta towards green', min: -1, max: 1, step: 0.01, unit: 'signed' }
+];
+
+/** The lanes the picture view shows one of, as a grey, or all of as its colour. */
+const Lanes: readonly { value: string; label: string }[] = [
+  { value: 'rgb', label: 'Colour' },
+  { value: 'r', label: 'Red' },
+  { value: 'g', label: 'Green' },
+  { value: 'b', label: 'Blue' },
+  { value: 'a', label: 'Alpha' }
 ];
 
 const Projections: readonly XuiSegmentedOption[] = [
@@ -172,6 +192,57 @@ const Snaps: readonly { view: AxisView; label: string; key: string }[] = [
         <span class="readout w-16 shrink-0 text-end text-xs">{{ shown(slider) }}</span>
       </div>
     }
+    <div class="flex items-center gap-2" title="What shows where the environment does not, as Background takes it away">
+      <span class="text-foreground-muted w-20 shrink-0 text-xs">Behind</span>
+      <input
+        type="color"
+        class="well h-6 w-10 shrink-0"
+        aria-label="Background colour"
+        data-testid="viewport-background-colour"
+        [value]="display().backgroundColor"
+        (change)="viewport.setDisplay({ backgroundColor: text($event) })"
+      />
+    </div>
+    <div class="flex items-center gap-2" [title]="commands.tooltip('toggleGrid')">
+      <span class="text-foreground-muted w-20 shrink-0 text-xs">Grid</span>
+      <xui-switch
+        ariaLabel="Grid"
+        data-testid="viewport-grid"
+        [checked]="display().grid"
+        (checkedChange)="viewport.setDisplay({ grid: $event })"
+      />
+    </div>
+
+    @if (display().view === 'picture') {
+      <span class="section-label mt-1">Picture</span>
+      <div class="flex items-center gap-2" title="One lane of the picture as a grey, or all of it as its colour">
+        <span class="text-foreground-muted w-20 shrink-0 text-xs">Lane</span>
+        <select
+          class="well h-7 min-w-0 flex-1 px-1 text-sm"
+          aria-label="Picture lane"
+          data-testid="viewport-picture-lane"
+          (change)="viewport.setDisplay({ pictureLane: text($event) })"
+        >
+          @for (lane of lanes; track lane.value) {
+            <option [value]="lane.value" [selected]="lane.value === display().pictureLane">{{ lane.label }}</option>
+          }
+        </select>
+      </div>
+      <div class="flex items-center gap-2" title="What the picture's numbers are multiplied by before they show, for a height or a position">
+        <span class="text-foreground-muted w-20 shrink-0 text-xs">Scale</span>
+        <input
+          type="number"
+          class="well h-7 min-w-0 flex-1 px-1 text-sm"
+          aria-label="Picture scale"
+          data-testid="viewport-picture-scale"
+          min="0.001"
+          max="1000"
+          step="0.1"
+          [value]="display().pictureScale"
+          (change)="scale($event)"
+        />
+      </div>
+    }
 
     <span class="section-label mt-1">Finish</span>
     <div class="flex items-center gap-2" title="The curve that takes the light to the screen">
@@ -213,18 +284,31 @@ const Snaps: readonly { view: AxisView; label: string; key: string }[] = [
         (checkedChange)="viewport.setDisplay({ wireframe: $event })"
       />
     </div>
-    <button
-      type="button"
-      xuiButton
-      size="sm"
-      variant="ghost"
-      class="mt-1 self-start"
-      data-testid="viewport-display-reset"
-      title="Puts every setting here back as the viewport opens, but the environment, look and view"
-      (click)="reset()"
-    >
-      Reset
-    </button>
+    <div class="mt-1 flex items-center gap-1">
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        data-testid="viewport-display-reset"
+        title="Puts every setting here back as the viewport opens, but the environment, look and view"
+        (click)="reset()"
+      >
+        Reset
+      </button>
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        data-testid="viewport-screenshot"
+        [disabled]="!commands.enabled('saveScreenshot')"
+        [title]="commands.tooltip('saveScreenshot')"
+        (click)="commands.run('saveScreenshot')"
+      >
+        Screenshot…
+      </button>
+    </div>
   `
 })
 export class ViewportDisplayPanel {
@@ -236,6 +320,7 @@ export class ViewportDisplayPanel {
   protected readonly finish = Finish;
   protected readonly curves = ToneMappings;
   protected readonly snaps = Snaps;
+  protected readonly lanes = Lanes;
   /** A snap moves the camera, which is the pane's. */
   readonly snap = output<AxisView>();
 
@@ -244,7 +329,18 @@ export class ViewportDisplayPanel {
   }
 
   protected text(event: Event): string {
-    return (event.target as HTMLSelectElement).value;
+    return (event.target as HTMLSelectElement | HTMLInputElement).value;
+  }
+
+  /** A scale the Server takes, or the one it has for anything else. */
+  protected scale(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const value = Number(input.value);
+    if (Number.isFinite(value) && value >= 0.001 && value <= 1000) {
+      this.viewport.setDisplay({ pictureScale: value });
+    } else {
+      input.value = String(this.display().pictureScale);
+    }
   }
 
   protected readonly degrees = degrees;
@@ -256,6 +352,8 @@ export class ViewportDisplayPanel {
         return degrees(value);
       case 'stops':
         return `${value > 0 ? '+' : ''}${value.toFixed(1)} stops`;
+      case 'signed':
+        return `${value > 0 ? '+' : ''}${percent(value)}`;
       default:
         return percent(value);
     }
@@ -263,7 +361,7 @@ export class ViewportDisplayPanel {
 
   /** Back to how the viewport opens, but for what it is lit by, looked through and showing, which are choices. */
   protected reset(): void {
-    const { environment, look = null, view, picture = null } = this.display();
-    this.viewport.setDisplay({ ...DefaultDisplay, environment, look, view, picture });
+    const { environment, look = null, view, picture = null, pictureLane, pictureScale } = this.display();
+    this.viewport.setDisplay({ ...DefaultDisplay, environment, look, view, picture, pictureLane, pictureScale });
   }
 }

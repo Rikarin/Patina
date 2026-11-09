@@ -5,6 +5,7 @@ import {
   type ProjectBakeSettings,
   type ProjectDocumentInfo,
   type UnwrapOptions,
+  type ProjectCheckSettings,
   type ViewportDisplay,
   unwrap
 } from '@patina/api-client';
@@ -951,6 +952,21 @@ export class ProjectStore {
       this.mutableContents.update(all => new Map(all).set(path, contents));
     } catch {
       // The viewport shows the settings either way; only reopening the project would miss them.
+    }
+  }
+
+  /**
+   * Keeps what a project's texture sets are held to before export, in its own file, where Checks and the texel density
+   * view measure against it. Says why not, or null.
+   */
+  async keepChecks(path: string, checks: ProjectCheckSettings): Promise<string | null> {
+    try {
+      const client = await this.library.api();
+      const contents = unwrap(await client.PUT('/api/v1/library/project/checks', { body: { project: path, checks } }));
+      this.mutableContents.update(all => new Map(all).set(path, contents));
+      return null;
+    } catch (error) {
+      return messageOf(error);
     }
   }
 
