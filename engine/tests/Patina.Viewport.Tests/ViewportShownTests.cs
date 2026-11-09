@@ -1,8 +1,8 @@
 namespace Patina.Viewport.Tests;
 
 /// <summary>
-///     What a click reaches under an isolation (#136): the triangles the viewport draws, so a part isolated away in front
-///     of another is not what a pick lands on, and the triangle named is the model's own.
+///     What a click reaches under an isolation (#136): the triangles the viewport draws, so a part isolated away in
+///     front of another is not what a pick lands on, and the triangle named is the model's own.
 /// </summary>
 public sealed class ViewportShownTests : IDisposable {
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-shown-");
@@ -10,8 +10,9 @@ public sealed class ViewportShownTests : IDisposable {
     public void Dispose() => folder.Delete(true);
 
     /// <summary>
-    ///     Two quads one behind the other, each its own material. With the back one shown alone, the front one's triangles
-    ///     are not there for the Worker's pick to meet, and the back one's keep the numbers they have in the whole model.
+    ///     Two quads one behind the other, each its own material. With the back one shown alone, the front one's
+    ///     triangles are not there for the Worker's pick to meet, and the back one's keep the numbers they have in the
+    ///     whole model.
     /// </summary>
     [Fact]
     public void A_part_isolated_away_is_not_there_to_be_picked() {
@@ -33,7 +34,7 @@ public sealed class ViewportShownTests : IDisposable {
         Assert.Equal([0, 1, 2, 3], all);
         Assert.Equal(12, whole.Indices.Length);
 
-        // Only the back quad's corners, at z = 0, are left for a ray to meet, and each triangle keeps the model's number.
+        // Only the back quad's corners, at z = 0, are left for a ray to meet; each triangle keeps the model's number.
         Assert.Equal([2, 3], behind);
         Assert.All(back.Indices, corner => Assert.Equal(0f, back.Positions[corner].Z));
         Assert.Equal(6, back.Indices.Length);

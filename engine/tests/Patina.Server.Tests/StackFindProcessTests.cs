@@ -85,14 +85,21 @@ public sealed partial class StackProcessTests {
             Texts: new Dictionary<string, string> { ["Red From"] = "SecondRed" },
             Inputs: new Dictionary<string, StackInput> { ["Second"] = new("Beneath", "baseColor") }
         );
-        await EditAsync(state.Id, deadline.Token, new StackSetLayer(rust, Mask: new("Constant", 1f, Effects: [beneath])));
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(rust, Mask: new("Constant", 1f, Effects: [beneath]))
+        );
         Assert.Equal(rust, await FindAsync(state.Id, Bare, Bare, deadline.Token));
 
         // And the step reads the picture as it is: under a black base it masks everything, and the base is found.
         await EditAsync(
             state.Id,
             deadline.Token,
-            new StackSetLayer("base", Values: new Dictionary<string, IReadOnlyList<float>> { ["baseColor"] = [0f, 0f, 0f, 1f] })
+            new StackSetLayer(
+                "base",
+                Values: new Dictionary<string, IReadOnlyList<float>> { ["baseColor"] = [0f, 0f, 0f, 1f] }
+            )
         );
         Assert.Equal("base", await FindAsync(state.Id, Bare, Bare, deadline.Token));
     }

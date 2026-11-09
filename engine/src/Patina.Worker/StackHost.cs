@@ -453,7 +453,7 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
             var x = Math.Clamp((int)(u * document.BaseWidth), 0, document.BaseWidth - 1);
             var y = Math.Clamp((int)(v * document.BaseHeight), 0, document.BaseHeight - 1);
             foreach (var (layer, alone, inPicture) in StackFinding.Candidates(document, chosen)) {
-                // A layer whose mask reads the picture is weighed in it, the layers beneath it drawn as they are (#113).
+                // A layer whose mask reads the picture is weighed in it, with the layers beneath it as they are (#113).
                 using LayerStackEvaluator run = new(evaluator, canvases, path, fill) {
                     Weighing = !inPicture,
                     Asked = inPicture ? layer : ""

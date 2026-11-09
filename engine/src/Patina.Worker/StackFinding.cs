@@ -26,9 +26,9 @@ static class StackFinding {
     ///     found as itself, since the layers inside it are copies with ids no document has.
     /// </remarks>
     /// <remarks>
-    ///     ⚠ <b>A layer whose mask reads the picture is not weighed alone</b> (<see cref="ReadsThePicture" />): alone, a
-    ///     step reading the layers beneath read nothing and an anchor resolved nothing, so the click found what the
-    ///     picture shows beneath it. Such a candidate says so, and is weighed in the picture through
+    ///     ⚠ <b>A layer whose mask reads the picture is not weighed alone</b> (<see cref="ReadsThePicture" />):
+    ///     alone, a step reading the layers beneath read nothing and an anchor resolved nothing, so the click found
+    ///     what the picture shows beneath it. Such a candidate says so, and is weighed in the picture through
     ///     <c>LayerStackGraph.Amount</c>; the rest stay alone, which costs one layer rather than the stack beneath.
     /// </remarks>
     public static IEnumerable<(string Layer, TextureSetAsset Alone, bool InPicture)> Candidates(
@@ -56,8 +56,8 @@ static class StackFinding {
     }
 
     /// <summary>
-    ///     Whether a layer's mask, or a step or entry of it, reads the layers beneath or an anchor point (#113, #111), or
-    ///     its fill reads an anchor: something a layer weighed alone has nothing of. An effect inside it counts too.
+    ///     Whether a layer's mask, or a step or entry of it, reads the layers beneath or an anchor point (#113, #111),
+    ///     or its fill reads an anchor: something a layer weighed alone has nothing of. An effect inside it counts too.
     /// </summary>
     public static bool ReadsThePicture(LayerAsset layer) {
         var mask = layer.Mask;

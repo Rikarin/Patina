@@ -54,7 +54,8 @@ public sealed class StackMaskStackTests {
         Assert.Equal(["Constant"], Sources(editor));
         Assert.True(mask.Layers[^1].Kept, "the mesh limit must apply with the mask off");
         Assert.False(StackDocuments.Layers([Layer(editor)])[0].Mask.Enabled);
-        Assert.False(LayerStackYaml.Read(LayerStackYaml.Write(editor.Document)).Sets[0].Layers.Single(l => l.Id == "paint").Mask.Enabled);
+        var saved = LayerStackYaml.Read(LayerStackYaml.Write(editor.Document)).Sets[0];
+        Assert.False(saved.Layers.Single(static layer => layer.Id == "paint").Mask.Enabled);
 
         editor.Undo();
         Assert.True(Layer(editor).Mask.Enabled);

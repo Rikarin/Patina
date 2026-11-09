@@ -831,7 +831,9 @@ public sealed class StackEditor : ILayerStackDocument {
 
         StackLayerCopies copies = new(this, set);
         // Only the part that goes in is copied, so no canvas is made that nothing reads.
-        var copied = part == "Mask" ? layers[0] with { Paint = string.Empty, Children = [] } : layers[0] with { Mask = new() };
+        var copied = part == "Mask"
+            ? layers[0] with { Paint = string.Empty, Children = [] }
+            : layers[0] with { Mask = new() };
         var copy = copies.Of(copied, paint => Path.Combine(folder, Path.GetFileName(paint)));
         var after = part switch {
             "Mask" => target with {
@@ -855,11 +857,13 @@ public sealed class StackEditor : ILayerStackDocument {
         };
         if (part == "Content" && target.Kind == LayerKind.Group && copy.Kind != LayerKind.Group) {
             throw new StackEditRefusedException(
-                $"'{target.Name}' is a folder, and what it holds is its layers: paste them in, rather than one layer's content."
+                $"'{target.Name}' is a folder, and what it holds is its layers: paste them in, rather than one "
+                + "layer's content."
             );
         }
 
-        run(new SetLayerCommand(this, new(set, target.Id), target, after, part == "Mask" ? "Paste mask" : "Paste content"));
+        var label = part == "Mask" ? "Paste mask" : "Paste content";
+        run(new SetLayerCommand(this, new(set, target.Id), target, after, label));
         Journal(copies, step);
     }
 

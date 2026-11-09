@@ -46,8 +46,8 @@ sealed class MeshShelf {
     }
 
     /// <summary>
-    ///     The triangles an isolation draws, as a ray reaches them, and the model's own number for each (#136). Held for
-    ///     the last isolation asked about, since a pick asks again for every click.
+    ///     The triangles an isolation draws, as a ray reaches them, and the model's own number for each (#136).
+    ///     Held for the last isolation asked about, since a pick asks again for every click.
     /// </summary>
     /// <exception cref="IpcException">The file cannot be read as a mesh.</exception>
     public (PaintProjection Projection, int[] Triangles) Shown(string path, string[] parts, string[] materials) {

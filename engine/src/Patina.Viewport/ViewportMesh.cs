@@ -61,8 +61,8 @@ public sealed record ViewportGeometry(
     public static IReadOnlyList<string> Materials(string path) => ViewportMesh.Read(path).MaterialsInUse();
 
     /// <summary>
-    ///     The triangles an isolation draws (#136), with the model's own number for each, so a pick through them names the
-    ///     triangle it would have named on the whole model. Both lists empty is the whole model.
+    ///     The triangles an isolation draws (#136), with the model's own number for each, so a pick through them names
+    ///     the triangle it would have named on the whole model. Both lists empty is the whole model.
     /// </summary>
     /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
     public static (ViewportGeometry Geometry, int[] Triangles) Shown(string path, string[] parts, string[] materials) =>

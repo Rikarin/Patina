@@ -490,14 +490,17 @@ public sealed class StackEditorPropertyTests {
     }
 
     /// <summary>
-    ///     A copy pastes into a layer that is there (#106): its mask, with a canvas of its own and the layer's own limit to
-    ///     some meshes kept, or its content, with the layer's name, mask and blend kept. Each is one undo step.
+    ///     A copy pastes into a layer that is there (#106): its mask, with a canvas of its own and the layer's own
+    ///     limit to some meshes kept, or its content, with the layer's name, mask and blend kept. Each is one undo
+    ///     step.
     /// </summary>
     [Fact]
     public void A_copy_pastes_into_a_layer_as_its_mask_or_its_content() {
         var source = new StackEditor("/tmp/Source.vxlayers", Sample());
         source.Apply(new([new StackAddMaskLayer("paint", "Paint")]));
-        source.Apply(new([new StackStroke("m", "paint", "baseColor", new(4f), White, [new(1f, 1f)], Mask: true, MaskLayer: 0)]));
+        source.Apply(
+            new([new StackStroke("m", "paint", "baseColor", new(4f), White, [new(1f, 1f)], Mask: true, MaskLayer: 0)])
+        );
         source.Apply(new([new StackStroke("s", "paint", "baseColor", new(4f), White, [new(2f, 2f)])]));
         var (text, _, _) = source.Copied(["paint"]);
         var clips = Path.Combine(Path.GetTempPath(), "clips", "into");
@@ -512,7 +515,8 @@ public sealed class StackEditorPropertyTests {
         Assert.Equal(LayerMaskSource.Constant, masked.Mask.Source);
         var entry = masked.Mask.Layers[0];
         Assert.Equal(LayerMaskSource.Paint, entry.Source);
-        Assert.NotEqual(source.Set.Layers.Single(static layer => layer.Id == "paint").Mask.Layers[0].Paint, entry.Paint);
+        var painted = source.Set.Layers.Single(static layer => layer.Id == "paint");
+        Assert.NotEqual(painted.Mask.Layers[0].Paint, entry.Paint);
         Assert.True(StackDocuments.KeepsToMeshes(masked.Mask.Layers[^1]));
         Assert.Equal(entry.Paint, Assert.Single(target.Standing, static stroke => stroke.From is not null).Paint);
         Assert.Equal("Paste mask", target.History.UndoLabel);
@@ -522,7 +526,7 @@ public sealed class StackEditorPropertyTests {
         Assert.Equal(LayerKind.Paint, filled.Kind);
         Assert.Equal(("Base", "Multiply"), (filled.Name, filled.Blend.ToString()));
         Assert.Equal(masked.Mask, filled.Mask);
-        Assert.NotEqual(source.Set.Layers.Single(static layer => layer.Id == "paint").Paint, filled.Paint);
+        Assert.NotEqual(painted.Paint, filled.Paint);
         Assert.Equal("Paste content", target.History.UndoLabel);
 
         target.Undo();
