@@ -47,14 +47,14 @@ public static class ExportOverrides {
 
     /// <summary>
     ///     What a project keeps of its export as the changes an export through one preset makes: its size, padding and
-    ///     dithering when it was set for that preset, and its files and sets' changes of that preset.
+    ///     dithering when they were set for that preset or for none in particular, and its files and sets' changes.
     /// </summary>
     public static ExportOptions? OptionsOf(ProjectExportSettings? export, string preset) {
         if (export is null) {
             return null;
         }
 
-        var same = export.Preset == preset;
+        var same = export.Preset is null || export.Preset == preset;
         return new() {
             Size = same ? export.Size : null,
             Filter = same ? export.Filter : null,
