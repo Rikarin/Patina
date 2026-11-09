@@ -55,7 +55,10 @@ public static class LibraryLayout {
     /// </summary>
     public const string RevisionsFolder = ".revisions";
 
-    /// <summary>Where a deleted project goes, so that a slip costs nothing. Hidden from the scan.</summary>
+    /// <summary>
+    ///     The bin, where a deleted project or document goes so that a slip costs nothing (<see cref="LibraryBin" />).
+    ///     Hidden from the scan, and from Git by the default <c>.gitignore</c>.
+    /// </summary>
     public const string TrashFolder = ".trash";
 
     public static string IndexPath(string root) => Path.Combine(root, CacheFolder, "index.sqlite");

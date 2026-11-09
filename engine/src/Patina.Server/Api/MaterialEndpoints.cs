@@ -24,12 +24,6 @@ static class MaterialEndpoints {
                 + "type, kind, origin, project or path, wherever they are from."
             );
 
-        library.MapPost("/materials/thumbnails", DrawMaterials)
-            .Described(
-                "GetMaterialThumbnails",
-                "The pictures of some materials, by hash under /previews, drawing those the cache lacks first."
-            );
-
         library.MapPost("/materials/use", UseMaterial)
             .Described("UseMaterial", "Makes a material graph ready for a project's layers, and names it for them.");
 
@@ -49,25 +43,6 @@ static class MaterialEndpoints {
             host,
             library => TypedResults.Ok(MaterialShelf.Listed(MaterialShelf.List(library, project, search)))
         );
-
-    static async Task<Results<Ok<MaterialThumbnails>, ProblemHttpResult>> DrawMaterials(
-        LibraryHost host,
-        ShelfThumbnails thumbnails,
-        MaterialThumbnailRequest request,
-        CancellationToken cancellationToken
-    ) {
-        if (host.Library is not { } library) {
-            return LibraryTreeEndpoints.NoLibrary();
-        }
-
-        try {
-            return TypedResults.Ok(
-                new MaterialThumbnails(await thumbnails.DrawAsync(library, request.Sources, cancellationToken))
-            );
-        } catch (TimeoutException e) {
-            return Refusals.Of(e, StatusCodes.Status503ServiceUnavailable);
-        }
-    }
 
     static Results<Ok<MaterialUse>, ProblemHttpResult> UseMaterial(
         LibraryHost host,

@@ -151,6 +151,12 @@ sealed class LibraryQueries(IndexDatabase database) {
         return new(items, total, offset, limit);
     }
 
+    /// <summary>An asset as the index knows it, or null.</summary>
+    public AssetSummary? Asset(AssetId asset) {
+        using var connection = database.Open();
+        return FindAsset(connection, asset);
+    }
+
     /// <summary>
     ///     The impact of changing <paramref name="asset" />'s bytes, or null when the index does not know it.
     /// </summary>

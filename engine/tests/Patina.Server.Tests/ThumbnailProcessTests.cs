@@ -7,11 +7,12 @@ using System.Text.Json;
 namespace Patina.Server.Tests;
 
 /// <summary>
-///     The shelf's pictures: drawn by the Worker into the cache, named by hash, and only time lost with the cache.
+///     Pictures of what a library holds, for the shelf and the Library's grid alike: drawn by the Worker into the cache,
+///     named by hash, and only time lost with the cache.
 /// </summary>
 public sealed partial class StackProcessTests {
     [Fact]
-    public async Task Shelf_materials_have_pictures_by_hash_that_a_deleted_cache_only_draws_again() {
+    public async Task Materials_and_projects_have_pictures_by_hash_that_a_deleted_cache_only_draws_again() {
         using var deadline = Deadline(240);
         LibraryFiles.CreateDefaultLibrary(Library, "Game");
         var (_, unused) = await StartAsync("Unused.vxlayers", deadline.Token);
@@ -48,11 +49,14 @@ public sealed partial class StackProcessTests {
                 StringComparison.Ordinal
             )
         );
-        string[] sources = [graph, starter, shipped, "projects/crate/missing.vxtexgraph"];
+        string[] sources = [graph, starter, shipped, "projects/crate/missing.vxtexgraph", "projects/crate", "projects"];
 
         var first = await ThumbnailsAsync(sources, deadline.Token);
         Assert.All(first[..3], static hash => Assert.Matches("^[0-9a-f]{64}$", hash));
         Assert.Null(first[3]);
+        // A project is the picture of the document that stands for it: its layered material is empty, so its graph.
+        Assert.Equal(first[0], first[4]);
+        Assert.Null(first[5]);
         foreach (var hash in first[..3]) {
             Assert.Equal((256, 256), await PictureSizeAsync(hash!, deadline.Token));
         }
@@ -76,7 +80,7 @@ public sealed partial class StackProcessTests {
     }
 
     async Task<string?[]> ThumbnailsAsync(IReadOnlyList<string> sources, CancellationToken token) {
-        using var reply = await http.PostAsJsonAsync("/api/v1/library/materials/thumbnails", new { sources }, token);
+        using var reply = await http.PostAsJsonAsync("/api/v1/library/thumbnails", new { sources }, token);
         var text = await reply.Content.ReadAsStringAsync(token);
         Assert.True(reply.IsSuccessStatusCode, text);
         var items = JsonDocument.Parse(text).RootElement.GetProperty("items").EnumerateArray().ToList();

@@ -31,6 +31,76 @@
         }
       }
     },
+    "/api/v1/preferences": {
+      "get": {
+        "tags": [
+          "Preferences"
+        ],
+        "summary": "The person\u0027s settings the Server acts on, as their preferences file has them.",
+        "operationId": "GetPreferences",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerPreferences"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Preferences"
+        ],
+        "summary": "Changes the person\u0027s settings, and keeps them in their preferences file.",
+        "operationId": "SetPreferences",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServerPreferences"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerPreferences"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/viewport": {
       "get": {
         "tags": [
@@ -2339,6 +2409,74 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Moves a document to the library\u0027s bin, with the paint it keeps beside it. It may not be open.",
+        "operationId": "TrashDocument",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BinItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/library/project/document/role": {
@@ -2711,67 +2849,6 @@
         }
       }
     },
-    "/api/v1/library/materials/thumbnails": {
-      "post": {
-        "tags": [
-          "Library"
-        ],
-        "summary": "The pictures of some materials, by hash under /previews, drawing those the cache lacks first.",
-        "operationId": "GetMaterialThumbnails",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MaterialThumbnailRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MaterialThumbnails"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/library/materials/use": {
       "post": {
         "tags": [
@@ -3103,6 +3180,587 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BrushPresetInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/thumbnails": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Pictures of documents, projects or shelf materials, by hash under /previews, drawing those the cache lacks first. A project is drawn as the document that best stands for it.",
+        "operationId": "GetThumbnails",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThumbnailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThumbnailList"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project/tags": {
+      "patch": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Sets every tag a project has, in its project.yaml.",
+        "operationId": "SetProjectTags",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectTagsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project/document/name": {
+      "patch": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Gives a document a new display name. Its file stays.",
+        "operationId": "RenameDocument",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectDocumentRenameRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project/document/tags": {
+      "patch": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Sets every tag a document has, in its project\u0027s project.yaml.",
+        "operationId": "SetDocumentTags",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectDocumentTagsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project/reference": {
+      "patch": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Pins a project\u0027s reference to an asset at the bytes it has now, or lets it follow the asset again.",
+        "operationId": "SetReferencePin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectReferenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectReference"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/bin": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "What the library\u0027s bin holds: deleted projects and documents, the latest first.",
+        "operationId": "GetBin",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BinList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Deletes everything in the bin for good.",
+        "operationId": "EmptyBin",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BinEmptied"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/bin/restore": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Puts something back where it was deleted from. A project whose folder was taken comes back beside it.",
+        "operationId": "RestoreFromBin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BinRestoreRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BinRestored"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/bin/{id}": {
+      "delete": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Deletes one thing in the bin for good.",
+        "operationId": "DeleteFromBin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/cache": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "The library\u0027s cache folder and how much room it takes. Deleting it costs only time.",
+        "operationId": "GetCache",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CacheInfo"
                 }
               }
             }
@@ -5877,6 +6535,35 @@
         },
         "description": "One document other projects can use, as the browser shows it."
       },
+      "AutosavePreferences": {
+        "required": [
+          "intervalSeconds",
+          "idleSeconds",
+          "keep"
+        ],
+        "type": "object",
+        "properties": {
+          "intervalSeconds": {
+            "type": "integer",
+            "description": "How often open, unsaved documents are kept, at the most. Zero turns autosave off.",
+            "format": "int32",
+            "default": 60
+          },
+          "idleSeconds": {
+            "type": "integer",
+            "description": "How long after the last edit a document is kept, without waiting for the interval. Zero waits.",
+            "format": "int32",
+            "default": 5
+          },
+          "keep": {
+            "type": "integer",
+            "description": "How many autosaves of a document are kept, the latest first. Restoring takes the latest.",
+            "format": "int32",
+            "default": 3
+          }
+        },
+        "description": "How unsaved work is kept. It goes to the library\u0027s cache, never over a document."
+      },
       "BakedMapFile": {
         "required": [
           "map",
@@ -6246,6 +6933,102 @@
         },
         "description": "The thickness map\u0027s own settings."
       },
+      "BinEmptied": {
+        "required": [
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "description": "How many entries went for good.",
+            "format": "int32"
+          }
+        },
+        "description": "What emptying the bin deleted."
+      },
+      "BinItem": {
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "from",
+          "deleted"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The entry, which the bin routes take."
+          },
+          "kind": {
+            "type": "string",
+            "description": "\u0060project\u0060 or \u0060document\u0060."
+          },
+          "name": {
+            "type": "string",
+            "description": "Its display name when it was deleted."
+          },
+          "from": {
+            "type": "string",
+            "description": "Where it lived, below the library, and where restoring puts it."
+          },
+          "deleted": {
+            "type": "string",
+            "description": "When it was deleted.",
+            "format": "date-time"
+          }
+        },
+        "description": "Something in the library\u0027s bin, which can be put back or deleted for good."
+      },
+      "BinList": {
+        "required": [
+          "items",
+          "bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BinItem"
+            },
+            "description": "Its entries, the latest first."
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "The room they take on disk.",
+            "format": "int64"
+          }
+        },
+        "description": "What the bin holds."
+      },
+      "BinRestored": {
+        "required": [
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Below the library: a project\u0027s folder, or a document\u0027s file."
+          }
+        },
+        "description": "Where something put back from the bin now is."
+      },
+      "BinRestoreRequest": {
+        "required": [
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The entry."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/bin/restore\u0060."
+      },
       "BrushPreset": {
         "required": [
           "tool",
@@ -6545,6 +7328,25 @@
           }
         },
         "description": "What to build."
+      },
+      "CacheInfo": {
+        "required": [
+          "path",
+          "bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The folder."
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "The room it takes on disk.",
+            "format": "int64"
+          }
+        },
+        "description": "The library\u0027s cache: what deleting it would cost is time, and nothing else."
       },
       "DocumentRecovery": {
         "type": "object",
@@ -9939,58 +10741,6 @@
         },
         "description": "The materials a project can use."
       },
-      "MaterialThumbnail": {
-        "required": [
-          "source"
-        ],
-        "type": "object",
-        "properties": {
-          "source": {
-            "type": "string",
-            "description": "The material."
-          },
-          "hash": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "The picture, or null when the material has nothing to show."
-          }
-        },
-        "description": "A material\u0027s picture in the preview cache. The pixels are at \u0060/previews/{hash}\u0060."
-      },
-      "MaterialThumbnailRequest": {
-        "required": [
-          "sources"
-        ],
-        "type": "object",
-        "properties": {
-          "sources": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "The materials, as their list names them."
-          }
-        },
-        "description": "The body of \u0060POST /api/v1/library/materials/thumbnails\u0060."
-      },
-      "MaterialThumbnails": {
-        "required": [
-          "items"
-        ],
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/MaterialThumbnail"
-            },
-            "description": "Them, in the order they were asked for."
-          }
-        },
-        "description": "The pictures of some materials."
-      },
       "MaterialUse": {
         "required": [
           "graph"
@@ -10164,6 +10914,7 @@
           "bakes",
           "pictures",
           "autoUnwrap",
+          "tags",
           "exportSets",
           "preservePaint",
           "unwrap",
@@ -10219,6 +10970,13 @@
           "autoUnwrap": {
             "type": "boolean",
             "description": "Whether a mesh with no UV layout is given one when it is set."
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What the project can be searched by, sorted."
           },
           "exportSets": {
             "type": "array",
@@ -10369,7 +11127,8 @@
         "required": [
           "kind",
           "name",
-          "path"
+          "path",
+          "tags"
         ],
         "type": "object",
         "properties": {
@@ -10421,6 +11180,13 @@
               "string"
             ],
             "description": "The folder of the bake it reads, below the library, or null."
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What it can be searched by, sorted."
           }
         },
         "description": "Something in a project that can be opened and edited (ADR 0012)."
@@ -10449,6 +11215,30 @@
           }
         },
         "description": "The body of \u0060PATCH /api/v1/library/project/document\u0060."
+      },
+      "ProjectDocumentRenameRequest": {
+        "required": [
+          "project",
+          "document",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "document": {
+            "type": "string",
+            "description": "The document.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Its new display name. Its file stays."
+          }
+        },
+        "description": "The body of \u0060PATCH /api/v1/library/project/document/name\u0060."
       },
       "ProjectDocumentRequest": {
         "required": [
@@ -10519,6 +11309,33 @@
           }
         },
         "description": "The body of \u0060PATCH /api/v1/library/project/document/role\u0060."
+      },
+      "ProjectDocumentTagsRequest": {
+        "required": [
+          "project",
+          "document",
+          "tags"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "document": {
+            "type": "string",
+            "description": "The document.",
+            "format": "uuid"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Every tag it has from now on. Repeats and empty ones are dropped."
+          }
+        },
+        "description": "The body of \u0060PATCH /api/v1/library/project/document/tags\u0060."
       },
       "ProjectDuplicateRequest": {
         "required": [
@@ -10887,6 +11704,56 @@
         },
         "description": "The body of \u0060POST /api/v1/library/project/pictures\u0060."
       },
+      "ProjectReference": {
+        "required": [
+          "asset",
+          "pinned"
+        ],
+        "type": "object",
+        "properties": {
+          "asset": {
+            "type": "string",
+            "description": "The asset.",
+            "format": "uuid"
+          },
+          "pinned": {
+            "type": "boolean",
+            "description": "Whether a pin holds it."
+          },
+          "revision": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The bytes it is pinned at, or null when it follows the asset."
+          }
+        },
+        "description": "A project\u0027s reference to an asset, as it now stands."
+      },
+      "ProjectReferenceRequest": {
+        "required": [
+          "project",
+          "asset",
+          "pinned"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project that refers to the asset, below \u0060projects/\u0060."
+          },
+          "asset": {
+            "type": "string",
+            "description": "The asset it refers to itself.",
+            "format": "uuid"
+          },
+          "pinned": {
+            "type": "boolean",
+            "description": "True holds it at the bytes the asset has now; false lets it follow the asset again."
+          }
+        },
+        "description": "The body of \u0060PATCH /api/v1/library/project/reference\u0060."
+      },
       "ProjectRenameRequest": {
         "required": [
           "path",
@@ -11069,6 +11936,27 @@
         },
         "description": "One project as the browser shows it. The project itself loads on open."
       },
+      "ProjectTagsRequest": {
+        "required": [
+          "path",
+          "tags"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Every tag it has from now on. Repeats and empty ones are dropped."
+          }
+        },
+        "description": "The body of \u0060PATCH /api/v1/library/project/tags\u0060."
+      },
       "ProjectViewportRequest": {
         "required": [
           "project",
@@ -11086,6 +11974,19 @@
           }
         },
         "description": "The body of \u0060PUT /api/v1/library/project/viewport\u0060."
+      },
+      "ServerPreferences": {
+        "required": [
+          "autosave"
+        ],
+        "type": "object",
+        "properties": {
+          "autosave": {
+            "description": "How unsaved work is kept.",
+            "$ref": "#/components/schemas/AutosavePreferences"
+          }
+        },
+        "description": "The Server\u0027s settings that belong to the person and not to a library or project, kept in a plain file beside\nthe discovery file, which anyone can read and edit."
       },
       "StackAnchor": {
         "required": [
@@ -14251,6 +15152,58 @@
         },
         "description": "One page of tags, by name."
       },
+      "Thumbnail": {
+        "required": [
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "What was asked for."
+          },
+          "hash": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The picture, or null when there is nothing to show."
+          }
+        },
+        "description": "A picture in the preview cache. The pixels are at \u0060/previews/{hash}\u0060, never in JSON."
+      },
+      "ThumbnailList": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Thumbnail"
+            },
+            "description": "Them, in the order they were asked for."
+          }
+        },
+        "description": "Pictures of what was asked for."
+      },
+      "ThumbnailRequest": {
+        "required": [
+          "sources"
+        ],
+        "type": "object",
+        "properties": {
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What to draw, each as its list names it: a document below the library (a graph, an image material, a layered\nmaterial or a texturing document), a project\u0027s folder below the library (\u0060projects/\u2026\u0060, drawn as the\ndocument that best stands for it), or a material the shelf offers from Patina itself."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/thumbnails\u0060. A thumbnail service for every client and every list: the\nLibrary\u0027s grid, the shelf, and anything after them."
+      },
       "UnwrapOptions": {
         "required": [
           "resolution",
@@ -14930,6 +15883,9 @@
   "tags": [
     {
       "name": "System"
+    },
+    {
+      "name": "Preferences"
     },
     {
       "name": "Viewport"

@@ -1,28 +1,30 @@
 using Patina.Contracts;
 using Patina.Ipc;
 using Patina.Library;
+using Patina.Server.Graphs;
 using Patina.Server.Stacks;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Patina.Server.Graphs;
+namespace Patina.Server;
 
 /// <summary>
-///     The shelf's pictures of its materials. Each is drawn by the Worker into the content-addressed preview cache, and
-///     a client is given its hash, never its pixels. What a material looks like is named by a key made of everything
-///     that decides it: the document, the compounds and pictures it reads, and the size. The key's picture is
-///     remembered in a small file in the cache, so a restart draws nothing again, and a deleted cache costs only the
-///     drawing.
+///     Pictures of what a library holds, for any list that shows them: the Library's grid, the shelf, and whatever
+///     client comes next. Each is drawn by the Worker into the content-addressed preview cache, and a client is given
+///     its hash, never its pixels. What a thing looks like is named by a key made of everything that decides it: the
+///     document, the compounds and pictures it reads, and the size. The key's picture is remembered in a small file in
+///     the cache, so a restart draws nothing again, and a deleted cache costs only the drawing. A project is drawn as
+///     the document that best stands for it, so its picture is that document's and costs nothing more.
 /// </summary>
-public sealed class ShelfThumbnails(WorkerLink worker, PreviewStore store) : IDisposable {
+public sealed class Thumbnails(WorkerLink worker, PreviewStore store) : IDisposable {
     /// <summary>The side of a picture, which is also the size a material is computed at for it.</summary>
     public const int Side = 256;
 
     /// <summary>Goes up when a picture would come out differently for the same files.</summary>
-    const string Version = "shelf-thumbnail-1";
+    const string Version = "thumbnail-1";
 
-    const string KeysFolder = "shelf";
+    const string KeysFolder = "thumbnails";
     const string NothingToDraw = "-";
     const string OutputNode = "Output/Output";
     const string BitmapNode = "Source/Bitmap";
@@ -41,15 +43,15 @@ public sealed class ShelfThumbnails(WorkerLink worker, PreviewStore store) : IDi
 
     public void Dispose() => drawing.Dispose();
 
-    /// <summary>The pictures of some materials, drawing those the cache lacks.</summary>
-    /// <returns>Each source with its picture's hash, or none for a material with nothing to show.</returns>
+    /// <summary>The pictures of some documents, projects or shelf materials, drawing those the cache lacks.</summary>
+    /// <returns>Each source with its picture's hash, or none for one with nothing to show.</returns>
     /// <exception cref="TimeoutException">No Worker came to draw what had to be drawn.</exception>
-    public async Task<IReadOnlyList<MaterialThumbnail>> DrawAsync(
+    public async Task<IReadOnlyList<Thumbnail>> DrawAsync(
         OpenLibrary library,
         IReadOnlyList<string> sources,
         CancellationToken cancellationToken
     ) {
-        List<MaterialThumbnail> drawn = [];
+        List<Thumbnail> drawn = [];
         foreach (var source in sources) {
             var ask = Readable(library, source);
             var hash = ask is null ? null : await HashAsync(ask.Value.Key, ask.Value.Ask, cancellationToken);
@@ -135,6 +137,7 @@ public sealed class ShelfThumbnails(WorkerLink worker, PreviewStore store) : IDi
                                         or UnauthorizedAccessException
                                         or StackEditRefusedException
                                         or ProjectRefusedException
+                                        or LibraryFormatException
                                         or FormatException
                                         or ArgumentException
                                         or InvalidOperationException) {
@@ -153,9 +156,24 @@ public sealed class ShelfThumbnails(WorkerLink worker, PreviewStore store) : IDi
         }
 
         var full = Path.GetFullPath(source, library.RootPath);
-        if (!full.StartsWith(Path.GetFullPath(library.RootPath) + Path.DirectorySeparatorChar, StringComparison.Ordinal)
-            || !File.Exists(full)) {
+        if (!full.StartsWith(Path.GetFullPath(library.RootPath) + Path.DirectorySeparatorChar, StringComparison.Ordinal)) {
             return null;
+        }
+
+        if (Directory.Exists(full)) {
+            // An empty material, or one that cannot be read, gives way to the next.
+            return Standing(library, source).Select(document => Readable(library, document)).FirstOrDefault(
+                static ask => ask is not null
+            );
+        }
+
+        if (!File.Exists(full)) {
+            return null;
+        }
+
+        if (!full.EndsWith(LibraryLayout.GraphExtension, StringComparison.OrdinalIgnoreCase)
+            && !full.EndsWith(StackDocuments.Extension, StringComparison.OrdinalIgnoreCase)) {
+            return null; // a brush preset or a mesh: nothing a material picture can show
         }
 
         return full.EndsWith(LibraryLayout.GraphExtension, StringComparison.OrdinalIgnoreCase)
@@ -168,6 +186,33 @@ public sealed class ShelfThumbnails(WorkerLink worker, PreviewStore store) : IDi
             )
             : OfStack(source, library.RootPath, full);
     }
+
+    /// <summary>
+    ///     The documents a project's picture could be, best first: a material made to be used, then a graph, then what
+    ///     is painted on its mesh. The first that can be drawn is the picture. None for a folder that is no project.
+    /// </summary>
+    static IEnumerable<string> Standing(OpenLibrary library, string folder) {
+        var prefix = LibraryLayout.ProjectsFolder + "/";
+        if (!folder.StartsWith(prefix, StringComparison.Ordinal)
+            || !File.Exists(Path.Combine(Path.GetFullPath(folder, library.RootPath), LibraryLayout.ProjectFile))) {
+            return [];
+        }
+
+        return library.Contents(folder[prefix.Length..])
+            .Documents.Where(static document => Rank(document) >= 0)
+            .OrderBy(Rank)
+            .Select(static document => document.Path);
+    }
+
+    static int Rank(ProjectDocumentInfo document) =>
+        document.Kind switch {
+            DocumentKinds.LayeredMaterial => 0,
+            DocumentKinds.ImageMaterial => 1,
+            DocumentKinds.Graph when document.Role is null or GraphRoles.Material => 2,
+            DocumentKinds.Texturing => 3,
+            DocumentKinds.Graph => 4,
+            _ => -1
+        };
 
     /// <summary>A graph's Output, preferring its base colour, computed at the picture's size.</summary>
     (string Key, MaterialThumbnailAsk Ask)? OfGraph(

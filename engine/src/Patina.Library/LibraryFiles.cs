@@ -11,6 +11,8 @@ public static class LibraryFiles {
     const string IgnoreFile = """
                               # Derived: deleting it loses nothing but time.
                               .ptcache/
+                              # Patina's bin: what was deleted here, kept on this machine until it is emptied.
+                              .trash/
 
                               """;
 

@@ -189,8 +189,9 @@ public sealed class LibraryFolderTests : IDisposable {
         File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddMinutes(-5));
         Assert.Null(Recovery.Newer(root, file));
 
-        File.WriteAllText(Directory.CreateDirectory(Recovery.Folder(root, file)).FullName + "/a.vxpaint", "pixels");
-        Recovery.Keep(root, file, "newer");
+        var generation = Recovery.Begin(root, file);
+        File.WriteAllText(Path.Combine(generation, "a.vxpaint"), "pixels");
+        Recovery.Finish(generation, "newer");
         Assert.NotNull(Recovery.Newer(root, file));
 
         Recovery.Restore(root, file);
@@ -198,6 +199,26 @@ public sealed class LibraryFolderTests : IDisposable {
         Assert.Equal("newer", File.ReadAllText(file));
         Assert.Equal("pixels", File.ReadAllText(Path.Combine(root, "a.vxpaint")));
         Assert.Null(Recovery.Newer(root, file));
+    }
+
+    [Fact]
+    public void Autosave_keeps_the_last_few_and_restores_the_newest_whole_one() {
+        var file = Path.Combine(root, "crate.vxtexgraph");
+        File.WriteAllText(file, "saved");
+        File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddMinutes(-5));
+        foreach (var text in new[] { "first", "second", "third", "fourth" }) {
+            Recovery.Keep(root, file, text);
+        }
+
+        // One a crash cut short, with paint and no text, is newer than all of them and is no autosave.
+        File.WriteAllText(Path.Combine(Recovery.Begin(root, file), "a.vxpaint"), "half");
+        Recovery.Trim(root, file, 2);
+
+        Assert.Equal(2, Recovery.Count(root, file));
+        Assert.Equal(2, Directory.GetDirectories(Recovery.Folder(root, file)).Length);
+        Recovery.Restore(root, file);
+        Assert.Equal("fourth", File.ReadAllText(file));
+        Assert.False(File.Exists(Path.Combine(root, "a.vxpaint")));
     }
 
     [Fact]

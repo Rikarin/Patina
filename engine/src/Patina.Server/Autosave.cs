@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Options;
+using Patina.Contracts;
 using Patina.Library;
 using Patina.Server.Graphs;
 using Patina.Server.Stacks;
@@ -6,18 +6,25 @@ using Patina.Server.Stacks;
 namespace Patina.Server;
 
 /// <summary>
-///     Keeps what is open and unsaved, so that a crash costs a minute of work. It runs here and not in a client because
-///     open sessions live here, and every client gets it. It writes to the cache, never over a document.
+///     Keeps what is open and unsaved, so that a crash, a kill or a restart costs seconds of work. It runs here and not
+///     in a client because open sessions live here, and every client gets it. It writes to the cache, never over a
+///     document. A document is kept when its edits stop for a moment (the idle wait), and at the latest every interval
+///     while they go on, and the last few are kept (<see cref="Preferences" />).
 /// </summary>
 public sealed class Autosave(
     StackSessions stacks,
     GraphSessions graphs,
     StackEvaluator evaluator,
     ServerIdentity identity,
-    IOptions<ServerOptions> options,
-    ILogger<Autosave> logger
+    Preferences preferences,
+    ILogger<Autosave> logger,
+    TimeProvider? clock = null
 ) : BackgroundService {
-    readonly Dictionary<string, long> kept = new(StringComparer.Ordinal);
+    /// <summary>How often open documents are looked at. Every wait is rounded up to it.</summary>
+    static readonly TimeSpan Tick = TimeSpan.FromMilliseconds(500);
+
+    readonly TimeProvider time = clock ?? TimeProvider.System;
+    readonly Dictionary<string, Watch> watched = new(StringComparer.Ordinal);
 
     protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
         identity.Library is { } library
@@ -25,36 +32,90 @@ public sealed class Autosave(
             : Task.CompletedTask;
 
     async Task LoopAsync(string library, CancellationToken stoppingToken) {
-        using PeriodicTimer timer = new(TimeSpan.FromSeconds(options.Value.AutosaveSeconds));
+        using PeriodicTimer timer = new(Tick, time);
         while (await timer.WaitForNextTickAsync(stoppingToken)) {
-            foreach (var graph in graphs.All.Where(open => Moved(open.Path, open.Summary.Revision, open.Summary.Dirty)
-                     )) {
-                Recovery.Keep(library, graph.Path, graph.Text);
+            var settings = preferences.Autosave;
+            if (settings.IntervalSeconds == 0) {
+                continue;
             }
 
-            foreach (var stack in stacks.All.Where(open => Moved(open.Path, open.Summary.Revision, open.Summary.Dirty)
-                     )) {
-                await TryAsync(stack, library, stoppingToken);
+            var now = time.GetUtcNow();
+            HashSet<string> open = new(StringComparer.Ordinal);
+            foreach (var graph in graphs.All) {
+                open.Add(graph.Path);
+                if (Due(graph.Path, graph.Summary.Revision, graph.Summary.Dirty, now, settings)) {
+                    Recovery.Keep(library, graph.Path, graph.Text);
+                    Recovery.Trim(library, graph.Path, settings.Keep);
+                }
+            }
+
+            foreach (var stack in stacks.All) {
+                open.Add(stack.Path);
+                if (Due(stack.Path, stack.Summary.Revision, stack.Summary.Dirty, now, settings)) {
+                    await TryAsync(stack, library, settings.Keep, stoppingToken);
+                }
+            }
+
+            foreach (var closed in watched.Keys.Where(path => !open.Contains(path)).ToList()) {
+                watched.Remove(closed);
             }
         }
     }
 
-    /// <summary>A Worker that is away this minute is here the next, and a save must not wait on it.</summary>
-    async Task TryAsync(StackSession stack, string library, CancellationToken cancellationToken) {
+    /// <summary>A Worker that is away this moment is here the next, and a save must not wait on it.</summary>
+    async Task TryAsync(StackSession stack, string library, int keep, CancellationToken cancellationToken) {
         try {
-            await evaluator.KeepAsync(stack, Recovery.Folder(library, stack.Path), cancellationToken);
-            Recovery.Keep(library, stack.Path, stack.Text);
+            var generation = Recovery.Begin(library, stack.Path);
+            await evaluator.KeepAsync(stack, generation, cancellationToken);
+            Recovery.Finish(generation, stack.Text);
+            Recovery.Trim(library, stack.Path, keep);
         } catch (Exception e) when (e is IOException or TimeoutException or Patina.Ipc.IpcException) {
             ServerLog.AutosaveFailed(logger, stack.Path, e.Message);
         }
     }
 
-    bool Moved(string path, long revision, bool dirty) {
-        if (!dirty || kept.GetValueOrDefault(path) == revision) {
+    /// <summary>
+    ///     Whether a document has unsaved edits that have not been kept, and has either been still for the idle wait or
+    ///     waited the interval since it was last kept.
+    /// </summary>
+    bool Due(string path, long revision, bool dirty, DateTimeOffset now, AutosavePreferences settings) {
+        if (!watched.TryGetValue(path, out var watch)) {
+            // A document opens with nothing to keep, since what it opened with is its file. One already edited when
+            // autosave first sees it, as when autosave was off, is kept once it has been still or waited.
+            watch = new() { Seen = revision, Kept = dirty ? long.MinValue : revision, Changed = now, KeptAt = now };
+            watched[path] = watch;
+        }
+
+        if (revision != watch.Seen) {
+            watch.Seen = revision;
+            watch.Changed = now;
+        }
+
+        if (!dirty || revision == watch.Kept) {
             return false;
         }
 
-        kept[path] = revision;
+        var still = settings.IdleSeconds > 0 && now - watch.Changed >= TimeSpan.FromSeconds(settings.IdleSeconds);
+        var waited = now - watch.KeptAt >= TimeSpan.FromSeconds(settings.IntervalSeconds);
+        if (!still && !waited) {
+            return false;
+        }
+
+        watch.Kept = revision;
+        watch.KeptAt = now;
         return true;
+    }
+
+    /// <summary>What autosave knows of one open document.</summary>
+    sealed class Watch {
+        /// <summary>The revision last seen, and when it was first seen.</summary>
+        public long Seen { get; set; }
+
+        public DateTimeOffset Changed { get; set; }
+
+        /// <summary>The revision last kept, and when.</summary>
+        public long Kept { get; set; }
+
+        public DateTimeOffset KeptAt { get; set; }
     }
 }

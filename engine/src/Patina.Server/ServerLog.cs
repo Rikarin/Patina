@@ -50,6 +50,9 @@ static partial class ServerLog {
     )]
     public static partial void LibraryIndexed(ILogger logger, int files, int changed, double seconds);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Preferences in {Path} cannot be used, so the defaults are: {Reason}")]
+    public static partial void PreferencesUnreadable(ILogger logger, string path, string reason);
+
     [LoggerMessage(Level = LogLevel.Error, Message = "The library cannot be opened: {Reason}")]
     public static partial void LibraryUnreadable(ILogger logger, string reason);
 }
