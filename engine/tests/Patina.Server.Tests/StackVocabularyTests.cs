@@ -217,22 +217,38 @@ public sealed class StackVocabularyTests {
 
     /// <summary>
     ///     Patina #220: a node whose output measures its input gives a layer or a mask nothing of the surface back,
-    ///     so no statistics node is offered as either, and the equaliser, whose output is a picture, still is.
+    ///     so no statistics node is offered as either, and the equaliser, whose output is a picture, still is. Nor is a
+    ///     node whose one image is a mesh map (#179), one whose first image is a mask it spreads a colour from, a
+    ///     composite of two normal maps, or one with two pictures out (#174, #176); and wave 5's one-picture nodes are
+    ///     both, Compare among them (#110).
     /// </summary>
     [Fact]
     public void No_statistics_node_is_offered_as_a_filter_or_a_mask_step() {
         var vocabulary = StackDocuments.Vocabulary;
-        string[] statistics = ["Analysis/Histogram", "Analysis/Histogram Render", "Analysis/Summed Area Table"];
+        string[] refused = [
+            "Analysis/Histogram", "Analysis/Histogram Render", "Analysis/Summed Area Table", "Source/Volume Noise",
+            "Source/Volume Mask", "Source/Volume Gradient", "Analysis/Distance Colour", "Surface/Normal Blend",
+            "Utility/Frequency Split"
+        ];
+        string[] offered = [
+            "Colour/Histogram Equalise", "Analysis/Distance", "Analysis/Flood Fill", "Surface/Height Shadow",
+            "Surface/Bevel Height", "Analysis/Compare"
+        ];
 
         Assert.All(
-            statistics,
+            refused,
             node => {
                 Assert.DoesNotContain(vocabulary.Filters, filter => filter.Node == node);
                 Assert.DoesNotContain(vocabulary.MaskEffects, filter => filter.Node == node);
             }
         );
-        Assert.Contains(vocabulary.Filters, static filter => filter.Node == "Colour/Histogram Equalise");
-        Assert.Contains(vocabulary.MaskEffects, static filter => filter.Node == "Colour/Histogram Equalise");
+        Assert.All(
+            offered,
+            node => {
+                Assert.Contains(vocabulary.Filters, filter => filter.Node == node);
+                Assert.Contains(vocabulary.MaskEffects, filter => filter.Node == node);
+            }
+        );
     }
 
     /// <summary>

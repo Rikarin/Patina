@@ -16,8 +16,13 @@ an anchor point through the API, and from nothing else.
 - **A node says when it is not an adjustment.** `[Node(Adjustment = false)]` in Vixen, or a compound's `adjustment: false`
   setting, is carried on `NodeTypeDefinition.Adjustment`. The three statistics nodes say it, because their output describes
   their input; Blend, Mix, Dissolve, Select Input, Tile Sampler and Splatter say it, because their other inputs are what
-  they are about, and a layer already composites. The flag is the node's, so the next statistics node is left out by
-  whoever writes it, not by a list in Patina.
+  they are about, and a layer already composites. Normal Blend says it as a composite of two normal maps, and Distance
+  Colour because its first image is the mask it spreads a colour from, so as a layer it would take the picture beneath as
+  that shape (#174, #176). The flag is the node's, so the next statistics node is left out by whoever writes it, not by a
+  list in Patina.
+- **A node whose one image is a mesh map is none either.** Volume Noise, Volume Mask and Volume Gradient read the
+  position bake through their one image port, and a stack would hand them the picture beneath instead, so Vixen refuses
+  them as filters by name (`ReadsNoPicture`, #179); a fill's graph wires them to a mesh map.
 - **Everything else with an image in and a picture out is a filter.** Its first image input is its *subject*, the picture
   it changes. Its picture out is one image, or one per channel named after the channel (`roughness`, `height`): a
   *material filter*, which writes the channels it has an output for and leaves the rest. A material filter is no mask
@@ -61,6 +66,14 @@ and the vocabulary carries `inputs`, the five sources with labels, and `sources`
 their own fields. `StackLayer.inputs`, `StackMaskEffect.inputs` and `StackSetLayer.inputs` are `StackInput` maps; another
 filter or graph starts from no inputs, as it starts from its own numbers. Properties shows a slot for each image under a
 filter's fields, and on a mask step for each image but the mask. Nothing here knows about Electron.
+
+## Instances
+
+An instance layer (#108) is its source, resolved when the stack compiles, so an instance of a filter reads what the
+source's `inputs` name. Its copy owns those inputs and every other dictionary of the source's, so an edit made to one in
+place reaches the other only through the file. An input that reads an anchor point reads the source's point in the
+source's own set; a source in another texture set that reads one is refused with a warning naming the point, and the
+instance shows nothing, since that set's anchor points are not this set's.
 
 ## What it does not do
 
