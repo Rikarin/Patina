@@ -4,9 +4,9 @@ using System.Text.RegularExpressions;
 namespace Patina.Library.Tests;
 
 /// <summary>
-///     A read of a library file never stands in the way of somebody saving it. On Windows CI a library scan hashed a
-///     graph with <c>File.ReadAllBytes</c>, which shares reading only, just as a client wrote the graph, and the client's
-///     write failed with "being used by another process" (Patina run 42647749439).
+///     A read of a library file never stands in the way of somebody saving it. On Windows CI a library scan hashed
+///     a graph with <c>File.ReadAllBytes</c>, which shares reading only, just as a client wrote the graph, and the
+///     client's write failed with "being used by another process" (Patina run 42647749439).
 /// </summary>
 public sealed partial class SharedFileTests : IDisposable {
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-shared-");
@@ -71,8 +71,9 @@ public sealed partial class SharedFileTests : IDisposable {
     }
 
     /// <summary>
-    ///     Nothing the Server, the Worker or the library code runs reads a file the framework's way. Those readers share
-    ///     reading only, so each is a sharing violation waiting for an artist's save on Windows; a new one fails here.
+    ///     Nothing the Server, the Worker or the library code runs reads a file the framework's way. Those readers
+    ///     share reading only, so each is a sharing violation waiting for an artist's save on Windows; a new one fails
+    ///     here.
     /// </summary>
     [Fact]
     public void No_engine_source_reads_a_file_without_sharing_it() {
@@ -96,7 +97,8 @@ public sealed partial class SharedFileTests : IDisposable {
 
     /// <summary>The framework's readers that share reading only, and any open that asks to read alone.</summary>
     [GeneratedRegex(
-        @"(?<![\w.])(System\.IO\.)?File\.(ReadAllText|ReadAllTextAsync|ReadAllBytes|ReadAllBytesAsync|ReadAllLines|ReadAllLinesAsync|ReadLines|ReadLinesAsync|OpenRead|OpenText)\s*\(|FileAccess\.Read\b(?!Write)"
+        @"(?<![\w.])(System\.IO\.)?File\.(ReadAll(Text|Bytes|Lines)(Async)?|ReadLines(Async)?|OpenRead|OpenText)\s*\("
+        + @"|FileAccess\.Read\b(?!Write)"
     )]
     private static partial Regex UnsharedRead();
 

@@ -30,7 +30,7 @@ public static class SharedFile {
     /// <summary>Opens a file to read, as <c>File.OpenRead</c> does but sharing write and delete.</summary>
     public static FileStream OpenRead(string path) => new(path, Reading());
 
-    /// <summary>A whole file's bytes, read to its end, so one that grows or shrinks during the read is still read whole.</summary>
+    /// <summary>A whole file's bytes, read to its end, so one that grows or shrinks meanwhile is whole.</summary>
     public static byte[] ReadAllBytes(string path) {
         using var file = OpenRead(path);
         using MemoryStream bytes = new(file.Length <= Array.MaxLength ? (int)file.Length : 0);
@@ -38,7 +38,7 @@ public static class SharedFile {
         return bytes.Length == bytes.Capacity ? bytes.GetBuffer() : bytes.ToArray();
     }
 
-    /// <summary>A whole file's text, UTF-8 unless a byte order mark says otherwise, as <c>File.ReadAllText</c>.</summary>
+    /// <summary>A whole file's text, UTF-8 unless a byte order mark says otherwise.</summary>
     public static string ReadAllText(string path) {
         using StreamReader reader = new(OpenRead(path), Encoding.UTF8, true);
         return reader.ReadToEnd();
