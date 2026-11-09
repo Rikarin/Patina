@@ -52,7 +52,17 @@ function layer(id: string, kind: string, children: StackLayer[] = []): StackLaye
     planarAxis: 'Y',
     filter: 'Levels',
     settings: {},
-    mask: { source: 'None', value: 1, asset: '', generator: '', map: '', tolerance: 0.02, softness: 0, lane: 'Red', enabled: true }
+    mask: {
+      source: 'None',
+      value: 1,
+      asset: '',
+      generator: '',
+      map: '',
+      tolerance: 0.02,
+      softness: 0,
+      lane: 'Red',
+      enabled: true
+    }
   };
 }
 
@@ -271,7 +281,14 @@ describe('PaintStore copies', () => {
     await store.copyLayers();
     await store.pasteLayers();
 
-    const into = (layer: string) => ({ op: 'pasteLayers', clip: 'c1', above: null, asInstances: false, into: layer, part: 'Mask' });
+    const into = (layer: string) => ({
+      op: 'pasteLayers',
+      clip: 'c1',
+      above: null,
+      asInstances: false,
+      into: layer,
+      part: 'Mask'
+    });
     expect(bodies).toEqual([
       { layers: ['paint'] },
       { commands: [into('rust'), into('base')] },
@@ -1079,7 +1096,9 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     store.begin({ x: 10, y: 10, pressure: 1 }, aim);
     store.end();
     await vi.waitFor(() => expect(sent(bodies).length).toBeGreaterThan(0));
-    expect(sent(bodies).every(part => part.source?.picture?.image === picture.image && part.stencil === null)).toBe(true);
+    expect(sent(bodies).every(part => part.source?.picture?.image === picture.image && part.stencil === null)).toBe(
+      true
+    );
 
     const count = sent(bodies).length;
     store.tool.set('brush');

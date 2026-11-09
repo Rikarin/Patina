@@ -92,7 +92,14 @@ async function pixelsOf(url: string): Promise<ImageData | null> {
         description="This shows a node's picture in a graph, or a baked map. Choose a map in the Bake dialog to see it here."
         data-testid="texture-empty"
       >
-        <button action type="button" xuiButton size="sm" [disabled]="!commands.enabled('bake')" (click)="commands.run('bake')">
+        <button
+          action
+          type="button"
+          xuiButton
+          size="sm"
+          [disabled]="!commands.enabled('bake')"
+          (click)="commands.run('bake')"
+        >
           Bake…
         </button>
       </xui-non-ideal-state>

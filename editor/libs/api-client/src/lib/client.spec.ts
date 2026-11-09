@@ -38,11 +38,14 @@ describe('api-client', () => {
     }
   });
 
-  it('keeps a refusal\'s code and the values its reason was written from', () => {
+  it("keeps a refusal's code and the values its reason was written from", () => {
     const response = new Response(null, { status: 422 });
     const refused = (() => {
       try {
-        unwrap({ response, error: { detail: 'Only a paint layer.', code: 'stroke-not-paint-layer', values: { layer: 'Rust' } } });
+        unwrap({
+          response,
+          error: { detail: 'Only a paint layer.', code: 'stroke-not-paint-layer', values: { layer: 'Rust' } }
+        });
       } catch (error) {
         return error as ApiError;
       }

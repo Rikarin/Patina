@@ -185,21 +185,24 @@ export class PaintStore {
    * it, or the file opened again if the Server restarted (#226), as a graph does.
    */
   private readonly recovery = inject(RecoveryOffers);
-  private readonly comeback = new SessionReturn<string>({
-    probe: async id => {
-      if (this.state()?.id === id && !this.stopped) {
-        const client = await this.api();
-        unwrap(await client.GET('/api/v1/stacks/{id}', { params: { path: { id } } }));
+  private readonly comeback = new SessionReturn<string>(
+    {
+      probe: async id => {
+        if (this.state()?.id === id && !this.stopped) {
+          const client = await this.api();
+          unwrap(await client.GET('/api/v1/stacks/{id}', { params: { path: { id } } }));
+        }
+      },
+      follow: id => (this.state()?.id === id ? this.follow() : undefined),
+      reopen: id => this.reopenLost(id),
+      lost: (id, error) => {
+        if (this.state()?.id === id) {
+          this.failure.set(messageOf(error));
+        }
       }
     },
-    follow: id => (this.state()?.id === id ? this.follow() : undefined),
-    reopen: id => this.reopenLost(id),
-    lost: (id, error) => {
-      if (this.state()?.id === id) {
-        this.failure.set(messageOf(error));
-      }
-    }
-  }, inject(EngineRestarts));
+    inject(EngineRestarts)
+  );
   private sequence = 0;
   private stopped = false;
   private stroke: string | null = null;
@@ -690,7 +693,14 @@ export class PaintStore {
       return;
     }
 
-    await this.added({ op: 'pasteLayers', clip: clip.id, above: this.layer(), asInstances: false, into: null, part: 'Mask' });
+    await this.added({
+      op: 'pasteLayers',
+      clip: clip.id,
+      above: this.layer(),
+      asInstances: false,
+      into: null,
+      part: 'Mask'
+    });
   }
 
   /** Pastes the last copy as instances of what was copied, which follow every edit to it (#108). */
@@ -700,7 +710,14 @@ export class PaintStore {
       return;
     }
 
-    await this.added({ op: 'pasteLayers', clip: clip.id, above: this.layer(), asInstances: true, into: null, part: 'Mask' });
+    await this.added({
+      op: 'pasteLayers',
+      clip: clip.id,
+      above: this.layer(),
+      asInstances: true,
+      into: null,
+      part: 'Mask'
+    });
   }
 
   // Parts of a layer (#106, #109): its mask switched, its mask or content copied into others, its blend shared.
@@ -728,7 +745,14 @@ export class PaintStore {
     }
 
     await this.edit(
-      ...into.map(layer => ({ op: 'pasteLayers' as const, clip: clip.id, above: null, asInstances: false, into: layer, part }))
+      ...into.map(layer => ({
+        op: 'pasteLayers' as const,
+        clip: clip.id,
+        above: null,
+        asInstances: false,
+        into: layer,
+        part
+      }))
     );
   }
 

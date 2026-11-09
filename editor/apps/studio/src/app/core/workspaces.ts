@@ -97,7 +97,10 @@ const Layouts: Readonly<Record<WorkspaceName, readonly NamedLayout[]>> = {
       )
     },
     { name: '2D Only', layout: root(sources, tabs(4, pane('atlas', '2D View'), pane('texture', 'Maps')), stack) },
-    { name: 'Preview Only', layout: root(sources, tabs(4, pane('viewport', 'Preview'), pane('texture', 'Maps')), stack) }
+    {
+      name: 'Preview Only',
+      layout: root(sources, tabs(4, pane('viewport', 'Preview'), pane('texture', 'Maps')), stack)
+    }
   ],
   'image-material': [
     {
