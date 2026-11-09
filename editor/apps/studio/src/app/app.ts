@@ -25,6 +25,7 @@ import { EditCommands } from './core/edit-commands';
 import { PaintCommands } from './paint/paint-commands';
 import { FileConflictDialog } from './core/file-conflict-dialog';
 import { HistoryPane } from './core/history-pane';
+import { PreferencesDialog } from './core/preferences-dialog';
 import { ShortcutsDialog } from './core/shortcuts-dialog';
 import { StartPane } from './core/start-pane';
 import { SystemStatus } from './core/system-status';
@@ -68,6 +69,7 @@ import { ViewportPane } from './viewport/viewport-pane';
     ExportPane,
     GraphPane,
     HistoryPane,
+    PreferencesDialog,
     ShortcutsDialog,
     ImageMaterialPane,
     Inspector,
@@ -400,6 +402,10 @@ import { ViewportPane } from './viewport/viewport-pane';
       <ptn-shortcuts [(open)]="keys" />
     }
 
+    @defer (when preferencesOpen()) {
+      <ptn-preferences [(open)]="preferencesOpen" />
+    }
+
     <xui-dialog size="sm" title="Save As" [open]="project.savingAs()" (openChange)="project.savingAs.set($event)">
       <form (submit)="saveAs($event, saveName.value)">
         <xui-dialog-body>
@@ -502,6 +508,7 @@ export class App {
   private readonly graph = inject(GraphStore);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly keys = signal(false);
+  protected readonly preferencesOpen = signal(false);
   protected readonly diagnosing = signal(false);
   protected readonly paint = inject(PaintStore);
   /** The one thing that went wrong last, which stays until it is read. */
@@ -663,6 +670,7 @@ export class App {
       run: () => this.layout.update(layout => showing(layout, 'checks'))
     });
     handle('shortcuts', { run: () => this.keys.set(true) });
+    handle('preferences', { run: () => this.preferencesOpen.set(true) });
     handle('diagnostics', { run: () => this.diagnosing.set(true) });
     handle('reportProblem', {
       run: () => globalThis.open('https://github.com/Rikarin/Patina/issues/new', '_blank')

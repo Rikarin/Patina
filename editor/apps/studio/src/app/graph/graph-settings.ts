@@ -26,6 +26,13 @@ const DefaultBitDepth = '16';
 const NoBake = '';
 const MeshMap = 'Source/Mesh Map';
 const SliderSteps = 1000;
+/** What a graph can be used as, which decides where the shelf puts it. */
+const Roles = [
+  { value: 'material', label: 'Material' },
+  { value: 'mask', label: 'Mask' },
+  { value: 'brush', label: 'Brush' },
+  { value: 'filter', label: 'Filter' }
+];
 
 /** What a kind's default starts as, which the Server has to accept. */
 function startOf(kind: string): string {
@@ -86,6 +93,20 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
     <p class="section-label mb-3">Graph</p>
 
     <div class="flex flex-col gap-2.5">
+      @if (listed(); as listing) {
+        <div class="flex flex-col gap-1" data-testid="setting-role">
+          <span class="text-foreground-muted text-xs">Use as</span>
+          <xui-select
+            ariaLabel="Use as"
+            title="Where the shelf offers it: a material fills a layer, a mask decides where one shows, a brush is stamped, and a filter changes what is under it."
+            [filterable]="false"
+            [itemText]="roleName"
+            [items]="roles"
+            [value]="listing.role ?? 'material'"
+            (valueChange)="setRole($event)"
+          />
+        </div>
+      }
       <div class="flex flex-col gap-1" data-testid="setting-size">
         <span class="text-foreground-muted text-xs">Size</span>
         <xui-select
@@ -689,6 +710,25 @@ export class GraphSettings {
 
   protected readonly bakeName = (path: string): string =>
     path === NoBake ? 'None' : (this.project.current()?.bakes.find(bake => bake.path === path)?.name ?? path);
+
+  protected readonly roles = Roles.map(role => role.value);
+  protected readonly roleName = (role: string): string => Roles.find(held => held.value === role)?.label ?? role;
+
+  /** The graph as its project lists it, which is what has a role. A graph no project lists has none to set. */
+  protected readonly listed = computed(() => {
+    const path = this.store.document()?.path;
+    const document = this.project.current()?.documents.find(held => held.path === path);
+    return document?.id && document.kind === 'graph' ? document : null;
+  });
+
+  /** Says what the graph is for. A graph of the wrong shape for it is refused, and the project says why. */
+  protected setRole(role: string | null): void {
+    const document = this.listed();
+    const project = this.project.current()?.path;
+    if (role !== null && document && project && role !== (document.role ?? 'material')) {
+      void this.project.setRole(project, document, role);
+    }
+  }
 
   /** What a graph's Mesh Map nodes read. A project's stacks find their bake; this says it for a graph. */
   protected chooseBake(path: string | null): void {

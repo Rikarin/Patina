@@ -15,19 +15,21 @@ from typing import cast
 
 
 
-T = TypeVar("T", bound="MaterialThumbnailRequest")
+T = TypeVar("T", bound="ProjectTagsRequest")
 
 
 
 @_attrs_define
-class MaterialThumbnailRequest:
-    """ The body of `POST /api/v1/library/materials/thumbnails`.
+class ProjectTagsRequest:
+    """ The body of `PATCH /api/v1/library/project/tags`.
 
         Attributes:
-            sources (list[str]): The materials, as their list names them.
+            path (str): The project, below `projects/`.
+            tags (list[str]): Every tag it has from now on. Repeats and empty ones are dropped.
      """
 
-    sources: list[str]
+    path: str
+    tags: list[str]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -35,7 +37,9 @@ class MaterialThumbnailRequest:
 
 
     def to_dict(self) -> dict[str, Any]:
-        sources = self.sources
+        path = self.path
+
+        tags = self.tags
 
 
 
@@ -43,7 +47,8 @@ class MaterialThumbnailRequest:
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update({
-            "sources": sources,
+            "path": path,
+            "tags": tags,
         })
 
         return field_dict
@@ -53,16 +58,19 @@ class MaterialThumbnailRequest:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         d = dict(src_dict)
-        sources = cast(list[str], d.pop("sources"))
+        path = d.pop("path")
+
+        tags = cast(list[str], d.pop("tags"))
 
 
-        material_thumbnail_request = cls(
-            sources=sources,
+        project_tags_request = cls(
+            path=path,
+            tags=tags,
         )
 
 
-        material_thumbnail_request.additional_properties = d
-        return material_thumbnail_request
+        project_tags_request.additional_properties = d
+        return project_tags_request
 
     @property
     def additional_keys(self) -> list[str]:

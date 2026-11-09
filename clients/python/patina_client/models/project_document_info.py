@@ -29,6 +29,7 @@ class ProjectDocumentInfo:
             kind (str): `texturing`, `layered-material`, `image-material` or `graph`.
             name (str): Its display name.
             path (str): Its path below the library, which the graph and stack routes take.
+            tags (list[str]): What it can be searched by, sorted.
             id (None | Unset | UUID): Its GUID. Null until the project lists it.
             mesh (None | Unset | UUID): The id of the mesh it is on.
             role (None | str | Unset): What a graph is for: `material`, `mask`, `brush` or `filter`.
@@ -39,6 +40,7 @@ class ProjectDocumentInfo:
     kind: str
     name: str
     path: str
+    tags: list[str]
     id: None | Unset | UUID = UNSET
     mesh: None | Unset | UUID = UNSET
     role: None | str | Unset = UNSET
@@ -56,6 +58,10 @@ class ProjectDocumentInfo:
         name = self.name
 
         path = self.path
+
+        tags = self.tags
+
+
 
         id: None | str | Unset
         if isinstance(self.id, Unset):
@@ -98,6 +104,7 @@ class ProjectDocumentInfo:
             "kind": kind,
             "name": name,
             "path": path,
+            "tags": tags,
         })
         if id is not UNSET:
             field_dict["id"] = id
@@ -122,6 +129,9 @@ class ProjectDocumentInfo:
         name = d.pop("name")
 
         path = d.pop("path")
+
+        tags = cast(list[str], d.pop("tags"))
+
 
         def _parse_id(data: object) -> None | Unset | UUID:
             if data is None:
@@ -197,6 +207,7 @@ class ProjectDocumentInfo:
             kind=kind,
             name=name,
             path=path,
+            tags=tags,
             id=id,
             mesh=mesh,
             role=role,

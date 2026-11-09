@@ -209,6 +209,14 @@ function keys(): KeyFile {
   return keyFile;
 }
 
+/** The person's app-wide preferences, a plain JSON object beside keys.json, written the same way. */
+let preferenceFile: KeyFile | null = null;
+
+function preferences(): KeyFile {
+  preferenceFile ??= new KeyFile(join(app.getPath('userData'), 'preferences.json'));
+  return preferenceFile;
+}
+
 function rebuildMenu(): void {
   installMenu({
     recent: places().recent(),
@@ -342,6 +350,12 @@ function handleIpc(): void {
   handle('patina:keys:write', (_event, settings: unknown) => {
     if (!keys().write(settings)) {
       throw new Error('Those are not key settings.');
+    }
+  });
+  handle('patina:preferences:read', () => preferences().read());
+  handle('patina:preferences:write', (_event, settings: unknown) => {
+    if (!preferences().write(settings)) {
+      throw new Error('Those are not preferences.');
     }
   });
   listen('patina:quit', () => {

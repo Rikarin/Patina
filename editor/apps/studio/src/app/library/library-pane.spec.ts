@@ -126,7 +126,7 @@ describe('LibraryInspector', () => {
 
     const { element } = await inspect();
 
-    expect(element.textContent).toContain('Nothing selected.');
+    expect(element.textContent).toContain('Nothing chosen');
   });
 
   it('shows a project', async () => {

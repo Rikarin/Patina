@@ -49,7 +49,7 @@ const defaults: ProjectBakeSettings = {
 const mesh: ProjectMeshInfo = { id: 'm1', path: 'projects/a/crate.glb', high: 'projects/a/crate_high.glb' };
 
 function document(name: string, kind: string, material: string | null, onMesh: boolean): ProjectDocumentInfo {
-  return { id: name, kind, name, path: `projects/a/${name}`, mesh: onMesh ? 'm1' : null, material };
+  return { id: name, kind, name, path: `projects/a/${name}`, mesh: onMesh ? 'm1' : null, material, tags: [] };
 }
 
 function contents(documents: ProjectDocumentInfo[], bake = defaults): ProjectContents {
@@ -66,6 +66,7 @@ function contents(documents: ProjectDocumentInfo[], bake = defaults): ProjectCon
     preservePaint: true,
     unwrap: { resolution: 2048, margin: 4, quality: 'outlines', rotations: 4, texelDensity: 0, overflow: 'shrink' },
     exportSets: [],
+    tags: [],
     bake
   };
 }

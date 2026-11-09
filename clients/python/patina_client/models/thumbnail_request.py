@@ -8,7 +8,6 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
-from ..types import UNSET, Unset
 from typing import cast
 
 
@@ -16,21 +15,23 @@ from typing import cast
 
 
 
-T = TypeVar("T", bound="MaterialThumbnail")
+T = TypeVar("T", bound="ThumbnailRequest")
 
 
 
 @_attrs_define
-class MaterialThumbnail:
-    """ A material's picture in the preview cache. The pixels are at `/previews/{hash}`.
+class ThumbnailRequest:
+    """ The body of `POST /api/v1/library/thumbnails`. A thumbnail service for every client and every list: the
+    Library's grid, the shelf, and anything after them.
 
         Attributes:
-            source (str): The material.
-            hash_ (None | str | Unset): The picture, or null when the material has nothing to show.
+            sources (list[str]): What to draw, each as its list names it: a document below the library (a graph, an image
+                material, a layered
+                material or a texturing document), a project's folder below the library (`projects/…`, drawn as the
+                document that best stands for it), or a material the shelf offers from Patina itself.
      """
 
-    source: str
-    hash_: None | str | Unset = UNSET
+    sources: list[str]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -38,22 +39,16 @@ class MaterialThumbnail:
 
 
     def to_dict(self) -> dict[str, Any]:
-        source = self.source
+        sources = self.sources
 
-        hash_: None | str | Unset
-        if isinstance(self.hash_, Unset):
-            hash_ = UNSET
-        else:
-            hash_ = self.hash_
+
 
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update({
-            "source": source,
+            "sources": sources,
         })
-        if hash_ is not UNSET:
-            field_dict["hash"] = hash_
 
         return field_dict
 
@@ -62,26 +57,16 @@ class MaterialThumbnail:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         d = dict(src_dict)
-        source = d.pop("source")
-
-        def _parse_hash_(data: object) -> None | str | Unset:
-            if data is None:
-                return data
-            if isinstance(data, Unset):
-                return data
-            return cast(None | str | Unset, data)
-
-        hash_ = _parse_hash_(d.pop("hash", UNSET))
+        sources = cast(list[str], d.pop("sources"))
 
 
-        material_thumbnail = cls(
-            source=source,
-            hash_=hash_,
+        thumbnail_request = cls(
+            sources=sources,
         )
 
 
-        material_thumbnail.additional_properties = d
-        return material_thumbnail
+        thumbnail_request.additional_properties = d
+        return thumbnail_request
 
     @property
     def additional_keys(self) -> list[str]:

@@ -24,6 +24,7 @@ import { SystemStatus } from '../core/system-status';
 import { LibrarySelection } from './library-selection';
 import { FolderColours, LibraryTreeStore, type TreeRow, canDrop, parentOf } from './library-tree-store';
 import { type DocumentTab, ProjectStore } from './project-store';
+import { LibraryActions, type LibraryTarget, projectTarget } from './library-actions';
 import { ViewportFit } from './viewport-fit';
 
 const RowHeight = 28;
@@ -40,6 +41,27 @@ const GraphRoles: readonly { role: string; label: string }[] = [
 
 /** What each folder colour is called, in the order the store keeps them. */
 const ColourNames: readonly string[] = ['Red', 'Orange', 'Yellow', 'Green', 'Teal', 'Blue', 'Purple', 'Pink'];
+
+/** A project or a listed document as the Library's shared menus and dialogs name it. A file no project lists is none. */
+function targetOfRow(row: TreeRow): LibraryTarget | null {
+  if (row.kind === 'project') {
+    return projectTarget(row.project);
+  }
+
+  if (row.kind === 'document' && row.document.id) {
+    return {
+      kind: 'document',
+      project: row.project,
+      id: row.document.id,
+      name: row.document.name,
+      path: row.document.path,
+      tags: row.document.tags,
+      documentKind: row.document.kind
+    };
+  }
+
+  return null;
+}
 
 /** A move or rename that would close open documents, waiting for a yes. */
 interface Closing {
@@ -202,6 +224,20 @@ interface Closing {
           <button type="button" xuiMenuItem data-testid="menu-project-settings" (triggered)="act(openSettings)">
             Project Settings…
           </button>
+          <button type="button" xuiMenuItem data-testid="menu-new-document" (triggered)="act(newDocument)">
+            New Document…
+          </button>
+        }
+        @if (row?.kind === 'project' || row?.kind === 'document') {
+          <button type="button" xuiMenuItem data-testid="menu-tags" (triggered)="act(tag)">Tags…</button>
+        }
+        @if (row?.kind === 'document') {
+          <button type="button" xuiMenuItem data-testid="menu-rename-document" (triggered)="act(rename)">
+            Rename <span menuItemLabel>F2</span>
+          </button>
+          <button type="button" xuiMenuItem color="error" data-testid="menu-delete-document" (triggered)="act(askDelete)">
+            Delete…
+          </button>
         }
         @if (row?.kind === 'document' && row.document.kind === 'graph') {
           <xui-menu-divider />
@@ -272,19 +308,6 @@ interface Closing {
       </xui-menu>
     </ng-template>
 
-    <xui-dialog size="sm" title="Delete project" [open]="deletingProject() !== null" (openChange)="$event || deletingProject.set(null)">
-      <xui-dialog-body data-testid="tree-delete-project">
-        Delete {{ projectName(deletingProject()) }}? Its files are kept in the library's trash, and can be brought back
-        from there by hand.
-      </xui-dialog-body>
-      <xui-dialog-footer>
-        <button type="button" xuiButton variant="ghost" (click)="deletingProject.set(null)">Cancel</button>
-        <button type="button" xuiButton color="error" data-testid="tree-delete-project-confirm" (click)="confirmDeleteProject()">
-          Delete Project
-        </button>
-      </xui-dialog-footer>
-    </xui-dialog>
-
     <xui-dialog size="sm" title="Delete folder" [open]="deleting() !== null" (openChange)="$event || deleting.set(null)">
       <xui-dialog-body data-testid="tree-delete">
         @if (deleting()?.folder; as folder) {
@@ -335,6 +358,7 @@ export class LibraryTree {
   private readonly project = inject(ProjectStore);
   private readonly selection = inject(LibrarySelection);
   private readonly status = inject(SystemStatus);
+  private readonly actions = inject(LibraryActions);
   private readonly viewport = viewChild(CdkVirtualScrollViewport);
   private readonly renameInput = viewChild<ElementRef<HTMLInputElement>>('renameInput');
 
@@ -349,7 +373,6 @@ export class LibraryTree {
   protected readonly renaming = signal<string | null>(null);
   protected readonly dropInto = signal<string | null>(null);
   protected readonly deleting = signal<Extract<TreeRow, { kind: 'folder' }> | null>(null);
-  protected readonly deletingProject = signal<TreeRow | null>(null);
   private readonly commands = inject(Commands);
 
   /** The folder chosen in the tree, which Edit > Delete deletes while the Library has focus. */
@@ -556,11 +579,28 @@ export class LibraryTree {
     }
   };
 
+  /** A folder is deleted here, its projects lifted out; a project or a document goes to the bin, which asks first. */
   protected readonly askDelete = (row: TreeRow | null): void => {
     if (row?.kind === 'folder') {
       this.deleting.set(row);
-    } else if (row?.kind === 'project') {
-      this.deletingProject.set(row);
+    } else if (row && (row.kind === 'project' || row.kind === 'document')) {
+      const target = targetOfRow(row);
+      if (target) {
+        this.actions.deleting.set(target);
+      }
+    }
+  };
+
+  protected readonly tag = (row: TreeRow | null): void => {
+    const target = row ? targetOfRow(row) : null;
+    if (target) {
+      this.actions.tagging.set(target);
+    }
+  };
+
+  protected readonly newDocument = (row: TreeRow | null): void => {
+    if (row?.kind === 'project') {
+      this.actions.adding.set(row.path);
     }
   };
 
@@ -606,17 +646,6 @@ export class LibraryTree {
     }
   }
 
-  protected projectName(row: TreeRow | null): string {
-    return row?.kind === 'project' ? row.project.name : '';
-  }
-
-  protected async confirmDeleteProject(): Promise<void> {
-    const row = this.deletingProject();
-    this.deletingProject.set(null);
-    if (row && (await this.project.release([row.path]))) {
-      await this.tree.deleteProject(row.path);
-    }
-  }
 
   /** Makes a folder and goes straight to naming it, as a file browser does. */
   async makeFolder(parent: string): Promise<void> {
@@ -710,6 +739,11 @@ export class LibraryTree {
       });
     } else if (row.kind === 'project') {
       await this.tree.renameProject(row.path, name);
+    } else if (row.kind === 'document') {
+      const target = targetOfRow(row);
+      if (target) {
+        await this.actions.rename(target, name);
+      }
     }
   }
 
@@ -761,11 +795,8 @@ export class LibraryTree {
         return row !== undefined;
       case 'Delete':
       case 'Backspace':
-        if (row?.kind === 'folder') {
-          this.deleting.set(row);
-        }
-
-        return row?.kind === 'folder';
+        this.askDelete(row ?? null);
+        return row !== undefined && row.kind !== 'more';
       default:
         return false;
     }

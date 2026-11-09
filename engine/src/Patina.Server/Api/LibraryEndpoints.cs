@@ -25,6 +25,8 @@ static class LibraryEndpoints {
             .WithSummary("The Server's library: its settings, its size and whether a rescan is running.");
 
         api.MapLibraryTreeApi();
+        api.MapLibraryCareApi();
+        api.MapPreferenceApi();
 
         library.MapGet("/projects", GetProjects)
             .WithName("GetProjects")

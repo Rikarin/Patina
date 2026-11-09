@@ -1,7 +1,7 @@
 import { ApiError } from '@patina/api-client';
 
 /** What a document says when it came back from its file and the edits the Server held went with the old one. */
-export const RestartedNotice = 'Patina restarted its engine. Edits since the last save are gone.';
+export const RestartedNotice = 'Patina restarted its engine and opened this document again from its last save.';
 
 const FirstWaitMs = 250;
 const LastWaitMs = 4_000;

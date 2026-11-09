@@ -363,12 +363,79 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
-    /// <summary>Moves a project to the library's trash. <see cref="Rescan" /> is the caller's to run.</summary>
+    /// <summary>Moves a project to the library's bin. <see cref="Rescan" /> is the caller's to run.</summary>
     /// <param name="path">The project, below <c>projects/</c>.</param>
-    public void TrashProject(string path) {
+    public BinItem TrashProject(string path) => Write(() => ProjectFiles.Trash(RootPath, path));
+
+    /// <summary>Moves a document of a project to the library's bin.</summary>
+    /// <exception cref="FileNotFoundException">The project or document is not there.</exception>
+    public BinItem TrashDocument(string path, AssetId document) =>
+        Write(() => ProjectFiles.TrashDocument(RootPath, path, document));
+
+    /// <summary>What the bin holds.</summary>
+    public BinList Bin() => LibraryBin.List(RootPath);
+
+    /// <summary>Puts something back from the bin.</summary>
+    /// <returns>Where it is now, below the library.</returns>
+    /// <exception cref="FileNotFoundException">The bin holds no such thing.</exception>
+    /// <exception cref="ProjectRefusedException">It cannot go back where it was.</exception>
+    public string Restore(string id) => Write(() => ProjectFiles.Restore(RootPath, id));
+
+    /// <summary>Deletes one thing in the bin for good.</summary>
+    /// <exception cref="FileNotFoundException">The bin holds no such thing.</exception>
+    public void DeleteFromBin(string id) {
         lock (createGate) {
-            ProjectFiles.Trash(RootPath, path);
+            LibraryBin.Delete(RootPath, id);
+        }
+    }
+
+    /// <summary>Deletes everything in the bin for good.</summary>
+    public int EmptyBin() {
+        lock (createGate) {
+            return LibraryBin.Empty(RootPath);
+        }
+    }
+
+    /// <summary>Gives a document a new display name.</summary>
+    /// <exception cref="FileNotFoundException">The project or document is not there.</exception>
+    public ProjectItem RenameDocument(string path, AssetId document, string name) =>
+        Write(() => ProjectFiles.RenameDocument(RootPath, path, document, name));
+
+    /// <summary>Sets a project's tags, in its <c>project.yaml</c>.</summary>
+    /// <exception cref="FileNotFoundException">The project is not there.</exception>
+    public void SetProjectTags(string path, IReadOnlyList<string> tags) =>
+        Write(() => {
+                ProjectFiles.SetTags(RootPath, path, tags);
+                return true;
+            }
+        );
+
+    /// <summary>Sets a document's tags, in its project's <c>project.yaml</c>.</summary>
+    /// <exception cref="FileNotFoundException">The project or document is not there.</exception>
+    public ProjectItem SetDocumentTags(string path, AssetId document, IReadOnlyList<string> tags) =>
+        Write(() => ProjectFiles.SetDocumentTags(RootPath, path, document, tags));
+
+    /// <summary>
+    ///     Pins a project's reference to an asset at the bytes the asset has now, or lets it follow the asset again.
+    /// </summary>
+    /// <exception cref="FileNotFoundException">The project, or the asset in the index, is not there.</exception>
+    /// <exception cref="ProjectRefusedException">The project does not refer to the asset itself.</exception>
+    public AssetReference SetPin(string path, AssetId asset, bool pinned) {
+        string? file = null;
+        if (pinned) {
+            var summary = queries.Asset(asset) ?? throw new FileNotFoundException($"The library has no asset {asset}.");
+            file = summary.Path[(LibraryLayout.ProjectsFolder.Length + 1)..];
+        }
+
+        return Write(() => ProjectFiles.SetPin(RootPath, path, asset, file));
+    }
+
+    /// <summary>A change to the files, which the index sees at the next rescan.</summary>
+    T Write<T>(Func<T> change) {
+        lock (createGate) {
+            var result = change();
             Interlocked.Increment(ref unscannedWrites);
+            return result;
         }
     }
 

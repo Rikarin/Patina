@@ -13,6 +13,9 @@ public sealed class ServerFixture : WebApplicationFactory<Program> {
 
     public string SocketPath { get; } = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.sock");
 
+    /// <summary>The preferences file this Server keeps, in its own folder.</summary>
+    public string PreferencesFile => Path.Combine(scratch.FullName, "preferences.json");
+
     /// <summary>A client that presents the token.</summary>
     public HttpClient AuthorisedClient() {
         var client = CreateClient();
@@ -26,6 +29,8 @@ public sealed class ServerFixture : WebApplicationFactory<Program> {
         builder.UseSetting("Patina:Worker:SocketPath", SocketPath);
         // Never the real per-user file: the test server has an address too, so the Server would list itself there.
         builder.UseSetting("Patina:DiscoveryFile", Path.Combine(scratch.FullName, "servers.json"));
+        // Nor the person's own preferences, which a test that sets them would write over.
+        builder.UseSetting("Patina:PreferencesFile", PreferencesFile);
     }
 
     protected override void Dispose(bool disposing) {

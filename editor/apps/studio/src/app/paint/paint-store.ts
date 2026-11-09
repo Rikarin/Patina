@@ -27,6 +27,7 @@ import {
 import { learnTerms } from '../core/labels';
 import { messageOf } from '../core/messages';
 import { RestartedNotice, SessionReturn } from '../core/session-return';
+import { RecoveryOffers } from '../core/recovery-offers';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
 
@@ -143,6 +144,7 @@ export class PaintStore {
    * Brings the stack back after its socket drops, by the session it dropped in: the same session if the Server kept
    * it, or the file opened again if the Server restarted (#226), as a graph does.
    */
+  private readonly recovery = inject(RecoveryOffers);
   private readonly comeback = new SessionReturn<string>({
     probe: async id => {
       if (this.state()?.id === id && !this.stopped) {
@@ -1257,6 +1259,7 @@ export class PaintStore {
     this.failure.set(null);
     if (lost.history.dirty) {
       this.notice.set(RestartedNotice);
+      this.recovery.ask(lost.path); // what autosave kept of the edits is offered back (#162)
     }
 
     this.adopt(state);

@@ -4,6 +4,8 @@ import { XuiButtonImports } from '@xui/button';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { BakeStore } from '../bake/bake-store';
+import { Commands } from '../core/commands';
+import { ProjectStore } from '../library/project-store';
 import { GraphStore } from './graph-store';
 
 const MinZoom = 0.25;
@@ -83,8 +85,24 @@ async function pixelsOf(url: string): Promise<ImageData | null> {
         </span>
         <span class="readout ms-auto shrink-0" data-testid="texture-zoom">{{ percent() }}%</span>
       </div>
+    } @else if (!project.graphInFront() || store.document() === null) {
+      <xui-non-ideal-state
+        class="flex-1"
+        title="No map shown"
+        description="This shows a node's picture in a graph, or a baked map. Choose a map in the Bake dialog to see it here."
+        data-testid="texture-empty"
+      >
+        <button action type="button" xuiButton size="sm" [disabled]="!commands.enabled('bake')" (click)="commands.run('bake')">
+          Bake…
+        </button>
+      </xui-non-ideal-state>
     } @else if (store.selectedNode() === null) {
-      <xui-non-ideal-state class="flex-1" description="Select a node to see its picture." />
+      <xui-non-ideal-state
+        class="flex-1"
+        title="No node selected"
+        description="Select a node in the graph to see its picture here."
+        data-testid="texture-empty"
+      />
     } @else {
       @let picture = shown();
       <div
@@ -164,6 +182,8 @@ async function pixelsOf(url: string): Promise<ImageData | null> {
 export class TextureView {
   protected readonly store = inject(GraphStore);
   protected readonly bake = inject(BakeStore);
+  protected readonly commands = inject(Commands);
+  protected readonly project = inject(ProjectStore);
   protected readonly channelOptions = channels;
   private grabbed: { x: number; y: number } | null = null;
   private readonly offset = signal({ x: 0, y: 0 });

@@ -86,13 +86,18 @@ const Layouts: Readonly<Record<WorkspaceName, readonly NamedLayout[]>> = {
     }
   ],
   // There is no mesh, so the map leads and a shape only previews it.
+  // A baked map chosen in the Bake dialog shows in Maps, a tab beside the 2D View.
   'layered-material': [
     {
       name: '2D and Preview',
-      layout: root(sources, across(4, pane('atlas', '2D View', 3), pane('viewport', 'Preview', 2)), stack)
+      layout: root(
+        sources,
+        across(4, tabs(3, pane('atlas', '2D View'), pane('texture', 'Maps')), pane('viewport', 'Preview', 2)),
+        stack
+      )
     },
-    { name: '2D Only', layout: root(sources, pane('atlas', '2D View', 4), stack) },
-    { name: 'Preview Only', layout: root(sources, pane('viewport', 'Preview', 4), stack) }
+    { name: '2D Only', layout: root(sources, tabs(4, pane('atlas', '2D View'), pane('texture', 'Maps')), stack) },
+    { name: 'Preview Only', layout: root(sources, tabs(4, pane('viewport', 'Preview'), pane('texture', 'Maps')), stack) }
   ],
   'image-material': [
     {

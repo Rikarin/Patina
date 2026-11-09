@@ -135,6 +135,8 @@ export class LibraryStore {
   private readonly mutableChanges = signal(0);
   private client: PatinaClient | null = null;
   private seen: LibraryInfo | null = null;
+  /** A write was made since the index last said it had caught up. */
+  private written = false;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private stopped = false;
 
@@ -184,8 +186,12 @@ export class LibraryStore {
     void this.poll();
   }
 
-  /** Asks at once, for a write that sets the index moving. */
+  /**
+   * Asks at once, for a write that sets the index moving. The lists read again once the index has caught up, even when
+   * the write changed no count, as a rename or a tag does, and a scan quicker than the poll left nothing to see move.
+   */
   refreshSoon(): void {
+    this.written = true;
     void this.poll();
   }
 
@@ -256,8 +262,12 @@ export class LibraryStore {
       this.selection.clear();
     }
 
-    const caughtUp = before.indexing && !info.indexing;
+    const caughtUp = (before.indexing || this.written) && !info.indexing;
     const moved = before.projectCount !== info.projectCount || before.assetCount !== info.assetCount;
+    if (!info.indexing) {
+      this.written = false;
+    }
+
     if (before.id !== info.id || caughtUp || moved) {
       this.projects.refresh();
       this.assets.refresh();

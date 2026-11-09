@@ -1,5 +1,6 @@
 using Patina.Contracts;
 using System.Collections.Frozen;
+using System.Globalization;
 using System.Text.Json;
 
 namespace Patina.Library;
@@ -53,6 +54,7 @@ static class ProjectFiles {
             ]
         ) {
             AutoUnwrap = document.AutoUnwrap,
+            Tags = document.Tags,
             PreservePaint = document.PreservePaint,
             Unwrap = document.Unwrap,
             Export = document.Export,
@@ -410,13 +412,166 @@ static class ProjectFiles {
         LibraryFiles.WriteProject(root, path, document with { Name = trimmed });
     }
 
-    /// <summary>Moves a project into the library's hidden trash, from where it can be moved back by hand.</summary>
+    /// <summary>Moves a project into the library's bin (<see cref="LibraryBin" />), to come back from.</summary>
     /// <exception cref="FileNotFoundException">It is not there.</exception>
-    public static void Trash(string root, string path) {
-        var (full, _) = Project(root, path);
-        var trash = Path.Combine(root, LibraryLayout.TrashFolder);
-        _ = Directory.CreateDirectory(trash);
-        Directory.Move(full, Path.Combine(trash, $"{Path.GetFileName(full)}-{Guid.CreateVersion7():N}"));
+    public static BinItem Trash(string root, string path) {
+        var (full, document) = Project(root, path);
+        return LibraryBin.PutProject(root, LibraryFolders.Existing(path), full, document.Name);
+    }
+
+    /// <summary>
+    ///     Moves a document into the bin: its file, the paint a stack keeps beside it and the note of the bake a graph
+    ///     was pointed at, and takes it off the project's list. Bakes stay, since other documents read them.
+    /// </summary>
+    /// <exception cref="FileNotFoundException">The project or document is not there.</exception>
+    public static BinItem TrashDocument(string root, string path, AssetId id) {
+        var (full, document) = Project(root, path);
+        var item = document.Documents.FirstOrDefault(d => d.Id == id)
+            ?? throw new FileNotFoundException($"This project has no document {id}.");
+        var file = Path.Combine(full, item.File);
+        List<string> files = [item.File];
+        if (File.Exists(file)) {
+            files.AddRange(StackInputs.PaintsOf(item.File, File.ReadAllText(file)));
+        }
+
+        files.Add(Path.GetRelativePath(full, GraphMeshMaps.FileOf(file)).Replace('\\', '/'));
+        var binned = LibraryBin.PutDocument(
+            root,
+            LibraryFolders.Existing(path),
+            full,
+            document with { Documents = [item], Meshes = [], References = [], Outputs = [] },
+            files
+        );
+        LibraryFiles.WriteProject(
+            root,
+            path,
+            document with { Documents = [..document.Documents.Where(d => d.Id != id)] }
+        );
+        return binned;
+    }
+
+    /// <summary>
+    ///     Puts what the bin holds back where it was. A project whose folder has been taken since comes back beside
+    ///     it under a new name; a document needs its project, and its file names free in it.
+    /// </summary>
+    /// <returns>Where it is now, below the library.</returns>
+    /// <exception cref="FileNotFoundException">The bin holds no such thing.</exception>
+    /// <exception cref="ProjectRefusedException">A document's project is gone, or a name of it is taken.</exception>
+    public static string Restore(string root, string id) {
+        var (item, entry) = LibraryBin.Find(root, id);
+        var files = LibraryBin.FilesOf(entry);
+        var below = item.From[(LibraryLayout.ProjectsFolder.Length + 1)..];
+        if (item.Kind == LibraryBin.ProjectKind) {
+            var path = FreeFolder(root, below);
+            var target = LibraryLayout.Full(root, $"{LibraryLayout.ProjectsFolder}/{path}");
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            Directory.Move(files, target);
+            LibraryBin.Forget(entry);
+            return $"{LibraryLayout.ProjectsFolder}/{path}";
+        }
+
+        var project = below[..below.LastIndexOf('/')];
+        if (!File.Exists(LibraryFiles.ProjectFile(root, project))) {
+            throw new ProjectRefusedException(
+                $"'{item.Name}' belonged to the project '{project}', which is gone. Restore the project first."
+            );
+        }
+
+        var (full, document) = Project(root, project);
+        var restored = LibraryBin.DocumentOf(entry);
+        var moving = Directory.EnumerateFiles(files, "*", SearchOption.AllDirectories)
+            .Select(file => Path.GetRelativePath(files, file))
+            .ToList();
+        if (moving.Find(file => File.Exists(Path.Combine(full, file))) is { } taken) {
+            throw new ProjectRefusedException($"'{taken}' is in the project now, so '{item.Name}' cannot come back.");
+        }
+
+        foreach (var file in moving) {
+            var to = Path.Combine(full, file);
+            Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+            File.Move(Path.Combine(files, file), to);
+        }
+
+        // An id another document has taken since is given up, so the project never lists two with one id.
+        var kept = document.Documents.Any(d => d.Id == restored.Id) ? restored with { Id = AssetId.New() } : restored;
+        LibraryFiles.WriteProject(root, project, document with { Documents = [..document.Documents, kept] });
+        LibraryBin.Forget(entry);
+        return item.From;
+    }
+
+    /// <summary>A free folder below <c>projects/</c>: the one asked for, or one beside it with a number.</summary>
+    static string FreeFolder(string root, string wanted) {
+        var path = wanted;
+        for (var count = 2;
+             Directory.Exists(LibraryLayout.Full(root, $"{LibraryLayout.ProjectsFolder}/{path}"));
+             count++) {
+            path = string.Create(CultureInfo.InvariantCulture, $"{wanted}-{count}");
+        }
+
+        return path;
+    }
+
+    /// <summary>Gives a document a new display name. Its file stays, so what refers to it does too.</summary>
+    /// <exception cref="FileNotFoundException">The project or document is not there.</exception>
+    /// <exception cref="ProjectRefusedException">The name cannot be used.</exception>
+    public static ProjectItem RenameDocument(string root, string path, AssetId id, string name) =>
+        ChangeDocument(root, path, id, item => item with { Name = NewProjects.DisplayName(name) });
+
+    /// <summary>Sets what a document can be searched by.</summary>
+    /// <exception cref="FileNotFoundException">The project or document is not there.</exception>
+    public static ProjectItem SetDocumentTags(string root, string path, AssetId id, IReadOnlyList<string> tags) =>
+        ChangeDocument(root, path, id, item => item with { Tags = CleanTags(tags) });
+
+    /// <summary>Sets what a project can be searched by.</summary>
+    /// <exception cref="FileNotFoundException">The project is not there.</exception>
+    public static void SetTags(string root, string path, IReadOnlyList<string> tags) {
+        var (_, document) = Project(root, path);
+        LibraryFiles.WriteProject(root, path, document with { Tags = CleanTags(tags) });
+    }
+
+    /// <summary>
+    ///     Pins a project's reference to an asset at the bytes it has now, or lets it float again. The bytes are kept
+    ///     under <c>.revisions/</c>, so the pin holds after the asset moves on.
+    /// </summary>
+    /// <param name="root">The library.</param>
+    /// <param name="path">The project, below <c>projects/</c>.</param>
+    /// <param name="asset">What it refers to.</param>
+    /// <param name="file">The asset's file below <c>projects/</c> to pin at, or null to let it float.</param>
+    /// <exception cref="FileNotFoundException">The project is not there.</exception>
+    /// <exception cref="ProjectRefusedException">The project does not refer to the asset itself.</exception>
+    public static AssetReference SetPin(string root, string path, AssetId asset, string? file) {
+        var (_, document) = Project(root, path);
+        var held = document.References.FirstOrDefault(r => r.Asset == asset)
+            ?? throw new ProjectRefusedException(
+                "This project reaches that asset only through another one. Pin the one it uses itself."
+            );
+        var changed = file is null
+            ? AssetReference.Floating(asset)
+            : AssetReference.Pinned(asset, LibraryFiles.KeepRevision(root, file));
+        if (changed != held) {
+            List<AssetReference> references = [..document.References.Select(r => r.Asset == asset ? changed : r)];
+            LibraryFiles.WriteProject(root, path, document with { References = references });
+        }
+
+        return changed;
+    }
+
+    /// <summary>Tags as they are kept: trimmed, without empties or repeats, in order.</summary>
+    static List<string> CleanTags(IReadOnlyList<string> tags) => [
+        ..tags.Select(static tag => tag.Trim())
+            .Where(static tag => tag.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Order(StringComparer.OrdinalIgnoreCase)
+    ];
+
+    static ProjectItem ChangeDocument(string root, string path, AssetId id, Func<ProjectItem, ProjectItem> change) {
+        var (_, document) = Project(root, path);
+        var item = document.Documents.FirstOrDefault(d => d.Id == id)
+            ?? throw new FileNotFoundException($"This project has no document {id}.");
+        var changed = change(item);
+        List<ProjectItem> documents = [..document.Documents.Select(d => d.Id == id ? changed : d)];
+        LibraryFiles.WriteProject(root, path, document with { Documents = documents });
+        return changed;
     }
 
     /// <summary>
@@ -559,7 +714,7 @@ static class ProjectFiles {
 
     static ProjectDocumentInfo Listed(string full, string path, ProjectItem item) =>
         new(item.Id.Value, item.Kind, item.Name, Below(path, item.File), item.Mesh?.Value, item.Role, item.Material) {
-            Bake = BakeOf(full, path, item)
+            Bake = BakeOf(full, path, item), Tags = item.Tags
         };
 
     static bool IsMesh(string file) => MeshExtensions.Contains(Path.GetExtension(file));

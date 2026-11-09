@@ -2,8 +2,14 @@ namespace Patina.Server;
 
 /// <summary>Configuration section <c>Patina</c>.</summary>
 public sealed class ServerOptions {
-    /// <summary>How often what is open and unsaved is kept.</summary>
-    public int AutosaveSeconds { get; set; } = 60;
+    /// <summary>
+    ///     How often what is open and unsaved is kept, for this run, over what the person's preferences say. Null
+    ///     leaves it to them (<see cref="Preferences" />).
+    /// </summary>
+    public int? AutosaveSeconds { get; set; }
+
+    /// <summary>The person's preferences file, or null for the per-user default.</summary>
+    public string? PreferencesFile { get; set; }
 
     /// <summary>
     ///     Access token every request must present (<c>Authorization: Bearer</c>). Without one, a Server with a library

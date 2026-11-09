@@ -1,19 +1,21 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { type MaterialInfo, type StackTerm, unwrap } from '@patina/api-client';
+import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiInputImports } from '@xui/input';
+import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { type XuiSegmentedOption, XuiSegmentedControlImports } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
 import { LibraryStore } from '../library/library-store';
+import { LibraryThumbnails } from '../library/thumbnails';
 import { ProjectStore } from '../library/project-store';
 import { MaterialUse } from './material-use';
+import { Commands } from '../core/commands';
+import { Preferences } from '../core/preferences';
 import { labelIn } from '../core/labels';
 import { messageOf } from '../core/messages';
 
 const SearchQuiet = 200;
-/** How many pictures one request asks for, so that the first ones show while the rest are drawn. */
-const PictureBatch = 8;
-const ViewKey = 'patina.shelf.view';
 
 export type ShelfView = 'list' | 'small' | 'large';
 
@@ -24,22 +26,20 @@ const Views: readonly XuiSegmentedOption<ShelfView>[] = [
 ];
 const Everything = 'all';
 
-function savedView(): ShelfView {
-  try {
-    const held = globalThis.localStorage.getItem(ViewKey);
-    return held === 'small' || held === 'large' ? held : 'list';
-  } catch {
-    return 'list';
-  }
-}
-
 /**
  * What a layer can be filled with, from anywhere in the Library, each with its picture. Click to add it, or drag it
  * into the stack (ADR 0012). The pictures are the Server's: it draws each into the preview cache and gives a hash.
  */
 @Component({
   selector: 'ptn-material-shelf',
-  imports: [XuiCalloutImports, XuiInputImports, XuiSegmentedControlImports, XuiSelectImports],
+  imports: [
+    XuiButtonImports,
+    XuiCalloutImports,
+    XuiInputImports,
+    XuiNonIdealStateImports,
+    XuiSegmentedControlImports,
+    XuiSelectImports
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
   template: `
@@ -105,7 +105,7 @@ function savedView(): ShelfView {
       "
     >
       @for (material of shown(); track material.source) {
-        @let picture = pictures().get(material.source);
+        @let picture = pictures.url(material.source);
         <li class="min-w-0">
           <button
             type="button"
@@ -149,22 +149,47 @@ function savedView(): ShelfView {
           </button>
         </li>
       } @empty {
-        <li class="text-foreground-muted col-span-full p-2 text-sm">Nothing matches.</li>
+        <li class="col-span-full" data-testid="shelf-empty">
+          @if (!project.current()) {
+            <xui-non-ideal-state
+              title="No project open"
+              description="The shelf holds what a layer can be filled with: materials from anywhere in the library, once a project is open."
+            >
+              <button
+                action
+                type="button"
+                xuiButton
+                size="sm"
+                [disabled]="!commands.enabled('newProject')"
+                (click)="commands.run('newProject')"
+              >
+                New Project…
+              </button>
+            </xui-non-ideal-state>
+          } @else if (search() || role() !== everything || origin() !== everything) {
+            <xui-non-ideal-state title="Nothing matches" description="No material has every word, type and origin asked for.">
+              <button action type="button" xuiButton size="sm" (click)="clearFilters()">Show Everything</button>
+            </xui-non-ideal-state>
+          } @else {
+            <xui-non-ideal-state
+              title="No materials yet"
+              description="Material graphs and layered materials made in any project of this library appear here."
+            />
+          }
+        </li>
       }
     </ul>
   `
 })
 export class MaterialShelf {
   private readonly library = inject(LibraryStore);
-  private readonly project = inject(ProjectStore);
+  protected readonly project = inject(ProjectStore);
+  private readonly preferences = inject(Preferences);
+  protected readonly commands = inject(Commands);
   protected readonly using = inject(MaterialUse);
   private readonly materials = signal<readonly MaterialInfo[]>([]);
-  /** Each material's picture, as an object URL, by source. */
-  protected readonly pictures = signal<ReadonlyMap<string, string>>(new Map());
-  /** The object URL of each picture, by hash: two materials that look alike share one. */
-  private readonly urls = new Map<string, string>();
-  /** Goes up with each list, so that pictures asked for an older one land nowhere. */
-  private generation = 0;
+  /** The pictures, from the one thumbnail service the Library's grid uses too. */
+  protected readonly pictures = inject(LibraryThumbnails);
 
   /** The types and origins the Server names, which it also searches by, so no list of them is kept here. */
   private readonly roleTerms = signal<readonly StackTerm[]>([]);
@@ -182,7 +207,8 @@ export class MaterialShelf {
   protected readonly search = signal('');
   protected readonly role = signal(Everything);
   protected readonly origin = signal(Everything);
-  protected readonly view = signal<ShelfView>(savedView());
+  /** How large the pictures are, which the person's preferences keep. */
+  protected readonly view = this.preferences.shelfView;
   protected readonly failure = signal<string | null>(null);
   private searching: ReturnType<typeof setTimeout> | undefined;
   /** What the Server found for the search, narrowed to a type and an origin. The search itself is the Server's (#230). */
@@ -205,11 +231,7 @@ export class MaterialShelf {
       }
     });
     inject(DestroyRef).onDestroy(() => {
-      this.generation++;
       clearTimeout(this.searching);
-      for (const url of this.urls.values()) {
-        URL.revokeObjectURL(url);
-      }
     });
   }
 
@@ -218,12 +240,14 @@ export class MaterialShelf {
   }
 
   protected choose(view: ShelfView): void {
-    this.view.set(view);
-    try {
-      globalThis.localStorage.setItem(ViewKey, view);
-    } catch {
-      // Only this machine's choice is lost.
-    }
+    this.preferences.set({ shelfView: view });
+  }
+
+  /** Takes the search, type and origin away, so the whole shelf shows. */
+  protected clearFilters(): void {
+    this.search.set('');
+    this.role.set(Everything);
+    this.origin.set(Everything);
   }
 
   protected originOf(material: MaterialInfo): string {
@@ -247,7 +271,6 @@ export class MaterialShelf {
   }
 
   private async load(project: string, search: string): Promise<void> {
-    const generation = ++this.generation;
     try {
       const client = await this.library.api();
       const list = unwrap(await client.GET('/api/v1/library/materials', { params: { query: { project, search } } }));
@@ -258,55 +281,10 @@ export class MaterialShelf {
       this.roleTerms.set(list.roles);
       this.originTerms.set(list.origins);
       this.failure.set(null);
-      await this.draw(materials, generation);
+      // In the list's order, a few at a time, so the first rows fill while the rest are drawn.
+      this.pictures.want(materials.filter(material => material.role !== 'empty').map(material => material.source));
     } catch (failure) {
       this.failure.set(messageOf(failure));
     }
-  }
-
-  /**
-   * Asks for the pictures a few at a time, in the order the list is in, so that the first rows fill while the rest are
-   * drawn. A picture is a nicety: with no Worker, a material keeps its name, and the next change asks again.
-   */
-  private async draw(materials: readonly MaterialInfo[], generation: number): Promise<void> {
-    const client = await this.library.api();
-    const sources = materials.filter(material => material.role !== 'empty').map(material => material.source);
-    for (let start = 0; start < sources.length && generation === this.generation; start += PictureBatch) {
-      const { data } = await client.POST('/api/v1/library/materials/thumbnails', {
-        body: { sources: sources.slice(start, start + PictureBatch) }
-      });
-      if (!data) {
-        return;
-      }
-
-      const found = new Map<string, string>();
-      for (const { source, hash } of data.items) {
-        const url = hash ? await this.urlOf(hash) : null;
-        if (url) {
-          found.set(source, url);
-        }
-      }
-
-      if (generation === this.generation) {
-        this.pictures.update(held => new Map([...held, ...found]));
-      }
-    }
-  }
-
-  private async urlOf(hash: string): Promise<string | null> {
-    const held = this.urls.get(hash);
-    if (held) {
-      return held;
-    }
-
-    const client = await this.library.api();
-    const { data } = await client.GET('/api/v1/previews/{hash}', { params: { path: { hash } }, parseAs: 'blob' });
-    if (!data) {
-      return null;
-    }
-
-    const url = URL.createObjectURL(data);
-    this.urls.set(hash, url);
-    return url;
   }
 }
