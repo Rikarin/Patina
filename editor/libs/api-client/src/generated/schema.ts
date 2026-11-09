@@ -5176,7 +5176,8 @@ export interface components {
       /**
        * @description `smudge` drags what the canvas holds along the stroke, with the brush's flow; `clone` copies the
        *                 stack's composite from Offset away, as it stood when the stroke began; `material` lays
-       *                 what Graph makes in the stroke's channel; `picture` projects Picture.
+       *                 what Graph makes in the stroke's channel; `picture` projects
+       *                 Picture.
        */
       kind: string;
       /** @description For a material, the graph whose maps are laid, as a graph fill names it. */

@@ -194,7 +194,9 @@ public static class StackBrushes {
     /// <summary>Where a stroke's colour can come from besides its colour.</summary>
     public static IReadOnlyList<string> Sources { get; } = ["smudge", "clone", "material", "picture"];
 
-    /// <summary>What is wrong with where a stroke's colour comes from, or null when a Worker can paint with it.</summary>
+    /// <summary>
+    ///     What is wrong with where a stroke's colour comes from, or null when a Worker can paint with it.
+    /// </summary>
     /// <param name="source">The source.</param>
     public static string? Problem(this StackStrokeSource source) =>
         source.Kind switch {
@@ -203,9 +205,31 @@ public static class StackBrushes {
                 ? null
                 : "A clone reads from an offset of two numbers, in texels.",
             "material" => string.IsNullOrWhiteSpace(source.Graph) ? "A material brush names the graph it lays." : null,
-            "picture" => source.Picture is null ? "A projection names the picture it paints." : source.Picture.Problem(),
+            "picture" => source.Picture is null
+                ? "A projection names the picture it paints."
+                : source.Picture.Problem(),
             _ => $"'{source.Kind}' is not where a stroke's colour can come from."
         };
+
+    /// <summary>
+    ///     What is wrong with what a stroke paints with besides its brush and its symmetry: a fill's mode, its source,
+    ///     its stencil, and a mask asked to take a material or a clone, which has no such channel. Null when a Worker
+    ///     can paint it.
+    /// </summary>
+    /// <param name="stroke">The stroke.</param>
+    public static string? PaintProblem(this StackStroke stroke) {
+        if (stroke.Curve == "fill" && !Fills.Contains(stroke.Fill ?? string.Empty)) {
+            return "A fill takes a triangle, a polygon, a mesh part or a UV shell.";
+        }
+
+        if ((stroke.Source?.Problem() ?? stroke.Stencil?.Problem()) is { } problem) {
+            return problem;
+        }
+
+        return stroke.Mask && stroke.Source?.Kind is "clone" or "material"
+            ? "A mask is painted with a grey, a smudge or a picture, and not a material or a clone."
+            : null;
+    }
 
     /// <summary>What is wrong with a picture on a stroke's picture, or null.</summary>
     /// <param name="picture">The picture.</param>

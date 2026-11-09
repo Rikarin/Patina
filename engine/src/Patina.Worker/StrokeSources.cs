@@ -40,8 +40,9 @@ static class StrokeSources {
                 // ⚠ Made as the stroke's turn comes and not as it begins: a replay begins every stroke before it
                 // stamps any, and a composite read then would be of canvases the strokes before it have not reached.
                 return new Deferred(() => composite(document, part.Usage) is { } image
-                    ? new PaintAtlasSource(image, canvas.Width, canvas.Height, offset)
-                    : null);
+                        ? new PaintAtlasSource(image, canvas.Width, canvas.Height, offset)
+                        : null
+                );
             default:
                 throw new IpcException($"'{part.Source.Kind}' is not where a stroke's colour can come from.");
         }

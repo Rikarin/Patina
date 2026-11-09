@@ -298,7 +298,8 @@ static class LibraryTreeEndpoints {
             ".jpg" or ".jpeg" => "image/jpeg",
             _ => null
         };
-        if (!file.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal) || type is null
+        if (!file.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+            || type is null
             || !File.Exists(file)) {
             return TypedResults.Problem(
                 $"The library holds no picture '{path}'.",

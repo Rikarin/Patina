@@ -25,6 +25,7 @@ public sealed partial class StackProcessTests {
         await BindMeshAsync(state.Id, deadline.Token);
         using var frames = await WearAsync(instance, state.Id, deadline.Token);
         var view = await AimAsync(0.5, 0.5, deadline.Token);
+
         StackStroke Click(string mode) =>
             new(
                 "fill",
@@ -60,15 +61,14 @@ public sealed partial class StackProcessTests {
         using var socket = await FollowAsync(instance, state, deadline.Token);
         var blue = WritePicture("blue.png", 2, 2, static _ => [20, 40, 230, 255]);
         var half = WritePicture("half.png", 2, 2, static column => column == 0 ? [0, 0, 0, 255] : [255, 255, 255, 255]);
-        StackStroke Dab(string name, float x, float y) =>
+
+        static StackStroke Dab(string name, float x, float y) =>
             new(name, "paint", "baseColor", new(30f, Falloff: 0f), Red, [new(x, y)]);
 
         var projected = await CountAfterAsync(
             state.Id,
             "picture",
-            Dab("picture", 200, 200) with {
-                Source = new("picture", Picture: new(blue, [200f, 200f], 40f))
-            },
+            Dab("picture", 200, 200) with { Source = new("picture", Picture: new(blue, [200f, 200f], 40f)) },
             Bluish,
             deadline.Token
         );
@@ -139,7 +139,8 @@ public sealed partial class StackProcessTests {
         var state = await OpenAsync("projects/crate/crate.vxlayers", deadline.Token);
         await EditAsync(state.Id, deadline.Token, new StackAddLayer("paint", "Paint"));
         var paint = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
-        var size = (await PixelsAsync(state.Id, false, deadline.Token)).First(static map => map.Usage == "baseColor").Width;
+        var size = (await PixelsAsync(state.Id, false, deadline.Token)).First(static map => map.Usage == "baseColor")
+            .Width;
         var at = size / 2;
 
         await EditAsync(
@@ -174,7 +175,7 @@ public sealed partial class StackProcessTests {
         var pixels = new byte[width * height * 4];
         for (var y = 0; y < height; y++) {
             for (var x = 0; x < width; x++) {
-                column(x).CopyTo(pixels, ((y * width) + x) * 4);
+                column(x).CopyTo(pixels, (y * width + x) * 4);
             }
         }
 
@@ -209,7 +210,7 @@ public sealed partial class StackProcessTests {
 
     async Task<uint> TexelAsync(string id, string name, int x, int y, CancellationToken token) {
         var file = await BaseColourAsync(id, name, token);
-        return BitConverter.ToUInt32(file.Pixels, ((y * file.Width) + x) * 4);
+        return BitConverter.ToUInt32(file.Pixels, (y * file.Width + x) * 4);
     }
 
     async Task<Bitmap> BaseColourAsync(string id, string name, CancellationToken token) {

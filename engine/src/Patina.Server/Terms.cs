@@ -73,9 +73,12 @@ public static class Terms {
         ["both"] = "Both Axes",
         ["across"] = "Across the Stroke",
         ["texture"] = "Texture Texels",
-        ["model"] = "Model Size",
-        ["part"] = "Mesh Part",
-        ["shell"] = "UV Shell"
+        ["model"] = "Model Size"
+    };
+
+    /// <summary>What a polygon fill calls how much of a mesh a click takes, where a capital is not enough.</summary>
+    static readonly Dictionary<string, string> InFills = new(StringComparer.Ordinal) {
+        ["part"] = "Mesh Part", ["shell"] = "UV Shell"
     };
 
     /// <summary>What the material shelf calls the types of what it lists, and where each is from.</summary>
@@ -140,6 +143,15 @@ public static class Terms {
             )
         ];
     }
+
+    /// <summary>How much of a mesh a click of a polygon fill can take, with their labels.</summary>
+    public static IReadOnlyList<StackTerm> InFill(IEnumerable<string> values) => [
+        ..values.Select(static value => new StackTerm(
+                value,
+                InFills.TryGetValue(value, out var named) ? named : Label(value)
+            )
+        )
+    ];
 
     /// <summary>Values of an export's settings with their labels.</summary>
     public static IReadOnlyList<StackTerm> InExport(IEnumerable<string> values) => [

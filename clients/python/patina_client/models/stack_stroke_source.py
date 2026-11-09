@@ -29,7 +29,8 @@ class StackStrokeSource:
         Attributes:
             kind (str): `smudge` drags what the canvas holds along the stroke, with the brush's flow; `clone` copies the
                             stack's composite from Offset away, as it stood when the stroke began; `material` lays
-                            what Graph makes in the stroke's channel; `picture` projects Picture.
+                            what Graph makes in the stroke's channel; `picture` projects
+                            Picture.
             graph (None | str | Unset): For a material, the graph whose maps are laid, as a graph fill names it.
             offset (list[float] | None | Unset): For a clone, how far the texel read is from the texel painted, in texels of
                 the map: two numbers.

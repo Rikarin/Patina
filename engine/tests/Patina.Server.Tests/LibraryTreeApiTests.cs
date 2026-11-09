@@ -561,8 +561,14 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
         await File.WriteAllTextAsync(Path.Combine(files.FullName, "outside.png"), "outside", Token);
         var outside = Path.GetRelativePath(server.Library, Path.Combine(files.FullName, "outside.png"));
 
-        using var served = await client.GetAsync("/api/v1/library/picture?path=projects/crate/pictures/decal.png", Token);
-        using var climbed = await client.GetAsync($"/api/v1/library/picture?path={Uri.EscapeDataString(outside)}", Token);
+        using var served = await client.GetAsync(
+            "/api/v1/library/picture?path=projects/crate/pictures/decal.png",
+            Token
+        );
+        using var climbed = await client.GetAsync(
+            $"/api/v1/library/picture?path={Uri.EscapeDataString(outside)}",
+            Token
+        );
         using var document = await client.GetAsync("/api/v1/library/picture?path=projects/crate/project.yaml", Token);
 
         Assert.Equal(HttpStatusCode.OK, served.StatusCode);

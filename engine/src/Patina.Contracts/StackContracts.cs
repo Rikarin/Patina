@@ -821,7 +821,8 @@ public sealed record StackPicture(
 /// <param name="Kind">
 ///     <c>smudge</c> drags what the canvas holds along the stroke, with the brush's flow; <c>clone</c> copies the
 ///     stack's composite from <paramref name="Offset" /> away, as it stood when the stroke began; <c>material</c> lays
-///     what <paramref name="Graph" /> makes in the stroke's channel; <c>picture</c> projects <paramref name="Picture" />.
+///     what <paramref name="Graph" /> makes in the stroke's channel; <c>picture</c> projects
+///     <paramref name="Picture" />.
 /// </param>
 /// <param name="Graph">For a material, the graph whose maps are laid, as a graph fill names it.</param>
 /// <param name="Offset">
