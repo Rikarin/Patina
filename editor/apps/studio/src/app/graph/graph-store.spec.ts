@@ -454,6 +454,27 @@ describe('GraphStore', () => {
     expect(query).toBe('?force=true');
   });
 
+  it('gives the session an open got to whoever lets go of it before it opens, so a closed tab can end it (#232)', async () => {
+    const test = harness();
+    let answer = (): void => undefined;
+    test.routes['POST graphs'] = () =>
+      new Promise(done => {
+        answer = () => done(Response.json(state()));
+      });
+
+    const opening = test.store.open('projects/a/a.vxtexgraph');
+    await vi.waitFor(() => expect(test.requests.map(request => request.key)).toContain('POST graphs'));
+    test.store.detach();
+    const session = test.store.sessionOpened('projects/a/a.vxtexgraph');
+    answer();
+    await opening;
+
+    expect(await session).toBe('g1');
+    expect(test.store.session().kind).toBe('none'); // what was let go of does not come back on its own
+    expect(test.store.document()).toBeNull();
+    expect(await test.store.sessionOpened('projects/b/b.vxtexgraph')).toBeNull();
+  });
+
   it('does not open what is already open', async () => {
     const test = await opened();
     const reads = test.requests.length;

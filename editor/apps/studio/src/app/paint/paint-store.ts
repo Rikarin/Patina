@@ -390,13 +390,27 @@ export class PaintStore {
   async open(path: string, create: boolean): Promise<void> {
     this.failure.set(null);
     this.comeback.cancel();
-    try {
-      const client = await this.api();
-      const state = unwrap(
+    const ticket = ++this.opens;
+    const answer = this.api().then(async client =>
+      unwrap(
         create
           ? await client.POST('/api/v1/stacks/new', { body: { path, width: 2048, height: 2048 } })
           : await client.POST('/api/v1/stacks', { body: { path } })
-      );
+      )
+    );
+    this.opened.set(
+      path,
+      answer.then(
+        state => state.id,
+        () => null
+      )
+    );
+    try {
+      const state = await answer;
+      if (ticket !== this.opens) {
+        return; // let go of before it opened: the tab that asked has gone, or another came to the front
+      }
+
       this.worn.set(false);
       this.adopt(state);
       await this.follow();
@@ -430,6 +444,10 @@ export class PaintStore {
   }
 
   private vocabularyAsked = false;
+  /** Goes up with each open and each letting go, so that an open answered after either lands nowhere. */
+  private opens = 0;
+  /** The session each open got from the Server, by the path it opened, the open on its way included. */
+  private readonly opened = new Map<string, Promise<string | null>>();
 
   /** Reads what the id map holds. No id map is an answer, not a failure: the mask says what to do about it. */
   async loadIdColours(): Promise<void> {
@@ -548,8 +566,18 @@ export class PaintStore {
     }
   }
 
+  /**
+   * The session an open of this path got from the Server, once the open on its way has its answer; null if none was
+   * asked for or the Server made none. A tab closed while its stack is still opening closes this, or the Server keeps a
+   * session that nothing shows, and the document can then be neither moved nor deleted (#232).
+   */
+  sessionOpened(path: string): Promise<string | null> {
+    return this.opened.get(path) ?? Promise.resolve(null);
+  }
+
   /** Lets go of the stack, which stays open on the Server with its edits and history, to come back to. */
   detach(): void {
+    this.opens++;
     this.comeback.cancel();
     this.notice.set(null);
     this.state.set(null);

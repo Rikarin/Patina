@@ -966,6 +966,12 @@ export class ProjectStore {
 
   /** Closes a tab. False if its session stayed, which keeps the tab: the edits there would be out of reach without it. */
   private async remove(path: string, discard: boolean): Promise<boolean> {
+    // A tab still on its way to the front may not have started its open yet, so it is let arrive, and the session that
+    // open gets is the one closed (#232).
+    if (this.mutableArriving() === path) {
+      await this.bringing;
+    }
+
     const tab = this.mutableTabs().find(held => held.path === path);
     if (!tab) {
       return true;
@@ -1000,13 +1006,19 @@ export class ProjectStore {
     return closed;
   }
 
+  /**
+   * Ends a tab's session on the Server. A tab closed while its document is still opening has no session yet, so the
+   * close waits for the open it started and ends the session that got (#232).
+   */
   private async closeSession(tab: DocumentTab, discard: boolean): Promise<void> {
-    if (tab.session === null) {
+    const id =
+      tab.session ??
+      (await (isGraph(tab) ? this.graph.sessionOpened(tab.path) : this.paint.sessionOpened(tab.path)));
+    if (id === null) {
       return;
     }
 
     const client = await this.library.api();
-    const id = tab.session;
     try {
       await (isGraph(tab)
         ? client.DELETE('/api/v1/graphs/{id}', { params: { path: { id }, query: { discard } } })
