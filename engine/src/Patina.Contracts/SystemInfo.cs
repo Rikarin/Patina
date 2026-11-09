@@ -18,13 +18,45 @@ public sealed record SystemInfo(
     int DefaultTextureSide
 ) {
     /// <summary>What can be read, for a client's file dialogs.</summary>
-    public FileFormats Formats { get; init; } = new(PictureFormats.Pictures, PictureFormats.Environments);
+    public FileFormats Formats { get; init; } =
+        new(PictureFormats.Pictures, PictureFormats.Environments, MeshFormats.Meshes);
 }
 
 /// <summary>What a client may offer, with the dot.</summary>
 /// <param name="Pictures">What a layer, a mask, an image material and a skew map read.</param>
 /// <param name="Environments">What lights the viewport.</param>
-public sealed record FileFormats(IReadOnlyList<string> Pictures, IReadOnlyList<string> Environments);
+/// <param name="Meshes">What a project takes as its mesh, its detailed mesh or a cage.</param>
+public sealed record FileFormats(
+    IReadOnlyList<string> Pictures,
+    IReadOnlyList<string> Environments,
+    IReadOnlyList<string> Meshes
+);
+
+/// <summary>
+///     The one list of the meshes Patina reads, through Assimp. A project's folder, the Import command and a client's
+///     file dialogs all take it from here (#146). Each has a test that reads a file of it.
+/// </summary>
+public static class MeshFormats {
+    public static IReadOnlyList<string> Meshes { get; } =
+        [".glb", ".gltf", ".fbx", ".obj", ".dae", ".ply", ".stl"];
+
+    /// <summary>Whether a file is a mesh Patina reads, by its name.</summary>
+    public static bool IsMesh(string path) =>
+        Meshes.Contains(Path.GetExtension(path).ToLowerInvariant(), StringComparer.Ordinal);
+
+    /// <summary>What a format is called, for a person, by its extension with the dot.</summary>
+    public static string Name(string extension) =>
+        extension.ToLowerInvariant() switch {
+            ".glb" => "glTF binary",
+            ".gltf" => "glTF",
+            ".fbx" => "FBX",
+            ".obj" => "Wavefront OBJ",
+            ".dae" => "COLLADA",
+            ".ply" => "PLY",
+            ".stl" => "STL",
+            var other => other.TrimStart('.').ToUpperInvariant()
+        };
+}
 
 /// <summary>
 ///     The one list of the pictures Patina reads. Every path that takes a person's picture reads all of these, and a

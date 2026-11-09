@@ -383,18 +383,24 @@ function handleIpc(): void {
       shell.showItemInFolder(path);
     }
   });
-  handle('patina:openMesh', async () => {
+  handle('patina:openMesh', async (_event, formats: unknown) => {
     const options: OpenDialogOptions = {
       properties: ['openFile'],
-      filters: [{ name: 'Meshes', extensions: ['glb', 'gltf', 'fbx', 'obj'] }]
+      filters: [
+        { name: 'Meshes', extensions: extensionsOf(formats) },
+        { name: 'All Files', extensions: ['*'] }
+      ]
     };
     const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
     return picked.canceled ? null : (picked.filePaths[0] ?? null);
   });
-  handle('patina:openFile', async (_event, pictures: unknown) => {
+  handle('patina:openFile', async (_event, pictures: unknown, meshes: unknown) => {
     const options: OpenDialogOptions = {
       title: 'Import',
-      filters: [{ name: 'Meshes and pictures', extensions: ['glb', 'gltf', 'fbx', 'obj', ...extensionsOf(pictures)] }],
+      filters: [
+        { name: 'Meshes and pictures', extensions: [...extensionsOf(meshes), ...extensionsOf(pictures)] },
+        { name: 'All Files', extensions: ['*'] }
+      ],
       properties: ['openFile']
     };
     const picked = window ? await dialog.showOpenDialog(window, options) : await dialog.showOpenDialog(options);

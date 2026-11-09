@@ -38,6 +38,8 @@ export class SystemStatus {
 
   /** What a file dialog offers for a picture: the Server's one list of what it reads. */
   readonly pictures = computed(() => this.formats()?.pictures);
+  /** What a file dialog offers for a mesh, the same list a project's folder and Import read. */
+  readonly meshes = computed(() => this.formats()?.meshes);
   /** What a file dialog offers for an environment. */
   readonly environments = computed(() => this.formats()?.environments);
 

@@ -23,6 +23,8 @@ public static class LibraryFiles {
                                   *.vxpaint filter=lfs diff=lfs merge=lfs -text
                                   *.glb filter=lfs diff=lfs merge=lfs -text
                                   *.fbx filter=lfs diff=lfs merge=lfs -text
+                                  *.ply filter=lfs diff=lfs merge=lfs -text
+                                  *.stl filter=lfs diff=lfs merge=lfs -text
                                   *.exr filter=lfs diff=lfs merge=lfs -text
                                   *.png filter=lfs diff=lfs merge=lfs -text
 

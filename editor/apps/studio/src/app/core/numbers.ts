@@ -38,3 +38,15 @@ export function bytes(count: number): string {
   const shown = unit === 0 || value >= 10 ? Math.round(value).toString() : value.toFixed(1);
   return `${shown} ${ByteUnits[unit]}`;
 }
+
+/** A length in metres, in the largest of m, cm and mm that keeps it at 1 or more: one place below 10, none above. */
+export function length(metres: number): string {
+  const size = Math.abs(metres);
+  const [value, unit] = size >= 1 ? [size, 'm'] : size >= 0.01 ? [size * 100, 'cm'] : [size * 1000, 'mm'];
+  return `${value >= 10 || value === 0 ? Math.round(value).toString() : value.toFixed(1)} ${unit}`;
+}
+
+/** A count of things, with its thousands grouped. */
+export function count(value: number): string {
+  return Math.round(value).toLocaleString('en-US');
+}

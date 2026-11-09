@@ -510,7 +510,7 @@ export class ViewportPane implements AfterViewInit {
   }
 
   protected async open(): Promise<void> {
-    const path = await desktop()?.openMesh();
+    const path = await desktop()?.openMesh(this.status.meshes());
     if (path) {
       await this.viewport.openMesh(path);
     }

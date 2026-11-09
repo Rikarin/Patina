@@ -9,6 +9,7 @@ import { XuiSelectImports } from '@xui/select';
 import type { UnwrapOptions } from '@patina/api-client';
 import { desktop } from '../core/desktop';
 import { SystemStatus } from '../core/system-status';
+import { MeshFactsView } from './mesh-facts';
 import { ProjectStore } from './project-store';
 
 /** What a project unwraps with until someone says otherwise, as the Server has it. */
@@ -41,7 +42,8 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
     XuiInputImports,
     XuiNumericInputImports,
     XuiSelectImports,
-    XuiSwitchImports
+    XuiSwitchImports,
+    MeshFactsView
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -76,6 +78,7 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
                 />
               }
             </div>
+            <ptn-mesh-facts [path]="factsOf()" />
           </div>
           <label class="flex items-center justify-between gap-2">
             <span class="flex flex-col">
@@ -275,6 +278,17 @@ export class ProjectSettingsDialog {
     ({ 1: 'Never', 2: 'Half turns', 4: 'Quarter turns' })[count] ?? `${count}`;
   protected readonly overflowName = (overflow: string): string =>
     ({ shrink: 'Shrink them all', refuse: 'Stop and say so' })[overflow] ?? overflow;
+  /** The mesh whose facts show: one just chosen, or the one the documents are on. */
+  protected readonly factsOf = computed(() => {
+    const chosen = this.mesh().trim();
+    if (chosen || !this.project.settingsOpen()) {
+      return chosen;
+    }
+
+    const contents = this.project.current();
+    const on = contents?.documents.find(document => !!document.mesh)?.mesh;
+    return (contents?.meshes.find(mesh => !!on && mesh.id === on) ?? contents?.meshes[0])?.path ?? '';
+  });
   /** What Auto Unwrap made of the mesh the documents are on. */
   protected readonly report = computed(() => {
     const contents = this.project.current();
@@ -340,7 +354,7 @@ export class ProjectSettingsDialog {
   }
 
   protected async pickMesh(): Promise<void> {
-    this.mesh.set((await desktop()?.openMesh()) ?? this.mesh());
+    this.mesh.set((await desktop()?.openMesh(this.status.meshes())) ?? this.mesh());
   }
 
   protected async apply(event: Event): Promise<void> {

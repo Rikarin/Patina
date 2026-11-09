@@ -116,7 +116,7 @@ import { messageOf } from '../core/messages';
 })
 export class NewProjectDialog {
   protected async pickMesh(): Promise<void> {
-    const mesh = await desktop()?.openMesh();
+    const mesh = await desktop()?.openMesh(this.status.meshes());
     if (mesh) {
       this.mesh.set(mesh);
     }

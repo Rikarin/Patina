@@ -1932,6 +1932,67 @@
         }
       }
     },
+    "/api/v1/library/mesh": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "The facts of a mesh file: one below the library, as a project lists it, or any file on this machine, so a\nclient can say what a mesh is before it is brought in.",
+        "operationId": "GetMeshFacts",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeshFacts"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/export": {
       "put": {
         "tags": [
@@ -8319,7 +8380,8 @@
       "FileFormats": {
         "required": [
           "pictures",
-          "environments"
+          "environments",
+          "meshes"
         ],
         "type": "object",
         "properties": {
@@ -8336,6 +8398,13 @@
               "type": "string"
             },
             "description": "What lights the viewport."
+          },
+          "meshes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What a project takes as its mesh, its detailed mesh or a cage."
           }
         },
         "description": "What a client may offer, with the dot."
@@ -11297,6 +11366,150 @@
           }
         },
         "description": "The body of \u0060POST /api/v1/library/materials/use\u0060."
+      },
+      "MeshFacts": {
+        "required": [
+          "file",
+          "format",
+          "triangles",
+          "vertices",
+          "parts",
+          "materials",
+          "uvSets",
+          "minimum",
+          "maximum",
+          "vertexColours"
+        ],
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "The file\u0027s name."
+          },
+          "format": {
+            "type": "string",
+            "description": "What the format is called, for a person."
+          },
+          "triangles": {
+            "type": "integer",
+            "description": "How many triangles, every part counted where it stands.",
+            "format": "int32"
+          },
+          "vertices": {
+            "type": "integer",
+            "description": "How many vertices, after welding.",
+            "format": "int32"
+          },
+          "parts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeshPartFacts"
+            },
+            "description": "Each named mesh where the file places it."
+          },
+          "materials": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeshMaterialFacts"
+            },
+            "description": "Each material a triangle uses, which is each texture set the mesh has."
+          },
+          "uvSets": {
+            "type": "integer",
+            "description": "The most texture coordinate sets any part has. Zero is a mesh with no layout.",
+            "format": "int32"
+          },
+          "minimum": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "description": "The corner of the box round the model with the least of each axis, in the file\u0027s units."
+          },
+          "maximum": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "description": "The corner with the most of each axis."
+          },
+          "metresPerUnit": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "How long the file\u0027s unit is, in metres, when the file or its format says: glTF is in metres, and an FBX states\nits unit. Null for a file that does not say, as OBJ, PLY and STL never do.",
+            "format": "double"
+          },
+          "vertexColours": {
+            "type": "boolean",
+            "description": "Whether any part carries vertex colours."
+          }
+        },
+        "description": "What a mesh file is, as the engine reads it (#146): the answer to \u0060GET /api/v1/library/project/mesh\u0060."
+      },
+      "MeshMaterialFacts": {
+        "required": [
+          "name",
+          "triangles",
+          "parts",
+          "uvSets"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Its name, unique in the file."
+          },
+          "triangles": {
+            "type": "integer",
+            "description": "How many triangles it is on.",
+            "format": "int32"
+          },
+          "parts": {
+            "type": "integer",
+            "description": "How many parts it is on.",
+            "format": "int32"
+          },
+          "uvSets": {
+            "type": "integer",
+            "description": "The texture coordinate sets every one of its parts has, so a texture set can paint and bake on any of them.",
+            "format": "int32"
+          }
+        },
+        "description": "One material of a mesh, which is one texture set."
+      },
+      "MeshPartFacts": {
+        "required": [
+          "name",
+          "material",
+          "triangles",
+          "uvSets"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Its name in the file."
+          },
+          "material": {
+            "type": "string",
+            "description": "The material, or texture set, it is drawn with."
+          },
+          "triangles": {
+            "type": "integer",
+            "description": "How many triangles.",
+            "format": "int32"
+          },
+          "uvSets": {
+            "type": "integer",
+            "description": "How many texture coordinate sets it has.",
+            "format": "int32"
+          }
+        },
+        "description": "One named mesh where the file places it."
       },
       "OutputReport": {
         "required": [

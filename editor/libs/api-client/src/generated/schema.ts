@@ -506,6 +506,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/mesh': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The facts of a mesh file: one below the library, as a project lists it, or any file on this machine, so a
+     *     client can say what a mesh is before it is brought in.
+     */
+    get: operations['GetMeshFacts'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/export': {
     parameters: {
       query?: never;
@@ -2588,6 +2608,8 @@ export interface components {
       pictures: string[];
       /** @description What lights the viewport. */
       environments: string[];
+      /** @description What a project takes as its mesh, its detailed mesh or a cage. */
+      meshes: string[];
     };
     /** @description The body of `POST /api/v1/library/folders`. */
     FolderCreateRequest: {
@@ -3839,6 +3861,81 @@ export interface components {
       project: string;
       /** @description The graph, below the library. */
       source: string;
+    };
+    /** @description What a mesh file is, as the engine reads it (#146): the answer to `GET /api/v1/library/project/mesh`. */
+    MeshFacts: {
+      /** @description The file's name. */
+      file: string;
+      /** @description What the format is called, for a person. */
+      format: string;
+      /**
+       * Format: int32
+       * @description How many triangles, every part counted where it stands.
+       */
+      triangles: number;
+      /**
+       * Format: int32
+       * @description How many vertices, after welding.
+       */
+      vertices: number;
+      /** @description Each named mesh where the file places it. */
+      parts: components['schemas']['MeshPartFacts'][];
+      /** @description Each material a triangle uses, which is each texture set the mesh has. */
+      materials: components['schemas']['MeshMaterialFacts'][];
+      /**
+       * Format: int32
+       * @description The most texture coordinate sets any part has. Zero is a mesh with no layout.
+       */
+      uvSets: number;
+      /** @description The corner of the box round the model with the least of each axis, in the file's units. */
+      minimum: number[];
+      /** @description The corner with the most of each axis. */
+      maximum: number[];
+      /**
+       * Format: double
+       * @description How long the file's unit is, in metres, when the file or its format says: glTF is in metres, and an FBX states
+       *     its unit. Null for a file that does not say, as OBJ, PLY and STL never do.
+       */
+      metresPerUnit?: null | number;
+      /** @description Whether any part carries vertex colours. */
+      vertexColours: boolean;
+    };
+    /** @description One material of a mesh, which is one texture set. */
+    MeshMaterialFacts: {
+      /** @description Its name, unique in the file. */
+      name: string;
+      /**
+       * Format: int32
+       * @description How many triangles it is on.
+       */
+      triangles: number;
+      /**
+       * Format: int32
+       * @description How many parts it is on.
+       */
+      parts: number;
+      /**
+       * Format: int32
+       * @description The texture coordinate sets every one of its parts has, so a texture set can paint and bake on any of them.
+       */
+      uvSets: number;
+    };
+    /** @description One named mesh where the file places it. */
+    MeshPartFacts: {
+      /** @description Its name in the file. */
+      name: string;
+      /** @description The material, or texture set, it is drawn with. */
+      material: string;
+      /**
+       * Format: int32
+       * @description How many triangles.
+       */
+      triangles: number;
+      /**
+       * Format: int32
+       * @description How many texture coordinate sets it has.
+       */
+      uvSets: number;
     };
     /** @description One output in a project's report. */
     OutputReport: {
@@ -7953,6 +8050,55 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProjectMeshChange'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetMeshFacts: {
+    parameters: {
+      query: {
+        path: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MeshFacts'];
         };
       };
       /** @description Bad Request */

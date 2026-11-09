@@ -12,6 +12,7 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(ProjectMeshRequest))]
 [JsonSerializable(typeof(ProjectFileRequest))]
 [JsonSerializable(typeof(ProjectMeshChange), TypeInfoPropertyName = nameof(ProjectMeshChange))]
+[JsonSerializable(typeof(MeshFacts), TypeInfoPropertyName = nameof(MeshFacts))]
 [JsonSerializable(typeof(ProjectSettingsRequest))]
 [JsonSerializable(typeof(ProjectBakeRequest))]
 [JsonSerializable(typeof(ProjectBakeSettings))]

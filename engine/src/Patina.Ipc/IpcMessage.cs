@@ -106,6 +106,9 @@ public static class IpcTypes {
 
     public const string MeshParts = "mesh.parts";
 
+    /// <summary>Server to Worker: say what the mesh at <see cref="IpcMessage.MeshFile" /> is (#146).</summary>
+    public const string MeshFacts = "mesh.facts";
+
     public const string MeshPartMask = "mesh.part-mask";
 
     /// <summary>Renders each fill of a stack alone, small.</summary>
@@ -266,6 +269,9 @@ public sealed class IpcMessage {
 
     /// <summary>A model's materials, in the answer to <see cref="IpcTypes.MeshMaterials" />.</summary>
     public IReadOnlyList<string>? Materials { get; set; }
+
+    /// <summary>What a mesh is, in the answer to <see cref="IpcTypes.MeshFacts" />.</summary>
+    public MeshFacts? Facts { get; set; }
 
     /// <summary>The model's other texture sets, worn along with <see cref="Following" />.</summary>
     public IReadOnlyList<string>? FollowingAlso { get; set; }

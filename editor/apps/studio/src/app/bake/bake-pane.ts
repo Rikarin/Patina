@@ -1223,7 +1223,7 @@ export class BakePane {
       ? bridge?.openFolder()
       : field === 'skewMap' || field === 'distanceMap'
         ? bridge?.openImage(this.status.pictures())
-        : bridge?.openMesh());
+        : bridge?.openMesh(this.status.meshes()));
     if (path) {
       this.setPath(field, path);
     }
@@ -1231,7 +1231,7 @@ export class BakePane {
 
   /** The mesh's own detailed mesh is brought into the project, as its mesh is. */
   protected async pickHigh(): Promise<void> {
-    const path = await desktop()?.openMesh();
+    const path = await desktop()?.openMesh(this.status.meshes());
     if (path) {
       await this.project.applySettings({ high: path });
     }
@@ -1244,7 +1244,7 @@ export class BakePane {
   }
 
   protected async addHigh(): Promise<void> {
-    const path = await desktop()?.openMesh();
+    const path = await desktop()?.openMesh(this.status.meshes());
     if (path) {
       this.settings.update(settings => ({ ...settings, high: [...settings.high, path] }));
     }

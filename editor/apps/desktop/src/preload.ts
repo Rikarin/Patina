@@ -21,7 +21,8 @@ contextBridge.exposeInMainWorld('patina', {
     ipcRenderer.send('patina:title', title);
   },
   reveal: (path: string) => ipcRenderer.invoke('patina:reveal', path),
-  openFile: (pictures?: readonly string[]) => ipcRenderer.invoke('patina:openFile', pictures),
+  openFile: (pictures?: readonly string[], meshes?: readonly string[]) =>
+    ipcRenderer.invoke('patina:openFile', pictures, meshes),
   openEnvironment: (formats?: readonly string[]) => ipcRenderer.invoke('patina:openEnvironment', formats),
   openLook: () => ipcRenderer.invoke('patina:openLook'),
   pathOf: (file: File) => webUtils.getPathForFile(file),
@@ -38,7 +39,7 @@ contextBridge.exposeInMainWorld('patina', {
   writeKeys: (settings: unknown) => ipcRenderer.invoke('patina:keys:write', settings),
   readPreferences: () => ipcRenderer.invoke('patina:preferences:read'),
   writePreferences: (settings: unknown) => ipcRenderer.invoke('patina:preferences:write', settings),
-  openMesh: () => ipcRenderer.invoke('patina:openMesh'),
+  openMesh: (formats?: readonly string[]) => ipcRenderer.invoke('patina:openMesh', formats),
   openImage: (formats?: readonly string[]) => ipcRenderer.invoke('patina:openImage', formats),
   openFolder: () => ipcRenderer.invoke('patina:openFolder'),
   saveScreenshot: () => ipcRenderer.invoke('patina:saveScreenshot'),
