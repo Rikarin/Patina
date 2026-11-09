@@ -119,6 +119,43 @@ public sealed class GraphMeshMapDepthTests : IDisposable {
         }
     }
 
+    /// <summary>
+    ///     A mesh map with no bake stands in as mid grey when the caller asks for that, as a layer stack does. The grey is
+    ///     eight bits and the node declares half-floats (Rikarin/Vixen#1534), so it goes up at its own depth: through the
+    ///     plan's declaration it was refused.
+    /// </summary>
+    [Fact]
+    public void A_mesh_map_with_no_bake_stands_in_as_mid_grey() {
+        if (!VulkanDevice.TryCreate(new(), out var device, out var refusal)) {
+            Assert.Skip($"No Vulkan device: {refusal}");
+            return;
+        }
+
+        using (device) {
+            NodeTypeRegistry registry = new();
+            NodeTypes.Register(registry);
+            NodeGraphModel graph = new();
+            var map = graph.Add("Source/Mesh Map");
+            var output = graph.Add("Output/Output");
+            map.SetText("Map", "curvature");
+            output.SetText("Usage", "baseColor");
+            graph.Connect(new(map.Id, "Out"), new(output.Id, "Input"));
+            TextureGraphCompiler compiler = new(registry) { BaseWidth = 4, BaseHeight = 4 };
+            var plan = compiler.Compile(graph).Value;
+            using TextureUploads uploads = new(device);
+            var owed = TextureGraphExternals.Upload(uploads, plan, compiler.Externals);
+            List<string> unbaked = [];
+            var filled = new GraphPictures().Fill(uploads, plan, owed, [folder], null, unbaked);
+
+            Assert.Empty(filled.Refusals);
+            Assert.Equal(["curvature"], unbaked);
+
+            using TexturePlanEvaluator evaluator = new(device);
+            using var bake = evaluator.Evaluate(plan, uploads.Externals);
+            Assert.InRange(bake.Read(compiler.Outputs.Single().Image).Pixels[0], (byte)126, (byte)130);
+        }
+    }
+
     /// <summary>The first texel's red, as a graph reading one mesh map straight to its base colour draws it.</summary>
     byte Through(VulkanDevice device, string usage) {
         NodeTypeRegistry registry = new();
