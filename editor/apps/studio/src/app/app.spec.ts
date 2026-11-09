@@ -63,8 +63,25 @@ describe('App', () => {
 
     const status = element.querySelector('footer[role=status]')?.textContent;
     expect(status).toContain('Patina 1.2.3');
-    expect(status).toContain('/games/Ember.ptlib');
+    // The library by its name, with the whole path on hover (#200).
+    expect(status).toContain('Ember');
+    expect(status).not.toContain('/games/');
+    expect(element.querySelector('[data-testid=status-library]')?.getAttribute('title')).toBe('/games/Ember.ptlib');
     expect(status).toContain('GPU starting');
+  });
+
+  it('has one Undo, Redo and Save, for whichever document is in front, from the command table (#200)', async () => {
+    const element = await render({ kind: 'online', system });
+
+    for (const [id, title] of [
+      ['app-undo', /^Undo \(.+Z\)$/u],
+      ['app-redo', /^Redo \(.+Z\)$/u],
+      ['app-save', /^Save \(.+S\)$/u]
+    ] as const) {
+      const button = element.querySelector<HTMLButtonElement>(`[data-testid=${id}]`);
+      expect(button?.disabled, id).toBe(true); // nothing is open
+      expect(button?.title, id).toMatch(title);
+    }
   });
 
   it('says so when no library is open', async () => {

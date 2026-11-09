@@ -5,10 +5,7 @@ import {
   matDeleteOutline,
   matFolder,
   matFormatColorFill,
-  matRedo,
-  matSave,
-  matTune,
-  matUndo
+  matTune
 } from '@ng-icons/material-icons/baseline';
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, inject, signal } from '@angular/core';
 import type { StackFilterKind, StackLayer, StackMaskLayer } from '@patina/api-client';
@@ -100,7 +97,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
     XuiSliderImports
   ],
   viewProviders: [
-    provideIcons({ matAdsClick, matBrush, matDeleteOutline, matFolder, matFormatColorFill, matRedo, matSave, matTune, matUndo })
+    provideIcons({ matAdsClick, matBrush, matDeleteOutline, matFolder, matFormatColorFill, matTune })
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -234,51 +231,6 @@ const MaskMarks: Readonly<Record<string, string>> = {
       >
         <ng-icon xui size="sm" name="matDeleteOutline" />
       </button>
-      <button
-        type="button"
-        xuiButton
-        size="sm"
-        variant="ghost"
-        class="w-6 shrink-0 px-0"
-        data-testid="paint-undo"
-        [title]="commands.tooltip('undo', undoLabel())"
-        [attr.aria-label]="undoLabel()"
-        [disabled]="!store.state()?.history?.canUndo"
-        (click)="store.act('undo')"
-      >
-        <ng-icon xui size="sm" name="matUndo" />
-      </button>
-      <button
-        type="button"
-        xuiButton
-        size="sm"
-        variant="ghost"
-        class="w-6 shrink-0 px-0"
-        data-testid="paint-redo"
-        [title]="commands.tooltip('redo', redoLabel())"
-        [attr.aria-label]="redoLabel()"
-        [disabled]="!store.state()?.history?.canRedo"
-        (click)="store.act('redo')"
-      >
-        <ng-icon xui size="sm" name="matRedo" />
-      </button>
-      <button
-        type="button"
-        xuiButton
-        size="sm"
-        variant="ghost"
-        class="w-6 shrink-0 px-0"
-        data-testid="paint-save"
-        title="Save"
-        aria-label="Save"
-        [disabled]="!store.state()?.history?.dirty"
-        (click)="store.act('save')"
-      >
-        <ng-icon xui size="sm" name="matSave" />
-      </button>
-      @if (store.state()?.history?.dirty) {
-        <span class="text-foreground-muted text-xs" data-testid="paint-unsaved" title="Unsaved changes">•</span>
-      }
     </div>
 
     @if (project.bakeOutOfDate()) {

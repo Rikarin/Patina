@@ -418,7 +418,13 @@ function lanesOf(hex: string): number[] {
           </div>
         }
 
-        <div class="flex gap-1">
+        <!-- As the Bake dialog's: what runs it is primary and last, at the right (#200). -->
+        <div class="flex justify-end gap-1">
+          @if (running()) {
+            <button type="button" xuiButton size="sm" variant="ghost" data-testid="export-cancel" (click)="cancel()">
+              Stop
+            </button>
+          }
           <button type="button" xuiButton size="sm" data-testid="export-preview" [disabled]="!chosen()" (click)="ask()">
             Preview
           </button>
@@ -433,11 +439,6 @@ function lanesOf(hex: string): number[] {
           >
             Export
           </button>
-          @if (running()) {
-            <button type="button" xuiButton size="sm" variant="ghost" data-testid="export-cancel" (click)="cancel()">
-              Stop
-            </button>
-          }
         </div>
 
         @if (error(); as message) {

@@ -119,7 +119,15 @@ import { ViewportPane } from './viewport/viewport-pane';
               [title]="tab.path"
               (click)="project.activate(tab.path)"
             >
-              {{ tab.name }}{{ tab.dirty ? ' •' : '' }}
+              {{ tab.name
+              }}@if (tab.dirty) {
+                <span
+                  class="text-foreground-muted"
+                  title="Unsaved changes"
+                  [attr.data-testid]="tab.path === project.active()?.path ? 'active-unsaved' : 'tab-unsaved'"
+                  >&nbsp;•</span
+                >
+              }
             </button>
             <button
               type="button"
@@ -131,6 +139,77 @@ import { ViewportPane } from './viewport/viewport-pane';
             </button>
           </div>
         }
+      </div>
+      <!-- Undo, Redo and Save are the app's, for whichever document is in front, so no pane has its own (#200). -->
+      <div class="flex shrink-0 items-center" role="toolbar" aria-label="Document">
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          class="px-1.5"
+          data-testid="app-undo"
+          [attr.aria-label]="commands.label('undo')"
+          [disabled]="!commands.enabled('undo')"
+          [title]="commands.tooltip('undo')"
+          (click)="commands.run('undo')"
+        >
+          <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
+            <path
+              d="M5.5 3 2.5 6l3 3M2.5 6h7a4 4 0 0 1 0 8H7"
+              stroke="currentColor"
+              stroke-width="1.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              fill="none"
+            />
+          </svg>
+        </button>
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          class="px-1.5"
+          data-testid="app-redo"
+          [attr.aria-label]="commands.label('redo')"
+          [disabled]="!commands.enabled('redo')"
+          [title]="commands.tooltip('redo')"
+          (click)="commands.run('redo')"
+        >
+          <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
+            <path
+              d="M10.5 3l3 3-3 3M13.5 6h-7a4 4 0 0 0 0 8H9"
+              stroke="currentColor"
+              stroke-width="1.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              fill="none"
+            />
+          </svg>
+        </button>
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          class="px-1.5"
+          aria-label="Save"
+          data-testid="app-save"
+          [disabled]="!commands.enabled('save') || !project.active()?.dirty"
+          [title]="commands.tooltip('save')"
+          (click)="commands.run('save')"
+        >
+          <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
+            <path
+              d="M2.5 2.5h9l2 2v9h-11zM5 2.5v3.5h5V2.5M4.5 13.5V9h7v4.5"
+              stroke="currentColor"
+              stroke-width="1.2"
+              stroke-linejoin="round"
+              fill="none"
+            />
+          </svg>
+        </button>
       </div>
       <div class="flex shrink-0 items-center gap-1">
         <button
@@ -306,7 +385,9 @@ import { ViewportPane } from './viewport/viewport-pane';
         }
         @case ('online') {
           <span class="readout shrink-0">Patina {{ current.system.version }}</span>
-          <span class="readout truncate">{{ current.system.library ?? 'No library open' }}</span>
+          <span class="readout truncate" data-testid="status-library" [title]="current.system.library ?? ''">{{
+            libraryName() ?? 'No library open'
+          }}</span>
           <span class="readout shrink-0">GPU {{ current.system.worker.connected ? 'ready' : 'starting' }}</span>
           @if (project.notice(); as notice) {
             <span class="readout truncate" data-testid="app-notice">{{ notice }}</span>
@@ -526,16 +607,19 @@ export class App {
   private readonly chosen = linkedSignal(() => chosenLayout(this.project.workspace()));
   /** The layout of what is in front. Each kind of document keeps its own (ADR 0012). */
   protected readonly layout = linkedSignal(() => layoutOf(this.project.workspace(), this.chosen()));
+  /** The open library by its name, which the status bar shows with its whole path on hover (#200). */
+  protected readonly libraryName = computed(() => {
+    const state = this.status.state();
+    return state.kind === 'online'
+      ? (state.system.library
+          ?.split(/[\\/]/)
+          .pop()
+          ?.replace(/\.ptlib$/, '') ?? null)
+      : null;
+  });
   /** What is open, which is also what the window says. */
   protected readonly title = computed(() => {
-    const state = this.status.state();
-    const library =
-      state.kind === 'online'
-        ? state.system.library
-            ?.split(/[\\/]/)
-            .pop()
-            ?.replace(/\.ptlib$/, '')
-        : null;
+    const library = this.libraryName();
     const name = this.project.active()?.name;
     const dirty = this.project.active()?.dirty ? ' •' : '';
     return [name ? `${name}${dirty}` : null, library].filter(Boolean).join(' — ');

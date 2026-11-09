@@ -222,6 +222,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Undo, Redo and Save are in the title bar, for whichever document is in front, in place of the Layers and Graph panes' own buttons; a document with unsaved changes says so with the • on its tab alone, and a graph is closed from its tab, as every document is. The status bar names the library and shows its whole path on hover. Export's button is at the right, as Bake's is.
 - Occlusion darkens the light as well as the environment: a crevice the occlusion map calls closed is lit only when the light comes from well above it, and reflections fade there less than the diffuse does on a smooth surface. A reflection a normal map turns below the surface is taken away, and the edge of the model's shadow is softer.
 - The viewport's camera turns freely over the top and the bottom of the model rather than stopping short of them, and Top and Bottom look straight down and up.
 - Deleting a project or a document moves it to Patina's bin, not straight out of reach: File > Bin… or Bin under the Library lists what was deleted, Restore puts it back where it was (a project whose folder was taken since comes back beside it), and Delete Forever or Empty Bin, each asked first, are the only ways anything goes for good. The bin is `.trash/` in the library folder, beside `projects/`, kept on this machine: a new library's `.gitignore` leaves it out. A deleted document takes its paint with it and comes back with its identity and tags.

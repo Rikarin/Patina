@@ -19,15 +19,11 @@ import { provideIcons } from '@ng-icons/core';
 import {
   matAccountTree,
   matAdd,
-  matClose,
   matDashboard,
   matNoteAdd,
   matPowerSettingsNew,
-  matRedo,
-  matSave,
   matStickyNote2,
   matTune,
-  matUndo,
   matWidgets
 } from '@ng-icons/material-icons/baseline';
 import { XuiButtonImports } from '@xui/button';
@@ -184,15 +180,11 @@ export class GraphThumbnail {
     provideIcons({
       matAccountTree,
       matAdd,
-      matClose,
       matDashboard,
       matNoteAdd,
       matPowerSettingsNew,
-      matRedo,
-      matSave,
       matStickyNote2,
       matTune,
-      matUndo,
       matWidgets
     })
   ],
@@ -253,9 +245,6 @@ export class GraphThumbnail {
         >
           Copy to edit
         </button>
-      }
-      @if (current?.history?.dirty) {
-        <xui-tag class="ms-1 shrink-0" color="warning" minimal data-testid="graph-unsaved">Unsaved</xui-tag>
       }
       <span class="readout text-foreground-muted ms-2 truncate" data-testid="graph-evaluation">{{ evaluated() }}</span>
       <span class="flex-1"></span>
@@ -352,47 +341,6 @@ export class GraphThumbnail {
       </button>
       <button type="button" xuiButton size="sm" variant="ghost" aria-label="New graph" title="New graph" data-testid="graph-new" (click)="creating.set(true)">
         <ng-icon xui size="sm" name="matNoteAdd" />
-      </button>
-      <button
-        type="button"
-        xuiButton
-        aria-label="Undo"
-        size="sm"
-        variant="ghost"
-        data-testid="graph-undo"
-        [disabled]="!store.editable() || !current?.history?.canUndo"
-        [title]="commands.tooltip('undo', current?.history?.undoLabel ? 'Undo ' + current.history.undoLabel : 'Undo')"
-        (click)="store.undo()"
-      >
-        <ng-icon xui size="sm" name="matUndo" />
-      </button>
-      <button
-        type="button"
-        xuiButton
-        aria-label="Redo"
-        size="sm"
-        variant="ghost"
-        data-testid="graph-redo"
-        [disabled]="!store.editable() || !current?.history?.canRedo"
-        [title]="commands.tooltip('redo', current?.history?.redoLabel ? 'Redo ' + current.history.redoLabel : 'Redo')"
-        (click)="store.redo()"
-      >
-        <ng-icon xui size="sm" name="matRedo" />
-      </button>
-      <button
-        type="button"
-        xuiButton
-        aria-label="Save"
-        title="Save"
-        size="sm"
-        data-testid="graph-save"
-        [disabled]="!store.editable() || !current?.history?.dirty"
-        (click)="store.save()"
-      >
-        <ng-icon xui size="sm" name="matSave" />
-      </button>
-      <button type="button" xuiButton size="sm" variant="ghost" data-testid="graph-close" (click)="store.close()">
-        <ng-icon xui size="sm" name="matClose" />
       </button>
     </div>
 
