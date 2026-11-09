@@ -43,9 +43,9 @@ public sealed partial class StackProcessTests {
     }
 
     /// <summary>
-    ///     An instance is found as itself, as its source is, and still with its source switched off, since it stands for
-    ///     the source whatever the source's own eye says (#108 with #136). Weighed alone without being resolved first, it
-    ///     stood for nothing and the click found the source beneath it.
+    ///     An instance is found as itself, as its source is, and still with its source switched off, since it stands
+    ///     for the source whatever the source's own eye says (#108 with #136). Weighed alone without being resolved
+    ///     first, it stood for nothing and the click found the source beneath it.
     /// </summary>
     [Fact]
     public async Task A_click_finds_an_instance_as_itself() {

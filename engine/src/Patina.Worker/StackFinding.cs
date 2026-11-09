@@ -21,9 +21,9 @@ static class StackFinding {
     ///     a flattened folder is one layer, and a filter covers nothing of its own, so it is never the answer.
     /// </summary>
     /// <remarks>
-    ///     ⚠ <b>An instance is weighed as what it stands for</b> (#108), resolved in the whole document before any layer
-    ///     is taken alone: alone, its source would be gone and it would cover nothing. An instance of a folder is found
-    ///     as itself, since the layers inside it are copies with ids no document has.
+    ///     ⚠ <b>An instance is weighed as what it stands for</b> (#108), resolved in the whole document before any
+    ///     layer is taken alone: alone, its source would be gone and it would cover nothing. An instance of a folder is
+    ///     found as itself, since the layers inside it are copies with ids no document has.
     /// </remarks>
     public static IEnumerable<(string Layer, TextureSetAsset Alone)> Candidates(
         LayerStackAsset document,
