@@ -259,6 +259,7 @@ static class StackEndpoints {
         string id,
         StackSessions sessions,
         LibraryHost host,
+        AutosaveGate autosave,
         bool discard = false
     ) {
         var session = sessions.Find(id);
@@ -277,7 +278,8 @@ static class StackEndpoints {
         var thrownAway = session.Summary.Dirty;
         sessions.Close(session);
         if (thrownAway && host.Library is { } library) {
-            Recovery.Clear(library.RootPath, session.Path); // or what was refused would be offered back
+            // Or what was refused would be offered back, by an autosave kept already or still being written.
+            autosave.Forget(library.RootPath, session.Path);
         }
 
         return TypedResults.NoContent();

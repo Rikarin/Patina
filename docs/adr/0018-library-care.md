@@ -54,3 +54,8 @@ Autosave keeps a document when its edits have been still for the idle wait (5 s)
 one cut short by a crash, with paint and no text, is passed over. Restore brings back the newest. After the Server
 restarts, a document that had unsaved edits comes back from its file and offers the newest autosave, the same offer the
 next open makes after a crash.
+
+A save, a discard (closing with `discard=true`, which Don't Save sends) and declining an offer let go of a document's
+autosaves through one gate on the Server, so every client gets the same. An autosave still being written at that moment
+never lands: it finishes through the same gate, which refuses it and deletes what the Worker wrote. Otherwise a slow
+machine would offer back the edits just thrown away.

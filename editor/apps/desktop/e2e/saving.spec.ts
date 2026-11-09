@@ -2,12 +2,15 @@ import { _electron as electron, expect, test, type ElectronApplication, type Pag
 import { appendFileSync, existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { answerOpen, colouredGlb, leave, newLibrary, newProject, wholeAutosaves } from './projects';
+import { answerOpen, colouredGlb, leave, newestGeneration, newLibrary, newProject, wholeAutosaves } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const softwareWebGl = process.platform === 'linux' ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : [];
 
-/** What leaving unsaved work, and coming back to it, does. Autosave runs every second so a test need not wait. */
+/**
+ * What leaving unsaved work, and coming back to it, does. Autosave runs every second, and a second after the edits
+ * stop, so a test need not wait; and from a preferences file of its own, never the person's.
+ */
 let scratch: string;
 let library: string;
 let app: ElectronApplication;
@@ -18,10 +21,18 @@ async function launch(opening = ''): Promise<void> {
     ...process.env,
     PATINA_USER_DATA: join(scratch, 'user-data'),
     PATINA_LIBRARY: opening,
-    Patina__AutosaveSeconds: '1'
+    Patina__AutosaveSeconds: '1',
+    Patina__PreferencesFile: preferences()
   };
   app = await electron.launch({ args: [...softwareWebGl, main], env });
   window = await app.firstWindow();
+}
+
+/** The Server's preferences for these tests: autosave keeps a document a second after its edits stop. */
+function preferences(): string {
+  const file = join(scratch, 'engine-preferences.json');
+  writeFileSync(file, JSON.stringify({ autosave: { intervalSeconds: 1, idleSeconds: 1, keep: 3 } }));
+  return file;
 }
 
 /** What the 2D view shows, by its pixels: its address changes with every picture, the same or not. */
@@ -63,6 +74,9 @@ async function paint(): Promise<{ saved: string | undefined; painted: string | u
 
 const autosaves = () => wholeAutosaves(library);
 
+/** The autosave begun last, whole or still being written, as its folder's name. */
+const newestAutosave = () => newestGeneration(library);
+
 const open = () => window.locator('[data-testid=tree-row][data-path="crate"]').dblclick();
 
 /** Paints, waits for autosave, and goes without saving, as a crash would. */
@@ -97,6 +111,10 @@ test("Don't Save on a stack throws the edits away, and they stay gone", async ()
   const { saved } = await paint();
   await expect.poll(autosaves, { timeout: 30_000 }).toBeGreaterThan(0);
 
+  // A second stroke, and Don't Save while autosave is keeping it: what that autosave writes must not land after.
+  const before = newestAutosave();
+  await stroke();
+  await expect.poll(newestAutosave, { timeout: 30_000, intervals: [10] }).not.toBe(before);
   await window.getByTestId('document-tab').filter({ hasText: 'Crate' }).getByTestId('document-tab-close').click();
   await expect(window.getByTestId('project-leaving')).toBeVisible();
   await window.getByTestId('project-discard').click();
@@ -109,6 +127,7 @@ test("Don't Save on a stack throws the edits away, and they stay gone", async ()
   await expect.poll(pictureHash, { timeout: 15_000 }).toBe(saved);
   await expect(window.getByTestId('paint-unsaved')).toHaveCount(0);
   await expect(window.getByTestId('app-recovery')).toHaveCount(0);
+  expect(autosaves()).toBe(0);
 });
 
 const command = (name: string) =>

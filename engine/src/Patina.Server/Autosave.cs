@@ -17,6 +17,7 @@ public sealed class Autosave(
     StackEvaluator evaluator,
     ServerIdentity identity,
     Preferences preferences,
+    AutosaveGate gate,
     ILogger<Autosave> logger,
     TimeProvider? clock = null
 ) : BackgroundService {
@@ -40,19 +41,21 @@ public sealed class Autosave(
             }
 
             var now = time.GetUtcNow();
+            // Before what is open is looked at: a document closed or saved after this has nothing kept from here on.
+            var mark = gate.Mark();
             HashSet<string> open = new(StringComparer.Ordinal);
             foreach (var graph in graphs.All) {
                 open.Add(graph.Path);
                 if (Due(graph.Path, graph.Summary.Revision, graph.Summary.Dirty, now, settings)) {
-                    Recovery.Keep(library, graph.Path, graph.Text);
-                    Recovery.Trim(library, graph.Path, settings.Keep);
+                    var generation = Recovery.Begin(library, graph.Path);
+                    Finished(graph.Path, gate.Finish(library, graph.Path, generation, mark, graph.Text, settings.Keep));
                 }
             }
 
             foreach (var stack in stacks.All) {
                 open.Add(stack.Path);
                 if (Due(stack.Path, stack.Summary.Revision, stack.Summary.Dirty, now, settings)) {
-                    await TryAsync(stack, library, settings.Keep, stoppingToken);
+                    await TryAsync(stack, library, mark, settings.Keep, stoppingToken);
                 }
             }
 
@@ -68,14 +71,35 @@ public sealed class Autosave(
     }
 
     /// <summary>A Worker that is away this moment is here the next, and a save must not wait on it.</summary>
-    async Task TryAsync(StackSession stack, string library, int keep, CancellationToken cancellationToken) {
+    async Task TryAsync(StackSession stack, string library, long mark, int keep, CancellationToken cancellationToken) {
+        string? generation = null;
         try {
-            var generation = Recovery.Begin(library, stack.Path);
+            generation = Recovery.Begin(library, stack.Path);
             await evaluator.KeepAsync(stack, generation, cancellationToken);
-            Recovery.Finish(generation, stack.Text);
-            Recovery.Trim(library, stack.Path, keep);
+            Finished(stack.Path, gate.Finish(library, stack.Path, generation, mark, stack.Text, keep));
         } catch (Exception e) when (e is IOException or TimeoutException or Patina.Ipc.IpcException) {
             ServerLog.AutosaveFailed(logger, stack.Path, e.Message);
+            if (generation is not null) {
+                Abandon(stack.Path, library, generation, mark);
+            }
+        }
+    }
+
+    /// <summary>
+    ///     An autosave a save let go of as it landed is not one kept: edits after that save are kept when next due.
+    /// </summary>
+    void Finished(string path, bool kept) {
+        if (!kept && watched.TryGetValue(path, out var watch)) {
+            watch.Kept = long.MinValue;
+        }
+    }
+
+    /// <summary>What a Worker that failed left of an autosave of a document since let go goes too.</summary>
+    void Abandon(string path, string library, string generation, long mark) {
+        try {
+            gate.Abandon(library, path, generation, mark);
+        } catch (IOException e) {
+            ServerLog.AutosaveFailed(logger, path, e.Message);
         }
     }
 

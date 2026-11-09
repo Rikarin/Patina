@@ -57,6 +57,18 @@ export function wholeAutosaves(library: string): number {
     : 0;
 }
 
+/** The autosave begun last in a library, whole or still being written, by its folder's name: when it began. */
+export function newestGeneration(library: string): string {
+  const folder = join(library, '.ptcache', 'autosave');
+  return existsSync(folder)
+    ? (readdirSync(folder, { recursive: true, encoding: 'utf8' })
+        .filter(path => /^\d{19}$/.test(basename(path)))
+        .map(path => basename(path))
+        .sort()
+        .at(-1) ?? '')
+    : '';
+}
+
 /** Ends the app with no one to answer its question about unsaved paint. */
 export async function leave(app: ElectronApplication): Promise<void> {
   await app

@@ -20,6 +20,7 @@ public sealed class StackEvaluator(
     ServerIdentity identity,
     ViewportSession viewport,
     GraphSessions graphs,
+    AutosaveGate autosave,
     ILogger<StackEvaluator> logger
 ) : BackgroundService {
     const int PreviewSide = 512;
@@ -56,7 +57,7 @@ public sealed class StackEvaluator(
         );
         var saved = session.FinishSave(text, revision);
         if (identity.Library is { } library) {
-            Recovery.Clear(library, session.Path);
+            autosave.Forget(library, session.Path);
         }
 
         return saved;

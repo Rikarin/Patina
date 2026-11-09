@@ -402,6 +402,7 @@ static class LibraryTreeEndpoints {
         LibraryHost host,
         StackSessions stacks,
         GraphSessions graphs,
+        AutosaveGate autosave,
         DocumentRecoveryRequest request
     ) =>
         Guarded(
@@ -415,7 +416,7 @@ static class LibraryTreeEndpoints {
                 if (request.Restore) {
                     Recovery.Restore(library.RootPath, file);
                 } else {
-                    Recovery.Clear(library.RootPath, file);
+                    autosave.Forget(library.RootPath, file);
                 }
 
                 return TypedResults.Ok(new DocumentRecovery(null));

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Patina.Contracts;
 using Patina.Library;
 using System.Net;
@@ -467,6 +468,94 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
 
         Assert.Equal(HttpStatusCode.NoContent, discarded.StatusCode);
         Assert.Null(await RecoveryOfAsync(state.Path));
+    }
+
+    [Fact]
+    public async Task An_autosave_that_landed_goes_with_a_discard_and_nothing_comes_back() {
+        (await client.PutAsJsonAsync("/api/v1/preferences", new ServerPreferences(new(3600, 1, 3)), Token))
+            .EnsureSuccessStatusCode();
+        var state = await client.OpenAsync(GraphTesting.Write(server.Library, GraphTesting.Sample()), Token);
+        await client.EditAsync(state.Id, Token, new GraphSetValue(2, "Hue", [0.5f]));
+        var file = Path.GetFullPath(state.Path, server.Library);
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (Recovery.Count(server.Library, file) == 0 && DateTime.UtcNow < deadline) {
+            await Task.Delay(50, Token);
+        }
+
+        Assert.Equal(1, Recovery.Count(server.Library, file));
+
+        using var discarded = await client.DeleteAsync($"/api/v1/graphs/{state.Id}?discard=true", Token);
+        Assert.Equal(HttpStatusCode.NoContent, discarded.StatusCode);
+        // Longer than the idle wait, so an autosave the discard missed would be here.
+        await Task.Delay(TimeSpan.FromSeconds(2), Token);
+
+        Assert.False(Directory.Exists(Recovery.Folder(server.Library, file)));
+        Assert.Null(await RecoveryOfAsync(state.Path));
+    }
+
+    /// <summary>
+    ///     An autosave the Worker is still writing when the edits are thrown away or saved: what it wrote, and what it
+    ///     writes after, never lands, so the next open has nothing to offer (#162). This is the order a slow machine
+    ///     takes, and it is driven here step by step through the gate autosave goes through.
+    /// </summary>
+    [Theory]
+    [InlineData("discard a stack")]
+    [InlineData("discard a graph")]
+    [InlineData("save a graph")]
+    public async Task An_autosave_in_flight_never_lands_after_its_edits_are_let_go(string how) {
+        var gate = server.Services.GetRequiredService<AutosaveGate>();
+        var (document, file, letGo) = await EditedAsync(how);
+        var mark = gate.Mark();
+        var generation = Recovery.Begin(server.Library, file);
+        await File.WriteAllTextAsync(Path.Combine(generation, "early.png"), "paint", Token);
+
+        await letGo();
+        // The Worker finishes writing after the letting go, which makes the folder again.
+        Directory.CreateDirectory(generation);
+        await File.WriteAllTextAsync(Path.Combine(generation, "late.png"), "paint", Token);
+        var kept = gate.Finish(server.Library, file, generation, mark, "autosaved", 3);
+
+        Assert.False(kept);
+        Assert.False(Directory.Exists(Recovery.Folder(server.Library, file)));
+        Assert.Equal(0, Recovery.Count(server.Library, file));
+        File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddHours(-1)); // so any autosave left would be the newer
+        Assert.Null(await RecoveryOfAsync(document));
+    }
+
+    [Fact]
+    public async Task An_autosave_begun_after_a_save_still_lands() {
+        var gate = server.Services.GetRequiredService<AutosaveGate>();
+        var (document, file, save) = await EditedAsync("save a graph");
+        await save();
+
+        var mark = gate.Mark();
+        var kept = gate.Finish(server.Library, file, Recovery.Begin(server.Library, file), mark, "autosaved", 3);
+
+        Assert.True(kept);
+        Assert.Equal(1, Recovery.Count(server.Library, file));
+        File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddHours(-1));
+        Assert.NotNull(await RecoveryOfAsync(document));
+    }
+
+    /// <summary>A document with an unsaved edit, and the way its edits are let go.</summary>
+    async Task<(string Document, string File, Func<Task> LetGo)> EditedAsync(string how) {
+        if (how == "discard a stack") {
+            var (document, file, stack) = await OpenStackAsync();
+            await EditAsync(stack);
+            return (document, file, async () => {
+                using var discarded = await client.DeleteAsync($"/api/v1/stacks/{stack}?discard=true", Token);
+                Assert.Equal(HttpStatusCode.NoContent, discarded.StatusCode);
+            });
+        }
+
+        var state = await client.OpenAsync(GraphTesting.Write(server.Library, GraphTesting.Sample()), Token);
+        await client.EditAsync(state.Id, Token, new GraphSetValue(2, "Hue", [0.5f]));
+        return (state.Path, Path.GetFullPath(state.Path, server.Library), async () => {
+            using var done = how == "save a graph"
+                ? await client.PostAsync($"/api/v1/graphs/{state.Id}/save", null, Token)
+                : await client.DeleteAsync($"/api/v1/graphs/{state.Id}?discard=true", Token);
+            Assert.True(done.IsSuccessStatusCode, await done.Content.ReadAsStringAsync(Token));
+        });
     }
 
     [Fact]

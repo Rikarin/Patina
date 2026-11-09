@@ -178,6 +178,7 @@ static class GraphEndpoints {
         string id,
         GraphSessions sessions,
         LibraryHost host,
+        AutosaveGate autosave,
         bool discard = false
     ) {
         if (sessions.Find(id) is not { } session) {
@@ -195,7 +196,8 @@ static class GraphEndpoints {
         var thrownAway = session.Summary.Dirty;
         sessions.Close(session);
         if (thrownAway && host.Library is { } library) {
-            Recovery.Clear(library.RootPath, session.Path); // or what was refused would be offered back
+            // Or what was refused would be offered back, by an autosave kept already or still being written.
+            autosave.Forget(library.RootPath, session.Path);
         }
 
         return TypedResults.NoContent();
@@ -338,6 +340,7 @@ static class GraphEndpoints {
         GraphSessions sessions,
         LibraryHost host,
         StackSessions stacks,
+        AutosaveGate autosave,
         bool force = false
     ) {
         if (sessions.Find(id) is not { } session) {
@@ -348,7 +351,7 @@ static class GraphEndpoints {
             var result = session.Save(force);
             sessions.Republish(session);
             if (host.Library is { } library) {
-                Recovery.Clear(library.RootPath, session.Path);
+                autosave.Forget(library.RootPath, session.Path);
                 MaterialShelf.RefreshOpen(library, stacks);
             }
 

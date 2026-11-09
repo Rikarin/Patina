@@ -89,6 +89,7 @@ builder.Services.AddSingleton<Holders>();
 builder.Services.AddSingleton<PreviewStore>();
 builder.Services.AddSingleton<Thumbnails>();
 builder.Services.AddSingleton<Preferences>();
+builder.Services.AddSingleton<AutosaveGate>();
 builder.Services.AddSingleton<GraphEvaluator>();
 builder.Services.AddHostedService(static services => services.GetRequiredService<GraphEvaluator>());
 builder.Services.AddSingleton<StackClips>();
