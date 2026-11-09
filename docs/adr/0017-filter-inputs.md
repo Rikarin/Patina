@@ -16,10 +16,12 @@ an anchor point through the API, and from nothing else.
 - **A node says when it is not an adjustment.** `[Node(Adjustment = false)]` in Vixen, or a compound's `adjustment: false`
   setting, is carried on `NodeTypeDefinition.Adjustment`. The three statistics nodes say it, because their output describes
   their input; Blend, Mix, Dissolve, Select Input, Tile Sampler and Splatter say it, because their other inputs are what
-  they are about, and a layer already composites. Normal Blend says it as a composite of two normal maps, and Distance
-  Colour because its first image is the mask it spreads a colour from, so as a layer it would take the picture beneath as
-  that shape (#174, #176). The flag is the node's, so the next statistics node is left out by whoever writes it, not by a
-  list in Patina.
+  they are about, and a layer already composites. Normal Blend says it as a composite of two normal maps (#176). The flag
+  is the node's, so the next statistics node is left out by whoever writes it, not by a list in Patina.
+- **The image a node changes comes first.** Distance Colour said it was no adjustment while its mask was its first image,
+  since a layer would have taken the picture beneath as that shape (#174). Wave 6 put its colour first, so it is a filter
+  that pads the picture beneath out from a mask an input names, which is the padding filter. A node that wants to be a
+  filter orders its ports so; one whose first image is not a picture of the surface says it is no adjustment.
 - **A node whose one image is a mesh map is none either.** Volume Noise, Volume Mask and Volume Gradient read the
   position bake through their one image port, and a stack would hand them the picture beneath instead, so Vixen refuses
   them as filters by name (`ReadsNoPicture`, #179); a fill's graph wires them to a mesh map.

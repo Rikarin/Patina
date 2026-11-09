@@ -1,0 +1,63 @@
+version: 1
+name: Moss
+nodes:
+  - { id: 1, type: Source/Mesh Map, x: -1280, y: 0, texts: { Map: world } }
+  - { id: 2, type: Colour/Grayscale, x: -960, y: 0, values: { Weight R: [0], Weight G: [1], Weight B: [0] } }
+  - id: 3
+    type: Colour/Levels
+    x: -640
+    y: 0
+    texts:
+      '=Input Black': '0.9f - facing * 0.4f'
+      '=Input White': '0.98f - facing * 0.4f'
+  - { id: 4, type: Source/Mesh Map, x: -1280, y: 220, texts: { Map: ao } }
+  - id: 5
+    type: Colour/Levels
+    x: -960
+    y: 220
+    values: { Input Black: [0.95], Input White: [0.6] }
+    texts:
+      '=Output White': creep
+  - { id: 6, type: Colour/Blend, x: -320, y: 0, texts: { Mode: Lighten } }
+  - { id: 7, type: Source/Mesh Map, x: -1280, y: 420, texts: { Map: position } }
+  - { id: 8, type: Source/Volume Noise, x: -960, y: 420, values: { Octaves: [5], Gain: [0.55] }, texts: { Basis: Gradient, '=Scale': scale, '=Seed': seed } }
+  - id: 9
+    type: Colour/Levels
+    x: -640
+    y: 420
+    texts:
+      '=Input Black': '0.62f - amount * 0.3f'
+      '=Input White': '0.68f - amount * 0.3f'
+  - { id: 10, type: Colour/Blend, x: 0, y: 0, texts: { Mode: Multiply } }
+  - { id: 99, type: Sub-graph/Output, x: 320, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Input }
+  - { fromNode: 4, fromPort: Out, toNode: 5, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 6, toPort: Background }
+  - { fromNode: 5, fromPort: Out, toNode: 6, toPort: Foreground }
+  - { fromNode: 7, fromPort: Out, toNode: 8, toPort: Position }
+  - { fromNode: 8, fromPort: Out, toNode: 9, toPort: Input }
+  - { fromNode: 6, fromPort: Out, toNode: 10, toPort: Background }
+  - { fromNode: 9, fromPort: Out, toNode: 10, toPort: Foreground }
+  - { fromNode: 10, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'Clumps of growth on the tops of things and in the damp hollows, broken into patches.'
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Where moss and lichen take hold: upward faces and sheltered hollows, in clumps that cross seams unbroken.'
+  doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: amount, label: Amount, default: '0.5', summary: 'How much of the places moss could grow it covers.', kind: Float, minimum: 0, maximum: 1, group: Moss }
+  - { name: facing, label: Facing, default: '0.4', summary: 'How far off level a face may tilt and still grow moss on top.', kind: Float, minimum: 0, maximum: 1, group: Moss }
+  - { name: creep, label: Creep, default: '0.6', summary: 'How much grows in the hollows too, whichever way they face.', kind: Float, minimum: 0, maximum: 1, group: Moss }
+  - { name: scale, label: Clump Scale, default: '5', summary: 'How many clumps run across the model.', kind: Float, minimum: 1, maximum: 64, group: Moss }
+  - { name: seed, label: Seed, default: '0', summary: 'Another draw of the clumps. Every whole number is a different pattern.', kind: Int, minimum: 0, maximum: 100, group: Moss }

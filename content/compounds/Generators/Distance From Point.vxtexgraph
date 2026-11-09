@@ -1,0 +1,41 @@
+version: 1
+name: Distance From Point
+nodes:
+  - { id: 1, type: Source/Mesh Map, x: -640, y: 0, texts: { Map: position } }
+  - id: 2
+    type: Source/Volume Mask
+    x: -320
+    y: 0
+    texts:
+      Shape: Ellipsoid
+      '=Centre X': across
+      '=Centre Y': up
+      '=Centre Z': through
+      '=Size X': 'radius * 2f'
+      '=Size Y': 'radius * 2f'
+      '=Size Z': 'radius * 2f'
+      '=Falloff': falloff
+  - { id: 99, type: Sub-graph/Output, x: 0, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: Position }
+  - { fromNode: 2, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'White within a radius of a point in the model, fading to black beyond it.'
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'A ball in the model''s own space, as a mask: everything near one point, through every island it touches.'
+  doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: across, label: Across, default: '0.5', summary: 'Where the point is along the model''s first axis, from one side of its bounds to the other.', kind: Float, minimum: 0, maximum: 1, group: Point }
+  - { name: up, label: Up, default: '1', summary: 'How far up the model the point is.', kind: Float, minimum: 0, maximum: 1, group: Point }
+  - { name: through, label: Through, default: '0.5', summary: 'How far through the model, back to front.', kind: Float, minimum: 0, maximum: 1, group: Point }
+  - { name: radius, label: Radius, default: '0.3', summary: 'How far from the point the mask is whole, as a share of the model''s size.', kind: Float, minimum: 0, maximum: 1, group: Reach }
+  - { name: falloff, label: Falloff, default: '0.25', summary: 'How far beyond the radius it fades out.', kind: Float, minimum: 0, maximum: 0.5, group: Reach }

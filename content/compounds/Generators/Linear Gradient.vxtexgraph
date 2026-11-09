@@ -1,0 +1,49 @@
+version: 1
+name: Linear Gradient
+nodes:
+  - { id: 1, type: Source/Mesh Map, x: -640, y: 0, texts: { Map: position } }
+  - id: 2
+    type: Source/Volume Gradient
+    x: -320
+    y: 0
+    texts:
+      '=Start X': 'start_across'
+      '=Start Y': 'start_up'
+      '=Start Z': 'start_through'
+      '=End X': 'end_across'
+      '=End Y': 'end_up'
+      '=End Z': 'end_through'
+  - id: 3
+    type: Colour/Levels
+    x: 0
+    y: 0
+    texts:
+      '=Input Black': 'contrast * 0.45f'
+      '=Input White': '1f - contrast * 0.45f'
+  - { id: 99, type: Sub-graph/Output, x: 320, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: Position }
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'Black at the start point, white at the end, and a straight ramp between them through the model.'
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'A ramp from one point of the model to another, in its own space: a water line, a dip, a colour that runs one way.'
+  doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: start_across, label: Start Across, default: '0.5', summary: 'Where the ramp starts along the model''s first axis, from one side of its bounds to the other.', kind: Float, minimum: 0, maximum: 1, group: Start }
+  - { name: start_up, label: Start Up, default: '0', summary: 'How far up the model it starts.', kind: Float, minimum: 0, maximum: 1, group: Start }
+  - { name: start_through, label: Start Through, default: '0.5', summary: 'How far through the model it starts.', kind: Float, minimum: 0, maximum: 1, group: Start }
+  - { name: end_across, label: End Across, default: '0.5', summary: 'Where it ends along the first axis.', kind: Float, minimum: 0, maximum: 1, group: End }
+  - { name: end_up, label: End Up, default: '1', summary: 'How far up the model it ends.', kind: Float, minimum: 0, maximum: 1, group: End }
+  - { name: end_through, label: End Through, default: '0.5', summary: 'How far through the model it ends.', kind: Float, minimum: 0, maximum: 1, group: End }
+  - { name: contrast, label: Contrast, default: '0', summary: 'How hard the ramp is. One is a step half way.', kind: Float, minimum: 0, maximum: 1, group: Ramp }

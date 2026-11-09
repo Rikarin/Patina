@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using Vixen.Core.Imaging;
 using Vixen.Core.Yaml;
@@ -31,7 +32,7 @@ public sealed class FactoryCompoundTests {
         FactoryCompounds.Register();
 
         // The instrument: the folder was embedded at all, or every assertion below holds of nothing.
-        Assert.Superset(
+        Assert.Subset(
             FactoryCompounds.Paths.ToHashSet(StringComparer.Ordinal),
             Named.ToHashSet(StringComparer.Ordinal)
         );
@@ -52,10 +53,42 @@ public sealed class FactoryCompoundTests {
             Assert.Equal(path[(path.LastIndexOf('/') + 1)..], document.Name);
             Assert.Contains(
                 document.Interface,
-                static port => port is { Name: "Out", Direction: PortDirection.Output, Kind: PortKind.Image }
+                static port => port is { Direction: PortDirection.Output, Kind: PortKind.Image }
             );
             Assert.All(document.Interface, static port => Assert.False(string.IsNullOrWhiteSpace(port.Summary)));
         }
+    }
+
+    /// <summary>
+    ///     Every knob a factory compound shows says what it is in the product's words: a label, a sentence, a group,
+    ///     and a range its default sits in.
+    /// </summary>
+    [Fact]
+    public void Every_knob_has_a_label_a_summary_and_a_range_its_default_is_in() {
+        FactoryCompounds.Register();
+        List<string> problems = [];
+
+        foreach (var path in FactoryCompounds.Paths) {
+            var document = YamlSerializer.Parse<NodeGraphAsset>(TextureCompoundLibrary.Source(path)!);
+
+            foreach (var knob in document.Parameters) {
+                var value = float.Parse(knob.Default, CultureInfo.InvariantCulture);
+
+                if (string.IsNullOrWhiteSpace(knob.Label)
+                    || string.IsNullOrWhiteSpace(knob.Summary)
+                    || string.IsNullOrWhiteSpace(knob.Group)) {
+                    problems.Add($"{path}: '{knob.Name}' has no label, summary or group");
+                }
+
+                if (!(knob.Minimum < knob.Maximum) || value < knob.Minimum || value > knob.Maximum) {
+                    problems.Add(
+                        $"{path}: '{knob.Name}' defaults to {knob.Default}, outside {knob.Minimum}..{knob.Maximum}"
+                    );
+                }
+            }
+        }
+
+        Assert.Empty(problems);
     }
 
     /// <summary>
@@ -83,19 +116,50 @@ public sealed class FactoryCompoundTests {
 
     static string Here([CallerFilePath] string path = "") => path;
 
+    /// <summary>
+    ///     Every factory compound compiles with nothing to say, with each image input it has fed. Nothing to say
+    ///     includes <c>TG0025</c>, so a number or a setting under a name its node has not got is a typo found here.
+    /// </summary>
     [Fact]
     public void Every_factory_compound_is_a_graph_of_nodes_Patina_has() {
         FactoryCompounds.Register();
 
         foreach (var path in FactoryCompounds.Paths) {
-            var (compiler, graph) = Containing(path, 128);
+            var (compiler, graph) = CompoundBench.Containing(path, out _, out _);
             var compilation = compiler.Compile(graph);
 
             Assert.True(
-                compilation.Succeeded,
+                compilation.Diagnostics.IsEmpty,
                 $"{path}: {string.Join("; ", compilation.Diagnostics.Select(static diagnostic => diagnostic.Message))}"
             );
             Assert.NotEmpty(compilation.Value.Ops);
+        }
+    }
+
+    /// <summary>
+    ///     Every starter material compiles with nothing to say, since a bake refuses a key nothing reads.
+    /// </summary>
+    [Fact]
+    public void Every_starter_material_compiles_with_nothing_to_say() {
+        FactoryCompounds.Register();
+        NodeTypeRegistry registry = new();
+        NodeTypes.Register(registry);
+        var library = TextureCompoundLibrary.Publish(registry, null, out _);
+        var folder = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(Here())!, "../../../content/materials"));
+        var files = Directory.GetFiles(folder, "*" + TextureCompoundLibrary.Extension);
+
+        Assert.NotEmpty(files);
+
+        foreach (var file in files) {
+            var asset = YamlSerializer.Parse<NodeGraphAsset>(File.ReadAllText(file));
+            var model = NodeGraphDocument.Load(asset, out var repairs);
+            TextureGraphCompiler compiler = new(registry) { SubGraphSource = library };
+            var diagnostics = compiler.Compile(model).Diagnostics;
+
+            Assert.Empty(repairs);
+            var said = string.Join("; ", diagnostics.Select(static diagnostic => diagnostic.Message));
+
+            Assert.True(diagnostics.IsEmpty, $"{Path.GetFileName(file)}: {said}");
         }
     }
 
@@ -117,7 +181,8 @@ public sealed class FactoryCompoundTests {
             using TexturePlanEvaluator evaluator = new(device);
             List<string> problems = [];
 
-            foreach (var path in FactoryCompounds.Paths) {
+            // A compound that reads the mesh or changes a picture is no tile of its own; MeshCompoundTests holds those.
+            foreach (var path in FactoryCompounds.Paths.Except(MeshCompoundTests.Named, StringComparer.Ordinal)) {
                 const int Side = 128;
                 var (compiler, graph) = Containing(path, Side);
                 var plan = compiler.Compile(graph).Value;

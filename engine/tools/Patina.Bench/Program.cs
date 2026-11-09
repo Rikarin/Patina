@@ -98,7 +98,7 @@ switch (args) {
             png,
             int.Parse(width, CultureInfo.InvariantCulture),
             int.Parse(height, CultureInfo.InvariantCulture),
-            Option(options, "--bake="),
+            (Option(options, "--bake="), Option(options, "--material=")),
             OrbitCamera.Default with {
                 Yaw = Real(options, "--yaw=", OrbitCamera.Default.Yaw),
                 Pitch = Real(options, "--pitch=", OrbitCamera.Default.Pitch),
@@ -136,7 +136,7 @@ switch (args) {
                        [--distance=<framings>] [--orthographic] [--fov=<r>] [--view=<view>] [--curve=<curve>]
                        [--exposure=<stops>] [--environment=<room or panorama>] [--environment-rotation=<r>]
                        [--light-rotation=<r>] [--blur=<0..1>] [--wireframe] [--vignette=<0..1>] [--grain=<0..1>]
-                       [--aberration=<0..1>] [--sharpen=<0..1>]
+                       [--aberration=<0..1>] [--sharpen=<0..1>] [--material=<folder a graph baked to>]
                    patina-bench generate <path> <projects> [seed]
                    patina-bench s6 <path> [projects] [seed]
             """

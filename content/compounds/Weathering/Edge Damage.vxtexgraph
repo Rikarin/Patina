@@ -1,0 +1,103 @@
+version: 1
+name: Edge Damage
+nodes:
+  - { id: 1, type: Sub-graph/Input, x: -320, y: -400 }
+  - { id: 2, type: Source/Mesh Map, x: -1600, y: 0, texts: { Map: curvature } }
+  - { id: 3, type: Filters/Blur HQ, x: -1280, y: 0, texts: { '=Sigma': '1f + reach * 4f' } }
+  - { id: 4, type: Colour/Histogram Equalise, x: -960, y: 0 }
+  - id: 5
+    type: Colour/Levels
+    x: -640
+    y: 0
+    values: { Input White: [1] }
+    texts:
+      '=Input Black': '0.95f - reach * 0.35f'
+  - { id: 6, type: Colour/Levels, x: -640, y: 160, values: { Input Black: [0.501], Input White: [0.504] } }
+  - { id: 7, type: Colour/Blend, x: -320, y: 0, texts: { Mode: Multiply } }
+  - { id: 8, type: Source/Mesh Map, x: -1600, y: 360, texts: { Map: position } }
+  - { id: 9, type: Source/Volume Noise, x: -1280, y: 360, values: { Octaves: [3], Gain: [0.6] }, texts: { Basis: Gradient, '=Scale': '64f - size * 52f', '=Seed': seed } }
+  - id: 10
+    type: Filters/Pixel Processor
+    x: 0
+    y: 0
+    texts:
+      Format: Grey
+      Expression: 'float4(smoothstep(0.495f, 0.505f, a.x * (0.3f + x * 0.9f) + b.x * 0.55f), 0f, 0f, 1f)'
+      '=X': amount
+  - id: 11
+    type: Filters/Pixel Processor
+    x: 320
+    y: -400
+    texts:
+      Expression: 'float4(lerp(a.xyz, float3(0.97f, 1f, 1.03f) * x, b.x), 1f)'
+      '=X': '0.25f + tone * 0.5f'
+  - id: 12
+    type: Filters/Pixel Processor
+    x: 320
+    y: -240
+    texts:
+      Expression: 'float4(lerp(a.xyz, float3(x, x, x), b.x), 1f)'
+      '=X': roughness
+  - id: 13
+    type: Filters/Pixel Processor
+    x: 320
+    y: -80
+    texts:
+      Expression: 'float4(lerp(a.xyz, float3(x, x, x), b.x), 1f)'
+      '=X': metal
+  - id: 14
+    type: Filters/Pixel Processor
+    x: 320
+    y: 80
+    texts:
+      Expression: 'float4(a.xyz - b.xxx * x * 0.1f, 1f)'
+      '=X': depth
+  - { id: 99, type: Sub-graph/Output, x: 640, y: -200 }
+edges:
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 4, fromPort: Out, toNode: 5, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 6, toPort: Input }
+  - { fromNode: 5, fromPort: Out, toNode: 7, toPort: Background }
+  - { fromNode: 6, fromPort: Out, toNode: 7, toPort: Foreground }
+  - { fromNode: 8, fromPort: Out, toNode: 9, toPort: Position }
+  - { fromNode: 7, fromPort: Out, toNode: 10, toPort: A }
+  - { fromNode: 9, fromPort: Out, toNode: 10, toPort: B }
+  - { fromNode: 1, fromPort: baseColor, toNode: 11, toPort: A }
+  - { fromNode: 10, fromPort: Out, toNode: 11, toPort: B }
+  - { fromNode: 1, fromPort: roughness, toNode: 12, toPort: A }
+  - { fromNode: 10, fromPort: Out, toNode: 12, toPort: B }
+  - { fromNode: 1, fromPort: metalness, toNode: 13, toPort: A }
+  - { fromNode: 10, fromPort: Out, toNode: 13, toPort: B }
+  - { fromNode: 1, fromPort: height, toNode: 14, toPort: A }
+  - { fromNode: 10, fromPort: Out, toNode: 14, toPort: B }
+  - { fromNode: 11, fromPort: Out, toNode: 99, toPort: baseColor }
+  - { fromNode: 12, fromPort: Out, toNode: 99, toPort: roughness }
+  - { fromNode: 13, fromPort: Out, toNode: 99, toPort: metalness }
+  - { fromNode: 14, fromPort: Out, toNode: 99, toPort: height }
+groups: []
+comments: []
+interface:
+  - { name: baseColor, direction: Input, kind: Image, default: [], summary: 'The paint beneath, which the chips break through.' }
+  - { name: roughness, direction: Input, kind: Image, default: [], summary: 'The roughness beneath.' }
+  - { name: metalness, direction: Input, kind: Image, default: [], summary: 'The metalness beneath.' }
+  - { name: height, direction: Input, kind: Image, default: [], summary: 'The height beneath, which a chip cuts into.' }
+  - { name: baseColor, direction: Output, kind: Image, default: [], summary: 'The paint with the bare metal showing through every chip.' }
+  - { name: roughness, direction: Output, kind: Image, default: [], summary: 'The roughness, with the bare metal''s own in every chip.' }
+  - { name: metalness, direction: Output, kind: Image, default: [], summary: 'The metalness, with the bare metal''s own in every chip.' }
+  - { name: height, direction: Output, kind: Image, default: [], summary: 'The height, a paint''s thickness lower in every chip.' }
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Paint knocked off the model''s edges: hard-edged chips through to the metal beneath, in every channel at once.'
+  doesNotTile: 'Reads mesh maps, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: amount, label: Amount, default: '0.35', summary: 'How much paint has been knocked off.', kind: Float, minimum: 0, maximum: 1, group: Damage }
+  - { name: reach, label: Reach, default: '0.5', summary: 'How far from the edges the chips spread across the faces.', kind: Float, minimum: 0, maximum: 1, group: Damage }
+  - { name: size, label: Chip Size, default: '0.5', summary: 'How big a chip is.', kind: Float, minimum: 0, maximum: 1, group: Damage }
+  - { name: seed, label: Seed, default: '0', summary: 'Another draw of the chips. Every whole number is a different pattern.', kind: Int, minimum: 0, maximum: 100, group: Damage }
+  - { name: tone, label: Metal Tone, default: '0.6', summary: 'How bright the bare metal is, from dark iron to bright steel.', kind: Float, minimum: 0, maximum: 1, group: Bare Metal }
+  - { name: roughness, label: Metal Roughness, default: '0.35', summary: 'How rough the bare metal is.', kind: Float, minimum: 0, maximum: 1, group: Bare Metal }
+  - { name: metal, label: Metalness, default: '1', summary: 'Whether what shows through is metal. Nought is a primer or an undercoat.', kind: Float, minimum: 0, maximum: 1, group: Bare Metal }
+  - { name: depth, label: Depth, default: '0.3', summary: 'How deep a chip is cut. One is a tenth of the height''s range.', kind: Float, minimum: 0, maximum: 1, group: Bare Metal }

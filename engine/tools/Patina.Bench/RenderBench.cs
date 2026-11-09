@@ -18,7 +18,11 @@ static class RenderBench {
     /// <param name="png">Where the first frame goes.</param>
     /// <param name="width">The frame's width.</param>
     /// <param name="height">The frame's height.</param>
-    /// <param name="bake">A folder a bake was delivered to, to lay over the mesh, or null.</param>
+    /// <param name="maps">
+    ///     A folder a bake was delivered to, to lay over the mesh, and a folder <c>patina bake</c> wrote a graph's
+    ///     outputs to, as <c>baseColor.png</c>, <c>roughness.png</c>, <c>metalness.png</c> and <c>normal.png</c>, laid
+    ///     over it in turn. Either may be null.
+    /// </param>
     /// <param name="camera">The first frame's camera.</param>
     /// <param name="shading">How the frames are lit, shown and finished.</param>
     /// <param name="environment">A room or a panorama, or null for the studio.</param>
@@ -27,7 +31,7 @@ static class RenderBench {
         string png,
         int width,
         int height,
-        string? bake,
+        (string? Bake, string? Material) maps,
         OrbitCamera camera,
         ViewportShading shading,
         string? environment
@@ -52,9 +56,9 @@ static class RenderBench {
             Say($"environment baked in {start.Elapsed.TotalMilliseconds:F0} ms");
         }
 
-        if (bake is not null) {
+        if (maps.Bake is not null || maps.Material is not null) {
             start.Restart();
-            renderer.SetMaps(Maps(bake));
+            renderer.SetMaps(Maps(maps.Bake, maps.Material));
             Say($"maps on in {start.Elapsed.TotalMilliseconds:F0} ms");
         }
 
@@ -80,11 +84,22 @@ static class RenderBench {
         return 0;
     }
 
-    static ViewportMaps Maps(string folder) {
-        return new(Normal: Of("normal"), Occlusion: Of("ao"));
+    static ViewportMaps Maps(string? folder, string? material) {
+        return new(
+            Painted("baseColor"),
+            Painted("normal") ?? Of("normal"),
+            Painted("roughness"),
+            Painted("metalness"),
+            Of("ao")
+        );
 
         ViewportMapFile? Of(string map) =>
-            BakedMapPicture.Find(folder, map) is { } found ? new(found.Path, found.Path) : null;
+            folder is not null && BakedMapPicture.Find(folder, map) is { } found ? new(found.Path, found.Path) : null;
+
+        ViewportMapFile? Painted(string usage) =>
+            material is not null && Path.Combine(material, usage + ".png") is var path && File.Exists(path)
+                ? new(path, path)
+                : null;
     }
 
     static void Say(FormattableString line) => Console.WriteLine(line.ToString(CultureInfo.InvariantCulture));

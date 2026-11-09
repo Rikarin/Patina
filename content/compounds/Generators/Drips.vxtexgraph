@@ -1,0 +1,79 @@
+version: 1
+name: Drips
+nodes:
+  - { id: 1, type: Source/Mesh Map, x: -1280, y: 0, texts: { Map: position } }
+  - id: 2
+    type: Colour/Channel Mix
+    x: -960
+    y: 0
+    texts:
+      '=Green from Green': '0.3f - length * 0.28f'
+  - id: 3
+    type: Source/Volume Noise
+    x: -640
+    y: 0
+    values: { Octaves: [3], Gain: [0.45] }
+    texts:
+      Basis: Gradient
+      Profile: Ridged
+      '=Scale': '8f + density * 56f'
+      '=Seed': seed
+  - id: 4
+    type: Colour/Levels
+    x: -320
+    y: 0
+    texts:
+      '=Input Black': '0.94f - amount * 0.24f'
+      '=Input White': '0.99f - amount * 0.2f'
+  - { id: 5, type: Source/Volume Noise, x: -640, y: 260, values: { Octaves: [2] }, texts: { Basis: Gradient, '=Scale': '3f', '=Seed': 'seed + 1' } }
+  - id: 6
+    type: Colour/Levels
+    x: -320
+    y: 260
+    texts:
+      '=Input Black': 'breakup * 0.6f'
+      '=Input White': 'breakup * 0.6f + 0.2f'
+  - { id: 7, type: Colour/Blend, x: 0, y: 0, texts: { Mode: Multiply } }
+  - { id: 8, type: Source/Mesh Map, x: -960, y: 480, texts: { Map: world } }
+  - { id: 9, type: Colour/Grayscale, x: -640, y: 480, values: { Weight R: [0], Weight G: [1], Weight B: [0] } }
+  - { id: 10, type: Colour/Levels, x: -320, y: 480, values: { Input Black: [0.9], Input White: [0.7] } }
+  - { id: 11, type: Colour/Levels, x: -320, y: 640, values: { Input Black: [0.08], Input White: [0.3] } }
+  - { id: 12, type: Colour/Blend, x: 0, y: 480, texts: { Mode: Multiply } }
+  - { id: 13, type: Colour/Blend, x: 320, y: 0, texts: { Mode: Multiply } }
+  - { id: 99, type: Sub-graph/Output, x: 640, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Position }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 1, fromPort: Out, toNode: 5, toPort: Position }
+  - { fromNode: 5, fromPort: Out, toNode: 6, toPort: Input }
+  - { fromNode: 4, fromPort: Out, toNode: 7, toPort: Background }
+  - { fromNode: 6, fromPort: Out, toNode: 7, toPort: Foreground }
+  - { fromNode: 8, fromPort: Out, toNode: 9, toPort: Input }
+  - { fromNode: 9, fromPort: Out, toNode: 10, toPort: Input }
+  - { fromNode: 9, fromPort: Out, toNode: 11, toPort: Input }
+  - { fromNode: 10, fromPort: Out, toNode: 12, toPort: Background }
+  - { fromNode: 11, fromPort: Out, toNode: 12, toPort: Foreground }
+  - { fromNode: 7, fromPort: Out, toNode: 13, toPort: Background }
+  - { fromNode: 12, fromPort: Out, toNode: 13, toPort: Foreground }
+  - { fromNode: 13, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'Streaks running straight down the model''s sides, as rain, rust or grime leaves them. White is the streak.'
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Gravity streaks: thin runs straight down every side of the model, measured in its own space so they cross seams unbroken.'
+  doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: amount, label: Amount, default: '0.5', summary: 'How many of the streaks show, and how wide.', kind: Float, minimum: 0, maximum: 1, group: Streaks }
+  - { name: length, label: Length, default: '0.8', summary: 'How long a streak runs down the model before it fades.', kind: Float, minimum: 0, maximum: 1, group: Streaks }
+  - { name: density, label: Density, default: '0.3', summary: 'How close together the streaks run.', kind: Float, minimum: 0, maximum: 1, group: Streaks }
+  - { name: breakup, label: Breakup, default: '0.4', summary: 'How much of the model is spared, in broad patches.', kind: Float, minimum: 0, maximum: 1, group: Breakup }
+  - { name: seed, label: Seed, default: '0', summary: 'Another draw of the streaks. Every whole number is a different pattern.', kind: Int, minimum: 0, maximum: 100, group: Breakup }

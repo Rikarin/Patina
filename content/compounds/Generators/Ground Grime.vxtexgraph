@@ -1,0 +1,74 @@
+version: 1
+name: Ground Grime
+nodes:
+  - { id: 1, type: Source/Mesh Map, x: -1280, y: 0, texts: { Map: position } }
+  - { id: 2, type: Colour/Grayscale, x: -960, y: 0, values: { Weight R: [0], Weight G: [1], Weight B: [0] } }
+  - id: 3
+    type: Colour/Levels
+    x: -640
+    y: 0
+    texts:
+      '=Input Black': 'height + fade * 0.5f + 0.001f'
+      '=Input White': 'height - fade * 0.5f'
+  - id: 4
+    type: Colour/Levels
+    x: -640
+    y: 160
+    texts:
+      '=Input Black': 'height * 2f + fade + 0.001f'
+      '=Input White': 'height * 2f'
+  - { id: 5, type: Source/Mesh Map, x: -1280, y: 320, texts: { Map: ao } }
+  - id: 6
+    type: Colour/Levels
+    x: -960
+    y: 320
+    values: { Input Black: [0.95], Input White: [0.55] }
+    texts:
+      '=Output White': shelter
+  - { id: 7, type: Colour/Blend, x: -320, y: 160, texts: { Mode: Multiply } }
+  - { id: 8, type: Colour/Blend, x: 0, y: 0, texts: { Mode: Lighten } }
+  - { id: 9, type: Source/Volume Noise, x: -960, y: 520, values: { Octaves: [4] }, texts: { Basis: Gradient, '=Scale': scale, '=Seed': seed } }
+  - id: 10
+    type: Colour/Levels
+    x: -640
+    y: 520
+    texts:
+      '=Input Black': 'breakup * 0.6f'
+      '=Input White': 'breakup * 0.6f + 0.25f'
+  - { id: 11, type: Colour/Blend, x: 320, y: 0, texts: { Mode: Multiply } }
+  - { id: 99, type: Sub-graph/Output, x: 640, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 5, fromPort: Out, toNode: 6, toPort: Input }
+  - { fromNode: 4, fromPort: Out, toNode: 7, toPort: Background }
+  - { fromNode: 6, fromPort: Out, toNode: 7, toPort: Foreground }
+  - { fromNode: 3, fromPort: Out, toNode: 8, toPort: Background }
+  - { fromNode: 7, fromPort: Out, toNode: 8, toPort: Foreground }
+  - { fromNode: 1, fromPort: Out, toNode: 9, toPort: Position }
+  - { fromNode: 9, fromPort: Out, toNode: 10, toPort: Input }
+  - { fromNode: 8, fromPort: Out, toNode: 11, toPort: Background }
+  - { fromNode: 10, fromPort: Out, toNode: 11, toPort: Foreground }
+  - { fromNode: 11, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'Grime rising from the bottom of the model, higher in the sheltered places, with a ragged top edge.'
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Mud and grime splashed up from the ground: a band along the bottom of the model that climbs further where it is sheltered.'
+  doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: height, label: Height, default: '0.25', summary: 'How far up the model the grime reaches, as a share of its height.', kind: Float, minimum: 0, maximum: 1, group: Grime }
+  - { name: fade, label: Fade, default: '0.15', summary: 'How gradually the grime thins out towards its top.', kind: Float, minimum: 0, maximum: 1, group: Grime }
+  - { name: shelter, label: Shelter, default: '0.6', summary: 'How much further it climbs in the hollows, up to twice its height.', kind: Float, minimum: 0, maximum: 1, group: Grime }
+  - { name: breakup, label: Breakup, default: '0.35', summary: 'How ragged and patchy the grime is.', kind: Float, minimum: 0, maximum: 1, group: Breakup }
+  - { name: scale, label: Breakup Scale, default: '6', summary: 'How many patches of breakup run across the model.', kind: Float, minimum: 1, maximum: 64, group: Breakup }
+  - { name: seed, label: Seed, default: '0', summary: 'Another draw of the breakup. Every whole number is a different pattern.', kind: Int, minimum: 0, maximum: 100, group: Breakup }

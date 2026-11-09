@@ -79,6 +79,7 @@ interface:
 settings: { baseWidth: '1024', baseHeight: '1024', seed: '1' }
 parameters:
   - name: scale
+    label: Scale
     default: '0.5'
     summary: 'How large the features are: low is fewer, bigger ones, high is many small ones.'
     kind: Float
@@ -86,6 +87,7 @@ parameters:
     maximum: 1
     group: Grunge
   - name: amount
+    label: Amount
     default: '0.5'
     summary: 'How much of the surface the grunge covers.'
     kind: Float

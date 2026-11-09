@@ -4,7 +4,7 @@ using Vixen.Core.Imaging;
 
 namespace Patina.Export;
 
-/// <summary>Reads a baked map back as the 8-bit picture a graph's Mesh Map node takes.</summary>
+/// <summary>Reads a baked map back as the picture a graph's Mesh Map node takes.</summary>
 public static class BakedMapPicture {
     /// <summary>Finds a map in a folder a bake was delivered to.</summary>
     /// <param name="folder">The folder.</param>
@@ -41,6 +41,36 @@ public static class BakedMapPicture {
         ArgumentNullException.ThrowIfNull(map);
         var data = File.ReadAllBytes(path);
         return format is BakeInputs.Exr16 or BakeInputs.Exr32 ? FromFloat(ExrCodec.Decode(data), map) : FromPng(data);
+    }
+
+    /// <summary>
+    ///     The picture at the depth it was stored, centred as <see cref="Read" /> centres it. A 16-bit position map
+    ///     read at eight bits holds 256 places across the model, which a volume noise finer than that draws as steps.
+    /// </summary>
+    /// <exception cref="InvalidDataException">The file is not one this reads.</exception>
+    public static FloatImage ReadDeep(string path, BakedMapFile map, string format) {
+        ArgumentNullException.ThrowIfNull(map);
+        var data = File.ReadAllBytes(path);
+        if (format is BakeInputs.Exr16 or BakeInputs.Exr32) {
+            var image = ExrCodec.Decode(data);
+            var signed = IsSigned(map.Map);
+            var scale = map.Scale > 0 ? (float)map.Scale : 1f;
+            var samples = new float[image.Samples.Length];
+            for (var at = 0; at < samples.Length; at++) {
+                var value = image.Samples[at];
+                samples[at] = Math.Clamp(signed ? value / scale * 0.5f + 0.5f : value, 0f, 1f);
+            }
+
+            return image with { Samples = samples };
+        }
+
+        var (width, height, channels, words) = PngCodec.Decode16(data);
+        var values = new float[words.Length];
+        for (var at = 0; at < values.Length; at++) {
+            values[at] = words[at] / (float)ushort.MaxValue;
+        }
+
+        return new(width, height, channels, values);
     }
 
     static Bitmap FromPng(byte[] data) {

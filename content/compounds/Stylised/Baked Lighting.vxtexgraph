@@ -1,0 +1,55 @@
+version: 1
+name: Baked Lighting
+nodes:
+  - { id: 1, type: Sub-graph/Input, x: -960, y: -200 }
+  - { id: 2, type: Source/Mesh Map, x: -960, y: 0, texts: { Map: world } }
+  - id: 3
+    type: Filters/Pixel Processor
+    x: -640
+    y: 0
+    texts:
+      Format: Grey
+      Expression: 'float4(saturate((dot(a.xyz * 2f - 1f, normalize(float3(x, y, z) + 0.00001f)) + 0.35f) / 1.35f), 0f, 0f, 1f)'
+      '=X': across
+      '=Y': up
+      '=Z': through
+  - { id: 4, type: Source/Mesh Map, x: -960, y: 220, texts: { Map: ao } }
+  - { id: 5, type: Colour/Levels, x: -640, y: 220, texts: { '=Output Black': '1f - occlusion' } }
+  - { id: 6, type: Colour/Blend, x: -320, y: 0, texts: { Mode: Multiply } }
+  - id: 7
+    type: Filters/Pixel Processor
+    x: 0
+    y: -200
+    texts:
+      Expression: 'float4(saturate(a.xyz * lerp(float3(0.82f, 0.88f, 1.08f) * (1f - x), float3(1.1f, 1.04f, 0.94f) * (1f + y), lerp(b.x, floor(b.x * 3f + 0.5f) / 3f, w))), a.w)'
+      '=X': 'shadow * 0.8f'
+      '=Y': 'highlight * 0.6f'
+      '=W': toon
+  - { id: 99, type: Sub-graph/Output, x: 320, y: -200 }
+edges:
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: A }
+  - { fromNode: 4, fromPort: Out, toNode: 5, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 6, toPort: Background }
+  - { fromNode: 5, fromPort: Out, toNode: 6, toPort: Foreground }
+  - { fromNode: 1, fromPort: Input, toNode: 7, toPort: A }
+  - { fromNode: 6, fromPort: Out, toNode: 7, toPort: B }
+  - { fromNode: 7, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - { name: Input, direction: Input, kind: Image, default: [], summary: 'The colour to light, usually the base colour beneath.' }
+  - { name: Out, direction: Output, kind: Image, default: [], summary: 'The colour with light from one direction painted into it: warm where it falls, cool in shadow, dark in the hollows.' }
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Light painted into the colour, for a hand-painted or unlit look: warm on the faces towards a light, cool in shadow, and banded if asked.'
+  doesNotTile: 'Reads mesh maps, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: across, label: Across, default: '0.4', summary: 'How much the light comes from along the model''s first axis.', kind: Float, minimum: -1, maximum: 1, group: Light }
+  - { name: up, label: Up, default: '0.8', summary: 'How much it comes from above.', kind: Float, minimum: -1, maximum: 1, group: Light }
+  - { name: through, label: Through, default: '0.4', summary: 'How much it comes from the front.', kind: Float, minimum: -1, maximum: 1, group: Light }
+  - { name: shadow, label: Shadow, default: '0.5', summary: 'How dark and cool the side away from the light is.', kind: Float, minimum: 0, maximum: 1, group: Look }
+  - { name: highlight, label: Highlight, default: '0.4', summary: 'How bright and warm the lit side is.', kind: Float, minimum: 0, maximum: 1, group: Look }
+  - { name: occlusion, label: Occlusion, default: '0.7', summary: 'How much the hollows are darkened.', kind: Float, minimum: 0, maximum: 1, group: Look }
+  - { name: toon, label: Toon, default: '0', summary: 'How much the light is cut into three flat bands, as a cartoon is lit.', kind: Float, minimum: 0, maximum: 1, group: Look }

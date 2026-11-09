@@ -218,21 +218,20 @@ public sealed class StackVocabularyTests {
     /// <summary>
     ///     Patina #220: a node whose output measures its input gives a layer or a mask nothing of the surface back,
     ///     so no statistics node is offered as either, and the equaliser, whose output is a picture, still is. Nor is a
-    ///     node whose one image is a mesh map (#179), one whose first image is a mask it spreads a colour from, a
-    ///     composite of two normal maps, or one with two pictures out (#174, #176); and wave 5's one-picture nodes are
-    ///     both, Compare among them (#110).
+    ///     node whose one image is a mesh map (#179), a composite of two normal maps, or one with two pictures out
+    ///     (#176); and wave 5's one-picture nodes are both, Compare among them (#110), and Distance Colour, whose first
+    ///     image is the colour it pads out from a mask an input names.
     /// </summary>
     [Fact]
     public void No_statistics_node_is_offered_as_a_filter_or_a_mask_step() {
         var vocabulary = StackDocuments.Vocabulary;
         string[] refused = [
             "Analysis/Histogram", "Analysis/Histogram Render", "Analysis/Summed Area Table", "Source/Volume Noise",
-            "Source/Volume Mask", "Source/Volume Gradient", "Analysis/Distance Colour", "Surface/Normal Blend",
-            "Utility/Frequency Split"
+            "Source/Volume Mask", "Source/Volume Gradient", "Surface/Normal Blend", "Utility/Frequency Split"
         ];
         string[] offered = [
             "Colour/Histogram Equalise", "Analysis/Distance", "Analysis/Flood Fill", "Surface/Height Shadow",
-            "Surface/Bevel Height", "Analysis/Compare"
+            "Surface/Bevel Height", "Analysis/Compare", "Analysis/Distance Colour"
         ];
 
         Assert.All(
@@ -248,6 +247,33 @@ public sealed class StackVocabularyTests {
                 Assert.Contains(vocabulary.Filters, filter => filter.Node == node);
                 Assert.Contains(vocabulary.MaskEffects, filter => filter.Node == node);
             }
+        );
+    }
+
+    /// <summary>
+    ///     Patina #118 to #120 and #177: a weathering filter writes every channel it is named for, so it is a filter
+    ///     and no mask step, and reads each channel beneath by itself; a stylised filter is both; and a generator's
+    ///     knobs, its seed among them, reach a client with their labels.
+    /// </summary>
+    [Fact]
+    public void Weathering_stylised_filters_and_generators_are_offered_as_what_they_are() {
+        var vocabulary = StackDocuments.Vocabulary;
+        var rust = Assert.Single(vocabulary.Filters, static filter => filter.Node == "Weathering/Rust");
+
+        Assert.DoesNotContain(
+            vocabulary.MaskEffects,
+            static filter => filter.Node.StartsWith("Weathering/", StringComparison.Ordinal)
+        );
+        Assert.Equal(
+            ["baseColor", "roughness", "metalness", "height"],
+            rust.Inputs!.Select(static input => input.Channel)
+        );
+        Assert.True(rust.Inputs![0].Subject);
+        Assert.Contains(vocabulary.MaskEffects, static filter => filter.Node == "Stylised/Comic");
+        Assert.Contains(vocabulary.Generators, static term => term is { Value: "Generators/Drips", Label: "Drips" });
+        Assert.Contains(
+            vocabulary.GeneratorParameters["Generators/Metal Edge Wear"],
+            static knob => knob is { Name: "seed", Label: "Seed" }
         );
     }
 

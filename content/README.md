@@ -3,8 +3,10 @@
 `materials/` holds the starter graphs the shelf offers, and `brushes/` the starter brush and tool presets, each a `.ptbrush` keyed as
 `BrushPreset` is. `compounds/` holds Patina's own compounds, published as node types beside Vixen's by `Patina.Content`: a
 file at `compounds/Grunges/Speckle.vxtexgraph` is the node `Grunges/Speckle`. Each is a graph of Patina's nodes and no
-picture, so it can be opened, read and regenerated in the app; `FactoryCompoundTests` holds every one to compiling, to
-drawing something and to tiling. A file name may not contain a dot, which would read as a folder, and a path Vixen already
+picture, so it can be opened, read and regenerated in the app; `FactoryCompoundTests` holds every one to compiling with
+nothing to say and every grunge to drawing something that tiles. `Generators/` reads the mesh's bakes and `Weathering/` and
+`Stylised/` are layer filters, so they do not tile; `MeshCompoundTests` holds them to drawing over a stand-in bake, to their
+seed and to changing what they are handed. Every field has a label and a sentence. A file name may not contain a dot, which would read as a folder, and a path Vixen already
 ships is left out rather than replacing Vixen's. Environments will join them.
 
 **Everything in this folder is CC0** (public domain dedication), separately from the code's GPL-3.0-or-later. A texture

@@ -144,7 +144,9 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
                 CompoundShelf.WithoutBoundaries(YamlSerializer.Parse<NodeGraphAsset>(load.Document)),
                 out _
             );
-            compiler = new(compounds.Registry) { SubGraphSource = compounds.Source, PreviewEveryNode = true };
+            compiler = new(compounds.Registry) {
+                SubGraphSource = compounds.Source, PreviewEveryNode = true, Drafting = true
+            };
             badSize = GraphSize.Apply(compiler, graph);
             this.pictures = pictures;
             imageRoots = load.ImageRoots;

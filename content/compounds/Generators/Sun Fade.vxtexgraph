@@ -1,0 +1,67 @@
+version: 1
+name: Sun Fade
+nodes:
+  - { id: 1, type: Source/Mesh Map, x: -960, y: 0, texts: { Map: world } }
+  - id: 2
+    type: Filters/Pixel Processor
+    x: -640
+    y: 0
+    texts:
+      Format: Grey
+      Expression: 'float4(saturate(dot(a.xyz * 2f - 1f, normalize(float3(x, y, z) + 0.00001f))), 0f, 0f, 1f)'
+      '=X': across
+      '=Y': up
+      '=Z': through
+  - { id: 3, type: Source/Mesh Map, x: -960, y: 220, texts: { Map: ao } }
+  - { id: 4, type: Colour/Levels, x: -640, y: 220, values: { Input Black: [0.5], Input White: [0.95] } }
+  - { id: 5, type: Colour/Blend, x: -320, y: 0, texts: { Mode: Multiply } }
+  - id: 6
+    type: Colour/Levels
+    x: 0
+    y: 0
+    texts:
+      '=Input Black': '0.85f - amount * 0.7f'
+      '=Input White': '1f - amount * 0.5f'
+  - { id: 7, type: Source/Mesh Map, x: -960, y: 420, texts: { Map: position } }
+  - { id: 8, type: Source/Volume Noise, x: -640, y: 420, values: { Octaves: [3] }, texts: { Basis: Gradient, '=Scale': '3f', '=Seed': seed } }
+  - id: 9
+    type: Colour/Levels
+    x: -320
+    y: 420
+    values: { Input Black: [0.3], Input White: [0.7] }
+    texts:
+      '=Output Black': '1f - variation'
+  - { id: 10, type: Colour/Blend, x: 320, y: 0, texts: { Mode: Multiply } }
+  - { id: 99, type: Sub-graph/Output, x: 640, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: A }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 5, toPort: Background }
+  - { fromNode: 4, fromPort: Out, toNode: 5, toPort: Foreground }
+  - { fromNode: 5, fromPort: Out, toNode: 6, toPort: Input }
+  - { fromNode: 7, fromPort: Out, toNode: 8, toPort: Position }
+  - { fromNode: 8, fromPort: Out, toNode: 9, toPort: Input }
+  - { fromNode: 6, fromPort: Out, toNode: 10, toPort: Background }
+  - { fromNode: 9, fromPort: Out, toNode: 10, toPort: Foreground }
+  - { fromNode: 10, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'How bleached each texel is: white on the open faces turned to the sun, none in the shade and the hollows.'
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Where years of sun have faded the paint: the open faces turned towards it, unevenly.'
+  doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: amount, label: Amount, default: '0.5', summary: 'How far the fading reaches from the faces square to the sun.', kind: Float, minimum: 0, maximum: 1, group: Fade }
+  - { name: across, label: Across, default: '0.3', summary: 'How much the sun stands along the model''s first axis.', kind: Float, minimum: -1, maximum: 1, group: Sun }
+  - { name: up, label: Up, default: '1', summary: 'How high the sun stands over the model.', kind: Float, minimum: -1, maximum: 1, group: Sun }
+  - { name: through, label: Through, default: '0.3', summary: 'How much it stands in front of the model.', kind: Float, minimum: -1, maximum: 1, group: Sun }
+  - { name: variation, label: Variation, default: '0.3', summary: 'How unevenly the fading falls across the model.', kind: Float, minimum: 0, maximum: 1, group: Fade }
+  - { name: seed, label: Seed, default: '0', summary: 'Another draw of the unevenness. Every whole number is a different pattern.', kind: Int, minimum: 0, maximum: 100, group: Fade }

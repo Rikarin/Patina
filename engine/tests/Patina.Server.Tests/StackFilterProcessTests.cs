@@ -56,7 +56,8 @@ public sealed partial class StackProcessTests {
                 );
                 await EvaluatedAsync(socket, nudged.Revision, deadline.Token);
                 if (Whole(await PixelsAsync(state.Id, false, deadline.Token)) == plain
-                    && !PassesWhatIsInRange.Contains(kind.Node)) {
+                    && !PassesWhatIsInRange.Contains(kind.Node)
+                    && !DrawsFromTheBake.Contains(kind.Node)) {
                     failures.Add($"layer {kind.Node} changes nothing, even with {Described(numbers, texts)}");
                 }
             }
@@ -129,6 +130,16 @@ public sealed partial class StackProcessTests {
     ///     limits move a little. <c>FilterLibraryDeviceTests</c> in Vixen holds it to painting what is out.
     /// </summary>
     static readonly HashSet<string> PassesWhatIsInRange = ["Adjust/PBR Validate"];
+
+    /// <summary>
+    ///     Weathering whose picture is the mesh's own: an edge, a crease, a seam between parts. This stack has no bake,
+    ///     so its maps stand in as a flat grey with none of those, and each changes nothing however it is set. They run
+    ///     here with nothing to say all the same; <c>MeshCompoundTests</c> holds each to changing a picture over a
+    ///     bake.
+    /// </summary>
+    static readonly HashSet<string> DrawsFromTheBake = [
+        "Weathering/Edge Damage", "Weathering/Shut Lines", "Weathering/Worn Edges"
+    ];
 
     /// <summary>
     ///     Filters that move a picture's lanes about, offered since a second image no longer refuses a filter (#113). A
