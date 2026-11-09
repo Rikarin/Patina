@@ -36,7 +36,16 @@ const RecentColours = 16;
 /** The most colours a palette holds, which is the Server's limit. */
 const PaletteColours = 64;
 
+/** A part of one layer that a copy can be for (#106). */
+export type LayerPart = 'Mask' | 'Content';
+
+/** Whether a layer's mask applies: a mask is on unless it was switched off (#109). */
+export function maskOn(layer: StackLayer): boolean {
+  return layer.mask.enabled;
+}
+
 /** A new brush until the Server's vocabulary says otherwise: the same as `StackBrushes.Default`. */
+
 export const NewBrush: StackBrush = {
   radius: 24,
   flow: 1,
@@ -223,6 +232,8 @@ export class PaintStore {
   readonly vocabulary = signal<StackVocabulary | null>(null);
   /** The layers last copied, from this stack or another. The Server holds them, pixels and all. */
   readonly clip = signal<StackClip | null>(null);
+  /** What the last copy is for: whole layers, or one layer's mask or content to paste into others (#106). */
+  readonly clipPart = signal<LayerPart | null>(null);
   /** The colours of the id map this stack reads, once asked for, or null with no such map. */
   readonly idColours = signal<readonly StackIdColour[] | null>(null);
   /** The layer whose mask is taking its colour from the next click on the mesh or the map. */
@@ -596,6 +607,7 @@ export class PaintStore {
       this.clip.set(
         unwrap(await client.POST('/api/v1/stacks/{id}/clip', { params: { path: { id } }, body: { layers } }))
       );
+      this.clipPart.set(null);
       return true;
     } catch (failure) {
       this.failure.set(messageOf(failure));
@@ -615,11 +627,18 @@ export class PaintStore {
   /** Pastes the last copy above the chosen layer, or at the top, and chooses what came in. */
   async pasteLayers(): Promise<void> {
     const clip = this.clip();
+    const part = this.clipPart();
     if (!clip) {
       return;
     }
 
-    await this.added({ op: 'pasteLayers', clip: clip.id, above: this.layer(), asInstances: false });
+    // A copy of a mask or a content goes into the chosen layers, which is what it was copied for.
+    if (part !== null) {
+      await this.pasteInto(part);
+      return;
+    }
+
+    await this.added({ op: 'pasteLayers', clip: clip.id, above: this.layer(), asInstances: false, into: null, part: 'Mask' });
   }
 
   /** Pastes the last copy as instances of what was copied, which follow every edit to it (#108). */
@@ -629,7 +648,44 @@ export class PaintStore {
       return;
     }
 
-    await this.added({ op: 'pasteLayers', clip: clip.id, above: this.layer(), asInstances: true });
+    await this.added({ op: 'pasteLayers', clip: clip.id, above: this.layer(), asInstances: true, into: null, part: 'Mask' });
+  }
+
+  // Parts of a layer (#106, #109): its mask switched, its mask or content copied into others, its blend shared.
+
+  /** Switches a layer's mask off or on, keeping everything in it. */
+  switchMask(layer: StackLayer): Promise<void> {
+    return this.setMask(layer, { ...layer.mask, enabled: !maskOn(layer) });
+  }
+
+  /** Copies one layer's mask or content, which a paste then puts into the chosen layers. */
+  async copyPart(layer: StackLayer, part: LayerPart): Promise<void> {
+    this.layer.set(layer.id);
+    this.marked.set(new Set([layer.id]));
+    if (await this.copyLayers()) {
+      this.clipPart.set(part);
+    }
+  }
+
+  /** Puts the last copy's first layer's mask or content into each chosen layer, as one undo step. */
+  async pasteInto(part: LayerPart): Promise<void> {
+    const clip = this.clip();
+    const into = this.outermost();
+    if (!clip || into.length === 0) {
+      return;
+    }
+
+    await this.edit(
+      ...into.map(layer => ({ op: 'pasteLayers' as const, clip: clip.id, above: null, asInstances: false, into: layer, part }))
+    );
+  }
+
+  /** Gives every chosen layer this layer's blend mode, as one undo step. */
+  async blendEverywhere(layer: StackLayer): Promise<void> {
+    const others = this.outermost().filter(id => id !== layer.id);
+    if (others.length > 0) {
+      await this.edit(...others.map(id => ({ op: 'setLayer' as const, layer: id, blend: layer.blend })));
+    }
   }
 
   /** An instance of a layer just above it, chosen as it arrives. */

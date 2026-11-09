@@ -28,7 +28,7 @@ import { ProjectStore } from '../library/project-store';
 import { type DropZone, dropManyCommands, nudgeCommands } from './layer-drag';
 import { hexOf } from './layer-panel';
 import { MaterialUse } from './material-use';
-import { type LayerRow, PaintStore, toggledEffect } from './paint-store';
+import { type LayerRow, PaintStore, maskOn, toggledEffect } from './paint-store';
 
 const RowHeight = 56;
 const EffectHeight = 32;
@@ -615,14 +615,19 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 data-testid="layer-mask"
                 [attr.aria-label]="'Mask of ' + row.layer.name"
                 [class.outline]="row.layer.id === store.layer() && store.masking()"
+                [class.opacity-40]="!maskOn(row.layer)"
+                [attr.data-off]="maskOn(row.layer) ? null : ''"
                 [style.background]="maskColour(row.layer)"
-                [title]="termName(row.layer.mask.source) + ' mask. Double-click to open it as a stack'"
-                (click)="$event.stopPropagation(); choose(row.layer, true)"
+                [title]="maskTitle(row.layer)"
+                (click)="$event.stopPropagation(); maskClicked($event, row.layer)"
                 (dblclick)="$event.stopPropagation(); openMaskStack(row.layer)"
               >
                 <svg viewBox="0 0 16 16" class="size-5" aria-hidden="true">
                   <path d="M1 1h14v14H1z" fill="currentColor" fill-opacity="0.35" />
                   <circle cx="8" cy="8" r="4.5" fill="currentColor" />
+                  @if (!maskOn(row.layer)) {
+                    <path d="M2 14L14 2" stroke="var(--color-error)" stroke-width="2" />
+                  }
                 </svg>
               </button>
               <span
@@ -919,7 +924,45 @@ const MaskMarks: Readonly<Record<string, string>> = {
     </ng-template>
 
     <ng-template #layerMenu>
-      <xui-menu data-testid="layer-menu" [attr.aria-label]="menuLayer() ? 'Layer' : 'Layers'">
+      <xui-menu data-testid="layer-menu" [attr.aria-label]="menuLabel()">
+        @if (menuPart() === 'mask' && menuLayer(); as layer) {
+          <button type="button" xuiMenuItem data-testid="mask-menu-switch" (triggered)="store.switchMask(layer)">
+            {{ maskOn(layer) ? 'Switch Mask Off' : 'Switch Mask On' }}
+          </button>
+          <button type="button" xuiMenuItem data-testid="mask-menu-open" (triggered)="openMaskStack(layer)">
+            {{ commands.label('openMaskStack') }}
+          </button>
+          <button type="button" xuiMenuItem data-testid="mask-menu-invert" (triggered)="invertMask(layer)">
+            Invert Mask
+          </button>
+          <xui-menu-divider />
+          <button type="button" xuiMenuItem data-testid="mask-menu-copy" (triggered)="store.copyPart(layer, 'Mask')">
+            Copy Mask
+          </button>
+          <button
+            type="button"
+            xuiMenuItem
+            data-testid="mask-menu-paste"
+            [disabled]="!store.clip()"
+            (triggered)="store.pasteInto('Mask')"
+          >
+            Paste into Mask
+          </button>
+          <xui-menu-divider />
+          <button type="button" xuiMenuItem color="error" data-testid="mask-menu-remove" (triggered)="addMask(layer, 'None')">
+            Remove Mask
+          </button>
+        } @else if (menuPart() === 'blend' && menuLayer(); as layer) {
+          <button
+            type="button"
+            xuiMenuItem
+            data-testid="blend-menu-apply"
+            [disabled]="store.selection().size < 2"
+            (triggered)="store.blendEverywhere(layer)"
+          >
+            Apply {{ blendLabel(layer.blend) }} to the Chosen Layers
+          </button>
+        } @else {
         @if (menuLayer(); as layer) {
           <button type="button" xuiMenuItem data-testid="layer-menu-rename" (triggered)="startRename(layer)">Rename</button>
           <xui-menu-divider />
@@ -951,8 +994,14 @@ const MaskMarks: Readonly<Record<string, string>> = {
             <button type="button" xuiMenuItem data-testid="layer-menu-mask-open" (triggered)="openMaskStack(layer)">
               {{ commands.label('openMaskStack') }}
             </button>
+            <button type="button" xuiMenuItem data-testid="layer-menu-mask-switch" (triggered)="store.switchMask(layer)">
+              {{ maskOn(layer) ? 'Switch Mask Off' : 'Switch Mask On' }}
+            </button>
             <button type="button" xuiMenuItem data-testid="layer-menu-mask-invert" (triggered)="invertMask(layer)">
               Invert Mask
+            </button>
+            <button type="button" xuiMenuItem data-testid="layer-menu-mask-copy" (triggered)="store.copyPart(layer, 'Mask')">
+              Copy Mask
             </button>
             <button type="button" xuiMenuItem data-testid="layer-menu-mask-remove" (triggered)="addMask(layer, 'None')">
               Remove Mask
@@ -1015,6 +1064,36 @@ const MaskMarks: Readonly<Record<string, string>> = {
           <button type="button" xuiMenuItem data-testid="layer-menu-cut" (triggered)="store.cutLayers()">
             Cut <span menuItemLabel>{{ commands.keyText('cut') }}</span>
           </button>
+          @if (layer.kind !== 'group') {
+            <button
+              type="button"
+              xuiMenuItem
+              data-testid="layer-menu-copy-content"
+              (triggered)="store.copyPart(layer, 'Content')"
+            >
+              Copy Content
+            </button>
+          }
+          <button
+            type="button"
+            xuiMenuItem
+            data-testid="layer-menu-paste-mask"
+            [disabled]="!store.clip()"
+            (triggered)="store.pasteInto('Mask')"
+          >
+            Paste into Mask
+          </button>
+          @if (layer.kind !== 'group') {
+            <button
+              type="button"
+              xuiMenuItem
+              data-testid="layer-menu-paste-content"
+              [disabled]="!store.clip()"
+              (triggered)="store.pasteInto('Content')"
+            >
+              Paste as Content
+            </button>
+          }
         } @else {
           <button type="button" xuiMenuItem data-testid="layer-menu-new-paint" (triggered)="add('paint', 'Paint')">
             New Paint Layer
@@ -1058,6 +1137,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
           <button type="button" xuiMenuItem color="error" data-testid="paint-remove" (triggered)="remove(layer)">
             Delete Layers <span menuItemLabel>{{ commands.keyText('delete') }}</span>
           </button>
+        }
         }
       </xui-menu>
     </ng-template>
@@ -1160,6 +1240,22 @@ export class LayerStack {
   private sendingEntryOpacity = false;
 
   /** Shows a layer's mask as a stack: its effects, its entries top first, and its base. */
+  /** A click on a mask puts it in front of the brush; with Shift it switches the mask off or on (#109). */
+  protected maskClicked(event: MouseEvent, layer: StackLayer): void {
+    if (event.shiftKey) {
+      void this.store.switchMask(layer);
+    } else {
+      this.choose(layer, true);
+    }
+  }
+
+  protected maskTitle(layer: StackLayer): string {
+    const kind = `${termName(layer.mask.source)} mask`;
+    return maskOn(layer)
+      ? `${kind}. Double-click to open it as a stack, Shift-click to switch it off`
+      : `${kind}, switched off. Shift-click to switch it on`;
+  }
+
   protected openMaskStack(layer: StackLayer): void {
     this.maskStack.set(layer.id);
     this.store.chooseMask(layer);
@@ -1237,6 +1333,12 @@ export class LayerStack {
   protected readonly closed = signal<ReadonlySet<string>>(new Set());
   /** The layer a menu is about, or null for the stack itself. */
   protected readonly menuId = signal<string | null>(null);
+  /** Which part of the row a menu is about: the layer, its mask, or how it blends (#106). */
+  protected readonly menuPart = signal<'layer' | 'mask' | 'blend'>('layer');
+  protected readonly menuLabel = computed(() =>
+    this.menuLayer() === null ? 'Layers' : { layer: 'Layer', mask: 'Mask', blend: 'Blending' }[this.menuPart()]
+  );
+  protected readonly maskOn = maskOn;
   protected readonly menuLayer = computed(() => {
     const id = this.menuId();
     return this.store.layers().find(row => row.layer.id === id)?.layer ?? null;
@@ -1501,7 +1603,11 @@ export class LayerStack {
   }
 
   protected aimMenu(event: { target: EventTarget | null }): void {
-    const id = (event.target as HTMLElement).closest<HTMLElement>('[data-layer]')?.dataset['layer'] ?? null;
+    const target = event.target as HTMLElement;
+    this.menuPart.set(
+      target.closest('[data-testid="layer-mask"]') ? 'mask' : target.closest('[data-testid="layer-blending"]') ? 'blend' : 'layer'
+    );
+    const id = target.closest<HTMLElement>('[data-layer]')?.dataset['layer'] ?? null;
     const layer = this.store.layers().find(row => row.layer.id === id)?.layer ?? null;
     if (layer && !this.store.selection().has(layer.id)) {
       this.choose(layer, false);
