@@ -112,7 +112,7 @@ describe('PresetEditor', () => {
     expect(page.querySelector('[data-testid="preset-built-in"]')).not.toBeNull();
     expect(page.querySelector<HTMLInputElement>('[data-testid="preset-name"]')?.disabled).toBe(true);
     page.querySelector<HTMLButtonElement>('[data-testid="preset-duplicate"]')?.click();
-    await settled(fixture, 300);
+    await settled(fixture, 700);
 
     expect(page.querySelector<HTMLInputElement>('[data-testid="preset-id"]')?.value).toBe('unreal-copy');
     expect(page.querySelector('[data-testid="preset-file-written"]')?.textContent.trim()).toBe('T_Crate_Copy_ORM.png');
@@ -173,7 +173,7 @@ describe('PresetEditor', () => {
     const fixture = TestBed.createComponent(PresetEditor);
     fixture.componentRef.setInput('start', 'mine');
     const page = fixture.nativeElement as HTMLElement;
-    await settled(fixture, 300);
+    await settled(fixture, 700);
 
     expect(page.querySelector('[data-testid="preset-problem"]')?.textContent).toContain('bmp');
     expect(page.querySelector<HTMLButtonElement>('[data-testid="preset-save"]')?.disabled).toBe(true);

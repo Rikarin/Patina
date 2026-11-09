@@ -33,6 +33,8 @@ test('a preset is chosen, its impact shown, and the report names what was writte
   // Its export may take the 120 s its wait allows, so the test's own 120 s limit would cut it off first.
   test.setTimeout(300_000);
   await window.getByTestId('open-export').click();
+  await window.getByTestId('export-preset').click();
+  await window.getByRole('option', { name: 'Godot' }).click();
   await expect(window.getByTestId('export-preset-info')).toContainText('Godot');
 
   await window.getByTestId('export-preview').click();

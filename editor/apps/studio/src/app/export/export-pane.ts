@@ -867,11 +867,13 @@ export class ExportPane implements OnInit {
       this.store.exported.set([]);
     });
 
-    // A project's export starts where its last one ended, from its project.yaml.
+    // A project's export starts where its last one ended, from its project.yaml. The list of presets read again,
+    // as it is after the preset editor, does not take the owner back to what it kept: that would undo a choice made
+    // since, whose write is still on its way.
     effect(() => {
       const owner = this.settingsOwner();
       const presets = this.store.presets();
-      if (presets.length > 0) {
+      if (presets.length > 0 && !(this.restored !== null && sameOwner(this.restored, owner))) {
         void untracked(() => this.attempt(() => this.restore(owner, presets)));
       }
     });
