@@ -271,9 +271,15 @@ public static class StackChecking {
 
     /// <summary>
     ///     A map the preset reads that the set does not make, once, under the first file that reads it. The file is
-    ///     named as the export would write it and the map as the app calls it, never a template or a stored value (#198).
+    ///     named as the export would write it and the map as the app calls it, never a template or a stored value
+    ///     (#198).
     /// </summary>
-    static IEnumerable<CheckProblem> Missing(ExportPreset? preset, ProjectContents? project, StackState state, string name) {
+    static IEnumerable<CheckProblem> Missing(
+        ExportPreset? preset,
+        ProjectContents? project,
+        StackState state,
+        string name
+    ) {
         if (preset is null) {
             yield break;
         }
@@ -287,7 +293,8 @@ public static class StackChecking {
                 continue;
             }
 
-            var file = NamingTemplate.Resolve(texture.File, naming, "").Replace(Path.DirectorySeparatorChar, '/');
+            var file = NamingTemplate.Resolve(texture.File, naming, string.Empty)
+                .Replace(Path.DirectorySeparatorChar, '/');
             foreach (var map in reads.Where(map => !maps.Contains(map) && said.Add(map))) {
                 var channel = Terms.Label(map);
                 yield return Problem(

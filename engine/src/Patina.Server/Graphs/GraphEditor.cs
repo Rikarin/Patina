@@ -384,7 +384,7 @@ public sealed class GraphEditor {
     SetGraphSettingCommand BuildSetting(GraphSetSetting setting) =>
         GraphSettingValues.Accepts(setting.Key, setting.Value)
             ? new(graph, setting.Key, setting.Value)
-            : throw new GraphEditRefusedException($"'{setting.Value}' is not a value for {Terms.Label(setting.Key)}.");
+            : throw new GraphEditRefusedException(GraphSettingValues.Refused(setting.Key, setting.Value));
 
     IEnumerable<NodeId> Members(IReadOnlyList<int> nodes, Dictionary<int, int> refs) =>
         [..nodes.Distinct().Select(node => Find(node, refs).Id)];

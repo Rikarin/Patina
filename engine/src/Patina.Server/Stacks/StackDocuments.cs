@@ -67,6 +67,12 @@ public static class StackDocuments {
     public static IReadOnlyList<StackLayer> Layers(IEnumerable<LayerAsset> layers) => [..layers.Select(State)];
 
     /// <summary>The words a stack's fields take, from the enumerations and libraries that mean them.</summary>
+    /// <summary>What a person calls a channel, by its usage: Ambient Occlusion for <c>occlusion</c> (#198).</summary>
+    public static string ChannelName(string usage) => Terms.Label(usage);
+
+    /// <summary>What a person calls a mask source: Mesh Map for <c>Bake</c>, Bitmap for <c>Texture</c>.</summary>
+    public static string SourceName(LayerMaskSource source) => Terms.InStack(source.ToString());
+
     public static StackVocabulary Vocabulary { get; } = new(
         Terms.InStack(Enum.GetNames<LayerBlendMode>()),
         Filters(),

@@ -286,7 +286,8 @@ public sealed class StackEditorPropertyTests {
         Assert.Equal("Add Ambient Occlusion", editor.History.UndoLabel);
         Assert.Equal(
             "This stack has Ambient Occlusion already.",
-            Assert.Throws<StackEditRefusedException>(() => editor.Apply(new([new StackAddChannel("occlusion")]))).Message
+            Assert.Throws<StackEditRefusedException>(() => editor.Apply(new([new StackAddChannel("occlusion")])))
+                .Message
         );
         Assert.Throws<StackEditRefusedException>(() => editor.Apply(new([new StackAddChannel("sparkle")])));
         Assert.NotNull(editor.Undo());
