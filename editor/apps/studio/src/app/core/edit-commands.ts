@@ -41,8 +41,9 @@ export class EditCommands {
 
     const graphInFront = this.project.graphInFront;
     const history = () => (graphInFront() ? this.graph.document()?.history : this.paint.state()?.history) ?? null;
-    // A key for either waits for the edits in flight, since each can turn the other on (#223).
-    const waiting = () => (graphInFront() ? this.graph.settling() : this.stepping() > 0);
+    // A key for either waits for the edits in flight, since each can turn the other on (#223): in a stack, its undos
+    // and redos and every other edit, a mask entry, an instance or a filter's input as much as a stroke.
+    const waiting = () => (graphInFront() ? this.graph.settling() : this.stepping() > 0 || this.paint.settling());
     const step = (action: 'undo' | 'redo') => {
       if (graphInFront()) {
         this.graph[action]();

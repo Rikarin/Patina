@@ -25,10 +25,10 @@ import {
   unwrap
 } from '@patina/api-client';
 import { learnTerms } from '../core/labels';
-import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
-import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
 import { messageOf } from '../core/messages';
 import { RestartedNotice, SessionReturn } from '../core/session-return';
+import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
+import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
 
 /** The most recent colours a project keeps, which is the Server's limit. */
 const RecentColours = 16;
@@ -235,6 +235,19 @@ export class PaintStore {
   readonly worn = signal(false);
   /** From a stamp leaving the pointer to the first frame painted with it, newest last, in milliseconds. */
   readonly stampTimes = signal<readonly number[]>([]);
+  /** Edits of the stack sent and not yet answered: a mask entry, an instance, a filter's input, a stroke. */
+  private readonly unanswered = signal(0);
+  /** The newest revision an answer named, by stack, which the history the events carry has yet to reach. */
+  private readonly answered = signal<{ id: string; revision: number } | null>(null);
+  /**
+   * Whether an edit is on its way, or answered with a history not yet heard: what Undo and Redo would do is known once
+   * it is back, so a key for either waits (#223), as a graph's does.
+   */
+  readonly settling = computed(() => {
+    const state = this.state();
+    const answered = this.answered();
+    return this.unanswered() > 0 || (state !== null && answered?.id === state.id && state.revision < answered.revision);
+  });
 
   /** The layers top first, as a stack reads, with the ones a brush can reach marked by their kind. */
   readonly layers = computed<readonly LayerRow[]>(() => rowsOf(this.state()?.layers ?? []));
@@ -650,7 +663,9 @@ export class PaintStore {
   private async added(command: StackCommand): Promise<void> {
     const before = new Set(this.layers().map(row => row.layer.id));
     await this.edit(command);
-    const made = this.layers().filter(row => !before.has(row.layer.id) && (row.parent === null || before.has(row.parent)));
+    const made = this.layers().filter(
+      row => !before.has(row.layer.id) && (row.parent === null || before.has(row.parent))
+    );
     if (made.length > 0) {
       this.layer.set(made[0]?.layer.id ?? null);
       this.marked.set(new Set(made.map(row => row.layer.id)));
@@ -881,12 +896,16 @@ export class PaintStore {
   }
 
   private remember(colour: string): void {
-    this.recentColours.update(colours => [colour, ...colours.filter(other => other !== colour)].slice(0, RecentColours));
+    this.recentColours.update(colours =>
+      [colour, ...colours.filter(other => other !== colour)].slice(0, RecentColours)
+    );
   }
 
   /** Keeps a colour in the palette, once. */
   keepColour(colour: string): void {
-    this.palette.update(colours => (colours.includes(colour) ? colours : [...colours, colour].slice(0, PaletteColours)));
+    this.palette.update(colours =>
+      colours.includes(colour) ? colours : [...colours, colour].slice(0, PaletteColours)
+    );
   }
 
   /** Takes a colour out of the palette. */
@@ -1018,7 +1037,8 @@ export class PaintStore {
     const symmetry = this.state()?.model.trim() ? this.symmetry() : null;
     // A size in the screen's units is pixels of the 2D view as drawn, which the stroke takes as texels of the map.
     const brush = this.wholeBrush();
-    const radius = !view && brush.sizeSpace === 'screen' ? Math.max(0.5, brush.radius * this.atlasScale()) : brush.radius;
+    const radius =
+      !view && brush.sizeSpace === 'screen' ? Math.max(0.5, brush.radius * this.atlasScale()) : brush.radius;
     // A material brush writes every channel it holds, each in the one stroke and the one undo step. A mask has one.
     const grey = this.maskGrey();
     const target = this.layers().find(row => row.layer.id === layer)?.layer;
@@ -1060,17 +1080,22 @@ export class PaintStore {
       return null;
     }
 
+    this.unanswered.update(count => count + 1);
     try {
       const client = await this.api();
-      return unwrap(
+      const { revision } = unwrap(
         await client.POST('/api/v1/stacks/{id}/commands', {
           params: { path: { id } },
           body
         })
-      ).revision;
+      );
+      this.answered.update(held => (held?.id === id && held.revision >= revision ? held : { id, revision }));
+      return revision;
     } catch (failure) {
       this.failure.set(messageOf(failure));
       return null;
+    } finally {
+      this.unanswered.update(count => count - 1);
     }
   }
 

@@ -128,6 +128,29 @@ public sealed class StackInstanceTests {
         Assert.Throws<StackEditRefusedException>(() => editor.Apply(new([new StackAddLayer("instance", "Copy")])));
     }
 
+    [Fact]
+    public void An_instance_of_a_filter_reads_its_sources_inputs_and_History_says_what_each_edit_changed() {
+        var editor = new StackEditor("/tmp/Instances.vxlayers", Sample());
+        StackInput noise = new("Generator", Generator: "Source/Noise");
+
+        editor.Apply(new([new StackAddLayer("filter", "Warp")]));
+        var filter = editor.Set.Layers[^1].Id;
+        editor.Apply(new([new StackSetLayer(filter, FilterNode: "Filters/Warp")]));
+        editor.Apply(new([new StackSetLayer(filter, Inputs: new Dictionary<string, StackInput> { ["Warp"] = noise })]));
+        Assert.Equal("Change input", editor.History.UndoLabel);
+
+        editor.Apply(new([new StackAddInstance(new(filter), filter)]));
+        var instance = editor.Set.Layers[^1].Id;
+        editor.Apply(new([new StackSetLayer(instance, Opacity: 0.5f, Mask: new("Constant", 0.25f))]));
+        Assert.Equal("Change mask", editor.History.UndoLabel);
+
+        var resolved = LayerStackInstances.Resolve(editor.Document, editor.Set, out var problems);
+        Assert.Empty(problems);
+        Assert.Equal("Source/Noise", resolved.Layers[^1].Inputs["Warp"].Generator);
+        Assert.Equal((1f, LayerMaskSource.None), (Layer(editor, filter).Opacity, Layer(editor, filter).Mask.Source));
+        Assert.Equal("Source/Noise", Layer(editor, filter).Inputs["Warp"].Generator);
+    }
+
     static LayerAsset Layer(StackEditor editor, string id) => LayerStackEdit.Find(editor.Document, new("Body", id))!;
 
     static LayerStackAsset Sample() =>

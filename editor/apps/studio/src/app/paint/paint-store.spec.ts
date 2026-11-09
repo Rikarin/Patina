@@ -399,7 +399,10 @@ describe('PaintStore', () => {
     await store.open('/a/Crate.vxlayers', false);
     store.state.update(state =>
       state
-        ? { ...state, layers: state.layers.map(held => (held.id === 'paint' ? { ...held, channels: ['roughness'] } : held)) }
+        ? {
+            ...state,
+            layers: state.layers.map(held => (held.id === 'paint' ? { ...held, channels: ['roughness'] } : held))
+          }
         : state
     );
     expect(store.canPaint()).toBe(false);
@@ -443,7 +446,11 @@ describe('PaintStore', () => {
     store.state.update(state => (state ? { ...state, history: { ...state.history, dirty: true } } : state));
     const reopened = stack({ id: 's2', sequence: 0 });
     server.reply = (method, path) =>
-      path === '/api/v1/stacks/s1' ? notOpen() : method === 'POST' && path === '/api/v1/stacks' ? Response.json(reopened) : null;
+      path === '/api/v1/stacks/s1'
+        ? notOpen()
+        : method === 'POST' && path === '/api/v1/stacks'
+          ? Response.json(reopened)
+          : null;
 
     drop(sockets[0]);
     await vi.advanceTimersByTimeAsync(1_000);
@@ -616,7 +623,7 @@ describe('PaintStore', () => {
     });
   });
 
-  it('sends a size in the screen\'s units on the map as texels of the map as drawn, and one in texels as it is', async () => {
+  it("sends a size in the screen's units on the map as texels of the map as drawn, and one in texels as it is", async () => {
     const { store, bodies } = setup();
     await store.open('/a/Crate.vxlayers', false);
     store.radius.set(10);
@@ -797,6 +804,28 @@ describe('PaintStore', () => {
   it('shows four numbers on a swatch', () => {
     expect(hexOf([1, 0, 0.5, 1])).toBe('#ff0080');
     expect(hexOf(undefined)).toBe('#000000');
+  });
+
+  it('settles only once an edit is answered and the history it made is heard, so Undo can wait for it (#223)', async () => {
+    const { store, sockets } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    expect(store.settling()).toBe(false);
+    const adding = store.addMaskLayer(layer('paint', 'paint'), 'Paint');
+    expect(store.settling()).toBe(true);
+    await adding;
+    // The Server answered revision 2; the stack this test reads back is still at 1, as one whose event is on its way.
+    expect(store.settling()).toBe(true);
+    const hear = sockets[0]?.onmessage as unknown as (event: MessageEvent) => void;
+    hear({
+      data: JSON.stringify({
+        sequence: 5,
+        kind: 'edited',
+        revision: 2,
+        history: { canUndo: true, canRedo: false, dirty: true, undoLabel: 'Add Mask Layer' }
+      })
+    } as MessageEvent);
+    expect(store.settling()).toBe(false);
+    expect(store.state()?.history.canUndo).toBe(true);
   });
 
   it('shows a map an event names', async () => {

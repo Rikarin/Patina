@@ -10,6 +10,8 @@ static class StackLabels {
             StackRemoveLayer => "Remove layer",
             StackNestLayer => "Move layer",
             StackMoveLayer => "Move layer",
+            StackSetLayer { Inputs: not null, Filter: null, FilterNode: null, Graph: null } => "Change input",
+            StackSetLayer { Mask: not null } => "Change mask",
             StackSetLayer => "Change layer",
             StackSetModel => "Bind mesh",
             StackAddChannel add => $"Add {add.Usage}",
