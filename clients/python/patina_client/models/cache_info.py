@@ -8,28 +8,27 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
-from typing import cast
-
-if TYPE_CHECKING:
-  from ..models.material_thumbnail import MaterialThumbnail
 
 
 
 
 
-T = TypeVar("T", bound="MaterialThumbnails")
+
+T = TypeVar("T", bound="CacheInfo")
 
 
 
 @_attrs_define
-class MaterialThumbnails:
-    """ The pictures of some materials.
+class CacheInfo:
+    """ The library's cache: what deleting it would cost is time, and nothing else.
 
         Attributes:
-            items (list[MaterialThumbnail]): Them, in the order they were asked for.
+            path (str): The folder.
+            bytes_ (int): The room it takes on disk.
      """
 
-    items: list[MaterialThumbnail]
+    path: str
+    bytes_: int
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -37,19 +36,16 @@ class MaterialThumbnails:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.material_thumbnail import MaterialThumbnail # noqa: PLC0415
-        items = []
-        for items_item_data in self.items:
-            items_item = items_item_data.to_dict()
-            items.append(items_item)
+        path = self.path
 
-
+        bytes_ = self.bytes_
 
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update({
-            "items": items,
+            "path": path,
+            "bytes": bytes_,
         })
 
         return field_dict
@@ -58,25 +54,19 @@ class MaterialThumbnails:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
-        from ..models.material_thumbnail import MaterialThumbnail # noqa: PLC0415
         d = dict(src_dict)
-        items = []
-        _items = d.pop("items")
-        for items_item_data in (_items):
-            items_item = MaterialThumbnail.from_dict(items_item_data)
+        path = d.pop("path")
 
+        bytes_ = d.pop("bytes")
 
-
-            items.append(items_item)
-
-
-        material_thumbnails = cls(
-            items=items,
+        cache_info = cls(
+            path=path,
+            bytes_=bytes_,
         )
 
 
-        material_thumbnails.additional_properties = d
-        return material_thumbnails
+        cache_info.additional_properties = d
+        return cache_info
 
     @property
     def additional_keys(self) -> list[str]:

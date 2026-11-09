@@ -21,6 +21,24 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/preferences': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The person's settings the Server acts on, as their preferences file has them. */
+    get: operations['GetPreferences'];
+    /** Changes the person's settings, and keeps them in their preferences file. */
+    put: operations['SetPreferences'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/viewport': {
     parameters: {
       query?: never;
@@ -616,7 +634,8 @@ export interface paths {
     get?: never;
     put?: never;
     post?: never;
-    delete?: never;
+    /** Moves a document to the library's bin, with the paint it keeps beside it. It may not be open. */
+    delete: operations['TrashDocument'];
     options?: never;
     head?: never;
     /** Puts a texturing document on another mesh of its project. */
@@ -709,23 +728,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/v1/library/materials/thumbnails': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** The pictures of some materials, by hash under /previews, drawing those the cache lacks first. */
-    post: operations['GetMaterialThumbnails'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   '/api/v1/library/materials/use': {
     parameters: {
       query?: never;
@@ -790,6 +792,160 @@ export interface paths {
     put: operations['UpdateBrushPreset'];
     /** Saves a brush as a new preset, a document of the project. */
     post: operations['CreateBrushPreset'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/thumbnails': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Pictures of documents, projects or shelf materials, by hash under /previews, drawing those the cache lacks first. A project is drawn as the document that best stands for it. */
+    post: operations['GetThumbnails'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/project/tags': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Sets every tag a project has, in its project.yaml. */
+    patch: operations['SetProjectTags'];
+    trace?: never;
+  };
+  '/api/v1/library/project/document/name': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Gives a document a new display name. Its file stays. */
+    patch: operations['RenameDocument'];
+    trace?: never;
+  };
+  '/api/v1/library/project/document/tags': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Sets every tag a document has, in its project's project.yaml. */
+    patch: operations['SetDocumentTags'];
+    trace?: never;
+  };
+  '/api/v1/library/project/reference': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Pins a project's reference to an asset at the bytes it has now, or lets it follow the asset again. */
+    patch: operations['SetReferencePin'];
+    trace?: never;
+  };
+  '/api/v1/library/bin': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** What the library's bin holds: deleted projects and documents, the latest first. */
+    get: operations['GetBin'];
+    put?: never;
+    post?: never;
+    /** Deletes everything in the bin for good. */
+    delete: operations['EmptyBin'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/bin/restore': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Puts something back where it was deleted from. A project whose folder was taken comes back beside it. */
+    post: operations['RestoreFromBin'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/bin/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Deletes one thing in the bin for good. */
+    delete: operations['DeleteFromBin'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/cache': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The library's cache folder and how much room it takes. Deleting it costs only time. */
+    get: operations['GetCache'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -1631,6 +1787,27 @@ export interface components {
        */
       usageCount: number;
     };
+    /** @description How unsaved work is kept. It goes to the library's cache, never over a document. */
+    AutosavePreferences: {
+      /**
+       * Format: int32
+       * @description How often open, unsaved documents are kept, at the most. Zero turns autosave off.
+       * @default 60
+       */
+      intervalSeconds: number;
+      /**
+       * Format: int32
+       * @description How long after the last edit a document is kept, without waiting for the interval. Zero waits.
+       * @default 5
+       */
+      idleSeconds: number;
+      /**
+       * Format: int32
+       * @description How many autosaves of a document are kept, the latest first. Restoring takes the latest.
+       * @default 3
+       */
+      keep: number;
+    };
     /** @description One baked map, as a file. */
     BakedMapFile: {
       /** @description What it measures. */
@@ -1830,6 +2007,50 @@ export interface components {
       /** @description Whether the map is divided by its largest value, so the thickest texel reads white. */
       normalised: boolean;
     };
+    /** @description What emptying the bin deleted. */
+    BinEmptied: {
+      /**
+       * Format: int32
+       * @description How many entries went for good.
+       */
+      count: number;
+    };
+    /** @description Something in the library's bin, which can be put back or deleted for good. */
+    BinItem: {
+      /** @description The entry, which the bin routes take. */
+      id: string;
+      /** @description `project` or `document`. */
+      kind: string;
+      /** @description Its display name when it was deleted. */
+      name: string;
+      /** @description Where it lived, below the library, and where restoring puts it. */
+      from: string;
+      /**
+       * Format: date-time
+       * @description When it was deleted.
+       */
+      deleted: string;
+    };
+    /** @description What the bin holds. */
+    BinList: {
+      /** @description Its entries, the latest first. */
+      items: components['schemas']['BinItem'][];
+      /**
+       * Format: int64
+       * @description The room they take on disk.
+       */
+      bytes: number;
+    };
+    /** @description Where something put back from the bin now is. */
+    BinRestored: {
+      /** @description Below the library: a project's folder, or a document's file. */
+      path: string;
+    };
+    /** @description The body of `POST /api/v1/library/bin/restore`. */
+    BinRestoreRequest: {
+      /** @description The entry. */
+      id: string;
+    };
     /**
      * @description A brush or tool preset: what the pointer paints as and with. It is a document of a project, a `.ptbrush`
      *     file, and the file is the truth.
@@ -1986,6 +2207,16 @@ export interface components {
       /** @description Where exports go, or null for `exports/` in the library. */
       folder?: null | string;
       options?: null | components['schemas']['ExportOptions'];
+    };
+    /** @description The library's cache: what deleting it would cost is time, and nothing else. */
+    CacheInfo: {
+      /** @description The folder. */
+      path: string;
+      /**
+       * Format: int64
+       * @description The room it takes on disk.
+       */
+      bytes: number;
     };
     /** @description Whether a document has work autosaved after its last save. */
     DocumentRecovery: {
@@ -3402,23 +3633,6 @@ export interface components {
       /** @description Where a material can be from, with what to call each. */
       origins: components['schemas']['StackTerm'][];
     };
-    /** @description A material's picture in the preview cache. The pixels are at `/previews/{hash}`. */
-    MaterialThumbnail: {
-      /** @description The material. */
-      source: string;
-      /** @description The picture, or null when the material has nothing to show. */
-      hash?: null | string;
-    };
-    /** @description The body of `POST /api/v1/library/materials/thumbnails`. */
-    MaterialThumbnailRequest: {
-      /** @description The materials, as their list names them. */
-      sources: string[];
-    };
-    /** @description The pictures of some materials. */
-    MaterialThumbnails: {
-      /** @description Them, in the order they were asked for. */
-      items: components['schemas']['MaterialThumbnail'][];
-    };
     /** @description A graph ready for a layer. */
     MaterialUse: {
       /** @description What a fill layer's `graph` takes. */
@@ -3501,6 +3715,8 @@ export interface components {
       pictures: components['schemas']['ProjectFile'][];
       /** @description Whether a mesh with no UV layout is given one when it is set. */
       autoUnwrap: boolean;
+      /** @description What the project can be searched by, sorted. */
+      tags: string[];
       /**
        * @description The texture sets an export writes, by name: what IReadOnlyList&lt;string&gt;? ExportOptions.Sets chooses from. Empty for a
        *     project of one unnamed set.
@@ -3577,6 +3793,8 @@ export interface components {
       material?: null | string;
       /** @description The folder of the bake it reads, below the library, or null. */
       bake?: null | string;
+      /** @description What it can be searched by, sorted. */
+      tags: string[];
     };
     /** @description The body of `PATCH /api/v1/library/project/document`. */
     ProjectDocumentMeshRequest: {
@@ -3592,6 +3810,18 @@ export interface components {
        * @description The mesh it goes on.
        */
       mesh: string;
+    };
+    /** @description The body of `PATCH /api/v1/library/project/document/name`. */
+    ProjectDocumentRenameRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /**
+       * Format: uuid
+       * @description The document.
+       */
+      document: string;
+      /** @description Its new display name. Its file stays. */
+      name: string;
     };
     /** @description The body of `POST /api/v1/library/project/documents`. */
     ProjectDocumentRequest: {
@@ -3625,6 +3855,18 @@ export interface components {
       document: string;
       /** @description `material`, `mask`, `brush` or `filter`. */
       role: string;
+    };
+    /** @description The body of `PATCH /api/v1/library/project/document/tags`. */
+    ProjectDocumentTagsRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /**
+       * Format: uuid
+       * @description The document.
+       */
+      document: string;
+      /** @description Every tag it has from now on. Repeats and empty ones are dropped. */
+      tags: string[];
     };
     /** @description The body of `POST /api/v1/library/project/duplicate`. */
     ProjectDuplicateRequest: {
@@ -3766,6 +4008,30 @@ export interface components {
       /** @description A picture file on the Server's machine. */
       picture: string;
     };
+    /** @description A project's reference to an asset, as it now stands. */
+    ProjectReference: {
+      /**
+       * Format: uuid
+       * @description The asset.
+       */
+      asset: string;
+      /** @description Whether a pin holds it. */
+      pinned: boolean;
+      /** @description The bytes it is pinned at, or null when it follows the asset. */
+      revision?: null | string;
+    };
+    /** @description The body of `PATCH /api/v1/library/project/reference`. */
+    ProjectReferenceRequest: {
+      /** @description The project that refers to the asset, below `projects/`. */
+      project: string;
+      /**
+       * Format: uuid
+       * @description The asset it refers to itself.
+       */
+      asset: string;
+      /** @description True holds it at the bytes the asset has now; false lets it follow the asset again. */
+      pinned: boolean;
+    };
     /** @description The body of `PATCH /api/v1/library/project`. */
     ProjectRenameRequest: {
       /** @description The project, below `projects/`. */
@@ -3848,6 +4114,13 @@ export interface components {
        */
       referenceCount: number;
     };
+    /** @description The body of `PATCH /api/v1/library/project/tags`. */
+    ProjectTagsRequest: {
+      /** @description The project, below `projects/`. */
+      path: string;
+      /** @description Every tag it has from now on. Repeats and empty ones are dropped. */
+      tags: string[];
+    };
     /** @description The body of `PUT /api/v1/library/project/viewport`. */
     ProjectViewportRequest: {
       /** @description The project, below `projects/`. */
@@ -3857,6 +4130,14 @@ export interface components {
        *     shows it.
        */
       viewport: components['schemas']['ViewportDisplay'];
+    };
+    /**
+     * @description The Server's settings that belong to the person and not to a library or project, kept in a plain file beside
+     *     the discovery file, which anyone can read and edit.
+     */
+    ServerPreferences: {
+      /** @description How unsaved work is kept. */
+      autosave: components['schemas']['AutosavePreferences'];
     };
     /** @description An anchor point and every place that reads it. */
     StackAnchor: {
@@ -5296,6 +5577,30 @@ export interface components {
        */
       limit: number;
     };
+    /** @description A picture in the preview cache. The pixels are at `/previews/{hash}`, never in JSON. */
+    Thumbnail: {
+      /** @description What was asked for. */
+      source: string;
+      /** @description The picture, or null when there is nothing to show. */
+      hash?: null | string;
+    };
+    /** @description Pictures of what was asked for. */
+    ThumbnailList: {
+      /** @description Them, in the order they were asked for. */
+      items: components['schemas']['Thumbnail'][];
+    };
+    /**
+     * @description The body of `POST /api/v1/library/thumbnails`. A thumbnail service for every client and every list: the
+     *     Library's grid, the shelf, and anything after them.
+     */
+    ThumbnailRequest: {
+      /**
+       * @description What to draw, each as its list names it: a document below the library (a graph, an image material, a layered
+       *     material or a texturing document), a project's folder below the library (`projects/…`, drawn as the
+       *     document that best stands for it), or a material the shelf offers from Patina itself.
+       */
+      sources: string[];
+    };
     /** @description How Auto Unwrap lays out a mesh. Each texture set gets an atlas of its own. */
     UnwrapOptions: {
       /**
@@ -5716,6 +6021,68 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['SystemInfo'];
+        };
+      };
+    };
+  };
+  GetPreferences: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ServerPreferences'];
+        };
+      };
+    };
+  };
+  SetPreferences: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ServerPreferences'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ServerPreferences'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
     };
@@ -7513,6 +7880,56 @@ export interface operations {
       };
     };
   };
+  TrashDocument: {
+    parameters: {
+      query: {
+        project: string;
+        document: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['BinItem'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   SetDocumentMesh: {
     parameters: {
       query?: never;
@@ -7867,57 +8284,6 @@ export interface operations {
       };
     };
   };
-  GetMaterialThumbnails: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['MaterialThumbnailRequest'];
-      };
-    };
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['MaterialThumbnails'];
-        };
-      };
-      /** @description Bad Request */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Conflict */
-      409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-    };
-  };
   UseMaterial: {
     parameters: {
       query?: never;
@@ -8190,6 +8556,509 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['BrushPresetInfo'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetThumbnails: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ThumbnailRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ThumbnailList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetProjectTags: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectTagsRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  RenameDocument: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectDocumentRenameRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetDocumentTags: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectDocumentTagsRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetReferencePin: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectReferenceRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectReference'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetBin: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['BinList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  EmptyBin: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['BinEmptied'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  RestoreFromBin: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['BinRestoreRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['BinRestored'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  DeleteFromBin: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetCache: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CacheInfo'];
         };
       };
       /** @description Bad Request */

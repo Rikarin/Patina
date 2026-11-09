@@ -44,6 +44,7 @@ class ProjectContents:
             bakes (list[ProjectFile]): The bakes it has.
             pictures (list[ProjectFile]): The pictures brought in for layers and masks.
             auto_unwrap (bool): Whether a mesh with no UV layout is given one when it is set.
+            tags (list[str]): What the project can be searched by, sorted.
             export_sets (list[str]): The texture sets an export writes, by name: what IReadOnlyList&lt;string&gt;?
                 ExportOptions.Sets chooses from. Empty for a
                 project of one unnamed set.
@@ -66,6 +67,7 @@ class ProjectContents:
     bakes: list[ProjectFile]
     pictures: list[ProjectFile]
     auto_unwrap: bool
+    tags: list[str]
     export_sets: list[str]
     preserve_paint: bool
     unwrap: UnwrapOptions
@@ -126,6 +128,10 @@ class ProjectContents:
 
         auto_unwrap = self.auto_unwrap
 
+        tags = self.tags
+
+
+
         export_sets = self.export_sets
 
 
@@ -173,6 +179,7 @@ class ProjectContents:
             "bakes": bakes,
             "pictures": pictures,
             "autoUnwrap": auto_unwrap,
+            "tags": tags,
             "exportSets": export_sets,
             "preservePaint": preserve_paint,
             "unwrap": unwrap,
@@ -252,6 +259,9 @@ class ProjectContents:
 
 
         auto_unwrap = d.pop("autoUnwrap")
+
+        tags = cast(list[str], d.pop("tags"))
+
 
         export_sets = cast(list[str], d.pop("exportSets"))
 
@@ -338,6 +348,7 @@ class ProjectContents:
             bakes=bakes,
             pictures=pictures,
             auto_unwrap=auto_unwrap,
+            tags=tags,
             export_sets=export_sets,
             preserve_paint=preserve_paint,
             unwrap=unwrap,

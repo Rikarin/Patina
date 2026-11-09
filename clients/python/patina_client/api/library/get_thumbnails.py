@@ -8,16 +8,16 @@ from ...client import AuthenticatedClient, Client
 from ...types import Response, UNSET
 from ... import errors
 
-from ...models.material_thumbnail_request import MaterialThumbnailRequest
-from ...models.material_thumbnails import MaterialThumbnails
 from ...models.problem_details import ProblemDetails
+from ...models.thumbnail_list import ThumbnailList
+from ...models.thumbnail_request import ThumbnailRequest
 from typing import cast
 
 
 
 def _get_kwargs(
     *,
-    body: MaterialThumbnailRequest,
+    body: ThumbnailRequest,
 
 ) -> dict[str, Any]:
     headers: dict[str, Any] = {}
@@ -29,7 +29,7 @@ def _get_kwargs(
 
     _kwargs: dict[str, Any] = {
         "method": "post",
-        "url": "/api/v1/library/materials/thumbnails",
+        "url": "/api/v1/library/thumbnails",
     }
 
     _kwargs["json"] = body.to_dict()
@@ -41,9 +41,9 @@ def _get_kwargs(
 
 
 
-def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> MaterialThumbnails | ProblemDetails | None:
+def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> ProblemDetails | ThumbnailList | None:
     if response.status_code == 200:
-        response_200 = MaterialThumbnails.from_dict(response.json())
+        response_200 = ThumbnailList.from_dict(response.json())
 
 
 
@@ -70,13 +70,20 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Res
 
         return response_409
 
+    if response.status_code == 503:
+        response_503 = ProblemDetails.from_dict(response.json())
+
+
+
+        return response_503
+
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
     else:
         return None
 
 
-def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Response[MaterialThumbnails | ProblemDetails]:
+def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Response[ProblemDetails | ThumbnailList]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -88,20 +95,23 @@ def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Res
 def sync_detailed(
     *,
     client: AuthenticatedClient | Client,
-    body: MaterialThumbnailRequest,
+    body: ThumbnailRequest,
 
-) -> Response[MaterialThumbnails | ProblemDetails]:
-    """ The pictures of some materials, by hash under /previews, drawing those the cache lacks first.
+) -> Response[ProblemDetails | ThumbnailList]:
+    """ Pictures of documents, projects or shelf materials, by hash under /previews, drawing those the cache
+    lacks first. A project is drawn as the document that best stands for it.
 
     Args:
-        body (MaterialThumbnailRequest): The body of `POST /api/v1/library/materials/thumbnails`.
+        body (ThumbnailRequest): The body of `POST /api/v1/library/thumbnails`. A thumbnail
+            service for every client and every list: the
+            Library's grid, the shelf, and anything after them.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[MaterialThumbnails | ProblemDetails]
+        Response[ProblemDetails | ThumbnailList]
      """
 
 
@@ -119,20 +129,23 @@ def sync_detailed(
 def sync(
     *,
     client: AuthenticatedClient | Client,
-    body: MaterialThumbnailRequest,
+    body: ThumbnailRequest,
 
-) -> MaterialThumbnails | ProblemDetails | None:
-    """ The pictures of some materials, by hash under /previews, drawing those the cache lacks first.
+) -> ProblemDetails | ThumbnailList | None:
+    """ Pictures of documents, projects or shelf materials, by hash under /previews, drawing those the cache
+    lacks first. A project is drawn as the document that best stands for it.
 
     Args:
-        body (MaterialThumbnailRequest): The body of `POST /api/v1/library/materials/thumbnails`.
+        body (ThumbnailRequest): The body of `POST /api/v1/library/thumbnails`. A thumbnail
+            service for every client and every list: the
+            Library's grid, the shelf, and anything after them.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        MaterialThumbnails | ProblemDetails
+        ProblemDetails | ThumbnailList
      """
 
 
@@ -145,20 +158,23 @@ body=body,
 async def asyncio_detailed(
     *,
     client: AuthenticatedClient | Client,
-    body: MaterialThumbnailRequest,
+    body: ThumbnailRequest,
 
-) -> Response[MaterialThumbnails | ProblemDetails]:
-    """ The pictures of some materials, by hash under /previews, drawing those the cache lacks first.
+) -> Response[ProblemDetails | ThumbnailList]:
+    """ Pictures of documents, projects or shelf materials, by hash under /previews, drawing those the cache
+    lacks first. A project is drawn as the document that best stands for it.
 
     Args:
-        body (MaterialThumbnailRequest): The body of `POST /api/v1/library/materials/thumbnails`.
+        body (ThumbnailRequest): The body of `POST /api/v1/library/thumbnails`. A thumbnail
+            service for every client and every list: the
+            Library's grid, the shelf, and anything after them.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[MaterialThumbnails | ProblemDetails]
+        Response[ProblemDetails | ThumbnailList]
      """
 
 
@@ -176,20 +192,23 @@ async def asyncio_detailed(
 async def asyncio(
     *,
     client: AuthenticatedClient | Client,
-    body: MaterialThumbnailRequest,
+    body: ThumbnailRequest,
 
-) -> MaterialThumbnails | ProblemDetails | None:
-    """ The pictures of some materials, by hash under /previews, drawing those the cache lacks first.
+) -> ProblemDetails | ThumbnailList | None:
+    """ Pictures of documents, projects or shelf materials, by hash under /previews, drawing those the cache
+    lacks first. A project is drawn as the document that best stands for it.
 
     Args:
-        body (MaterialThumbnailRequest): The body of `POST /api/v1/library/materials/thumbnails`.
+        body (ThumbnailRequest): The body of `POST /api/v1/library/thumbnails`. A thumbnail
+            service for every client and every list: the
+            Library's grid, the shelf, and anything after them.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        MaterialThumbnails | ProblemDetails
+        ProblemDetails | ThumbnailList
      """
 
 

@@ -3,6 +3,7 @@
 from .asset_impact import AssetImpact
 from .asset_page import AssetPage
 from .asset_summary import AssetSummary
+from .autosave_preferences import AutosavePreferences
 from .bake_height_options import BakeHeightOptions
 from .bake_id_options import BakeIdOptions
 from .bake_occlusion_options import BakeOcclusionOptions
@@ -12,6 +13,11 @@ from .bake_request import BakeRequest
 from .bake_result import BakeResult
 from .bake_thickness_options import BakeThicknessOptions
 from .baked_map_file import BakedMapFile
+from .bin_emptied import BinEmptied
+from .bin_item import BinItem
+from .bin_list import BinList
+from .bin_restore_request import BinRestoreRequest
+from .bin_restored import BinRestored
 from .brush_preset import BrushPreset
 from .brush_preset_create_request import BrushPresetCreateRequest
 from .brush_preset_info import BrushPresetInfo
@@ -20,6 +26,7 @@ from .brush_preset_update_request import BrushPresetUpdateRequest
 from .build_preview import BuildPreview
 from .build_preview_project import BuildPreviewProject
 from .build_request import BuildRequest
+from .cache_info import CacheInfo
 from .document_recovery import DocumentRecovery
 from .document_recovery_request import DocumentRecoveryRequest
 from .export_file_choice import ExportFileChoice
@@ -146,9 +153,6 @@ from .library_report import LibraryReport
 from .material_brush import MaterialBrush
 from .material_info import MaterialInfo
 from .material_list import MaterialList
-from .material_thumbnail import MaterialThumbnail
-from .material_thumbnail_request import MaterialThumbnailRequest
-from .material_thumbnails import MaterialThumbnails
 from .material_use import MaterialUse
 from .material_use_request import MaterialUseRequest
 from .output_report import OutputReport
@@ -160,8 +164,10 @@ from .project_create_request import ProjectCreateRequest
 from .project_document_copy_request import ProjectDocumentCopyRequest
 from .project_document_info import ProjectDocumentInfo
 from .project_document_mesh_request import ProjectDocumentMeshRequest
+from .project_document_rename_request import ProjectDocumentRenameRequest
 from .project_document_request import ProjectDocumentRequest
 from .project_document_role_request import ProjectDocumentRoleRequest
+from .project_document_tags_request import ProjectDocumentTagsRequest
 from .project_duplicate_request import ProjectDuplicateRequest
 from .project_export_request import ProjectExportRequest
 from .project_export_settings import ProjectExportSettings
@@ -175,12 +181,16 @@ from .project_paint_request import ProjectPaintRequest
 from .project_paint_settings import ProjectPaintSettings
 from .project_picture import ProjectPicture
 from .project_picture_request import ProjectPictureRequest
+from .project_reference import ProjectReference
+from .project_reference_request import ProjectReferenceRequest
 from .project_rename_request import ProjectRenameRequest
 from .project_report import ProjectReport
 from .project_report_page import ProjectReportPage
 from .project_settings_request import ProjectSettingsRequest
 from .project_summary import ProjectSummary
+from .project_tags_request import ProjectTagsRequest
 from .project_viewport_request import ProjectViewportRequest
+from .server_preferences import ServerPreferences
 from .stack_anchor import StackAnchor
 from .stack_anchor_ref import StackAnchorRef
 from .stack_anchor_use import StackAnchorUse
@@ -293,6 +303,9 @@ from .stack_vocabulary_generator_parameters import StackVocabularyGeneratorParam
 from .system_info import SystemInfo
 from .tag_count import TagCount
 from .tag_page import TagPage
+from .thumbnail import Thumbnail
+from .thumbnail_list import ThumbnailList
+from .thumbnail_request import ThumbnailRequest
 from .unwrap_options import UnwrapOptions
 from .unwrap_report import UnwrapReport
 from .unwrap_set import UnwrapSet
@@ -313,6 +326,7 @@ __all__ = (
     "AssetImpact",
     "AssetPage",
     "AssetSummary",
+    "AutosavePreferences",
     "BakedMapFile",
     "BakeHeightOptions",
     "BakeIdOptions",
@@ -322,6 +336,11 @@ __all__ = (
     "BakeRequest",
     "BakeResult",
     "BakeThicknessOptions",
+    "BinEmptied",
+    "BinItem",
+    "BinList",
+    "BinRestored",
+    "BinRestoreRequest",
     "BrushPreset",
     "BrushPresetCreateRequest",
     "BrushPresetInfo",
@@ -330,6 +349,7 @@ __all__ = (
     "BuildPreview",
     "BuildPreviewProject",
     "BuildRequest",
+    "CacheInfo",
     "DocumentRecovery",
     "DocumentRecoveryRequest",
     "ExportFileChoice",
@@ -456,9 +476,6 @@ __all__ = (
     "MaterialBrush",
     "MaterialInfo",
     "MaterialList",
-    "MaterialThumbnail",
-    "MaterialThumbnailRequest",
-    "MaterialThumbnails",
     "MaterialUse",
     "MaterialUseRequest",
     "OutputReport",
@@ -470,8 +487,10 @@ __all__ = (
     "ProjectDocumentCopyRequest",
     "ProjectDocumentInfo",
     "ProjectDocumentMeshRequest",
+    "ProjectDocumentRenameRequest",
     "ProjectDocumentRequest",
     "ProjectDocumentRoleRequest",
+    "ProjectDocumentTagsRequest",
     "ProjectDuplicateRequest",
     "ProjectExportRequest",
     "ProjectExportSettings",
@@ -485,12 +504,16 @@ __all__ = (
     "ProjectPaintSettings",
     "ProjectPicture",
     "ProjectPictureRequest",
+    "ProjectReference",
+    "ProjectReferenceRequest",
     "ProjectRenameRequest",
     "ProjectReport",
     "ProjectReportPage",
     "ProjectSettingsRequest",
     "ProjectSummary",
+    "ProjectTagsRequest",
     "ProjectViewportRequest",
+    "ServerPreferences",
     "StackAnchor",
     "StackAnchorRef",
     "StackAnchorUse",
@@ -603,6 +626,9 @@ __all__ = (
     "SystemInfo",
     "TagCount",
     "TagPage",
+    "Thumbnail",
+    "ThumbnailList",
+    "ThumbnailRequest",
     "UnwrapOptions",
     "UnwrapReport",
     "UnwrapSet",
