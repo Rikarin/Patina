@@ -8,11 +8,13 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
+from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
   from ..models.graph_port_definition import GraphPortDefinition
   from ..models.graph_setting_definition import GraphSettingDefinition
+  from ..models.stack_filter_input import StackFilterInput
 
 
 
@@ -24,17 +26,18 @@ T = TypeVar("T", bound="StackFilterKind")
 
 @_attrs_define
 class StackFilterKind:
-    """ An adjustment a filter layer or a mask can run: any node or shipped compound with one image in and one image
-    out. A project's own compounds reach a stack from the shelf.
+    """ An adjustment a filter layer or a mask can run, or a generator an input can read: any node or shipped compound
+    a stack can use there. A project's own compounds reach a stack from the shelf.
 
         Attributes:
             node (str): The node type or compound, as string StackLayer.FilterNode names it.
             name (str): What a person calls it.
             category (str): The heading it sits under.
             summary (str): One line about it.
-            ports (list[GraphPortDefinition]): Its numbers, each saying what it is and what it starts as. Never the image it
+            ports (list[GraphPortDefinition]): Its numbers, each saying what it is and what it starts as. Never an image it
                 reads.
             settings (list[GraphSettingDefinition]): What it takes as text.
+            inputs (list[StackFilterInput] | None | Unset): The images it reads, its subject first. Empty for a generator.
      """
 
     node: str
@@ -43,6 +46,7 @@ class StackFilterKind:
     summary: str
     ports: list[GraphPortDefinition]
     settings: list[GraphSettingDefinition]
+    inputs: list[StackFilterInput] | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -52,6 +56,7 @@ class StackFilterKind:
     def to_dict(self) -> dict[str, Any]:
         from ..models.graph_port_definition import GraphPortDefinition # noqa: PLC0415
         from ..models.graph_setting_definition import GraphSettingDefinition # noqa: PLC0415
+        from ..models.stack_filter_input import StackFilterInput # noqa: PLC0415
         node = self.node
 
         name = self.name
@@ -74,6 +79,19 @@ class StackFilterKind:
 
 
 
+        inputs: list[dict[str, Any]] | None | Unset
+        if isinstance(self.inputs, Unset):
+            inputs = UNSET
+        elif isinstance(self.inputs, list):
+            inputs = []
+            for inputs_type_1_item_data in self.inputs:
+                inputs_type_1_item = inputs_type_1_item_data.to_dict()
+                inputs.append(inputs_type_1_item)
+
+
+        else:
+            inputs = self.inputs
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -85,6 +103,8 @@ class StackFilterKind:
             "ports": ports,
             "settings": settings,
         })
+        if inputs is not UNSET:
+            field_dict["inputs"] = inputs
 
         return field_dict
 
@@ -94,6 +114,7 @@ class StackFilterKind:
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.graph_port_definition import GraphPortDefinition # noqa: PLC0415
         from ..models.graph_setting_definition import GraphSettingDefinition # noqa: PLC0415
+        from ..models.stack_filter_input import StackFilterInput # noqa: PLC0415
         d = dict(src_dict)
         node = d.pop("node")
 
@@ -123,6 +144,31 @@ class StackFilterKind:
             settings.append(settings_item)
 
 
+        def _parse_inputs(data: object) -> list[StackFilterInput] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                inputs_type_1 = []
+                _inputs_type_1 = data
+                for inputs_type_1_item_data in (_inputs_type_1):
+                    inputs_type_1_item = StackFilterInput.from_dict(inputs_type_1_item_data)
+
+
+
+                    inputs_type_1.append(inputs_type_1_item)
+
+                return inputs_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[StackFilterInput] | None | Unset, data)
+
+        inputs = _parse_inputs(d.pop("inputs", UNSET))
+
+
         stack_filter_kind = cls(
             node=node,
             name=name,
@@ -130,6 +176,7 @@ class StackFilterKind:
             summary=summary,
             ports=ports,
             settings=settings,
+            inputs=inputs,
         )
 
 

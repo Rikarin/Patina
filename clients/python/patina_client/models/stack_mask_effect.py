@@ -33,8 +33,8 @@ class StackMaskEffect:
             enabled (bool): Whether it runs. Default: True.
             values (None | StackMaskEffectValuesType1 | Unset): Its numbers, by port.
             texts (None | StackMaskEffectTextsType1 | Unset): Its settings, by name.
-            inputs (None | StackMaskEffectInputsType1 | Unset): Its other image inputs, by port, each fed by an anchor
-                point. The mask goes into the one left.
+            inputs (None | StackMaskEffectInputsType1 | Unset): Where its other image inputs read, by port. The mask always
+                goes into its first image input.
      """
 
     node: str

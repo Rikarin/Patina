@@ -19,3 +19,4 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0014](0014-graph-size.md): accepted: a graph's size is separate from what it is authored at, with one list of sides.
 - [0015](0015-words.md): accepted: the API sends labels with its words and codes with its refusals, and each client words them.
 - [0016](0016-commands.md): accepted: one command table that the menus, the keys, the shortcuts dialog and tooltips read.
+- [0017](0017-filter-inputs.md): accepted: a filter's first image is its subject, every image names where it reads, and a node says when it is no filter.

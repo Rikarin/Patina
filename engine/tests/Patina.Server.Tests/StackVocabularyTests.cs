@@ -201,7 +201,110 @@ public sealed class StackVocabularyTests {
         var vocabulary = StackDocuments.Vocabulary;
 
         Assert.DoesNotContain(vocabulary.MaskEffects, static effect => effect.Node == "Analysis/Colour Select");
-        Assert.Equal(vocabulary.Filters.Count - 1, vocabulary.MaskEffects.Count);
+        var library = LayerStackCompiler.Library(out _);
+        Assert.Equal(
+            library.Types.Where(LayerStackGraph.IsMaskStep)
+                .Select(static type => type.Path)
+                .Where(static path => path != "Analysis/Colour Select")
+                .Order(StringComparer.Ordinal),
+            vocabulary.MaskEffects.Select(static effect => effect.Node)
+        );
+    }
+
+    /// <summary>
+    ///     Patina #220: a node whose output measures its input gives a layer or a mask nothing of the surface back,
+    ///     so no statistics node is offered as either, and the equaliser, whose output is a picture, still is.
+    /// </summary>
+    [Fact]
+    public void No_statistics_node_is_offered_as_a_filter_or_a_mask_step() {
+        var vocabulary = StackDocuments.Vocabulary;
+        string[] statistics = ["Analysis/Histogram", "Analysis/Histogram Render", "Analysis/Summed Area Table"];
+
+        Assert.All(
+            statistics,
+            node => {
+                Assert.DoesNotContain(vocabulary.Filters, filter => filter.Node == node);
+                Assert.DoesNotContain(vocabulary.MaskEffects, filter => filter.Node == node);
+            }
+        );
+        Assert.Contains(vocabulary.Filters, static filter => filter.Node == "Colour/Histogram Equalise");
+        Assert.Contains(vocabulary.MaskEffects, static filter => filter.Node == "Colour/Histogram Equalise");
+    }
+
+    /// <summary>
+    ///     Patina #113: a filter says which images it reads, its subject first, so a client offers a slot for each; and
+    ///     the generators those slots can read are listed with their own fields.
+    /// </summary>
+    [Fact]
+    public void A_filter_says_what_it_reads_and_a_slot_offers_the_generators() {
+        var vocabulary = StackDocuments.Vocabulary;
+        var warp = vocabulary.Filters.Single(static filter => filter.Node == "Filters/Warp");
+
+        Assert.Equal(
+            [("Input", true, false), ("Warp", false, false)],
+            warp.Inputs!.Select(static input => (input.Port, input.Subject, input.Optional))
+        );
+        Assert.True(
+            vocabulary.Filters.Single(static filter => filter.Node == "Colour/Channel Shuffle").Inputs![1].Optional
+        );
+        Assert.Contains(vocabulary.Sources, static source => source.Node == "Source/Noise");
+        Assert.Contains(vocabulary.Sources, static source => source.Node == "Noise/Clouds");
+        Assert.DoesNotContain(vocabulary.Sources, static source => source.Node == "Source/Bitmap");
+        Assert.All(vocabulary.Sources, static source => Assert.Empty(source.Inputs!));
+        Assert.Equal(
+            ["Layers Beneath", "Anchor", "Generator", "Bitmap", "Mesh Map"],
+            vocabulary.Inputs.Select(static term => term.Label)
+        );
+    }
+
+    /// <summary>
+    ///     Where an input reads goes into the file and comes back as it went in, a new filter starts reading nothing
+    ///     the last one read, and a source a stack does not know is refused with a sentence.
+    /// </summary>
+    [Fact]
+    public void A_layers_inputs_round_trip_and_follow_only_their_own_filter() {
+        var editor = new StackEditor(
+            "/tmp/Inputs.vxlayers",
+            new() {
+                Name = "Inputs",
+                Sets = [
+                    new() {
+                        Name = "Body",
+                        Channels = [new() { Usage = "baseColor" }, new() { Usage = "height" }],
+                        Layers = [new() { Id = "warp", Name = "Warp", Kind = LayerKind.Filter }]
+                    }
+                ]
+            }
+        );
+        Dictionary<string, StackInput> inputs = new() {
+            ["Input"] = new("Beneath", "height"),
+            ["Warp"] = new(
+                "Generator",
+                Generator: "Noise/Clouds",
+                Values: new Dictionary<string, IReadOnlyList<float>> { ["Scale"] = [3f] },
+                Parameters: new Dictionary<string, string> { ["Seed Mode"] = "x" }
+            )
+        };
+
+        editor.Apply(new([new StackSetLayer("warp", FilterNode: "Filters/Warp", Inputs: inputs)]));
+        var read = StackDocuments.Parse(StackDocuments.Text(editor.Document)).Sets[0].Layers[0];
+        var wired = StackDocuments.Layers([read])[0].Inputs!;
+
+        Assert.Equal("Beneath", wired["Input"].Source);
+        Assert.Equal("height", wired["Input"].Channel);
+        Assert.Equal("Noise/Clouds", wired["Warp"].Generator);
+        Assert.Equal([3f], wired["Warp"].Values!["Scale"]);
+        Assert.Equal("x", wired["Warp"].Parameters!["Seed Mode"]);
+
+        editor.Apply(new([new StackSetLayer("warp", FilterNode: "Filters/Slope Blur")]));
+        Assert.Empty(editor.Set.Layers[0].Inputs);
+
+        Assert.Throws<StackEditRefusedException>(() => editor.Apply(
+                new(
+                    [new StackSetLayer("warp", Inputs: new Dictionary<string, StackInput> { ["Slope"] = new("Noise") })]
+                )
+            )
+        );
     }
 
     /// <summary>

@@ -44,7 +44,7 @@ public sealed record StackChannel(string Usage, IReadOnlyList<float> Default);
 /// <param name="FilterNode">The node or compound a filter layer runs, whichever way the file names it.</param>
 /// <param name="AnchorPoint">The name of the anchor point this layer publishes, or empty for none.</param>
 /// <param name="Anchor">The anchor point an Anchor fill reads.</param>
-/// <param name="Inputs">The image inputs of a graph fill or a filter that anchor points feed, by port.</param>
+/// <param name="Inputs">Where the image inputs of a graph fill or a filter read, by port.</param>
 /// <param name="Flattened">
 ///     Whether this is a group flattened into a canvas: it composites that canvas, and its children are kept, unread,
 ///     as the way back.
@@ -73,7 +73,7 @@ public sealed record StackLayer(
     string FilterNode = "",
     string AnchorPoint = "",
     StackAnchorRef? Anchor = null,
-    IReadOnlyDictionary<string, StackAnchorRef>? Inputs = null,
+    IReadOnlyDictionary<string, StackInput>? Inputs = null,
     bool Flattened = false
 );
 
@@ -146,14 +146,14 @@ public sealed record StackMeshParts(IReadOnlyList<string> Parts, string? Asset =
 /// <param name="Values">Its numbers, by port.</param>
 /// <param name="Texts">Its settings, by name.</param>
 /// <param name="Inputs">
-///     Its other image inputs, by port, each fed by an anchor point. The mask goes into the one left.
+///     Where its other image inputs read, by port. The mask always goes into its first image input.
 /// </param>
 public sealed record StackMaskEffect(
     string Node,
     bool Enabled = true,
     IReadOnlyDictionary<string, IReadOnlyList<float>>? Values = null,
     IReadOnlyDictionary<string, string>? Texts = null,
-    IReadOnlyDictionary<string, StackAnchorRef>? Inputs = null
+    IReadOnlyDictionary<string, StackInput>? Inputs = null
 );
 
 /// <summary>One colour of a stack's id map.</summary>
@@ -167,22 +167,55 @@ public sealed record StackIdColour(IReadOnlyList<float> Colour, float Share);
 public sealed record StackIdColours(IReadOnlyList<StackIdColour> Colours, IReadOnlyList<float>? At = null);
 
 /// <summary>
-///     An adjustment a filter layer or a mask can run: any node or shipped compound with one image in and one image
-///     out. A project's own compounds reach a stack from the shelf.
+///     An adjustment a filter layer or a mask can run, or a generator an input can read: any node or shipped compound
+///     a stack can use there. A project's own compounds reach a stack from the shelf.
 /// </summary>
 /// <param name="Node">The node type or compound, as <see cref="StackLayer.FilterNode" /> names it.</param>
 /// <param name="Name">What a person calls it.</param>
 /// <param name="Category">The heading it sits under.</param>
 /// <param name="Summary">One line about it.</param>
-/// <param name="Ports">Its numbers, each saying what it is and what it starts as. Never the image it reads.</param>
+/// <param name="Ports">Its numbers, each saying what it is and what it starts as. Never an image it reads.</param>
 /// <param name="Settings">What it takes as text.</param>
+/// <param name="Inputs">The images it reads, its subject first. Empty for a generator.</param>
 public sealed record StackFilterKind(
     string Node,
     string Name,
     string Category,
     string Summary,
     IReadOnlyList<GraphPortDefinition> Ports,
-    IReadOnlyList<GraphSettingDefinition> Settings
+    IReadOnlyList<GraphSettingDefinition> Settings,
+    IReadOnlyList<StackFilterInput>? Inputs = null
+);
+
+/// <summary>One image a filter reads, as Properties offers a slot for it.</summary>
+/// <param name="Port">Its name, which a layer's <c>inputs</c> are keyed by.</param>
+/// <param name="Summary">What the node says it reads there.</param>
+/// <param name="Subject">
+///     Whether it is the picture the filter changes. It reads the layers beneath in the channel being written until the
+///     layer says otherwise, and on a mask it is always the mask.
+/// </param>
+/// <param name="Optional">Whether the filter runs with nothing there.</param>
+/// <param name="Channel">The channel it is named after, which it reads beneath until told otherwise, or empty.</param>
+public sealed record StackFilterInput(string Port, string Summary, bool Subject, bool Optional, string Channel);
+
+/// <summary>Where one image input of a filter, a mask step or a graph fill reads.</summary>
+/// <param name="Source">Beneath, Anchor, Generator, Texture or Bake.</param>
+/// <param name="Channel">The channel read beneath, by usage, or empty for the channel being written.</param>
+/// <param name="Anchor">The anchor point read, and in which channel, for Anchor.</param>
+/// <param name="Generator">The node or compound read, for Generator: Source/Noise, Noise/Clouds.</param>
+/// <param name="Values">The generator's numbers, by port.</param>
+/// <param name="Parameters">The generator's settings, by name.</param>
+/// <param name="Asset">The image read, for Texture.</param>
+/// <param name="Map">The mesh map read, for Bake.</param>
+public sealed record StackInput(
+    string Source,
+    string Channel = "",
+    StackAnchorRef? Anchor = null,
+    string Generator = "",
+    IReadOnlyDictionary<string, IReadOnlyList<float>>? Values = null,
+    IReadOnlyDictionary<string, string>? Parameters = null,
+    string Asset = "",
+    string Map = ""
 );
 
 /// <summary>A word a stack's field takes, and what a person calls it.</summary>
@@ -203,6 +236,11 @@ public sealed record StackTerm(string Value, string Label);
 /// <param name="Usages">The channels a stack can have.</param>
 /// <param name="GeneratorParameters">The knobs each generator has, by its path.</param>
 /// <param name="Brush">What a brush's fields take, and the brush a new one starts as.</param>
+/// <param name="Inputs">
+///     Where an image input can read: the layers beneath, an anchor point, a generator, an image or a
+///     mesh map.
+/// </param>
+/// <param name="Sources">The generators an image input can read: noises, patterns, grunges and the rest.</param>
 public sealed record StackVocabulary(
     IReadOnlyList<StackTerm> Blends,
     IReadOnlyList<StackFilterKind> Filters,
@@ -215,7 +253,9 @@ public sealed record StackVocabulary(
     IReadOnlyList<StackFilterKind> MaskEffects,
     IReadOnlyList<StackTerm> Usages,
     IReadOnlyDictionary<string, IReadOnlyList<GraphSettingDefinition>> GeneratorParameters,
-    StackBrushTerms Brush
+    StackBrushTerms Brush,
+    IReadOnlyList<StackTerm> Inputs,
+    IReadOnlyList<StackFilterKind> Sources
 );
 
 /// <summary>What a layer looks like alone.</summary>
@@ -407,7 +447,7 @@ public sealed record StackMoveLayer(string Layer, int Delta) : StackCommand;
 /// </param>
 /// <param name="Anchor">The anchor point an Anchor fill reads.</param>
 /// <param name="Inputs">
-///     The image inputs of a graph fill or a filter that anchor points feed, replacing all of them.
+///     Where the image inputs of a graph fill or a filter read, by port, replacing all of them.
 /// </param>
 public sealed record StackSetLayer(
     string Layer,
@@ -431,7 +471,7 @@ public sealed record StackSetLayer(
     string? FilterNode = null,
     string? AnchorPoint = null,
     StackAnchorRef? Anchor = null,
-    IReadOnlyDictionary<string, StackAnchorRef>? Inputs = null
+    IReadOnlyDictionary<string, StackInput>? Inputs = null
 ) : StackCommand;
 #pragma warning restore SK7005
 

@@ -11,7 +11,7 @@ from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
-  from ..models.stack_anchor_ref import StackAnchorRef
+  from ..models.stack_input import StackInput
 
 
 
@@ -23,18 +23,18 @@ T = TypeVar("T", bound="StackCommandStackSetLayerInputsType1")
 
 @_attrs_define
 class StackCommandStackSetLayerInputsType1:
-    """ The image inputs of a graph fill or a filter that anchor points feed, replacing all of them.
+    """ Where the image inputs of a graph fill or a filter read, by port, replacing all of them.
 
      """
 
-    additional_properties: dict[str, StackAnchorRef] = _attrs_field(init=False, factory=dict)
+    additional_properties: dict[str, StackInput] = _attrs_field(init=False, factory=dict)
 
 
 
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.stack_anchor_ref import StackAnchorRef # noqa: PLC0415
+        from ..models.stack_input import StackInput # noqa: PLC0415
         
         field_dict: dict[str, Any] = {}
         for prop_name, prop in self.additional_properties.items():
@@ -47,7 +47,7 @@ class StackCommandStackSetLayerInputsType1:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
-        from ..models.stack_anchor_ref import StackAnchorRef # noqa: PLC0415
+        from ..models.stack_input import StackInput # noqa: PLC0415
         d = dict(src_dict)
         stack_command_stack_set_layer_inputs_type_1 = cls(
         )
@@ -55,7 +55,7 @@ class StackCommandStackSetLayerInputsType1:
 
         additional_properties = {}
         for prop_name, prop_dict in d.items():
-            additional_property = StackAnchorRef.from_dict(prop_dict)
+            additional_property = StackInput.from_dict(prop_dict)
 
 
 
@@ -68,10 +68,10 @@ class StackCommandStackSetLayerInputsType1:
     def additional_keys(self) -> list[str]:
         return list(self.additional_properties.keys())
 
-    def __getitem__(self, key: str) -> StackAnchorRef:
+    def __getitem__(self, key: str) -> StackInput:
         return self.additional_properties[key]
 
-    def __setitem__(self, key: str, value: StackAnchorRef) -> None:
+    def __setitem__(self, key: str, value: StackInput) -> None:
         self.additional_properties[key] = value
 
     def __delitem__(self, key: str) -> None:

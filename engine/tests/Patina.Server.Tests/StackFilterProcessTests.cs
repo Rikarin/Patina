@@ -29,12 +29,16 @@ public sealed partial class StackProcessTests {
         var filter = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
         var off = await EditAsync(state.Id, deadline.Token, new StackSetLayer(filter, Enabled: false));
         await EvaluatedAsync(socket, off.Revision, deadline.Token);
-        var plain = Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor");
+        var plain = Whole(await PixelsAsync(state.Id, false, deadline.Token));
         await EditAsync(state.Id, deadline.Token, new StackSetLayer(filter, Enabled: true));
 
         List<string> failures = [];
         foreach (var kind in words.Filters) {
-            var set = await EditAsync(state.Id, deadline.Token, new StackSetLayer(filter, FilterNode: kind.Node));
+            var set = await EditAsync(
+                state.Id,
+                deadline.Token,
+                new StackSetLayer(filter, FilterNode: kind.Node, Inputs: Fed(kind))
+            );
             var evaluation = await EvaluatedAsync(socket, set.Revision, deadline.Token);
             if (evaluation.Problems.Count > 0) {
                 failures.Add(
@@ -43,7 +47,7 @@ public sealed partial class StackProcessTests {
                 continue;
             }
 
-            if (Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor") == plain) {
+            if (Whole(await PixelsAsync(state.Id, false, deadline.Token)) == plain) {
                 var (numbers, texts) = Nudged(kind);
                 var nudged = await EditAsync(
                     state.Id,
@@ -51,7 +55,8 @@ public sealed partial class StackProcessTests {
                     new StackSetLayer(filter, Settings: numbers, Parameters: texts)
                 );
                 await EvaluatedAsync(socket, nudged.Revision, deadline.Token);
-                if (Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor") == plain) {
+                if (Whole(await PixelsAsync(state.Id, false, deadline.Token)) == plain
+                    && !PassesWhatIsInRange.Contains(kind.Node)) {
                     failures.Add($"layer {kind.Node} changes nothing, even with {Described(numbers, texts)}");
                 }
             }
@@ -62,7 +67,7 @@ public sealed partial class StackProcessTests {
             var set = await EditAsync(
                 state.Id,
                 deadline.Token,
-                new StackSetLayer("paint", Mask: new("Paint", Effects: [new(kind.Node)]))
+                new StackSetLayer("paint", Mask: new("Paint", Effects: [new(kind.Node, Inputs: Fed(kind))]))
             );
             var evaluation = await EvaluatedAsync(socket, set.Revision, deadline.Token);
             if (evaluation.Problems.Count > 0) {
@@ -72,16 +77,20 @@ public sealed partial class StackProcessTests {
                 continue;
             }
 
-            if (Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor") == plain) {
+            if (Whole(await PixelsAsync(state.Id, false, deadline.Token)) == plain) {
                 var (numbers, texts) = Nudged(kind);
                 var nudged = await EditAsync(
                     state.Id,
                     deadline.Token,
-                    new StackSetLayer("paint", Mask: new("Paint", Effects: [new(kind.Node, true, numbers, texts)]))
+                    new StackSetLayer(
+                        "paint",
+                        Mask: new("Paint", Effects: [new(kind.Node, true, numbers, texts, Fed(kind))])
+                    )
                 );
                 await EvaluatedAsync(socket, nudged.Revision, deadline.Token);
-                if (Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor") == plain
-                    && !KeepsAHardEdge.Contains(kind.Node)) {
+                if (Whole(await PixelsAsync(state.Id, false, deadline.Token)) == plain
+                    && !KeepsAHardEdge.Contains(kind.Node)
+                    && !SameOnAGreyMask.Contains(kind.Node)) {
                     failures.Add($"mask {kind.Node} changes nothing, even with {Described(numbers, texts)}");
                 }
             }
@@ -91,10 +100,49 @@ public sealed partial class StackProcessTests {
     }
 
     /// <summary>
+    ///     A noise for every image a filter reads beside its subject and cannot do without, as a person fills a warp's
+    ///     field before it does anything. An input named after a channel reads that channel beneath by itself.
+    /// </summary>
+    static Dictionary<string, StackInput>? Fed(StackFilterKind kind) {
+        Dictionary<string, StackInput> inputs = [];
+        foreach (var input in kind.Inputs ?? []) {
+            if (input is { Subject: false, Optional: false, Channel: "" }) {
+                inputs[input.Port] = new(
+                    "Generator",
+                    Generator: "Source/Noise",
+                    Values: new Dictionary<string, IReadOnlyList<float>> { ["Scale"] = [6f] }
+                );
+            }
+        }
+
+        return inputs.Count == 0 ? null : inputs;
+    }
+
+    /// <summary>
     ///     Filters whose whole point is to leave a step where it is, so a mask of hard-edged strokes at two values
     ///     comes through them unchanged however they are set. Each is held to moving a soft picture on the layer side.
     /// </summary>
     static readonly HashSet<string> KeepsAHardEdge = ["Filters/Median", "Filters/Painterly Smooth"];
+
+    /// <summary>
+    ///     A validator, which paints only what is out of range, and a grey stroke over a grey base is in it however its
+    ///     limits move a little. <c>FilterLibraryDeviceTests</c> in Vixen holds it to painting what is out.
+    /// </summary>
+    static readonly HashSet<string> PassesWhatIsInRange = ["Adjust/PBR Validate"];
+
+    /// <summary>
+    ///     Filters that move a picture's lanes about, offered since a second image no longer refuses a filter (#113). A
+    ///     mask is one grey in every lane, so whichever lane each takes it gives the same mask back; each is held to
+    ///     changing a layer's colour.
+    /// </summary>
+    static readonly HashSet<string> SameOnAGreyMask = ["Colour/Channel Shuffle", "Filters/Pixel Processor"];
+
+    /// <summary>Every map of a stack in one string, so a filter writing roughness alone is seen to change it.</summary>
+    static string Whole(IReadOnlyList<StackPixels> maps) =>
+        string.Join(
+            '|',
+            maps.OrderBy(static map => map.Usage, StringComparer.Ordinal).Select(map => Digest(maps, map.Usage))
+        );
 
     /// <summary>
     ///     Away from a default that leaves the picture alone, as a person would move it: a curve that bends, a choice
