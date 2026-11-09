@@ -345,6 +345,26 @@ const MaskMarks: Readonly<Record<string, string>> = {
               <span class="min-w-0 flex-1 truncate text-xs">{{ item.name }}</span>
               <button
                 type="button"
+                class="text-foreground-muted grid size-5 shrink-0 place-items-center disabled:opacity-30"
+                data-testid="mask-stack-effect-up"
+                [attr.aria-label]="'Move ' + item.name + ' up'"
+                [disabled]="item.effect === 0"
+                (click)="moveWork(owner, item.effect, -1)"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                class="text-foreground-muted grid size-5 shrink-0 place-items-center disabled:opacity-30"
+                data-testid="mask-stack-effect-down"
+                [attr.aria-label]="'Move ' + item.name + ' down'"
+                [disabled]="item.effect === (owner.mask.effects?.length ?? 0) - 1"
+                (click)="moveWork(owner, item.effect, 1)"
+              >
+                ↓
+              </button>
+              <button
+                type="button"
                 class="text-foreground-muted grid size-5 shrink-0 place-items-center"
                 [attr.aria-label]="'Take off ' + item.name"
                 (click)="removeWork(owner, item.effect)"
@@ -1731,6 +1751,20 @@ export class LayerStack {
         ? { ...layer.mask, source: 'None' }
         : { ...layer.mask, effects: (layer.mask.effects ?? []).filter((_, index) => index !== effect) }
     );
+  }
+
+  /** Moves a step of a mask a place earlier or later in the order the steps run (#109). */
+  protected moveWork(layer: StackLayer, effect: number, delta: -1 | 1): void {
+    const effects = [...(layer.mask.effects ?? [])];
+    const to = effect + delta;
+    const moving = effects[effect];
+    if (moving === undefined || to < 0 || to >= effects.length) {
+      return;
+    }
+
+    effects.splice(effect, 1);
+    effects.splice(to, 0, moving);
+    void this.store.setMask(layer, { ...layer.mask, effects });
   }
 
   /** Adds a step to the mask, which needs a mask to run on, so a layer with none gets a white one. */
