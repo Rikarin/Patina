@@ -5,8 +5,8 @@ using Vixen.Texturing.Layers;
 namespace Patina.Server.Stacks;
 
 /// <summary>
-///     Where <see cref="StackEditor" /> hands the edits of instances (#108) and of mask stacks (#109), and asks what a
-///     step is called, so that it stays one class a person can read.
+///     Where <see cref="StackEditor" /> hands the edits of instances (#108), of mask stacks (#109) and of a paste into
+///     a layer (#106), and asks what a step is called, so that it stays one class a person can read.
 /// </summary>
 static class StackLayerEdits {
     /// <summary>What the History list calls a step started by this command.</summary>
@@ -51,4 +51,17 @@ static class StackLayerEdits {
         Action<IAuthoringCommand> run
     ) =>
         new StackInstanceEdits(editor).PasteInstances(clip, above, set, run);
+
+    /// <summary>Part of a copied layer, its mask or its content, put into a layer that is here (#106).</summary>
+    public static void PasteInto(
+        StackEditor editor,
+        LayerAsset target,
+        List<LayerAsset> layers,
+        string part,
+        string set,
+        StackEditor.UndoStep step,
+        string folder,
+        Action<IAuthoringCommand> run
+    ) =>
+        StackLayerParts.PasteInto(editor, target, layers, part, set, step, folder, run);
 }

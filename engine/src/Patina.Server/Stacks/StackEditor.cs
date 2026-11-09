@@ -784,7 +784,7 @@ public sealed class StackEditor : ILayerStackDocument {
         }
 
         if (paste.Into is { } into) {
-            StackLayerParts.PasteInto(this, Require(into), layers, paste.Part, set, step, clip.Folder, run);
+            StackLayerEdits.PasteInto(this, Require(into), layers, paste.Part, set, step, clip.Folder, run);
             return;
         }
 
