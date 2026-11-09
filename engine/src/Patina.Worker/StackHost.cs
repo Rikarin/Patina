@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Export;
 using Patina.Graphs;
 using Patina.Ipc;
 using Patina.Library;
@@ -290,6 +291,53 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
         return new() { Type = IpcTypes.Ok, StackPicture = pixels };
     }
 
+    /// <summary>
+    ///     Measures a set before export (#159): its layout from the mesh, and from its maps as an export would write them,
+    ///     the share of covered texels no physical material has. The maps are read here and only numbers go back.
+    /// </summary>
+    public IpcMessage Check(IpcMessage request) {
+        var session = request.StackCheck ?? throw new IpcException("stack.check names no stack.");
+        var stack = Find(session);
+        var problems = stack.Prepare();
+        if (problems.Count > 0 || stack.Run.Plan is null) {
+            throw new IpcException(string.Join(' ', problems));
+        }
+
+        var (width, height) = stack.Size;
+        var model = stack.ModelFile;
+        LayoutCheck.Result? layout = null;
+        MeshShelf.Mesh? mesh = null;
+        BoundingBox whole = default;
+        if (model is not null) {
+            mesh = meshes.Of(model, stack.SetName);
+            whole = meshes.Of(model).Geometry.Bounds;
+            var geometry = mesh.Geometry;
+            layout = LayoutCheck.Measure(geometry.Positions, geometry.Coordinates, geometry.Indices, whole, Math.Max(width, height));
+        }
+
+        using var bake = stack.Run.Evaluate();
+        var outputs = stack.Run.Outputs;
+        var wanted = outputs.Where(static output => output.Usage is "baseColor" or "metalness").ToArray();
+        var read = bake.Read([..wanted.Select(static output => output.Image)]);
+        Bitmap? Map(string usage) {
+            var at = Array.FindIndex(wanted, output => output.Usage == usage);
+            return at < 0 ? null : read[at];
+        }
+
+        var maps = MapCheck.Measure(Map("baseColor"), Map("metalness"), layout?.Covered, layout?.Side ?? 0);
+        if (mesh is not null) {
+            var geometry = mesh.Geometry;
+            maps = [
+                ..maps.Select(measure => measure with {
+                        Spot = LayoutCheck.Located(measure.Spot, geometry.Positions, geometry.Coordinates, geometry.Indices, whole)
+                    }
+                )
+            ];
+        }
+
+        return new() { Type = IpcTypes.Ok, StackMeasured = new(width, height, layout?.Measures, maps) };
+    }
+
     /// <summary>What the viewport's draw call samples for each map, read back from the viewport's own device.</summary>
     List<StackPixels> Sampled(Session stack) {
         List<StackPixels> pixels = [];
@@ -402,6 +450,13 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
 
         /// <summary>The texture set this paints, which is a material's name on a model that has several.</summary>
         public string SetName => set;
+
+        /// <summary>The size of its maps.</summary>
+        public (int Width, int Height) Size => (document.BaseWidth, document.BaseHeight);
+
+        /// <summary>The model it is painted on, or null for a stack on no mesh.</summary>
+        public string? ModelFile =>
+            document.Model.Trim().Length == 0 ? null : Path.GetFullPath(document.Model, folder);
 
         /// <summary>
         ///     Each fill with something to show, alone and small. It is its own stack, so a stroke's plan pays nothing,

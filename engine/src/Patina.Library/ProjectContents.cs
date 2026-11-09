@@ -64,7 +64,8 @@ static class ProjectFiles {
             ],
             Bake = document.Bake ?? new(),
             Viewport = document.Viewport,
-            Paint = document.Paint
+            Paint = document.Paint,
+            Checks = document.Checks ?? new()
         };
     }
 
@@ -300,6 +301,12 @@ static class ProjectFiles {
     public static void SetViewport(string root, string path, ViewportDisplay viewport) {
         var (_, document) = Project(root, path);
         LibraryFiles.WriteProject(root, path, document with { Viewport = viewport });
+    }
+
+    /// <summary>Keeps what a project's texture sets are held to before export.</summary>
+    public static void SetChecks(string root, string path, ProjectCheckSettings checks) {
+        var (_, document) = Project(root, path);
+        LibraryFiles.WriteProject(root, path, document with { Checks = checks });
     }
 
     /// <summary>Keeps how a project's painting was left.</summary>

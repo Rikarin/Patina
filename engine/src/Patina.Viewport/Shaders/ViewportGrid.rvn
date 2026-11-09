@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package Patina.Viewport
+
+// The floor's grid and the world's axes, as lines tested against the model's depth and blended over the frame. A line
+// carries its own colour where a mesh vertex carries its normal, and its opacity where a mesh vertex carries its first
+// texture coordinate, so the lines share the mesh's vertex layout and need no layout of their own.
+
+shader ViewportGrid {
+    var viewProjection: mat4
+
+    stream var lineColour: float4
+
+    [VertexShader]
+    [Semantic("SV_Position")]
+    func Vertex(position: float3, normal: float3, texCoord: float2): float4 {
+        lineColour = float4(normal, texCoord.x)
+        return viewProjection * float4(position, 1f)
+    }
+
+    [FragmentShader]
+    [Semantic("SV_Target")]
+    func Fragment(): float4 {
+        return lineColour
+    }
+}

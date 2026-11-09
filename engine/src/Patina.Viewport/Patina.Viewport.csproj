@@ -18,6 +18,7 @@
     <EmbeddedResource Include="../../../external/Vixen/Raven/Library/PostFx/Tonemap.rvn" LogicalName="Patina.Viewport.Library.PostFx.%(Filename)%(Extension)"/>
     <EmbeddedResource Include="../../../external/Vixen/Raven/Library/PostFx/Vignette.rvn" LogicalName="Patina.Viewport.Library.PostFx.%(Filename)%(Extension)"/>
     <EmbeddedResource Include="../../../external/Vixen/Raven/Library/PostFx/Sharpen.rvn" LogicalName="Patina.Viewport.Library.PostFx.%(Filename)%(Extension)"/>
+    <EmbeddedResource Include="../../../external/Vixen/Raven/Library/PostFx/Bloom.rvn" LogicalName="Patina.Viewport.Library.PostFx.%(Filename)%(Extension)"/>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Patina.Contracts/Patina.Contracts.csproj"/>

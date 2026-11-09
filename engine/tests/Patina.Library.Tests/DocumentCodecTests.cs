@@ -298,7 +298,7 @@ public sealed class DocumentCodecTests {
     ///     mechanism, and all three come back whole, with nothing unread and no byte changed by a second save.
     /// </summary>
     [Fact]
-    public void Export_bake_and_viewport_blocks_survive_the_round_trip_together() {
+    public void Export_bake_viewport_and_checks_blocks_survive_the_round_trip_together() {
         var project = TestLibrary.Project("Crate") with {
             Export = new() {
                 Preset = "godot",
@@ -313,7 +313,18 @@ public sealed class DocumentCodecTests {
                 High = ["/art/crate_high.fbx"],
                 Options = new() { Resolution = 1024, Maps = ["ao", "id"], Occlusion = new() { Rays = 32 } }
             },
-            Viewport = new(Exposure: -1.25, View: "picture", Picture: "/bakes/ao.png", Wireframe: true, Look: null)
+            Viewport = new(
+                Exposure: -1.25,
+                View: "picture",
+                Picture: "/bakes/ao.png",
+                Wireframe: true,
+                Look: null,
+                Bloom: 0.4,
+                BackgroundColor: "#336699",
+                Grid: true,
+                PictureLane: "a"
+            ),
+            Checks = new() { MemoryBudget = 21.5, MaxSize = 2048, TexelDensity = 512, DensityTolerance = 0.1 }
         };
 
         var text = DocumentCodec.Write(project);
@@ -323,6 +334,7 @@ public sealed class DocumentCodecTests {
         Assert.Equal(text, DocumentCodec.Write(read.Document));
         Assert.Equal(Json(project.Bake), Json(read.Document.Bake));
         Assert.Equal(project.Viewport, read.Document.Viewport);
+        Assert.Equal(project.Checks, read.Document.Checks);
         var export = read.Document.Export!;
         Assert.Equal(("godot", 512, false), (export.Preset, export.Size, export.Dither));
         Assert.Equal([0.25f, 0.5f, 1f, 1f], export.Padding!.Colour);

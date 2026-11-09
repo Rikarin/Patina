@@ -16,6 +16,20 @@ sealed class ViewportPost : IDisposable {
     /// <summary>What the viewport opens with, and what the curve is scaled by: a touch under one.</summary>
     const float BaseExposure = 0.9f;
 
+    /// <summary>What the curve multiplies the frame's light by at this many stops.</summary>
+    public static float ExposureScale(float stops) => BaseExposure * MathF.Pow(2f, stops);
+
+    /// <summary>
+    ///     The gains warmth and tint make, with their luminance kept at one so neither brightens the frame. Warmth
+    ///     takes blue towards red, and tint green towards magenta. It is a grade, not a white balance to a temperature.
+    /// </summary>
+    public static Vector3 Balance(float warmth, float tint) {
+        var (w, t) = (Math.Clamp(warmth, -1f, 1f), Math.Clamp(tint, -1f, 1f));
+        var gains = new Vector3((1f + 0.2f * w) * (1f + 0.1f * t), 1f - 0.2f * t, (1f - 0.2f * w) * (1f + 0.1f * t));
+        var luminance = 0.2126f * gains.X + 0.7152f * gains.Y + 0.0722f * gains.Z;
+        return gains / luminance;
+    }
+
     /// <summary>The white point Reinhard and Hable are normalised to.</summary>
     const float WhitePoint = 4f;
 
@@ -59,11 +73,11 @@ sealed class ViewportPost : IDisposable {
             linear
         );
         var neutral = new Vector3(1f, 1f, 1f);
-        tonemap.Block.Set("exposure", data ? 1f : BaseExposure * MathF.Pow(2f, shading.Exposure))
+        tonemap.Block.Set("exposure", data ? 1f : ExposureScale(shading.Exposure))
             .Set("whitePoint", WhitePoint)
             .Set("contrast", data ? 1f : shading.Contrast)
             .Set("saturation", data ? 1f : shading.Saturation)
-            .Set("whiteBalance", neutral)
+            .Set("whiteBalance", data ? neutral : Balance(shading.Warmth, shading.Tint))
             .Set("colorFilter", neutral)
             .Set("shadowTint", neutral)
             .Set("highlightTint", neutral)
@@ -126,9 +140,16 @@ sealed class ViewportPost : IDisposable {
     ///     Draws the stages after the forward pass. Each reads the last picture and writes the other of the two the
     ///     frame has, however many run.
     /// </summary>
+    /// <param name="commands">The frame's commands.</param>
+    /// <param name="target">The frame.</param>
+    /// <param name="light">The light the curve reads, as a colour target: the forward pass's, or the bloom's over it.</param>
     /// <returns>The picture the last stage wrote, as a colour target.</returns>
-    public TextureHandle Record(ICommandList commands, ViewportTargets target) {
-        var (reading, readingView) = (target.Hdr, target.HdrView);
+    public TextureHandle Record(
+        ICommandList commands,
+        ViewportTargets target,
+        (TextureHandle Texture, TextureViewHandle View) light
+    ) {
+        var (reading, readingView) = light;
         for (var at = 0; at < planned.Count; at++) {
             var stage = planned[at];
             var (writing, writingView) =

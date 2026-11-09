@@ -380,6 +380,65 @@ public sealed class ViewportProcessTests : IDisposable {
         Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
         Assert.Null((await StateAsync(instance, deadline.Token)).Mesh);
     }
+
+    /// <summary>
+    ///     A screenshot is the picture as the viewport shows it, at a size of its own, written by the Server from a frame
+    ///     slot: no client has to be watching, and none is sent the frame. A path that is no PNG is refused first.
+    /// </summary>
+    [Fact]
+    public async Task A_screenshot_is_the_picture_at_its_own_size_with_no_client_watching() {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        deadline.CancelAfter(TimeSpan.FromSeconds(120));
+        var instance = await StartServerAsync(deadline.Token);
+        StartWorker();
+        await OpenMeshAsync(instance, deadline.Token);
+        var path = Path.Combine(folder.FullName, "shots", "view.png");
+
+        using (var refused = Authorised(HttpMethod.Post, instance, "/api/v1/viewport/screenshot")) {
+            refused.Content = JsonContent.Create(
+                new(Path.ChangeExtension(path, ".jpg")),
+                ContractsJsonContext.Default.ViewportScreenshotRequest
+            );
+            using var response = await Http.SendAsync(refused, deadline.Token);
+            Assert.Equal(System.Net.HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        }
+
+        using var request = Authorised(HttpMethod.Post, instance, "/api/v1/viewport/screenshot");
+        request.Content = JsonContent.Create(
+            new(path, 240, 150),
+            ContractsJsonContext.Default.ViewportScreenshotRequest
+        );
+        using var answer = await Http.SendAsync(request, deadline.Token);
+        if (!answer.IsSuccessStatusCode) {
+            var problem = await answer.Content.ReadAsStringAsync(deadline.Token);
+            if (problem.Contains("No Vulkan", StringComparison.Ordinal)) {
+                Gpu.Skip(problem);
+            }
+
+            Assert.Fail(problem);
+        }
+
+        var shot = (await answer.Content.ReadFromJsonAsync(
+            ContractsJsonContext.Default.ViewportScreenshot,
+            deadline.Token
+        ))!;
+        Assert.Equal((path, 240, 150), (shot.Path, shot.Width, shot.Height));
+        Vixen.Core.Imaging.TextureData picture;
+        await using (var file = File.OpenRead(path)) {
+            picture = new Vixen.Interchange.StbImageDecoder().Decode(file, ".png");
+        }
+
+        Assert.Equal((240, 150), (picture.Width, picture.Height));
+        var pixels = picture.PixelSpan();
+        var warm = 0;
+        for (var at = 0; at + 3 < pixels.Length; at += 4) {
+            warm += pixels[at] > pixels[at + 2] + 40 ? 1 : 0;
+        }
+
+        // The gold fixture is on it, and the rest is the studio's grey.
+        Assert.InRange(warm, 240, 240 * 150 / 2);
+        Assert.Equal(0, (await StateAsync(instance, deadline.Token)).Frames);
+    }
 }
 
 public sealed class RenderScaleTests {

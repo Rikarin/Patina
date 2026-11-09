@@ -52,6 +52,20 @@ sealed class ViewportShaders(ShaderCache cache) {
             [..Core, ..Read(static name => name.EndsWith("Shaders.ViewportWire.rvn", StringComparison.Ordinal))]
         );
 
+    /// <summary>The floor's grid and the world's axes.</summary>
+    public EffectData Grid() =>
+        cache.Get(
+            EffectKey.Of("ViewportGrid"),
+            [..Core, ..Read(static name => name.EndsWith("Shaders.ViewportGrid.rvn", StringComparison.Ordinal))]
+        );
+
+    /// <summary>One of Vixen's four bloom passes: 0 keeps the bright light, 1 and 2 halve, 3 adds a level back.</summary>
+    public EffectData Bloom(int mode) =>
+        cache.Get(
+            EffectKey.Of("Bloom", [new("Mode", mode.ToString(CultureInfo.InvariantCulture)), new("KarisAverage", "true")]),
+            [..PostFx, ..Read(static name => name.EndsWith("PostFx.Bloom.rvn", StringComparison.Ordinal))]
+        );
+
     /// <summary>The curve to the screen, one variant per operator, in the order Vixen numbers them.</summary>
     public EffectData Tonemap(ViewportToneMapping curve) =>
         cache.Get(

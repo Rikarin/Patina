@@ -209,6 +209,24 @@ public sealed class StackEvaluator(
         return reply.FoundLayer;
     }
 
+    /// <summary>
+    ///     What the Worker measures of a stack's set before export: its layout and the values in its maps, as numbers.
+    /// </summary>
+    /// <exception cref="IpcException">The stack does not evaluate, or its mesh does not read.</exception>
+    public async Task<StackMeasured> MeasureAsync(StackSession session, CancellationToken cancellationToken) {
+        await ReachedAsync(session, cancellationToken);
+        if (session.EvaluationError is { } failed) {
+            throw new IpcException(failed);
+        }
+
+        var connection = await ConnectionAsync(cancellationToken);
+        var reply = await connection.SendAsync(
+            new() { Type = IpcTypes.StackCheck, StackCheck = session.Id },
+            cancellationToken
+        );
+        return reply.StackMeasured ?? throw new IpcException("The Worker measured nothing.");
+    }
+
     /// <summary>Each fill of a stack alone, which the Worker keeps until the layer changes.</summary>
     public async Task<IReadOnlyList<StackLayerThumbnail>> ThumbnailsAsync(
         StackSession session,

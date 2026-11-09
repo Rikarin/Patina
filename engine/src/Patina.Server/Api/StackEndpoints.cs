@@ -136,6 +136,17 @@ static class StackEndpoints {
             Unavailable
         );
         Get(
+            "/{id}/checks",
+            GetChecks,
+            "GetStackChecks",
+            "Checks the texture set before export, against its project's budget, size limit, texel density and export "
+            + "preset, and its layout and values against what a mesh and a physical material can have. Each problem "
+            + "has a stable code and where it is.",
+            Missing,
+            Refused,
+            Unavailable
+        );
+        Get(
             "/{id}/thumbnails",
             GetThumbnails,
             "GetStackThumbnails",
@@ -357,6 +368,39 @@ static class StackEndpoints {
             // The stack would not evaluate, which is the stack's to say and not the Worker's to be missing for.
             return TypedResults.Problem(e.Message, statusCode: Refused);
         } catch (Exception e) when (e is IOException or TimeoutException) {
+            return TypedResults.Problem(e.Message, statusCode: Unavailable);
+        }
+    }
+
+    static async Task<Results<Ok<StackChecks>, ProblemHttpResult>> GetChecks(
+        string id,
+        StackSessions sessions,
+        StackEvaluator evaluator,
+        LibraryHost host,
+        CancellationToken cancellationToken
+    ) {
+        if (sessions.Find(id) is not { } session) {
+            return NoSession(id);
+        }
+
+        try {
+            var measured = await evaluator.MeasureAsync(session, cancellationToken);
+            var library = host.Library;
+            var project = StackChecking.ProjectOf(library, session.Path);
+            return TypedResults.Ok(
+                StackChecking.Judge(
+                    session.State,
+                    measured,
+                    project,
+                    library?.Describe().TexelDensity ?? 0,
+                    StackChecking.PresetOf(project, library?.RootPath)
+                )
+            );
+        } catch (IpcException e) {
+            return TypedResults.Problem(e.Message, statusCode: Refused);
+        } catch (TimeoutException e) {
+            return Refusals.Of(e, Unavailable);
+        } catch (IOException e) {
             return TypedResults.Problem(e.Message, statusCode: Unavailable);
         }
     }

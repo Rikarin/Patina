@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
 using Patina.Library;
+using Patina.Server.Stacks;
+using Patina.Server.Viewport;
 
 namespace Patina.Server.Api;
 
@@ -36,12 +38,39 @@ static class ProjectBlockEndpoints {
                 "Keeps how the viewport is to open in a project, in its project.yaml. It is kept, not shown: "
                 + "PUT /viewport/display shows it."
             );
+        library.MapPut("/project/checks", SetChecks)
+            .Described(
+                "SetProjectChecks",
+                "Keeps what a project's texture sets are held to before export in its project.yaml: a GPU memory "
+                + "budget, a size limit and a texel density, which GET /stacks/{id}/checks and the texel density view "
+                + "measure against."
+            );
         library.MapPut("/project/paint", SetPaint)
             .Described(
                 "SetProjectPaint",
                 "Keeps how a project's painting was left, in its project.yaml: the colours strokes last used, its "
                 + "palette, the brush and the symmetry, so they survive a restart and any client starts from them."
             );
+    }
+
+    static Results<Ok<ProjectContents>, ProblemHttpResult> SetChecks(
+        LibraryHost host,
+        ViewportSession viewport,
+        StackSessions stacks,
+        ProjectChecksRequest request
+    ) {
+        var kept = Keep(
+            host,
+            request.Project,
+            request.Checks.Problem(),
+            library => library.SetChecks(request.Project, request.Checks)
+        );
+        if (viewport.Worn is { } worn && stacks.Find(worn) is { } stack) {
+            var (target, resolution) = StackChecking.Density(host.Library, stack);
+            viewport.SetDensity(target, resolution);
+        }
+
+        return kept;
     }
 
     static Results<Ok<ProjectContents>, ProblemHttpResult> SetPaint(LibraryHost host, ProjectPaintRequest request) =>

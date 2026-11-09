@@ -153,6 +153,8 @@ static class PatinaApi {
         HashSet<string> before = [..stacks.All.Select(static open => open.Id)];
         string[] others = [..OtherSets(host.Library, stack).Select(path => stacks.Open(path).Id)];
         session.Wear(stack.Id, file, others, others.Except(before));
+        var (target, resolution) = StackChecking.Density(host.Library, stack);
+        session.SetDensity(target, resolution);
         foreach (var closing in session.Release([..others]).Select(stacks.Find).OfType<StackSession>()) {
             stacks.Close(closing);
         }

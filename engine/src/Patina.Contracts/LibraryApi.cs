@@ -158,6 +158,9 @@ public sealed record ProjectContents(
 
     /// <summary>How its painting was left: recent colours, palette, brush and symmetry, or null for none yet.</summary>
     public ProjectPaintSettings? Paint { get; init; }
+
+    /// <summary>What its texture sets are held to before export: a memory budget, a size limit, a texel density.</summary>
+    public ProjectCheckSettings Checks { get; init; } = new();
 }
 
 /// <summary>The body of <c>POST /api/v1/library/project/meshes</c>.</summary>

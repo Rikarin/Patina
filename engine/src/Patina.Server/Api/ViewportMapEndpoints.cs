@@ -47,6 +47,15 @@ static class ViewportMapEndpoints {
             )
             .ProducesProblem(Missing)
             .ProducesProblem(Refused);
+        api.MapPost("/viewport/screenshot", ScreenshotAsync)
+            .WithName("TakeViewportScreenshot")
+            .WithTags(Tag)
+            .WithSummary(
+                "Writes the picture the viewport shows now to a PNG on the Server's machine, with its camera, display "
+                + "settings and look, at the size asked for or the one clients asked for."
+            )
+            .ProducesProblem(Refused)
+            .ProducesProblem(Unavailable);
         api.MapPut("/viewport/isolation", Isolate)
             .WithName("SetViewportIsolation")
             .WithTags(Tag)
@@ -116,6 +125,38 @@ static class ViewportMapEndpoints {
             return TypedResults.Ok(session.State);
         } catch (FileNotFoundException e) {
             return TypedResults.Problem(e.Message, statusCode: Missing);
+        }
+    }
+
+    static async Task<Results<Ok<ViewportScreenshot>, ProblemHttpResult>> ScreenshotAsync(
+        ViewportScreenshotRequest request,
+        ViewportSession session,
+        CancellationToken cancellationToken
+    ) {
+        if (!request.Path.EndsWith(".png", StringComparison.OrdinalIgnoreCase) || !Path.IsPathFullyQualified(request.Path)) {
+            return TypedResults.Problem(
+                $"'{request.Path}' is not a full path to a .png file.",
+                statusCode: Refused
+            );
+        }
+
+        if (request is { Width: < 2 } or { Height: < 2 }
+            or { Width: > FrameMemory.MaxWidth }
+            or { Height: > FrameMemory.MaxHeight }) {
+            return TypedResults.Problem(
+                $"A screenshot is 2 to {FrameMemory.MaxWidth} pixels across and 2 to {FrameMemory.MaxHeight} down.",
+                statusCode: Refused
+            );
+        }
+
+        try {
+            return TypedResults.Ok(await session.ScreenshotAsync(request, cancellationToken));
+        } catch (IpcException e) {
+            return TypedResults.Problem(e.Message, statusCode: Refused);
+        } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
+            return TypedResults.Problem(e.Message, statusCode: Unavailable);
+        } catch (TimeoutException e) {
+            return Refusals.Of(e, Unavailable);
         }
     }
 

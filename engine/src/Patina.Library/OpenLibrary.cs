@@ -293,6 +293,15 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
+    /// <summary>Keeps what a project's texture sets are held to before export: budgets, a size limit, a density.</summary>
+    /// <exception cref="FileNotFoundException">The project is not there.</exception>
+    public void SetChecks(string path, ProjectCheckSettings checks) {
+        lock (createGate) {
+            ProjectFiles.SetChecks(RootPath, path, checks);
+            Interlocked.Increment(ref unscannedWrites);
+        }
+    }
+
     /// <summary>Keeps how a project's painting was left: its colours, its brush and its symmetry.</summary>
     /// <exception cref="FileNotFoundException">The project is not there.</exception>
     public void SetPaint(string path, ProjectPaintSettings paint) {

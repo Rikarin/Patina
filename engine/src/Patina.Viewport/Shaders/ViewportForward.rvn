@@ -27,11 +27,21 @@ shader ViewportForward {
     [PerFrame] var environmentSampler: Sampler
 
     // What is shown, in `ViewportView`'s order: 0 lit, 1 clay, 2 unlit, then the stored values from 3 base colour to 10
-    // the picture. A uniform rather than a permutation, because a branch every pixel takes the same way costs nothing and
-    // eleven pipelines would.
+    // the picture, and 11 the texel density. A uniform rather than a permutation, because a branch every pixel takes the
+    // same way costs nothing and twelve pipelines would.
     [PerFrame] var view: float
     [PerFrame] var picture: Texture2D
     [PerFrame] var pictureSampler: Sampler
+
+    // Which of the picture's lanes is shown: 0 its colour, then 1 red, 2 green, 3 blue and 4 alpha, each as a grey. The
+    // scale multiplies the number before it is shown, so a height in metres or a position can be brought into view.
+    [PerFrame] var pictureLane: float
+    [PerFrame] var pictureScale: float
+
+    // The texel density a project asks for, in texels per unit of the model, or zero for none; and the side of a map
+    // where a material wears none of its own to measure.
+    [PerFrame] var densityTarget: float
+    [PerFrame] var densityResolution: float
 
     var baseColor: float3
     var metallic: float
@@ -39,6 +49,9 @@ shader ViewportForward {
     var normalScale: float
     var usesNormalMap: float
     var normalGreen: float
+
+    // The side of the map this material is painted at, in texels, or zero where it wears none.
+    var mapSize: float
     var baseColorMap: Texture2D
     var normalMap: Texture2D
     var roughnessMap: Texture2D
@@ -102,14 +115,15 @@ shader ViewportForward {
             perceptual = 0.6f
         }
 
-        val occlusion = occlusionMap.Sample(mapSampler, surfaceUv).r
+        val occlusion = saturate(occlusionMap.Sample(mapSampler, surfaceUv).r)
         val f0 = Brdf.F0FromMetalness(albedo, metal, 0.04f)
         val diffuseColor = albedo * (1f - metal)
 
         val emitted = view > 0.5f ? float3(0f, 0f, 0f) : emissiveMap.Sample(mapSampler, surfaceUv).rgb
+        val geometric = Math.SafeNormalize(worldNormal)
 
         return float4(
-            Direct(n, v, perceptual, f0, diffuseColor) * Sunlit(Math.SafeNormalize(worldNormal)) + Ambient(n, v, perceptual, f0, diffuseColor) * occlusion + emitted,
+            Direct(n, v, perceptual, f0, diffuseColor, occlusion) * Sunlit(geometric) + Ambient(n, v, geometric, perceptual, f0, diffuseColor, occlusion) + emitted,
             1f
         )
     }
@@ -152,14 +166,57 @@ shader ViewportForward {
             return Stored(float3(opacity))
         }
 
-        return Stored(picture.Sample(pictureSampler, surfaceUv).rgb)
+        if (view < 10.5f) {
+            return Stored(Lane(picture.Sample(pictureSampler, surfaceUv)) * pictureScale)
+        }
+
+        return Density()
     }
 
     func Stored(value: float3): float3 {
         return ColorSpaces.SrgbToLinear(saturate(value))
     }
 
-    func Direct(n: float3, v: float3, perceptual: float, f0: float3, diffuseColor: float3): float3 {
+    // One lane of the picture as a grey, or its colour.
+    func Lane(texel: float4): float3 {
+        if (pictureLane < 0.5f) {
+            return texel.rgb
+        }
+
+        if (pictureLane < 1.5f) {
+            return float3(texel.r)
+        }
+
+        if (pictureLane < 2.5f) {
+            return float3(texel.g)
+        }
+
+        return pictureLane < 3.5f ? float3(texel.b) : float3(texel.a)
+    }
+
+    // Texels per unit of the model, from how much of the map and how much of the surface one pixel covers: both are
+    // interpolated across a triangle in the same way, so the ratio is the triangle's own. Green is the project's
+    // density, blue half of it or less and red twice or more, under a checker of 32 texels that shows stretch.
+    func Density(): float3 {
+        val du = ddx(surfaceUv)
+        val dv = ddy(surfaceUv)
+        val mapArea = abs(du.x * dv.y - du.y * dv.x)
+        val surfaceArea = length(cross(ddx(worldPosition), ddy(worldPosition)))
+        val side = mapSize > 0.5f ? mapSize : densityResolution
+        val density = side * sqrt(mapArea / max(surfaceArea, 1e-30f))
+        val ratio = densityTarget > 0f ? density / densityTarget : 1f
+        val t = clamp(log2(max(ratio, 1e-6f)) * 0.5f, -1f, 1f)
+        val even = float3(0.25f, 0.78f, 0.32f)
+        val colour = t < 0f ? lerp(even, float3(0.22f, 0.42f, 1f), -t) : lerp(even, float3(1f, 0.26f, 0.2f), t)
+        val cell = floor(surfaceUv * (side / 32f))
+        val checker = frac((cell.x + cell.y) * 0.5f) < 0.25f ? 1f : 0.82f
+        return ColorSpaces.SrgbToLinear(colour * checker)
+    }
+
+    // The light, and what the occlusion map says of it: a crevice sees the light through a narrower opening, so it is
+    // lit only when the light comes from well above it. Filament's micro-shadowing, which leaves a surface the map calls
+    // open lit as before and takes a closed one towards the cube of the cosine.
+    func Direct(n: float3, v: float3, perceptual: float, f0: float3, diffuseColor: float3, occlusion: float): float3 {
         val l = Math.SafeNormalize(lightDirection)
         val angles = ShadingAngles.Of(n, v, l)
         val alpha = Brdf.ClampAlpha(Brdf.Alpha(perceptual))
@@ -170,7 +227,10 @@ shader ViewportForward {
         val specular = fresnel * (d * visibility)
         val diffuse = diffuseColor * Const.InvPi
 
-        return (diffuse + specular) * lightColor * angles.NdotL
+        val aperture = 1f / sqrt(1f - min(occlusion, 0.9999f))
+        val opening = saturate(angles.NdotL * aperture)
+
+        return (diffuse + specular) * lightColor * angles.NdotL * (opening * opening)
     }
 
     // The environment turns with the light, so a world direction reads the cube turned back.
@@ -185,25 +245,43 @@ shader ViewportForward {
         return shadowMap.SampleLevel(shadowSampler, uv, 0f).r > depth + 0.001f ? 0f : 1f
     }
 
-    // How much of the light reaches here, from four taps of the light's depth. A point pushed out along its normal
-    // stops a surface shadowing itself.
+    // How much of the light reaches here, from twelve taps of the light's depth on two rings, the outer one turned
+    // against the inner: an edge about four texels wide rather than the stair a few taps leave. A point pushed out along
+    // its normal stops a surface shadowing itself.
     func Sunlit(n: float3): float {
         val clip = lightViewProjection * float4(worldPosition + n * shadowOffset, 1f)
         val uv = float2(clip.x, -clip.y) * 0.5f + float2(0.5f, 0.5f)
-        val step = shadowTexel * 0.75f
-        var lit = Lit(uv + float2(-step, -step), clip.z)
-        lit += Lit(uv + float2(step, -step), clip.z)
-        lit += Lit(uv + float2(-step, step), clip.z)
-        lit += Lit(uv + float2(step, step), clip.z)
-        return 1f - (1f - lit * 0.25f) * shadowStrength
+        val inner = shadowTexel * 0.9f
+        val outer = shadowTexel * 1.9f
+        val slant = shadowTexel * 0.85f
+        var lit = Lit(uv + float2(-inner, -inner), clip.z)
+        lit += Lit(uv + float2(inner, -inner), clip.z)
+        lit += Lit(uv + float2(-inner, inner), clip.z)
+        lit += Lit(uv + float2(inner, inner), clip.z)
+        lit += Lit(uv + float2(outer, 0f), clip.z)
+        lit += Lit(uv + float2(-outer, 0f), clip.z)
+        lit += Lit(uv + float2(0f, outer), clip.z)
+        lit += Lit(uv + float2(0f, -outer), clip.z)
+        lit += Lit(uv + float2(slant, slant * 2f), clip.z)
+        lit += Lit(uv + float2(-slant, -slant * 2f), clip.z)
+        lit += Lit(uv + float2(slant * 2f, -slant), clip.z)
+        lit += Lit(uv + float2(-slant * 2f, slant), clip.z)
+        return 1f - (1f - lit / 12f) * shadowStrength
     }
 
-    func Ambient(n: float3, v: float3, perceptual: float, f0: float3, diffuseColor: float3): float3 {
-        val dfg = Ibl.EnvironmentDfg(saturate(dot(n, v)), perceptual)
+    // The environment's light. Occlusion darkens the diffuse as the map says, and the reflection as Lagarde's fit of the
+    // cone a glossy lobe leaves through the opening says, so a smooth surface keeps more of its reflection than of its
+    // diffuse. A reflection a normal map turns below the surface is taken away, since the surface would hide it.
+    func Ambient(n: float3, v: float3, geometric: float3, perceptual: float, f0: float3, diffuseColor: float3, occlusion: float): float3 {
+        val NdotV = saturate(dot(n, v))
+        val dfg = Ibl.EnvironmentDfg(NdotV, perceptual)
         val lod = Ibl.SpecularLod(perceptual, environmentMipCount)
-        val prefiltered = environment.SampleLevel(environmentSampler, Turned(reflect(-v, n)), lod).rgb
+        val reflected = reflect(-v, n)
+        val prefiltered = environment.SampleLevel(environmentSampler, Turned(reflected), lod).rgb
         val irradiance = Ibl.IrradianceSh9(Turned(n), environmentSh)
+        val glossy = saturate(pow(NdotV + occlusion, exp2(-16f * Brdf.Alpha(perceptual) - 1f)) - 1f + occlusion)
+        val horizon = SpecularModels.HorizonOcclusion(reflected, geometric)
 
-        return Ibl.Specular(prefiltered, f0, dfg, 1f) + Ibl.Diffuse(irradiance, diffuseColor, 1f)
+        return Ibl.Specular(prefiltered, f0, dfg, glossy * horizon) + Ibl.Diffuse(irradiance, diffuseColor, occlusion)
     }
 }

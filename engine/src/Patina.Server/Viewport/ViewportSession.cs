@@ -48,6 +48,9 @@ public sealed class ViewportSession(
 
     readonly Lock changing = new();
     readonly SemaphoreSlim dirty = new(0, 1);
+
+    /// <summary>One draw at a time: the loop's frames and a screenshot both tell the Worker what it has to know.</summary>
+    readonly SemaphoreSlim drawing = new(1, 1);
     readonly List<IFrameSubscriber> subscribers = [];
     readonly RenderScale scale = new();
     readonly string framesPath = options.Value.Worker.FramesPath;
@@ -102,6 +105,15 @@ public sealed class ViewportSession(
     public bool Wears(string session) {
         lock (changing) {
             return stack == session;
+        }
+    }
+
+    /// <summary>The stack the viewport wears in front, or null.</summary>
+    public string? Worn {
+        get {
+            lock (changing) {
+                return stack;
+            }
         }
     }
 
@@ -219,8 +231,27 @@ public sealed class ViewportSession(
     public void SetDisplay(ViewportDisplaySet settings) {
         ArgumentNullException.ThrowIfNull(settings);
         lock (changing) {
-            display = settings with { Isolation = display.Isolation };
+            display = settings with {
+                Isolation = display.Isolation, TexelDensity = display.TexelDensity, Resolution = display.Resolution
+            };
             mapsError = null;
+            revision++;
+        }
+
+        Wake();
+    }
+
+    /// <summary>
+    ///     What the texel density view measures against: the project's density, and the side of a map whose own size
+    ///     cannot be read. A project's, so it is set where a stack is worn and where a project's checks change.
+    /// </summary>
+    public void SetDensity(double target, int resolution) {
+        lock (changing) {
+            if (display.TexelDensity == target && display.Resolution == resolution) {
+                return;
+            }
+
+            display = display with { TexelDensity = target, Resolution = resolution };
             revision++;
         }
 
@@ -301,6 +332,89 @@ public sealed class ViewportSession(
 
     /// <summary>Tells the Worker whatever it does not yet know, then renders. A new Worker knows nothing.</summary>
     async Task DrawAsync(Work work, CancellationToken cancellationToken) {
+        await drawing.WaitAsync(cancellationToken);
+        try {
+            var connection = await TellAsync(work, cancellationToken);
+            await RenderAsync(connection, work, cancellationToken);
+        } finally {
+            drawing.Release();
+        }
+    }
+
+    /// <summary>
+    ///     Writes the picture the viewport shows now to a PNG, at a size of its own: the Worker is told what it does not
+    ///     know, renders into a frame slot no viewer is offered, and the Server writes the slot's pixels to the file.
+    /// </summary>
+    /// <exception cref="IpcException">No mesh is open, or the Worker cannot draw it.</exception>
+    /// <exception cref="IOException">The Worker went, or the file cannot be written.</exception>
+    public async Task<ViewportScreenshot> ScreenshotAsync(
+        ViewportScreenshotRequest request,
+        CancellationToken cancellationToken
+    ) {
+        ArgumentNullException.ThrowIfNull(request);
+        Work work;
+        lock (changing) {
+            if (mesh is null) {
+                throw new IpcException("Open a mesh first: there is nothing to take a picture of.");
+            }
+
+            work = new(
+                mesh,
+                new(stack, also, painted),
+                maps,
+                display,
+                Lens(camera, display.Display),
+                (request.Width ?? width, request.Height ?? height, 1d),
+                false,
+                lastInput
+            );
+        }
+
+        var (across, down) = (Math.Clamp(work.Size.Width, 2, FrameMemory.MaxWidth),
+            Math.Clamp(work.Size.Height, 2, FrameMemory.MaxHeight));
+        using (var waiting = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)) {
+            waiting.CancelAfter(PickPatience);
+            try {
+                await worker.ConnectionAsync(waiting.Token);
+            } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+                throw new RendererMissingException();
+            }
+        }
+
+        await drawing.WaitAsync(cancellationToken);
+        try {
+            var connection = await TellAsync(work, cancellationToken);
+            using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            patience.CancelAfter(SlotPatience);
+            var slot = await RentAsync(patience.Token, cancellationToken);
+            try {
+                var reply = await connection.SendAsync(
+                    new() {
+                        Type = IpcTypes.ViewportRender,
+                        Render = new(across, down, framesPath, slot.Offset, FrameMemory.SlotBytes)
+                    },
+                    cancellationToken
+                );
+                var frame = reply.Frame!;
+                var png = Vixen.Core.Imaging.PngCodec.Encode8(
+                    frame.Width,
+                    frame.Height,
+                    4,
+                    slot.GetSpan()[..(frame.Width * frame.Height * 4)]
+                );
+                Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(request.Path))!);
+                await File.WriteAllBytesAsync(request.Path, png, cancellationToken);
+                return new(request.Path, frame.Width, frame.Height);
+            } finally {
+                slot.Release();
+            }
+        } finally {
+            drawing.Release();
+        }
+    }
+
+    /// <summary>Tells the Worker the mesh, maps, settings, stacks and camera it does not yet know.</summary>
+    async Task<IpcConnection> TellAsync(Work work, CancellationToken cancellationToken) {
         var connection = await worker.ConnectionAsync(cancellationToken);
         if (!ReferenceEquals(connection, told) || work.Mesh != toldMesh) {
             (toldMesh, toldCamera, toldMaps, toldStack, toldDisplay) = (null, null, null, null, null);
@@ -333,7 +447,7 @@ public sealed class ViewportSession(
             toldCamera = work.Camera;
         }
 
-        await RenderAsync(connection, work, cancellationToken);
+        return connection;
     }
 
     /// <summary>What is under a position on the picture, through the Worker.</summary>
@@ -527,6 +641,7 @@ public sealed class ViewportSession(
     public override void Dispose() {
         base.Dispose();
         dirty.Dispose();
+        drawing.Dispose();
     }
 
     void Wake() {

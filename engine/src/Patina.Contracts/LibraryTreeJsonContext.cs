@@ -45,6 +45,8 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(BrushPresetInfo), TypeInfoPropertyName = nameof(BrushPresetInfo))]
 [JsonSerializable(typeof(BrushPresetList), TypeInfoPropertyName = nameof(BrushPresetList))]
 [JsonSerializable(typeof(ProjectPaintSettings))]
+[JsonSerializable(typeof(ProjectCheckSettings))]
+[JsonSerializable(typeof(ProjectChecksRequest))]
 [JsonSerializable(typeof(ProjectPaintRequest))]
 [JsonSerializable(typeof(BrushPreset))]
 [JsonSerializable(typeof(BrushPresetCreateRequest))]

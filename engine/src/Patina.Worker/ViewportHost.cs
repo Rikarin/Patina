@@ -158,13 +158,31 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
             }
         }
 
-        renderer.Shading = Shading(settings);
+        renderer.Shading = Shading(settings) with {
+            DensityTarget = (float)told.TexelDensity, DensityResolution = Math.Max(1, told.Resolution)
+        };
         return IpcMessage.Ok(request.Id);
+    }
+
+    /// <summary>An sRGB <c>#rrggbb</c> as the linear light the frame is cleared to, or black for anything else.</summary>
+    static Vector3 Linear(string colour) {
+        var (r, g, b) = ViewportDisplay.Colour(colour) ?? (0, 0, 0);
+        return new(Decode(r), Decode(g), Decode(b));
+
+        static float Decode(double c) =>
+            (float)(c <= 0.04045 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4));
     }
 
     /// <summary>The renderer's settings from the wire's: names become numbers, in the order the lists give.</summary>
     static ViewportShading Shading(ViewportDisplay settings) =>
         new() {
+            Bloom = (float)settings.Bloom,
+            Warmth = (float)settings.Warmth,
+            Tint = (float)settings.Tint,
+            BackgroundColour = Linear(settings.BackgroundColor),
+            Grid = settings.Grid,
+            PictureLane = Math.Max(0, IndexOf(ViewportLanes.All, settings.PictureLane)),
+            PictureScale = (float)settings.PictureScale,
             Exposure = (float)settings.Exposure,
             LightRotation = (float)settings.LightRotation,
             EnvironmentRotation = (float)settings.EnvironmentRotation,
