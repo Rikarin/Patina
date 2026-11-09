@@ -55,8 +55,8 @@ public sealed class StackSessions(ServerIdentity identity, StackClips clips) : I
     }
 
     /// <summary>
-    ///     Another texture set of the model, by name: a stack beside this one, as its open session has it or as its file
-    ///     says. Sets of one model are documents of one project, which sit together.
+    ///     Another texture set of the model, by name: a stack beside this one, as its open session has it or as its
+    ///     file says. Sets of one model are documents of one project, which sit together.
     /// </summary>
     TextureSetAsset? Sibling(StackSession asking, string name) {
         foreach (var open in table.All) {
@@ -69,18 +69,13 @@ public sealed class StackSessions(ServerIdentity identity, StackClips clips) : I
             return null;
         }
 
-        foreach (var file in Directory.EnumerateFiles(folder, $"*{StackDocuments.Extension}")) {
-            if (string.Equals(file, asking.Path, StringComparison.Ordinal)
-                || table.All.Any(open => string.Equals(open.Path, file, StringComparison.Ordinal))) {
-                continue;
-            }
-
-            if (Read(file) is { } set && set.Name == name) {
-                return set;
-            }
-        }
-
-        return null;
+        HashSet<string> held = new(table.All.Select(static session => session.Path), StringComparer.Ordinal) {
+            asking.Path
+        };
+        return Directory.EnumerateFiles(folder, $"*{StackDocuments.Extension}")
+            .Where(file => !held.Contains(file))
+            .Select(Read)
+            .FirstOrDefault(set => set?.Name == name);
     }
 
     /// <summary>A stack's set from its file, kept until the file changes.</summary>
@@ -106,12 +101,12 @@ public sealed class StackSessions(ServerIdentity identity, StackClips clips) : I
         return set;
     }
 
-    /// <summary>An edit of one set reaches every instance of its layers in another, open in a session of its own.</summary>
+    /// <summary>
+    ///     An edit of one set reaches every instance of its layers in another, open in a session of its own.
+    /// </summary>
     void CatchUp(StackSession changed) {
-        foreach (var other in table.All) {
-            if (other != changed && other.ReadsOtherSets) {
-                other.Evaluate();
-            }
+        foreach (var other in table.All.Where(other => other != changed && other.ReadsOtherSets)) {
+            other.Evaluate();
         }
     }
 

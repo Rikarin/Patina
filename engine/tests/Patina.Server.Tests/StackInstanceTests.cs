@@ -5,17 +5,22 @@ using Vixen.Texturing.Layers;
 
 namespace Patina.Server.Tests;
 
-/// <summary>Instance layers (#108) as commands: what they name, what they refuse, and what they say in History.</summary>
+/// <summary>
+///     Instance layers (#108) as commands: what they name, what they refuse, and what they say in History.
+/// </summary>
 public sealed class StackInstanceTests {
     [Fact]
     public void An_instance_names_its_source_and_goes_just_above_where_it_is_asked() {
         var editor = new StackEditor("/tmp/Instances.vxlayers", Sample());
 
-        editor.Apply(new([new StackAddInstance(new("base"), Above: "base")]));
+        editor.Apply(new([new StackAddInstance(new("base"), "base")]));
 
         var instance = editor.Set.Layers[1];
-        Assert.Equal((LayerKind.Instance, "Base Instance", "base"), (instance.Kind, instance.Name, instance.Instance.Layer));
-        Assert.Equal(new StackInstanceRef("base"), StackDocuments.Layers(editor.Set.Layers)[1].Instance);
+        Assert.Equal(
+            (LayerKind.Instance, "Base Instance", "base"),
+            (instance.Kind, instance.Name, instance.Instance.Layer)
+        );
+        Assert.Equal(new("base"), StackDocuments.Layers(editor.Set.Layers)[1].Instance);
         Assert.Equal("Add instance", editor.History.UndoLabel);
         Assert.Equal("Add instance", editor.Undo());
         Assert.Equal(2, editor.Set.Layers.Count);
@@ -42,7 +47,10 @@ public sealed class StackInstanceTests {
         Assert.Equal("base", Layer(editor, first).Instance.Layer);
 
         editor.Apply(new([new StackSetInstance(second, new("paint"))]));
-        Assert.Equal(("paint", "Change instance source"), (Layer(editor, second).Instance.Layer, editor.History.UndoLabel));
+        Assert.Equal(
+            ("paint", "Change instance source"),
+            (Layer(editor, second).Instance.Layer, editor.History.UndoLabel)
+        );
     }
 
     [Fact]
@@ -62,7 +70,10 @@ public sealed class StackInstanceTests {
         Assert.Equal(("Lid", "rust", "Rust Instance"), (instance.Instance.Set, instance.Instance.Layer, instance.Name));
         Assert.Equal(
             Refusals.InstanceSourceMissing,
-            Assert.Throws<StackEditRefusedException>(() => editor.Apply(new([new StackAddInstance(new("rust", "Door"))])))
+            Assert.Throws<StackEditRefusedException>(() => editor.Apply(
+                        new([new StackAddInstance(new("rust", "Door"))])
+                    )
+                )
                 .Code
         );
     }
@@ -89,9 +100,18 @@ public sealed class StackInstanceTests {
             Assert.False(lid.Pending()!.Forced);
             Assert.Contains("name: Body", lid.Pending()!.Document, StringComparison.Ordinal);
 
-            body.Apply(new([new StackSetLayer("base", Values: new Dictionary<string, IReadOnlyList<float>> {
-                ["baseColor"] = [0.25f, 0.125f, 0.0625f, 1f]
-            })]));
+            body.Apply(
+                new(
+                    [
+                        new StackSetLayer(
+                            "base",
+                            Values: new Dictionary<string, IReadOnlyList<float>> {
+                                ["baseColor"] = [0.25f, 0.125f, 0.0625f, 1f]
+                            }
+                        )
+                    ]
+                )
+            );
 
             var work = lid.Pending()!;
             Assert.True(work.Forced);

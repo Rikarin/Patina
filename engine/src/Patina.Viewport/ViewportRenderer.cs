@@ -40,8 +40,8 @@ public sealed class ViewportRenderer : IDisposable {
     TextureViewHandle environmentView;
     TextureViewHandle pictureView;
     ViewportMapFile? picture;
-    HashSet<string> isolatedParts = new(StringComparer.Ordinal);
-    HashSet<string> isolatedMaterials = new(StringComparer.Ordinal);
+    string[] isolatedParts = [];
+    string[] isolatedMaterials = [];
     readonly ViewportShadows shadows;
     readonly ViewportPost post;
     readonly BufferHandle frameConstants;
@@ -304,22 +304,13 @@ public sealed class ViewportRenderer : IDisposable {
     ///     Draws only these named meshes and materials, and no shadow from the rest (#136). Both empty draws the whole
     ///     model; a name the model does not have draws nothing of its own.
     /// </summary>
-    public void Isolate(IReadOnlyCollection<string> parts, IReadOnlyCollection<string> materials) {
+    public void Isolate(IReadOnlyList<string> parts, IReadOnlyList<string> materials) {
         isolatedParts = [..parts];
         isolatedMaterials = [..materials];
     }
 
     /// <summary>The parts a frame draws: all of them, or those the isolation keeps.</summary>
-    ViewportPart[] Shown(ViewportMesh mesh) =>
-        isolatedParts.Count == 0 && isolatedMaterials.Count == 0
-            ? mesh.Parts
-            : [
-                ..mesh.Parts.Where(part => isolatedParts.Contains(part.Name)
-                    || (part.Material >= 0
-                        && part.Material < mesh.Materials.Length
-                        && isolatedMaterials.Contains(mesh.Materials[part.Material].Name))
-                )
-            ];
+    ViewportPart[] Shown(ViewportMesh mesh) => mesh.Shown(isolatedParts, isolatedMaterials);
 
     /// <summary>Renders one frame and copies it into <paramref name="destination" />.</summary>
     public void Render(OrbitCamera camera, int width, int height, Span<byte> destination) {

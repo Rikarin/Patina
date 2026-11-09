@@ -75,9 +75,6 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(StackExportRequest))]
 [JsonSerializable(typeof(StackMeshMaskRequest))]
 [JsonSerializable(typeof(StackMeshParts))]
-[JsonSerializable(typeof(StackFindRequest))]
-[JsonSerializable(typeof(StackFound))]
-[JsonSerializable(typeof(ViewportIsolation))]
 [JsonSerializable(typeof(BuildManifest))]
 [JsonSerializable(typeof(BuildLogLine))]
 [JsonSerializable(typeof(ExportManifest))]
@@ -91,4 +88,7 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(LibraryReport))]
 [JsonSerializable(typeof(ProjectReportPage))]
 [JsonSerializable(typeof(GraphNodeMatches))]
+[JsonSerializable(typeof(StackFindRequest), TypeInfoPropertyName = nameof(StackFindRequest))]
+[JsonSerializable(typeof(StackFound), TypeInfoPropertyName = nameof(StackFound))]
+[JsonSerializable(typeof(ViewportIsolation), TypeInfoPropertyName = nameof(ViewportIsolation))]
 public sealed partial class ContractsJsonContext : JsonSerializerContext;

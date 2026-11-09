@@ -6,7 +6,9 @@ using Vixen.Texturing.Painting;
 
 namespace Patina.Server.Tests;
 
-/// <summary>A layer's mask as a stack of its own (#109): entries over the base, each with its own blend and canvas.</summary>
+/// <summary>
+///     A layer's mask as a stack of its own (#109): entries over the base, each with its own blend and canvas.
+/// </summary>
 public sealed class StackMaskStackTests {
     static readonly IReadOnlyList<float> White = [1f, 1f, 1f, 1f];
 
@@ -49,9 +51,7 @@ public sealed class StackMaskStackTests {
     public void Entries_move_change_and_go_counted_from_the_bottom_and_the_mesh_limit_stays_on_top() {
         var editor = Generated();
         editor.Apply(new([new StackSetLayer("paint", MeshMask: new(["Lid"], "lid.png"))]));
-        editor.Apply(
-            new([new StackAddMaskLayer("paint", "Constant"), new StackAddMaskLayer("paint", "Bake", Index: 0)])
-        );
+        editor.Apply(new([new StackAddMaskLayer("paint", "Constant"), new StackAddMaskLayer("paint", "Bake", 0)]));
 
         Assert.Equal(["Bake", "Constant"], Sources(editor));
         Assert.True(StackDocuments.KeepsToMeshes(Layer(editor).Mask.Layers[^1]));
@@ -99,13 +99,19 @@ public sealed class StackMaskStackTests {
         Assert.Empty(editor.Standing);
     }
 
-    /// <summary>A mesh-map mask and a mask entry read the lane they are given, and the vocabulary offers the lanes (#110).</summary>
+    /// <summary>
+    ///     A mesh-map mask and a mask entry read the lane they are given, and the vocabulary offers the lanes (#110).
+    /// </summary>
     [Fact]
     public void A_mask_and_its_entries_read_the_lane_they_are_given() {
         var editor = Generated();
 
         editor.Apply(new([new StackSetLayer("paint", Mask: new("Bake", Map: "world", Lane: "Green"))]));
-        editor.Apply(new([new StackAddMaskLayer("paint", "Bake"), new StackSetMaskLayer("paint", 0, Map: "normal", Lane: "Blue")]));
+        editor.Apply(
+            new(
+                [new StackAddMaskLayer("paint", "Bake"), new StackSetMaskLayer("paint", 0, Map: "normal", Lane: "Blue")]
+            )
+        );
 
         Assert.Equal(LayerMaskLane.Green, Layer(editor).Mask.Lane);
         Assert.Equal(LayerMaskLane.Blue, Layer(editor).Mask.Layers[0].Lane);

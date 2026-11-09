@@ -104,7 +104,9 @@ public static class IpcTypes {
     /// <summary>Renders each fill of a stack alone, small.</summary>
     public const string StackThumbnails = "stack.thumbnails";
 
-    /// <summary>Says which layer is on top at a place on a stack's map, from how much each layer covers there.</summary>
+    /// <summary>
+    ///     Says which layer is on top at a place on a stack's map, from how much each layer covers there.
+    /// </summary>
     public const string StackFind = "stack.find";
 
     /// <summary>Draws a material small for the shelf, from a copy of its document that nothing keeps.</summary>

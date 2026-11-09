@@ -133,7 +133,8 @@ public sealed class ViewportRendererTests : IDisposable {
 
         renderer.Isolate([], ["no such material"]);
         var none = Render(renderer, camera);
-        var gold = Enumerable.Range(0, Width * Height).Count(i => none[i * 4] > none[i * 4 + 2] + 40 && none[i * 4 + 1] > 80);
+        var gold = Enumerable.Range(0, Width * Height)
+            .Count(i => none[i * 4] > none[i * 4 + 2] + 40 && none[i * 4 + 1] > 80);
         Assert.Equal(0, gold);
         Assert.NotEqual(whole, none);
 

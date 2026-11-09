@@ -127,7 +127,7 @@ public sealed class StackEditor : ILayerStackDocument {
         }
 
         EndDrag();
-        var step = new UndoStep(nextStep + 1, batch.Label ?? Label(batch.Commands[0]));
+        var step = new UndoStep(nextStep + 1, batch.Label ?? StackLayerEdits.Label(batch.Commands[0]));
         List<IAuthoringCommand> applied = [];
         try {
             foreach (var command in batch.Commands) {
@@ -200,33 +200,6 @@ public sealed class StackEditor : ILayerStackDocument {
         colour.Count == 4
             ? PaintImage.Pack(colour[0], colour[1], colour[2], colour[3])
             : throw new StackEditRefusedException("A colour is red, green, blue and alpha.");
-
-    static string Label(StackCommand command) =>
-        command switch {
-            StackAddLayer add => $"Add {add.Name}",
-            StackRemoveLayer => "Remove layer",
-            StackNestLayer => "Move layer",
-            StackMoveLayer => "Move layer",
-            StackSetLayer => "Change layer",
-            StackSetModel => "Bind mesh",
-            StackAddChannel add => $"Add {add.Usage}",
-            StackSetSeed => "Change seed",
-            StackSetHeightNormal => "Height to normal",
-            StackStroke => "Stroke",
-            StackDuplicateLayers => "Duplicate layers",
-            StackPasteLayers { AsInstances: true } => "Paste as instances",
-            StackPasteLayers => "Paste layers",
-            StackFlattenLayer { Layer: null } => "Flatten stack",
-            StackFlattenLayer => "Flatten folder",
-            StackUnflattenLayer => "Unflatten folder",
-            StackAddMaskLayer add => $"Add {Terms.InStack([add.Source])[0].Label} to mask",
-            StackAddInstance => "Add instance",
-            StackSetInstance => "Change instance source",
-            StackRemoveMaskLayer => "Remove mask layer",
-            StackMoveMaskLayer => "Move mask layer",
-            StackSetMaskLayer => "Change mask layer",
-            _ => "Edit"
-        };
 
     /// <summary>The next part of a drag, which adds to the step it started.</summary>
     IReadOnlyList<StackPainted>? Extend(StackCommandBatch batch) {
@@ -335,17 +308,12 @@ public sealed class StackEditor : ILayerStackDocument {
             case StackUnflattenLayer unflatten:
                 Unflatten(unflatten.Layer, set, Do);
                 break;
-            case StackAddInstance instance:
-                Do(AddInstance(instance.Source, instance.Above, set).Command);
-                break;
-            case StackSetInstance repoint:
-                Do(Repointed(repoint, set));
-                break;
-            case StackAddMaskLayer or StackRemoveMaskLayer or StackMoveMaskLayer or StackSetMaskLayer:
-                Do(MaskLayers(command, set));
-                break;
             default:
-                throw new StackEditRefusedException($"Unknown command '{command.GetType().Name}'.");
+                if (!StackLayerEdits.Run(this, command, set, Do)) {
+                    throw new StackEditRefusedException($"Unknown command '{command.GetType().Name}'.");
+                }
+
+                break;
         }
     }
 
@@ -398,7 +366,7 @@ public sealed class StackEditor : ILayerStackDocument {
         Set.Channels.ToDictionary(static channel => channel.Usage, static channel => channel.Default.ToArray());
 
     /// <summary>A name no layer has, so that two rows can be told apart.</summary>
-    string FreeName(string name) {
+    internal string FreeName(string name) {
         HashSet<string> taken = new(Names(Set.Layers), StringComparer.Ordinal);
         if (!taken.Contains(name)) {
             return name;
@@ -416,7 +384,7 @@ public sealed class StackEditor : ILayerStackDocument {
         layers.SelectMany(static layer => Names(layer.Children).Prepend(layer.Name));
 
     /// <summary>The slot at the top of a group, or of the stack.</summary>
-    LayerSlot Top(string set, string? parent) {
+    internal LayerSlot Top(string set, string? parent) {
         if (parent is null) {
             return new(set, null, Set.Layers.Count);
         }
@@ -441,7 +409,7 @@ public sealed class StackEditor : ILayerStackDocument {
     static Dictionary<string, float[]>? Copied(IReadOnlyDictionary<string, IReadOnlyList<float>>? numbers) =>
         numbers?.ToDictionary(static value => value.Key, static value => value.Value.ToArray());
 
-    static Dictionary<string, TValue> Merged<TValue>(
+    internal static Dictionary<string, TValue> Merged<TValue>(
         Dictionary<string, TValue> held,
         IEnumerable<KeyValuePair<string, TValue>>? changed
     ) {
@@ -454,50 +422,12 @@ public sealed class StackEditor : ILayerStackDocument {
     }
 
     /// <exception cref="StackEditRefusedException">It does not name a value of that enumeration.</exception>
-    static TEnum Parsed<TEnum>(string? name, TEnum held, string what) where TEnum : struct, Enum =>
+    internal static TEnum Parsed<TEnum>(string? name, TEnum held, string what) where TEnum : struct, Enum =>
         name is null
             ? held
             : Enum.TryParse<TEnum>(name, true, out var parsed)
                 ? parsed
                 : throw new StackEditRefusedException($"'{name}' is not a {what}.");
-
-    /// <summary>
-    ///     A mask as asked for, keeping the canvas it may already paint. Taking it away takes all of it, and what keeps
-    ///     the layer to some meshes is not the mask's.
-    /// </summary>
-    static MaskAsset Masked(MaskAsset held, StackMask? mask) {
-        if (mask is null) {
-            return held;
-        }
-
-        var source = Parsed(mask.Source, held.Source, "mask source");
-        return source == LayerMaskSource.None
-            ? new() { Layers = [..held.Layers.Where(StackDocuments.KeepsToMeshes)] }
-            : held with {
-                Source = source,
-                Value = mask.Value,
-                Asset = mask.Asset,
-                Anchor = StackDocuments.Reference(mask.Anchor),
-                Generator = mask.Generator,
-                GeneratorTexts = GeneratorKnobs(held, mask),
-                GeneratorInputs = GeneratorFeeds(held, mask),
-                Map = mask.Map,
-                Lane = Parsed(mask.Lane, held.Lane, "lane"),
-                Effects = StackDocuments.WithSelection(held.Effects, mask)
-            };
-    }
-
-    /// <summary>Another generator has other image inputs, so what fed the last one does not follow.</summary>
-    static Dictionary<string, AnchorReference> GeneratorFeeds(MaskAsset held, StackMask mask) =>
-        StackDocuments.References(mask.Inputs) is { } chosen ? chosen
-        : mask.Generator != held.Generator ? []
-        : held.GeneratorInputs;
-
-    /// <summary>Another generator has other knobs, so what was set for the last one does not follow.</summary>
-    static Dictionary<string, string> GeneratorKnobs(MaskAsset held, StackMask mask) =>
-        mask.Generator != held.Generator ? []
-        : mask.Parameters is { } chosen ? new(chosen)
-        : held.GeneratorTexts;
 
     SetLayerCommand Change(StackSetLayer change, string set) {
         var layer = Require(change.Layer);
@@ -537,7 +467,7 @@ public sealed class StackEditor : ILayerStackDocument {
                 FilterNode = filterNode,
                 Settings = Merged(sameFilter ? layer.Settings : [], Copied(change.Settings)),
                 Texts = Merged(sameFilter ? layer.Texts : [], change.Parameters),
-                Mask = StackDocuments.MeshMasked(Masked(layer.Mask, change.Mask), change.MeshMask)
+                Mask = StackDocuments.MeshMasked(StackLayerEdits.Masked(layer.Mask, change.Mask), change.MeshMask)
             },
             "Change layer"
         );
@@ -633,7 +563,8 @@ public sealed class StackEditor : ILayerStackDocument {
         Aimed(stroke);
 
         var (paint, start) = stroke switch {
-            { Mask: true, MaskLayer: { } entry } => (MaskLayerCanvas(layer, entry, set, run), null),
+            { Mask: true, MaskLayer: { } entry } => (StackLayerEdits.MaskLayerCanvas(this, layer, entry, set, run),
+                null),
             { Mask: true } => MaskCanvas(layer, set, run),
             _ => (LayerCanvas(layer, set, run), (uint?)null)
         };
@@ -708,98 +639,6 @@ public sealed class StackEditor : ILayerStackDocument {
         var painted = layer.Mask with { Source = LayerMaskSource.Paint, Paint = paint };
         run(Named(layer, layer with { Mask = StackDocuments.MeshMasked(painted, null) }, set));
         return (paint, PaintImage.Pack(showed, showed, showed, 1f));
-    }
-
-    /// <summary>
-    ///     The canvas of a paint entry of a mask's stack, named by its first stroke. It starts transparent, so that what
-    ///     is beneath it shows until it is painted.
-    /// </summary>
-    /// <exception cref="StackEditRefusedException">The entry is not a paint entry.</exception>
-    string MaskLayerCanvas(LayerAsset layer, int index, string set, Action<IAuthoringCommand> run) {
-        var entry = StackMaskLayers.At(layer, index);
-        if (entry.Source != LayerMaskSource.Paint) {
-            throw new StackEditRefusedException(
-                $"Mask layer {index} of '{layer.Name}' is a {entry.Source} layer, and only a paint layer takes a brush.",
-                Api.Refusals.MaskLayerNotPaint,
-                new Dictionary<string, string> { ["layer"] = layer.Name, ["source"] = entry.Source.ToString() }
-            );
-        }
-
-        var paint = entry.Paint.Trim();
-        if (paint.Length > 0) {
-            return paint;
-        }
-
-        paint = FreeCanvas(
-            Path.GetFileNameWithoutExtension(AssetPath),
-            set,
-            string.Create(CultureInfo.InvariantCulture, $"{layer.Id}-{index + 1}"),
-            true,
-            new HashSet<string>()
-        );
-        var named = StackMaskLayers.Changed(layer, index, held => held with { Paint = paint });
-        run(Named(layer, layer with { Mask = named }, set));
-        return paint;
-    }
-
-    /// <summary>An edit of a layer's mask stack, as one change of the layer, so that undo puts the whole mask back.</summary>
-    SetLayerCommand MaskLayers(StackCommand command, string set) {
-        var (id, mask, name) = command switch {
-            StackAddMaskLayer add => (add.Layer,
-                (Func<LayerAsset, MaskAsset>)(layer => StackMaskLayers.Added(layer, NewMaskLayer(add), add.Index)),
-                "Add mask layer"),
-            StackRemoveMaskLayer remove => (remove.Layer, layer => StackMaskLayers.Removed(layer, remove.Index),
-                "Remove mask layer"),
-            StackMoveMaskLayer move => (move.Layer, layer => StackMaskLayers.Moved(layer, move.Index, move.Delta),
-                "Move mask layer"),
-            StackSetMaskLayer change => (change.Layer,
-                layer => StackMaskLayers.Changed(layer, change.Index, held => ChangedMaskLayer(held, change)),
-                "Change mask layer"),
-            _ => throw new StackEditRefusedException($"Unknown command '{command.GetType().Name}'.")
-        };
-        var layer = Require(id);
-        return new(this, new(set, id), layer, layer with { Mask = mask(layer) }, name);
-    }
-
-    static MaskLayerAsset NewMaskLayer(StackAddMaskLayer add) {
-        var source = MaskLayerSource(add.Source);
-        return new() {
-            Source = source,
-            Generator = source == LayerMaskSource.Generator
-                ? add.Generator ?? (StackDocuments.Vocabulary.Generators is [var first, ..] ? first.Value : string.Empty)
-                : string.Empty
-        };
-    }
-
-    static LayerMaskSource MaskLayerSource(string name) {
-        var source = Parsed(name, LayerMaskSource.None, "mask source");
-        return source == LayerMaskSource.None
-            ? throw new StackEditRefusedException("A mask layer has a source; remove it to have none.")
-            : source;
-    }
-
-    static MaskLayerAsset ChangedMaskLayer(MaskLayerAsset held, StackSetMaskLayer change) {
-        if (change.Opacity is < 0f or > 1f || change.Value is < 0f or > 1f) {
-            throw new StackEditRefusedException("A mask layer's value and opacity are from 0 to 1.");
-        }
-
-        var generator = change.Generator ?? held.Generator;
-        var sameGenerator = generator == held.Generator;
-        return held with {
-            Source = change.Source is { } source ? MaskLayerSource(source) : held.Source,
-            Value = change.Value ?? held.Value,
-            Asset = change.Asset ?? held.Asset,
-            Anchor = change.Anchor is { } anchor ? StackDocuments.Reference(anchor) : held.Anchor,
-            Generator = generator,
-            GeneratorTexts = Merged(sameGenerator ? held.GeneratorTexts : [], change.Parameters),
-            GeneratorValues = sameGenerator ? held.GeneratorValues : [],
-            GeneratorInputs = sameGenerator ? held.GeneratorInputs : [],
-            Map = change.Map ?? held.Map,
-            Blend = Parsed(change.Blend, held.Blend, "blend mode"),
-            Opacity = change.Opacity ?? held.Opacity,
-            Enabled = change.Enabled ?? held.Enabled,
-            Lane = Parsed(change.Lane, held.Lane, "lane")
-        };
     }
 
     /// <summary>
@@ -930,7 +769,7 @@ public sealed class StackEditor : ILayerStackDocument {
         var clip = Clip(paste.Clip)
             ?? throw new StackEditRefusedException("That copy has gone, with the Server that held it. Copy again.");
         if (paste.AsInstances) {
-            PasteInstances(clip, paste.Above, set, run);
+            StackLayerEdits.PasteInstances(this, clip, paste.Above, set, run);
             return;
         }
 
@@ -965,96 +804,6 @@ public sealed class StackEditor : ILayerStackDocument {
 
         Journal(copies, step);
     }
-
-    /// <summary>
-    ///     An instance of each layer a copy holds at its top, in order, over the chosen layer or at the top. The copy
-    ///     names the stack it came from, and that stack's texture set is the one each instance reads.
-    /// </summary>
-    void PasteInstances(StackClipContents clip, string? above, string set, Action<IAuthoringCommand> run) {
-        var copied = LayerStackYaml.Read(clip.Text).Sets[0].Layers;
-        var from = string.Equals(clip.Stack, AssetPath, StringComparison.Ordinal) ? string.Empty : clip.Set;
-        foreach (var layer in copied) {
-            var (made, id) = AddInstance(new(layer.Id, from), above, set);
-            run(made);
-            above = id;
-        }
-    }
-
-    /// <summary>An instance pointed at another source, which is refused when it would stand for itself.</summary>
-    SetLayerCommand Repointed(StackSetInstance repoint, string set) {
-        var layer = Require(repoint.Layer);
-        if (layer.Kind != LayerKind.Instance) {
-            throw new StackEditRefusedException($"'{layer.Name}' is not an instance.");
-        }
-
-        var (reference, _) = Source(repoint.Source, set);
-        if (LayerStackInstances.Cycles(WithSiblings(reference.Set), set, layer.Id, reference)) {
-            throw new StackEditRefusedException(
-                $"'{layer.Name}' would stand, through instances, for itself.",
-                Api.Refusals.InstanceCycle,
-                new Dictionary<string, string> { ["layer"] = layer.Name }
-            );
-        }
-
-        return new(this, new(set, layer.Id), layer, layer with { Instance = reference }, "Change instance source");
-    }
-
-    /// <summary>A reference to a source as a file holds it, and the source.</summary>
-    /// <exception cref="StackEditRefusedException">The source is not there.</exception>
-    (InstanceReference Reference, LayerAsset Found) Source(StackInstanceRef source, string set) {
-        var reference = new InstanceReference {
-            Set = source.Set == set ? string.Empty : source.Set, Layer = source.Layer
-        };
-        var origin = reference.Set.Length > 0 ? reference.Set : set;
-        return LayerStackEdit.Find(WithSiblings(reference.Set), new(origin, reference.Layer)) is { } found
-            ? (reference, found)
-            : throw new StackEditRefusedException(
-                $"Texture set '{origin}' has no layer '{reference.Layer}' to stand for.",
-                Api.Refusals.InstanceSourceMissing,
-                new Dictionary<string, string> { ["layer"] = reference.Layer, ["set"] = origin }
-            );
-    }
-
-    /// <summary>An instance of a layer, named after it, just above another or at the top.</summary>
-    /// <exception cref="StackEditRefusedException">The source is not there, or it would stand for itself.</exception>
-    (AddLayerCommand Command, string Id) AddInstance(StackInstanceRef source, string? above, string set) {
-        var (reference, found) = Source(source, set);
-        var stack = WithSiblings(reference.Set);
-        var id = LayerStackEdit.FreeId(Set, found.Id.Length > 0 ? $"{found.Id}-instance" : "instance");
-        if (LayerStackInstances.Cycles(stack, set, id, reference)) {
-            throw new StackEditRefusedException(
-                $"An instance of '{found.Name}' here would stand, through instances, for itself.",
-                Api.Refusals.InstanceCycle,
-                new Dictionary<string, string> { ["layer"] = found.Name }
-            );
-        }
-
-        var slot = Top(set, null);
-        if (above is not null) {
-            Require(above);
-            var at = LayerStackEdit.SlotOf(Document, new(set, above))!.Value;
-            slot = at with { Index = at.Index + 1 };
-        }
-
-        return (
-            new(
-                this,
-                slot,
-                new() {
-                    Id = id,
-                    Name = FreeName($"{(found.Name.Length > 0 ? found.Name : found.Id)} Instance"),
-                    Kind = LayerKind.Instance,
-                    Instance = reference
-                },
-                "Add instance"
-            ), id);
-    }
-
-    /// <summary>The document with another texture set beside its own, which is what an instance across sets reads.</summary>
-    LayerStackAsset WithSiblings(string set) =>
-        set.Length == 0 || Document.SetNamed(set) is not null || Sibling(set) is not { } sibling
-            ? Document
-            : Document with { Sets = [..Document.Sets, sibling] };
 
     /// <summary>
     ///     A name no other layer publishes, or the empty one. Taking one away that something reads is refused: the
@@ -1182,10 +931,10 @@ public sealed class StackEditor : ILayerStackDocument {
         }
     }
 
-    SetLayerCommand Named(LayerAsset before, LayerAsset after, string set) =>
+    internal SetLayerCommand Named(LayerAsset before, LayerAsset after, string set) =>
         new(this, new(set, before.Id), before, after, "Name paint file");
 
-    LayerAsset Require(string id) =>
+    internal LayerAsset Require(string id) =>
         LayerStackEdit.Find(Document, new(Set.Name, id))
         ?? throw new StackEditRefusedException(
             string.Create(CultureInfo.InvariantCulture, $"This stack has no layer '{id}'.")

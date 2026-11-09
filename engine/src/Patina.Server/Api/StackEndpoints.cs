@@ -349,7 +349,9 @@ static class StackEndpoints {
         }
 
         try {
-            return TypedResults.Ok(new StackFound(await evaluator.FindAsync(session, request.U, request.V, cancellationToken)));
+            return TypedResults.Ok(
+                new StackFound(await evaluator.FindAsync(session, request.U, request.V, cancellationToken))
+            );
         } catch (Exception e) when (e is IpcException or IOException or TimeoutException) {
             return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
         }

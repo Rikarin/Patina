@@ -4,8 +4,8 @@ using Vixen.Texturing.Layers;
 namespace Patina.Worker;
 
 /// <summary>
-///     What a click that finds a layer weighs (#136): each layer that could be on top, top first, as a texture set of its
-///     own that holds nothing but that layer inside the folders around it.
+///     What a click that finds a layer weighs (#136): each layer that could be on top, top first, as a texture set of
+///     its own that holds nothing but that layer inside the folders around it.
 /// </summary>
 static class StackFinding {
     /// <summary>The least share of a texel a layer has to cover to be the one found there.</summary>
@@ -16,14 +16,15 @@ static class StackFinding {
     const float Least = 0.05f;
 
     /// <summary>
-    ///     Each layer a click can find, top first, with the set it is weighed in: its channels, each read as how much the
-    ///     layer covers there. A folder is walked rather than found,
+    ///     Each layer a click can find, top first, with the set it is weighed in: its channels, each read as how much
+    ///     the layer covers there. A folder is walked rather than found,
     ///     a flattened folder is one layer, and a filter covers nothing of its own, so it is never the answer.
     /// </summary>
     public static IEnumerable<(string Layer, TextureSetAsset Alone)> Candidates(TextureSetAsset set) {
         // ⚠ In the set's own channels, each starting from nothing. `LayerStackSplat.Coverage` weighs in one channel
         // called `mask`, and a paint layer weighed there reads its canvas's `mask` channel, which is not its strokes.
-        List<ChannelAsset> empty = [..set.Channels.Select(static channel => channel with { Default = [0f, 0f, 0f, 1f] })];
+        List<ChannelAsset> empty =
+            [..set.Channels.Select(static channel => channel with { Default = [0f, 0f, 0f, 1f] })];
         foreach (var (layer, around) in TopFirst(set.Layers, [])) {
             var wrapped = layer with { Blend = LayerBlendMode.Copy };
             for (var at = around.Count - 1; at >= 0; at--) {
@@ -52,6 +53,25 @@ static class StackFinding {
                 yield return (layer, around);
             }
         }
+    }
+
+    /// <summary>Whether a weighed set covers a texel in any of its own channels.</summary>
+    public static bool Covered(
+        TextureBake bake,
+        IReadOnlyList<TextureGraphOutput> outputs,
+        TextureSetAsset alone,
+        int x,
+        int y
+    ) {
+        HashSet<string> written = new(alone.Channels.Select(static channel => channel.Usage), StringComparer.Ordinal);
+        foreach (var output in outputs) {
+            if (written.Contains(output.Usage)
+                && Covers(bake.ReadTexels(output.Image, [new(x, y, 1, 1)])[0], bake.Plan.Images[output.Image].Format)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>Whether one texel of a coverage, as the plan stored it, says the layer is there.</summary>

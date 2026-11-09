@@ -3,7 +3,9 @@ using Patina.Server.Stacks;
 
 namespace Patina.Server.Tests;
 
-/// <summary>Instances across texture sets with a real Worker (#108): an edit to the source shows in the other set.</summary>
+/// <summary>
+///     Instances across texture sets with a real Worker (#108): an edit to the source shows in the other set.
+/// </summary>
 public sealed partial class StackProcessTests {
     /// <summary>
     ///     A set whose only covering layer is an instance of another set's base makes that set's picture, and goes on

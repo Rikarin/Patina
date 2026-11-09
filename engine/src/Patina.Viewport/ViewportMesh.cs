@@ -226,6 +226,18 @@ sealed class ViewportMesh {
     /// <returns>Its index, or -1 for one that is no material here.</returns>
     public int MaterialOf(string name) => Array.FindIndex(Materials, material => material.Name == name);
 
+    /// <summary>The parts named, or whose material is named, or every part when nothing is (#136).</summary>
+    public ViewportPart[] Shown(string[] parts, string[] materials) =>
+        parts.Length == 0 && materials.Length == 0
+            ? Parts
+            : [
+                ..Parts.Where(part => parts.Contains(part.Name)
+                    || (part.Material >= 0
+                        && part.Material < Materials.Length
+                        && materials.Contains(Materials[part.Material].Name))
+                )
+            ];
+
     /// <summary>One material's triangles as a brush reaches them, or all of them for an unknown name.</summary>
     public ViewportGeometry Geometry(string material) {
         var index = MaterialOf(material);

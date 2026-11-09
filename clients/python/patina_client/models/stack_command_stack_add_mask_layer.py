@@ -23,8 +23,8 @@ T = TypeVar("T", bound="StackCommandStackAddMaskLayer")
 
 @_attrs_define
 class StackCommandStackAddMaskLayer:
-    """ Adds an entry to a layer's mask stack. A layer with no mask gets a white one under it first, so that the entry has
-    something to composite over.
+    """ Adds an entry to a layer's mask stack. A layer with no mask gets a white one under it first, so that the entry
+    has something to composite over.
 
         Attributes:
             op (StackCommandStackAddMaskLayerOp):

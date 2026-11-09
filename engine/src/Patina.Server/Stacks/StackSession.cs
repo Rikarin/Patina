@@ -120,7 +120,9 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         }
     }
 
-    /// <summary>Told after every edit, undo or redo, so that instances of this set's layers elsewhere catch up.</summary>
+    /// <summary>
+    ///     Told after every edit, undo or redo, so that instances of this set's layers elsewhere catch up.
+    /// </summary>
     public Action<StackSession>? Changed { get; set; }
 
     /// <summary>Whether a layer here stands for a layer of another texture set.</summary>
@@ -405,14 +407,16 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
 
     /// <summary>The other texture sets a document's instances name.</summary>
     static HashSet<string> Foreign(LayerStackAsset document) {
-        HashSet<string> named = new(StringComparer.Ordinal);
-        foreach (var set in document.Sets) {
-            foreach (var layer in StackEditor.Flattened(set.Layers)) {
-                if (layer.Kind == LayerKind.Instance && layer.Instance.Set.Length > 0 && layer.Instance.Set != set.Name) {
-                    named.Add(layer.Instance.Set);
-                }
-            }
-        }
+        HashSet<string> named = new(
+            document.Sets.SelectMany(static set => StackEditor.Flattened(set.Layers)
+                .Where(layer => layer.Kind == LayerKind.Instance
+                    && layer.Instance.Set.Length > 0
+                    && layer.Instance.Set != set.Name
+                )
+                .Select(static layer => layer.Instance.Set)
+            ),
+            StringComparer.Ordinal
+        );
 
         named.ExceptWith(document.Sets.Select(static set => set.Name));
         return named;

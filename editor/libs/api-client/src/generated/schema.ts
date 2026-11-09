@@ -4116,8 +4116,8 @@ export interface components {
       filterNode?: null | string;
     };
     /**
-     * @description Adds an entry to a layer's mask stack. A layer with no mask gets a white one under it first, so that the entry has
-     *     something to composite over.
+     * @description Adds an entry to a layer's mask stack. A layer with no mask gets a white one under it first, so that the entry
+     *     has something to composite over.
      */
     StackCommandStackAddMaskLayer: {
       /** @enum {string} */
@@ -4762,8 +4762,8 @@ export interface components {
       };
     };
     /**
-     * @description One entry of a mask's own stack: a source, composited over the base and the entries beneath it with its own blend
-     *     and opacity. Paint over a generator is a Paint entry over a Generator base.
+     * @description One entry of a mask's own stack: a source, composited over the base and the entries beneath it with its own
+     *     blend and opacity. Paint over a generator is a Paint entry over a Generator base.
      */
     StackMaskLayer: {
       /** @description Constant, Texture, Anchor, Generator, Bake or Paint. */

@@ -444,8 +444,8 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
         }
 
         /// <summary>
-        ///     The topmost layer that covers a place on the map, inside its folders (#136). Each candidate, top first, is
-        ///     weighed alone with the folders around it, so its own mask and theirs, its opacity and a paint layer's
+        ///     The topmost layer that covers a place on the map, inside its folders (#136). Each candidate, top first,
+        ///     is weighed alone with the folders around it, so its own mask and theirs, its opacity and a paint layer's
         ///     strokes all count, and one texel of it is read back: a number, never the picture.
         /// </summary>
         public string? LayerAt(float u, float v) {
@@ -461,11 +461,7 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
 
                 // In any channel it writes: a layer that sets roughness alone is still on top where it does.
                 using var bake = run.Evaluate();
-                var outputs = run.Outputs.Where(output => alone.Channels.Exists(channel => channel.Usage == output.Usage));
-                if (outputs.Any(output => StackFinding.Covers(
-                        bake.ReadTexels(output.Image, [new(x, y, 1, 1)])[0],
-                        bake.Plan.Images[output.Image].Format
-                    ))) {
+                if (StackFinding.Covered(bake, run.Outputs, alone, x, y)) {
                     return layer;
                 }
             }

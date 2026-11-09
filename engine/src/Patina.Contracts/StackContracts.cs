@@ -147,8 +147,8 @@ public sealed record StackMask(
 );
 
 /// <summary>
-///     One entry of a mask's own stack: a source, composited over the base and the entries beneath it with its own blend
-///     and opacity. Paint over a generator is a Paint entry over a Generator base.
+///     One entry of a mask's own stack: a source, composited over the base and the entries beneath it with its own
+///     blend and opacity. Paint over a generator is a Paint entry over a Generator base.
 /// </summary>
 /// <param name="Source">Constant, Texture, Anchor, Generator, Bake or Paint.</param>
 /// <param name="Value">A constant entry's value.</param>
@@ -278,7 +278,9 @@ public sealed record StackVocabulary(
 /// <param name="Hash">Its name under <c>/previews/{hash}</c>.</param>
 public sealed record StackThumbnail(string Layer, string Hash);
 
-/// <summary>Asks which layer is on top at a place on a stack's map, as a click on the mesh or the map finds it.</summary>
+/// <summary>
+///     Asks which layer is on top at a place on a stack's map, as a click on the mesh or the map finds it.
+/// </summary>
 /// <param name="U">Across the map, 0 to 1: the texture coordinate <c>POST /viewport/pick</c> gives.</param>
 /// <param name="V">Down it, 0 to 1.</param>
 public sealed record StackFindRequest(float U, float V);
@@ -401,8 +403,10 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackPasteLayers), "pasteLayers"), JsonDerivedType(typeof(StackFlattenLayer), "flattenLayer")]
 [JsonDerivedType(typeof(StackUnflattenLayer), "unflattenLayer")]
 [JsonDerivedType(typeof(StackSetHeightNormal), "setHeightNormal")]
-[JsonDerivedType(typeof(StackAddMaskLayer), "addMaskLayer"), JsonDerivedType(typeof(StackRemoveMaskLayer), "removeMaskLayer")]
-[JsonDerivedType(typeof(StackMoveMaskLayer), "moveMaskLayer"), JsonDerivedType(typeof(StackSetMaskLayer), "setMaskLayer")]
+[JsonDerivedType(typeof(StackAddMaskLayer), "addMaskLayer"),
+ JsonDerivedType(typeof(StackRemoveMaskLayer), "removeMaskLayer")]
+[JsonDerivedType(typeof(StackMoveMaskLayer), "moveMaskLayer"),
+ JsonDerivedType(typeof(StackSetMaskLayer), "setMaskLayer")]
 [JsonDerivedType(typeof(StackAddInstance), "addInstance"), JsonDerivedType(typeof(StackSetInstance), "setInstance")]
 public abstract record StackCommand;
 
@@ -558,8 +562,8 @@ public sealed record StackFlattenLayer(string? Layer = null) : StackCommand;
 public sealed record StackUnflattenLayer(string Layer) : StackCommand;
 
 /// <summary>
-///     Adds an entry to a layer's mask stack. A layer with no mask gets a white one under it first, so that the entry has
-///     something to composite over.
+///     Adds an entry to a layer's mask stack. A layer with no mask gets a white one under it first, so that the entry
+///     has something to composite over.
 /// </summary>
 /// <param name="Layer">The layer whose mask it is.</param>
 /// <param name="Source">Constant, Texture, Anchor, Generator, Bake or Paint.</param>

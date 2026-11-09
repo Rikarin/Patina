@@ -26,8 +26,8 @@ T = TypeVar("T", bound="StackMaskLayer")
 
 @_attrs_define
 class StackMaskLayer:
-    """ One entry of a mask's own stack: a source, composited over the base and the entries beneath it with its own blend
-    and opacity. Paint over a generator is a Paint entry over a Generator base.
+    """ One entry of a mask's own stack: a source, composited over the base and the entries beneath it with its own
+    blend and opacity. Paint over a generator is a Paint entry over a Generator base.
 
         Attributes:
             source (str): Constant, Texture, Anchor, Generator, Bake or Paint.

@@ -227,7 +227,9 @@ public sealed class ViewportSession(
         Wake();
     }
 
-    /// <summary>Draws some of the model alone, for every client and for a new Worker. Whole takes the isolation off.</summary>
+    /// <summary>
+    ///     Draws some of the model alone, for every client and for a new Worker. Whole takes the isolation off.
+    /// </summary>
     public void Isolate(ViewportIsolation isolation) {
         ArgumentNullException.ThrowIfNull(isolation);
         lock (changing) {
