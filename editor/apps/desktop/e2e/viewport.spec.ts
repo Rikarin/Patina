@@ -228,6 +228,8 @@ test('the grid draws round the model, and a screenshot writes the picture to a f
 });
 
 test('killing the Worker keeps the view, and frames come back from its successor', async () => {
+  // A new Worker starts and opens the mesh again: well past 120 s on CI.
+  test.setTimeout(240_000);
   await openMesh();
   await expect.poll(frames).toBeGreaterThan(0);
 

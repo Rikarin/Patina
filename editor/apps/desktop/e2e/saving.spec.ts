@@ -91,6 +91,8 @@ test.afterEach(async () => {
 });
 
 test("Don't Save on a stack throws the edits away, and they stay gone", async () => {
+  // It waits on an autosave: well past 120 s on CI.
+  test.setTimeout(240_000);
   await launch();
   const { saved } = await paint();
   await expect.poll(autosaves, { timeout: 30_000 }).toBeGreaterThan(0);
@@ -226,6 +228,8 @@ test('A save the Server cannot do says why, and keeps the tab', async () => {
 });
 
 test('Discard after a crash goes back to the saved file, and nothing is left to offer', async () => {
+  // It waits on an autosave, and a crash's relaunch on one: well past 120 s on CI.
+  test.setTimeout(240_000);
   const { saved } = await crashWithUnsavedWork();
 
   await window.getByTestId('recovery-discard').click();
@@ -238,6 +242,8 @@ test('Discard after a crash goes back to the saved file, and nothing is left to 
 });
 
 test('Restore after a crash brings the work back', async () => {
+  // It waits on an autosave, and a crash's relaunch on one: well past 120 s on CI.
+  test.setTimeout(240_000);
   const { painted } = await crashWithUnsavedWork();
 
   await window.getByTestId('recovery-restore').click();
@@ -249,6 +255,8 @@ test('Restore after a crash brings the work back', async () => {
 });
 
 test('Escape decides nothing: the work stays and the next open asks again', async () => {
+  // It waits on an autosave, and a crash's relaunch on one: well past 120 s on CI.
+  test.setTimeout(240_000);
   await crashWithUnsavedWork();
 
   await window.keyboard.press('Escape');

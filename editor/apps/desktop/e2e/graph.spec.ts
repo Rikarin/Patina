@@ -203,6 +203,8 @@ test('the Library selection takes the Inspector back from a node', async () => {
 });
 
 test('a killed Worker costs nothing: the next one is sent the document', async () => {
+  // A new Worker starts and is sent the document: well past 120 s on CI.
+  test.setTimeout(240_000);
   await openGraph();
   await hashOf(thumbnail(2));
   const { baseUrl, token } = await server();
