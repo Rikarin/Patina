@@ -255,6 +255,16 @@ const MaskMarks: Readonly<Record<string, string>> = {
     @if (project.bakeOutOfDate()) {
       <div class="bg-warning-subtle flex shrink-0 items-center gap-2 px-2 py-1 text-xs" data-testid="layers-stale-bake">
         <span class="min-w-0 flex-1">The mesh changed after the last bake.</span>
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          data-testid="layers-rebake"
+          title="Bakes again with the project’s settings. Texture sets the change did not touch come from the cache."
+          (click)="commands.run('quickBake')"
+        >
+          Rebake
+        </button>
         <button type="button" xuiButton size="sm" (click)="project.askToBake()">Bake…</button>
       </div>
     }

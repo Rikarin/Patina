@@ -11,10 +11,12 @@ from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
+  from ..models.bake_colour_options import BakeColourOptions
   from ..models.bake_height_options import BakeHeightOptions
   from ..models.bake_id_options import BakeIdOptions
   from ..models.bake_occlusion_options import BakeOcclusionOptions
   from ..models.bake_ray_options import BakeRayOptions
+  from ..models.bake_rounding_options import BakeRoundingOptions
   from ..models.bake_thickness_options import BakeThicknessOptions
 
 
@@ -36,7 +38,8 @@ class BakeOptions:
             supersampling (int): How many samples along each side of a texel.
             gutter (int): How many texels of dilation surround each chart.
             maps (list[str]): Which maps to write: `normal`, `height`, `ao`, `bent`, `curvature`,
-                `thickness`, `position`, `world`, `id`. The default is what a project's masks read.
+                `thickness`, `position`, `world`, `id`, `colour`. The default is what a project's
+                masks read.
             space (str): The frame of the normal and bent normal maps: `tangent` or `object`.
             rays (BakeRayOptions): How far a bake's rays look from the low mesh, and what they may strike.
             height (BakeHeightOptions): The height map's stored range.
@@ -44,6 +47,9 @@ class BakeOptions:
                 share.
             thickness (BakeThicknessOptions): The thickness map's own settings.
             id (BakeIdOptions): What an ID map labels, and how it colours the labels.
+            rounding (BakeRoundingOptions): Edges baked round into the normal map, the bevel a hard-surface model was not
+                modelled with.
+            colour (BakeColourOptions): Where a colour map's colour comes from.
      """
 
     resolution: int
@@ -57,6 +63,8 @@ class BakeOptions:
     occlusion: BakeOcclusionOptions
     thickness: BakeThicknessOptions
     id: BakeIdOptions
+    rounding: BakeRoundingOptions
+    colour: BakeColourOptions
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -64,10 +72,12 @@ class BakeOptions:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.bake_colour_options import BakeColourOptions # noqa: PLC0415
         from ..models.bake_height_options import BakeHeightOptions # noqa: PLC0415
         from ..models.bake_id_options import BakeIdOptions # noqa: PLC0415
         from ..models.bake_occlusion_options import BakeOcclusionOptions # noqa: PLC0415
         from ..models.bake_ray_options import BakeRayOptions # noqa: PLC0415
+        from ..models.bake_rounding_options import BakeRoundingOptions # noqa: PLC0415
         from ..models.bake_thickness_options import BakeThicknessOptions # noqa: PLC0415
         resolution = self.resolution
 
@@ -93,6 +103,10 @@ class BakeOptions:
 
         id = self.id.to_dict()
 
+        rounding = self.rounding.to_dict()
+
+        colour = self.colour.to_dict()
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -108,6 +122,8 @@ class BakeOptions:
             "occlusion": occlusion,
             "thickness": thickness,
             "id": id,
+            "rounding": rounding,
+            "colour": colour,
         })
 
         return field_dict
@@ -116,10 +132,12 @@ class BakeOptions:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.bake_colour_options import BakeColourOptions # noqa: PLC0415
         from ..models.bake_height_options import BakeHeightOptions # noqa: PLC0415
         from ..models.bake_id_options import BakeIdOptions # noqa: PLC0415
         from ..models.bake_occlusion_options import BakeOcclusionOptions # noqa: PLC0415
         from ..models.bake_ray_options import BakeRayOptions # noqa: PLC0415
+        from ..models.bake_rounding_options import BakeRoundingOptions # noqa: PLC0415
         from ..models.bake_thickness_options import BakeThicknessOptions # noqa: PLC0415
         d = dict(src_dict)
         resolution = d.pop("resolution")
@@ -160,6 +178,16 @@ class BakeOptions:
 
 
 
+        rounding = BakeRoundingOptions.from_dict(d.pop("rounding"))
+
+
+
+
+        colour = BakeColourOptions.from_dict(d.pop("colour"))
+
+
+
+
         bake_options = cls(
             resolution=resolution,
             format_=format_,
@@ -172,6 +200,8 @@ class BakeOptions:
             occlusion=occlusion,
             thickness=thickness,
             id=id,
+            rounding=rounding,
+            colour=colour,
         )
 
 

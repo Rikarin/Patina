@@ -18,6 +18,7 @@ public static class MeshMapFiles {
             MeshMapKind.Position => "position",
             MeshMapKind.WorldNormal => "world",
             MeshMapKind.Id => "id",
+            MeshMapKind.Colour => "colour",
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Not a map.")
         };
 

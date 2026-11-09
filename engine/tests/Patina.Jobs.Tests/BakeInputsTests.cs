@@ -88,6 +88,10 @@ public sealed class BakeInputsTests : IDisposable {
     [InlineData("height")]
     [InlineData("id-source")]
     [InlineData("id-palette")]
+    [InlineData("rounding")]
+    [InlineData("rounding-width")]
+    [InlineData("rounding-edges")]
+    [InlineData("colour-source")]
     public void Each_setting_is_in_the_key(string setting) {
         var request = Request();
         var changed = With(
@@ -119,6 +123,10 @@ public sealed class BakeInputsTests : IDisposable {
                 "thickness" => options with { Thickness = new() { Normalised = false } },
                 "height" => options with { Height = new() { Range = "rays" } },
                 "id-source" => options with { Id = options.Id with { Source = "mesh" } },
+                "rounding" => options with { Rounding = options.Rounding with { Enabled = true } },
+                "rounding-width" => options with { Rounding = options.Rounding with { Width = 0.5 } },
+                "rounding-edges" => options with { Rounding = options.Rounding with { Edges = "hard" } },
+                "colour-source" => options with { Colour = options.Colour with { Source = "material" } },
                 _ => options with { Id = options.Id with { Palette = "grey" } }
             }
         );
@@ -162,6 +170,28 @@ public sealed class BakeInputsTests : IDisposable {
         Assert.NotEqual(Key(one), Key(other));
     }
 
+    /// <summary>
+    ///     The distance map and the picture a colour map carries are inputs by their bytes, as the skew map
+    ///     is.
+    /// </summary>
+    [Theory]
+    [InlineData("distance")]
+    [InlineData("colour")]
+    public void A_distance_map_and_a_carried_picture_are_inputs_by_their_content(string which) {
+        var request = Request();
+
+        BakeRequest Using(string path) =>
+            With(
+                request,
+                options => which == "distance"
+                    ? options with { Rays = options.Rays with { DistanceMap = path } }
+                    : options with { Maps = ["colour"], Colour = new() { Source = "texture", Texture = path } }
+            );
+
+        Assert.Equal(Key(Using(File("a.png", "a"))), Key(Using(File("b.png", "a"))));
+        Assert.NotEqual(Key(Using(File("a.png", "a"))), Key(Using(File("c.png", "c"))));
+    }
+
     [Theory]
     [InlineData(8, "png16", "tangent")]
     [InlineData(2048, "tga", "tangent")]
@@ -183,6 +213,11 @@ public sealed class BakeInputsTests : IDisposable {
     [InlineData("height")]
     [InlineData("id")]
     [InlineData("no-maps")]
+    [InlineData("rounding-width")]
+    [InlineData("rounding-edges")]
+    [InlineData("colour-source")]
+    [InlineData("colour-texture")]
+    [InlineData("distance-picture")]
     public void A_map_setting_out_of_range_is_refused(string setting) {
         var request = With(
             Request(),
@@ -193,6 +228,11 @@ public sealed class BakeInputsTests : IDisposable {
                 "falloff" => options with { Occlusion = options.Occlusion with { Falloff = "cubic" } },
                 "height" => options with { Height = new() { Range = "custom", Scale = 0 } },
                 "id" => options with { Id = options.Id with { Source = "uv" } },
+                "rounding-width" => options with { Rounding = new() { Enabled = true, Width = 0 } },
+                "rounding-edges" => options with { Rounding = new() { Edges = "weights" } },
+                "colour-source" => options with { Colour = new() { Source = "paint" } },
+                "colour-texture" => options with { Maps = ["colour"], Colour = new() { Source = "texture" } },
+                "distance-picture" => options with { Rays = options.Rays with { DistanceMap = "distance.txt" } },
                 _ => options with { Maps = [] }
             }
         );

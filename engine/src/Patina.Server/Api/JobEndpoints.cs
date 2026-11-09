@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
+using Patina.Export;
 using Patina.Jobs;
 using Patina.Library;
 using System.Net.WebSockets;
@@ -55,7 +56,7 @@ static class JobEndpoints {
     ) {
         try {
             BakeInputs.Check(request);
-            var key = (await Task.Run(() => BakeInputs.KeyOf(request, ToolCatalog.Default), cancellationToken)).Hex;
+            var key = (await Task.Run(() => BakeKeyReads.KeyOf(request, ToolCatalog.Default), cancellationToken)).Hex;
             var job = cache.Find(key) is { } manifest
                 ? queue.Finished(
                     key,

@@ -47,7 +47,7 @@ public sealed record BakeOptions {
 
     /// <summary>Every map a bake can write, in the order they are reported.</summary>
     public static IReadOnlyList<string> AllMaps { get; } =
-        ["normal", "height", "ao", "bent", "curvature", "thickness", "position", "world", "id"];
+        ["normal", "height", "ao", "bent", "curvature", "thickness", "position", "world", "id", "colour"];
 
     /// <summary>The atlas's edge, in texels.</summary>
     public int Resolution { get; set; } = 2048;
@@ -63,7 +63,8 @@ public sealed record BakeOptions {
 
     /// <summary>
     ///     Which maps to write: <c>normal</c>, <c>height</c>, <c>ao</c>, <c>bent</c>, <c>curvature</c>,
-    ///     <c>thickness</c>, <c>position</c>, <c>world</c>, <c>id</c>. The default is what a project's masks read.
+    ///     <c>thickness</c>, <c>position</c>, <c>world</c>, <c>id</c>, <c>colour</c>. The default is what a project's
+    ///     masks read.
     /// </summary>
     public IReadOnlyList<string> Maps { get; set; } =
         ["normal", "height", "ao", "curvature", "thickness", "position", "world", "id"];
@@ -85,6 +86,12 @@ public sealed record BakeOptions {
 
     /// <summary>What the ID map labels and how it colours them.</summary>
     public BakeIdOptions Id { get; set; } = new();
+
+    /// <summary>Edges baked round into the normal, with no high poly to give them a bevel.</summary>
+    public BakeRoundingOptions Rounding { get; set; } = new();
+
+    /// <summary>Where the colour map's colour comes from.</summary>
+    public BakeColourOptions Colour { get; set; } = new();
 
     /// <summary>
     ///     The code of the refusal of a minimum occluder distance at or past the occlusion distance while occlusion or
@@ -126,7 +133,12 @@ public sealed record BakeOptions {
             (Maps.Count == 0, "A bake has to write at least one map.")
         ];
         return checks.FirstOrDefault(static check => check.Wrong).Why
-            ?? Rays.Problem() ?? Height.Problem() ?? Occlusion.Problem() ?? Id.Problem();
+            ?? Rays.Problem()
+            ?? Height.Problem()
+            ?? Occlusion.Problem()
+            ?? Id.Problem()
+            ?? Rounding.Problem()
+            ?? Colour.Problem(Maps.Contains("colour", StringComparer.Ordinal));
     }
 }
 
@@ -161,6 +173,12 @@ public sealed record BakeRayOptions {
 
     /// <summary>A grey image saying where to apply the skew, or empty for everywhere.</summary>
     public string SkewMap { get; set; } = string.Empty;
+
+    /// <summary>
+    ///     A grey image correcting how far the rays reach over the atlas, or empty for as set: mid grey leaves them,
+    ///     black pulls them onto the low mesh and white sends them twice as far, front, rear and cage alike.
+    /// </summary>
+    public string DistanceMap { get; set; } = string.Empty;
 
     /// <summary>Whether a part of the low mesh only strikes the high part of the same name.</summary>
     public bool MatchByName { get; set; }
@@ -287,6 +305,58 @@ public sealed record BakeIdOptions {
     public string? Problem() =>
         !Sources.Contains(Source, StringComparer.Ordinal) ? $"'{Source}' is not an ID source."
         : !Palettes.Contains(Palette, StringComparer.Ordinal) ? $"'{Palette}' is not an ID palette."
+        : null;
+}
+
+/// <summary>Edges baked round into the normal map, the bevel a hard-surface model was not modelled with.</summary>
+public sealed record BakeRoundingOptions {
+    /// <summary>The words <see cref="Edges" /> takes.</summary>
+    public static IReadOnlyList<string> EdgeWords { get; } = ["angle", "hard"];
+
+    /// <summary>Whether edges are rounded at all.</summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>How far either side of an edge the bevel reaches, in the rays' units.</summary>
+    public double Width { get; set; } = 0.01;
+
+    /// <summary>
+    ///     Which edges: <c>angle</c>, every edge whose faces meet at <see cref="Angle" /> or more, or <c>hard</c>, the
+    ///     edges the mesh's own normals split, which is the nearest a mesh file has to an edge weight.
+    /// </summary>
+    public string Edges { get; set; } = "angle";
+
+    /// <summary>For <c>angle</c>: the least angle between two faces that is an edge, in degrees.</summary>
+    public double Angle { get; set; } = 30;
+
+    /// <summary>What is wrong, or null.</summary>
+    public string? Problem() =>
+        !EdgeWords.Contains(Edges, StringComparer.Ordinal) ? $"'{Edges}' is not angle or hard."
+        : !(Width >= 0 && double.IsFinite(Width)) ? "A rounded edge's width cannot be negative."
+        : Enabled && Width <= 0 ? "A rounded edge needs a width."
+        : Angle is < 0 or > 180 ? "The rounding angle is 0 to 180 degrees."
+        : null;
+}
+
+/// <summary>Where a colour map's colour comes from.</summary>
+public sealed record BakeColourOptions {
+    /// <summary>The words <see cref="Source" /> takes.</summary>
+    public static IReadOnlyList<string> Sources { get; } = ["auto", "vertex-colour", "material", "texture"];
+
+    /// <summary>
+    ///     <c>auto</c>: the high mesh's vertex colours, else its materials. <c>vertex-colour</c>; <c>material</c>, each
+    ///     material's base colour and base colour picture; or <c>texture</c>, the picture at <see cref="Texture" />
+    ///     read at the high mesh's own coordinates, which moves any map from one UV layout to another.
+    /// </summary>
+    public string Source { get; set; } = "auto";
+
+    /// <summary>For <c>texture</c>: the picture to carry across, as a path on the Server's machine.</summary>
+    public string Texture { get; set; } = string.Empty;
+
+    /// <summary>What is wrong, or null.</summary>
+    /// <param name="baked">Whether the colour map is among the maps a bake writes.</param>
+    public string? Problem(bool baked) =>
+        !Sources.Contains(Source, StringComparer.Ordinal) ? $"'{Source}' is not a colour source."
+        : baked && Source == "texture" && Texture.Trim().Length == 0 ? "Choose the picture to carry across."
         : null;
 }
 

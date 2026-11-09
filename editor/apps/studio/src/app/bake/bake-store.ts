@@ -1,10 +1,12 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import {
+  type BakePreviewState,
   type BakeRequest,
   type Connection,
   type JobEvent,
   type JobState,
   type PatinaClient,
+  type ViewportBakePreview,
   unwrap
 } from '@patina/api-client';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
@@ -156,6 +158,23 @@ export class BakeStore {
     const client = await this.api();
     unwrap(await client.PUT('/api/v1/viewport/bake', { body: { job: job.id } }));
     this.viewportChanged.update(count => count + 1);
+  }
+
+  /**
+   * Lays a bake's setup over the model in every client's viewport, or takes it off for an empty low mesh: its reach,
+   * the high mesh and the parts matched by name. Answers with the key to the colours (#149).
+   */
+  async showSetup(preview: ViewportBakePreview): Promise<BakePreviewState> {
+    const client = await this.api();
+    const state = unwrap(await client.PUT('/api/v1/viewport/bake-preview', { body: preview }));
+    this.viewportChanged.update(count => count + 1);
+    return state;
+  }
+
+  /** The bake setup the viewport shows now, which another client may have chosen. */
+  async setup(): Promise<BakePreviewState> {
+    const client = await this.api();
+    return unwrap(await client.GET('/api/v1/viewport/bake-preview'));
   }
 
   /** Lays a graph's outputs over the mesh in the viewport, as they stand now. */

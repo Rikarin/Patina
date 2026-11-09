@@ -53,10 +53,12 @@ public static class BakeInputs {
 
         Require(request.High.Count > 0, "A bake needs a high mesh, which may be the low mesh itself.");
         Require(request.Output.Length > 0, "A bake needs an output folder.");
-        Require(
-            options.Rays.SkewMap.Length == 0 || PictureFormats.IsPicture(options.Rays.SkewMap),
-            $"'{Path.GetFileName(options.Rays.SkewMap)}' is not a picture this reads."
-        );
+        foreach (var picture in (string[])[options.Rays.SkewMap, options.Rays.DistanceMap, ColourPicture(options)]) {
+            Require(
+                picture.Length == 0 || PictureFormats.IsPicture(picture),
+                $"'{Path.GetFileName(picture)}' is not a picture this reads."
+            );
+        }
 
         foreach (var file in Files(request).Values) {
             if (!File.Exists(file)) {
@@ -66,12 +68,43 @@ public static class BakeInputs {
     }
 
     /// <summary>The key of what a request would make, which reads every input whole.</summary>
-    public static BuildKey KeyOf(BakeRequest request, ToolCatalog tools) =>
-        BakeKeys.Compute(
-            Files(request).ToDictionary(static file => file.Key, static file => Revision.OfFile(file.Value)),
-            Settings(request),
-            tools
-        );
+    public static BuildKey KeyOf(BakeRequest request, ToolCatalog tools) => KeyOf(request, tools, null);
+
+    /// <summary>The key of what a request would make, with some inputs read for what the bake uses of them.</summary>
+    /// <param name="request">The bake.</param>
+    /// <param name="tools">The tools' versions.</param>
+    /// <param name="reads">
+    ///     Revisions by role that stand in for a file's bytes, or add inputs no path names: the low mesh's geometry for
+    ///     its texture set, or the pictures a model names. Null reads every file whole.
+    /// </param>
+    /// <remarks>
+    ///     ⚠
+    ///     <b>
+    ///         A revision in place of the bytes is only sound when it covers everything the bake reads of that
+    ///         file
+    ///     </b>
+    ///     , and a reader that cannot say leaves the role out, so the bytes decide: a full rebake is the
+    ///     answer whenever it is unclear (#151).
+    /// </remarks>
+    public static BuildKey KeyOf(
+        BakeRequest request,
+        ToolCatalog tools,
+        Func<BakeRequest, IReadOnlyDictionary<string, Revision>>? reads
+    ) {
+        ArgumentNullException.ThrowIfNull(request);
+        var files = Files(request).ToDictionary(static file => file.Key, static file => Revision.OfFile(file.Value));
+        foreach (var (role, revision) in reads?.Invoke(request) ?? new Dictionary<string, Revision>()) {
+            files[role] = revision;
+        }
+
+        return BakeKeys.Compute(files, Settings(request), tools);
+    }
+
+    /// <summary>The picture a colour map carries across, or empty when it carries none.</summary>
+    static string ColourPicture(BakeOptions options) =>
+        options.Colour.Source == "texture" && options.Maps.Contains("colour", StringComparer.Ordinal)
+            ? options.Colour.Texture
+            : string.Empty;
 
     /// <summary>The files a bake reads, by their part in it. The high meshes are numbered: order counts.</summary>
     static Dictionary<string, string> Files(BakeRequest request) {
@@ -88,6 +121,14 @@ public static class BakeInputs {
             files["skew"] = skew;
         }
 
+        if (request.Options.Rays.DistanceMap is { Length: > 0 } distance) {
+            files["distance"] = distance;
+        }
+
+        if (ColourPicture(request.Options) is { Length: > 0 } colour) {
+            files["colour"] = colour;
+        }
+
         return files;
     }
 
@@ -100,7 +141,8 @@ public static class BakeInputs {
     static Dictionary<string, string> Settings(BakeRequest request) {
         var options = request.Options with {
             Maps = [..request.Options.Maps.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
-            Rays = request.Options.Rays with { SkewMap = string.Empty }
+            Rays = request.Options.Rays with { SkewMap = string.Empty, DistanceMap = string.Empty },
+            Colour = request.Options.Colour with { Texture = string.Empty }
         };
         var settings = new Dictionary<string, string>(StringComparer.Ordinal) {
             ["options"] = JsonSerializer.Serialize(options, ContractsJsonContext.Default.BakeOptions),

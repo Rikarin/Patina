@@ -4,13 +4,17 @@ from .asset_impact import AssetImpact
 from .asset_page import AssetPage
 from .asset_summary import AssetSummary
 from .autosave_preferences import AutosavePreferences
+from .bake_colour_options import BakeColourOptions
 from .bake_height_options import BakeHeightOptions
 from .bake_id_options import BakeIdOptions
 from .bake_occlusion_options import BakeOcclusionOptions
 from .bake_options import BakeOptions
+from .bake_preview_part import BakePreviewPart
+from .bake_preview_state import BakePreviewState
 from .bake_ray_options import BakeRayOptions
 from .bake_request import BakeRequest
 from .bake_result import BakeResult
+from .bake_rounding_options import BakeRoundingOptions
 from .bake_thickness_options import BakeThicknessOptions
 from .baked_map_file import BakedMapFile
 from .bin_emptied import BinEmptied
@@ -26,10 +30,10 @@ from .brush_preset_update_request import BrushPresetUpdateRequest
 from .build_preview import BuildPreview
 from .build_preview_project import BuildPreviewProject
 from .build_request import BuildRequest
+from .cache_info import CacheInfo
 from .check_problem import CheckProblem
 from .check_problem_values import CheckProblemValues
 from .check_target import CheckTarget
-from .cache_info import CacheInfo
 from .document_recovery import DocumentRecovery
 from .document_recovery_request import DocumentRecoveryRequest
 from .export_file_choice import ExportFileChoice
@@ -315,6 +319,7 @@ from .thumbnail_request import ThumbnailRequest
 from .unwrap_options import UnwrapOptions
 from .unwrap_report import UnwrapReport
 from .unwrap_set import UnwrapSet
+from .viewport_bake_preview import ViewportBakePreview
 from .viewport_bake_request import ViewportBakeRequest
 from .viewport_camera_state import ViewportCameraState
 from .viewport_display import ViewportDisplay
@@ -335,14 +340,18 @@ __all__ = (
     "AssetPage",
     "AssetSummary",
     "AutosavePreferences",
+    "BakeColourOptions",
     "BakedMapFile",
     "BakeHeightOptions",
     "BakeIdOptions",
     "BakeOcclusionOptions",
     "BakeOptions",
+    "BakePreviewPart",
+    "BakePreviewState",
     "BakeRayOptions",
     "BakeRequest",
     "BakeResult",
+    "BakeRoundingOptions",
     "BakeThicknessOptions",
     "BinEmptied",
     "BinItem",
@@ -357,10 +366,10 @@ __all__ = (
     "BuildPreview",
     "BuildPreviewProject",
     "BuildRequest",
+    "CacheInfo",
     "CheckProblem",
     "CheckProblemValues",
     "CheckTarget",
-    "CacheInfo",
     "DocumentRecovery",
     "DocumentRecoveryRequest",
     "ExportFileChoice",
@@ -646,6 +655,7 @@ __all__ = (
     "UnwrapOptions",
     "UnwrapReport",
     "UnwrapSet",
+    "ViewportBakePreview",
     "ViewportBakeRequest",
     "ViewportCameraState",
     "ViewportDisplay",

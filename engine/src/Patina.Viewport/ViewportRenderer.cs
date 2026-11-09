@@ -99,10 +99,12 @@ public sealed class ViewportRenderer : IDisposable {
         );
         var wireEffect = loader.Load(shaders.Wire());
         var gridEffect = loader.Load(shaders.Grid());
+        var overlayEffect = loader.Load(shaders.Overlay());
         wire = new(
             device,
             (wireEffect, Module(wireEffect, ShaderStage.Vertex), Module(wireEffect, ShaderStage.Fragment)),
             (gridEffect, Module(gridEffect, ShaderStage.Vertex), Module(gridEffect, ShaderStage.Fragment)),
+            (overlayEffect, Module(overlayEffect, ShaderStage.Vertex), Module(overlayEffect, ShaderStage.Fragment)),
             HdrFormat,
             DepthFormat,
             Samples
@@ -145,6 +147,10 @@ public sealed class ViewportRenderer : IDisposable {
     /// <summary>How the model is lit, shown and finished, from the next frame on.</summary>
     public ViewportShading Shading { get; set; } = new();
 
+    /// <summary>Lays shapes over the model from the next frame on, such as a bake's preview, or takes them off.</summary>
+    /// <param name="triangles">See-through triangles, three vertices each of position, colour and opacity.</param>
+    /// <param name="lines">Lines, two vertices each, laid out the same.</param>
+    public void SetOverlay(float[] triangles, float[] lines) => wire.SetOverlay(triangles, lines);
 
     /// <summary>The adapter's name, for logs.</summary>
     public string Adapter => device.Adapter.Name;
@@ -611,6 +617,8 @@ public sealed class ViewportRenderer : IDisposable {
         if (shading.Grid) {
             wire.RecordGrid(commands);
         }
+
+        wire.RecordOverlay(commands);
 
         commands.EndRenderPass();
 

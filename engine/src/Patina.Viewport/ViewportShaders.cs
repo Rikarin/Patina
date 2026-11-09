@@ -71,6 +71,13 @@ sealed class ViewportShaders(ShaderCache cache) {
             [..PostFx, ..Read(static name => name.EndsWith("PostFx.Bloom.rvn", StringComparison.Ordinal))]
         );
 
+    /// <summary>Shapes laid over the model, each vertex with its own colour (<see cref="ViewportOverlay" />).</summary>
+    public EffectData Overlay() =>
+        cache.Get(
+            EffectKey.Of("ViewportOverlay"),
+            [..Core, ..Read(static name => name.EndsWith("Shaders.ViewportOverlay.rvn", StringComparison.Ordinal))]
+        );
+
     /// <summary>The curve to the screen, one variant per operator, in the order Vixen numbers them.</summary>
     public EffectData Tonemap(ViewportToneMapping curve) =>
         cache.Get(

@@ -1,5 +1,12 @@
-import { DestroyRef, Injectable, computed, inject, linkedSignal, signal } from '@angular/core';
-import type { BakeOptions, BakeRequest, ProjectBakeSettings, ProjectMeshInfo } from '@patina/api-client';
+import { DestroyRef, Injectable, computed, effect, inject, linkedSignal, signal, untracked } from '@angular/core';
+import type {
+  BakeOptions,
+  BakePreviewState,
+  BakeRequest,
+  ProjectBakeSettings,
+  ProjectMeshInfo,
+  ViewportBakePreview
+} from '@patina/api-client';
 import { messageOf, refusalWords } from '../core/messages';
 import { SystemStatus } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
@@ -159,11 +166,100 @@ export class BakeSettings {
     return null;
   });
 
+  /** What the viewport shows of the bake's setup, as the Server last said, or null when it shows none (#149). */
+  readonly preview = signal<BakePreviewState | null>(null);
+
+  /** Whether the viewport shows the bake's setup. The Server holds it, so another client sees the same. */
+  readonly previewing = computed(() => (this.preview()?.preview ?? null) !== null);
+
+  /** What of the setup to draw: the reach, the high mesh and the matched parts. */
+  readonly previewShows = signal({ reach: true, highMesh: true, matches: true });
+
+  /** Why the setup could not be shown, or null. */
+  readonly previewFailure = signal<string | null>(null);
+
+  private previewTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastSetup: ViewportBakePreview | null = null;
+
+  /** The setup the viewport would show, built as a bake request is, for the whole low mesh. */
+  readonly setup = computed<ViewportBakePreview | null>(() => {
+    const settings = this.settings();
+    const low = this.low();
+    if (!settings || low === '') {
+      return null;
+    }
+
+    const shows = this.previewShows();
+    return {
+      high: this.high(),
+      low,
+      cage: settings.cage.trim() || null,
+      material: null,
+      options: settings.options,
+      reach: shows.reach,
+      highMesh: shows.highMesh,
+      matches: shows.matches
+    };
+  });
+
+  /** Reads what the viewport shows now, as another client may have left it. */
+  async readPreview(): Promise<void> {
+    try {
+      this.preview.set(await this.bakes.setup());
+    } catch {
+      this.preview.set(null); // no Server: nothing is shown
+    }
+  }
+
+  /** Shows the setup in the viewport, or takes it off. */
+  async setPreviewing(on: boolean): Promise<void> {
+    // Off is the same body with no low mesh, which the last setup gives when the project has closed.
+    const setup = this.setup() ?? this.lastSetup;
+    if (!setup) {
+      return;
+    }
+
+    this.lastSetup = setup;
+    try {
+      this.previewFailure.set(null);
+      this.preview.set(await this.bakes.showSetup(on ? setup : { ...setup, low: '' }));
+    } catch (error) {
+      this.previewFailure.set(messageOf(error));
+      return;
+    }
+
+    // A change while the Server was reading the meshes found the preview not on yet, so nothing followed it: the
+    // high mesh chosen a moment before Show was drawn as the low mesh it replaced.
+    const now = this.setup();
+    if (on && now !== null && now !== setup) {
+      await this.setPreviewing(true);
+    }
+  }
+
   constructor() {
     inject(DestroyRef).onDestroy(() => {
       if (this.timer !== null) {
         clearTimeout(this.timer);
       }
+
+      if (this.previewTimer !== null) {
+        clearTimeout(this.previewTimer);
+      }
+    });
+
+    // While the setup is shown it follows the settings, a moment after each change, as the project's file does.
+    effect(() => {
+      const setup = this.setup();
+      if (!untracked(() => this.previewing())) {
+        return;
+      }
+
+      if (this.previewTimer !== null) {
+        clearTimeout(this.previewTimer);
+      }
+
+      // A project that closes takes its setup off the viewport with it.
+      this.previewTimer = setTimeout(() => void this.setPreviewing(setup !== null), SaveDelayMs);
     });
   }
 

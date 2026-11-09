@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package Patina.Viewport
+
+import Vixen.Shaders.Core
+
+// Shapes laid over the model that are not the model: a bake's reach, its high mesh and which parts match. Each vertex
+// carries its own colour and opacity, so one pass draws them all; they are lifted towards the eye as the wireframe is,
+// so a shape lying on the model is seen over it rather than fighting it for the same depth.
+
+shader ViewportOverlay {
+    var viewProjection: mat4
+    var cameraPosition: float3
+    var lift: float
+
+    stream var tint: float4
+
+    [VertexShader]
+    [Semantic("SV_Position")]
+    func Vertex(position: float3, color: float4): float4 {
+        tint = color
+        val toward = Math.SafeNormalize(cameraPosition - position)
+        return viewProjection * float4(position + toward * lift, 1f)
+    }
+
+    [FragmentShader]
+    [Semantic("SV_Target")]
+    func Fragment(): float4 {
+        return tint
+    }
+}

@@ -30,6 +30,9 @@ class BakeRayOptions:
             ignore_backfaces (bool): Whether a ray passes through a high face turned away from the low mesh's facing.
             skew (float): How far rays lean from the smoothed direction towards the low mesh's own normal, 0 to 1.
             skew_map (str): A grey image saying where to apply the skew, or empty for everywhere.
+            distance_map (str): A grey image correcting how far the rays reach over the atlas, or empty for as set: mid grey
+                leaves them,
+                black pulls them onto the low mesh and white sends them twice as far, front, rear and cage alike.
             match_by_name (bool): Whether a part of the low mesh only strikes the high part of the same name.
             low_suffix (str): What a low part's name ends in, which matching by name takes off.
             high_suffix (str): What a high part's name ends in, which matching by name takes off.
@@ -41,6 +44,7 @@ class BakeRayOptions:
     ignore_backfaces: bool
     skew: float
     skew_map: str
+    distance_map: str
     match_by_name: bool
     low_suffix: str
     high_suffix: str
@@ -63,6 +67,8 @@ class BakeRayOptions:
 
         skew_map = self.skew_map
 
+        distance_map = self.distance_map
+
         match_by_name = self.match_by_name
 
         low_suffix = self.low_suffix
@@ -79,6 +85,7 @@ class BakeRayOptions:
             "ignoreBackfaces": ignore_backfaces,
             "skew": skew,
             "skewMap": skew_map,
+            "distanceMap": distance_map,
             "matchByName": match_by_name,
             "lowSuffix": low_suffix,
             "highSuffix": high_suffix,
@@ -103,6 +110,8 @@ class BakeRayOptions:
 
         skew_map = d.pop("skewMap")
 
+        distance_map = d.pop("distanceMap")
+
         match_by_name = d.pop("matchByName")
 
         low_suffix = d.pop("lowSuffix")
@@ -116,6 +125,7 @@ class BakeRayOptions:
             ignore_backfaces=ignore_backfaces,
             skew=skew,
             skew_map=skew_map,
+            distance_map=distance_map,
             match_by_name=match_by_name,
             low_suffix=low_suffix,
             high_suffix=high_suffix,

@@ -33,6 +33,13 @@ public static class IpcTypes {
     public const string ViewportDisplay = "viewport.display";
 
     /// <summary>
+    ///     Server to Worker: lay a bake's setup over the model, as <see cref="IpcMessage.BakePreview" /> says, or take
+    ///     it off for an empty low mesh; answers with <see cref="IpcMessage.BakePreviewShown" />. Paths, not shapes:
+    ///     the Worker reads the meshes and keeps what it drew.
+    /// </summary>
+    public const string ViewportBakePreview = "viewport.bake-preview";
+
+    /// <summary>
     ///     Server to Worker: render <see cref="IpcMessage.Render" /> into shared memory; answers with
     ///     <see cref="IpcMessage.Frame" />. The pixels are not in the message.
     /// </summary>
@@ -247,6 +254,15 @@ public sealed class IpcMessage {
     public IReadOnlyList<string>? Parts { get; set; }
 
     public MeshPartMaskAsk? MeshPartMask { get; set; }
+
+    /// <summary>
+    ///     The bake's setup for <see cref="IpcTypes.ViewportBakePreview" />: paths and options, never shapes, and an
+    ///     empty low mesh for none.
+    /// </summary>
+    public ViewportBakePreview? BakePreview { get; set; }
+
+    /// <summary>The key to what <see cref="IpcTypes.ViewportBakePreview" /> drew, in its answer.</summary>
+    public BakePreviewState? BakePreviewShown { get; set; }
 
     /// <summary>A model's materials, in the answer to <see cref="IpcTypes.MeshMaterials" />.</summary>
     public IReadOnlyList<string>? Materials { get; set; }

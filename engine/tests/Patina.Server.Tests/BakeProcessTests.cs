@@ -17,7 +17,7 @@ namespace Patina.Server.Tests;
 ///     Bakes as a client that is not the editor sees them: the real Server and Worker as processes, paths in and paths
 ///     out. S5's kill lands here, in the middle of a bake.
 /// </summary>
-public sealed class BakeProcessTests : IDisposable {
+public sealed partial class BakeProcessTests : IDisposable {
     const int ViewportFrameHeader = 32;
 
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-bake-");
@@ -760,6 +760,20 @@ public sealed class BakeProcessTests : IDisposable {
             deadline.Token
         );
         Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+
+        // A preview of a bake that could not run is refused before anything is read.
+        using var gone = await PreviewAsync(
+            new() { High = queued.Bake!.High, Low = Path.Combine(folder.FullName, "gone.glb") },
+            deadline.Token
+        );
+        Assert.Equal(HttpStatusCode.NotFound, gone.StatusCode);
+        using var reachless = await PreviewAsync(
+            new() {
+                High = queued.Bake.High, Low = queued.Bake.Low, Options = new() { Rays = new() { Front = 0, Rear = 0 } }
+            },
+            deadline.Token
+        );
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, reachless.StatusCode);
     }
 
     static async Task<ClientWebSocket> FollowAsync(

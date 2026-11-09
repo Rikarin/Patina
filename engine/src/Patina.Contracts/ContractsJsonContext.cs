@@ -94,4 +94,6 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(StackChecks), TypeInfoPropertyName = nameof(StackChecks))]
 [JsonSerializable(typeof(ViewportScreenshotRequest), TypeInfoPropertyName = nameof(ViewportScreenshotRequest))]
 [JsonSerializable(typeof(ViewportScreenshot), TypeInfoPropertyName = nameof(ViewportScreenshot))]
+[JsonSerializable(typeof(ViewportBakePreview), TypeInfoPropertyName = nameof(ViewportBakePreview))]
+[JsonSerializable(typeof(BakePreviewState), TypeInfoPropertyName = nameof(BakePreviewState))]
 public sealed partial class ContractsJsonContext : JsonSerializerContext;

@@ -210,6 +210,24 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/viewport/bake-preview': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The bake setup the viewport shows, and the key to its colours. */
+    get: operations['GetBakePreview'];
+    /** Lays a bake's setup over the model before it runs: where its rays start and how far they reach, the high meshes see-through, and which parts match by name. An empty low mesh takes it off. */
+    put: operations['PreviewBakeInViewport'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/viewport/graph': {
     parameters: {
       query?: never;
@@ -1860,6 +1878,17 @@ export interface components {
        */
       keep: number;
     };
+    /** @description Where a colour map's colour comes from. */
+    BakeColourOptions: {
+      /**
+       * @description `auto`: the high mesh's vertex colours, else its materials. `vertex-colour`; `material`, each
+       *                 material's base colour and base colour picture; or `texture`, the picture at string BakeColourOptions.Texture
+       *                 read at the high mesh's own coordinates, which moves any map from one UV layout to another.
+       */
+      source: string;
+      /** @description For `texture`: the picture to carry across, as a path on the Server's machine. */
+      texture: string;
+    };
     /** @description One baked map, as a file. */
     BakedMapFile: {
       /** @description What it measures. */
@@ -1964,7 +1993,8 @@ export interface components {
       gutter: number;
       /**
        * @description Which maps to write: `normal`, `height`, `ao`, `bent`, `curvature`,
-       *     `thickness`, `position`, `world`, `id`. The default is what a project's masks read.
+       *     `thickness`, `position`, `world`, `id`, `colour`. The default is what a project's
+       *     masks read.
        */
       maps: string[];
       /** @description The frame of the normal and bent normal maps: `tangent` or `object`. */
@@ -1979,6 +2009,41 @@ export interface components {
       thickness: components['schemas']['BakeThicknessOptions'];
       /** @description What the ID map labels and how it colours them. */
       id: components['schemas']['BakeIdOptions'];
+      /** @description Edges baked round into the normal, with no high poly to give them a bevel. */
+      rounding: components['schemas']['BakeRoundingOptions'];
+      /** @description Where the colour map's colour comes from. */
+      colour: components['schemas']['BakeColourOptions'];
+    };
+    /**
+     * @description One part name as matching by name sees it: how many faces each side has and the colour it is drawn
+     *     in.
+     */
+    BakePreviewPart: {
+      /** @description The name both sides share once their endings are gone. */
+      name: string;
+      /**
+       * Format: int32
+       * @description The low mesh's faces of that name, zero for a high part no low part matched.
+       */
+      lowFaces: number;
+      /**
+       * Format: int32
+       * @description The high mesh's faces of that name, zero for a low part that matched nothing.
+       */
+      highFaces: number;
+      /** @description How it is drawn, as `#rrggbb`. */
+      colour: string;
+    };
+    /** @description What the viewport shows of a bake's setup: the key to its colours, and what it could not show. */
+    BakePreviewState: {
+      preview?: null | components['schemas']['ViewportBakePreview'];
+      /**
+       * @description The parts by name, in the low mesh's order and then the high's, when parts are matched by name; empty when
+       *     they are not.
+       */
+      parts: components['schemas']['BakePreviewPart'][];
+      /** @description What the preview left out or could not read. */
+      warnings: string[];
     };
     /** @description How far a bake's rays look from the low mesh, and what they may strike. */
     BakeRayOptions: {
@@ -2006,6 +2071,11 @@ export interface components {
       skew: number;
       /** @description A grey image saying where to apply the skew, or empty for everywhere. */
       skewMap: string;
+      /**
+       * @description A grey image correcting how far the rays reach over the atlas, or empty for as set: mid grey leaves them,
+       *     black pulls them onto the low mesh and white sends them twice as far, front, rear and cage alike.
+       */
+      distanceMap: string;
       /** @description Whether a part of the low mesh only strikes the high part of the same name. */
       matchByName: boolean;
       /** @description What a low part's name ends in, which matching by name takes off. */
@@ -2053,6 +2123,26 @@ export interface components {
       cached: boolean;
       /** @description What the bake read and found, line by line: the meshes, each part's match, the time it took. */
       log: string[];
+    };
+    /** @description Edges baked round into the normal map, the bevel a hard-surface model was not modelled with. */
+    BakeRoundingOptions: {
+      /** @description Whether edges are rounded at all. */
+      enabled: boolean;
+      /**
+       * Format: double
+       * @description How far either side of an edge the bevel reaches, in the rays' units.
+       */
+      width: number;
+      /**
+       * @description Which edges: `angle`, every edge whose faces meet at double BakeRoundingOptions.Angle or more, or `hard`, the
+       *     edges the mesh's own normals split, which is the nearest a mesh file has to an edge weight.
+       */
+      edges: string;
+      /**
+       * Format: double
+       * @description For `angle`: the least angle between two faces that is an edge, in degrees.
+       */
+      angle: number;
     };
     /** @description The thickness map's own settings. */
     BakeThicknessOptions: {
@@ -5841,6 +5931,28 @@ export interface components {
       /** @description What a person should know: an island split, a rescale. */
       warnings: string[];
     };
+    /**
+     * @description A bake's setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,
+     *     and what of it to draw. Paths on the Server's machine, as in a bake request.
+     */
+    ViewportBakePreview: {
+      /** @description The detailed meshes, in order. */
+      high: string[];
+      /** @description The mesh baked onto, or empty to take the preview off. */
+      low: string;
+      /** @description A cage, or null for the ray distances. */
+      cage?: null | string;
+      /** @description The texture set of the low mesh, or null for the whole mesh. */
+      material?: null | string;
+      /** @description The options the bake would run with: its distances, units, cage correction and matching. */
+      options: components['schemas']['BakeOptions'];
+      /** @description Whether to draw where the rays start and how far they reach: the cage or the ray distances. */
+      reach: boolean;
+      /** @description Whether to draw the high meshes, see-through. */
+      highMesh: boolean;
+      /** @description Whether to colour the parts by which matched which, when parts are matched by name. */
+      matches: boolean;
+    };
     /** @description Asks the viewport to show a finished bake on the mesh it was baked onto. */
     ViewportBakeRequest: {
       /** @description The bake's job. */
@@ -6674,6 +6786,77 @@ export interface operations {
       };
       /** @description Unprocessable Entity */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetBakePreview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['BakePreviewState'];
+        };
+      };
+    };
+  };
+  PreviewBakeInViewport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportBakePreview'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['BakePreviewState'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
         headers: {
           [name: string]: unknown;
         };

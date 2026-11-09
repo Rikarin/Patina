@@ -52,7 +52,7 @@ internal static class MeshMapCommand {
         var scratch = cacheFolder is null ? Directory.CreateTempSubdirectory("patina-bake-") : null;
         var cache = new BakeCache(cacheFolder ?? scratch!.FullName);
         try {
-            var key = BakeInputs.KeyOf(request, ToolCatalog.Default).Hex;
+            var key = BakeKeyReads.KeyOf(request, ToolCatalog.Default).Hex;
             var manifest = cache.Find(key);
             var cached = manifest is not null;
             manifest ??= MeshMapBakeRun.Run(request, cache.FolderOf(key), threads, Progress(), stop.Token);

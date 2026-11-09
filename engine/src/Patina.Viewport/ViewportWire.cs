@@ -8,14 +8,16 @@ using Vixen.Shaders;
 namespace Patina.Viewport;
 
 /// <summary>
-///     The lines over the shaded model: the triangles' edges, and the floor's grid (<see cref="ViewportGrid" />). Each
-///     is tested against the model's depth and not written to it, and blended over what is there. Segments rather than
-///     a fill mode, which needs a device feature, as Vixen's own wireframe.
+///     The lines over the shaded model: the triangles' edges, the floor's grid (<see cref="ViewportGrid" />) and the
+///     shapes laid over the model (<see cref="ViewportOverlay" />), such as a bake's setup. Each is tested against the
+///     model's depth and not written to it, and blended over what is there. Segments rather than a fill mode, which
+///     needs a device feature, as Vixen's own wireframe.
 /// </summary>
 sealed class ViewportWire(
     VulkanDevice device,
     (Effect Effect, ShaderHandle Vertex, ShaderHandle Fragment) edges,
     (Effect Effect, ShaderHandle Vertex, ShaderHandle Fragment) floor,
+    (Effect Effect, ShaderHandle Vertex, ShaderHandle Fragment) shapes,
     PixelFormat colourFormat,
     PixelFormat depthFormat,
     int samples
@@ -29,6 +31,9 @@ sealed class ViewportWire(
     readonly ViewportGrid grid =
         new(device, floor.Effect, floor.Vertex, floor.Fragment, colourFormat, depthFormat, samples);
 
+    readonly ViewportOverlay overlay =
+        new(device, shapes.Effect, shapes.Vertex, shapes.Fragment, colourFormat, depthFormat, samples);
+
     /// <summary>The frame's camera, and how far a line stands off its surface for a model of this size.</summary>
     public void Write(Matrix4x4 viewProjection, Vector3 eye, float radius) {
         lines.Block.Set("viewProjection", viewProjection)
@@ -36,6 +41,7 @@ sealed class ViewportWire(
             .Set("lift", radius * Lift)
             .Set("wireColor", new Vector4(0f, 0f, 0f, 0.55f));
         lines.Commit();
+        overlay.Write(viewProjection, eye, radius);
     }
 
     /// <summary>Draws the edges inside the forward pass, after the model.</summary>
@@ -52,7 +58,14 @@ sealed class ViewportWire(
     /// <summary>Draws the grid inside the forward pass, after the model.</summary>
     public void RecordGrid(ICommandList commands) => grid.Record(commands);
 
+    /// <summary>Takes these shapes in place of the last, or none for empty arrays.</summary>
+    public void SetOverlay(float[] triangles, float[] lines) => overlay.Set(new(triangles, lines));
+
+    /// <summary>Draws the overlay's shapes inside the forward pass, after the model, its edges and the grid.</summary>
+    public void RecordOverlay(ICommandList commands) => overlay.Record(commands);
+
     public void Dispose() {
+        overlay.Dispose();
         grid.Dispose();
         lines.Dispose();
     }

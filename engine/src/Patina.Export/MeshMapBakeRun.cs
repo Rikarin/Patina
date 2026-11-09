@@ -74,7 +74,11 @@ public static class MeshMapBakeRun {
         var cage = request.Cage is { } path ? Read(path, request.Material).Mesh : null;
         var (source, colours) = Ids(request.Options.Id.Source, high, files, warnings);
         var settings = Settings(request, high, low, cage, threads) with {
-            IdSource = source, GroupsAreColours = colours
+            IdSource = source,
+            GroupsAreColours = colours,
+            Colours = request.Options.Maps.Contains("colour", StringComparer.Ordinal)
+                ? BakeColourSources.Of(request, high, files, warnings)
+                : null
         };
         if (settings.Parts is not null) {
             Matches(request.Options.Rays, high, low, log);
@@ -159,7 +163,13 @@ public static class MeshMapBakeRun {
             }
         );
 
-    static BakeSettings Settings(BakeRequest request, FlatModel high, FlatModel low, EditMesh? cage, int threads) {
+    internal static BakeSettings Settings(
+        BakeRequest request,
+        FlatModel high,
+        FlatModel low,
+        EditMesh? cage,
+        int threads
+    ) {
         var options = request.Options;
         var rays = options.Rays;
         var occlusion = options.Occlusion;
@@ -203,7 +213,9 @@ public static class MeshMapBakeRun {
             Supersampling = options.Supersampling,
             Cage = cage,
             Skew = (float)rays.Skew,
-            SkewMap = rays.SkewMap is { Length: > 0 } map ? SkewMask(map) : null,
+            SkewMap = rays.SkewMap is { Length: > 0 } map ? Mask(map, "skew map") : null,
+            DistanceMap = rays.DistanceMap is { Length: > 0 } distance ? Mask(distance, "distance map") : null,
+            Rounding = Rounding(options.Rounding),
             Parts = rays.MatchByName
                 ? BakeParts.ByName(high.Parts, low.Parts, Suffixes(rays.HighSuffix), Suffixes(rays.LowSuffix))
                 : null,
@@ -211,8 +223,18 @@ public static class MeshMapBakeRun {
         };
     }
 
+    /// <summary>The edges to round, or null when rounding is off.</summary>
+    static BakeRounding? Rounding(BakeRoundingOptions rounding) {
+        if (!rounding.Enabled) {
+            return null;
+        }
+
+        var edges = rounding.Edges == "hard" ? RoundedEdges.Hard : RoundedEdges.Angle;
+        return new((float)rounding.Width, edges, (float)rounding.Angle);
+    }
+
     /// <summary>A name ending as the matching takes it: one ending, or none for an empty field.</summary>
-    static string[] Suffixes(string suffix) => suffix.Trim() is { Length: > 0 } trimmed ? [trimmed] : [];
+    internal static string[] Suffixes(string suffix) => suffix.Trim() is { Length: > 0 } trimmed ? [trimmed] : [];
 
     static MeshMaps Maps(IReadOnlyList<string> names) {
         var maps = MeshMaps.None;
@@ -225,6 +247,7 @@ public static class MeshMapBakeRun {
                 "position" => MeshMaps.Position,
                 "world" => MeshMaps.WorldNormal,
                 "id" => MeshMaps.Id,
+                "colour" => MeshMaps.Colour,
                 _ => MeshMaps.None
             };
         }
@@ -365,11 +388,13 @@ public static class MeshMapBakeRun {
     }
 
     /// <summary>A grey image as a mask, its rows the atlas's rows: the first is v = 0, as in every baked map.</summary>
-    static BakeMask SkewMask(string path) {
+    /// <param name="path">The picture, in any format a bake reads.</param>
+    /// <param name="what">What the mask is, for the refusal of one that is not square.</param>
+    static BakeMask Mask(string path, string what) {
         var picture = MapPictures.ReadFile(path);
         if (picture.Width != picture.Height) {
             throw new InvalidDataException(
-                $"The skew map '{path}' is {picture.Width} × {picture.Height}, and the atlas is square."
+                $"The {what} '{path}' is {picture.Width} × {picture.Height}, and the atlas is square."
             );
         }
 
@@ -399,7 +424,10 @@ public static class MeshMapBakeRun {
         var wanted = request.Options.Maps.ToHashSet(StringComparer.Ordinal);
         var extension = MeshMapFiles.ExtensionOf(request.Options.Format);
         List<BakedMapFile> files = [];
-        foreach (var plane in MeshMapPlanes.Of(maps)) {
+        foreach (var baked in MeshMapPlanes.Of(maps)) {
+            var plane = baked.Kind == MeshMapKind.Colour
+                ? BakeColourSources.Encoded(baked, request.Options.Colour)
+                : baked;
             var map = MeshMapFiles.NameOf(plane.Kind);
             if (!wanted.Contains(map)) {
                 continue;

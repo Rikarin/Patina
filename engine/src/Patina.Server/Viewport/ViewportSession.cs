@@ -32,6 +32,7 @@ public interface IFrameSubscriber {
 /// </summary>
 public sealed class ViewportSession(
     WorkerLink worker,
+    BakePreviewSession bakePreview,
     FrameMemory memory,
     IOptions<ServerOptions> options,
     ILogger<ViewportSession> logger
@@ -451,7 +452,17 @@ public sealed class ViewportSession(
             toldCamera = work.Camera;
         }
 
+        await bakePreview.TellAsync(connection, cancellationToken);
         return connection;
+    }
+
+    /// <summary>Draws again for every viewer, as when something laid over the model changed.</summary>
+    public void Redraw() {
+        lock (changing) {
+            revision++;
+        }
+
+        Wake();
     }
 
     /// <summary>What is under a position on the picture, through the Worker.</summary>
