@@ -169,6 +169,8 @@ test('a fill shows only the projection controls that apply', async () => {
 });
 
 test('colours painted in Blender bake to an id map, and a mask selects one', async () => {
+  // The bake alone may take the 120 s its wait allows, so the test's own 120 s limit would cut it off first.
+  test.setTimeout(300_000);
   const mesh = join(scratch, 'coloured.glb');
   writeFileSync(mesh, colouredGlb());
   await newProject(app, window, 'Coloured', mesh);

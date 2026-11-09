@@ -32,6 +32,8 @@ test.afterEach(async () => {
 });
 
 test('an empty library says so, and a new project exports with nothing declared', async () => {
+  // Its export may take the 120 s its wait allows, so the test's own 120 s limit would cut it off first.
+  test.setTimeout(300_000);
   const library = join(scratch, 'Ember.ptlib');
   await newLibrary(app, window, library);
 
@@ -71,6 +73,8 @@ function alphaOf(file: string): number[] {
 }
 
 test('the dialog exports the document in front as TGA, transparent past its padding', async () => {
+  // Its export may take the 120 s its wait allows, so the test's own 120 s limit would cut it off first.
+  test.setTimeout(300_000);
   const library = join(scratch, 'Ember.ptlib');
   await newLibrary(app, window, library);
   await newProject(app, window, 'Housing', join(scratch, 'meshes', 'housing_low.glb'));
