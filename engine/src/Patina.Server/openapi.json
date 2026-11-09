@@ -7331,6 +7331,14 @@
             ],
             "description": "The material of the low mesh to bake, for one texture set of a model that has several."
           },
+          "uvSet": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The low mesh\u0027s texture coordinate set the maps are baked in, by the file\u0027s number: zero for the first (#210).\nNull bakes a texture set in the set it is laid out in, when the low mesh is a project\u0027s and\nstring? BakeRequest.Material names one of its texture sets, and in the first otherwise. The high mesh is read\nwhole, so its sets do not matter, but for a picture moved from its layout, which is always its first.",
+            "format": "int32"
+          },
           "name": {
             "type": [
               "null",
@@ -13299,6 +13307,9 @@
             "$ref": "#/components/schemas/StackCommandStackSetHeightNormal"
           },
           {
+            "$ref": "#/components/schemas/StackCommandStackSetSettings"
+          },
+          {
             "$ref": "#/components/schemas/StackCommandStackAddMaskLayer"
           },
           {
@@ -13335,6 +13346,7 @@
             "flattenLayer": "#/components/schemas/StackCommandStackFlattenLayer",
             "unflattenLayer": "#/components/schemas/StackCommandStackUnflattenLayer",
             "setHeightNormal": "#/components/schemas/StackCommandStackSetHeightNormal",
+            "setSettings": "#/components/schemas/StackCommandStackSetSettings",
             "addMaskLayer": "#/components/schemas/StackCommandStackAddMaskLayer",
             "removeMaskLayer": "#/components/schemas/StackCommandStackRemoveMaskLayer",
             "moveMaskLayer": "#/components/schemas/StackCommandStackMoveMaskLayer",
@@ -14120,6 +14132,51 @@
           }
         },
         "description": "Sets the number every procedural step of the stack derives from."
+      },
+      "StackCommandStackSetSettings": {
+        "required": [
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "setSettings"
+            ],
+            "type": "string"
+          },
+          "width": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The width the set is painted, evaluated and exported at, one of the sides the system offers. A canvas painted at\nanother resolution is never rewritten by this: it is sampled at the set\u0027s, and a smaller one is enlarged exactly\nwhen it is next painted (#19).",
+            "format": "int32"
+          },
+          "height": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The height, which may differ from the width.",
+            "format": "int32"
+          },
+          "uvSet": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Which of the mesh\u0027s texture coordinate sets the set is painted, baked and drawn in, by the file\u0027s number: 0 is\nthe first (#210). Every part of the set has to have it.",
+            "format": "int32"
+          },
+          "heightNormal": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How height becomes the normal: \u0060Sharp\u0060 or \u0060Smooth\u0060."
+          }
+        },
+        "description": "Changes the texture set\u0027s settings, any of them, as one undo step. What is left out stays as it is. Together\nwith its channels and its name these are the set\u0027s settings, and the stack file is the one place they live."
       },
       "StackCommandStackStroke": {
         "required": [
@@ -15587,7 +15644,8 @@
           "seed",
           "settled",
           "model",
-          "heightNormal"
+          "heightNormal",
+          "uvSet"
         ],
         "type": "object",
         "properties": {
@@ -15699,6 +15757,12 @@
               "$ref": "#/components/schemas/StackAnchor"
             },
             "description": "The anchor points its set publishes, by name, and who reads each."
+          },
+          "uvSet": {
+            "type": "integer",
+            "description": "The mesh\u0027s texture coordinate set the set is painted, baked and drawn in, by the file\u0027s number.",
+            "format": "int32",
+            "default": 0
           }
         },
         "description": "A whole stack: everything a client needs to draw it, and no pixels."

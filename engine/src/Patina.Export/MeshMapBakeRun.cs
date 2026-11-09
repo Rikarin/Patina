@@ -52,7 +52,7 @@ public static class MeshMapBakeRun {
         }
 
         var high = ModelGeometry.Flatten(files);
-        var low = Read(request.Low, request.Material, request.UvSet);
+        var low = Read(request.Low, request.Material, request.UvSet ?? 0);
         cancellationToken.ThrowIfCancellationRequested();
 
         if (low.Mesh.TexCoords.Length != low.Mesh.CornerCount) {
@@ -71,7 +71,7 @@ public static class MeshMapBakeRun {
 
         Describe(request, high, low, log);
 
-        var cage = request.Cage is { } path ? Read(path, request.Material, request.UvSet).Mesh : null;
+        var cage = request.Cage is { } path ? Read(path, request.Material, request.UvSet ?? 0).Mesh : null;
         var (source, colours) = Ids(request.Options.Id.Source, high, files, warnings);
         var settings = Settings(request, high, low, cage, threads) with {
             IdSource = source,

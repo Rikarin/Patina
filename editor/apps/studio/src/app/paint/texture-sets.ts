@@ -1,6 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
+import { XuiSelectImports } from '@xui/select';
+import { type MeshFacts, unwrap } from '@patina/api-client';
+import { SystemStatus } from '../core/system-status';
+import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { IsolationStore } from '../viewport/isolation-store';
 import { PaintStore } from './paint-store';
@@ -14,7 +18,7 @@ const HeightNormals: readonly XuiSegmentedOption[] = [
 /** The model's texture sets: a document per material, of which one is being painted. */
 @Component({
   selector: 'ptn-texture-sets',
-  imports: [XuiNonIdealStateImports, XuiSegmentedControlImports],
+  imports: [XuiNonIdealStateImports, XuiSegmentedControlImports, XuiSelectImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col overflow-auto p-1' },
   template: `
@@ -81,6 +85,52 @@ const HeightNormals: readonly XuiSegmentedOption[] = [
         }
       </div>
     }
+    @if (store.state(); as state) {
+      <div class="flex flex-col gap-1 px-2 py-1" role="group" aria-label="Texture set settings" data-testid="texture-set-settings">
+        <div
+          class="flex items-center gap-2"
+          title="What the set is painted, shown and exported at. Changing it rewrites no paint: a layer painted at another size is sampled at this one, and grows to it, exactly, the next time it is painted."
+        >
+          <span class="text-foreground-muted min-w-0 flex-1 truncate text-xs">Resolution</span>
+          <xui-select
+            size="sm"
+            ariaLabel="Texture set width"
+            data-testid="texture-set-width"
+            [items]="sides()"
+            [itemText]="texels"
+            [value]="state.width"
+            (valueChange)="setSize($event, state.height)"
+          />
+          <span class="text-foreground-muted text-xs">×</span>
+          <xui-select
+            size="sm"
+            ariaLabel="Texture set height"
+            data-testid="texture-set-height"
+            [items]="sides()"
+            [itemText]="texels"
+            [value]="state.height"
+            (valueChange)="setSize(state.width, $event)"
+          />
+        </div>
+        @if (uvSets().length > 1) {
+          <div
+            class="flex items-center gap-2"
+            title="Which of the mesh's UV sets this texture set is painted, baked and shown in."
+          >
+            <span class="text-foreground-muted min-w-0 flex-1 truncate text-xs">UV set</span>
+            <xui-select
+              size="sm"
+              ariaLabel="UV set"
+              data-testid="texture-set-uv-set"
+              [items]="uvSets()"
+              [itemText]="uvSetName"
+              [value]="state.uvSet"
+              (valueChange)="setUvSet($event)"
+            />
+          </div>
+        }
+      </div>
+    }
     @if (heightNormal(); as method) {
       <div
         class="flex items-center gap-2 px-2 py-1"
@@ -101,7 +151,27 @@ const HeightNormals: readonly XuiSegmentedOption[] = [
 })
 export class TextureSets {
   private readonly project = inject(ProjectStore);
-  private readonly store = inject(PaintStore);
+  protected readonly store = inject(PaintStore);
+  private readonly status = inject(SystemStatus);
+  private readonly library = inject(LibraryStore);
+  /** What the project's mesh is, for the UV sets each of its texture sets can be laid out in. */
+  private readonly facts = signal<MeshFacts | null>(null);
+  /** The sides a set can have, from the Server, and the ones it has even if the list has not. */
+  protected readonly sides = computed(() => {
+    const state = this.store.state();
+    const held = state ? [state.width, state.height] : [];
+    return [...new Set([...this.status.textureSides(), ...held])].sort((a, b) => a - b);
+  });
+  /** The UV sets every part of the open set has, and the one it is laid out in even if the mesh has lost it. */
+  protected readonly uvSets = computed(() => {
+    const state = this.store.state();
+    const facts = this.facts();
+    const material = facts?.materials.find(entry => entry.name === state?.set) ?? facts?.materials[0];
+    const count = Math.max(material?.uvSets ?? 1, (state?.uvSet ?? 0) + 1);
+    return Array.from({ length: count }, (_, index) => index);
+  });
+  protected readonly texels = (side: number): string => `${side}`;
+  protected readonly uvSetName = (index: number): string => `UV ${index + 1}`;
   protected readonly isolation = inject(IsolationStore);
   /** The named meshes of the open set, which can be shown alone. */
   protected readonly parts = signal<readonly string[]>([]);
@@ -116,6 +186,23 @@ export class TextureSets {
   });
 
   constructor() {
+    effect(onCleanup => {
+      const contents = this.project.current();
+      const on = contents?.documents.find(document => !!document.mesh)?.mesh;
+      const mesh = (contents?.meshes.find(held => !!on && held.id === on) ?? contents?.meshes[0])?.path;
+      let current = true;
+      onCleanup(() => (current = false));
+      untracked(() => this.facts.set(null));
+      if (mesh) {
+        void this.library
+          .api()
+          .then(async client => unwrap(await client.GET('/api/v1/library/mesh', { params: { query: { path: mesh } } })))
+          .then(
+            facts => current && this.facts.set(facts),
+            () => undefined
+          );
+      }
+    });
     effect(() => {
       if (this.store.state()?.id) {
         untracked(() => void this.store.meshParts().then(parts => this.parts.set(parts), () => this.parts.set([])));
@@ -150,6 +237,19 @@ export class TextureSets {
     const project = this.project.current();
     if (project) {
       void this.project.openDocument(project.path, path);
+    }
+  }
+
+  protected setSize(width: number | null, height: number | null): void {
+    const state = this.store.state();
+    if (state && width && height && (width !== state.width || height !== state.height)) {
+      void this.store.edit({ op: 'setSettings', width, height });
+    }
+  }
+
+  protected setUvSet(uvSet: number | null): void {
+    if (uvSet !== null && uvSet !== this.store.state()?.uvSet) {
+      void this.store.edit({ op: 'setSettings', uvSet });
     }
   }
 

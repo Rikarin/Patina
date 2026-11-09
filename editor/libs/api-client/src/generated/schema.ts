@@ -2135,6 +2135,14 @@ export interface components {
       cage?: null | string;
       /** @description The material of the low mesh to bake, for one texture set of a model that has several. */
       material?: null | string;
+      /**
+       * Format: int32
+       * @description The low mesh's texture coordinate set the maps are baked in, by the file's number: zero for the first (#210).
+       *     Null bakes a texture set in the set it is laid out in, when the low mesh is a project's and
+       *     string? BakeRequest.Material names one of its texture sets, and in the first otherwise. The high mesh is read
+       *     whole, so its sets do not matter, but for a picture moved from its layout, which is always its first.
+       */
+      uvSet?: null | number;
       /** @description The stem of each file's name, or null for the low mesh's. */
       name?: null | string;
       /** @description What to bake and how: the part a project keeps between bakes. */
@@ -4754,6 +4762,7 @@ export interface components {
       | components['schemas']['StackCommandStackFlattenLayer']
       | components['schemas']['StackCommandStackUnflattenLayer']
       | components['schemas']['StackCommandStackSetHeightNormal']
+      | components['schemas']['StackCommandStackSetSettings']
       | components['schemas']['StackCommandStackAddMaskLayer']
       | components['schemas']['StackCommandStackRemoveMaskLayer']
       | components['schemas']['StackCommandStackMoveMaskLayer']
@@ -5073,6 +5082,34 @@ export interface components {
        * @description It.
        */
       seed: number;
+    };
+    /**
+     * @description Changes the texture set's settings, any of them, as one undo step. What is left out stays as it is. Together
+     *     with its channels and its name these are the set's settings, and the stack file is the one place they live.
+     */
+    StackCommandStackSetSettings: {
+      /** @enum {string} */
+      op: 'setSettings';
+      /**
+       * Format: int32
+       * @description The width the set is painted, evaluated and exported at, one of the sides the system offers. A canvas painted at
+       *     another resolution is never rewritten by this: it is sampled at the set's, and a smaller one is enlarged exactly
+       *     when it is next painted (#19).
+       */
+      width?: null | number;
+      /**
+       * Format: int32
+       * @description The height, which may differ from the width.
+       */
+      height?: null | number;
+      /**
+       * Format: int32
+       * @description Which of the mesh's texture coordinate sets the set is painted, baked and drawn in, by the file's number: 0 is
+       *     the first (#210). Every part of the set has to have it.
+       */
+      uvSet?: null | number;
+      /** @description How height becomes the normal: `Sharp` or `Smooth`. */
+      heightNormal?: null | string;
     };
     /**
      * @description Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one
@@ -5820,6 +5857,12 @@ export interface components {
       heightNormal: string;
       /** @description The anchor points its set publishes, by name, and who reads each. */
       anchors?: null | components['schemas']['StackAnchor'][];
+      /**
+       * Format: int32
+       * @description The mesh's texture coordinate set the set is painted, baked and drawn in, by the file's number.
+       * @default 0
+       */
+      uvSet: number;
     };
     /** @description Where a stroke's colour comes from, when it is not one colour. */
     StackStrokeSource: {
