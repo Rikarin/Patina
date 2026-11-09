@@ -505,7 +505,15 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
                 unknown = true;
             }
 
+            // Strokes this Worker holds that grew come first, since they stand before any it has not begun.
             var parts = sync.Parts.ToDictionary(static part => part.Id);
+            HashSet<long> stamped = [];
+            foreach (var part in sync.Parts.Where(part => applied.Take(common).Any(held => held.Id == part.Id))) {
+                watch.Beat();
+                Extend(known[part.Id], part);
+                stamped.Add(part.Id);
+            }
+
             for (var index = common; index < sync.Standing.Count; index++) {
                 var id = sync.Standing[index];
                 if (known.TryGetValue(id, out var stroke)) {
@@ -513,14 +521,20 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
                     applied.Add(stroke);
                     unknown = true;
                 } else if (parts.TryGetValue(id, out var part)) {
+                    // ⚠ Begun and stamped before the next is begun: a stroke's undo puts back the layer as it was
+                    // when the stroke began, so one begun before the strokes ahead of it had stamped took them away
+                    // with it. A replay after a lost Worker, or two strokes that reached a busy Worker together, did.
                     applied.Add(Begin(part));
+                    // A long replay is one request, and each stroke of it is progress.
+                    watch.Beat();
+                    Extend(known[id], part);
+                    stamped.Add(id);
                 } else {
                     throw new IpcException($"Stroke {id} stands and this Worker was never told it.");
                 }
             }
 
-            foreach (var part in sync.Parts) {
-                // A long replay is one request, and each stroke of it is progress.
+            foreach (var part in sync.Parts.Where(part => !stamped.Contains(part.Id))) {
                 watch.Beat();
                 Extend(known[part.Id], part);
             }

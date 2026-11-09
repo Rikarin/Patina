@@ -443,10 +443,16 @@ public sealed partial class StackProcessTests : IDisposable {
         Assert.True(after.Compiled);
         var replayed = await PixelsAsync(state.Id, false, deadline.Token);
 
-        // The same history, on a Worker that never died, from the same file.
+        // The same history, on a Worker that never died, from the same file. ⚠ Each part waits for its evaluation, so
+        // the control's Worker stamps a stroke before it hears of the next. Sent at once, the control was a replay too,
+        // and both lost the first stroke on the undo below whenever the machine was quick enough to coalesce them.
         var control = await CreateAsync("Control.vxlayers", deadline.Token);
-        await PaintAsync(control.Id, "before", Line(100, 500, 10), false, deadline.Token);
-        await PaintAsync(control.Id, "drag", Line(100, 200, 10), true, deadline.Token);
+        using var watching = await FollowAsync(instance, control, deadline.Token);
+        await EvaluatedAsync(watching, control.Revision, deadline.Token);
+        var first = await PaintAsync(control.Id, "before", Line(100, 500, 10), false, deadline.Token);
+        await EvaluatedAsync(watching, first.Revision, deadline.Token);
+        var opened = await PaintAsync(control.Id, "drag", Line(100, 200, 10), true, deadline.Token);
+        await EvaluatedAsync(watching, opened.Revision, deadline.Token);
         await PaintAsync(control.Id, "drag", Line(400, 200, 10), false, deadline.Token);
         Assert.Equal(
             Digest(await PixelsAsync(control.Id, false, deadline.Token), "baseColor"),
