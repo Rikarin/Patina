@@ -294,12 +294,20 @@ public sealed class DocumentCodecTests {
         );
 
     /// <summary>
-    ///     A project.yaml holds its export, bake and viewport blocks side by side, each written by the one record
-    ///     mechanism, and all three come back whole, with nothing unread and no byte changed by a second save.
+    ///     A project.yaml holds its export, bake, viewport, paint and checks blocks and its documents side by side, each
+    ///     written by the one record mechanism, and all of them come back whole, every field a change made since the
+    ///     cache stopped holding them among them, with nothing unread and no byte changed by a second save.
     /// </summary>
     [Fact]
-    public void Export_bake_viewport_and_checks_blocks_survive_the_round_trip_together() {
+    public void Every_block_and_document_field_survives_the_round_trip_together() {
         var project = TestLibrary.Project("Crate") with {
+            Tags = ["metal", "props"],
+            Documents = [
+                new(AssetId.New(), "graph", "rust.vxtexgraph", "Rust", Role: "mask") { Tags = ["weathering"] },
+                new(AssetId.New(), "layered-material", "crate.vxlayers", "Crate Paint", Material: "Body") {
+                    Tags = ["hero", "painted"]
+                }
+            ],
             Export = new() {
                 Preset = "godot",
                 Size = 512,
@@ -311,7 +319,14 @@ public sealed class DocumentCodecTests {
             Bake = new() {
                 Sets = ["Body"],
                 High = ["/art/crate_high.fbx"],
-                Options = new() { Resolution = 1024, Maps = ["ao", "id"], Occlusion = new() { Rays = 32 } }
+                Options = new() {
+                    Resolution = 1024,
+                    Maps = ["ao", "id", "colour"],
+                    Occlusion = new() { Rays = 32 },
+                    Rays = new() { DistanceMap = "/art/crate_distance.png" },
+                    Rounding = new() { Enabled = true, Width = 0.02, Edges = "hard", Angle = 45 },
+                    Colour = new() { Source = "texture", Texture = "/art/crate_high_albedo.png" }
+                }
             },
             Viewport = new(
                 Exposure: -1.25,
@@ -320,10 +335,19 @@ public sealed class DocumentCodecTests {
                 Wireframe: true,
                 Look: null,
                 Bloom: 0.4,
+                Warmth: -0.3,
+                Tint: 0.2,
                 BackgroundColor: "#336699",
                 Grid: true,
-                PictureLane: "a"
+                PictureLane: "a",
+                PictureScale: 4
             ),
+            Paint = new() {
+                RecentColours = ["#aa3300"],
+                Palette = ["#112233", "#ffffff"],
+                Brush = new(0.05f, Occlusion: false, OcclusionTolerance: 6.5f, SizeSpace: "model"),
+                Symmetry = new("radial", "y", "origin", 0.25f, 6)
+            },
             Checks = new() { MemoryBudget = 21.5, MaxSize = 2048, TexelDensity = 512, DensityTolerance = 0.1 }
         };
 
@@ -335,6 +359,22 @@ public sealed class DocumentCodecTests {
         Assert.Equal(Json(project.Bake), Json(read.Document.Bake));
         Assert.Equal(project.Viewport, read.Document.Viewport);
         Assert.Equal(project.Checks, read.Document.Checks);
+        Assert.Equal(project.Tags, read.Document.Tags);
+        Assert.Equal(project.Paint.Brush, read.Document.Paint!.Brush);
+        Assert.Equal(project.Paint.Symmetry, read.Document.Paint.Symmetry);
+        Assert.Equal(project.Paint.RecentColours, read.Document.Paint.RecentColours);
+        Assert.Equal(project.Paint.Palette, read.Document.Paint.Palette);
+        Assert.Equal(
+            project.Documents.Select(static item => (item.Id, item.Kind, item.File, item.Name, item.Role, item.Material)
+            ),
+            read.Document.Documents.Select(static item => (item.Id, item.Kind, item.File, item.Name, item.Role,
+                    item.Material)
+            )
+        );
+        Assert.Equal(
+            project.Documents.SelectMany(static item => item.Tags),
+            read.Document.Documents.SelectMany(static item => item.Tags)
+        );
         var export = read.Document.Export!;
         Assert.Equal(("godot", 512, false), (export.Preset, export.Size, export.Dither));
         Assert.Equal([0.25f, 0.5f, 1f, 1f], export.Padding!.Colour);
