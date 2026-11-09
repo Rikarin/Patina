@@ -2,6 +2,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { type StackLayer, type StackState, createPatinaClient } from '@patina/api-client';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
+import { RecoveryOffers } from '../core/recovery-offers';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
 import { hexOf } from './layer-panel';
 import { LiveValue } from './live-value';
@@ -458,7 +459,9 @@ describe('PaintStore', () => {
     expect(posts).toContain('/api/v1/stacks/s1');
     expect(store.state()?.id).toBe('s2');
     expect(store.layer()).toBe('paint');
-    expect(store.notice()).toBe('Patina restarted its engine. Edits since the last save are gone.');
+    expect(store.notice()).toBe('Patina restarted its engine and opened this document again from its last save.');
+    // What autosave kept of the unsaved edits is offered back (#162).
+    expect(TestBed.inject(RecoveryOffers).asked()?.path).toBe('/a/Crate.vxlayers');
     expect(sockets.at(-1)).not.toBe(sockets[0]);
     expect(sockets).toHaveLength(2);
     vi.useRealTimers();

@@ -11,6 +11,7 @@ import {
 import { BakeStore } from '../bake/bake-store';
 import { desktop } from '../core/desktop';
 import { SystemStatus } from '../core/system-status';
+import { RecoveryOffers } from '../core/recovery-offers';
 import { UnsavedWork } from '../core/unsaved-work';
 import type { WorkspaceName } from '../core/workspaces';
 import { GraphStore } from '../graph/graph-store';
@@ -81,6 +82,7 @@ export class ProjectStore {
   private readonly bakes = inject(BakeStore);
   private readonly unsaved = inject(UnsavedWork);
   private readonly status = inject(SystemStatus);
+  private readonly recoveryOffers = inject(RecoveryOffers);
   private readonly mutableTabs = signal<readonly DocumentTab[]>([]);
   private readonly mutableActive = signal<string | null>(null);
   private readonly mutableContents = signal<ReadonlyMap<string, ProjectContents>>(new Map());
@@ -167,6 +169,19 @@ export class ProjectStore {
     });
     effect(() => {
       this.unsaved.report('documents', this.unsavedTabs().length > 0);
+    });
+    // A document that came back from its file after the Server restarted offers what autosave kept of the edits the old
+    // Server held (#162): the same offer a crash makes on the next open.
+    effect(() => {
+      const asked = this.recoveryOffers.asked();
+      if (asked) {
+        untracked(() => {
+          const tab = this.mutableTabs().find(held => held.path === asked.path || asked.path.endsWith(`/${held.path}`));
+          if (tab && this.recoverable() === null) {
+            void this.offerRecovery(tab.path).catch(() => undefined); // nothing kept is nothing to offer
+          }
+        });
+      }
     });
     // A stack the Server opened again after it restarted is a new session of the tab in front, which closing must end.
     effect(() => {
@@ -794,6 +809,36 @@ export class ProjectStore {
     }
 
     return true;
+  }
+
+  /** Closes one document, which cannot go to the bin while open. False when it has unsaved edits. */
+  async releaseDocument(path: string): Promise<boolean> {
+    const tab = this.mutableTabs().find(held => held.path === path);
+    if (tab?.dirty) {
+      this.fail(`${tab.name} has unsaved changes. Save it first.`);
+      return false;
+    }
+
+    return tab ? this.remove(path, false) : true;
+  }
+
+  /** Takes what the Server says a project now holds, and the names it gives the open documents of it. */
+  adopt(contents: ProjectContents): void {
+    this.mutableContents.update(all => new Map(all).set(contents.path, contents));
+    const names = new Map(contents.documents.map(document => [document.path, document.name]));
+    this.mutableTabs.update(tabs =>
+      tabs.map(tab => {
+        const name = tab.project === contents.path ? names.get(tab.path) : undefined;
+        return name !== undefined && name !== tab.name ? { ...tab, name } : tab;
+      })
+    );
+  }
+
+  /** Reads again what a project holds, if it is one this has read: something was taken out of it or put back. */
+  async refreshContents(project: string): Promise<void> {
+    if (this.mutableContents().has(project)) {
+      await this.read(project);
+    }
   }
 
   /** The open documents below these folders or projects, which moving them would close. */

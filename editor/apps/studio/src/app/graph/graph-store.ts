@@ -18,6 +18,7 @@ import {
 } from '@patina/api-client';
 import { desktop } from '../core/desktop';
 import { RestartedNotice, SessionReturn } from '../core/session-return';
+import { RecoveryOffers } from '../core/recovery-offers';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { LibrarySelection } from '../library/library-selection';
 import { DraftLayer } from './draft-layer';
@@ -154,6 +155,7 @@ export class GraphStore {
   /** Goes up with each session, so that what an old one was waiting for lands nowhere. */
   private epoch = 0;
   /** Brings the session back after a drop, by the epoch it dropped in (#226). */
+  private readonly recovery = inject(RecoveryOffers);
   private readonly comeback = new SessionReturn<number>({
     probe: async epoch => {
       const document = this.mutableDocument();
@@ -1346,6 +1348,7 @@ export class GraphStore {
     const state = unwrap(await this.api().POST('/api/v1/graphs', { body: { path: document.path } }));
     if (document.history.dirty) {
       this.mutableNotice.set(RestartedNotice);
+      this.recovery.ask(document.path); // what autosave kept of the edits is offered back (#162)
     }
 
     this.edits.clear(new Error('The session ended.'));

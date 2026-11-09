@@ -259,7 +259,7 @@ export class LibraryTreeStore {
     });
   }
 
-  /** Moves a project to the library's trash. */
+  /** Moves a project to the library's bin. */
   async deleteProject(path: string): Promise<void> {
     await this.attempt(async () => {
       const client = await this.library.api();

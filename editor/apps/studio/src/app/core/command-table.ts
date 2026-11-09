@@ -58,6 +58,7 @@ export const CommandTable: readonly CommandSpec[] = [
   { id: 'saveAll', label: 'Save All', section: 'File', keys: ['Mod+Alt+S'], typing: true },
   { id: 'closeDocument', label: 'Close Document', section: 'File', keys: ['Mod+W'] },
   { id: 'closeProject', label: 'Close Project', section: 'File' },
+  { id: 'showBin', label: 'Bin…', section: 'File', hint: 'What was deleted, to restore or delete for good' },
 
   { id: 'undo', label: 'Undo', section: 'Edit', keys: ['Mod+Z'] },
   { id: 'redo', label: 'Redo', section: 'Edit', keys: ['Mod+Shift+Z', 'Mod+Y'] },
@@ -259,6 +260,7 @@ export const MenuBar: readonly {
       '-',
       'closeDocument',
       'closeProject',
+      'showBin',
       { native: 'closeWindow' }
     ]
   },

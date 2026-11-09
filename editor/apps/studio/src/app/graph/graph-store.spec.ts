@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { type GraphState, createPatinaClient } from '@patina/api-client';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
+import { RecoveryOffers } from '../core/recovery-offers';
 import { LibrarySelection } from '../library/library-selection';
 import { GRAPH_SOCKET, GraphStore, socketUrl } from './graph-store';
 import { FakeSocket, clean, dirty, edited, evaluated, noDelta, node, noiseType, state } from './graph-testing';
@@ -386,7 +387,7 @@ describe('GraphStore', () => {
     expect([...(test.store.document()?.nodes.keys() ?? [])]).toEqual([1, 5]);
   });
 
-  it('opens the file again after a Server restart, and says edits are gone', async () => {
+  it('opens the file again after a Server restart, and offers what autosave kept', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const test = await opened();
     test.socket().send(edited(1, [node(3)]));
@@ -397,7 +398,8 @@ describe('GraphStore', () => {
 
     expect(test.requests.at(-3)?.key).toBe('POST graphs');
     expect(test.requests.at(-3)?.body).toEqual({ path: '/lib/projects/a/a.vxtexgraph' });
-    expect(test.store.notice()).toContain('Edits since the last save are gone');
+    expect(test.store.notice()).toContain('opened this document again from its last save');
+    expect(TestBed.inject(RecoveryOffers).asked()?.path).toBe('/lib/projects/a/a.vxtexgraph');
     expect(test.store.document()?.nodes.has(3)).toBe(false);
     expect(test.sockets).toHaveLength(2);
   });

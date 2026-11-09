@@ -18,7 +18,7 @@ import { XuiSkeletonImports } from '@xui/skeleton';
 import { XuiSpinnerImports } from '@xui/spinner';
 import { XuiTagImports } from '@xui/tag';
 import { documentKindName } from '../core/labels';
-import { GraphStore } from '../graph/graph-store';
+import { LibraryActions, assetTarget, projectTarget } from './library-actions';
 import { LibrarySelection } from './library-selection';
 import { LibraryStore } from './library-store';
 import { ProjectStore } from './project-store';
@@ -61,13 +61,25 @@ const DependentHeight = 28;
         } @empty {
           <span class="text-foreground-muted">None</span>
         }
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          data-testid="inspector-edit-tags"
+          (click)="actions.tagging.set(target())"
+        >
+          Edit…
+        </button>
       </xui-descriptions-item>
     </xui-descriptions>
   `
 })
 export class ProjectDetails {
   protected readonly opening = inject(ProjectStore);
+  protected readonly actions = inject(LibraryActions);
   readonly project = input.required<ProjectSummary>();
+  protected readonly target = computed(() => projectTarget(this.project()));
 }
 
 /** A material and what saving it would touch: "affects 412 projects, 3 pinned" (plan §5). */
@@ -91,19 +103,17 @@ export class ProjectDetails {
     <div class="shrink-0 p-3">
       <h2 class="truncate text-sm font-semibold" data-testid="inspector-title" [title]="item.name">{{ item.name }}</h2>
       <p class="section-label mb-3">{{ kindName(item.kind) }}</p>
-      @if (item.kind === 'graph') {
-        <button
-          class="mb-3 w-full"
-          type="button"
-          xuiButton
-          size="sm"
-          color="primary"
-          data-testid="open-graph"
-          (click)="open(item)"
-        >
-          Open
-        </button>
-      }
+      <button
+        class="mb-3 w-full"
+        type="button"
+        xuiButton
+        size="sm"
+        color="primary"
+        data-testid="open-graph"
+        (click)="open(item)"
+      >
+        Open
+      </button>
       <xui-descriptions column="1">
         <xui-descriptions-item label="File">
           <span class="break-all select-text">{{ item.path }}</span>
@@ -114,6 +124,16 @@ export class ProjectDetails {
           } @empty {
             <span class="text-foreground-muted">None</span>
           }
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            variant="ghost"
+            data-testid="inspector-edit-tags"
+            (click)="actions.tagging.set(target())"
+          >
+            Edit…
+          </button>
         </xui-descriptions-item>
       </xui-descriptions>
     </div>
@@ -155,6 +175,21 @@ export class ProjectDetails {
             @if (project.pinned) {
               <xui-tag color="warning" minimal>Pinned</xui-tag>
             }
+            <button
+              type="button"
+              xuiButton
+              size="sm"
+              variant="ghost"
+              data-testid="impact-pin"
+              [title]="
+                project.pinned
+                  ? 'Let it follow this material again, and take its changes'
+                  : 'Hold it at this material as it is now, whatever changes later'
+              "
+              (click)="pin(project.path, !project.pinned)"
+            >
+              {{ project.pinned ? 'Unpin' : 'Pin' }}
+            </button>
           } @else {
             <xui-skeleton class="h-2.5 w-2/3" />
           }
@@ -177,11 +212,12 @@ export class ProjectDetails {
 })
 export class AssetImpactView {
   private readonly store = inject(LibraryStore);
-  private readonly graph = inject(GraphStore);
+  protected readonly actions = inject(LibraryActions);
   private readonly viewport = viewChild(CdkVirtualScrollViewport);
 
   readonly asset = input.required<AssetSummary>();
   protected readonly kindName = documentKindName;
+  protected readonly target = computed(() => assetTarget(this.asset()));
 
   protected readonly rowHeight = DependentHeight;
   protected readonly impact = computed(() => this.store.impactOf(this.asset()));
@@ -208,9 +244,19 @@ export class AssetImpactView {
     });
   }
 
-  /** An asset's path is below the library, and the Server opens paths relative to the library. */
+  /** Any kind opens in its own workspace, in its project. */
   protected open(asset: AssetSummary): void {
-    void this.graph.open(asset.path);
+    this.actions.open(assetTarget(asset));
+  }
+
+  /**
+   * Pins a project at this material as it is now, or lets it follow again. Only a project that uses it itself can be
+   * pinned; one that reaches it through another material is told so.
+   */
+  protected async pin(project: string, pinned: boolean): Promise<void> {
+    if (await this.actions.pin(project, this.asset().id, pinned)) {
+      this.list().refresh();
+    }
   }
 
   protected projects(count: number): string {
@@ -229,13 +275,17 @@ export class AssetImpactView {
 /** The Inspector pane while the Library has the selection. */
 @Component({
   selector: 'ptn-library-inspector',
-  imports: [AssetImpactView, ProjectDetails],
+  imports: [AssetImpactView, ProjectDetails, XuiNonIdealStateImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
   template: `
     @let item = selection.item();
     @if (item === null) {
-      <p class="text-foreground-muted p-3">Nothing selected.</p>
+      <xui-non-ideal-state
+        class="flex-1"
+        title="Nothing chosen"
+        description="Choose a project or a material in the Library to see its folder, its tags and what uses it."
+      />
     } @else if (item.kind === 'project') {
       <ptn-project-details [project]="item.project" />
     } @else {
