@@ -1,8 +1,8 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { appendFileSync, existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { answerOpen, colouredGlb, leave, newLibrary, newProject } from './projects';
+import { answerOpen, colouredGlb, leave, newLibrary, newProject, wholeAutosaves } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const softwareWebGl = process.platform === 'linux' ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : [];
@@ -61,10 +61,7 @@ async function paint(): Promise<{ saved: string | undefined; painted: string | u
   return { saved, painted: await pictureHash() };
 }
 
-const autosaves = () => {
-  const folder = join(library, '.ptcache', 'autosave');
-  return existsSync(folder) ? readdirSync(folder).length : 0;
-};
+const autosaves = () => wholeAutosaves(library);
 
 const open = () => window.locator('[data-testid=tree-row][data-path="crate"]').dblclick();
 

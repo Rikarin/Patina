@@ -1,4 +1,6 @@
 import { expect, type ElectronApplication, type Page } from '@playwright/test';
+import { existsSync, readdirSync } from 'node:fs';
+import { basename, join } from 'node:path';
 
 /** Answers the system's next save dialog, which a test cannot click. */
 export const answerSave = (app: ElectronApplication, path: string) =>
@@ -43,11 +45,25 @@ export async function newProject(
   await expect(window.getByTestId('document-tab-name').filter({ hasText: name })).toBeVisible({ timeout: 60_000 });
 }
 
+/**
+ * How many whole autosaves a library holds. Each is a folder of its own, and it counts once its document is written,
+ * which comes after its paint: a folder alone can be one still being written, which a crash leaves with nothing to
+ * offer and the next start clears away.
+ */
+export function wholeAutosaves(library: string): number {
+  const folder = join(library, '.ptcache', 'autosave');
+  return existsSync(folder)
+    ? readdirSync(folder, { recursive: true, encoding: 'utf8' }).filter(file => basename(file) === 'document').length
+    : 0;
+}
+
 /** Ends the app with no one to answer its question about unsaved paint. */
 export async function leave(app: ElectronApplication): Promise<void> {
-  await app.evaluate(({ app: electron }) => {
-    electron.exit(0);
-  }).catch(() => undefined); // the app can be gone before the answer is
+  await app
+    .evaluate(({ app: electron }) => {
+      electron.exit(0);
+    })
+    .catch(() => undefined); // the app can be gone before the answer is
 }
 
 /**
@@ -81,7 +97,15 @@ export function colouredGlb(height = 1, layoutTop = 0): Buffer {
     nodes: [{ mesh: 0 }],
     meshes: [{ primitives: [{ attributes: { POSITION: 0, NORMAL: 1, TEXCOORD_0: 2, COLOR_0: 3 }, indices: 4 }] }],
     accessors: [
-      { bufferView: 0, componentType: 5126, count: 8, type: 'VEC3', byteOffset: 0, min: [-1, -1, 0], max: [1, height, 0] },
+      {
+        bufferView: 0,
+        componentType: 5126,
+        count: 8,
+        type: 'VEC3',
+        byteOffset: 0,
+        min: [-1, -1, 0],
+        max: [1, height, 0]
+      },
       { bufferView: 0, componentType: 5126, count: 8, type: 'VEC3', byteOffset: 12 },
       { bufferView: 0, componentType: 5126, count: 8, type: 'VEC2', byteOffset: 24 },
       { bufferView: 1, componentType: 5123, normalized: true, count: 8, type: 'VEC4' },

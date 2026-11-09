@@ -1,8 +1,8 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { leave, newLibrary, newProject } from './projects';
+import { leave, newLibrary, newProject, wholeAutosaves } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const shots = resolve(__dirname, '../../../dist/e2e-results');
@@ -54,11 +54,8 @@ const pixels = () =>
     return context?.getImageData(0, 0, 64, 64).data.join(',');
   });
 
-/** How many documents autosave has kept something of. */
-const autosaves = () => {
-  const folder = join(scratch, 'Game.ptlib', '.ptcache', 'autosave');
-  return existsSync(folder) ? readdirSync(folder).length : 0;
-};
+/** How many whole autosaves the library holds. */
+const autosaves = () => wholeAutosaves(join(scratch, 'Game.ptlib'));
 
 /** Drags a stroke across the 2D view, from one share of it to another. */
 async function stroke(from: [number, number], to: [number, number]): Promise<void> {
