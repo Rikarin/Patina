@@ -61,6 +61,7 @@ public static class StackDocuments {
             Terms.InBrush(StackBrushes.Axes),
             Terms.InBrush(StackBrushes.Centres, true),
             Terms.InBrush(StackBrushes.Tools),
+            Terms.InBrush(StackBrushes.Fills),
             StackBrushes.MaximumRadius,
             StackBrushes.MaximumAspect,
             StackBrushes.MaximumCount

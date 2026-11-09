@@ -606,6 +606,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/picture': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** A picture the library holds, as its file: what a client shows of a projection or a stencil it frames. */
+    get: operations['GetLibraryPicture'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/project/document': {
     parameters: {
       query?: never;
@@ -4044,6 +4061,8 @@ export interface components {
       centres: components['schemas']['StackTerm'][];
       /** @description What a preset can hold the pointer as. */
       tools: components['schemas']['StackTerm'][];
+      /** @description How much of a mesh one click of a polygon fill can take. */
+      fills: components['schemas']['StackTerm'][];
       /**
        * Format: float
        * @description The largest radius a stroke takes, in its own units.
@@ -4443,7 +4462,8 @@ export interface components {
       mask: boolean;
       view?: null | components['schemas']['StackView'];
       /**
-       * @description free follows the stamps; line and path run through them as control points when it ends.
+       * @description free follows the stamps; line and path run through them as control points when it ends; fill takes each stamp
+       *     as a click and fills the piece of the mesh under it, whole, as Fill says.
        * @default free
        */
       curve: string;
@@ -4454,6 +4474,13 @@ export interface components {
        *     paint entry. Null paints the mask's base.
        */
       maskLayer?: null | number;
+      source?: null | components['schemas']['StackStrokeSource'];
+      stencil?: null | components['schemas']['StackPicture'];
+      /**
+       * @description With the fill curve, how much of the mesh a click takes: `triangle`, `polygon` (the flat polygon it
+       *     is part of), `part` (the named mesh it belongs to) or `shell` (its UV island). It needs a mesh.
+       */
+      fill?: null | string;
     };
     /** @description Takes a flattened group back to its children, which composite again. */
     StackCommandStackUnflattenLayer: {
@@ -4957,6 +4984,33 @@ export interface components {
       /** @description The channel. */
       channel: string;
     };
+    /**
+     * @description A picture on a stroke's own picture: fixed on the screen, moved, scaled and turned there. A projection paints
+     *     its colours through the brush, and a stencil lets the brush through by its brightness.
+     */
+    StackPicture: {
+      /** @description A PNG, relative to the stack, to the library or absolute. */
+      image: string;
+      /** @description Where its middle is on the stroke's picture, in the units stamps are in: two numbers. */
+      centre: number[];
+      /**
+       * Format: float
+       * @description How many of those units one of its pixels covers, above zero.
+       * @default 1
+       */
+      scale: number;
+      /**
+       * Format: float
+       * @description How far it is turned, clockwise on the screen, in radians.
+       * @default 0
+       */
+      angle: number;
+      /**
+       * @description Whether it repeats past its edges, or is nothing there.
+       * @default false
+       */
+      tiled: boolean;
+    };
     /** @description A digest of a map's pixels, so that two pictures can be compared with neither crossing the API. */
     StackPixels: {
       /** @description Which channel. */
@@ -5116,6 +5170,20 @@ export interface components {
       heightNormal: string;
       /** @description The anchor points its set publishes, by name, and who reads each. */
       anchors?: null | components['schemas']['StackAnchor'][];
+    };
+    /** @description Where a stroke's colour comes from, when it is not one colour. */
+    StackStrokeSource: {
+      /**
+       * @description `smudge` drags what the canvas holds along the stroke, with the brush's flow; `clone` copies the
+       *                 stack's composite from Offset away, as it stood when the stroke began; `material` lays
+       *                 what Graph makes in the stroke's channel; `picture` projects Picture.
+       */
+      kind: string;
+      /** @description For a material, the graph whose maps are laid, as a graph fill names it. */
+      graph?: null | string;
+      /** @description For a clone, how far the texel read is from the texel painted, in texels of the map: two numbers. */
+      offset?: null | number[];
+      picture?: null | components['schemas']['StackPicture'];
     };
     /** @description An open stack, for a list. */
     StackSummary: {
@@ -7495,6 +7563,55 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProjectPicture'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetLibraryPicture: {
+    parameters: {
+      query: {
+        path: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'image/png': string;
         };
       };
       /** @description Bad Request */

@@ -549,6 +549,29 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
         Assert.Equal(new("picture", name, $"projects/crate/pictures/{name}"), Assert.Single(contents!.Pictures));
     }
 
+    /// <summary>
+    ///     A picture the library holds is served as its file, for a client to show a projection it frames; a path that
+    ///     climbs out of the library, or names something that is not a picture, is not.
+    /// </summary>
+    [Fact]
+    public async Task A_picture_below_the_library_is_served_and_nothing_else_is() {
+        await MakeCrateAsync();
+        var pictures = Directory.CreateDirectory(Path.Combine(server.Library, "projects/crate/pictures"));
+        await File.WriteAllBytesAsync(Path.Combine(pictures.FullName, "decal.png"), [1, 2, 3], Token);
+        await File.WriteAllTextAsync(Path.Combine(files.FullName, "outside.png"), "outside", Token);
+        var outside = Path.GetRelativePath(server.Library, Path.Combine(files.FullName, "outside.png"));
+
+        using var served = await client.GetAsync("/api/v1/library/picture?path=projects/crate/pictures/decal.png", Token);
+        using var climbed = await client.GetAsync($"/api/v1/library/picture?path={Uri.EscapeDataString(outside)}", Token);
+        using var document = await client.GetAsync("/api/v1/library/picture?path=projects/crate/project.yaml", Token);
+
+        Assert.Equal(HttpStatusCode.OK, served.StatusCode);
+        Assert.Equal([1, 2, 3], await served.Content.ReadAsByteArrayAsync(Token));
+        Assert.Equal("image/png", served.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(HttpStatusCode.NotFound, climbed.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, document.StatusCode);
+    }
+
     [Fact]
     public async Task A_picture_the_Server_drew_for_a_mask_is_not_listed_as_the_users() {
         await MakeCrateAsync();

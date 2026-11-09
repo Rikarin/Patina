@@ -33,6 +33,7 @@ public sealed record StackSymmetry(
 /// <param name="Axes">The axes a symmetry can use.</param>
 /// <param name="Centres">What a symmetry's plane or axis can pass through.</param>
 /// <param name="Tools">What a preset can hold the pointer as.</param>
+/// <param name="Fills">How much of a mesh one click of a polygon fill can take.</param>
 /// <param name="MaximumRadius">The largest radius a stroke takes, in its own units.</param>
 /// <param name="MaximumAspect">The longest a stamp can be, against its width.</param>
 /// <param name="MaximumCount">The most strokes a radial symmetry makes.</param>
@@ -48,6 +49,7 @@ public sealed record StackBrushTerms(
     IReadOnlyList<StackTerm> Axes,
     IReadOnlyList<StackTerm> Centres,
     IReadOnlyList<StackTerm> Tools,
+    IReadOnlyList<StackTerm> Fills,
     float MaximumRadius,
     float MaximumAspect,
     int MaximumCount
@@ -183,7 +185,43 @@ public static class StackBrushes {
     public static IReadOnlyList<string> Centres { get; } = ["model", "origin"];
 
     /// <summary>What a preset holds the pointer as: the tools that paint with a brush.</summary>
-    public static IReadOnlyList<string> Tools { get; } = ["brush", "eraser", "line", "path"];
+    public static IReadOnlyList<string> Tools { get; } =
+        ["brush", "eraser", "line", "path", "smudge", "clone", "projection"];
+
+    /// <summary>How much of a mesh one click of a polygon fill takes.</summary>
+    public static IReadOnlyList<string> Fills { get; } = ["triangle", "polygon", "part", "shell"];
+
+    /// <summary>Where a stroke's colour can come from besides its colour.</summary>
+    public static IReadOnlyList<string> Sources { get; } = ["smudge", "clone", "material", "picture"];
+
+    /// <summary>What is wrong with where a stroke's colour comes from, or null when a Worker can paint with it.</summary>
+    /// <param name="source">The source.</param>
+    public static string? Problem(this StackStrokeSource source) =>
+        source.Kind switch {
+            "smudge" => null,
+            "clone" => source.Offset is [var x, var y] && float.IsFinite(x) && float.IsFinite(y)
+                ? null
+                : "A clone reads from an offset of two numbers, in texels.",
+            "material" => string.IsNullOrWhiteSpace(source.Graph) ? "A material brush names the graph it lays." : null,
+            "picture" => source.Picture is null ? "A projection names the picture it paints." : source.Picture.Problem(),
+            _ => $"'{source.Kind}' is not where a stroke's colour can come from."
+        };
+
+    /// <summary>What is wrong with a picture on a stroke's picture, or null.</summary>
+    /// <param name="picture">The picture.</param>
+    public static string? Problem(this StackPicture picture) {
+        if (string.IsNullOrWhiteSpace(picture.Image)) {
+            return "A picture on the screen names its file.";
+        }
+
+        if (picture.Centre is not [var x, var y] || !float.IsFinite(x) || !float.IsFinite(y)) {
+            return "A picture on the screen stands at two numbers.";
+        }
+
+        return picture.Scale > 0f && float.IsFinite(picture.Scale) && float.IsFinite(picture.Angle)
+            ? null
+            : "A picture on the screen has a size above zero and an angle.";
+    }
 
     /// <summary>A new brush: round and soft, laying all of its flow, its size following a pen's pressure.</summary>
     public static StackBrush Default { get; } = new(24f, Alpha: "Round", PressureSize: 1f);

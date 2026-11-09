@@ -276,12 +276,14 @@ from .stack_mesh_mask_request import StackMeshMaskRequest
 from .stack_mesh_parts import StackMeshParts
 from .stack_open_request import StackOpenRequest
 from .stack_painted import StackPainted
+from .stack_picture import StackPicture
 from .stack_pixels import StackPixels
 from .stack_placement import StackPlacement
 from .stack_preview import StackPreview
 from .stack_problem import StackProblem
 from .stack_stamp import StackStamp
 from .stack_state import StackState
+from .stack_stroke_source import StackStrokeSource
 from .stack_summary import StackSummary
 from .stack_symmetry import StackSymmetry
 from .stack_term import StackTerm
@@ -586,12 +588,14 @@ __all__ = (
     "StackMeshParts",
     "StackOpenRequest",
     "StackPainted",
+    "StackPicture",
     "StackPixels",
     "StackPlacement",
     "StackPreview",
     "StackProblem",
     "StackStamp",
     "StackState",
+    "StackStrokeSource",
     "StackSummary",
     "StackSymmetry",
     "StackTerm",

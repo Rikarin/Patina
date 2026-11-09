@@ -580,9 +580,38 @@ public sealed class StackEditor : ILayerStackDocument {
         }
 
         step.Strokes.Add(
-            new(nextEntry++, stroke, paint, Channel(stroke), Packed(stroke.Colour), Document.Model, start)
+            new(nextEntry++, stroke, paint, Channel(stroke), Packed(stroke.Colour), Document.Model, start) {
+                SourceDocument = SourceDocument(stroke.Source)
+            }
         );
     }
+
+    /// <summary>
+    ///     What a clone or a material reads, written out now so a replay reads it again whatever is edited after: the
+    ///     whole stack as it stands, or this set with the material's graph as its one fill layer.
+    /// </summary>
+    string? SourceDocument(StackStrokeSource? source) =>
+        source?.Kind switch {
+            "clone" => StackDocuments.Text(Document with { Sets = [Set] }),
+            "material" => StackDocuments.Text(
+                Document with {
+                    Sets = [
+                        Set with {
+                            Layers = [
+                                new() {
+                                    Id = "material",
+                                    Name = "Material",
+                                    Kind = LayerKind.Fill,
+                                    Fill = LayerFillSource.Graph,
+                                    Graph = source.Graph!
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ),
+            _ => null
+        };
 
     /// <summary>Refuses a stroke on a layer's own pixels that would land nowhere, or nowhere that shows.</summary>
     void Writable(StackStroke stroke, LayerAsset layer) {
@@ -909,16 +938,30 @@ public sealed class StackEditor : ILayerStackDocument {
 
     /// <summary>Refuses what a Worker could not do with a stroke, while nothing has happened yet.</summary>
     void Aimed(StackStroke stroke) {
-        if (stroke.Curve is not ("free" or "line" or "path")) {
+        if (stroke.Curve is not ("free" or "line" or "path" or "fill")) {
             throw new StackEditRefusedException($"'{stroke.Curve}' is not a kind of stroke.");
         }
 
-        if (stroke.Symmetry?.Problem() is { } problem) {
+        if (stroke.Curve == "fill" && !StackBrushes.Fills.Contains(stroke.Fill ?? string.Empty)) {
+            const string Fills = "A fill takes a triangle, a polygon, a mesh part or a UV shell.";
+            throw new StackEditRefusedException(Fills, Api.Refusals.BrushRefused, Api.Refusals.Reason(Fills));
+        }
+
+        if ((stroke.Symmetry?.Problem() ?? stroke.Source?.Problem() ?? stroke.Stencil?.Problem()) is { } problem) {
             throw new StackEditRefusedException(problem, Api.Refusals.BrushRefused, Api.Refusals.Reason(problem));
         }
 
-        // A symmetry, a view and a size in the model's units are all on the mesh.
-        var onMesh = stroke.View is not null || stroke.Symmetry is not null || stroke.Brush.SizeSpace == "model";
+        // A mask is one grey, and a material or the composite has no such channel.
+        if (stroke.Mask && stroke.Source?.Kind is "clone" or "material") {
+            const string Grey = "A mask is painted with a grey, a smudge or a picture, and not a material or a clone.";
+            throw new StackEditRefusedException(Grey, Api.Refusals.BrushRefused, Api.Refusals.Reason(Grey));
+        }
+
+        // A symmetry, a view, a size in the model's units and a polygon fill are all on the mesh.
+        var onMesh = stroke.View is not null
+            || stroke.Symmetry is not null
+            || stroke.Brush.SizeSpace == "model"
+            || stroke.Curve == "fill";
         if (onMesh && Document.Model.Trim().Length == 0) {
             throw new StackEditRefusedException("This stack has no mesh to paint on.", Api.Refusals.NoMesh);
         }

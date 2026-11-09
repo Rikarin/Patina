@@ -14,7 +14,9 @@ from typing import cast
 
 if TYPE_CHECKING:
   from ..models.stack_brush import StackBrush
+  from ..models.stack_picture import StackPicture
   from ..models.stack_stamp import StackStamp
+  from ..models.stack_stroke_source import StackStrokeSource
   from ..models.stack_symmetry import StackSymmetry
   from ..models.stack_view import StackView
 
@@ -43,13 +45,19 @@ class StackCommandStackStroke:
             mask (bool): Whether this paints the layer's mask. A flat mask becomes a canvas of what it showed; a mask that
                 is a picture
                 refuses, since nothing yet keeps that picture under paint. Default: False.
-            curve (str): free follows the stamps; line and path run through them as control points when it ends. Default:
-                'free'.
+            curve (str): free follows the stamps; line and path run through them as control points when it ends; fill takes
+                each stamp
+                as a click and fills the piece of the mesh under it, whole, as Fill says. Default: 'free'.
             view (None | StackView | Unset):
             symmetry (None | StackSymmetry | Unset):
             mask_layer (int | None | Unset): With Mask, the entry of the mask's stack it paints, counted from the bottom,
                 which must be a
                 paint entry. Null paints the mask's base.
+            source (None | StackStrokeSource | Unset):
+            stencil (None | StackPicture | Unset):
+            fill (None | str | Unset): With the fill curve, how much of the mesh a click takes: `triangle`, `polygon` (the
+                flat polygon it
+                is part of), `part` (the named mesh it belongs to) or `shell` (its UV island). It needs a mesh.
      """
 
     op: StackCommandStackStrokeOp
@@ -65,6 +73,9 @@ class StackCommandStackStroke:
     view: None | StackView | Unset = UNSET
     symmetry: None | StackSymmetry | Unset = UNSET
     mask_layer: int | None | Unset = UNSET
+    source: None | StackStrokeSource | Unset = UNSET
+    stencil: None | StackPicture | Unset = UNSET
+    fill: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -73,7 +84,9 @@ class StackCommandStackStroke:
 
     def to_dict(self) -> dict[str, Any]:
         from ..models.stack_brush import StackBrush # noqa: PLC0415
+        from ..models.stack_picture import StackPicture # noqa: PLC0415
         from ..models.stack_stamp import StackStamp # noqa: PLC0415
+        from ..models.stack_stroke_source import StackStrokeSource # noqa: PLC0415
         from ..models.stack_symmetry import StackSymmetry # noqa: PLC0415
         from ..models.stack_view import StackView # noqa: PLC0415
         op = self.op.value
@@ -125,6 +138,28 @@ class StackCommandStackStroke:
         else:
             mask_layer = self.mask_layer
 
+        source: dict[str, Any] | None | Unset
+        if isinstance(self.source, Unset):
+            source = UNSET
+        elif isinstance(self.source, StackStrokeSource):
+            source = self.source.to_dict()
+        else:
+            source = self.source
+
+        stencil: dict[str, Any] | None | Unset
+        if isinstance(self.stencil, Unset):
+            stencil = UNSET
+        elif isinstance(self.stencil, StackPicture):
+            stencil = self.stencil.to_dict()
+        else:
+            stencil = self.stencil
+
+        fill: None | str | Unset
+        if isinstance(self.fill, Unset):
+            fill = UNSET
+        else:
+            fill = self.fill
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -146,6 +181,12 @@ class StackCommandStackStroke:
             field_dict["symmetry"] = symmetry
         if mask_layer is not UNSET:
             field_dict["maskLayer"] = mask_layer
+        if source is not UNSET:
+            field_dict["source"] = source
+        if stencil is not UNSET:
+            field_dict["stencil"] = stencil
+        if fill is not UNSET:
+            field_dict["fill"] = fill
 
         return field_dict
 
@@ -154,7 +195,9 @@ class StackCommandStackStroke:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.stack_brush import StackBrush # noqa: PLC0415
+        from ..models.stack_picture import StackPicture # noqa: PLC0415
         from ..models.stack_stamp import StackStamp # noqa: PLC0415
+        from ..models.stack_stroke_source import StackStrokeSource # noqa: PLC0415
         from ..models.stack_symmetry import StackSymmetry # noqa: PLC0415
         from ..models.stack_view import StackView # noqa: PLC0415
         d = dict(src_dict)
@@ -243,6 +286,56 @@ class StackCommandStackStroke:
         mask_layer = _parse_mask_layer(d.pop("maskLayer", UNSET))
 
 
+        def _parse_source(data: object) -> None | StackStrokeSource | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                source_type_1 = StackStrokeSource.from_dict(data)
+
+
+
+                return source_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackStrokeSource | Unset, data)
+
+        source = _parse_source(d.pop("source", UNSET))
+
+
+        def _parse_stencil(data: object) -> None | StackPicture | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                stencil_type_1 = StackPicture.from_dict(data)
+
+
+
+                return stencil_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackPicture | Unset, data)
+
+        stencil = _parse_stencil(d.pop("stencil", UNSET))
+
+
+        def _parse_fill(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        fill = _parse_fill(d.pop("fill", UNSET))
+
+
         stack_command_stack_stroke = cls(
             op=op,
             stroke=stroke,
@@ -257,6 +350,9 @@ class StackCommandStackStroke:
             view=view,
             symmetry=symmetry,
             mask_layer=mask_layer,
+            source=source,
+            stencil=stencil,
+            fill=fill,
         )
 
 

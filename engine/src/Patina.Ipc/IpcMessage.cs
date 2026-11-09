@@ -523,7 +523,7 @@ public sealed record StackLoad(
 /// <param name="Open">Whether more of it is coming.</param>
 /// <param name="Model">The mesh that stood when it was painted, as the document names it, or empty.</param>
 /// <param name="View">The camera of a stroke on the mesh, or null for one in the atlas.</param>
-/// <param name="Curve">free, line or path.</param>
+/// <param name="Curve">free, line, path or fill.</param>
 /// <param name="Symmetry">The copies the stroke makes of itself on the mesh, or null.</param>
 /// <param name="Start">What a canvas this stroke is the first on starts as, packed like the colour, or null.</param>
 /// <param name="From">
@@ -533,6 +533,12 @@ public sealed record StackLoad(
 /// <param name="Capture">
 ///     For no stroke at all: the group of a document whose composite <paramref name="Paint" /> becomes, every channel
 ///     of it, which is how a group is flattened. Undone, the canvas is empty again.
+/// </param>
+/// <param name="Source">Where each texel's colour comes from, or null for the colour.</param>
+/// <param name="Stencil">A picture on the screen that masks the brush, or null.</param>
+/// <param name="Fill">For a fill, how much of the mesh a click takes.</param>
+/// <param name="SourceDocument">
+///     What a clone or a material reads, as a stack written out, sent with a stroke's first part only.
 /// </param>
 public sealed record StackPaintPart(
     long Id,
@@ -548,7 +554,11 @@ public sealed record StackPaintPart(
     StackSymmetry? Symmetry,
     uint? Start = null,
     string? From = null,
-    StackCapture? Capture = null
+    StackCapture? Capture = null,
+    StackStrokeSource? Source = null,
+    StackPicture? Stencil = null,
+    string? Fill = null,
+    string? SourceDocument = null
 );
 
 /// <summary>What a flattened group's canvas is made of.</summary>

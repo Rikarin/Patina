@@ -2280,6 +2280,68 @@
         }
       }
     },
+    "/api/v1/library/picture": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "A picture the library holds, as its file: what a client shows of a projection or a stencil it frames.",
+        "operationId": "GetLibraryPicture",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/project/document": {
       "patch": {
         "tags": [
@@ -11328,6 +11390,7 @@
           "axes",
           "centres",
           "tools",
+          "fills",
           "maximumRadius",
           "maximumAspect",
           "maximumCount"
@@ -11393,6 +11456,13 @@
               "$ref": "#/components/schemas/StackTerm"
             },
             "description": "What a preset can hold the pointer as."
+          },
+          "fills": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "How much of a mesh one click of a polygon fill can take."
           },
           "maximumRadius": {
             "type": "number",
@@ -12406,7 +12476,7 @@
           },
           "curve": {
             "type": "string",
-            "description": "free follows the stamps; line and path run through them as control points when it ends.",
+            "description": "free follows the stamps; line and path run through them as control points when it ends; fill takes each stamp\nas a click and fills the piece of the mesh under it, whole, as Fill says.",
             "default": "free"
           },
           "symmetry": {
@@ -12427,6 +12497,35 @@
             ],
             "description": "With Mask, the entry of the mask\u0027s stack it paints, counted from the bottom, which must be a\npaint entry. Null paints the mask\u0027s base.",
             "format": "int32"
+          },
+          "source": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Where each texel\u0027s colour comes from, or null for Colour.",
+                "$ref": "#/components/schemas/StackStrokeSource"
+              }
+            ]
+          },
+          "stencil": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "A picture on the screen that masks the brush by its brightness, or null.",
+                "$ref": "#/components/schemas/StackPicture"
+              }
+            ]
+          },
+          "fill": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "With the fill curve, how much of the mesh a click takes: \u0060triangle\u0060, \u0060polygon\u0060 (the flat polygon it\nis part of), \u0060part\u0060 (the named mesh it belongs to) or \u0060shell\u0060 (its UV island). It needs a mesh."
           }
         },
         "description": "Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one\nStroke and they make one undo step, ended by one with Open false."
@@ -13544,6 +13643,48 @@
         },
         "description": "A channel a stroke touched."
       },
+      "StackPicture": {
+        "required": [
+          "image",
+          "centre",
+          "scale",
+          "angle",
+          "tiled"
+        ],
+        "type": "object",
+        "properties": {
+          "image": {
+            "type": "string",
+            "description": "A PNG, relative to the stack, to the library or absolute."
+          },
+          "centre": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Where its middle is on the stroke\u0027s picture, in the units stamps are in: two numbers."
+          },
+          "scale": {
+            "type": "number",
+            "description": "How many of those units one of its pixels covers, above zero.",
+            "format": "float",
+            "default": 1
+          },
+          "angle": {
+            "type": "number",
+            "description": "How far it is turned, clockwise on the screen, in radians.",
+            "format": "float",
+            "default": 0
+          },
+          "tiled": {
+            "type": "boolean",
+            "description": "Whether it repeats past its edges, or is nothing there.",
+            "default": false
+          }
+        },
+        "description": "A picture on a stroke\u0027s own picture: fixed on the screen, moved, scaled and turned there. A projection paints\nits colours through the brush, and a stencil lets the brush through by its brightness."
+      },
       "StackPixels": {
         "required": [
           "usage",
@@ -13836,6 +13977,48 @@
           }
         },
         "description": "A whole stack: everything a client needs to draw it, and no pixels."
+      },
+      "StackStrokeSource": {
+        "required": [
+          "kind"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "\u0060smudge\u0060 drags what the canvas holds along the stroke, with the brush\u0027s flow; \u0060clone\u0060 copies the\n            stack\u0027s composite from Offset away, as it stood when the stroke began; \u0060material\u0060 lays\n            what Graph makes in the stroke\u0027s channel; \u0060picture\u0060 projects Picture."
+          },
+          "graph": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "For a material, the graph whose maps are laid, as a graph fill names it."
+          },
+          "offset": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "For a clone, how far the texel read is from the texel painted, in texels of the map: two numbers."
+          },
+          "picture": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "For a picture, the picture and where it stands.",
+                "$ref": "#/components/schemas/StackPicture"
+              }
+            ]
+          }
+        },
+        "description": "Where a stroke\u0027s colour comes from, when it is not one colour."
       },
       "StackSummary": {
         "required": [

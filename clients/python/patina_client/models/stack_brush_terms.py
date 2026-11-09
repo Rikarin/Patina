@@ -36,6 +36,7 @@ class StackBrushTerms:
             axes (list[StackTerm]): The axes a symmetry can use.
             centres (list[StackTerm]): What a symmetry's plane or axis can pass through.
             tools (list[StackTerm]): What a preset can hold the pointer as.
+            fills (list[StackTerm]): How much of a mesh one click of a polygon fill can take.
             maximum_radius (float): The largest radius a stroke takes, in its own units.
             maximum_aspect (float): The longest a stamp can be, against its width.
             maximum_count (int): The most strokes a radial symmetry makes.
@@ -50,6 +51,7 @@ class StackBrushTerms:
     axes: list[StackTerm]
     centres: list[StackTerm]
     tools: list[StackTerm]
+    fills: list[StackTerm]
     maximum_radius: float
     maximum_aspect: float
     maximum_count: int
@@ -120,6 +122,13 @@ class StackBrushTerms:
 
 
 
+        fills = []
+        for fills_item_data in self.fills:
+            fills_item = fills_item_data.to_dict()
+            fills.append(fills_item)
+
+
+
         maximum_radius = self.maximum_radius
 
         maximum_aspect = self.maximum_aspect
@@ -139,6 +148,7 @@ class StackBrushTerms:
             "axes": axes,
             "centres": centres,
             "tools": tools,
+            "fills": fills,
             "maximumRadius": maximum_radius,
             "maximumAspect": maximum_aspect,
             "maximumCount": maximum_count,
@@ -238,6 +248,16 @@ class StackBrushTerms:
             tools.append(tools_item)
 
 
+        fills = []
+        _fills = d.pop("fills")
+        for fills_item_data in (_fills):
+            fills_item = StackTerm.from_dict(fills_item_data)
+
+
+
+            fills.append(fills_item)
+
+
         maximum_radius = d.pop("maximumRadius")
 
         maximum_aspect = d.pop("maximumAspect")
@@ -254,6 +274,7 @@ class StackBrushTerms:
             axes=axes,
             centres=centres,
             tools=tools,
+            fills=fills,
             maximum_radius=maximum_radius,
             maximum_aspect=maximum_aspect,
             maximum_count=maximum_count,

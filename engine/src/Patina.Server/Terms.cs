@@ -73,7 +73,9 @@ public static class Terms {
         ["both"] = "Both Axes",
         ["across"] = "Across the Stroke",
         ["texture"] = "Texture Texels",
-        ["model"] = "Model Size"
+        ["model"] = "Model Size",
+        ["part"] = "Mesh Part",
+        ["shell"] = "UV Shell"
     };
 
     /// <summary>What the material shelf calls the types of what it lists, and where each is from.</summary>

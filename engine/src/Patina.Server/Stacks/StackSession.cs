@@ -459,7 +459,12 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                         entry.Symmetry,
                         entry.Start,
                         entry.From,
-                        entry.Capture is { } capture ? new(capture.Document, capture.Layer, capture.Backdrop) : null
+                        entry.Capture is { } capture ? new(capture.Document, capture.Layer, capture.Backdrop) : null,
+                        entry.Source,
+                        entry.Stencil,
+                        entry.Fill,
+                        // Only with the first part: the Worker makes its source once, as the stroke begins.
+                        known ? null : entry.SourceDocument
                     )
                 );
                 sent[entry.Id] = (entry.Stamps.Count, entry.Open);

@@ -337,6 +337,9 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
         /// <summary>What a copy of a canvas does, which is not a stroke.</summary>
         public IAuthoringCommand? Copy { get; init; }
 
+        /// <summary>Whether its stamps are the clicks of a polygon fill, each laid where it is.</summary>
+        public bool Fill { get; init; }
+
         public bool Done { get; set; }
     }
 
@@ -358,6 +361,9 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
         readonly Dictionary<long, Applied> known = [];
         readonly Dictionary<string, PaintMeshSurface> surfaces = new(StringComparer.Ordinal);
         readonly Dictionary<string, IBrushMask> alphas = new(StringComparer.Ordinal);
+        readonly Dictionary<string, PaintImage> pictures = new(StringComparer.Ordinal);
+        readonly Dictionary<string, Dictionary<string, PaintImage>> composites = new(StringComparer.Ordinal);
+        readonly IReadOnlyList<string> imageRoots;
         readonly MeshShelf meshes;
         readonly List<PaintRect> dirtied = [];
         bool unknown = true;
@@ -372,6 +378,7 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
             MeshShelf meshes
         ) {
             this.meshes = meshes;
+            imageRoots = load.ImageRoots;
             path = load.Path;
             set = load.Set;
             folder = Path.GetDirectoryName(Path.GetFullPath(load.Path))!;
@@ -711,20 +718,30 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
 
             touched.Add(part.Paint);
             var surface = Surface(part.Model);
+            var image = canvas.Channel(part.Usage);
+            var coverage = surface?.Coverage ?? PaintCoverage.Everywhere(canvas.Width, canvas.Height);
+            var placement = part.Curve == "fill"
+                ? (surface ?? throw new IpcException("A fill needs a mesh.")).Fill(
+                    StrokeSources.Fill(part.Fill),
+                    part.View is { } view ? StrokeShapes.View(view) : null
+                )
+                : StrokeShapes.Placement(part, surface, Bounds(part.Model));
             var stroke = new Applied(
                 part.Id,
                 new(
-                    canvas.Channel(part.Usage),
-                    surface?.Coverage ?? PaintCoverage.Everywhere(canvas.Width, canvas.Height),
+                    image,
+                    coverage,
                     Brush(part.Brush) with { Radius = StrokeShapes.Radius(part, surface, Bounds(part.Model)) },
                     part.Colour,
                     surface is null ? 0 : Gutter,
                     // A line or a path runs through its points, and a brush trailing them would stop short of the last.
                     part.Curve == "free" ? part.Brush.Lazy : 0f,
-                    placement: StrokeShapes.Placement(part, surface, Bounds(part.Model))
+                    placement: placement,
+                    source: StrokeSources.Source(part, image, coverage, Picture, Composite),
+                    stencil: StrokeSources.Stencil(part.Stencil, Picture)
                 ),
-                part.Curve == "free" ? null : new()
-            );
+                part.Curve is "free" or "fill" ? null : new()
+            ) { Fill = part.Curve == "fill" };
             known[part.Id] = stroke;
             return stroke;
         }
@@ -752,6 +769,62 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
         }
 
         PaintBrush Brush(StackBrush brush) => StrokeShapes.Brush(brush, Alpha(brush.Alpha));
+
+        /// <summary>
+        ///     A picture a stroke projects or is masked by: absolute, or found where a layer's picture would be, the
+        ///     library's folders first and then beside the stack.
+        /// </summary>
+        PaintImage Picture(string name) {
+            var file = Path.IsPathRooted(name)
+                ? name
+                : imageRoots.Select(root => Path.GetFullPath(name, root)).FirstOrDefault(File.Exists)
+                ?? Path.GetFullPath(name, folder);
+            if (!pictures.TryGetValue(file, out var held)) {
+                pictures[file] = held = StrokeSources.Read(file);
+            }
+
+            return held;
+        }
+
+        /// <summary>
+        ///     What a stack written out composites in one channel, as 8-bit texels at this stack's size: a clone's
+        ///     picture, or a material's map. Kept by the text, so the channels of one material are evaluated once.
+        /// </summary>
+        PaintImage? Composite(string text, string usage) {
+            if (!composites.TryGetValue(text, out var maps)) {
+                // The last few, since a material brush paints each of its channels from one text, one after another.
+                if (composites.Count >= 2) {
+                    composites.Clear();
+                }
+
+                composites[text] = maps = Evaluated(LayerStackYaml.Read(text));
+            }
+
+            return maps.GetValueOrDefault(usage);
+        }
+
+        Dictionary<string, PaintImage> Evaluated(LayerStackAsset written) {
+            Dictionary<string, PaintImage> maps = new(StringComparer.Ordinal);
+            if (LayerStackEdit.SetFor(written, set) is not { } chosen) {
+                return maps;
+            }
+
+            // A draft, as the picture the artist was looking at is one; a refusal reads as nothing to lay.
+            using LayerStackEvaluator run = new(evaluator, canvases, path, fill) { Draft = true };
+            if (run.Prepare(written, chosen, compounds.Registry, compounds.Source).Count > 0) {
+                return maps;
+            }
+
+            using var bake = run.Evaluate();
+            foreach (var output in run.Outputs) {
+                var map = bake.Read(output.Image);
+                PaintImage image = new(map.Width, map.Height);
+                image.CopyFrom(map.Pixels);
+                maps[output.Usage] = image;
+            }
+
+            return maps;
+        }
 
         /// <summary>A named alpha, or a picture beside the stack read through its red channel.</summary>
         IBrushMask? Alpha(string? name) {
@@ -819,6 +892,11 @@ sealed class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf meshes, 
                     foreach (var (point, pressure) in points.Zip(pressures)) {
                         stroke.Stroke.MoveTo(point, dirtied, pressure);
                     }
+                }
+            } else if (stroke.Fill) {
+                // Each click is a place of its own, and the stroke between two would fill whatever it passed over.
+                foreach (var stamp in part.Stamps) {
+                    stroke.Stroke.Dab(new(stamp.X, stamp.Y), dirtied, stamp.Pressure);
                 }
             } else {
                 foreach (var stamp in part.Stamps) {
