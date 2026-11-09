@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { type StackLayer, type StackState, createPatinaClient } from '@patina/api-client';
+import { EngineRestarts } from '../core/session-return';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
 import { hexOf } from './layer-panel';
@@ -459,6 +460,8 @@ describe('PaintStore', () => {
     expect(store.state()?.id).toBe('s2');
     expect(store.layer()).toBe('paint');
     expect(store.notice()).toBe('Patina restarted its engine. Edits since the last save are gone.');
+    // And the tabs behind hear of it, since their sessions went with the old Server too.
+    expect(TestBed.inject(EngineRestarts).count()).toBe(1);
     expect(sockets.at(-1)).not.toBe(sockets[0]);
     expect(sockets).toHaveLength(2);
     vi.useRealTimers();

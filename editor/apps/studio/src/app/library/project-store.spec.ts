@@ -4,6 +4,7 @@ import { ApiError } from '@patina/api-client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BakeStore } from '../bake/bake-store';
 import { Commands } from '../core/commands';
+import { EngineRestarts } from '../core/session-return';
 import { SystemStatus } from '../core/system-status';
 import { GraphStore } from '../graph/graph-store';
 import { BrushStore } from '../paint/brush-store';
@@ -85,7 +86,9 @@ function harness() {
         data:
           route === '/api/v1/library/recovery'
             ? { saved: autosaves.get(options?.params?.query?.path ?? '') ?? null }
-            : contents,
+            : route === '/api/v1/stacks' || route === '/api/v1/graphs'
+              ? [...sessions].map(id => ({ id, path: '', name: '', revision: 1, dirty: true }))
+              : contents,
         response: new Response()
       })
     ),
@@ -127,7 +130,17 @@ function harness() {
       }
     ]
   });
-  return { store: TestBed.inject(ProjectStore), paint, graph, paintState, graphDirty, removed, autosaves, client };
+  return {
+    store: TestBed.inject(ProjectStore),
+    paint,
+    graph,
+    paintState,
+    graphDirty,
+    removed,
+    autosaves,
+    client,
+    sessions
+  };
 }
 
 describe('ProjectStore', () => {
@@ -403,6 +416,41 @@ describe('ProjectStore', () => {
     TestBed.tick();
 
     expect(store.unsavedTabs().map(tab => tab.path)).toEqual([paths.texturing]);
+  });
+
+  it('lets a tab behind forget the edits a Server that restarted lost with its session (#226)', async () => {
+    const { store, paintState, sessions } = harness();
+    await store.open('a');
+    paintState.set({ id: `session:${paths.texturing}`, history: { dirty: true } });
+    TestBed.tick();
+    await store.openDocument('a', paths.graph);
+    TestBed.tick();
+    expect(store.unsavedTabs().map(tab => tab.path)).toEqual([paths.texturing]);
+
+    // The graph in front found the Server restarted: it holds the graph's new session and not the stack's.
+    sessions.delete(`session:${paths.texturing}`);
+    TestBed.inject(EngineRestarts).count.update(count => count + 1);
+    TestBed.tick();
+
+    await vi.waitFor(() => expect(store.unsavedTabs()).toEqual([]));
+    expect(store.tabs().find(tab => tab.path === paths.texturing)?.session).toBeNull();
+  });
+
+  it('keeps the Server\'s word for a tab behind whose session it still has', async () => {
+    const { store, paintState, client } = harness();
+    await store.open('a');
+    paintState.set({ id: `session:${paths.texturing}`, history: { dirty: true } });
+    TestBed.tick();
+    await store.openDocument('a', paths.graph);
+    TestBed.tick();
+
+    TestBed.inject(EngineRestarts).count.update(count => count + 1);
+    TestBed.tick();
+
+    await vi.waitFor(() => expect(client.GET).toHaveBeenCalledWith('/api/v1/stacks'));
+    await Promise.resolve();
+    expect(store.unsavedTabs().map(tab => tab.path)).toEqual([paths.texturing]);
+    expect(store.tabs().find(tab => tab.path === paths.texturing)?.session).toBe(`session:${paths.texturing}`);
   });
 
   it('counts a graph with unsaved edits when it is in front', async () => {

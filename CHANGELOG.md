@@ -95,6 +95,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 
 - Find Layer Under Cursor finds a layer whose mask reads the layers beneath it, or an anchor point, where the picture shows it. Such a layer is weighed in the picture, with what lies beneath it; it used to be weighed alone, read nothing, and the click found the layer under it.
+- A document tab behind the one in front stops showing unsaved changes when the engine restarts and its edits are gone, where it kept its • until it was brought to the front.
 - A texturing document or layered material comes back when the engine restarts, as a graph does. It opens again from its file with the layer that was chosen, the channel and the viewport's camera and display, says so when edits that were not saved are gone, and takes a brush again. It used to stay on its last picture and refuse every edit with the session's id. A stack the Server does not have is refused with the code `stack-not-open`.
 - A frame's colour is saved in the graph file as a plain `#rrggbb`, which any program can draw, where it used to be the studio's own stylesheet token. The studio still shows its eight frame colours in the theme's shades, and the Server refuses a frame colour that is not plain.
 - The shelf's search finds another project's materials by every word it finds this project's by: a type ("mask", "masks"), where it is from ("other projects") or the project's name, as well as the name, kind and path. The Server does the matching for every material, and names the types and origins the shelf shows.

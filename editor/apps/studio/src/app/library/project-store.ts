@@ -18,6 +18,7 @@ import { BrushStore } from '../paint/brush-store';
 import { PaintStore } from '../paint/paint-store';
 import { LibraryStore } from './library-store';
 import { messageOf } from '../core/messages';
+import { EngineRestarts } from '../core/session-return';
 
 /** An open document. Its session stays on the Server while another tab is in front, with all its edits and history. */
 export interface DocumentTab {
@@ -81,6 +82,7 @@ export class ProjectStore {
   private readonly bakes = inject(BakeStore);
   private readonly unsaved = inject(UnsavedWork);
   private readonly status = inject(SystemStatus);
+  private readonly restarts = inject(EngineRestarts);
   private readonly mutableTabs = signal<readonly DocumentTab[]>([]);
   private readonly mutableActive = signal<string | null>(null);
   private readonly mutableContents = signal<ReadonlyMap<string, ProjectContents>>(new Map());
@@ -167,6 +169,12 @@ export class ProjectStore {
     });
     effect(() => {
       this.unsaved.report('documents', this.unsavedTabs().length > 0);
+    });
+    // The tabs behind lost their sessions to a Server that restarted, and the edits with them.
+    effect(() => {
+      if (this.restarts.count() > 0) {
+        untracked(() => void this.forgetLostSessions());
+      }
     });
     // A stack the Server opened again after it restarted is a new session of the tab in front, which closing must end.
     effect(() => {
@@ -817,6 +825,36 @@ export class ProjectStore {
 
   private isShowing(tab: DocumentTab): boolean {
     return isGraph(tab) ? this.graph.document() !== null : this.paint.state() !== null;
+  }
+
+  /**
+   * After the Server restarted (#226): a tab behind whose session the Server no longer has lost its unsaved edits with
+   * it, so it stops saying it has any, and comes to the front by opening its file again. One the Server still has keeps
+   * the Server's word. The tab in front hears its own store.
+   */
+  private async forgetLostSessions(): Promise<void> {
+    let open: Map<string, boolean>;
+    try {
+      const client = await this.library.api();
+      const [stacks, graphs] = await Promise.all([client.GET('/api/v1/stacks'), client.GET('/api/v1/graphs')]);
+      open = new Map([...(stacks.data ?? []), ...(graphs.data ?? [])].map(session => [session.id, session.dirty]));
+    } catch {
+      return; // Down again: the next document to come back asks again.
+    }
+
+    const front = this.active()?.path;
+    for (const tab of this.mutableTabs()) {
+      if (tab.path === front || tab.session === null) {
+        continue;
+      }
+
+      const dirty = open.get(tab.session);
+      if (dirty === undefined) {
+        this.update(tab.path, { session: null, dirty: false });
+      } else if (dirty !== tab.dirty) {
+        this.update(tab.path, { dirty });
+      }
+    }
   }
 
   /** Lets go of what is in front, whose session stays open on the Server. */

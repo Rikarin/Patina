@@ -26,7 +26,7 @@ import {
 } from '@patina/api-client';
 import { learnTerms } from '../core/labels';
 import { messageOf } from '../core/messages';
-import { RestartedNotice, SessionReturn } from '../core/session-return';
+import { EngineRestarts, RestartedNotice, SessionReturn } from '../core/session-return';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
 
@@ -157,7 +157,7 @@ export class PaintStore {
         this.failure.set(messageOf(error));
       }
     }
-  });
+  }, inject(EngineRestarts));
   private sequence = 0;
   private stopped = false;
   private stroke: string | null = null;
