@@ -21,7 +21,11 @@ const Words: Readonly<Record<string, string>> = {
   'flatten-refused': '{layer} can’t be flattened. {reason}',
   'not-flattened': '{layer} isn’t flattened.',
   'bake-occluder-minimum':
-    'The minimum occluder distance has to be less than the occluder distance, or every ray starts past its reach and the occlusion comes out white.'
+    'The minimum occluder distance has to be less than the occluder distance, or every ray starts past its reach and the occlusion comes out white.',
+  'mask-layer-missing': 'The mask of {layer} has changed since that was asked. Try again.',
+  'mask-layer-not-paint': 'That layer of the mask of {layer} is not painted, so a brush can’t reach it. Add a Paint layer to the mask.',
+  'instance-source-missing': 'The layer to make an instance of is no longer in {set}.',
+  'instance-cycle': 'An instance of {layer} there would stand for itself. Choose another layer.'
 };
 
 const KindWords: Readonly<Record<string, string>> = { Fill: 'fill', Filter: 'filter', Group: 'folder', Paint: 'paint' };

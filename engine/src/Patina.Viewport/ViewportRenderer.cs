@@ -40,6 +40,8 @@ public sealed class ViewportRenderer : IDisposable {
     TextureViewHandle environmentView;
     TextureViewHandle pictureView;
     ViewportMapFile? picture;
+    string[] isolatedParts = [];
+    string[] isolatedMaterials = [];
     readonly ViewportShadows shadows;
     readonly ViewportPost post;
     readonly BufferHandle frameConstants;
@@ -298,6 +300,18 @@ public sealed class ViewportRenderer : IDisposable {
             [DescriptorWrite.Texture(pass.Effect.BindingOf("environment")!.Value.Binding, environmentView)]
         );
 
+    /// <summary>
+    ///     Draws only these named meshes and materials, and no shadow from the rest (#136). Both empty draws the whole
+    ///     model; a name the model does not have draws nothing of its own.
+    /// </summary>
+    public void Isolate(IReadOnlyList<string> parts, IReadOnlyList<string> materials) {
+        isolatedParts = [..parts];
+        isolatedMaterials = [..materials];
+    }
+
+    /// <summary>The parts a frame draws: all of them, or those the isolation keeps.</summary>
+    ViewportPart[] Shown(ViewportMesh mesh) => mesh.Shown(isolatedParts, isolatedMaterials);
+
     /// <summary>Renders one frame and copies it into <paramref name="destination" />.</summary>
     public void Render(OrbitCamera camera, int width, int height, Span<byte> destination) {
         if (geometry is not { } scene) {
@@ -525,7 +539,8 @@ public sealed class ViewportRenderer : IDisposable {
         Geometry scene,
         bool wireframe
     ) {
-        shadows.Record(commands, scene.Vertices, scene.Indices, scene.Mesh.Parts);
+        var shown = Shown(scene.Mesh);
+        shadows.Record(commands, scene.Vertices, scene.Indices, shown);
         commands.Barrier(
             new BarrierGroup(
                 [],
@@ -552,7 +567,7 @@ public sealed class ViewportRenderer : IDisposable {
         commands.BindDescriptorSet(DescriptorSetSlot.PerFrame, frameSet);
         commands.BindVertexBuffer(0, scene.Vertices);
         commands.BindIndexBuffer(scene.Indices, IndexFormat.UInt32);
-        foreach (var part in scene.Mesh.Parts) {
+        foreach (var part in shown) {
             commands.BindDescriptorSet(DescriptorSetSlot.PerMaterial, scene.SetOf(part));
             commands.DrawIndexed(part.IndexCount, firstIndex: part.FirstIndex);
         }

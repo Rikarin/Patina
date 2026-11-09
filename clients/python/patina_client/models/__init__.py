@@ -192,23 +192,33 @@ from .stack_clip_request import StackClipRequest
 from .stack_command_batch import StackCommandBatch
 from .stack_command_stack_add_channel import StackCommandStackAddChannel
 from .stack_command_stack_add_channel_op import StackCommandStackAddChannelOp
+from .stack_command_stack_add_instance import StackCommandStackAddInstance
+from .stack_command_stack_add_instance_op import StackCommandStackAddInstanceOp
 from .stack_command_stack_add_layer import StackCommandStackAddLayer
 from .stack_command_stack_add_layer_op import StackCommandStackAddLayerOp
 from .stack_command_stack_add_layer_values_type_1 import StackCommandStackAddLayerValuesType1
+from .stack_command_stack_add_mask_layer import StackCommandStackAddMaskLayer
+from .stack_command_stack_add_mask_layer_op import StackCommandStackAddMaskLayerOp
 from .stack_command_stack_duplicate_layers import StackCommandStackDuplicateLayers
 from .stack_command_stack_duplicate_layers_op import StackCommandStackDuplicateLayersOp
 from .stack_command_stack_flatten_layer import StackCommandStackFlattenLayer
 from .stack_command_stack_flatten_layer_op import StackCommandStackFlattenLayerOp
 from .stack_command_stack_move_layer import StackCommandStackMoveLayer
 from .stack_command_stack_move_layer_op import StackCommandStackMoveLayerOp
+from .stack_command_stack_move_mask_layer import StackCommandStackMoveMaskLayer
+from .stack_command_stack_move_mask_layer_op import StackCommandStackMoveMaskLayerOp
 from .stack_command_stack_nest_layer import StackCommandStackNestLayer
 from .stack_command_stack_nest_layer_op import StackCommandStackNestLayerOp
 from .stack_command_stack_paste_layers import StackCommandStackPasteLayers
 from .stack_command_stack_paste_layers_op import StackCommandStackPasteLayersOp
 from .stack_command_stack_remove_layer import StackCommandStackRemoveLayer
 from .stack_command_stack_remove_layer_op import StackCommandStackRemoveLayerOp
+from .stack_command_stack_remove_mask_layer import StackCommandStackRemoveMaskLayer
+from .stack_command_stack_remove_mask_layer_op import StackCommandStackRemoveMaskLayerOp
 from .stack_command_stack_set_height_normal import StackCommandStackSetHeightNormal
 from .stack_command_stack_set_height_normal_op import StackCommandStackSetHeightNormalOp
+from .stack_command_stack_set_instance import StackCommandStackSetInstance
+from .stack_command_stack_set_instance_op import StackCommandStackSetInstanceOp
 from .stack_command_stack_set_layer import StackCommandStackSetLayer
 from .stack_command_stack_set_layer_inputs_type_1 import StackCommandStackSetLayerInputsType1
 from .stack_command_stack_set_layer_op import StackCommandStackSetLayerOp
@@ -216,6 +226,9 @@ from .stack_command_stack_set_layer_parameters_type_1 import StackCommandStackSe
 from .stack_command_stack_set_layer_settings_type_1 import StackCommandStackSetLayerSettingsType1
 from .stack_command_stack_set_layer_textures_type_1 import StackCommandStackSetLayerTexturesType1
 from .stack_command_stack_set_layer_values_type_1 import StackCommandStackSetLayerValuesType1
+from .stack_command_stack_set_mask_layer import StackCommandStackSetMaskLayer
+from .stack_command_stack_set_mask_layer_op import StackCommandStackSetMaskLayerOp
+from .stack_command_stack_set_mask_layer_parameters_type_1 import StackCommandStackSetMaskLayerParametersType1
 from .stack_command_stack_set_model import StackCommandStackSetModel
 from .stack_command_stack_set_model_op import StackCommandStackSetModelOp
 from .stack_command_stack_set_seed import StackCommandStackSetSeed
@@ -233,11 +246,14 @@ from .stack_event_page import StackEventPage
 from .stack_export_request import StackExportRequest
 from .stack_filter_input import StackFilterInput
 from .stack_filter_kind import StackFilterKind
+from .stack_find_request import StackFindRequest
+from .stack_found import StackFound
 from .stack_id_colour import StackIdColour
 from .stack_id_colours import StackIdColours
 from .stack_input import StackInput
 from .stack_input_parameters_type_1 import StackInputParametersType1
 from .stack_input_values_type_1 import StackInputValuesType1
+from .stack_instance_ref import StackInstanceRef
 from .stack_layer import StackLayer
 from .stack_layer_inputs_type_1 import StackLayerInputsType1
 from .stack_layer_parameters_type_1 import StackLayerParametersType1
@@ -250,6 +266,9 @@ from .stack_mask_effect_inputs_type_1 import StackMaskEffectInputsType1
 from .stack_mask_effect_texts_type_1 import StackMaskEffectTextsType1
 from .stack_mask_effect_values_type_1 import StackMaskEffectValuesType1
 from .stack_mask_inputs_type_1 import StackMaskInputsType1
+from .stack_mask_layer import StackMaskLayer
+from .stack_mask_layer_inputs_type_1 import StackMaskLayerInputsType1
+from .stack_mask_layer_parameters_type_1 import StackMaskLayerParametersType1
 from .stack_mask_parameters_type_1 import StackMaskParametersType1
 from .stack_mesh_maps_request import StackMeshMapsRequest
 from .stack_mesh_mask import StackMeshMask
@@ -281,6 +300,7 @@ from .viewport_bake_request import ViewportBakeRequest
 from .viewport_camera_state import ViewportCameraState
 from .viewport_display import ViewportDisplay
 from .viewport_graph_request import ViewportGraphRequest
+from .viewport_isolation import ViewportIsolation
 from .viewport_map_paths import ViewportMapPaths
 from .viewport_mesh_request import ViewportMeshRequest
 from .viewport_pick import ViewportPick
@@ -482,23 +502,33 @@ __all__ = (
     "StackCommandBatch",
     "StackCommandStackAddChannel",
     "StackCommandStackAddChannelOp",
+    "StackCommandStackAddInstance",
+    "StackCommandStackAddInstanceOp",
     "StackCommandStackAddLayer",
     "StackCommandStackAddLayerOp",
     "StackCommandStackAddLayerValuesType1",
+    "StackCommandStackAddMaskLayer",
+    "StackCommandStackAddMaskLayerOp",
     "StackCommandStackDuplicateLayers",
     "StackCommandStackDuplicateLayersOp",
     "StackCommandStackFlattenLayer",
     "StackCommandStackFlattenLayerOp",
     "StackCommandStackMoveLayer",
     "StackCommandStackMoveLayerOp",
+    "StackCommandStackMoveMaskLayer",
+    "StackCommandStackMoveMaskLayerOp",
     "StackCommandStackNestLayer",
     "StackCommandStackNestLayerOp",
     "StackCommandStackPasteLayers",
     "StackCommandStackPasteLayersOp",
     "StackCommandStackRemoveLayer",
     "StackCommandStackRemoveLayerOp",
+    "StackCommandStackRemoveMaskLayer",
+    "StackCommandStackRemoveMaskLayerOp",
     "StackCommandStackSetHeightNormal",
     "StackCommandStackSetHeightNormalOp",
+    "StackCommandStackSetInstance",
+    "StackCommandStackSetInstanceOp",
     "StackCommandStackSetLayer",
     "StackCommandStackSetLayerInputsType1",
     "StackCommandStackSetLayerOp",
@@ -506,6 +536,9 @@ __all__ = (
     "StackCommandStackSetLayerSettingsType1",
     "StackCommandStackSetLayerTexturesType1",
     "StackCommandStackSetLayerValuesType1",
+    "StackCommandStackSetMaskLayer",
+    "StackCommandStackSetMaskLayerOp",
+    "StackCommandStackSetMaskLayerParametersType1",
     "StackCommandStackSetModel",
     "StackCommandStackSetModelOp",
     "StackCommandStackSetSeed",
@@ -523,11 +556,14 @@ __all__ = (
     "StackExportRequest",
     "StackFilterInput",
     "StackFilterKind",
+    "StackFindRequest",
+    "StackFound",
     "StackIdColour",
     "StackIdColours",
     "StackInput",
     "StackInputParametersType1",
     "StackInputValuesType1",
+    "StackInstanceRef",
     "StackLayer",
     "StackLayerInputsType1",
     "StackLayerParametersType1",
@@ -540,6 +576,9 @@ __all__ = (
     "StackMaskEffectTextsType1",
     "StackMaskEffectValuesType1",
     "StackMaskInputsType1",
+    "StackMaskLayer",
+    "StackMaskLayerInputsType1",
+    "StackMaskLayerParametersType1",
     "StackMaskParametersType1",
     "StackMeshMapsRequest",
     "StackMeshMask",
@@ -571,6 +610,7 @@ __all__ = (
     "ViewportCameraState",
     "ViewportDisplay",
     "ViewportGraphRequest",
+    "ViewportIsolation",
     "ViewportMapPaths",
     "ViewportMeshRequest",
     "ViewportPick",

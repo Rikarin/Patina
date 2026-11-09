@@ -140,6 +140,7 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
         var told = request.Display ?? throw new IpcException("viewport.display says nothing.");
         var settings = told.Display;
         var renderer = Renderer();
+        renderer.Isolate(told.Isolation?.Parts ?? [], told.Isolation?.Materials ?? []);
         SetEnvironment(settings.Environment);
         try {
             SetLook(told.Look?.Path, told.Look?.Hash);

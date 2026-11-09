@@ -141,6 +141,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/viewport/isolation': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Draws only some named meshes and materials (texture sets) of the model, for every client. Empty lists draw the whole model. */
+    put: operations['SetViewportIsolation'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/viewport/bake': {
     parameters: {
       query?: never;
@@ -1239,6 +1256,23 @@ export interface paths {
     get: operations['GetStackIdColours'];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/find': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** The layer on top at a place on the map, as a click on the mesh or the map finds it. Its answer is a layer id: the Worker weighs each layer there and no picture leaves it. */
+    post: operations['FindStackLayer'];
     delete?: never;
     options?: never;
     head?: never;
@@ -4052,7 +4086,13 @@ export interface components {
       | components['schemas']['StackCommandStackPasteLayers']
       | components['schemas']['StackCommandStackFlattenLayer']
       | components['schemas']['StackCommandStackUnflattenLayer']
-      | components['schemas']['StackCommandStackSetHeightNormal'];
+      | components['schemas']['StackCommandStackSetHeightNormal']
+      | components['schemas']['StackCommandStackAddMaskLayer']
+      | components['schemas']['StackCommandStackRemoveMaskLayer']
+      | components['schemas']['StackCommandStackMoveMaskLayer']
+      | components['schemas']['StackCommandStackSetMaskLayer']
+      | components['schemas']['StackCommandStackAddInstance']
+      | components['schemas']['StackCommandStackSetInstance'];
     /** @description Edits applied whole or not at all, as one undo step. */
     StackCommandBatch: {
       /** @description The edits, in order. */
@@ -4066,6 +4106,18 @@ export interface components {
       op: 'addChannel';
       /** @description Which, one of the vocabulary's usages. */
       usage: string;
+    };
+    /**
+     * @description Adds an instance of a layer just above the chosen place: a layer that stands for the source, in this texture set
+     *     or another of the model, so that an edit to the source shows in it.
+     */
+    StackCommandStackAddInstance: {
+      /** @enum {string} */
+      op: 'addInstance';
+      /** @description The layer it stands for, in this texture set or another. */
+      source: components['schemas']['StackInstanceRef'];
+      /** @description The layer it goes just above, or null for the top of the stack. */
+      above?: null | string;
     };
     /** @description Adds a layer at the top of the stack. */
     StackCommandStackAddLayer: {
@@ -4093,6 +4145,25 @@ export interface components {
       material?: null | string;
       /** @description The node or compound a filter layer runs, instead of a named filter. */
       filterNode?: null | string;
+    };
+    /**
+     * @description Adds an entry to a layer's mask stack. A layer with no mask gets a white one under it first, so that the entry
+     *     has something to composite over.
+     */
+    StackCommandStackAddMaskLayer: {
+      /** @enum {string} */
+      op: 'addMaskLayer';
+      /** @description The layer whose mask it is. */
+      layer: string;
+      /** @description Constant, Texture, Anchor, Generator, Bake or Paint. */
+      source: string;
+      /**
+       * Format: int32
+       * @description Where it goes, counted from the bottom of the mask's stack, or null for the top.
+       */
+      index?: null | number;
+      /** @description The compound, for a generator entry, or null for the first the vocabulary offers. */
+      generator?: null | string;
     };
     /**
      * @description Duplicates layers, each just above itself, with everything inside it. A painted canvas is copied, never shared:
@@ -4126,6 +4197,23 @@ export interface components {
        */
       delta: number;
     };
+    /** @description Moves an entry up or down a layer's mask stack. */
+    StackCommandStackMoveMaskLayer: {
+      /** @enum {string} */
+      op: 'moveMaskLayer';
+      /** @description The layer whose mask it is. */
+      layer: string;
+      /**
+       * Format: int32
+       * @description Which, counted from the bottom.
+       */
+      index: number;
+      /**
+       * Format: int32
+       * @description How many places, up the stack when positive.
+       */
+      delta: number;
+    };
     /** @description Moves a layer to the top of a group, or of the stack. */
     StackCommandStackNestLayer: {
       /** @enum {string} */
@@ -4146,6 +4234,12 @@ export interface components {
       clip: string;
       /** @description The layer they go just above, or null for the top of the stack. */
       above?: null | string;
+      /**
+       * @description Whether each comes in as an instance of the layer that was copied rather than as a copy, so that an edit to the
+       *     original shows in it. The original has to be in this stack or another texture set of its model.
+       * @default false
+       */
+      asInstances: boolean;
     };
     /** @description Removes a layer. */
     StackCommandStackRemoveLayer: {
@@ -4153,6 +4247,18 @@ export interface components {
       op: 'removeLayer';
       /** @description Which. */
       layer: string;
+    };
+    /** @description Removes an entry from a layer's mask stack. */
+    StackCommandStackRemoveMaskLayer: {
+      /** @enum {string} */
+      op: 'removeMaskLayer';
+      /** @description The layer whose mask it is. */
+      layer: string;
+      /**
+       * Format: int32
+       * @description Which, counted from the bottom.
+       */
+      index: number;
     };
     /** @description Says how the texture set's height becomes the normal its surface is lit with. */
     StackCommandStackSetHeightNormal: {
@@ -4163,6 +4269,15 @@ export interface components {
        *                 hides an eight-bit height's steps.
        */
       method: string;
+    };
+    /** @description Points an instance at another layer, which it then stands for. */
+    StackCommandStackSetInstance: {
+      /** @enum {string} */
+      op: 'setInstance';
+      /** @description The instance. */
+      layer: string;
+      /** @description The layer it stands for from now on, in this texture set or another. */
+      source: components['schemas']['StackInstanceRef'];
     };
     /** @description Changes what a layer's row shows. What is null stays. */
     StackCommandStackSetLayer: {
@@ -4225,6 +4340,47 @@ export interface components {
         [key: string]: components['schemas']['StackInput'];
       };
     };
+    /** @description Changes an entry of a layer's mask stack. What is null stays. */
+    StackCommandStackSetMaskLayer: {
+      /** @enum {string} */
+      op: 'setMaskLayer';
+      /** @description The layer whose mask it is. */
+      layer: string;
+      /**
+       * Format: int32
+       * @description Which, counted from the bottom.
+       */
+      index: number;
+      /** @description Where its pixels come from. A paint entry keeps its canvas whatever it becomes. */
+      source?: null | string;
+      /**
+       * Format: float
+       * @description A constant entry's value, 0 to 1.
+       */
+      value?: null | number;
+      /** @description The image a texture entry reads. */
+      asset?: null | string;
+      anchor?: null | components['schemas']['StackAnchorRef'];
+      /** @description The compound a generator entry runs. Another compound starts from its own knobs. */
+      generator?: null | string;
+      /** @description The mesh map a bake entry reads. */
+      map?: null | string;
+      /** @description A generator entry's knobs, replacing what these names held. */
+      parameters?: null | {
+        [key: string]: string;
+      };
+      /** @description How it composites. */
+      blend?: null | string;
+      /**
+       * Format: float
+       * @description How much of it composites, 0 to 1.
+       */
+      opacity?: null | number;
+      /** @description Whether it composites. */
+      enabled?: null | boolean;
+      /** @description Which lane of its picture it reads: Red, Green, Blue or Alpha. */
+      lane?: null | string;
+    };
     /** @description Names the mesh a stack is painted on, which is undone like any other edit. */
     StackCommandStackSetModel: {
       /** @enum {string} */
@@ -4279,6 +4435,12 @@ export interface components {
        */
       curve: string;
       symmetry?: null | components['schemas']['StackSymmetry'];
+      /**
+       * Format: int32
+       * @description With Mask, the entry of the mask's stack it paints, counted from the bottom, which must be a
+       *     paint entry. Null paints the mask's base.
+       */
+      maskLayer?: null | number;
     };
     /** @description Takes a flattened group back to its children, which composite again. */
     StackCommandStackUnflattenLayer: {
@@ -4436,6 +4598,27 @@ export interface components {
       /** @description The images it reads, its subject first. Empty for a generator. */
       inputs?: null | components['schemas']['StackFilterInput'][];
     };
+    /** @description Asks which layer is on top at a place on a stack's map, as a click on the mesh or the map finds it. */
+    StackFindRequest: {
+      /**
+       * Format: float
+       * @description Across the map, 0 to 1: the texture coordinate `POST /viewport/pick` gives.
+       */
+      u: number;
+      /**
+       * Format: float
+       * @description Down it, 0 to 1.
+       */
+      v: number;
+    };
+    /** @description The layer on top at a place on a stack's map. */
+    StackFound: {
+      /**
+       * @description The topmost layer that covers the place, inside its folders, or null when only the stack's defaults are there.
+       *     A filter covers nothing of its own, and a flattened folder is one layer.
+       */
+      layer?: null | string;
+    };
     /** @description One colour of a stack's id map. */
     StackIdColour: {
       /** @description Red, green and blue, 0 to 1, as the map stores them. */
@@ -4486,6 +4669,16 @@ export interface components {
        * @default
        */
       map: string;
+    };
+    /** @description The layer an instance stands for. */
+    StackInstanceRef: {
+      /** @description The source layer's id. */
+      layer: string;
+      /**
+       * @description The texture set it is in, by name, or empty for the instance's own.
+       * @default
+       */
+      set: string;
     };
     /** @description One layer, without its pixels. */
     StackLayer: {
@@ -4563,6 +4756,7 @@ export interface components {
        * @default false
        */
       flattened: boolean;
+      instance?: null | components['schemas']['StackInstanceRef'];
     };
     /** @description What decides where a layer shows. */
     StackMask: {
@@ -4616,6 +4810,17 @@ export interface components {
       inputs?: null | {
         [key: string]: components['schemas']['StackAnchorRef'];
       };
+      /**
+       * @description The mask's own stack over this base, bottom first. Ignored in a change: the mask layer commands edit it, so that
+       *     a painted canvas stays with its entry.
+       */
+      layers?: null | components['schemas']['StackMaskLayer'][];
+      /**
+       * @description Which lane of its picture the base reads: Red, Green, Blue or Alpha. A mesh map that measures a direction keeps
+       *     its X, Y and Z in the first three.
+       * @default Red
+       */
+      lane: string;
     };
     /** @description One step run on a mask. */
     StackMaskEffect: {
@@ -4638,6 +4843,70 @@ export interface components {
       inputs?: null | {
         [key: string]: components['schemas']['StackInput'];
       };
+    };
+    /**
+     * @description One entry of a mask's own stack: a source, composited over the base and the entries beneath it with its own
+     *     blend and opacity. Paint over a generator is a Paint entry over a Generator base.
+     */
+    StackMaskLayer: {
+      /** @description Constant, Texture, Anchor, Generator, Bake or Paint. */
+      source: string;
+      /**
+       * Format: float
+       * @description A constant entry's value.
+       * @default 1
+       */
+      value: number;
+      /**
+       * @description The image a texture entry reads.
+       * @default
+       */
+      asset: string;
+      anchor?: null | components['schemas']['StackAnchorRef'];
+      /**
+       * @description The compound a generator entry runs.
+       * @default
+       */
+      generator: string;
+      /**
+       * @description The mesh map a bake entry reads.
+       * @default
+       */
+      map: string;
+      /** @description What a generator entry's knobs are set to, as text. */
+      parameters?: null | {
+        [key: string]: string;
+      };
+      /** @description The image inputs of a generator entry that anchor points feed, by port. */
+      inputs?: null | {
+        [key: string]: components['schemas']['StackAnchorRef'];
+      };
+      /**
+       * @description Whether a paint entry has a canvas yet.
+       * @default false
+       */
+      painted: boolean;
+      /**
+       * @description How it composites over what is beneath it.
+       * @default Copy
+       */
+      blend: string;
+      /**
+       * Format: float
+       * @description How much of it composites, 0 to 1.
+       * @default 1
+       */
+      opacity: number;
+      /**
+       * @description Whether it composites at all.
+       * @default true
+       */
+      enabled: boolean;
+      /**
+       * @description Which lane of its picture it reads: Red, Green, Blue or Alpha.
+       * @default Red
+       */
+      lane: string;
     };
     /** @description Chooses the bake a stack's generators and bake masks read. */
     StackMeshMapsRequest: {
@@ -4936,7 +5205,7 @@ export interface components {
     };
     /** @description The words a stack's fields take, each with its label, so that a client holds no list of its own. */
     StackVocabulary: {
-      /** @description The sixteen blend modes. */
+      /** @description The thirty blend modes. */
       blends: components['schemas']['StackTerm'][];
       /** @description The filters a layer can be. */
       filters: components['schemas']['StackFilterKind'][];
@@ -4969,6 +5238,8 @@ export interface components {
       inputs: components['schemas']['StackTerm'][];
       /** @description The generators an image input can read: noises, patterns, grunges and the rest. */
       sources: components['schemas']['StackFilterKind'][];
+      /** @description The lanes of a picture a mask can read. */
+      lanes?: null | components['schemas']['StackTerm'][];
     };
     /** @description The reply to `GET /api/v1/system`. */
     SystemInfo: {
@@ -5260,6 +5531,16 @@ export interface components {
       graph: string;
     };
     /**
+     * @description What the viewport draws alone (#136): the named meshes and the materials, which are texture sets, that show. The
+     *     rest of the model is not drawn and casts no shadow. Both empty is the whole model.
+     */
+    ViewportIsolation: {
+      /** @description Named meshes that show, as the model names them. */
+      parts: string[];
+      /** @description Materials that show, as the model names them: a texture set is one. */
+      materials: string[];
+    };
+    /**
      * @description Pictures to lay over the mesh's own materials, on every part. Each is a path on the Server's machine, and a slot
      *     left null keeps what the material asks for. A filled slot replaces the material's factor too, so what shows
      *     is the picture. Roughness is read from green, metallic from blue and occlusion from red, so one packed file or
@@ -5381,6 +5662,7 @@ export interface components {
       display: components['schemas']['ViewportDisplay'];
       /** @description The stack session it is wearing, or null. */
       stack?: null | string;
+      isolation?: null | components['schemas']['ViewportIsolation'];
     };
     /** @description The Worker as the Server sees it. All but `Connected` are null while there is none. */
     WorkerStatus: {
@@ -5681,6 +5963,30 @@ export interface operations {
         };
         content: {
           'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetViewportIsolation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportIsolation'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportState'];
         };
       };
     };
@@ -9181,6 +9487,59 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  FindStackLayer: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StackFindRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackFound'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
         headers: {
           [name: string]: unknown;
         };

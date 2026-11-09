@@ -50,7 +50,7 @@ function layer(id: string, kind: string, children: StackLayer[] = []): StackLaye
     planarAxis: 'Y',
     filter: 'Levels',
     settings: {},
-    mask: { source: 'None', value: 1, asset: '', generator: '', map: '', tolerance: 0.02, softness: 0 }
+    mask: { source: 'None', value: 1, asset: '', generator: '', map: '', tolerance: 0.02, softness: 0, lane: 'Red' }
   };
 }
 
@@ -250,7 +250,7 @@ describe('PaintStore copies', () => {
     await store.duplicateLayers();
 
     expect(bodies.slice(1)).toEqual([
-      { commands: [{ op: 'pasteLayers', clip: 'c1', above: 'paint' }] },
+      { commands: [{ op: 'pasteLayers', clip: 'c1', above: 'paint', asInstances: false }] },
       { commands: [{ op: 'duplicateLayers', layers: ['paint'] }] }
     ]);
   });
@@ -318,6 +318,38 @@ describe('PaintStore', () => {
       expect(batches[0]?.[0]?.colour).toEqual([0.25, 0.25, 0.25, 1]);
     });
     expect(store.recentColours()).toEqual([]);
+  });
+
+  it('paints an entry of a mask stack by its place, and only a paint entry (#109)', async () => {
+    const { store, bodies } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    const base = store.state()?.layers[0] as StackLayer;
+    const stacked: StackLayer = {
+      ...base,
+      mask: {
+        ...base.mask,
+        source: 'Generator',
+        generator: 'Generators/Dirt',
+        layers: [{ source: 'Constant' }, { source: 'Paint' }] as never
+      }
+    };
+    store.state.update(state => (state ? { ...state, layers: [stacked] } : state));
+
+    store.chooseMaskLayer(stacked, 0);
+    expect(store.canPaint()).toBe(false);
+    store.chooseMaskLayer(stacked, 1);
+    expect(store.canPaint()).toBe(true);
+    store.chooseMask(stacked);
+    expect(store.maskLayer()).toBeNull();
+    expect(store.canPaint()).toBe(false);
+
+    store.chooseMaskLayer(stacked, 1);
+    store.begin({ x: 1, y: 2, pressure: 1 });
+    store.end();
+    await vi.waitFor(() => {
+      const first = (bodies[0] as { commands: { mask: boolean; maskLayer: number | null }[] }).commands[0];
+      expect([first?.mask, first?.maskLayer]).toEqual([true, 1]);
+    });
   });
 
   it('starts a brush on a flat mask as what would show on it', () => {

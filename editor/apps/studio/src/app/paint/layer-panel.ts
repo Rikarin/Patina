@@ -4,6 +4,7 @@ import type {
   MaterialInfo,
   StackAnchorRef,
   StackFilterKind,
+  StackInstanceRef,
   StackLayer,
   StackMask,
   StackMaskEffect
@@ -122,6 +123,31 @@ export function hexOf(colour: readonly number[] | undefined): string {
             }
           </ul>
         }
+        @if (layer.instance; as source) {
+          <p class="section-label mt-1">Instance</p>
+          <div class="flex items-center gap-2" data-testid="paint-instance">
+            <span class="min-w-0 flex-1 truncate text-xs" data-testid="paint-instance-source">
+              Stands for {{ sourceName(source) }}{{ source.set ? ' in ' + source.set : '' }}
+            </span>
+            <button type="button" xuiButton size="sm" variant="ghost" data-testid="paint-instance-go" (click)="goToSource(source)">
+              Go to Source
+            </button>
+          </div>
+          <p class="text-foreground-muted text-xs">
+            Its name, eye, opacity, blend and anchor are its own; everything else follows the source.
+          </p>
+        } @else if (instancesOf(layer); as instances) {
+          <p class="section-label mt-1">Instances</p>
+          <ul class="flex flex-col gap-0.5" data-testid="paint-instances">
+            @for (instance of instances; track instance.id) {
+              <li class="flex items-center gap-2">
+                <span class="min-w-0 flex-1 truncate text-xs">{{ instance.name }}</span>
+                <button type="button" xuiButton size="sm" variant="ghost" (click)="store.layer.set(instance.id)">Go</button>
+              </li>
+            }
+          </ul>
+        }
+        @if (!layer.instance) {
         <p class="section-label mt-1">Material Channels</p>
         <div class="flex flex-wrap items-center gap-1">
           @for (channel of store.state()?.channels ?? []; track channel.usage) {
@@ -143,6 +169,8 @@ export function hexOf(colour: readonly number[] | undefined): string {
           </p>
         }
 
+        }
+        @if (!layer.instance) {
         <p class="section-label mt-1">Content</p>
         @switch (layer.kind) {
           @case ('fill') {
@@ -434,6 +462,107 @@ export function hexOf(colour: readonly number[] | undefined): string {
           </div>
         }
 
+        }
+        @if (maskEntry(); as entry) {
+          <p class="section-label mt-1">Mask Layer</p>
+          <div class="flex flex-col gap-1.5" data-testid="paint-mask-layer">
+            <div class="flex items-center gap-2">
+              <span class="text-foreground-muted w-16 shrink-0 text-xs">Source</span>
+              <xui-select
+                class="min-w-0 flex-1"
+                aria-label="Mask layer source"
+                data-testid="paint-mask-layer-source"
+                [itemText]="termName"
+                [items]="entrySources()"
+                [value]="entry.layer.source"
+                (valueChange)="$event && setEntry(layer, entry.index, { source: $event })"
+              />
+            </div>
+            @switch (entry.layer.source) {
+              @case ('Constant') {
+                <div class="flex items-center gap-2">
+                  <xui-slider
+                    class="min-w-0 flex-1"
+                    labelStepSize="0"
+                    aria-label="Mask layer value"
+                    data-testid="paint-mask-layer-value"
+                    [max]="1"
+                    [min]="0"
+                    [stepSize]="0.01"
+                    [value]="entry.layer.value"
+                    (valueChange)="setEntry(layer, entry.index, { value: $event })"
+                  />
+                  <span class="readout w-9 shrink-0 text-end text-xs">{{ percent(entry.layer.value) }}</span>
+                </div>
+              }
+              @case ('Generator') {
+                <xui-select
+                  aria-label="Mask layer generator"
+                  data-testid="paint-mask-layer-generator"
+                  [itemText]="termName"
+                  [items]="generatorsWith(entry.layer.generator)"
+                  [value]="entry.layer.generator"
+                  (valueChange)="setEntry(layer, entry.index, { generator: $event ?? '' })"
+                />
+              }
+              @case ('Bake') {
+                <xui-select
+                  aria-label="Mask layer mesh map"
+                  data-testid="paint-mask-layer-map"
+                  [itemText]="termName"
+                  [items]="meshMaps()"
+                  [value]="entry.layer.map"
+                  (valueChange)="setEntry(layer, entry.index, { map: $event ?? '' })"
+                />
+                <xui-select
+                  aria-label="Mask layer lane"
+                  data-testid="paint-mask-layer-lane"
+                  [itemText]="termName"
+                  [items]="lanes()"
+                  [value]="entry.layer.lane"
+                  (valueChange)="setEntry(layer, entry.index, { lane: $event ?? 'Red' })"
+                />
+              }
+              @case ('Texture') {
+                <div class="flex items-center gap-2">
+                  <span class="min-w-0 flex-1 truncate text-xs" [title]="entry.layer.asset">{{
+                    fileOf(entry.layer.asset) || 'None'
+                  }}</span>
+                  <button
+                    type="button"
+                    xuiButton
+                    size="sm"
+                    variant="ghost"
+                    data-testid="paint-mask-layer-picture"
+                    (click)="chooseEntryPicture(layer, entry.index)"
+                  >
+                    Choose…
+                  </button>
+                </div>
+              }
+              @case ('Anchor') {
+                <xui-select
+                  aria-label="Anchor point the mask layer reads"
+                  data-testid="paint-mask-layer-anchor"
+                  [items]="anchorNames(layer)"
+                  [value]="entry.layer.anchor?.anchor || null"
+                  (valueChange)="
+                    setEntry(layer, entry.index, {
+                      anchor: { anchor: $event ?? '', channel: entry.layer.anchor?.channel || store.channel() }
+                    })
+                  "
+                />
+              }
+              @case ('Paint') {
+                <p class="text-foreground-muted text-xs" data-testid="paint-mask-layer-paint">
+                  Paint white to show the layer and black to hide it. Where nothing is painted, what is beneath shows.
+                </p>
+              }
+            }
+          </div>
+        }
+
+        @if (!layer.instance) {
         <p class="section-label mt-1">Mask</p>
         <div class="flex items-center gap-2">
           <span class="text-foreground-muted w-16 shrink-0 text-xs">Mask</span>
@@ -447,7 +576,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
             (valueChange)="setMask(layer, { source: $event ?? 'None' })"
           />
         </div>
-        @if (store.masking() && !store.canPaint()) {
+        @if (store.masking() && store.maskLayer() === null && !store.canPaint()) {
           <p class="text-foreground-muted text-xs" data-testid="paint-mask-no-brush">
             A brush would replace this mask. Set Mask to Paint to paint it.
           </p>
@@ -559,6 +688,18 @@ export function hexOf(colour: readonly number[] | undefined): string {
               [value]="layer.mask.map"
               (valueChange)="setMask(layer, { map: $event ?? '' })"
             />
+            <div class="flex items-center gap-2">
+              <span class="text-foreground-muted w-16 shrink-0 text-xs" title="Which lane of the map the mask reads">Lane</span>
+              <xui-select
+                class="min-w-0 flex-1"
+                aria-label="Mask lane"
+                data-testid="paint-mask-lane"
+                [itemText]="termName"
+                [items]="lanes()"
+                [value]="layer.mask.lane"
+                (valueChange)="setMask(layer, { lane: $event ?? 'Red' })"
+              />
+            </div>
             @if (layer.mask.map === 'id') {
               <div class="flex flex-col gap-1.5" data-testid="paint-colour-selection">
                 <div class="flex flex-wrap items-center gap-1" role="group" aria-label="Colours in the id map">
@@ -631,6 +772,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
               </div>
             }
           }
+        }
         }
       </div>
 
@@ -733,6 +875,8 @@ export class LayerPanel {
   protected readonly masks = computed(() => this.store.vocabulary()?.masks.map(term => term.value) ?? []);
   protected readonly generators = computed(() => this.store.vocabulary()?.generators.map(term => term.value) ?? []);
   protected readonly meshMaps = computed(() => this.store.vocabulary()?.meshMaps.map(term => term.value) ?? []);
+  /** The lanes of a picture a mask can read, which a direction's mesh map holds its axes in. */
+  protected readonly lanes = computed(() => this.store.vocabulary()?.lanes?.map(term => term.value) ?? ['Red']);
   protected readonly termName = termName;
   protected readonly choiceName = choiceName;
   /** A layer by its name, which is what the anchor list offers rather than its id. */
@@ -1080,5 +1224,60 @@ export class LayerPanel {
 
   protected setMask(layer: StackLayer, change: Partial<StackMask>): void {
     void this.store.setMask(layer, { ...layer.mask, ...change });
+  }
+
+  /** A source's name in this set, or its id when it is in another, which this client has not read. */
+  protected sourceName(source: StackInstanceRef): string {
+    return source.set ? source.layer : this.layerName(source.layer);
+  }
+
+  /** The instances of a layer in this set, or null when there are none. */
+  protected instancesOf(layer: StackLayer): readonly StackLayer[] | null {
+    const found = this.store
+      .layers()
+      .map(row => row.layer)
+      .filter(held => held.instance && !held.instance.set && held.instance.layer === layer.id);
+    return found.length > 0 ? found : null;
+  }
+
+  /** Chooses the source: here, or in its texture set, which opens and then chooses it. */
+  protected goToSource(source: StackInstanceRef): void {
+    if (!source.set) {
+      this.store.layer.set(source.layer);
+      this.store.masking.set(false);
+      return;
+    }
+
+    const set = this.project.textureSets().find(held => held.material === source.set);
+    const project = this.project.current();
+    if (set && project) {
+      this.store.arriving.set(source.layer);
+      void this.project.openDocument(project.path, set.path);
+    }
+  }
+
+  /** The entry of the chosen layer's mask stack in front of the brush, with its place counted from the bottom. */
+  protected readonly maskEntry = computed(() => {
+    const index = this.store.maskLayer();
+    const entry = index === null || !this.store.masking() ? undefined : this.store.chosen()?.mask.layers?.[index];
+    return entry && index !== null ? { index, layer: entry } : null;
+  });
+
+  /** What an entry of a mask's stack can be: any mask source but none. */
+  protected readonly entrySources = computed(() => this.masks().filter(source => source !== 'None'));
+
+  protected setEntry(
+    layer: StackLayer,
+    index: number,
+    change: Parameters<PaintStore['setMaskLayer']>[2]
+  ): void {
+    void this.store.setMaskLayer(layer, index, change);
+  }
+
+  protected async chooseEntryPicture(layer: StackLayer, index: number): Promise<void> {
+    const picture = await this.project.pickPicture();
+    if (picture) {
+      this.setEntry(layer, index, { asset: picture });
+    }
   }
 }

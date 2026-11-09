@@ -115,6 +115,28 @@ export const CommandTable: readonly CommandSpec[] = [
   },
   { id: 'unflattenFolder', label: 'Unflatten Folder', section: 'Layers', area: 'stack' },
   { id: 'flattenStack', label: 'Flatten Stack', section: 'Layers', area: 'stack' },
+  {
+    id: 'createInstance',
+    label: 'Create Instance',
+    section: 'Layers',
+    area: 'stack',
+    hint: 'A layer that stands for the chosen one and follows every edit to it'
+  },
+  { id: 'pasteAsInstance', label: 'Paste as Instance', section: 'Layers', area: 'stack' },
+  {
+    id: 'findLayer',
+    label: 'Find Layer Under Cursor',
+    section: 'Layers',
+    area: 'stack',
+    hint: 'The next click on the mesh or the map chooses the layer on top there'
+  },
+  {
+    id: 'openMaskStack',
+    label: 'Open Mask as Stack',
+    section: 'Layers',
+    area: 'stack',
+    hint: 'Shows the chosen layer’s mask in Layers as a stack of its own'
+  },
 
   { id: 'addNode', label: 'Add Node…', section: 'Graph', keys: ['Space'], area: 'graph' },
   { id: 'groupNodes', label: 'Group Selection', section: 'Graph', keys: ['Mod+G'], area: 'graph' },
@@ -260,7 +282,13 @@ export const MenuBar: readonly {
       '-',
       'flattenFolder',
       'unflattenFolder',
-      'flattenStack'
+      'flattenStack',
+      '-',
+      'createInstance',
+      'pasteAsInstance',
+      '-',
+      'findLayer',
+      'openMaskStack'
     ]
   },
   {

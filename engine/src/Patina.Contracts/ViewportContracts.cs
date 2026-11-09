@@ -177,6 +177,18 @@ public sealed record ViewportPick(
     IReadOnlyList<float>? Bounds = null
 );
 
+/// <summary>
+///     What the viewport draws alone (#136): the named meshes and the materials, which are texture sets, that show. The
+///     rest of the model is not drawn and casts no shadow. Both empty is the whole model.
+/// </summary>
+/// <param name="Parts">Named meshes that show, as the model names them.</param>
+/// <param name="Materials">Materials that show, as the model names them: a texture set is one.</param>
+public sealed record ViewportIsolation(IReadOnlyList<string> Parts, IReadOnlyList<string> Materials) {
+    /// <summary>Whether it hides nothing. Not on the wire: it is what the lists say.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool Whole => Parts.Count == 0 && Materials.Count == 0;
+}
+
 /// <summary>Asks the viewport to wear a stack: its mesh, and its maps as the strokes leave them.</summary>
 /// <param name="Stack">The stack session.</param>
 public sealed record ViewportStackRequest(string Stack);
@@ -231,6 +243,7 @@ public sealed record ViewportGraphRequest(string Graph);
 /// <param name="Display">How the model is lit, shown and finished.</param>
 /// <param name="Frames">How many frames this Server has published.</param>
 /// <param name="Error">Why the last command failed, or null.</param>
+/// <param name="Isolation">What is drawn alone, or null for the whole model.</param>
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field.
 #pragma warning disable SK7005
 public sealed record ViewportState(
@@ -243,7 +256,8 @@ public sealed record ViewportState(
     long Frames,
     string? Error,
     ViewportDisplay Display,
-    string? Stack = null
+    string? Stack = null,
+    ViewportIsolation? Isolation = null
 );
 #pragma warning restore SK7005
 

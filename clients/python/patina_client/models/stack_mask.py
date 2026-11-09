@@ -15,6 +15,7 @@ if TYPE_CHECKING:
   from ..models.stack_anchor_ref import StackAnchorRef
   from ..models.stack_mask_effect import StackMaskEffect
   from ..models.stack_mask_inputs_type_1 import StackMaskInputsType1
+  from ..models.stack_mask_layer import StackMaskLayer
   from ..models.stack_mask_parameters_type_1 import StackMaskParametersType1
 
 
@@ -37,6 +38,9 @@ class StackMask:
             map_ (str): The mesh map a bake mask reads. Default: ''.
             tolerance (float): How far from that colour still counts. Default: 0.02.
             softness (float): How much further the mask takes to reach nothing. Default: 0.0.
+            lane (str): Which lane of its picture the base reads: Red, Green, Blue or Alpha. A mesh map that measures a
+                direction keeps
+                its X, Y and Z in the first three. Default: 'Red'.
             anchor (None | StackAnchorRef | Unset):
             colour (list[float] | None | Unset): The colour a bake mask selects from its map, as three numbers, or null for
                 all of it.
@@ -46,6 +50,9 @@ class StackMask:
             mesh_parts (list[str] | None | Unset): The named meshes the layer is limited to, or null for the whole model.
             inputs (None | StackMaskInputsType1 | Unset): The image inputs of a generator that anchor points feed, by port,
                 or null to keep them.
+            layers (list[StackMaskLayer] | None | Unset): The mask's own stack over this base, bottom first. Ignored in a
+                change: the mask layer commands edit it, so that
+                a painted canvas stays with its entry.
      """
 
     source: str
@@ -55,12 +62,14 @@ class StackMask:
     map_: str = ''
     tolerance: float = 0.02
     softness: float = 0.0
+    lane: str = 'Red'
     anchor: None | StackAnchorRef | Unset = UNSET
     colour: list[float] | None | Unset = UNSET
     effects: list[StackMaskEffect] | None | Unset = UNSET
     parameters: None | StackMaskParametersType1 | Unset = UNSET
     mesh_parts: list[str] | None | Unset = UNSET
     inputs: None | StackMaskInputsType1 | Unset = UNSET
+    layers: list[StackMaskLayer] | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -71,6 +80,7 @@ class StackMask:
         from ..models.stack_anchor_ref import StackAnchorRef # noqa: PLC0415
         from ..models.stack_mask_effect import StackMaskEffect # noqa: PLC0415
         from ..models.stack_mask_inputs_type_1 import StackMaskInputsType1 # noqa: PLC0415
+        from ..models.stack_mask_layer import StackMaskLayer # noqa: PLC0415
         from ..models.stack_mask_parameters_type_1 import StackMaskParametersType1 # noqa: PLC0415
         source = self.source
 
@@ -85,6 +95,8 @@ class StackMask:
         tolerance = self.tolerance
 
         softness = self.softness
+
+        lane = self.lane
 
         anchor: dict[str, Any] | None | Unset
         if isinstance(self.anchor, Unset):
@@ -143,6 +155,19 @@ class StackMask:
         else:
             inputs = self.inputs
 
+        layers: list[dict[str, Any]] | None | Unset
+        if isinstance(self.layers, Unset):
+            layers = UNSET
+        elif isinstance(self.layers, list):
+            layers = []
+            for layers_type_1_item_data in self.layers:
+                layers_type_1_item = layers_type_1_item_data.to_dict()
+                layers.append(layers_type_1_item)
+
+
+        else:
+            layers = self.layers
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -154,6 +179,7 @@ class StackMask:
             "map": map_,
             "tolerance": tolerance,
             "softness": softness,
+            "lane": lane,
         })
         if anchor is not UNSET:
             field_dict["anchor"] = anchor
@@ -167,6 +193,8 @@ class StackMask:
             field_dict["meshParts"] = mesh_parts
         if inputs is not UNSET:
             field_dict["inputs"] = inputs
+        if layers is not UNSET:
+            field_dict["layers"] = layers
 
         return field_dict
 
@@ -177,6 +205,7 @@ class StackMask:
         from ..models.stack_anchor_ref import StackAnchorRef # noqa: PLC0415
         from ..models.stack_mask_effect import StackMaskEffect # noqa: PLC0415
         from ..models.stack_mask_inputs_type_1 import StackMaskInputsType1 # noqa: PLC0415
+        from ..models.stack_mask_layer import StackMaskLayer # noqa: PLC0415
         from ..models.stack_mask_parameters_type_1 import StackMaskParametersType1 # noqa: PLC0415
         d = dict(src_dict)
         source = d.pop("source")
@@ -192,6 +221,8 @@ class StackMask:
         tolerance = d.pop("tolerance")
 
         softness = d.pop("softness")
+
+        lane = d.pop("lane")
 
         def _parse_anchor(data: object) -> None | StackAnchorRef | Unset:
             if data is None:
@@ -314,6 +345,31 @@ class StackMask:
         inputs = _parse_inputs(d.pop("inputs", UNSET))
 
 
+        def _parse_layers(data: object) -> list[StackMaskLayer] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                layers_type_1 = []
+                _layers_type_1 = data
+                for layers_type_1_item_data in (_layers_type_1):
+                    layers_type_1_item = StackMaskLayer.from_dict(layers_type_1_item_data)
+
+
+
+                    layers_type_1.append(layers_type_1_item)
+
+                return layers_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[StackMaskLayer] | None | Unset, data)
+
+        layers = _parse_layers(d.pop("layers", UNSET))
+
+
         stack_mask = cls(
             source=source,
             value=value,
@@ -322,12 +378,14 @@ class StackMask:
             map_=map_,
             tolerance=tolerance,
             softness=softness,
+            lane=lane,
             anchor=anchor,
             colour=colour,
             effects=effects,
             parameters=parameters,
             mesh_parts=mesh_parts,
             inputs=inputs,
+            layers=layers,
         )
 
 

@@ -176,7 +176,7 @@ public sealed class StackEvaluator(
 
         var id = Guid.NewGuid().ToString("N");
         clips.Add(
-            new(id, text, folder, session.Path, width, height),
+            new(id, text, folder, session.Path, width, height, session.Set),
             held => sessions.All.Any(open => open.Reads(held))
         );
         return new(id, count, session.Path);
@@ -190,6 +190,23 @@ public sealed class StackEvaluator(
             new() { Type = IpcTypes.StackCheckpoint, StackSave = new(session.Id, folder) },
             cancellationToken
         );
+    }
+
+    /// <summary>The layer on top at a place on the map, which the Worker weighs and the Server names (#136).</summary>
+    /// <exception cref="TimeoutException">No Worker came.</exception>
+    /// <exception cref="IpcException">The stack would not evaluate.</exception>
+    public async Task<string?> FindAsync(StackSession session, float u, float v, CancellationToken cancellationToken) {
+        await ReachedAsync(session, cancellationToken);
+        if (session.EvaluationError is { } failed) {
+            throw new IpcException(failed);
+        }
+
+        var connection = await ConnectionAsync(cancellationToken);
+        var reply = await connection.SendAsync(
+            new() { Type = IpcTypes.StackFind, StackFind = new(session.Id, u, v) },
+            cancellationToken
+        );
+        return reply.FoundLayer;
     }
 
     /// <summary>Each fill of a stack alone, which the Worker keeps until the layer changes.</summary>

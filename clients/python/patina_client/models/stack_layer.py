@@ -13,6 +13,7 @@ from typing import cast
 
 if TYPE_CHECKING:
   from ..models.stack_anchor_ref import StackAnchorRef
+  from ..models.stack_instance_ref import StackInstanceRef
   from ..models.stack_layer_inputs_type_1 import StackLayerInputsType1
   from ..models.stack_layer_parameters_type_1 import StackLayerParametersType1
   from ..models.stack_layer_settings import StackLayerSettings
@@ -61,6 +62,7 @@ class StackLayer:
             parameters (None | StackLayerParametersType1 | Unset): What a graph fill sets the graph's knobs to, as text.
             anchor (None | StackAnchorRef | Unset):
             inputs (None | StackLayerInputsType1 | Unset): Where the image inputs of a graph fill or a filter read, by port.
+            instance (None | StackInstanceRef | Unset):
      """
 
     id: str
@@ -88,6 +90,7 @@ class StackLayer:
     parameters: None | StackLayerParametersType1 | Unset = UNSET
     anchor: None | StackAnchorRef | Unset = UNSET
     inputs: None | StackLayerInputsType1 | Unset = UNSET
+    instance: None | StackInstanceRef | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -96,6 +99,7 @@ class StackLayer:
 
     def to_dict(self) -> dict[str, Any]:
         from ..models.stack_anchor_ref import StackAnchorRef # noqa: PLC0415
+        from ..models.stack_instance_ref import StackInstanceRef # noqa: PLC0415
         from ..models.stack_layer_inputs_type_1 import StackLayerInputsType1 # noqa: PLC0415
         from ..models.stack_layer_parameters_type_1 import StackLayerParametersType1 # noqa: PLC0415
         from ..models.stack_layer_settings import StackLayerSettings # noqa: PLC0415
@@ -184,6 +188,14 @@ class StackLayer:
         else:
             inputs = self.inputs
 
+        instance: dict[str, Any] | None | Unset
+        if isinstance(self.instance, Unset):
+            instance = UNSET
+        elif isinstance(self.instance, StackInstanceRef):
+            instance = self.instance.to_dict()
+        else:
+            instance = self.instance
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -218,6 +230,8 @@ class StackLayer:
             field_dict["anchor"] = anchor
         if inputs is not UNSET:
             field_dict["inputs"] = inputs
+        if instance is not UNSET:
+            field_dict["instance"] = instance
 
         return field_dict
 
@@ -226,6 +240,7 @@ class StackLayer:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.stack_anchor_ref import StackAnchorRef # noqa: PLC0415
+        from ..models.stack_instance_ref import StackInstanceRef # noqa: PLC0415
         from ..models.stack_layer_inputs_type_1 import StackLayerInputsType1 # noqa: PLC0415
         from ..models.stack_layer_parameters_type_1 import StackLayerParametersType1 # noqa: PLC0415
         from ..models.stack_layer_settings import StackLayerSettings # noqa: PLC0415
@@ -377,6 +392,26 @@ class StackLayer:
         inputs = _parse_inputs(d.pop("inputs", UNSET))
 
 
+        def _parse_instance(data: object) -> None | StackInstanceRef | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                instance_type_1 = StackInstanceRef.from_dict(data)
+
+
+
+                return instance_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackInstanceRef | Unset, data)
+
+        instance = _parse_instance(d.pop("instance", UNSET))
+
+
         stack_layer = cls(
             id=id,
             name=name,
@@ -403,6 +438,7 @@ class StackLayer:
             parameters=parameters,
             anchor=anchor,
             inputs=inputs,
+            instance=instance,
         )
 
 

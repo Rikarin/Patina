@@ -66,7 +66,8 @@ public static class StackDocuments {
             StackBrushes.MaximumCount
         ),
         Terms.InStack(Enum.GetNames<LayerInputSource>()),
-        Sources()
+        Sources(),
+        Terms.InStack(Enum.GetNames<LayerMaskLane>())
     );
 
     /// <summary>The stack a new file starts as: a base, and somewhere to paint.</summary>
@@ -362,6 +363,9 @@ public static class StackDocuments {
         return mask with { Layers = others };
     }
 
+    /// <summary>Whether a mask entry keeps its layer to some meshes, which is the stack's and not the mask's.</summary>
+    public static bool KeepsToMeshes(MaskLayerAsset entry) => entry.GeneratorTexts.ContainsKey(MeshParts);
+
     static string[]? MeshPartsOf(MaskAsset mask) =>
         mask.Layers.Find(static entry => entry.GeneratorTexts.ContainsKey(MeshParts))
             ?.GeneratorTexts[MeshParts]
@@ -414,7 +418,9 @@ public static class StackDocuments {
                 ],
                 layer.Mask.GeneratorTexts,
                 MeshPartsOf(layer.Mask),
-                Wire(layer.Mask.GeneratorInputs)
+                Wire(layer.Mask.GeneratorInputs),
+                StackMaskLayers.Wire(layer.Mask),
+                layer.Mask.Lane.ToString()
             ),
             layer.PlanarAxis.ToString(),
             new(
@@ -429,7 +435,8 @@ public static class StackDocuments {
             layer.AnchorPoint,
             Wire(layer.Anchor),
             Wire(layer.Inputs),
-            layer.Flattened
+            layer.Flattened,
+            layer.Kind == LayerKind.Instance ? new(layer.Instance.Layer, layer.Instance.Set) : null
         );
 
     static Dictionary<string, IReadOnlyList<float>> Numbers(Dictionary<string, float[]> numbers) =>

@@ -212,6 +212,11 @@ export class PaintStore {
   readonly atlasScale = signal(1);
   /** Whether strokes go to the chosen layer's mask rather than its channels. */
   readonly masking = signal(false);
+  /**
+   * While {@link masking}, the entry of the mask's own stack a stroke paints, counted from the bottom, or null for the
+   * mask's base (#109).
+   */
+  readonly maskLayer = signal<number | null>(null);
   /** What a stroke on a mask lays down, from nothing shown to everything: a mask is one number, not a colour. */
   readonly maskGrey = signal(0);
   readonly brush = signal<BrushSettings>(settingsOf(NewBrush));
@@ -222,6 +227,8 @@ export class PaintStore {
   readonly idColours = signal<readonly StackIdColour[] | null>(null);
   /** The layer whose mask is taking its colour from the next click on the mesh or the map. */
   readonly picking = signal<string | null>(null);
+  /** Whether the next click on the mesh or the map chooses the layer on top there (#136). */
+  readonly finding = signal(false);
   /** The mesh maps layers want and no bake has given, which read as grey until one does. */
   readonly unbaked = signal<string | null>(null);
   /** Whether the viewport is wearing this stack, so a stroke can be made on the mesh. */
@@ -246,6 +253,11 @@ export class PaintStore {
     const layer = this.chosen();
     if (!layer) {
       return false;
+    }
+
+    const entry = this.maskLayer();
+    if (this.masking() && entry !== null) {
+      return layer.mask.layers?.[entry]?.source === 'Paint';
     }
 
     return this.masking()
@@ -415,6 +427,48 @@ export class PaintStore {
     }
   }
 
+  /**
+   * Chooses the layer on top at a place on the map, 0 to 1 across and down, which the Server finds from what each
+   * layer covers there. Nothing found chooses nothing new.
+   */
+  async findLayerAt(u: number, v: number): Promise<void> {
+    this.finding.set(false);
+    const id = this.state()?.id;
+    if (!id) {
+      return;
+    }
+
+    try {
+      const client = await this.api();
+      const found = unwrap(
+        await client.POST('/api/v1/stacks/{id}/find', { params: { path: { id } }, body: { u, v } })
+      ).layer;
+      if (found) {
+        this.marked.set(new Set());
+        this.layer.set(found);
+        this.masking.set(false);
+      }
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+    }
+  }
+
+  /** Chooses the layer on top under a place on the mesh in the viewport. */
+  async findLayerOnMesh(stamp: StackStamp, aim: Aim): Promise<void> {
+    const client = await this.api();
+    const { width, height, camera } = aim;
+    const hit = unwrap(
+      await client.POST('/api/v1/viewport/pick', {
+        body: { x: stamp.x / width, y: stamp.y / height, camera, width, height }
+      })
+    );
+    if (hit.found) {
+      await this.findLayerAt(hit.u, hit.v);
+    } else {
+      this.finding.set(false);
+    }
+  }
+
   /** Lets go of the stack, which stays open on the Server with its edits and history, to come back to. */
   detach(): void {
     this.comeback.cancel();
@@ -437,6 +491,7 @@ export class PaintStore {
   chooseMask(layer: StackLayer): void {
     this.layer.set(layer.id);
     this.masking.set(true);
+    this.maskLayer.set(null);
     if (layer.mask.source === 'Constant') {
       this.maskGrey.set(layer.mask.value < 0.5 ? 1 : 0);
     }
@@ -551,8 +606,26 @@ export class PaintStore {
       return;
     }
 
-    await this.added({ op: 'pasteLayers', clip: clip.id, above: this.layer() });
+    await this.added({ op: 'pasteLayers', clip: clip.id, above: this.layer(), asInstances: false });
   }
+
+  /** Pastes the last copy as instances of what was copied, which follow every edit to it (#108). */
+  async pasteAsInstances(): Promise<void> {
+    const clip = this.clip();
+    if (!clip) {
+      return;
+    }
+
+    await this.added({ op: 'pasteLayers', clip: clip.id, above: this.layer(), asInstances: true });
+  }
+
+  /** An instance of a layer just above it, chosen as it arrives. */
+  async addInstance(layer: string, set = ''): Promise<void> {
+    await this.added({ op: 'addInstance', source: { layer, set }, above: set ? null : layer });
+  }
+
+  /** The layer to choose once the texture set it is in opens, for Go to Source across sets. */
+  readonly arriving = signal<string | null>(null);
 
   /** Flattens a folder into a canvas, keeping its layers as the way back, or the whole stack when none is named. */
   async flatten(layer?: string): Promise<void> {
@@ -651,6 +724,46 @@ export class PaintStore {
 
   setMask(layer: StackLayer, mask: StackMask): Promise<void> {
     return this.edit({ op: 'setLayer', layer: layer.id, mask });
+  }
+
+  /** Puts an entry of a layer's mask stack in front of the brush and of Properties. */
+  chooseMaskLayer(layer: StackLayer, index: number): void {
+    this.layer.set(layer.id);
+    this.masking.set(true);
+    this.maskLayer.set(index);
+  }
+
+  /** Adds an entry at the top of a layer's mask stack and chooses it. A layer with no mask gets a white one under it. */
+  async addMaskLayer(layer: StackLayer, source: string): Promise<void> {
+    const index = layer.mask.layers?.length ?? 0;
+    await this.edit({ op: 'addMaskLayer', layer: layer.id, source, index: null, generator: null });
+    const added = this.layers().find(row => row.layer.id === layer.id)?.layer;
+    if (added && (added.mask.layers?.length ?? 0) > index) {
+      this.chooseMaskLayer(added, index);
+    }
+  }
+
+  async removeMaskLayer(layer: StackLayer, index: number): Promise<void> {
+    if (this.maskLayer() !== null && this.layer() === layer.id) {
+      this.maskLayer.set(null);
+    }
+
+    await this.edit({ op: 'removeMaskLayer', layer: layer.id, index });
+  }
+
+  async moveMaskLayer(layer: StackLayer, index: number, delta: number): Promise<void> {
+    await this.edit({ op: 'moveMaskLayer', layer: layer.id, index, delta });
+    if (this.layer() === layer.id && this.maskLayer() === index) {
+      this.maskLayer.set(index + delta);
+    }
+  }
+
+  setMaskLayer(
+    layer: StackLayer,
+    index: number,
+    change: Omit<Extract<StackCommand, { op: 'setMaskLayer' }>, 'op' | 'layer' | 'index'>
+  ): Promise<void> {
+    return this.edit({ op: 'setMaskLayer', layer: layer.id, index, ...change });
   }
 
   /** A frame reached the screen showing this revision of the stack. */
@@ -929,6 +1042,7 @@ export class PaintStore {
         stamps,
         open,
         mask: this.masking(),
+        maskLayer: this.masking() ? this.maskLayer() : null,
         view,
         curve,
         symmetry
@@ -967,7 +1081,11 @@ export class PaintStore {
       state.channels.some(c => c.usage === channel) ? channel : (state.channels[0]?.usage ?? channel)
     );
     const rows = rowsOf(state.layers);
-    if (!rows.some(row => row.layer.id === this.layer())) {
+    const arriving = this.arriving();
+    if (arriving !== null && rows.some(row => row.layer.id === arriving)) {
+      this.arriving.set(null);
+      this.layer.set(arriving);
+    } else if (!rows.some(row => row.layer.id === this.layer())) {
       this.layer.set(rows.find(row => row.layer.kind === 'paint')?.layer.id ?? null);
     }
 

@@ -47,7 +47,14 @@ public static class Terms {
         ["Constant"] = "Uniform",
         ["Texture"] = "Bitmap",
         ["Bake"] = "Mesh Map",
-        ["Beneath"] = "Layers Beneath"
+        ["Beneath"] = "Layers Beneath",
+        ["Colour"] = "Color",
+        ["Hue"] = "Hue (Tint)",
+
+        // Lanes a mask reads, with the axis of a direction each one holds.
+        ["Red"] = "Red (X)",
+        ["Green"] = "Green (Y)",
+        ["Blue"] = "Blue (Z)"
     };
 
     /// <summary>What an export calls its padding modes, which say how the background of a layout is filled.</summary>

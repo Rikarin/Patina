@@ -327,6 +327,37 @@
         }
       }
     },
+    "/api/v1/viewport/isolation": {
+      "put": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "Draws only some named meshes and materials (texture sets) of the model, for every client. Empty lists draw the whole model.",
+        "operationId": "SetViewportIsolation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewportIsolation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportState"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/viewport/bake": {
       "put": {
         "tags": [
@@ -4786,6 +4817,77 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/find": {
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "The layer on top at a place on the map, as a click on the mesh or the map finds it. Its answer is a layer id: the Worker weighs each layer there and no picture leaves it.",
+        "operationId": "FindStackLayer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StackFindRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackFound"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -11406,6 +11508,24 @@
           },
           {
             "$ref": "#/components/schemas/StackCommandStackSetHeightNormal"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackAddMaskLayer"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackRemoveMaskLayer"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackMoveMaskLayer"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackSetMaskLayer"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackAddInstance"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackSetInstance"
           }
         ],
         "description": "One edit of a stack. A batch of these is one undo step.",
@@ -11425,7 +11545,13 @@
             "pasteLayers": "#/components/schemas/StackCommandStackPasteLayers",
             "flattenLayer": "#/components/schemas/StackCommandStackFlattenLayer",
             "unflattenLayer": "#/components/schemas/StackCommandStackUnflattenLayer",
-            "setHeightNormal": "#/components/schemas/StackCommandStackSetHeightNormal"
+            "setHeightNormal": "#/components/schemas/StackCommandStackSetHeightNormal",
+            "addMaskLayer": "#/components/schemas/StackCommandStackAddMaskLayer",
+            "removeMaskLayer": "#/components/schemas/StackCommandStackRemoveMaskLayer",
+            "moveMaskLayer": "#/components/schemas/StackCommandStackMoveMaskLayer",
+            "setMaskLayer": "#/components/schemas/StackCommandStackSetMaskLayer",
+            "addInstance": "#/components/schemas/StackCommandStackAddInstance",
+            "setInstance": "#/components/schemas/StackCommandStackSetInstance"
           }
         }
       },
@@ -11470,6 +11596,32 @@
           }
         },
         "description": "Adds a channel to the stack, so that layers can write it and a preset can export it."
+      },
+      "StackCommandStackAddInstance": {
+        "required": [
+          "source",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "addInstance"
+            ],
+            "type": "string"
+          },
+          "source": {
+            "description": "The layer it stands for, in this texture set or another.",
+            "$ref": "#/components/schemas/StackInstanceRef"
+          },
+          "above": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The layer it goes just above, or null for the top of the stack."
+          }
+        },
+        "description": "Adds an instance of a layer just above the chosen place: a layer that stands for the source, in this texture set\nor another of the model, so that an edit to the source shows in it."
       },
       "StackCommandStackAddLayer": {
         "required": [
@@ -11536,6 +11688,45 @@
           }
         },
         "description": "Adds a layer at the top of the stack."
+      },
+      "StackCommandStackAddMaskLayer": {
+        "required": [
+          "layer",
+          "source",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "addMaskLayer"
+            ],
+            "type": "string"
+          },
+          "layer": {
+            "type": "string",
+            "description": "The layer whose mask it is."
+          },
+          "source": {
+            "type": "string",
+            "description": "Constant, Texture, Anchor, Generator, Bake or Paint."
+          },
+          "index": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Where it goes, counted from the bottom of the mask\u0027s stack, or null for the top.",
+            "format": "int32"
+          },
+          "generator": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The compound, for a generator entry, or null for the first the vocabulary offers."
+          }
+        },
+        "description": "Adds an entry to a layer\u0027s mask stack. A layer with no mask gets a white one under it first, so that the entry\nhas something to composite over."
       },
       "StackCommandStackDuplicateLayers": {
         "required": [
@@ -11605,6 +11796,37 @@
         },
         "description": "Moves a layer up or down its list."
       },
+      "StackCommandStackMoveMaskLayer": {
+        "required": [
+          "layer",
+          "index",
+          "delta",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "moveMaskLayer"
+            ],
+            "type": "string"
+          },
+          "layer": {
+            "type": "string",
+            "description": "The layer whose mask it is."
+          },
+          "index": {
+            "type": "integer",
+            "description": "Which, counted from the bottom.",
+            "format": "int32"
+          },
+          "delta": {
+            "type": "integer",
+            "description": "How many places, up the stack when positive.",
+            "format": "int32"
+          }
+        },
+        "description": "Moves an entry up or down a layer\u0027s mask stack."
+      },
       "StackCommandStackNestLayer": {
         "required": [
           "layer",
@@ -11634,7 +11856,8 @@
       "StackCommandStackPasteLayers": {
         "required": [
           "clip",
-          "op"
+          "op",
+          "asInstances"
         ],
         "properties": {
           "op": {
@@ -11653,6 +11876,11 @@
               "string"
             ],
             "description": "The layer they go just above, or null for the top of the stack."
+          },
+          "asInstances": {
+            "type": "boolean",
+            "description": "Whether each comes in as an instance of the layer that was copied rather than as a copy, so that an edit to the\noriginal shows in it. The original has to be in this stack or another texture set of its model.",
+            "default": false
           }
         },
         "description": "Pastes what a copy holds, as new layers with canvases of their own, in this stack or another. Limits to named\nmeshes stay only in the stack they were made for."
@@ -11676,6 +11904,31 @@
         },
         "description": "Removes a layer."
       },
+      "StackCommandStackRemoveMaskLayer": {
+        "required": [
+          "layer",
+          "index",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "removeMaskLayer"
+            ],
+            "type": "string"
+          },
+          "layer": {
+            "type": "string",
+            "description": "The layer whose mask it is."
+          },
+          "index": {
+            "type": "integer",
+            "description": "Which, counted from the bottom.",
+            "format": "int32"
+          }
+        },
+        "description": "Removes an entry from a layer\u0027s mask stack."
+      },
       "StackCommandStackSetHeightNormal": {
         "required": [
           "method",
@@ -11694,6 +11947,30 @@
           }
         },
         "description": "Says how the texture set\u0027s height becomes the normal its surface is lit with."
+      },
+      "StackCommandStackSetInstance": {
+        "required": [
+          "layer",
+          "source",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "setInstance"
+            ],
+            "type": "string"
+          },
+          "layer": {
+            "type": "string",
+            "description": "The instance."
+          },
+          "source": {
+            "description": "The layer it stands for from now on, in this texture set or another.",
+            "$ref": "#/components/schemas/StackInstanceRef"
+          }
+        },
+        "description": "Points an instance at another layer, which it then stands for."
       },
       "StackCommandStackSetLayer": {
         "required": [
@@ -11892,6 +12169,117 @@
         },
         "description": "Changes what a layer\u0027s row shows. What is null stays."
       },
+      "StackCommandStackSetMaskLayer": {
+        "required": [
+          "layer",
+          "index",
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "setMaskLayer"
+            ],
+            "type": "string"
+          },
+          "layer": {
+            "type": "string",
+            "description": "The layer whose mask it is."
+          },
+          "index": {
+            "type": "integer",
+            "description": "Which, counted from the bottom.",
+            "format": "int32"
+          },
+          "source": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Where its pixels come from. A paint entry keeps its canvas whatever it becomes."
+          },
+          "value": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "A constant entry\u0027s value, 0 to 1.",
+            "format": "float"
+          },
+          "asset": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The image a texture entry reads."
+          },
+          "anchor": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The anchor point an anchor entry reads.",
+                "$ref": "#/components/schemas/StackAnchorRef"
+              }
+            ]
+          },
+          "generator": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The compound a generator entry runs. Another compound starts from its own knobs."
+          },
+          "map": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The mesh map a bake entry reads."
+          },
+          "parameters": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "A generator entry\u0027s knobs, replacing what these names held."
+          },
+          "blend": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How it composites."
+          },
+          "opacity": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "How much of it composites, 0 to 1.",
+            "format": "float"
+          },
+          "enabled": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether it composites."
+          },
+          "lane": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Which lane of its picture it reads: Red, Green, Blue or Alpha."
+          }
+        },
+        "description": "Changes an entry of a layer\u0027s mask stack. What is null stays."
+      },
       "StackCommandStackSetModel": {
         "required": [
           "model",
@@ -12018,6 +12406,14 @@
                 "$ref": "#/components/schemas/StackSymmetry"
               }
             ]
+          },
+          "maskLayer": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "With Mask, the entry of the mask\u0027s stack it paints, counted from the bottom, which must be a\npaint entry. Null paints the mask\u0027s base.",
+            "format": "int32"
           }
         },
         "description": "Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one\nStroke and they make one undo step, ended by one with Open false."
@@ -12380,6 +12776,39 @@
         },
         "description": "An adjustment a filter layer or a mask can run, or a generator an input can read: any node or shipped compound\na stack can use there. A project\u0027s own compounds reach a stack from the shelf."
       },
+      "StackFindRequest": {
+        "required": [
+          "u",
+          "v"
+        ],
+        "type": "object",
+        "properties": {
+          "u": {
+            "type": "number",
+            "description": "Across the map, 0 to 1: the texture coordinate \u0060POST /viewport/pick\u0060 gives.",
+            "format": "float"
+          },
+          "v": {
+            "type": "number",
+            "description": "Down it, 0 to 1.",
+            "format": "float"
+          }
+        },
+        "description": "Asks which layer is on top at a place on a stack\u0027s map, as a click on the mesh or the map finds it."
+      },
+      "StackFound": {
+        "type": "object",
+        "properties": {
+          "layer": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The topmost layer that covers the place, inside its folders, or null when only the stack\u0027s defaults are there.\nA filter covers nothing of its own, and a flattened folder is one layer."
+          }
+        },
+        "description": "The layer on top at a place on a stack\u0027s map."
+      },
       "StackIdColour": {
         "required": [
           "colour",
@@ -12501,6 +12930,25 @@
           }
         },
         "description": "Where one image input of a filter, a mask step or a graph fill reads."
+      },
+      "StackInstanceRef": {
+        "required": [
+          "layer",
+          "set"
+        ],
+        "type": "object",
+        "properties": {
+          "layer": {
+            "type": "string",
+            "description": "The source layer\u0027s id."
+          },
+          "set": {
+            "type": "string",
+            "description": "The texture set it is in, by name, or empty for the instance\u0027s own.",
+            "default": ""
+          }
+        },
+        "description": "The layer an instance stands for."
       },
       "StackLayer": {
         "required": [
@@ -12681,6 +13129,17 @@
             "type": "boolean",
             "description": "Whether this is a group flattened into a canvas: it composites that canvas, and its children are kept, unread,\nas the way back.",
             "default": false
+          },
+          "instance": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "For an instance layer, the layer it stands for. It keeps its own name, switch, opacity, blend and anchor point,\nand its own mask entries narrow the source\u0027s mask; everything else is the source\u0027s.",
+                "$ref": "#/components/schemas/StackInstanceRef"
+              }
+            ]
           }
         },
         "description": "One layer, without its pixels."
@@ -12693,7 +13152,8 @@
           "generator",
           "map",
           "tolerance",
-          "softness"
+          "softness",
+          "lane"
         ],
         "type": "object",
         "properties": {
@@ -12795,6 +13255,21 @@
               "$ref": "#/components/schemas/StackAnchorRef"
             },
             "description": "The image inputs of a generator that anchor points feed, by port, or null to keep them."
+          },
+          "layers": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/StackMaskLayer"
+            },
+            "description": "The mask\u0027s own stack over this base, bottom first. Ignored in a change: the mask layer commands edit it, so that\na painted canvas stays with its entry."
+          },
+          "lane": {
+            "type": "string",
+            "description": "Which lane of its picture the base reads: Red, Green, Blue or Alpha. A mesh map that measures a direction keeps\nits X, Y and Z in the first three.",
+            "default": "Red"
           }
         },
         "description": "What decides where a layer shows."
@@ -12851,6 +13326,106 @@
           }
         },
         "description": "One step run on a mask."
+      },
+      "StackMaskLayer": {
+        "required": [
+          "source",
+          "value",
+          "asset",
+          "generator",
+          "map",
+          "painted",
+          "blend",
+          "opacity",
+          "enabled",
+          "lane"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "Constant, Texture, Anchor, Generator, Bake or Paint."
+          },
+          "value": {
+            "type": "number",
+            "description": "A constant entry\u0027s value.",
+            "format": "float",
+            "default": 1
+          },
+          "asset": {
+            "type": "string",
+            "description": "The image a texture entry reads.",
+            "default": ""
+          },
+          "anchor": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The anchor point an anchor entry reads, and the channel it reads it in.",
+                "$ref": "#/components/schemas/StackAnchorRef"
+              }
+            ]
+          },
+          "generator": {
+            "type": "string",
+            "description": "The compound a generator entry runs.",
+            "default": ""
+          },
+          "map": {
+            "type": "string",
+            "description": "The mesh map a bake entry reads.",
+            "default": ""
+          },
+          "parameters": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "What a generator entry\u0027s knobs are set to, as text."
+          },
+          "inputs": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/StackAnchorRef"
+            },
+            "description": "The image inputs of a generator entry that anchor points feed, by port."
+          },
+          "painted": {
+            "type": "boolean",
+            "description": "Whether a paint entry has a canvas yet.",
+            "default": false
+          },
+          "blend": {
+            "type": "string",
+            "description": "How it composites over what is beneath it.",
+            "default": "Copy"
+          },
+          "opacity": {
+            "type": "number",
+            "description": "How much of it composites, 0 to 1.",
+            "format": "float",
+            "default": 1
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether it composites at all.",
+            "default": true
+          },
+          "lane": {
+            "type": "string",
+            "description": "Which lane of its picture it reads: Red, Green, Blue or Alpha.",
+            "default": "Red"
+          }
+        },
+        "description": "One entry of a mask\u0027s own stack: a source, composited over the base and the entries beneath it with its own\nblend and opacity. Paint over a generator is a Paint entry over a Generator base."
       },
       "StackMeshMapsRequest": {
         "type": "object",
@@ -13461,7 +14036,7 @@
             "items": {
               "$ref": "#/components/schemas/StackTerm"
             },
-            "description": "The sixteen blend modes."
+            "description": "The thirty blend modes."
           },
           "filters": {
             "type": "array",
@@ -13553,6 +14128,16 @@
               "$ref": "#/components/schemas/StackFilterKind"
             },
             "description": "The generators an image input can read: noises, patterns, grunges and the rest."
+          },
+          "lanes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "The lanes of a picture a mask can read."
           }
         },
         "description": "The words a stack\u0027s fields take, each with its label, so that a client holds no list of its own."
@@ -13996,6 +14581,30 @@
         },
         "description": "Asks the viewport to lay a graph\u0027s Output nodes over the mesh it is showing, as they stand now."
       },
+      "ViewportIsolation": {
+        "required": [
+          "parts",
+          "materials"
+        ],
+        "type": "object",
+        "properties": {
+          "parts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Named meshes that show, as the model names them."
+          },
+          "materials": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Materials that show, as the model names them: a texture set is one."
+          }
+        },
+        "description": "What the viewport draws alone (#136): the named meshes and the materials, which are texture sets, that show. The\nrest of the model is not drawn and casts no shadow. Both empty is the whole model."
+      },
       "ViewportMapPaths": {
         "type": "object",
         "properties": {
@@ -14249,6 +14858,17 @@
               "string"
             ],
             "description": "The stack session it is wearing, or null."
+          },
+          "isolation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What is drawn alone, or null for the whole model.",
+                "$ref": "#/components/schemas/ViewportIsolation"
+              }
+            ]
           }
         },
         "description": "The reply to \u0060GET /api/v1/viewport\u0060. The Server owns all of this; a Worker can die without losing it."

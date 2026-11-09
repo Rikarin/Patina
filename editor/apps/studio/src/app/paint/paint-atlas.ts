@@ -144,6 +144,12 @@ export class PaintAtlas {
       return;
     }
 
+    if (this.store.finding()) {
+      const box = (event.target as HTMLElement).getBoundingClientRect();
+      void this.store.findLayerAt((event.clientX - box.left) / box.width, (event.clientY - box.top) / box.height);
+      return;
+    }
+
     if (this.store.tool() === 'picker') {
       const box = (event.target as HTMLElement).getBoundingClientRect();
       void this.store.pickBrushColour((event.clientX - box.left) / box.width, (event.clientY - box.top) / box.height);

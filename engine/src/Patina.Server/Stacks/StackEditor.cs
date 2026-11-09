@@ -64,6 +64,12 @@ public sealed class StackEditor : ILayerStackDocument {
     /// <summary>What a paste finds a copy by, or nothing when it has gone.</summary>
     public Func<string, StackClipContents?> Clip { get; set; } = static _ => null;
 
+    /// <summary>
+    ///     The texture set of that name among the model's others, as it stands, or null. What an instance of a layer in
+    ///     another set reads. Never this session's own set.
+    /// </summary>
+    public Func<string, TextureSetAsset?> Sibling { get; set; } = static _ => null;
+
     /// <summary>Whether a material brought compounds with it since this was last cleared.</summary>
     public bool CompoundsArrived { get; set; }
 
@@ -121,7 +127,7 @@ public sealed class StackEditor : ILayerStackDocument {
         }
 
         EndDrag();
-        var step = new UndoStep(nextStep + 1, batch.Label ?? Label(batch.Commands[0]));
+        var step = new UndoStep(nextStep + 1, batch.Label ?? StackLayerEdits.Label(batch.Commands[0]));
         List<IAuthoringCommand> applied = [];
         try {
             foreach (var command in batch.Commands) {
@@ -194,26 +200,6 @@ public sealed class StackEditor : ILayerStackDocument {
         colour.Count == 4
             ? PaintImage.Pack(colour[0], colour[1], colour[2], colour[3])
             : throw new StackEditRefusedException("A colour is red, green, blue and alpha.");
-
-    static string Label(StackCommand command) =>
-        command switch {
-            StackAddLayer add => $"Add {add.Name}",
-            StackRemoveLayer => "Remove layer",
-            StackNestLayer => "Move layer",
-            StackMoveLayer => "Move layer",
-            StackSetLayer => "Change layer",
-            StackSetModel => "Bind mesh",
-            StackAddChannel add => $"Add {add.Usage}",
-            StackSetSeed => "Change seed",
-            StackSetHeightNormal => "Height to normal",
-            StackStroke => "Stroke",
-            StackDuplicateLayers => "Duplicate layers",
-            StackPasteLayers => "Paste layers",
-            StackFlattenLayer { Layer: null } => "Flatten stack",
-            StackFlattenLayer => "Flatten folder",
-            StackUnflattenLayer => "Unflatten folder",
-            _ => "Edit"
-        };
 
     /// <summary>The next part of a drag, which adds to the step it started.</summary>
     IReadOnlyList<StackPainted>? Extend(StackCommandBatch batch) {
@@ -323,7 +309,11 @@ public sealed class StackEditor : ILayerStackDocument {
                 Unflatten(unflatten.Layer, set, Do);
                 break;
             default:
-                throw new StackEditRefusedException($"Unknown command '{command.GetType().Name}'.");
+                if (!StackLayerEdits.Run(this, command, set, Do)) {
+                    throw new StackEditRefusedException($"Unknown command '{command.GetType().Name}'.");
+                }
+
+                break;
         }
     }
 
@@ -339,8 +329,12 @@ public sealed class StackEditor : ILayerStackDocument {
     }
 
     AddLayerCommand Add(StackAddLayer add, string set) {
-        if (!Enum.TryParse<LayerKind>(add.Kind, true, out var kind)) {
-            throw new StackEditRefusedException($"'{add.Kind}' is not a kind of layer.");
+        if (!Enum.TryParse<LayerKind>(add.Kind, true, out var kind) || kind == LayerKind.Instance) {
+            throw new StackEditRefusedException(
+                kind == LayerKind.Instance
+                    ? "An instance names the layer it stands for: use addInstance."
+                    : $"'{add.Kind}' is not a kind of layer."
+            );
         }
 
         var id = LayerStackEdit.FreeId(
@@ -372,7 +366,7 @@ public sealed class StackEditor : ILayerStackDocument {
         Set.Channels.ToDictionary(static channel => channel.Usage, static channel => channel.Default.ToArray());
 
     /// <summary>A name no layer has, so that two rows can be told apart.</summary>
-    string FreeName(string name) {
+    internal string FreeName(string name) {
         HashSet<string> taken = new(Names(Set.Layers), StringComparer.Ordinal);
         if (!taken.Contains(name)) {
             return name;
@@ -390,7 +384,7 @@ public sealed class StackEditor : ILayerStackDocument {
         layers.SelectMany(static layer => Names(layer.Children).Prepend(layer.Name));
 
     /// <summary>The slot at the top of a group, or of the stack.</summary>
-    LayerSlot Top(string set, string? parent) {
+    internal LayerSlot Top(string set, string? parent) {
         if (parent is null) {
             return new(set, null, Set.Layers.Count);
         }
@@ -415,7 +409,7 @@ public sealed class StackEditor : ILayerStackDocument {
     static Dictionary<string, float[]>? Copied(IReadOnlyDictionary<string, IReadOnlyList<float>>? numbers) =>
         numbers?.ToDictionary(static value => value.Key, static value => value.Value.ToArray());
 
-    static Dictionary<string, TValue> Merged<TValue>(
+    internal static Dictionary<string, TValue> Merged<TValue>(
         Dictionary<string, TValue> held,
         IEnumerable<KeyValuePair<string, TValue>>? changed
     ) {
@@ -428,49 +422,12 @@ public sealed class StackEditor : ILayerStackDocument {
     }
 
     /// <exception cref="StackEditRefusedException">It does not name a value of that enumeration.</exception>
-    static TEnum Parsed<TEnum>(string? name, TEnum held, string what) where TEnum : struct, Enum =>
+    internal static TEnum Parsed<TEnum>(string? name, TEnum held, string what) where TEnum : struct, Enum =>
         name is null
             ? held
             : Enum.TryParse<TEnum>(name, true, out var parsed)
                 ? parsed
                 : throw new StackEditRefusedException($"'{name}' is not a {what}.");
-
-    /// <summary>
-    ///     A mask as asked for, keeping the canvas it may already paint. Taking it away takes all of it, and what keeps
-    ///     the layer to some meshes is not the mask's.
-    /// </summary>
-    static MaskAsset Masked(MaskAsset held, StackMask? mask) {
-        if (mask is null) {
-            return held;
-        }
-
-        var source = Parsed(mask.Source, held.Source, "mask source");
-        return source == LayerMaskSource.None
-            ? new() { Layers = held.Layers }
-            : held with {
-                Source = source,
-                Value = mask.Value,
-                Asset = mask.Asset,
-                Anchor = StackDocuments.Reference(mask.Anchor),
-                Generator = mask.Generator,
-                GeneratorTexts = GeneratorKnobs(held, mask),
-                GeneratorInputs = GeneratorFeeds(held, mask),
-                Map = mask.Map,
-                Effects = StackDocuments.WithSelection(held.Effects, mask)
-            };
-    }
-
-    /// <summary>Another generator has other image inputs, so what fed the last one does not follow.</summary>
-    static Dictionary<string, AnchorReference> GeneratorFeeds(MaskAsset held, StackMask mask) =>
-        StackDocuments.References(mask.Inputs) is { } chosen ? chosen
-        : mask.Generator != held.Generator ? []
-        : held.GeneratorInputs;
-
-    /// <summary>Another generator has other knobs, so what was set for the last one does not follow.</summary>
-    static Dictionary<string, string> GeneratorKnobs(MaskAsset held, StackMask mask) =>
-        mask.Generator != held.Generator ? []
-        : mask.Parameters is { } chosen ? new(chosen)
-        : held.GeneratorTexts;
 
     SetLayerCommand Change(StackSetLayer change, string set) {
         var layer = Require(change.Layer);
@@ -511,7 +468,7 @@ public sealed class StackEditor : ILayerStackDocument {
                 FilterNode = filterNode,
                 Settings = Merged(sameFilter ? layer.Settings : [], Copied(change.Settings)),
                 Texts = Merged(sameFilter ? layer.Texts : [], change.Parameters),
-                Mask = StackDocuments.MeshMasked(Masked(layer.Mask, change.Mask), change.MeshMask)
+                Mask = StackDocuments.MeshMasked(StackLayerEdits.Masked(layer.Mask, change.Mask), change.MeshMask)
             },
             "Change layer"
         );
@@ -606,7 +563,12 @@ public sealed class StackEditor : ILayerStackDocument {
 
         Aimed(stroke);
 
-        var (paint, start) = stroke.Mask ? MaskCanvas(layer, set, run) : (LayerCanvas(layer, set, run), null);
+        var (paint, start) = stroke switch {
+            { Mask: true, MaskLayer: { } entry } => (StackLayerEdits.MaskLayerCanvas(this, layer, entry, set, run),
+                null),
+            { Mask: true } => MaskCanvas(layer, set, run),
+            _ => (LayerCanvas(layer, set, run), (uint?)null)
+        };
 
         // ⚠ Live, two strokes of one batch take turns; replayed, they run one after the other. Where they meet in one
         // channel that is two pictures, and a journal has to be one.
@@ -807,6 +769,11 @@ public sealed class StackEditor : ILayerStackDocument {
     void Paste(StackPasteLayers paste, UndoStep step, string set, Action<IAuthoringCommand> run) {
         var clip = Clip(paste.Clip)
             ?? throw new StackEditRefusedException("That copy has gone, with the Server that held it. Copy again.");
+        if (paste.AsInstances) {
+            StackLayerEdits.PasteInstances(this, clip, paste.Above, set, run);
+            return;
+        }
+
         var layers = LayerStackYaml.Read(clip.Text).Sets[0].Layers;
         var same = string.Equals(clip.Stack, AssetPath, StringComparison.Ordinal);
         if (Canvases(layers).Any() && (clip.Width, clip.Height) != (Document.BaseWidth, Document.BaseHeight)) {
@@ -965,10 +932,10 @@ public sealed class StackEditor : ILayerStackDocument {
         }
     }
 
-    SetLayerCommand Named(LayerAsset before, LayerAsset after, string set) =>
+    internal SetLayerCommand Named(LayerAsset before, LayerAsset after, string set) =>
         new(this, new(set, before.Id), before, after, "Name paint file");
 
-    LayerAsset Require(string id) =>
+    internal LayerAsset Require(string id) =>
         LayerStackEdit.Find(Document, new(Set.Name, id))
         ?? throw new StackEditRefusedException(
             string.Create(CultureInfo.InvariantCulture, $"This stack has no layer '{id}'.")
