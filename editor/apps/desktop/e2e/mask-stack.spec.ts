@@ -47,7 +47,7 @@ async function drag(from: [number, number], to: [number, number]): Promise<void>
 async function changed(before: string | null): Promise<string | null> {
   const picture = window.getByTestId('paint-picture');
   await expect(picture).not.toHaveAttribute('src', before ?? '', { timeout: 30_000 });
-  await expect(window.getByTestId('paint-undo')).toBeEnabled();
+  await expect(window.getByTestId('app-undo')).toBeEnabled();
   // A drag's picture arrives in parts, so what is on screen is read once the stack has caught up with the edit.
   await expect(window.getByTestId('layers-evaluation')).not.toContainText('Evaluating', { timeout: 30_000 });
   await window.waitForTimeout(1_000);
@@ -107,7 +107,7 @@ test('a mask opens as a stack of its own, takes paint over its base, and goes ba
   await expect(entry).toBeVisible();
   await expect(entry).toHaveAttribute('aria-current', 'true');
   await expect(window.getByTestId('paint-mask-layer-paint')).toBeVisible();
-  await expect(window.getByTestId('paint-undo')).toHaveAttribute('aria-label', 'Undo Add Paint to mask');
+  await expect(window.getByTestId('app-undo')).toHaveAttribute('aria-label', 'Undo Add Paint to mask');
 
   await drag([0.5, 0.1], [0.5, 0.9]);
   shown = await changed(shown);
@@ -183,7 +183,7 @@ test('a mask switches off and on from its own menu and Shift-click, and pastes i
   await window.getByTestId('layer-menu-paste-mask').click();
   await changed(shown);
   await expect(base.getByTestId('layer-mask')).toHaveAttribute('title', /^Uniform mask\./);
-  await expect(window.getByTestId('paint-undo')).toHaveAttribute('aria-label', 'Undo Paste mask');
+  await expect(window.getByTestId('app-undo')).toHaveAttribute('aria-label', 'Undo Paste mask');
   await window.screenshot({ path: join(shots, 'mask-switch-2-pasted.png') });
 });
 

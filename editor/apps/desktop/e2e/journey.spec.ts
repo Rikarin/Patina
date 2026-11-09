@@ -72,7 +72,7 @@ test('a new user makes a library, groups projects in folders, and comes back to 
 
   await answerSave(library);
   await window.getByTestId('library-new').click();
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('Ember.ptlib', { timeout: 30_000 });
+  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('Ember', { timeout: 30_000 });
   expect(existsSync(join(library, 'library.yaml'))).toBe(true);
   await expect(window.getByText('No projects yet')).toBeVisible();
 
@@ -142,7 +142,7 @@ test('a new user makes a library, groups projects in folders, and comes back to 
   // Back again later: the library and the tree are as they were left.
   await app.close();
   await launch();
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('Ember.ptlib', { timeout: 30_000 });
+  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('Ember', { timeout: 30_000 });
   await expect(row('Hero Props/Metal Doors/housing')).toBeVisible({ timeout: 15_000 });
 
   await row('Hero Props/Metal Doors/housing').dblclick();
@@ -263,7 +263,7 @@ test('painted work asks before the project is left', async () => {
   await launch();
   await answerSave(join(scratch, 'Ember.ptlib'));
   await window.getByTestId('library-new').click();
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('Ember.ptlib', { timeout: 30_000 });
+  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('Ember', { timeout: 30_000 });
   for (const name of ['First', 'Second']) {
     await window.getByTestId('library-new-project').click();
     await window.getByTestId('new-project-name').fill(name);
@@ -283,14 +283,14 @@ test('painted work asks before the project is left', async () => {
   await window.mouse.down();
   await window.mouse.move(box.x + 80, box.y + 80, { steps: 5 });
   await window.mouse.up();
-  await expect(window.getByTestId('paint-unsaved')).toBeVisible({ timeout: 15_000 });
+  await expect(window.getByTestId('active-unsaved')).toBeVisible({ timeout: 15_000 });
 
   // Going to another document keeps this one open, edits and all.
   await window.getByTestId('document-tab-name').filter({ hasText: 'First' }).click();
   await expect(window.getByTestId('paint-project')).toHaveText('First', { timeout: 30_000 });
   await window.getByTestId('document-tab-name').filter({ hasText: 'Second' }).click();
   await expect(window.getByTestId('paint-project')).toHaveText('Second', { timeout: 30_000 });
-  await expect(window.getByTestId('paint-unsaved')).toBeVisible({ timeout: 15_000 });
+  await expect(window.getByTestId('active-unsaved')).toBeVisible({ timeout: 15_000 });
 
   // Closing it is the moment that asks.
   await window.getByTestId('document-tab').filter({ hasText: 'Second' }).getByTestId('document-tab-close').click();

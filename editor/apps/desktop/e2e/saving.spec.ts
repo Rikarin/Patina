@@ -47,7 +47,7 @@ async function stroke(): Promise<void> {
   await window.mouse.down();
   await window.mouse.move(box.x + 120, box.y + 120, { steps: 5 });
   await window.mouse.up();
-  await expect(window.getByTestId('paint-unsaved')).toBeVisible({ timeout: 15_000 });
+  await expect(window.getByTestId('active-unsaved')).toBeVisible({ timeout: 15_000 });
 }
 
 /** The picture before and after a stroke that is left unsaved. */
@@ -107,7 +107,7 @@ test("Don't Save on a stack throws the edits away, and they stay gone", async ()
   await open();
   await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 30_000 });
   await expect.poll(pictureHash, { timeout: 15_000 }).toBe(saved);
-  await expect(window.getByTestId('paint-unsaved')).toHaveCount(0);
+  await expect(window.getByTestId('active-unsaved')).toHaveCount(0);
   await expect(window.getByTestId('app-recovery')).toHaveCount(0);
 });
 
@@ -153,7 +153,7 @@ test('Reloading a mesh asks first, keeps paint on the same layout and moves it o
   await newProject(app, window, 'Plate', mesh);
   await stroke();
   await command('save');
-  await expect(window.getByTestId('paint-unsaved')).toHaveCount(0, { timeout: 30_000 });
+  await expect(window.getByTestId('active-unsaved')).toHaveCount(0, { timeout: 30_000 });
 
   await command('reloadMesh');
   await expect(window.getByTestId('app-notice')).toHaveText('The mesh has not changed.');
@@ -190,18 +190,18 @@ test('Saving over a file that changed asks first, and Overwrite saves', async ()
   await paint();
   appendFileSync(join(library, 'projects', 'crate', 'crate.vxlayers'), '\n# someone else\n');
 
-  await window.getByTestId('paint-save').click();
+  await window.getByTestId('app-save').click();
 
   await expect(window.getByTestId('file-conflict')).toContainText('Crate changed on disk', { timeout: 30_000 });
-  await expect(window.getByTestId('paint-unsaved')).toBeVisible();
+  await expect(window.getByTestId('active-unsaved')).toBeVisible();
   await window.getByRole('button', { name: 'Cancel' }).click();
   await expect(window.getByTestId('file-conflict')).toHaveCount(0);
-  await expect(window.getByTestId('paint-unsaved')).toBeVisible();
+  await expect(window.getByTestId('active-unsaved')).toBeVisible();
 
-  await window.getByTestId('paint-save').click();
+  await window.getByTestId('app-save').click();
   await window.getByTestId('file-overwrite').click();
   await expect(window.getByTestId('file-conflict')).toHaveCount(0);
-  await expect(window.getByTestId('paint-unsaved')).toHaveCount(0, { timeout: 30_000 });
+  await expect(window.getByTestId('active-unsaved')).toHaveCount(0, { timeout: 30_000 });
   await expect(window.getByTestId('app-failure')).toHaveCount(0);
 });
 
@@ -216,10 +216,10 @@ test('A save the Server cannot do says why, and keeps the tab', async () => {
     })
   );
 
-  await window.getByTestId('paint-save').click();
+  await window.getByTestId('app-save').click();
 
   await expect(window.getByTestId('app-failure')).toContainText('No Worker came.');
-  await expect(window.getByTestId('paint-unsaved')).toBeVisible();
+  await expect(window.getByTestId('active-unsaved')).toBeVisible();
 
   await window.getByTestId('document-tab-close').click();
   await window.getByTestId('project-save').click();
