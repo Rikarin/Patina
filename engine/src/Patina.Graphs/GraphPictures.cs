@@ -26,7 +26,6 @@ public sealed class GraphPictures {
     /// <summary>What a graph hears when a picture it reads cannot be read.</summary>
     public const string Problem = "PT0001";
 
-    const TextureFormat Deep = TextureFormat.Rgba16Float;
     const string MeshMapScheme = "meshmap:";
     const long Budget = 512L * 1024 * 1024;
 
@@ -72,7 +71,7 @@ public sealed class GraphPictures {
                     && unbaked is not null
                     && reference.StartsWith(MeshMapScheme, StringComparison.Ordinal)) {
                     unbaked.Add(reference[MeshMapScheme.Length..]);
-                    uploads.Add(plan, external.Image, 1, 1, NoBake);
+                    uploads.AddPicture(plan, external.Image, 1, 1, NoBake, TextureFormat.Rgba8);
                     continue;
                 }
 
@@ -84,11 +83,10 @@ public sealed class GraphPictures {
                 }
 
                 stamps.Add(stamp);
-                if (picture.Deep) {
-                    uploads.AddPicture(plan, external.Image, picture.Width, picture.Height, picture.Texels, Deep);
-                } else {
-                    uploads.Add(plan, external.Image, picture.Width, picture.Height, picture.Texels);
-                }
+
+                // At the depth the picture is, whatever the plan declares: a bitmap is declared eight-bit before its
+                // file is opened, and a mesh map half-float whether or not its bake wrote that deep.
+                uploads.AddPicture(plan, external.Image, picture.Width, picture.Height, picture.Texels, picture.Format);
             } catch (Exception e) when (e is IOException
                                             or InvalidDataException
                                             or UnauthorizedAccessException
@@ -163,13 +161,13 @@ public sealed class GraphPictures {
             throw new InvalidDataException($"a bitmap is 8-bit RGBA, and this file decodes to {data.Format}");
         }
 
-        return Keep(stamp, new(data.Width, data.Height, [..data.Pixels]));
+        return Keep(stamp, new(data.Width, data.Height, [..data.Pixels], TextureFormat.Rgba8));
     }
 
     /// <summary>
-    ///     A deep picture as half-floats, whatever its lanes. A plan is compiled before a file is opened, so a graph
-    ///     declares every bitmap eight-bit, and a texture can be wider than that (Vixen's <c>TextureUploads</c>).
-    ///     Half-floats and not floats, because a bitmap filters and not every device filters a float.
+    ///     A deep picture as half-floats, whatever its lanes: the depth a Mesh Map node declares, and the one a deep
+    ///     bitmap is uploaded at. Half-floats and not floats, because a bitmap filters and not every device filters a
+    ///     float.
     /// </summary>
     static Decoded Widened(FloatImage image) {
         var lanes = image.Channels;
@@ -183,7 +181,7 @@ public sealed class GraphPictures {
             texels[at * 4 + 3] = lanes is 4 or 2 ? (Half)image.Samples[from + lanes - 1] : (Half)1f;
         }
 
-        return new(image.Width, image.Height, [..MemoryMarshal.AsBytes(texels.AsSpan())], true);
+        return new(image.Width, image.Height, [..MemoryMarshal.AsBytes(texels.AsSpan())], TextureFormat.Rgba16Float);
     }
 
     Decoded Keep(PictureStamp stamp, Decoded picture) {
@@ -197,5 +195,5 @@ public sealed class GraphPictures {
         return picture;
     }
 
-    sealed record Decoded(int Width, int Height, byte[] Texels, bool Deep = false);
+    sealed record Decoded(int Width, int Height, byte[] Texels, TextureFormat Format);
 }

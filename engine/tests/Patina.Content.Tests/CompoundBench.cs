@@ -101,7 +101,7 @@ static class CompoundBench {
 
         foreach (var owed in TextureGraphExternals.Upload(uploads, plan, compiler.Externals)) {
             Assert.StartsWith("meshmap:", owed.Asset, StringComparison.Ordinal);
-            uploads.Add(plan, owed.Image, Side, Side, Map(owed.Asset["meshmap:".Length..]));
+            uploads.AddPicture(plan, owed.Image, Side, Side, Map(owed.Asset["meshmap:".Length..]), TextureFormat.Rgba8);
         }
 
         using TexturePlanEvaluator evaluator = new(device);
