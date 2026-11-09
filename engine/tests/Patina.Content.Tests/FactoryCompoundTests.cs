@@ -31,8 +31,14 @@ public sealed class FactoryCompoundTests {
         FactoryCompounds.Register();
 
         // The instrument: the folder was embedded at all, or every assertion below holds of nothing.
-        Assert.Superset(FactoryCompounds.Paths.ToHashSet(StringComparer.Ordinal), Named.ToHashSet(StringComparer.Ordinal));
-        Assert.Subset(TextureCompoundLibrary.Shipped.ToHashSet(StringComparer.Ordinal), FactoryCompounds.Paths.ToHashSet(StringComparer.Ordinal));
+        Assert.Superset(
+            FactoryCompounds.Paths.ToHashSet(StringComparer.Ordinal),
+            Named.ToHashSet(StringComparer.Ordinal)
+        );
+        Assert.Subset(
+            TextureCompoundLibrary.Shipped.ToHashSet(StringComparer.Ordinal),
+            FactoryCompounds.Paths.ToHashSet(StringComparer.Ordinal)
+        );
 
         foreach (var path in FactoryCompounds.Paths) {
             var text = TextureCompoundLibrary.Source(path);
@@ -44,21 +50,29 @@ public sealed class FactoryCompoundTests {
             var document = YamlSerializer.Parse<NodeGraphAsset>(text);
 
             Assert.Equal(path[(path.LastIndexOf('/') + 1)..], document.Name);
-            Assert.Contains(document.Interface, static port => port is { Name: "Out", Direction: PortDirection.Output, Kind: PortKind.Image });
+            Assert.Contains(
+                document.Interface,
+                static port => port is { Name: "Out", Direction: PortDirection.Output, Kind: PortKind.Image }
+            );
             Assert.All(document.Interface, static port => Assert.False(string.IsNullOrWhiteSpace(port.Summary)));
         }
     }
 
     /// <summary>
-    ///     The folder and the shipped set agree file for file. A dot in a file name would publish under a phantom folder,
-    ///     because a resource name's dots are its folders, so one is refused here rather than found in the palette.
+    ///     The folder and the shipped set agree file for file. A dot in a file name would publish under a phantom
+    ///     folder, because a resource name's dots are its folders, so one is refused here rather than found in the
+    ///     palette.
     /// </summary>
     [Fact]
     public void Every_file_in_the_content_folder_ships_under_its_own_path() {
         var folder = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(Here())!, "../../../content/compounds"));
         string[] files = [
             ..Directory.EnumerateFiles(folder, "*" + TextureCompoundLibrary.Extension, SearchOption.AllDirectories)
-                .Select(file => Path.ChangeExtension(Path.GetRelativePath(folder, file), null)!.Replace(Path.DirectorySeparatorChar, '/'))
+                .Select(file => Path.ChangeExtension(Path.GetRelativePath(folder, file), null)!.Replace(
+                        Path.DirectorySeparatorChar,
+                        '/'
+                    )
+                )
                 .Order(StringComparer.Ordinal)
         ];
 
@@ -119,7 +133,7 @@ public sealed class FactoryCompoundTests {
                     problems.Add($"{path} is flat: its values span {spread:0.000}");
                 }
 
-                if (seam > (2.5 * inside) + 0.01) {
+                if (seam > 2.5 * inside + 0.01) {
                     problems.Add($"{path} has a seam: {seam:0.0000} across the edges against {inside:0.0000} inside");
                 }
             }
@@ -128,9 +142,9 @@ public sealed class FactoryCompoundTests {
         }
     }
 
-    /// <summary>The mean step across the two seams, the mean step between neighbours, and the range of values.</summary>
+    /// <summary>The mean step across the two seams, the mean step between neighbours, and the value range.</summary>
     static (double Seam, double Inside, double Spread) Measure(Bitmap picture) {
-        double At(int x, int y) => picture.Pixels[((y * picture.Width) + x) * 4] / 255.0;
+        double At(int x, int y) => picture.Pixels[(y * picture.Width + x) * 4] / 255.0;
 
         var (seam, inside, lowest, highest) = (0.0, 0.0, 1.0, 0.0);
         var (w, h) = (picture.Width, picture.Height);
@@ -153,7 +167,7 @@ public sealed class FactoryCompoundTests {
             }
         }
 
-        return (seam / (w + h), inside / ((w * (h - 1)) + (h * (w - 1))), highest - lowest);
+        return (seam / (w + h), inside / (w * (h - 1) + h * (w - 1)), highest - lowest);
     }
 
     /// <summary>A graph holding one compound and an output, at a size, tiling, with the library published.</summary>
@@ -162,7 +176,7 @@ public sealed class FactoryCompoundTests {
         NodeTypes.Register(registry);
         var library = TextureCompoundLibrary.Publish(registry, null, out var problems);
 
-        Assert.Empty(problems.Where(problem => FactoryCompounds.Paths.Contains(problem.Path)));
+        Assert.Empty(problems.Where(static problem => FactoryCompounds.Paths.Contains(problem.Path)));
 
         NodeGraphModel graph = new();
         var used = graph.Add(path);
@@ -172,10 +186,7 @@ public sealed class FactoryCompoundTests {
         graph.Connect(new(used.Id, "Out"), new(output.Id, "Input"));
 
         TextureGraphCompiler compiler = new(registry) {
-            BaseWidth = side,
-            BaseHeight = side,
-            Seed = 1,
-            SubGraphSource = library
+            BaseWidth = side, BaseHeight = side, Seed = 1, SubGraphSource = library
         };
 
         return (compiler, graph);
