@@ -99,7 +99,7 @@ const Origins: Readonly<Record<string, string>> = { shipped: 'Starter', project:
       }
     </ul>
     @if (brushes.failure(); as failure) {
-      <p class="text-danger text-xs" role="alert" data-testid="brush-preset-failure">{{ failure }}</p>
+      <p class="text-error text-xs" role="alert" data-testid="brush-preset-failure">{{ failure }}</p>
     }
   `
 })
