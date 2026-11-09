@@ -18,6 +18,8 @@ static class StackLabels {
             StackStroke => "Stroke",
             StackDuplicateLayers => "Duplicate layers",
             StackPasteLayers { AsInstances: true } => "Paste as instances",
+            StackPasteLayers { Into: not null, Part: "Content" } => "Paste content",
+            StackPasteLayers { Into: not null } => "Paste mask",
             StackPasteLayers => "Paste layers",
             StackFlattenLayer { Layer: null } => "Flatten stack",
             StackFlattenLayer => "Flatten folder",

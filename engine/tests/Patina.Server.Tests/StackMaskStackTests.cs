@@ -34,6 +34,32 @@ public sealed class StackMaskStackTests {
         Assert.Equal(("Paint", true, "Copy"), (wire.Source, wire.Painted, wire.Blend));
     }
 
+    /// <summary>
+    ///     A mask switches off and on again with all it holds, one undo step each, and the limit to some meshes is kept
+    ///     whatever the switch says, so a layer switched unmasked stays on its meshes.
+    /// </summary>
+    [Fact]
+    public void A_mask_switches_off_keeping_what_it_holds_and_the_mesh_limit() {
+        var editor = Generated();
+        editor.Apply(new([new StackSetLayer("paint", MeshMask: new(["Lid"], "lid.png"))]));
+        editor.Apply(new([new StackAddMaskLayer("paint", "Constant")]));
+        var wired = StackDocuments.Layers([Layer(editor)])[0].Mask;
+        Assert.True(wired.Enabled);
+
+        editor.Apply(new([new StackSetLayer("paint", Mask: wired with { Enabled = false })]));
+
+        var mask = Layer(editor).Mask;
+        Assert.False(mask.Enabled);
+        Assert.Equal(LayerMaskSource.Generator, mask.Source);
+        Assert.Equal(["Constant"], Sources(editor));
+        Assert.True(mask.Layers[^1].Kept, "the mesh limit must apply with the mask off");
+        Assert.False(StackDocuments.Layers([Layer(editor)])[0].Mask.Enabled);
+        Assert.False(LayerStackYaml.Read(LayerStackYaml.Write(editor.Document)).Sets[0].Layers.Single(l => l.Id == "paint").Mask.Enabled);
+
+        editor.Undo();
+        Assert.True(Layer(editor).Mask.Enabled);
+    }
+
     [Fact]
     public void A_layer_with_no_mask_gets_a_white_base_under_its_first_entry() {
         var editor = new StackEditor("/tmp/Masks.vxlayers", Sample());

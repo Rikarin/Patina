@@ -357,7 +357,8 @@ public static class StackDocuments {
             var blend = mask.Source == LayerMaskSource.None && others.Count == 0
                 ? LayerBlendMode.Copy
                 : LayerBlendMode.Multiply;
-            others.Add(entry with { Blend = blend });
+            // Kept, so that switching the mask off to compare does not spill the layer onto the rest of the model.
+            others.Add(entry with { Blend = blend, Kept = true });
         }
 
         return mask with { Layers = others };
@@ -420,7 +421,8 @@ public static class StackDocuments {
                 MeshPartsOf(layer.Mask),
                 Wire(layer.Mask.GeneratorInputs),
                 StackMaskLayers.Wire(layer.Mask),
-                layer.Mask.Lane.ToString()
+                layer.Mask.Lane.ToString(),
+                layer.Mask.Enabled
             ),
             layer.PlanarAxis.ToString(),
             new(

@@ -4240,6 +4240,15 @@ export interface components {
        * @default false
        */
       asInstances: boolean;
+      /** @description A layer to paste part of the first copied layer into, rather than adding layers: its mask, or its content. */
+      into?: null | string;
+      /**
+       * @description With Into: Mask takes the copied layer's mask, entries, effects and painted canvases, and
+       *     keeps the layer's own limit to some meshes; Content takes what the copied layer puts on top (its kind, its fill
+       *     or canvas, its filter, a folder's layers) and keeps the layer's name, mask, blend, opacity and anchor point.
+       * @default Mask
+       */
+      part: string;
     };
     /** @description Removes a layer. */
     StackCommandStackRemoveLayer: {
@@ -4821,6 +4830,12 @@ export interface components {
        * @default Red
        */
       lane: string;
+      /**
+       * @description Whether the mask applies. Switched off, the layer composites unmasked, keeping every source, layer and effect of
+       *     its mask for when it is switched on again, and still keeps to the meshes it is limited to.
+       * @default true
+       */
+      enabled: boolean;
     };
     /** @description One step run on a mask. */
     StackMaskEffect: {

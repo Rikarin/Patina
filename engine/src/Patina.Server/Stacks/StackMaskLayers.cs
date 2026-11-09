@@ -111,7 +111,8 @@ static class StackMaskLayers {
                 GeneratorInputs = GeneratorFeeds(held, mask),
                 Map = mask.Map,
                 Lane = StackEditor.Parsed(mask.Lane, held.Lane, "lane"),
-                Effects = StackDocuments.WithSelection(held.Effects, mask)
+                Effects = StackDocuments.WithSelection(held.Effects, mask),
+                Enabled = mask.Enabled
             };
     }
 
