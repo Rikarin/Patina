@@ -15,9 +15,9 @@ static class StackSampling {
             case TextureFormat.R8:
                 return Grey(texel[0] / 255f);
             case TextureFormat.Rg8: {
-                var (x, y) = ((texel[0] / 255f * 2f) - 1f, (texel[1] / 255f * 2f) - 1f);
-                var z = MathF.Sqrt(MathF.Max(0f, 1f - (x * x) - (y * y)));
-                return [texel[0] / 255f, texel[1] / 255f, (z * 0.5f) + 0.5f, 1f];
+                var (x, y) = (texel[0] / 255f * 2f - 1f, texel[1] / 255f * 2f - 1f);
+                var z = MathF.Sqrt(MathF.Max(0f, 1f - x * x - y * y));
+                return [texel[0] / 255f, texel[1] / 255f, z * 0.5f + 0.5f, 1f];
             }
             case TextureFormat.R16Float:
                 return Grey((float)BitConverter.ToHalf(texel, 0));

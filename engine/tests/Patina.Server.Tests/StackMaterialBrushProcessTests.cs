@@ -49,7 +49,7 @@ public sealed partial class StackProcessTests {
         var size = (await PixelsAsync(state.Id, false, deadline.Token)).First(static map => map.Usage == "baseColor")
             .Width;
         var at = size / 4;
-        StackPlacement twice = new(Scale: 2f);
+        StackPlacement twice = new(2f);
 
         await EditAsync(
             state.Id,

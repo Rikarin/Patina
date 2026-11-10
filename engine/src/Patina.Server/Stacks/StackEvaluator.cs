@@ -226,7 +226,7 @@ public sealed class StackEvaluator(
         CancellationToken cancellationToken
     ) {
         var connection = await ConnectionAsync(cancellationToken);
-        var folder = System.IO.Path.GetDirectoryName(session.Path) ?? string.Empty;
+        var folder = Path.GetDirectoryName(session.Path) ?? string.Empty;
         var reply = await connection.SendAsync(
             new() { Type = IpcTypes.BrushPreview, BrushPreview = new(folder, brush, store.Root) },
             cancellationToken

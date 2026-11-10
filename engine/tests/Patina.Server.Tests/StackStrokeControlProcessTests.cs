@@ -86,14 +86,14 @@ public sealed partial class StackProcessTests {
         }
 
         static int Painted(Bitmap picture) =>
-            Enumerable.Range(0, picture.Width * picture.Height).Count(at => picture.Pixels[(at * 4) + 3] > 0);
+            Enumerable.Range(0, picture.Width * picture.Height).Count(at => picture.Pixels[at * 4 + 3] > 0);
 
         var round = await DrawnAsync(StackBrushes.Default);
         var again = await DrawnAsync(StackBrushes.Default with { Radius = 400f });
         var chisel = await DrawnAsync(StackBrushes.Default with { Alpha = "Chisel", Spacing = 1.5f });
 
         Assert.Equal((256, 64), (round.Width, round.Height));
-        Assert.InRange(Painted(round), 2000, (256 * 64) - 2000);
+        Assert.InRange(Painted(round), 2000, 256 * 64 - 2000);
         Assert.Equal(round.Pixels, again.Pixels);
         Assert.NotEqual(round.Pixels, chisel.Pixels);
 

@@ -1,7 +1,6 @@
 using Patina.Ipc;
 using System.Security.Cryptography;
 using Vixen.Core.Imaging;
-using Vixen.Core.Mathematics;
 using Vixen.Texturing.Painting;
 
 namespace Patina.Worker;
@@ -56,11 +55,11 @@ static class BrushPreviews {
         var margin = Radius * 1.5f;
         for (var step = 0; step <= Steps; step++) {
             var along = step / (float)Steps;
-            var x = margin + (along * (Width - (2f * margin)));
-            var y = (Height * 0.5f) + (MathF.Sin(along * MathF.Tau) * Height * 0.14f);
+            var x = margin + along * (Width - 2f * margin);
+            var y = Height * 0.5f + MathF.Sin(along * MathF.Tau) * Height * 0.14f;
 
             // A pen pressed harder towards the middle, so a brush that follows pressure tapers at both ends.
-            stroke.MoveTo(new Vector2(x, y), null, 0.15f + (0.85f * MathF.Sin(along * MathF.PI)));
+            stroke.MoveTo(new(x, y), null, 0.15f + 0.85f * MathF.Sin(along * MathF.PI));
         }
 
         return image;
