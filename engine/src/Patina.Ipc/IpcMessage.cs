@@ -704,13 +704,17 @@ public sealed record MeshUnwrapAsk(string Source, string Output, UnwrapOptions O
 ///     Where copies of what they were go. Paint on a layout that did not change stays as it is.
 /// </param>
 /// <param name="UvSet">The coordinate set the texture set is laid out in on both meshes (#210).</param>
+/// <param name="FromSet">
+///     The texture set's name on the mesh they are on, when a reload gave it another (#89); null for the same.
+/// </param>
 public sealed record MeshMovePaintAsk(
     string From,
     string To,
     IReadOnlyList<string> Paints,
     string Set,
     string Backup,
-    int UvSet = 0
+    int UvSet = 0,
+    string? FromSet = null
 );
 
 /// <summary>Draws where some of a model's named meshes lie in its layout, white on black.</summary>

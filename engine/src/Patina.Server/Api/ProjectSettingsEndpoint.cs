@@ -50,7 +50,7 @@ static class ProjectSettingsEndpoint {
                 added = await UnwrappedAsync(library, worker, project, added, before.Unwrap, cancellationToken);
             }
 
-            await PutOnAsync(library, worker, stacks, project, added, moving, cancellationToken);
+            await PutOnAsync(library, worker, stacks, project, added, moving, request.Reassign, cancellationToken);
             host.RequestRescan();
             return TypedResults.Ok(library.Contents(project));
         } catch (IpcException e) {
@@ -89,13 +89,17 @@ static class ProjectSettingsEndpoint {
         string project,
         ProjectMesh added,
         string? moving,
+        IReadOnlyDictionary<string, string>? reassign,
         CancellationToken cancellationToken
     ) {
         HashSet<string> open = [..stacks.All.Select(static session => session.Path)];
         var documents = library.UseMesh(project, added.Id);
+        // Which material each set was on, for paint that moves from a material the reload gave another name.
+        var was = documents.Where(static d => d.Material is not null)
+            .ToDictionary(static d => d.Id, static d => d.Material!);
         string[] files = [..documents.Select(document => library.ProjectFile(project, document.File))];
         if (!files.Any(open.Contains)) {
-            await MakeSetsAsync(library, worker, project, added, documents, cancellationToken);
+            await MakeSetsAsync(library, worker, project, added, documents, reassign, cancellationToken);
             documents = library.UseMesh(project, added.Id);
             files = [..documents.Select(document => library.ProjectFile(project, document.File))];
         }
@@ -109,7 +113,16 @@ static class ProjectSettingsEndpoint {
         }
 
         try {
-            await MovePaintAsync(library, worker, project, moving, added, documents, open, cancellationToken);
+            await MovePaintAsync(
+                library,
+                worker,
+                project,
+                moving,
+                added,
+                [..documents.Select(d => (d, was.TryGetValue(d.Id, out var old) && old != d.Material ? old : null))],
+                open,
+                cancellationToken
+            );
         } finally {
             File.Delete(moving);
         }
@@ -125,6 +138,7 @@ static class ProjectSettingsEndpoint {
         string project,
         ProjectMesh mesh,
         IReadOnlyList<ProjectItem> documents,
+        IReadOnlyDictionary<string, string>? reassign,
         CancellationToken cancellationToken
     ) {
         var connection = await worker.ConnectionAsync(cancellationToken);
@@ -136,6 +150,8 @@ static class ProjectSettingsEndpoint {
         if (materials.Count < 2 || documents.Count == 0) {
             return;
         }
+
+        documents = Reassigned(library, project, mesh, documents, materials, reassign);
 
         var side = StackDocuments.Side(library.ProjectFile(project, documents[0].File));
         var waiting = new Queue<string>(materials.Except(documents.Select(static d => d.Material ?? string.Empty)));
@@ -151,6 +167,44 @@ static class ProjectSettingsEndpoint {
             var made = library.UseMesh(project, mesh.Id).Last(static d => d.Material is null);
             Claim(library, project, made, material);
         }
+    }
+
+    /// <summary>
+    ///     Puts each set on a vanished material onto the new one it was sent to, when no other set holds that one, and
+    ///     moves its bake folder with it, since a set's bake is found by its material's name.
+    /// </summary>
+    static IReadOnlyList<ProjectItem> Reassigned(
+        OpenLibrary library,
+        string project,
+        ProjectMesh mesh,
+        IReadOnlyList<ProjectItem> documents,
+        IReadOnlyList<string> materials,
+        IReadOnlyDictionary<string, string>? reassign
+    ) {
+        if (reassign is not { Count: > 0 }) {
+            return documents;
+        }
+
+        HashSet<string> held = [..documents.Select(static d => d.Material).OfType<string>()];
+        var bakes = library.ProjectFile(project, "bakes/maps");
+        foreach (var document in documents) {
+            if (document.Material is not { } old
+                || materials.Contains(old)
+                || !reassign.TryGetValue(old, out var chosen)
+                || !materials.Contains(chosen)
+                || !held.Add(chosen)) {
+                continue;
+            }
+
+            held.Remove(old);
+            Claim(library, project, document, chosen);
+            var (from, to) = (Path.Combine(bakes, old), Path.Combine(bakes, chosen));
+            if (Directory.Exists(from) && !Directory.Exists(to)) {
+                Directory.Move(from, to);
+            }
+        }
+
+        return library.UseMesh(project, mesh.Id);
     }
 
     static void Claim(OpenLibrary library, string project, ProjectItem document, string material) {
@@ -171,7 +225,7 @@ static class ProjectSettingsEndpoint {
         string project,
         string from,
         ProjectMesh to,
-        IReadOnlyList<ProjectItem> documents,
+        IReadOnlyList<(ProjectItem Document, string? Was)> documents,
         HashSet<string> open,
         CancellationToken cancellationToken
     ) {
@@ -180,7 +234,7 @@ static class ProjectSettingsEndpoint {
             $"{LibraryLayout.PaintBackupFolder}/{DateTime.UtcNow:yyyyMMdd-HHmmss}"
         );
         var connection = await worker.ConnectionAsync(cancellationToken);
-        foreach (var document in documents) {
+        foreach (var (document, was) in documents) {
             var stack = library.ProjectFile(project, document.File);
             if (open.Contains(stack)) {
                 throw new ProjectRefusedException($"Close '{document.Name}' first: its paint is about to move.");
@@ -204,7 +258,8 @@ static class ProjectSettingsEndpoint {
                         paints,
                         document.Material ?? string.Empty,
                         backup,
-                        StackDocuments.Parse(SharedFile.ReadAllText(stack)).Sets.FirstOrDefault()?.UvSet ?? 0
+                        StackDocuments.Parse(SharedFile.ReadAllText(stack)).Sets.FirstOrDefault()?.UvSet ?? 0,
+                        was
                     )
                 },
                 cancellationToken

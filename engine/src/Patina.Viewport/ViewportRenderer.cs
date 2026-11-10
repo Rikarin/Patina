@@ -206,7 +206,7 @@ public sealed class ViewportRenderer : IDisposable {
 
     /// <summary>
     ///     Replaces a slot's picture with live pixels, the bytes an export writes: RGBA, tightly packed, top row first.
-    ///     They win over any file, and stay until <see cref="ClearLive" /> or another mesh's stack replaces them.
+    ///     They win over any file, and stay until <see cref="ClearLive()" /> or another mesh's stack replaces them.
     /// </summary>
     public void SetLive(
         ViewportSlot slot,
@@ -235,6 +235,24 @@ public sealed class ViewportRenderer : IDisposable {
         (LiveOf(material)[(int)slot] ?? throw new InvalidOperationException($"{slot} has no live map.")).Repair(
             repairs
         );
+    }
+
+    /// <summary>
+    ///     Takes one slot's live map off a material, for a stack that no longer writes it: a channel removed, or a bake
+    ///     no longer beneath the set (#86). What the slot shows is then whatever it would without the stack.
+    /// </summary>
+    public void ClearLive(ViewportSlot slot, int material = AllMaterials) {
+        var maps = LiveOf(material);
+        if (maps[(int)slot] is not { } map) {
+            return;
+        }
+
+        device.WaitIdle();
+        map.Dispose();
+        maps[(int)slot] = null;
+        if (geometry is { } scene) {
+            Show(scene.Mesh);
+        }
     }
 
     /// <summary>Takes the live maps off.</summary>

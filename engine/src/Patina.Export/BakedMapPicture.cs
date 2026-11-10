@@ -6,6 +6,12 @@ namespace Patina.Export;
 
 /// <summary>Reads a baked map back as the picture a graph's Mesh Map node takes.</summary>
 public static class BakedMapPicture {
+    /// <summary>The maps that shade a set from a bake whose normal is in tangent space.</summary>
+    static readonly string[] TangentShading = ["normal", "ao"];
+
+    /// <summary>The maps that shade a set from a bake whose normal is in object space, which no set combines.</summary>
+    static readonly string[] ObjectShading = ["ao"];
+
     /// <summary>Finds a map in a folder a bake was delivered to.</summary>
     /// <param name="folder">The folder.</param>
     /// <param name="map">The map's name.</param>
@@ -27,6 +33,29 @@ public static class BakedMapPicture {
         }
 
         return null;
+    }
+
+    /// <summary>
+    ///     The maps of a bake that shade a texture set beneath its layers (#86): its normal when it is in tangent
+    ///     space, the only one a set's normal can be combined with, and its ambient occlusion. Empty for no bake.
+    /// </summary>
+    /// <param name="folder">The folder a bake was delivered to, or null.</param>
+    public static IReadOnlySet<string> Shading(string? folder) {
+        HashSet<string> found = new(StringComparer.Ordinal);
+        if (folder is null || !Directory.Exists(folder)) {
+            return found;
+        }
+
+        foreach (var file in Directory.EnumerateFiles(folder, $"*.{BakeCache.ManifestFile}")) {
+            if (BakeCache.ReadManifestFile(file) is not { } manifest) {
+                continue;
+            }
+
+            var shading = manifest.Space == "tangent" ? TangentShading : ObjectShading;
+            found.UnionWith(manifest.Result.Maps.Select(static map => map.Map).Intersect(shading));
+        }
+
+        return found;
     }
 
     /// <summary>Whether a float file holds this map's measurement from below zero, which a picture centres.</summary>

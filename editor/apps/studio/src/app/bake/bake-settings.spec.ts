@@ -85,7 +85,7 @@ function setup(documents: ProjectDocumentInfo[], front: ProjectDocumentInfo | nu
   const written: { project: string; bake: ProjectBakeSettings }[] = [];
   const started: unknown[][] = [];
   const shown: ViewportBakePreview[] = [];
-  const answers: { gate: Promise<void> } = { gate: Promise.resolve() };
+  const answers: { gate: Promise<void>; refuse?: Error } = { gate: Promise.resolve() };
   const project = {
     current,
     mesh: signal(front?.mesh ? mesh : null),
@@ -110,7 +110,7 @@ function setup(documents: ProjectDocumentInfo[], front: ProjectDocumentInfo | nu
           busy: signal(false),
           startAll: (requests: unknown[]) => {
             started.push(requests);
-            return Promise.resolve([]);
+            return answers.refuse ? Promise.reject(answers.refuse) : Promise.resolve([]);
           },
           showSetup: async (preview: ViewportBakePreview) => {
             shown.push(preview);
@@ -198,6 +198,28 @@ describe('BakeSettings', () => {
     expect(requests.map(request => request.material)).toEqual(['Strap']);
     expect(requests[0]?.output).toBe('/lib/projects/a/bakes/maps/Strap');
     expect(requests[0]?.high).toEqual(['/lib/projects/a/crate_high.glb', '/elsewhere/extra.glb']);
+  });
+
+  it('Quick Bake starts every chosen set, and a refusal says why and starts nothing (#147)', async () => {
+    const sets = [document('Body', 'texturing', 'Body', true), document('Strap', 'texturing', 'Strap', true)];
+    const { settings, started, answers } = setup(sets, sets[0]);
+
+    expect(await settings.bake()).toBe(true);
+    expect((started[0] as { material: string }[]).map(request => request.material)).toEqual(['Body', 'Strap']);
+
+    answers.refuse = new Error('The low mesh has no UV layout.');
+    expect(await settings.bake()).toBe(false);
+    expect(settings.refused()).toContain('no UV layout');
+  });
+
+  it('marks each set whose bake no longer fits it (#238)', () => {
+    const sets = [
+      { ...document('Body', 'texturing', 'Body', true), bakeStale: 'uvSet' },
+      document('Strap', 'texturing', 'Strap', true)
+    ];
+    const { settings } = setup(sets, sets[0]);
+
+    expect(settings.sets().map(set => set.stale)).toEqual(['uvSet', null]);
   });
 
   it('bakes every set when none is ticked, and says why it cannot when the maps are all off', () => {

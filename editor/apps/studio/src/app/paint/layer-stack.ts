@@ -231,9 +231,9 @@ const MaskMarks: Readonly<Record<string, string>> = {
       </button>
     </div>
 
-    @if (project.bakeOutOfDate()) {
+    @if (staleBake(); as stale) {
       <div class="bg-warning-subtle flex shrink-0 items-center gap-2 px-2 py-1 text-xs" data-testid="layers-stale-bake">
-        <span class="min-w-0 flex-1">The mesh changed after the last bake.</span>
+        <span class="min-w-0 flex-1">{{ stale }}</span>
         <button
           type="button"
           xuiButton
@@ -1287,6 +1287,16 @@ const MaskMarks: Readonly<Record<string, string>> = {
 export class LayerStack {
   protected readonly store = inject(PaintStore);
   protected readonly project = inject(ProjectStore);
+
+  /** Why this texture set's mesh maps need baking again, or null: its own bake's word first, then the project's. */
+  protected readonly staleBake = computed(() => {
+    const own = this.store.state()?.bakeStale;
+    if (own === 'uvSet') {
+      return 'This texture set’s UV set changed after its last bake.';
+    }
+
+    return own === 'mesh' || this.project.bakeOutOfDate() ? 'The mesh changed after the last bake.' : null;
+  });
 
   protected readonly percent = percent;
 

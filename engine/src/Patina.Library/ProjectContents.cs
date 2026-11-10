@@ -24,7 +24,7 @@ static class ProjectFiles {
             files.Where(f => IsMesh(f) && !document.Meshes.Any(m => m.File == f || m.High == f))
                 .Select(f => new ProjectMeshInfo(null, Below(path, f), null))
         );
-        var documents = document.Documents.Select(item => Listed(full, path, item)).ToList();
+        var documents = document.Documents.Select(item => Listed(full, path, item, document.Meshes)).ToList();
         documents.AddRange(
             files.Where(f => Unlisted(f) is not null && document.Documents.All(d => d.File != f))
                 .Select(f => new ProjectDocumentInfo(
@@ -710,10 +710,22 @@ static class ProjectFiles {
             SourceOf(root, mesh)
         ) { Unwrapped = mesh.Unwrapped };
 
-    static ProjectDocumentInfo Listed(string full, string path, ProjectItem item) =>
+    static ProjectDocumentInfo Listed(string full, string path, ProjectItem item, IReadOnlyList<ProjectMesh> meshes) =>
         new(item.Id.Value, item.Kind, item.Name, Below(path, item.File), item.Mesh?.Value, item.Role, item.Material) {
-            Bake = BakeOf(full, path, item), Tags = item.Tags
+            Bake = BakeOf(full, path, item), BakeStale = BakeStaleOf(full, item, meshes), Tags = item.Tags
         };
+
+    /// <summary>Why a texturing document's bake no longer fits it: by the mesh it is on and its UV set.</summary>
+    static string? BakeStaleOf(string full, ProjectItem item, IReadOnlyList<ProjectMesh> meshes) {
+        if (item.Kind != DocumentKinds.Texturing || DocumentBakes.FolderOf(full, item) is not { } bake) {
+            return null;
+        }
+
+        var file = Path.Combine(full, item.File);
+        var text = File.Exists(file) ? SharedFile.ReadAllText(file) : string.Empty;
+        var mesh = meshes.FirstOrDefault(m => m.Id == item.Mesh)?.Hash;
+        return BakeFit.Stale(bake, mesh, StackInputs.UvSetOf(text, item.Material));
+    }
 
     static bool IsMesh(string file) => MeshFormats.IsMesh(file);
 

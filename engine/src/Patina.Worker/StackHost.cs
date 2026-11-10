@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Export;
 using Patina.Graphs;
 using Patina.Ipc;
 using Patina.Library;
@@ -196,6 +197,14 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             stack.Fed[slot] = key;
         }
 
+        // A map the stack no longer writes leaves the viewport with it, or the old picture would stay on the mesh.
+        HashSet<ViewportSlot> written =
+            [..stack.Run.Outputs.Select(static output => Slot(output.Usage)).OfType<ViewportSlot>()];
+        foreach (var gone in stack.Fed.Keys.Where(slot => !written.Contains(slot)).ToList()) {
+            viewport.Live.ClearLive(gone, material);
+            stack.Fed.Remove(gone);
+        }
+
         stack.Reported();
     }
 
@@ -365,7 +374,10 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
                 )
                 .Refusals.Select(static refusal => refusal.Message)
                 .ToArray();
-            Run = new(evaluator, canvases, load.Path, fill) { Draft = true };
+            // The bake's normal and occlusion shade the set beneath its layers (#86).
+            Run = new(evaluator, canvases, load.Path, fill) {
+                Draft = true, Baked = BakedMapPicture.Shading(load.MeshMaps)
+            };
             if (load.Checkpoint is { } checkpoint) {
                 Restore(checkpoint);
             }

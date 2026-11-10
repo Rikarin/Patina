@@ -13028,6 +13028,13 @@
             ],
             "description": "The folder of the bake it reads, below the library, or null."
           },
+          "bakeStale": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why that bake no longer fits it, so its maps need baking again, or null: \u0060mesh\u0060, made on a mesh it no\nlonger stands on, or \u0060uvSet\u0060, laid out in another UV set than the one it chose (#238)."
+          },
           "tags": {
             "type": "array",
             "items": {
@@ -13749,6 +13756,16 @@
                 "$ref": "#/components/schemas/UnwrapOptions"
               }
             ]
+          },
+          "reassign": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "For a new mesh whose materials are not the old one\u0027s (#89): which of the new materials each texture set on an\nold material that the new mesh lacks becomes, by name. The set keeps its layers, its paint (moved across with\nPreserve Paint) and its bake folder\u0027s name changes with it. A set left out, or sent to a material another set\nholds, stays as it is, and a new material no set takes gets a set of its own."
           }
         },
         "description": "The body of \u0060PATCH /api/v1/library/project/settings\u0060. Null leaves a setting as it is."
@@ -15277,6 +15294,20 @@
               "string"
             ],
             "description": "How height becomes the normal: \u0060Sharp\u0060 or \u0060Smooth\u0060."
+          },
+          "bakedNormal": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How the bake\u0027s normal reaches the set\u0027s (#86): \u0060Combine\u0060, beneath everything painted; \u0060Replace\u0060, where\nthe normal channel starts, so paint covers it; or \u0060Off\u0060."
+          },
+          "bakedOcclusion": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How the bake\u0027s ambient occlusion reaches the set\u0027s: \u0060Combine\u0060, multiplied with what is painted;\n\u0060Replace\u0060; or \u0060Off\u0060."
           }
         },
         "description": "Changes the texture set\u0027s settings, any of them, as one undo step. What is left out stays as it is. Together\nwith its channels and its name these are the set\u0027s settings, and the stack file is the one place they live."
@@ -16959,7 +16990,9 @@
           "settled",
           "model",
           "heightNormal",
-          "uvSet"
+          "uvSet",
+          "bakedNormal",
+          "bakedOcclusion"
         ],
         "type": "object",
         "properties": {
@@ -17077,6 +17110,23 @@
             "description": "The mesh\u0027s coordinate set the set is painted, baked and drawn in, by the file\u0027s number.",
             "format": "int32",
             "default": 0
+          },
+          "bakedNormal": {
+            "type": "string",
+            "description": "How the bake\u0027s normal reaches the set: \u0060Combine\u0060, \u0060Replace\u0060, \u0060Off\u0060.",
+            "default": "Combine"
+          },
+          "bakedOcclusion": {
+            "type": "string",
+            "description": "How its occlusion does: \u0060Combine\u0060, \u0060Replace\u0060, \u0060Off\u0060.",
+            "default": "Combine"
+          },
+          "bakeStale": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why the bake the set reads no longer fits it, or null when it does or there is none: \u0060mesh\u0060, made on a mesh\nthe set no longer stands on, or \u0060uvSet\u0060, laid out in another of the mesh\u0027s UV sets (#238). Either way its\nmaps need baking again."
           }
         },
         "description": "A whole stack: everything a client needs to draw it, and no pixels."

@@ -541,6 +541,7 @@ export class ProjectStore {
     autoUnwrap?: boolean;
     preservePaint?: boolean;
     unwrap?: UnwrapOptions;
+    reassign?: Record<string, string>;
   }): Promise<boolean> {
     const project = this.current();
     if (!project) {
@@ -566,7 +567,8 @@ export class ProjectStore {
             high: settings.high ?? null,
             autoUnwrap: settings.autoUnwrap ?? null,
             preservePaint: settings.preservePaint ?? null,
-            unwrap: settings.unwrap ?? null
+            unwrap: settings.unwrap ?? null,
+            reassign: settings.reassign ?? null
           }
         })
       );
@@ -639,12 +641,15 @@ export class ProjectStore {
     }
   }
 
-  /** Carries out the answer to reloading a mesh that changed. */
-  async resolveReloading(reload: boolean): Promise<void> {
+  /**
+   * Carries out the answer to reloading a mesh that changed, with the new material each texture set on a vanished one
+   * moves to (#89).
+   */
+  async resolveReloading(reload: boolean, reassign: Record<string, string> = {}): Promise<void> {
     const source = this.mutableReloading();
     this.mutableReloading.set(null);
     if (reload && source !== null) {
-      await this.applySettings({ mesh: source });
+      await this.applySettings(Object.keys(reassign).length > 0 ? { mesh: source, reassign } : { mesh: source });
     }
   }
 

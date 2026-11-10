@@ -35,6 +35,12 @@ class StackCommandStackSetSettings:
             height (int | None | Unset): The height, which may differ from the width.
             uv_set (int | None | Unset): The mesh's UV set it is painted, baked and drawn in, by its number; 0 is the first.
             height_normal (None | str | Unset): How height becomes the normal: `Sharp` or `Smooth`.
+            baked_normal (None | str | Unset): How the bake's normal reaches the set's (#86): `Combine`, beneath everything
+                painted; `Replace`, where
+                the normal channel starts, so paint covers it; or `Off`.
+            baked_occlusion (None | str | Unset): How the bake's ambient occlusion reaches the set's: `Combine`, multiplied
+                with what is painted;
+                `Replace`; or `Off`.
      """
 
     op: StackCommandStackSetSettingsOp
@@ -42,6 +48,8 @@ class StackCommandStackSetSettings:
     height: int | None | Unset = UNSET
     uv_set: int | None | Unset = UNSET
     height_normal: None | str | Unset = UNSET
+    baked_normal: None | str | Unset = UNSET
+    baked_occlusion: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -75,6 +83,18 @@ class StackCommandStackSetSettings:
         else:
             height_normal = self.height_normal
 
+        baked_normal: None | str | Unset
+        if isinstance(self.baked_normal, Unset):
+            baked_normal = UNSET
+        else:
+            baked_normal = self.baked_normal
+
+        baked_occlusion: None | str | Unset
+        if isinstance(self.baked_occlusion, Unset):
+            baked_occlusion = UNSET
+        else:
+            baked_occlusion = self.baked_occlusion
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -89,6 +109,10 @@ class StackCommandStackSetSettings:
             field_dict["uvSet"] = uv_set
         if height_normal is not UNSET:
             field_dict["heightNormal"] = height_normal
+        if baked_normal is not UNSET:
+            field_dict["bakedNormal"] = baked_normal
+        if baked_occlusion is not UNSET:
+            field_dict["bakedOcclusion"] = baked_occlusion
 
         return field_dict
 
@@ -142,12 +166,34 @@ class StackCommandStackSetSettings:
         height_normal = _parse_height_normal(d.pop("heightNormal", UNSET))
 
 
+        def _parse_baked_normal(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        baked_normal = _parse_baked_normal(d.pop("bakedNormal", UNSET))
+
+
+        def _parse_baked_occlusion(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        baked_occlusion = _parse_baked_occlusion(d.pop("bakedOcclusion", UNSET))
+
+
         stack_command_stack_set_settings = cls(
             op=op,
             width=width,
             height=height,
             uv_set=uv_set,
             height_normal=height_normal,
+            baked_normal=baked_normal,
+            baked_occlusion=baked_occlusion,
         )
 
 

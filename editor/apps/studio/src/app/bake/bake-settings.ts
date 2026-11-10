@@ -19,6 +19,8 @@ const SaveDelayMs = 400;
 export interface BakeSet {
   material: string;
   name: string;
+  /** Why the set's maps need baking again (#238): `mesh` or `uvSet`, or null when its bake fits it. */
+  stale: string | null;
 }
 
 /**
@@ -90,7 +92,11 @@ export class BakeSettings {
 
   /** The project's texture sets, one per material. A model with one material has none to choose. */
   readonly sets = computed<BakeSet[]>(() =>
-    this.project.textureSets().map(document => ({ material: document.material ?? '', name: document.name }))
+    this.project.textureSets().map(document => ({
+      material: document.material ?? '',
+      name: document.name,
+      stale: document.bakeStale ?? null
+    }))
   );
 
   /** The sets the next bake makes maps for: the ticked ones, or all of them when none is ticked. */

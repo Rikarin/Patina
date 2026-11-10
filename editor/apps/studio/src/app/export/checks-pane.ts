@@ -220,6 +220,10 @@ export class ChecksPane {
       return 'Shows it in the viewport';
     }
 
+    if (target.setting === 'bake') {
+      return 'Opens the Bake dialog';
+    }
+
     return target.setting?.startsWith('export.') ? 'Opens the export settings' : 'Shows the project’s limit';
   }
 
@@ -233,6 +237,8 @@ export class ChecksPane {
 
     if (target.setting?.startsWith('export.')) {
       this.commands.run('export');
+    } else if (target.setting === 'bake') {
+      this.commands.run('bake');
     }
   }
 

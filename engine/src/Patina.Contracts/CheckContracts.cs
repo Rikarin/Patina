@@ -71,11 +71,19 @@ public static class CheckCodes {
     /// </summary>
     public const string DensityHigh = "density-high";
 
+    /// <summary>
+    ///     The bake the set reads was made on another mesh or in another UV set, so the maps its shading, decals, paths
+    ///     and mesh-map masks read are in the wrong place until it is baked again (#238). Values: <c>reason</c>, one of
+    ///     <c>mesh</c> and <c>uvSet</c>, and <c>uvSet</c>, the set's UV set from 1.
+    /// </summary>
+    public const string BakeStale = "bake-stale";
+
     // Between the groups, as ExportMaps has it: SK7020 honours no suppression, and reads thirteen constants in a row as
     // a clone of another list of them.
     /// <summary>Every code, in the order a list shows them.</summary>
     public static IReadOnlyList<string> All { get; } = [
-        OverBudget, TooLarge, ChannelMissing, DensityLow, DensityHigh, UvOutside, UvOverlap, UvDegenerate, UvFlipped,
+        OverBudget, TooLarge, ChannelMissing, DensityLow, DensityHigh, BakeStale, UvOutside, UvOverlap, UvDegenerate,
+        UvFlipped,
         AlbedoDark, AlbedoBright, MetalDark, MetalPartial
     ];
 
