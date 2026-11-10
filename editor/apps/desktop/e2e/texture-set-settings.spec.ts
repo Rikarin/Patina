@@ -46,19 +46,20 @@ function twoColouredQuads(): string {
   return path;
 }
 
-test('a mesh says what it is, and a texture set changes its resolution', async () => {
+test('a mesh says what it is, and a texture set changes its size in Properties', async () => {
   test.setTimeout(180_000);
   await newProject(app, window, 'Quads', twoColouredQuads());
   await expect(window.getByTestId('texture-sets')).toBeVisible({ timeout: 60_000 });
 
-  // The open set's resolution, which the change reaches the readout of.
+  // The open set's size, in Properties' document section, which the change reaches the Texture Sets readout of.
   const settings = window.getByTestId('texture-set-settings');
   await expect(settings).toBeVisible({ timeout: 30_000 });
-  await window.locator('ptn-texture-sets').screenshot({ path: join(shots, 'sets-1-settings.png') });
+  await expect(window.getByTestId('paint-document-mesh-facts')).toContainText('2 triangles');
+  await window.getByTestId('paint-document').screenshot({ path: join(shots, 'sets-1-settings.png') });
   await window.getByTestId('texture-set-height').click();
   await window.getByRole('option', { name: '512', exact: true }).click();
   await expect(window.getByTestId('texture-set-size')).toContainText('×512', { timeout: 30_000 });
-  await expect(window.getByTestId('paint-undo')).toHaveAttribute('aria-label', 'Undo Texture set settings');
+  await expect(window.getByTestId('app-undo')).toHaveAttribute('aria-label', 'Undo Texture set settings');
   await settings.screenshot({ path: join(shots, 'sets-2-non-square.png') });
 
   await app.evaluate(({ BrowserWindow }) => {
