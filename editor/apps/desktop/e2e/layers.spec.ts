@@ -283,7 +283,7 @@ test('a mask runs effects, and they stay in order', async () => {
   await window.getByTestId('paint-mask-effect-add').selectOption({ label: 'Blur' });
   await expect(window.getByTestId('paint-mask-effect-1')).toContainText('Blur');
 
-  await window.getByRole('button', { name: 'Remove Invert' }).click();
+  await window.getByRole('button', { name: 'Remove Invert', exact: true }).click();
   await expect(window.getByTestId('paint-mask-effect-0')).toContainText('Blur');
   await expect(window.getByTestId('paint-mask-effect-1')).toHaveCount(0);
 });

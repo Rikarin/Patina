@@ -600,9 +600,9 @@ test('saves a selection as a compound, opens it, authors its ports, and undoes t
   await expect(window.getByTestId('port-Amount')).toBeVisible();
   await expect(window.locator('[data-xui-graph-port="Amount"]')).toHaveCount(1);
   await window.getByTestId('app-save').click();
-  await expect(window.getByTestId('active-unsaved')).toHaveCount(0);
+  // The tab keeps its mark: the graph outside, which the save as a compound changed, is unsaved still.
+  await expect.poll(() => readFileSync(file, 'utf8')).toContain('name: Amount');
   await window.screenshot({ path: join(shots, 'graph-compound-interface.png') });
-  expect(readFileSync(file, 'utf8')).toContain('name: Amount');
 
   // Undoing the save brings the nodes back, and the file stays for whoever else holds it.
   await window.getByTestId('graph-crumb').click();

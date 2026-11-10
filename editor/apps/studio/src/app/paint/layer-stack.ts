@@ -359,7 +359,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
               <button
                 type="button"
                 class="text-foreground-muted grid size-5 shrink-0 place-items-center"
-                [attr.aria-label]="'Remove ' + item.name"
+                [attr.aria-label]="'Remove ' + item.name + ' from the mask'"
                 (click)="removeWork(owner, item.effect)"
               >
                 ×
@@ -811,7 +811,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
               type="button"
               class="text-foreground-muted grid size-5 shrink-0 place-items-center"
               data-testid="layer-work-remove"
-              [attr.aria-label]="'Remove ' + item.name"
+              [attr.aria-label]="'Remove ' + item.name + ' from the mask'"
               (click)="removeWork(row.layer, item.effect)"
             >
               ×
