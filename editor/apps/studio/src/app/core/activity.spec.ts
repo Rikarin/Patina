@@ -56,7 +56,9 @@ describe('Activity', () => {
     TestBed.tick();
 
     // Said twice, with a dismissal between: the history keeps it once, since the newest notice already says it.
-    expect(activity.notices().map(notice => [notice.source, notice.text])).toEqual([['Library', 'That name is taken.']]);
+    expect(activity.notices().map(notice => [notice.source, notice.text])).toEqual([
+      ['Library', 'That name is taken.']
+    ]);
   });
 
   it('lists the Server’s jobs by what they are, and says how far the work going on is', () => {
@@ -66,7 +68,14 @@ describe('Activity', () => {
 
     expect(activity.jobs().map(job => job.title)).toEqual(['Bake of Body', 'Export of the library']);
     expect(activity.readout()).toBe('Export of the library, waiting, and 1 more');
-    const unnamed = { high: [], low: '/m/crate_low.glb', output: '/out', material: null, name: null, options: {} as never };
+    const unnamed = {
+      high: [],
+      low: '/m/crate_low.glb',
+      output: '/out',
+      material: null,
+      name: null,
+      options: {} as never
+    };
     expect(jobTitle(bake({ bake: unnamed }))).toBe('Bake of crate_low');
   });
 

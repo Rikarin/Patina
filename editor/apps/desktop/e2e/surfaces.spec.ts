@@ -152,9 +152,12 @@ test('a decal is placed with a click and scaled by its handle, a path takes poin
   await window.getByTestId('surface-add-points').click();
   for (const across of [0.24, 0.32, 0.4]) {
     await click(across, 0.62);
-    await expect(window.getByTestId('surface-path-count')).toContainText(`${Math.round((across - 0.16) / 0.08)} points`, {
-      timeout: 30_000
-    });
+    await expect(window.getByTestId('surface-path-count')).toContainText(
+      `${Math.round((across - 0.16) / 0.08)} points`,
+      {
+        timeout: 30_000
+      }
+    );
   }
 
   await window.getByTestId('surface-add-points').click();

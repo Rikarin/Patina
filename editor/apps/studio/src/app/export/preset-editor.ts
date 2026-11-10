@@ -34,9 +34,7 @@ const CheckDelay = 250;
 const LaneNames = ['r', 'g', 'b', 'a'] as const;
 
 /** One lane of a file as the editor shows it: a lane of a map, or one minus it, or a number. */
-export type Lane =
-  | { kind: 'map'; map: string; lane: number; inverted: boolean }
-  | { kind: 'constant'; value: number };
+export type Lane = { kind: 'map'; map: string; lane: number; inverted: boolean } | { kind: 'constant'; value: number };
 
 /** A lane as the preset language writes it (ADR 0019), read: `roughness.r`, `1-roughness.r` or `0.5`. */
 export function laneOf(text: string): Lane {
@@ -166,7 +164,14 @@ function blank(id: string): ExportPresetDocument {
           <div class="well flex flex-col gap-2 p-2 text-xs" data-testid="preset-remove-confirm">
             <span>Delete {{ draft()?.name }}? Its file is deleted, and an export that names it can no longer run.</span>
             <div class="flex gap-1">
-              <button type="button" xuiButton size="sm" color="error" data-testid="preset-remove-yes" (click)="remove()">
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                color="error"
+                data-testid="preset-remove-yes"
+                (click)="remove()"
+              >
                 Delete
               </button>
               <button type="button" xuiButton size="sm" variant="ghost" (click)="removing.set(false)">Cancel</button>
@@ -438,7 +443,15 @@ function blank(id: string): ExportPresetDocument {
                       [itemText]="mapName"
                       [items]="mapChoices()"
                       [value]="read.kind === 'map' ? read.map : 'constant'"
-                      (valueChange)="setLane(at, lane, $event === 'constant' || !$event ? { kind: 'constant', value: 0 } : { kind: 'map', map: $event, lane: 0, inverted: false })"
+                      (valueChange)="
+                        setLane(
+                          at,
+                          lane,
+                          $event === 'constant' || !$event
+                            ? { kind: 'constant', value: 0 }
+                            : { kind: 'map', map: $event, lane: 0, inverted: false }
+                        )
+                      "
                     />
                     @if (read.kind === 'map') {
                       <xui-select
@@ -523,7 +536,9 @@ function blank(id: string): ExportPresetDocument {
                   {{ projectName() ? 'What it writes for ' + projectName() : 'What it writes' }}
                 </span>
                 @for (file of check.files; track file.set + file.template) {
-                  <span class="readout truncate" data-testid="preset-file-written" [title]="file.name">{{ file.name }}</span>
+                  <span class="readout truncate" data-testid="preset-file-written" [title]="file.name">{{
+                    file.name
+                  }}</span>
                 }
               </section>
             }
@@ -692,7 +707,10 @@ export class PresetEditor implements OnInit {
   protected editFile(at: number, change: Partial<ExportPresetTextureDocument>): void {
     this.draft.update(draft =>
       draft
-        ? { ...draft, textures: draft.textures.map((texture, index) => (index === at ? { ...texture, ...change } : texture)) }
+        ? {
+            ...draft,
+            textures: draft.textures.map((texture, index) => (index === at ? { ...texture, ...change } : texture))
+          }
         : draft
     );
   }
@@ -729,7 +747,9 @@ export class PresetEditor implements OnInit {
   }
 
   protected removeFile(at: number): void {
-    this.draft.update(draft => (draft ? { ...draft, textures: draft.textures.filter((_, index) => index !== at) } : draft));
+    this.draft.update(draft =>
+      draft ? { ...draft, textures: draft.textures.filter((_, index) => index !== at) } : draft
+    );
   }
 
   protected addFile(): void {
@@ -757,7 +777,9 @@ export class PresetEditor implements OnInit {
   protected setLane(at: number, lane: number, value: Lane): void {
     const texture = this.draft()?.textures[at];
     if (texture) {
-      this.editFile(at, { channels: texture.channels.map((channel, index) => (index === lane ? textOf(value) : channel)) });
+      this.editFile(at, {
+        channels: texture.channels.map((channel, index) => (index === lane ? textOf(value) : channel))
+      });
     }
   }
 
@@ -795,7 +817,9 @@ export class PresetEditor implements OnInit {
 
   protected toggleMaterial(kind: string): void {
     const materials = this.draft()?.materials ?? [];
-    this.edit({ materials: materials.includes(kind) ? materials.filter(known => known !== kind) : [...materials, kind] });
+    this.edit({
+      materials: materials.includes(kind) ? materials.filter(known => known !== kind) : [...materials, kind]
+    });
   }
 
   protected insertToken(token: string): void {
@@ -822,8 +846,7 @@ export class PresetEditor implements OnInit {
     await this.attempt(async () => {
       const project = this.keepIn() === 'project' ? this.project() : null;
       const before = this.source();
-      const samePlace =
-        !this.creating() && before && (before.origin === 'project') === (this.keepIn() === 'project');
+      const samePlace = !this.creating() && before && (before.origin === 'project') === (this.keepIn() === 'project');
       const replaces = samePlace && before.document.id !== draft.id ? before.document.id : null;
       const kept = await this.store.save(draft, project, replaces);
       await this.store.load(this.project());

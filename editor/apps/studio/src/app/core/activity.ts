@@ -62,7 +62,11 @@ export function jobTitle(job: JobState): string {
     return 'Export of what uses a material';
   }
 
-  return projects === 0 ? 'Export of the library' : projects === 1 ? 'Export of a project' : `Export of ${projects} projects`;
+  return projects === 0
+    ? 'Export of the library'
+    : projects === 1
+      ? 'Export of a project'
+      : `Export of ${projects} projects`;
 }
 
 /** The job as the panel lists it. */

@@ -4,7 +4,7 @@ import { unwrap } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
-import { type ActivityJob, Activity, type NoticeTone } from './activity';
+import { Activity, type ActivityJob, type NoticeTone } from './activity';
 import { messageOf } from './messages';
 
 /** A session the engine holds that no tab shows, which only this panel can reach. */
@@ -160,11 +160,17 @@ const ToneWords: Readonly<Record<NoticeTone, string>> = {
 
       <h3 class="section-label px-3 pt-2 pb-1">Notices</h3>
       @if (activity.notices().length === 0) {
-        <p class="text-foreground-muted px-3 pb-3 text-sm">Nothing yet. What goes wrong, and what finishes, shows here.</p>
+        <p class="text-foreground-muted px-3 pb-3 text-sm">
+          Nothing yet. What goes wrong, and what finishes, shows here.
+        </p>
       } @else {
         <ol aria-label="Notices" class="pb-2">
           @for (notice of activity.notices(); track notice.id) {
-            <li class="flex items-start gap-2 px-3 py-1 text-sm" data-testid="activity-notice" [attr.data-tone]="notice.tone">
+            <li
+              class="flex items-start gap-2 px-3 py-1 text-sm"
+              data-testid="activity-notice"
+              [attr.data-tone]="notice.tone"
+            >
               <span
                 class="mt-1.5 size-2 shrink-0 rounded-full"
                 [class]="toneClass[notice.tone]"

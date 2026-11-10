@@ -4,12 +4,12 @@ import {
   type BuildRequest,
   type CompressionPreviewInfo,
   type CompressionPreviewRequest,
-  type ExportPresetCheck,
-  type ExportPresetDocument,
-  type ExportPresetSource,
   type ExportFileChoice,
   type ExportFormatInfo,
+  type ExportPresetCheck,
+  type ExportPresetDocument,
   type ExportPresetInfo,
+  type ExportPresetSource,
   type JobState,
   type LibraryReport,
   type PatinaClient,
@@ -337,9 +337,15 @@ export class ExportStore {
   }
 
   /** Keeps a preset as a file in the library or a project, renaming the one it replaces. */
-  async save(preset: ExportPresetDocument, project: string | null, replaces: string | null = null): Promise<ExportPresetSource> {
+  async save(
+    preset: ExportPresetDocument,
+    project: string | null,
+    replaces: string | null = null
+  ): Promise<ExportPresetSource> {
     return unwrap(
-      await (await this.api()).PUT('/api/v1/export/presets/{id}', {
+      await (
+        await this.api()
+      ).PUT('/api/v1/export/presets/{id}', {
         params: { path: { id: preset.id } },
         body: { preset, project, replaces }
       })
@@ -365,7 +371,9 @@ export class ExportStore {
   /** One picture of a compression preview, as an object URL the caller revokes. */
   async picture(id: string, picture: 'source' | 'written' | 'difference'): Promise<string> {
     const blob = unwrap(
-      await (await this.api()).GET('/api/v1/export/compression/{id}/{picture}', {
+      await (
+        await this.api()
+      ).GET('/api/v1/export/compression/{id}/{picture}', {
         params: { path: { id, picture } },
         parseAs: 'blob'
       })

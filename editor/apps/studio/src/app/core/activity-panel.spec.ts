@@ -6,14 +6,23 @@ import { ProjectStore } from '../library/project-store';
 import { Activity } from './activity';
 import { ActivityPanel } from './activity-panel';
 
-const summary = (id: string, name: string, dirty = false) => ({ id, path: `projects/a/${name}`, name, revision: 1, dirty });
+const summary = (id: string, name: string, dirty = false) => ({
+  id,
+  path: `projects/a/${name}`,
+  name,
+  revision: 1,
+  dirty
+});
 
 async function render() {
   const deleted: string[] = [];
   const graphs = [summary('g1', 'Rust'), summary('g2', 'Moss', true)];
   const client = {
     GET: vi.fn((route: string) =>
-      Promise.resolve({ data: route === '/api/v1/graphs' ? graphs : [summary('s1', 'Crate')], response: new Response() })
+      Promise.resolve({
+        data: route === '/api/v1/graphs' ? graphs : [summary('s1', 'Crate')],
+        response: new Response()
+      })
     ),
     DELETE: vi.fn((_route: string, options: { params: { path: { id: string } } }) => {
       deleted.push(options.params.path.id);

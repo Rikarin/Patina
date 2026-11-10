@@ -1555,9 +1555,7 @@ export class GraphCanvas {
       [open]="store.leaving() !== null"
       (openChange)="$event || store.resolveLeaving('cancel')"
     >
-      <xui-dialog-body data-testid="graph-leaving">
-        {{ store.document()?.name }} has unsaved changes.
-      </xui-dialog-body>
+      <xui-dialog-body data-testid="graph-leaving"> {{ store.document()?.name }} has unsaved changes. </xui-dialog-body>
       <xui-dialog-footer>
         <button type="button" xuiButton variant="ghost" (click)="store.resolveLeaving('cancel')">Cancel</button>
         <button type="button" xuiButton data-testid="graph-discard" (click)="store.resolveLeaving('discard')">

@@ -44,7 +44,13 @@ export function modelSize(bounds: readonly number[] | null | undefined): number 
     return 1;
   }
 
-  return Math.hypot((bounds[3] ?? 0) - (bounds[0] ?? 0), (bounds[4] ?? 0) - (bounds[1] ?? 0), (bounds[5] ?? 0) - (bounds[2] ?? 0)) || 1;
+  return (
+    Math.hypot(
+      (bounds[3] ?? 0) - (bounds[0] ?? 0),
+      (bounds[4] ?? 0) - (bounds[1] ?? 0),
+      (bounds[5] ?? 0) - (bounds[2] ?? 0)
+    ) || 1
+  );
 }
 
 /**

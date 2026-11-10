@@ -94,7 +94,11 @@ describe('PresetEditor', () => {
       'GET export/presets': () => Response.json(list),
       'GET export/presets/unreal': () => Response.json({ document: unreal, origin: 'factory', file: null, text: '' }),
       'POST export/presets/check': () =>
-        Response.json({ problem: null, files: [{ template: 'T', set: '', name: 'T_Crate_Copy_ORM.png' }], text: 'id: x' }),
+        Response.json({
+          problem: null,
+          files: [{ template: 'T', set: '', name: 'T_Crate_Copy_ORM.png' }],
+          text: 'id: x'
+        }),
       'PUT export/presets/unreal-copy': async request => {
         const body = (await request.json()) as { preset: typeof unreal };
         puts.push({ url: request.url, body });
@@ -120,7 +124,11 @@ describe('PresetEditor', () => {
     await settled(fixture, 10);
 
     expect(puts).toHaveLength(1);
-    expect(puts[0]?.body).toMatchObject({ project: 'crate', replaces: null, preset: { id: 'unreal-copy', name: 'Unreal Engine Copy' } });
+    expect(puts[0]?.body).toMatchObject({
+      project: 'crate',
+      replaces: null,
+      preset: { id: 'unreal-copy', name: 'Unreal Engine Copy' }
+    });
   });
 
   it('swaps two lanes dropped on each other, and renames a project preset in place', async () => {
@@ -128,7 +136,8 @@ describe('PresetEditor', () => {
     const puts: unknown[] = [];
     const store = setup({
       'GET export/presets': () => Response.json(list),
-      'GET export/presets/mine': () => Response.json({ document: mine, origin: 'project', file: '/l/mine.yaml', text: '' }),
+      'GET export/presets/mine': () =>
+        Response.json({ document: mine, origin: 'project', file: '/l/mine.yaml', text: '' }),
       'POST export/presets/check': () => Response.json({ problem: null, files: [], text: '' }),
       'PUT export/presets/ours': async request => {
         const body = (await request.json()) as { preset: typeof unreal };
@@ -167,7 +176,8 @@ describe('PresetEditor', () => {
       'GET export/presets': () => Response.json(list),
       'GET export/presets/mine': () =>
         Response.json({ document: { ...unreal, id: 'mine' }, origin: 'library', file: '/l/mine.yaml', text: '' }),
-      'POST export/presets/check': () => Response.json({ problem: "texture 1: 'bmp' is not a format.", files: [], text: '' })
+      'POST export/presets/check': () =>
+        Response.json({ problem: "texture 1: 'bmp' is not a format.", files: [], text: '' })
     });
     await store.load(null);
     const fixture = TestBed.createComponent(PresetEditor);
@@ -228,10 +238,9 @@ describe('CompressionView', () => {
     await settled(fixture, 10);
 
     expect(page.querySelectorAll('[data-testid="compression-pictures"] img')).toHaveLength(3);
-    expect([...page.querySelectorAll('[data-testid="compression-psnr"]')].map(cell => cell.textContent.trim())).toEqual([
-      '41.3 dB',
-      'Lossless'
-    ]);
+    expect([...page.querySelectorAll('[data-testid="compression-psnr"]')].map(cell => cell.textContent.trim())).toEqual(
+      ['41.3 dB', 'Lossless']
+    );
     expect(page.textContent).toContain('Difference × 16');
     expect(page.querySelector('[data-testid="compression-memory"]')?.textContent).toContain('uncompressed');
   });

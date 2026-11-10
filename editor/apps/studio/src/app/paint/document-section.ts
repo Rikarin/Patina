@@ -209,7 +209,9 @@ export class DocumentSection {
   private readonly material = computed(() => {
     const facts = this.facts();
     const set = this.store.state()?.set;
-    return facts?.materials.find(entry => entry.name === set) ?? (facts?.materials.length === 1 ? facts.materials[0] : null);
+    return (
+      facts?.materials.find(entry => entry.name === set) ?? (facts?.materials.length === 1 ? facts.materials[0] : null)
+    );
   });
 
   /** The UV sets every part of the open set has, and the one it is laid out in even if the mesh has lost it. */

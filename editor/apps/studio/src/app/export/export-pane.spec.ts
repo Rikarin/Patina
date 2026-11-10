@@ -260,7 +260,8 @@ describe('ExportPane settings', () => {
       files: [{ preset: 'unreal', template: 'T_{project}_R', enabled: false, format: 'png8' }]
     };
     const { fixture, selection } = setup({
-      'GET library/project': () => Response.json({ id: 'p', name: 'Crate', path: 'crate', export: kept, exportSets: [] }),
+      'GET library/project': () =>
+        Response.json({ id: 'p', name: 'Crate', path: 'crate', export: kept, exportSets: [] }),
       'PUT library/project/export': request => {
         void request.json().then(body => puts.push(body));
         return Response.json({ id: 'p', name: 'Crate', path: 'crate' });
@@ -295,7 +296,14 @@ describe('ExportPane settings', () => {
 
   it('keeps a library export’s settings in the library, where a scope change finds them again (#227)', async () => {
     const puts: { path: string; body: { export: { folder: string | null; dither: boolean } } }[] = [];
-    let library: unknown = { preset: 'unreal', folder: '/everything', dither: true, skipped: [], files: [], perSet: [] };
+    let library: unknown = {
+      preset: 'unreal',
+      folder: '/everything',
+      dither: true,
+      skipped: [],
+      files: [],
+      perSet: []
+    };
     const put = (request: Request) => {
       const path = new URL(request.url).pathname;
       return request.json().then((body: (typeof puts)[number]['body']) => {
@@ -413,7 +421,8 @@ describe('ExportPane settings', () => {
 
   it('offers the texture sets of a project selected in the Library that is not open, each with a size of its own', async () => {
     const { fixture, text, selection } = setup({
-      'GET library/project': () => Response.json({ id: 'crate', name: 'Crate', path: 'crate', exportSets: ['Body', 'Head'] })
+      'GET library/project': () =>
+        Response.json({ id: 'crate', name: 'Crate', path: 'crate', exportSets: ['Body', 'Head'] })
     });
     selection.select({ kind: 'project', project: { id: 'crate', name: 'Crate', path: 'crate' } } as never);
     await settled(fixture);
@@ -426,7 +435,9 @@ describe('ExportPane settings', () => {
   it('turns kept compression and a set’s own size back into the dialog’s, losing nothing', () => {
     const settings = {
       ...settingsFor(unreal),
-      files: { unreal: { 'T_{project}_D': { enabled: true, format: 'ktx2', compression: 'bc7', quality: 'best', mips: true } } },
+      files: {
+        unreal: { 'T_{project}_D': { enabled: true, format: 'ktx2', compression: 'bc7', quality: 'best', mips: true } }
+      },
       perSet: { Head: { size: 512 } }
     };
 

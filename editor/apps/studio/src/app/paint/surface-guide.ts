@@ -176,13 +176,17 @@ export class SurfaceGuide {
   protected readonly decalShown = computed(() => {
     const layer = this.layer();
     const draft = this.draft();
-    return layer?.projection === 'Decal' ? ((draft?.layer === layer.id ? draft.decal : null) ?? layer.decal ?? null) : null;
+    return layer?.projection === 'Decal'
+      ? ((draft?.layer === layer.id ? draft.decal : null) ?? layer.decal ?? null)
+      : null;
   });
 
   protected readonly pathShown = computed(() => {
     const layer = this.layer();
     const draft = this.draft();
-    return layer?.projection === 'Path' ? ((draft?.layer === layer.id ? draft.path : null) ?? layer.path ?? null) : null;
+    return layer?.projection === 'Path'
+      ? ((draft?.layer === layer.id ? draft.path : null) ?? layer.path ?? null)
+      : null;
   });
 
   protected readonly outline = computed(() => {
@@ -380,7 +384,9 @@ export class SurfaceGuide {
       if (held.handle.kind === 'point') {
         const index = held.handle.index;
         const path = this.pathShown() ?? (held.from as StackSurfacePath);
-        const points = path.points.map((point, at) => (at === index ? { ...pathPoint(hit), pressure: point.pressure } : point));
+        const points = path.points.map((point, at) =>
+          at === index ? { ...pathPoint(hit), pressure: point.pressure } : point
+        );
         this.draft.set({ layer: layer.id, path: { ...path, points } });
       } else {
         const decal = this.decalShown() ?? (held.from as StackDecal);

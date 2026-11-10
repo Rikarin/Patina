@@ -2,8 +2,8 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
-  type OnInit,
   Injector,
+  type OnInit,
   computed,
   effect,
   inject,
@@ -25,7 +25,6 @@ import { SystemStatus } from '../core/system-status';
 import { LibrarySelection } from '../library/library-selection';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore } from '../paint/paint-store';
-import { PresetEditor } from './preset-editor';
 import { CompressionView } from './compression-view';
 import {
   type ExportOwner,
@@ -39,6 +38,7 @@ import {
   settingsOf,
   usesDistance
 } from './export-store';
+import { PresetEditor } from './preset-editor';
 
 const SaveDelay = 400;
 const StatusNames: Readonly<Record<string, string>> = {
@@ -93,573 +93,582 @@ function lanesOf(hex: string): number[] {
         (closed)="closeEditor($event)"
       />
     } @else {
-    <div class="grid min-h-0 flex-1 grid-cols-[19rem_minmax(0,1fr)] gap-3 overflow-hidden p-3">
-      <div class="flex min-h-0 flex-col gap-3 overflow-y-auto pr-1" data-testid="export-settings">
-        <section class="flex flex-col gap-1.5">
-          <span class="text-foreground-muted text-xs font-medium">Export</span>
-          <xui-segmented-control
-            size="sm"
-            fill
-            ariaLabel="What to export"
-            data-testid="export-scope-choice"
-            [options]="scopes()"
-            [value]="scope()"
-            (valueChange)="chooseScope($event)"
-          />
-          <span class="text-foreground-muted truncate text-xs" data-testid="export-scope" [title]="scopeText()">
-            {{ scopeText() }}
-          </span>
-        </section>
-
-        <section class="flex flex-col gap-1.5">
-          <span class="text-foreground-muted text-xs font-medium">Preset</span>
-          <xui-select
-            class="w-full"
-            ariaLabel="Preset"
-            data-testid="export-preset"
-            [filterable]="false"
-            [itemText]="presetName"
-            [items]="presetIds()"
-            [value]="settings().preset"
-            (valueChange)="choosePreset($event)"
-          />
-          @if (chosen(); as info) {
-            <span class="text-foreground-muted text-xs" data-testid="export-preset-info">
-              {{ info.engine }} · normal map {{ greenName(info.normal) }} · {{ originName(info.origin) }}
+      <div class="grid min-h-0 flex-1 grid-cols-[19rem_minmax(0,1fr)] gap-3 overflow-hidden p-3">
+        <div class="flex min-h-0 flex-col gap-3 overflow-y-auto pr-1" data-testid="export-settings">
+          <section class="flex flex-col gap-1.5">
+            <span class="text-foreground-muted text-xs font-medium">Export</span>
+            <xui-segmented-control
+              size="sm"
+              fill
+              ariaLabel="What to export"
+              data-testid="export-scope-choice"
+              [options]="scopes()"
+              [value]="scope()"
+              (valueChange)="chooseScope($event)"
+            />
+            <span class="text-foreground-muted truncate text-xs" data-testid="export-scope" [title]="scopeText()">
+              {{ scopeText() }}
             </span>
-          }
-          <button
-            type="button"
-            xuiButton
-            size="sm"
-            variant="ghost"
-            class="self-start"
-            data-testid="export-edit-presets"
-            (click)="editing.set(true)"
-          >
-            Edit Presets…
-          </button>
-        </section>
+          </section>
 
-        <section class="flex flex-col gap-1.5">
-          <span class="text-foreground-muted text-xs font-medium">Output folder</span>
-          <span class="readout truncate text-xs" data-testid="export-folder" [title]="settings().folder ?? ''">
-            {{ settings().folder ?? 'The library’s exports folder' }}
-          </span>
-          <div class="flex gap-1">
-            <button type="button" xuiButton size="sm" data-testid="export-folder-choose" (click)="chooseFolder()">
-              Choose…
-            </button>
-            @if (settings().folder) {
-              <button
-                type="button"
-                xuiButton
-                size="sm"
-                variant="ghost"
-                data-testid="export-folder-default"
-                (click)="change({ folder: null })"
-              >
-                Use Default
-              </button>
-            }
-            @if (revealable(); as path) {
-              <button
-                type="button"
-                xuiButton
-                size="sm"
-                variant="ghost"
-                data-testid="export-reveal"
-                (click)="reveal(path)"
-              >
-                Reveal
-              </button>
-            }
-          </div>
-        </section>
-
-        <section class="flex flex-col gap-1.5">
-          <span class="text-foreground-muted text-xs font-medium">Size</span>
-          <div class="flex gap-1">
+          <section class="flex flex-col gap-1.5">
+            <span class="text-foreground-muted text-xs font-medium">Preset</span>
             <xui-select
-              class="min-w-0 flex-1"
-              ariaLabel="Size"
-              data-testid="export-size"
+              class="w-full"
+              ariaLabel="Preset"
+              data-testid="export-preset"
               [filterable]="false"
-              [itemText]="sizeName"
-              [items]="sizes()"
-              [value]="settings().size === null ? 'native' : '' + settings().size"
-              (valueChange)="chooseSize($event)"
+              [itemText]="presetName"
+              [items]="presetIds()"
+              [value]="settings().preset"
+              (valueChange)="choosePreset($event)"
             />
-            <xui-select
-              class="min-w-0 flex-1"
-              ariaLabel="Resize filter"
-              data-testid="export-filter"
-              [disabled]="settings().size === null"
-              [filterable]="false"
-              [itemText]="filterName"
-              [items]="store.filters()"
-              [value]="settings().filter"
-              (valueChange)="change({ filter: $event ?? 'box' })"
-            />
-          </div>
-        </section>
-
-        <section class="flex flex-col gap-1.5">
-          <span class="text-foreground-muted text-xs font-medium">Padding</span>
-          <xui-select
-            class="w-full"
-            ariaLabel="Padding"
-            data-testid="export-padding"
-            [filterable]="false"
-            [itemText]="paddingName"
-            [items]="store.paddings()"
-            [value]="settings().padding"
-            (valueChange)="change({ padding: $event ?? 'none' })"
-          />
-          @if (distanced()) {
-            <div class="flex items-center gap-2">
-              <span class="text-foreground-muted w-16 shrink-0 text-xs">Distance</span>
-              <xui-slider
-                class="min-w-0 flex-1"
-                labelStepSize="0"
-                [attr.aria-label]="'Padding distance'"
-                data-testid="export-distance"
-                [max]="64"
-                [min]="0"
-                [stepSize]="1"
-                [value]="settings().distance"
-                (valueChange)="change({ distance: $event })"
-              />
-              <span class="readout w-12 shrink-0 text-right text-xs" data-testid="export-distance-readout">
-                {{ settings().distance }} px
+            @if (chosen(); as info) {
+              <span class="text-foreground-muted text-xs" data-testid="export-preset-info">
+                {{ info.engine }} · normal map {{ greenName(info.normal) }} · {{ originName(info.origin) }}
               </span>
-            </div>
-          }
-          @if (settings().padding === 'colour') {
-            <div class="flex items-center gap-2">
-              <span class="text-foreground-muted w-16 shrink-0 text-xs">Color</span>
-              <xui-color-picker showAlpha [value]="paddingHex()" (valueChange)="change({ colour: lanes($event) })" />
-            </div>
-          }
-          <span class="text-foreground-muted text-xs">
-            Fills what the mesh's layout leaves empty, so mips and filtering read the islands. A material with no mesh
-            has nothing to fill.
-          </span>
-        </section>
-
-        <section class="flex items-center justify-between gap-2">
-          <span
-            class="text-xs"
-            title="An 8-bit file rounds up as often as its value is past the level below, so gradients do not band"
-          >
-            Dither 8-bit files
-          </span>
-          <xui-switch
-            ariaLabel="Dither 8-bit files"
-            data-testid="export-dither"
-            [checked]="settings().dither"
-            (checkedChange)="change({ dither: $event })"
-          />
-        </section>
-      </div>
-
-      <div class="flex min-h-0 flex-col gap-2.5 overflow-y-auto">
-        @for (problem of store.problems(); track problem) {
-          <xui-callout color="warning" compact>{{ problem }}</xui-callout>
-        }
-
-        @if (setNames().length > 0) {
-          <section class="well flex flex-col gap-1 p-2" data-testid="export-sets">
-            <div class="flex items-center gap-1">
-              <span class="text-foreground-muted min-w-0 flex-1 text-xs font-medium">Texture sets</span>
-              <button
-                type="button"
-                xuiButton
-                size="sm"
-                variant="ghost"
-                data-testid="export-sets-all"
-                (click)="checkSets('all')"
-              >
-                Check All
-              </button>
-              <button
-                type="button"
-                xuiButton
-                size="sm"
-                variant="ghost"
-                data-testid="export-sets-none"
-                (click)="checkSets('none')"
-              >
-                Uncheck All
-              </button>
-              <button
-                type="button"
-                xuiButton
-                size="sm"
-                variant="ghost"
-                data-testid="export-sets-invert"
-                (click)="checkSets('invert')"
-              >
-                Invert
-              </button>
-            </div>
-            @for (set of setNames(); track set) {
-              <div class="flex items-center gap-2 text-xs" data-testid="export-set">
-                <label class="flex min-w-0 flex-1 items-center gap-2">
-                  <input
-                    type="checkbox"
-                    [attr.aria-label]="'Export ' + set"
-                    [checked]="!settings().skipped.includes(set)"
-                    (change)="toggleSet(set)"
-                  />
-                  <span class="truncate">{{ set }}</span>
-                </label>
-                <xui-select
-                  class="w-32 shrink-0"
-                  data-testid="export-set-size"
-                  title="The longest side this texture set's files are written at. The set keeps its own size."
-                  [ariaLabel]="'Export size of ' + set"
-                  [filterable]="false"
-                  [itemText]="setSizeName"
-                  [items]="setSizes()"
-                  [value]="setSizeOf(set)"
-                  (valueChange)="chooseSetSize(set, $event)"
-                />
-              </div>
             }
-          </section>
-        }
-
-        @if (chosen(); as info) {
-          <section class="well flex flex-col p-2" data-testid="export-files">
-            <div
-              class="text-foreground-muted grid grid-cols-[1.25rem_minmax(0,1fr)_11rem] gap-x-2 pb-1 text-xs font-medium"
-            >
-              <span></span>
-              <span>File</span>
-              <span>Format</span>
-            </div>
-            @for (file of info.files; track file.template) {
-              @let choice = choiceOf(file);
-              <div
-                class="grid grid-cols-[1.25rem_minmax(0,1fr)_11rem] items-center gap-x-2 py-0.5 text-xs"
-                data-testid="export-file"
-                [class.opacity-50]="!choice.enabled"
-              >
-                <input
-                  type="checkbox"
-                  data-testid="export-file-on"
-                  [attr.aria-label]="'Write ' + file.template"
-                  [checked]="choice.enabled"
-                  (change)="chooseFile(file, { enabled: !choice.enabled })"
-                />
-                <span class="min-w-0 truncate" [title]="mapsOf(file)">
-                  <span class="readout">{{ file.template }}</span>
-                  <span class="text-foreground-muted"> · {{ mapsOf(file) }}</span>
-                </span>
-                <xui-select
-                  class="w-full"
-                  data-testid="export-file-format"
-                  [ariaLabel]="'Format of ' + file.template"
-                  [filterable]="false"
-                  [itemText]="formatName"
-                  [items]="formatsFor(file)"
-                  [value]="choice.format"
-                  (valueChange)="chooseFile(file, { format: $event ?? file.format })"
-                />
-              </div>
-              @if (choice.enabled && (isContainer(choice.format) || choice.format === 'jpeg')) {
-                <div
-                  class="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-x-2 pb-1 text-xs"
-                  data-testid="export-file-options"
-                >
-                  <span></span>
-                  <span class="flex min-w-0 items-center gap-1.5">
-                    @if (isContainer(choice.format)) {
-                      <xui-select
-                        class="w-40"
-                        data-testid="export-file-compression"
-                        [ariaLabel]="'Compression of ' + file.template"
-                        [filterable]="false"
-                        [itemText]="compressionName"
-                        [items]="compressionsFor(file)"
-                        [value]="compressionOf(file, choice)"
-                        (valueChange)="chooseFile(file, { compression: $event ?? 'none' })"
-                      />
-                      @if (searched(compressionOf(file, choice))) {
-                        <xui-select
-                          class="w-28"
-                          data-testid="export-file-quality"
-                          [ariaLabel]="'Search of ' + file.template"
-                          [filterable]="false"
-                          [itemText]="qualityName"
-                          [items]="searches"
-                          [value]="qualityOf(file, choice)"
-                          (valueChange)="chooseFile(file, { quality: $event ?? 'balanced' })"
-                        />
-                      }
-                      <label class="flex items-center gap-1">
-                        <input
-                          type="checkbox"
-                          data-testid="export-file-mips"
-                          [attr.aria-label]="'Mips of ' + file.template"
-                          [checked]="choice.mips ?? file.mips"
-                          (change)="chooseFile(file, { mips: !(choice.mips ?? file.mips) })"
-                        />
-                        Mips
-                      </label>
-                    } @else {
-                      <span class="text-foreground-muted">Quality</span>
-                      <xui-slider
-                        class="w-28"
-                        labelStepSize="0"
-                        data-testid="export-file-jpeg"
-                        [attr.aria-label]="'JPEG quality of ' + file.template"
-                        [min]="1"
-                        [max]="100"
-                        [stepSize]="1"
-                        [value]="jpegQuality(file, choice)"
-                        (valueChange)="chooseFile(file, { quality: '' + $event })"
-                      />
-                      <span class="readout w-8 text-right">{{ jpegQuality(file, choice) }}</span>
-                    }
-                  </span>
-                  <button
-                    type="button"
-                    xuiButton
-                    size="sm"
-                    variant="ghost"
-                    data-testid="export-file-preview"
-                    [disabled]="!target()"
-                    [title]="'See what ' + formatName(choice.format) + ' does to this file'"
-                    (click)="previewing.set(file.template)"
-                  >
-                    See Compression
-                  </button>
-                </div>
-              }
-            }
-          </section>
-        }
-
-        @if (previewing(); as template) {
-          @if (target(); as project) {
-            <ptn-compression-view
-              [project]="project.path"
-              [projectId]="project.id"
-              [preset]="settings().preset ?? ''"
-              [file]="template"
-              [set]="previewSet()"
-              [options]="previewOptions()"
-              (closed)="previewing.set(null)"
-            />
-          }
-        }
-
-        @if (unsaved().length > 0) {
-          <xui-callout color="warning" compact data-testid="export-unsaved">
-            <span class="flex items-center gap-2">
-              <span class="min-w-0 flex-1">Export reads saved files, so {{ unsavedText() }}.</span>
-              <button
-                type="button"
-                xuiButton
-                size="sm"
-                data-testid="export-save-all"
-                (click)="project.saveTabs(unsaved())"
-              >
-                {{ unsaved().length === 1 ? 'Save' : 'Save All' }}
-              </button>
-            </span>
-          </xui-callout>
-        }
-
-        @if (paint.state(); as stack) {
-          <div class="flex items-center gap-2 text-xs" data-testid="export-document">
-            <span class="text-foreground-muted min-w-0 flex-1"
-              >Or write this document's maps as they are on screen, as PNG.</span
-            >
             <button
               type="button"
               xuiButton
               size="sm"
               variant="ghost"
-              data-testid="export-stack"
-              (click)="exportStack(stack.id)"
+              class="self-start"
+              data-testid="export-edit-presets"
+              (click)="editing.set(true)"
             >
-              Export Maps…
+              Edit Presets…
             </button>
-            @if (store.exported().length > 0) {
-              <span class="readout" data-testid="export-stack-done">{{ store.exported().length }} maps written</span>
-            }
-          </div>
-        }
+          </section>
 
-        @if (store.preview(); as preview) {
-          <div class="well grid grid-cols-[1fr_auto] gap-x-3 p-2 text-xs" data-testid="export-impact">
-            <span>Projects to touch</span>
-            <span class="readout" data-testid="export-impact-projects">{{ preview.projects }}</span>
-            <span>Maps to make</span>
-            <span class="readout" data-testid="export-impact-rebuilds">{{ preview.rebuilds }}</span>
-            <span>Of those, made once for several projects</span>
-            <span class="readout">{{ preview.shared }}</span>
-            <span>Up to date</span>
-            <span class="readout">{{ preview.fresh }}</span>
-            <span>Exports to write</span>
-            <span class="readout" data-testid="export-impact-exports">{{ preview.exports }}</span>
-            @if (preview.unresolved > 0) {
-              <span>Cannot be built</span>
-              <span class="readout">{{ preview.unresolved }}</span>
-            }
-          </div>
-          @if (preview.nothing; as nothing) {
-            <xui-callout color="warning" compact data-testid="export-nothing">{{ nothing }}</xui-callout>
-          }
-        }
-
-        @if (confirming()) {
-          <div class="well flex flex-col gap-2 p-2 text-xs" data-testid="export-confirm">
-            <span>
-              Export every project in the library through {{ chosen()?.name }}? It can take a while, and it replaces
-              what earlier exports wrote there.
+          <section class="flex flex-col gap-1.5">
+            <span class="text-foreground-muted text-xs font-medium">Output folder</span>
+            <span class="readout truncate text-xs" data-testid="export-folder" [title]="settings().folder ?? ''">
+              {{ settings().folder ?? 'The library’s exports folder' }}
             </span>
             <div class="flex gap-1">
-              <button
-                type="button"
-                xuiButton
-                size="sm"
-                color="primary"
-                data-testid="export-confirm-yes"
-                (click)="run()"
-              >
-                Export Library
+              <button type="button" xuiButton size="sm" data-testid="export-folder-choose" (click)="chooseFolder()">
+                Choose…
               </button>
-              <button type="button" xuiButton size="sm" variant="ghost" (click)="confirming.set(false)">Cancel</button>
+              @if (settings().folder) {
+                <button
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  variant="ghost"
+                  data-testid="export-folder-default"
+                  (click)="change({ folder: null })"
+                >
+                  Use Default
+                </button>
+              }
+              @if (revealable(); as path) {
+                <button
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  variant="ghost"
+                  data-testid="export-reveal"
+                  (click)="reveal(path)"
+                >
+                  Reveal
+                </button>
+              }
             </div>
-          </div>
-        }
+          </section>
 
-        <!-- As the Bake dialog's: what runs it is primary and last, at the right (#200). -->
-        <div class="flex justify-end gap-1">
-          @if (running()) {
-            <button type="button" xuiButton size="sm" variant="ghost" data-testid="export-cancel" (click)="cancel()">
-              Stop
-            </button>
-          }
-          <button type="button" xuiButton size="sm" data-testid="export-preview" [disabled]="!chosen()" (click)="ask()">
-            Preview
-          </button>
-          <button
-            type="button"
-            xuiButton
-            size="sm"
-            color="primary"
-            data-testid="export-start"
-            [disabled]="!chosen() || running() || nothingChosen()"
-            (click)="start()"
-          >
-            Export
-          </button>
+          <section class="flex flex-col gap-1.5">
+            <span class="text-foreground-muted text-xs font-medium">Size</span>
+            <div class="flex gap-1">
+              <xui-select
+                class="min-w-0 flex-1"
+                ariaLabel="Size"
+                data-testid="export-size"
+                [filterable]="false"
+                [itemText]="sizeName"
+                [items]="sizes()"
+                [value]="settings().size === null ? 'native' : '' + settings().size"
+                (valueChange)="chooseSize($event)"
+              />
+              <xui-select
+                class="min-w-0 flex-1"
+                ariaLabel="Resize filter"
+                data-testid="export-filter"
+                [disabled]="settings().size === null"
+                [filterable]="false"
+                [itemText]="filterName"
+                [items]="store.filters()"
+                [value]="settings().filter"
+                (valueChange)="change({ filter: $event ?? 'box' })"
+              />
+            </div>
+          </section>
+
+          <section class="flex flex-col gap-1.5">
+            <span class="text-foreground-muted text-xs font-medium">Padding</span>
+            <xui-select
+              class="w-full"
+              ariaLabel="Padding"
+              data-testid="export-padding"
+              [filterable]="false"
+              [itemText]="paddingName"
+              [items]="store.paddings()"
+              [value]="settings().padding"
+              (valueChange)="change({ padding: $event ?? 'none' })"
+            />
+            @if (distanced()) {
+              <div class="flex items-center gap-2">
+                <span class="text-foreground-muted w-16 shrink-0 text-xs">Distance</span>
+                <xui-slider
+                  class="min-w-0 flex-1"
+                  labelStepSize="0"
+                  [attr.aria-label]="'Padding distance'"
+                  data-testid="export-distance"
+                  [max]="64"
+                  [min]="0"
+                  [stepSize]="1"
+                  [value]="settings().distance"
+                  (valueChange)="change({ distance: $event })"
+                />
+                <span class="readout w-12 shrink-0 text-right text-xs" data-testid="export-distance-readout">
+                  {{ settings().distance }} px
+                </span>
+              </div>
+            }
+            @if (settings().padding === 'colour') {
+              <div class="flex items-center gap-2">
+                <span class="text-foreground-muted w-16 shrink-0 text-xs">Color</span>
+                <xui-color-picker showAlpha [value]="paddingHex()" (valueChange)="change({ colour: lanes($event) })" />
+              </div>
+            }
+            <span class="text-foreground-muted text-xs">
+              Fills what the mesh's layout leaves empty, so mips and filtering read the islands. A material with no mesh
+              has nothing to fill.
+            </span>
+          </section>
+
+          <section class="flex items-center justify-between gap-2">
+            <span
+              class="text-xs"
+              title="An 8-bit file rounds up as often as its value is past the level below, so gradients do not band"
+            >
+              Dither 8-bit files
+            </span>
+            <xui-switch
+              ariaLabel="Dither 8-bit files"
+              data-testid="export-dither"
+              [checked]="settings().dither"
+              (checkedChange)="change({ dither: $event })"
+            />
+          </section>
         </div>
 
-        @if (error(); as message) {
-          <xui-callout color="error" compact data-testid="export-error">{{ message }}</xui-callout>
-        }
-
-        @if (store.build(); as build) {
-          <div class="flex flex-col gap-1.5" data-testid="export-progress">
-            <div class="flex items-center gap-2 text-xs">
-              <span class="readout" data-testid="export-state">{{ stateName(build.state) }}</span>
-              <span class="text-foreground-muted min-w-0 flex-1 truncate" data-testid="export-current">
-                {{ running() ? (build.report?.current ?? '') : '' }}
-              </span>
-              <span class="readout" data-testid="export-percent">{{ percent() }}%</span>
-            </div>
-            <div
-              class="bg-surface-sunken h-1.5 overflow-hidden rounded-sm"
-              role="progressbar"
-              aria-label="Export progress"
-              [attr.aria-valuenow]="percent()"
-              aria-valuemin="0"
-              aria-valuemax="100"
-            >
-              <div class="bg-primary h-full" [style.width.%]="percent()"></div>
-            </div>
-          </div>
-          @if (build.error) {
-            <xui-callout color="error" compact data-testid="export-build-error">{{ build.error }}</xui-callout>
+        <div class="flex min-h-0 flex-col gap-2.5 overflow-y-auto">
+          @for (problem of store.problems(); track problem) {
+            <xui-callout color="warning" compact>{{ problem }}</xui-callout>
           }
-        }
 
-        @if (store.report(); as report) {
-          <div class="well grid grid-cols-[1fr_auto] gap-x-3 p-2 text-xs" data-testid="export-report">
-            <span>Projects touched</span>
-            <span class="readout" data-testid="export-report-projects">{{ report.projects }}</span>
-            <span>Built</span>
-            <span class="readout" data-testid="export-report-built">{{ report.built }}</span>
-            <span>Reused</span>
-            <span class="readout">{{ report.reused }}</span>
-            <span>Files written</span>
-            <span class="readout" data-testid="export-report-files">{{ report.files }}</span>
-            <span>Failed</span>
-            <span class="readout" data-testid="export-report-failed">{{ report.failed }}</span>
-          </div>
-          @if (report.nothing; as nothing) {
-            <xui-callout color="warning" compact data-testid="export-report-nothing">{{ nothing }}</xui-callout>
-          }
-          @for (done of store.projects(); track done.id) {
-            <div class="flex flex-col gap-1 text-xs" data-testid="export-report-project">
-              <span class="font-semibold">{{ done.name }}</span>
-              @for (output of done.outputs; track output.name) {
-                @if (output.error; as why) {
-                  <xui-callout color="error" compact data-testid="export-report-error">
-                    {{ output.name }}: {{ why }}
-                  </xui-callout>
-                }
+          @if (setNames().length > 0) {
+            <section class="well flex flex-col gap-1 p-2" data-testid="export-sets">
+              <div class="flex items-center gap-1">
+                <span class="text-foreground-muted min-w-0 flex-1 text-xs font-medium">Texture sets</span>
+                <button
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  variant="ghost"
+                  data-testid="export-sets-all"
+                  (click)="checkSets('all')"
+                >
+                  Check All
+                </button>
+                <button
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  variant="ghost"
+                  data-testid="export-sets-none"
+                  (click)="checkSets('none')"
+                >
+                  Uncheck All
+                </button>
+                <button
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  variant="ghost"
+                  data-testid="export-sets-invert"
+                  (click)="checkSets('invert')"
+                >
+                  Invert
+                </button>
+              </div>
+              @for (set of setNames(); track set) {
+                <div class="flex items-center gap-2 text-xs" data-testid="export-set">
+                  <label class="flex min-w-0 flex-1 items-center gap-2">
+                    <input
+                      type="checkbox"
+                      [attr.aria-label]="'Export ' + set"
+                      [checked]="!settings().skipped.includes(set)"
+                      (change)="toggleSet(set)"
+                    />
+                    <span class="truncate">{{ set }}</span>
+                  </label>
+                  <xui-select
+                    class="w-32 shrink-0"
+                    data-testid="export-set-size"
+                    title="The longest side this texture set's files are written at. The set keeps its own size."
+                    [ariaLabel]="'Export size of ' + set"
+                    [filterable]="false"
+                    [itemText]="setSizeName"
+                    [items]="setSizes()"
+                    [value]="setSizeOf(set)"
+                    (valueChange)="chooseSetSize(set, $event)"
+                  />
+                </div>
               }
-              @for (written of done.exports; track written.preset) {
-                <div class="flex items-center gap-2">
-                  <span class="text-foreground-muted min-w-0 flex-1 truncate" [title]="written.folder ?? ''">
-                    {{ presetName(written.preset) }}: {{ written.files.length }}
-                    {{ written.files.length === 1 ? 'file' : 'files' }},
-                    {{ statusName(written.status) }}
+            </section>
+          }
+
+          @if (chosen(); as info) {
+            <section class="well flex flex-col p-2" data-testid="export-files">
+              <div
+                class="text-foreground-muted grid grid-cols-[1.25rem_minmax(0,1fr)_11rem] gap-x-2 pb-1 text-xs font-medium"
+              >
+                <span></span>
+                <span>File</span>
+                <span>Format</span>
+              </div>
+              @for (file of info.files; track file.template) {
+                @let choice = choiceOf(file);
+                <div
+                  class="grid grid-cols-[1.25rem_minmax(0,1fr)_11rem] items-center gap-x-2 py-0.5 text-xs"
+                  data-testid="export-file"
+                  [class.opacity-50]="!choice.enabled"
+                >
+                  <input
+                    type="checkbox"
+                    data-testid="export-file-on"
+                    [attr.aria-label]="'Write ' + file.template"
+                    [checked]="choice.enabled"
+                    (change)="chooseFile(file, { enabled: !choice.enabled })"
+                  />
+                  <span class="min-w-0 truncate" [title]="mapsOf(file)">
+                    <span class="readout">{{ file.template }}</span>
+                    <span class="text-foreground-muted"> · {{ mapsOf(file) }}</span>
                   </span>
-                  @if (written.folder) {
+                  <xui-select
+                    class="w-full"
+                    data-testid="export-file-format"
+                    [ariaLabel]="'Format of ' + file.template"
+                    [filterable]="false"
+                    [itemText]="formatName"
+                    [items]="formatsFor(file)"
+                    [value]="choice.format"
+                    (valueChange)="chooseFile(file, { format: $event ?? file.format })"
+                  />
+                </div>
+                @if (choice.enabled && (isContainer(choice.format) || choice.format === 'jpeg')) {
+                  <div
+                    class="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-x-2 pb-1 text-xs"
+                    data-testid="export-file-options"
+                  >
+                    <span></span>
+                    <span class="flex min-w-0 items-center gap-1.5">
+                      @if (isContainer(choice.format)) {
+                        <xui-select
+                          class="w-40"
+                          data-testid="export-file-compression"
+                          [ariaLabel]="'Compression of ' + file.template"
+                          [filterable]="false"
+                          [itemText]="compressionName"
+                          [items]="compressionsFor(file)"
+                          [value]="compressionOf(file, choice)"
+                          (valueChange)="chooseFile(file, { compression: $event ?? 'none' })"
+                        />
+                        @if (searched(compressionOf(file, choice))) {
+                          <xui-select
+                            class="w-28"
+                            data-testid="export-file-quality"
+                            [ariaLabel]="'Search of ' + file.template"
+                            [filterable]="false"
+                            [itemText]="qualityName"
+                            [items]="searches"
+                            [value]="qualityOf(file, choice)"
+                            (valueChange)="chooseFile(file, { quality: $event ?? 'balanced' })"
+                          />
+                        }
+                        <label class="flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            data-testid="export-file-mips"
+                            [attr.aria-label]="'Mips of ' + file.template"
+                            [checked]="choice.mips ?? file.mips"
+                            (change)="chooseFile(file, { mips: !(choice.mips ?? file.mips) })"
+                          />
+                          Mips
+                        </label>
+                      } @else {
+                        <span class="text-foreground-muted">Quality</span>
+                        <xui-slider
+                          class="w-28"
+                          labelStepSize="0"
+                          data-testid="export-file-jpeg"
+                          [attr.aria-label]="'JPEG quality of ' + file.template"
+                          [min]="1"
+                          [max]="100"
+                          [stepSize]="1"
+                          [value]="jpegQuality(file, choice)"
+                          (valueChange)="chooseFile(file, { quality: '' + $event })"
+                        />
+                        <span class="readout w-8 text-right">{{ jpegQuality(file, choice) }}</span>
+                      }
+                    </span>
                     <button
                       type="button"
                       xuiButton
                       size="sm"
                       variant="ghost"
-                      data-testid="export-report-reveal"
-                      (click)="reveal(written.folder)"
+                      data-testid="export-file-preview"
+                      [disabled]="!target()"
+                      [title]="'See what ' + formatName(choice.format) + ' does to this file'"
+                      (click)="previewing.set(file.template)"
                     >
-                      Reveal
+                      See Compression
                     </button>
-                  }
-                </div>
-                @if (written.error; as why) {
-                  <xui-callout color="error" compact data-testid="export-report-error">
-                    {{ presetName(written.preset) }}: {{ why }}
-                  </xui-callout>
+                  </div>
                 }
-                @for (file of written.skipped; track file) {
-                  <span class="text-foreground-muted truncate" data-testid="export-report-skipped" [title]="file">
-                    Left out, no map for it: {{ file }}
-                  </span>
-                }
-                @for (warning of written.warnings; track warning) {
-                  <span class="text-foreground-muted truncate" [title]="warning">{{ warning }}</span>
-                }
+              }
+            </section>
+          }
+
+          @if (previewing(); as template) {
+            @if (target(); as project) {
+              <ptn-compression-view
+                [project]="project.path"
+                [projectId]="project.id"
+                [preset]="settings().preset ?? ''"
+                [file]="template"
+                [set]="previewSet()"
+                [options]="previewOptions()"
+                (closed)="previewing.set(null)"
+              />
+            }
+          }
+
+          @if (unsaved().length > 0) {
+            <xui-callout color="warning" compact data-testid="export-unsaved">
+              <span class="flex items-center gap-2">
+                <span class="min-w-0 flex-1">Export reads saved files, so {{ unsavedText() }}.</span>
+                <button
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  data-testid="export-save-all"
+                  (click)="project.saveTabs(unsaved())"
+                >
+                  {{ unsaved().length === 1 ? 'Save' : 'Save All' }}
+                </button>
+              </span>
+            </xui-callout>
+          }
+
+          @if (paint.state(); as stack) {
+            <div class="flex items-center gap-2 text-xs" data-testid="export-document">
+              <span class="text-foreground-muted min-w-0 flex-1"
+                >Or write this document's maps as they are on screen, as PNG.</span
+              >
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                variant="ghost"
+                data-testid="export-stack"
+                (click)="exportStack(stack.id)"
+              >
+                Export Maps…
+              </button>
+              @if (store.exported().length > 0) {
+                <span class="readout" data-testid="export-stack-done">{{ store.exported().length }} maps written</span>
               }
             </div>
           }
-          @if (store.projectCount() > store.projects().length) {
-            <span class="text-foreground-muted text-xs">
-              {{ store.projectCount() - store.projects().length }} more in {{ report.folder }}
-            </span>
+
+          @if (store.preview(); as preview) {
+            <div class="well grid grid-cols-[1fr_auto] gap-x-3 p-2 text-xs" data-testid="export-impact">
+              <span>Projects to touch</span>
+              <span class="readout" data-testid="export-impact-projects">{{ preview.projects }}</span>
+              <span>Maps to make</span>
+              <span class="readout" data-testid="export-impact-rebuilds">{{ preview.rebuilds }}</span>
+              <span>Of those, made once for several projects</span>
+              <span class="readout">{{ preview.shared }}</span>
+              <span>Up to date</span>
+              <span class="readout">{{ preview.fresh }}</span>
+              <span>Exports to write</span>
+              <span class="readout" data-testid="export-impact-exports">{{ preview.exports }}</span>
+              @if (preview.unresolved > 0) {
+                <span>Cannot be built</span>
+                <span class="readout">{{ preview.unresolved }}</span>
+              }
+            </div>
+            @if (preview.nothing; as nothing) {
+              <xui-callout color="warning" compact data-testid="export-nothing">{{ nothing }}</xui-callout>
+            }
           }
-        }
+
+          @if (confirming()) {
+            <div class="well flex flex-col gap-2 p-2 text-xs" data-testid="export-confirm">
+              <span>
+                Export every project in the library through {{ chosen()?.name }}? It can take a while, and it replaces
+                what earlier exports wrote there.
+              </span>
+              <div class="flex gap-1">
+                <button
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  color="primary"
+                  data-testid="export-confirm-yes"
+                  (click)="run()"
+                >
+                  Export Library
+                </button>
+                <button type="button" xuiButton size="sm" variant="ghost" (click)="confirming.set(false)">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          }
+
+          <!-- As the Bake dialog's: what runs it is primary and last, at the right (#200). -->
+          <div class="flex justify-end gap-1">
+            @if (running()) {
+              <button type="button" xuiButton size="sm" variant="ghost" data-testid="export-cancel" (click)="cancel()">
+                Stop
+              </button>
+            }
+            <button
+              type="button"
+              xuiButton
+              size="sm"
+              data-testid="export-preview"
+              [disabled]="!chosen()"
+              (click)="ask()"
+            >
+              Preview
+            </button>
+            <button
+              type="button"
+              xuiButton
+              size="sm"
+              color="primary"
+              data-testid="export-start"
+              [disabled]="!chosen() || running() || nothingChosen()"
+              (click)="start()"
+            >
+              Export
+            </button>
+          </div>
+
+          @if (error(); as message) {
+            <xui-callout color="error" compact data-testid="export-error">{{ message }}</xui-callout>
+          }
+
+          @if (store.build(); as build) {
+            <div class="flex flex-col gap-1.5" data-testid="export-progress">
+              <div class="flex items-center gap-2 text-xs">
+                <span class="readout" data-testid="export-state">{{ stateName(build.state) }}</span>
+                <span class="text-foreground-muted min-w-0 flex-1 truncate" data-testid="export-current">
+                  {{ running() ? (build.report?.current ?? '') : '' }}
+                </span>
+                <span class="readout" data-testid="export-percent">{{ percent() }}%</span>
+              </div>
+              <div
+                class="bg-surface-sunken h-1.5 overflow-hidden rounded-sm"
+                role="progressbar"
+                aria-label="Export progress"
+                [attr.aria-valuenow]="percent()"
+                aria-valuemin="0"
+                aria-valuemax="100"
+              >
+                <div class="bg-primary h-full" [style.width.%]="percent()"></div>
+              </div>
+            </div>
+            @if (build.error) {
+              <xui-callout color="error" compact data-testid="export-build-error">{{ build.error }}</xui-callout>
+            }
+          }
+
+          @if (store.report(); as report) {
+            <div class="well grid grid-cols-[1fr_auto] gap-x-3 p-2 text-xs" data-testid="export-report">
+              <span>Projects touched</span>
+              <span class="readout" data-testid="export-report-projects">{{ report.projects }}</span>
+              <span>Built</span>
+              <span class="readout" data-testid="export-report-built">{{ report.built }}</span>
+              <span>Reused</span>
+              <span class="readout">{{ report.reused }}</span>
+              <span>Files written</span>
+              <span class="readout" data-testid="export-report-files">{{ report.files }}</span>
+              <span>Failed</span>
+              <span class="readout" data-testid="export-report-failed">{{ report.failed }}</span>
+            </div>
+            @if (report.nothing; as nothing) {
+              <xui-callout color="warning" compact data-testid="export-report-nothing">{{ nothing }}</xui-callout>
+            }
+            @for (done of store.projects(); track done.id) {
+              <div class="flex flex-col gap-1 text-xs" data-testid="export-report-project">
+                <span class="font-semibold">{{ done.name }}</span>
+                @for (output of done.outputs; track output.name) {
+                  @if (output.error; as why) {
+                    <xui-callout color="error" compact data-testid="export-report-error">
+                      {{ output.name }}: {{ why }}
+                    </xui-callout>
+                  }
+                }
+                @for (written of done.exports; track written.preset) {
+                  <div class="flex items-center gap-2">
+                    <span class="text-foreground-muted min-w-0 flex-1 truncate" [title]="written.folder ?? ''">
+                      {{ presetName(written.preset) }}: {{ written.files.length }}
+                      {{ written.files.length === 1 ? 'file' : 'files' }},
+                      {{ statusName(written.status) }}
+                    </span>
+                    @if (written.folder) {
+                      <button
+                        type="button"
+                        xuiButton
+                        size="sm"
+                        variant="ghost"
+                        data-testid="export-report-reveal"
+                        (click)="reveal(written.folder)"
+                      >
+                        Reveal
+                      </button>
+                    }
+                  </div>
+                  @if (written.error; as why) {
+                    <xui-callout color="error" compact data-testid="export-report-error">
+                      {{ presetName(written.preset) }}: {{ why }}
+                    </xui-callout>
+                  }
+                  @for (file of written.skipped; track file) {
+                    <span class="text-foreground-muted truncate" data-testid="export-report-skipped" [title]="file">
+                      Left out, no map for it: {{ file }}
+                    </span>
+                  }
+                  @for (warning of written.warnings; track warning) {
+                    <span class="text-foreground-muted truncate" [title]="warning">{{ warning }}</span>
+                  }
+                }
+              </div>
+            }
+            @if (store.projectCount() > store.projects().length) {
+              <span class="text-foreground-muted text-xs">
+                {{ store.projectCount() - store.projects().length }} more in {{ report.folder }}
+              </span>
+            }
+          }
+        </div>
       </div>
-    </div>
     }
   `
 })

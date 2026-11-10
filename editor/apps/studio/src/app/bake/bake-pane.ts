@@ -41,8 +41,7 @@ const Maps: readonly { name: string; about: string }[] = [
   { name: 'id', about: 'A flat color per material, part or shell, for masks.' },
   {
     name: 'colour',
-    about:
-      'The high mesh’s color carried onto the low mesh, or any picture moved from its UV layout to the low mesh’s.'
+    about: 'The high mesh’s color carried onto the low mesh, or any picture moved from its UV layout to the low mesh’s.'
   }
 ];
 const RoundedEdges = [

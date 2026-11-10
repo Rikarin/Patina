@@ -1012,8 +1012,7 @@ export class ProjectStore {
    */
   private async closeSession(tab: DocumentTab, discard: boolean): Promise<void> {
     const id =
-      tab.session ??
-      (await (isGraph(tab) ? this.graph.sessionOpened(tab.path) : this.paint.sessionOpened(tab.path)));
+      tab.session ?? (await (isGraph(tab) ? this.graph.sessionOpened(tab.path) : this.paint.sessionOpened(tab.path)));
     if (id === null) {
       return;
     }

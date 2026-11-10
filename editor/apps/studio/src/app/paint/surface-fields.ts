@@ -203,7 +203,10 @@ const Samplings: readonly { value: string; label: string }[] = [
             (valueChange)="setPath({ hardness: $event })"
           />
         </div>
-        <div class="flex items-center gap-2" title="Lays the fill's picture along the path, rather than showing it through">
+        <div
+          class="flex items-center gap-2"
+          title="Lays the fill's picture along the path, rather than showing it through"
+        >
           <span class="text-foreground-muted w-16 shrink-0 text-xs">Ribbon</span>
           <xui-switch
             ariaLabel="Lay the picture along the path"

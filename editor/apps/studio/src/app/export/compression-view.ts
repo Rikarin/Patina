@@ -38,8 +38,8 @@ type Picture = 'source' | 'written' | 'difference';
         <span class="readout">{{ file() }}</span>
         @if (info(); as shown) {
           <span class="text-foreground-muted">
-            · {{ shown.compression === 'none' ? shown.format : compressionLabel(shown) }} ·
-            {{ shown.width }} × {{ shown.height }}
+            · {{ shown.compression === 'none' ? shown.format : compressionLabel(shown) }} · {{ shown.width }} ×
+            {{ shown.height }}
           </span>
         }
       </span>
@@ -106,7 +106,9 @@ type Picture = 'source' | 'written' | 'difference';
     @if (unbuilt()) {
       <xui-callout color="warning" compact data-testid="compression-unbuilt">
         <span class="flex items-center gap-2">
-          <span class="min-w-0 flex-1">The maps are not built as they are now, so there is nothing to compress yet.</span>
+          <span class="min-w-0 flex-1"
+            >The maps are not built as they are now, so there is nothing to compress yet.</span
+          >
           <button type="button" xuiButton size="sm" data-testid="compression-build" (click)="buildMaps()">
             Build Maps
           </button>
