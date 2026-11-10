@@ -89,6 +89,7 @@ public static class Terms {
         ["brush"] = "Brushes",
         ["empty"] = "Empty Graphs",
         ["shipped"] = "Starter",
+        ["package"] = "Packages",
         ["project"] = "This project",
         ["library"] = "Other projects"
     };

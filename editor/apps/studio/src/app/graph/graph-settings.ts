@@ -12,6 +12,7 @@ import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
+import { Commands } from '../core/commands';
 import { choiceName, kindName } from '../core/labels';
 import { SystemStatus } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
@@ -555,6 +556,86 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
       </div>
     </div>
 
+    <p class="section-label mt-4 mb-1">About</p>
+    @let info = document?.info;
+    <div class="flex flex-col gap-2.5" data-testid="graph-about">
+      <div class="flex flex-col gap-1">
+        <span class="text-foreground-muted text-xs">Description</span>
+        <textarea
+          class="h-16 w-full"
+          xuiInput
+          aria-label="Description"
+          data-testid="about-description"
+          title="What the graph makes and how it is meant to be used. A package and the shelf show it."
+          [disabled]="!store.editable()"
+          [value]="info?.description ?? ''"
+          (change)="store.describe({ description: valueOf($event) })"
+        ></textarea>
+      </div>
+      <div class="flex flex-col gap-1">
+        <span class="text-foreground-muted text-xs">Author</span>
+        <input
+          xuiInput
+          size="sm"
+          aria-label="Author"
+          data-testid="about-author"
+          [disabled]="!store.editable()"
+          [value]="info?.author ?? ''"
+          (change)="store.describe({ author: valueOf($event) })"
+        />
+      </div>
+      <div class="flex flex-col gap-1">
+        <span class="text-foreground-muted text-xs">Tags</span>
+        <input
+          xuiInput
+          size="sm"
+          aria-label="Tags"
+          data-testid="about-tags"
+          placeholder="metal, rust"
+          title="Words the graph carries wherever it goes, into a package too. The shelf finds it by them, and by the project’s own tags for it."
+          [disabled]="!store.editable()"
+          [value]="(info?.tags ?? []).join(', ')"
+          (change)="store.describe({ tags: tagsOf($event) })"
+        />
+      </div>
+      <div class="flex flex-col gap-1" data-testid="about-physical-size">
+        <span class="text-foreground-muted text-xs">Physical size, in centimetres</span>
+        <div class="flex items-center gap-1">
+          <xui-numeric-input
+            class="min-w-0 flex-1"
+            size="sm"
+            ariaLabel="Physical width"
+            [disabled]="!store.editable()"
+            [min]="0"
+            [value]="info?.physicalWidth ?? 0"
+            (valueChange)="setPhysical($event, info?.physicalHeight ?? $event)"
+          />
+          <span class="text-foreground-muted text-xs">×</span>
+          <xui-numeric-input
+            class="min-w-0 flex-1"
+            size="sm"
+            ariaLabel="Physical height"
+            [disabled]="!store.editable()"
+            [min]="0"
+            [value]="info?.physicalHeight ?? 0"
+            (valueChange)="setPhysical(info?.physicalWidth ?? $event, $event)"
+          />
+        </div>
+        <p class="text-foreground-muted text-xs">How much of the world one tile covers. Zero says nothing.</p>
+      </div>
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        data-testid="about-publish"
+        [title]="commands.tooltip('publishPackage')"
+        [disabled]="!commands.enabled('publishPackage')"
+        (click)="commands.run('publishPackage')"
+      >
+        Publish as Package…
+      </button>
+    </div>
+
     @if (isCompound()) {
       <p class="section-label mt-4 mb-1">Interface</p>
       <div class="flex flex-col gap-1.5">
@@ -680,6 +761,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
 })
 export class GraphSettings {
   protected readonly store = inject(GraphStore);
+  protected readonly commands = inject(Commands);
   private readonly project = inject(ProjectStore);
   private readonly status = inject(SystemStatus);
   protected readonly kinds = Kinds;
@@ -779,6 +861,27 @@ export class GraphSettings {
     if (value !== null && value !== this.bitDepth()) {
       this.store.setSetting('bitDepth', value);
     }
+  }
+
+  /** Tags as a person types them, separated by commas. The Server drops blanks and repeats. */
+  protected tagsOf(event: Event): string[] {
+    return this.valueOf(event)
+      .split(',')
+      .map(tag => tag.trim())
+      .filter(tag => tag !== '');
+  }
+
+  /** A physical size is a width and a height together, both above zero, or both zero for none. */
+  protected setPhysical(width: number | null, height: number | null): void {
+    const [w, h] = [width ?? 0, height ?? 0];
+    const info = this.store.document()?.info;
+    if (w === (info?.physicalWidth ?? 0) && h === (info?.physicalHeight ?? 0)) {
+      return;
+    }
+
+    this.store.describe(
+      w > 0 && h > 0 ? { physicalWidth: w, physicalHeight: h } : { physicalWidth: 0, physicalHeight: 0 }
+    );
   }
 
   protected addPort(direction: string): void {

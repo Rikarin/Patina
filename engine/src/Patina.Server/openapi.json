@@ -3111,7 +3111,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "What a project\u0027s layers can be filled with. A search keeps those with every word in their name, type, kind, origin, project or path, wherever they are from.",
+        "summary": "What a project\u0027s layers can be filled with. A search keeps those with every word in their name, tags, type, kind, origin, project or path, wherever they are from.",
         "operationId": "GetMaterials",
         "parameters": [
           {
@@ -3504,6 +3504,135 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BrushPresetInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/packages/plan": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "What publishing a saved graph as a package would bring: its project\u0027s compounds, the shipped ones it reads, its pictures, and anything that stops it, with what compiling it said.",
+        "operationId": "GetPackagePlan",
+        "parameters": [
+          {
+            "name": "graph",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackagePlan"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/packages": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Publishes a saved graph as a package in the library\u0027s packages folder, replacing one of its name. Every project\u0027s shelf then offers it.",
+        "operationId": "PublishPackage",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackagePublished"
                 }
               }
             }
@@ -9831,6 +9960,9 @@
           },
           {
             "$ref": "#/components/schemas/GraphCommandGraphApplyPreset"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCommandGraphSetInfo"
           }
         ],
         "description": "One edit. Commands in a batch run in order, and every command sees the ones before it.",
@@ -9862,7 +9994,8 @@
             "arrange": "#/components/schemas/GraphCommandGraphArrange",
             "savePreset": "#/components/schemas/GraphCommandGraphSavePreset",
             "removePreset": "#/components/schemas/GraphCommandGraphRemovePreset",
-            "applyPreset": "#/components/schemas/GraphCommandGraphApplyPreset"
+            "applyPreset": "#/components/schemas/GraphCommandGraphApplyPreset",
+            "setInfo": "#/components/schemas/GraphCommandGraphSetInfo"
           }
         }
       },
@@ -10469,6 +10602,60 @@
         },
         "description": "Changes a group: anything left null stays as it is."
       },
+      "GraphCommandGraphSetInfo": {
+        "required": [
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "enum": [
+              "setInfo"
+            ],
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What it makes and how it is meant to be used."
+          },
+          "author": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Who made it."
+          },
+          "tags": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Words to find it by. Blank and repeated words are dropped, ignoring case."
+          },
+          "physicalWidth": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "The width one tile stands for, in centimetres. Zero, with PhysicalHeight zero, says nothing.",
+            "format": "float"
+          },
+          "physicalHeight": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Its height, the same way. The two are set together.",
+            "format": "float"
+          }
+        },
+        "description": "Changes what the graph says about itself: anything left null stays as it is."
+      },
       "GraphCommandGraphSetParameter": {
         "required": [
           "name",
@@ -10902,6 +11089,17 @@
               "$ref": "#/components/schemas/GraphPresetState"
             },
             "description": "The whole list of presets, or null when it did not change."
+          },
+          "info": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What the graph says about itself, or null when it did not change.",
+                "$ref": "#/components/schemas/GraphInfoState"
+              }
+            ]
           }
         },
         "description": "What changed in the document, the same for an edit, an undo and a redo."
@@ -11344,6 +11542,48 @@
           }
         },
         "description": "Asks for a node\u0027s picture at the size the graph computes it."
+      },
+      "GraphInfoState": {
+        "required": [
+          "description",
+          "author",
+          "tags"
+        ],
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "What it makes and how it is meant to be used."
+          },
+          "author": {
+            "type": "string",
+            "description": "Who made it."
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Words to find it by, beyond its name."
+          },
+          "physicalWidth": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "The width one tile stands for in the world, in centimetres, or null when unsaid.",
+            "format": "float"
+          },
+          "physicalHeight": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Its height, the same way.",
+            "format": "float"
+          }
+        },
+        "description": "What a graph says about itself to whoever finds it on a shelf or in a package. Nothing it says changes what the\ngraph makes."
       },
       "GraphInterfacePort": {
         "required": [
@@ -11841,7 +12081,8 @@
           "previews",
           "repairs",
           "settled",
-          "readOnly"
+          "readOnly",
+          "info"
         ],
         "type": "object",
         "properties": {
@@ -11959,7 +12200,11 @@
           },
           "readOnly": {
             "type": "boolean",
-            "description": "True when this graph cannot be edited or saved: a compound that ships with Patina."
+            "description": "True when this graph cannot be edited or saved: a compound that ships with Patina, or a package\u0027s graph."
+          },
+          "info": {
+            "description": "What it says about itself: a description, an author, tags and a physical size.",
+            "$ref": "#/components/schemas/GraphInfoState"
           }
         },
         "description": "The reply to \u0060GET /api/v1/graphs/{id}\u0060: the whole document as the Server holds it."
@@ -12513,7 +12758,7 @@
           },
           "origin": {
             "type": "string",
-            "description": "\u0060shipped\u0060, \u0060project\u0060, or \u0060library\u0060 for another project."
+            "description": "\u0060shipped\u0060, \u0060project\u0060, \u0060library\u0060 for another project, or \u0060package\u0060 for one of the library\u0027s\n            packages (ADR 0027)."
           },
           "channels": {
             "type": "array",
@@ -12538,6 +12783,23 @@
               "string"
             ],
             "description": "The project it lives in, when that is another one."
+          },
+          "tags": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "The words its graph is tagged with, which a search also matches."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What its graph says it makes, or null when it says nothing."
           }
         },
         "description": "Something a layer can be filled with (ADR 0012)."
@@ -12791,6 +13053,214 @@
           }
         },
         "description": "One output in a project\u0027s report."
+      },
+      "PackageCompound": {
+        "required": [
+          "type",
+          "from"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Its node type inside the package, under \u0060Packages/\u0026lt;name\u0026gt;/\u0060."
+          },
+          "from": {
+            "type": "string",
+            "description": "What it was called in the folder it came from."
+          }
+        },
+        "description": "A compound a package carries."
+      },
+      "PackageDependency": {
+        "required": [
+          "kind",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "\u0060compound\u0060 (a graph of its project\u0027s, which the package carries), \u0060shipped\u0060 (a compound that ships\n            with Patina, which it does not), \u0060picture\u0060 (a bitmap, which it carries), or \u0060unknown\u0060 (a node type\n            nothing publishes)."
+          },
+          "name": {
+            "type": "string",
+            "description": "The node type, or the picture as the graph names it."
+          },
+          "file": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Where it was found, below the library when it is in one, or null when it was not."
+          },
+          "problem": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why it cannot be brought, or null when it can."
+          }
+        },
+        "description": "Something a graph reads that publishing it as a package has to bring, or cannot."
+      },
+      "PackageFile": {
+        "required": [
+          "path",
+          "from"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Where it is in the package, below \u0060files/\u0060, named by its content."
+          },
+          "from": {
+            "type": "string",
+            "description": "How the graph named it before it was published."
+          }
+        },
+        "description": "A picture a package carries."
+      },
+      "PackageManifest": {
+        "required": [
+          "format",
+          "name",
+          "graph",
+          "role",
+          "writer",
+          "compounds",
+          "shipped",
+          "files"
+        ],
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "integer",
+            "description": "The shape of the package. A reader refuses one newer than it knows.",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "What the package is called, which is its folder\u0027s and its graph\u0027s name."
+          },
+          "graph": {
+            "type": "string",
+            "description": "The graph\u0027s file, beside this one."
+          },
+          "role": {
+            "type": "string",
+            "description": "What it is used as: \u0060material\u0060, \u0060mask\u0060, \u0060filter\u0060 or \u0060brush\u0060."
+          },
+          "writer": {
+            "type": "string",
+            "description": "The Patina that published it, as \u0060Patina 0.9.0\u0060."
+          },
+          "compounds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PackageCompound"
+            },
+            "description": "The compounds it carries under \u0060Compounds/\u0060, and what each was called before."
+          },
+          "shipped": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The compounds it reads from those that ship with Patina, which it does not carry."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PackageFile"
+            },
+            "description": "The pictures it carries under \u0060files/\u0060, and how the graph named each."
+          }
+        },
+        "description": "A package\u0027s \u0060package.yaml\u0060 (ADR 0027): what a \u0060.ptpkg\u0060 folder holds besides its graph, and what made\nit. The graph\u0027s own file holds its parameters, presets and what it says about itself, so this repeats none of\nthem."
+      },
+      "PackagePlan": {
+        "required": [
+          "name",
+          "role",
+          "path",
+          "replaces",
+          "dependencies",
+          "diagnostics"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The package\u0027s name."
+          },
+          "role": {
+            "type": "string",
+            "description": "What it would be used as."
+          },
+          "path": {
+            "type": "string",
+            "description": "Where it would be written, below the library."
+          },
+          "replaces": {
+            "type": "boolean",
+            "description": "True when a package of that name is there already, and publishing replaces it."
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PackageDependency"
+            },
+            "description": "What it reads. Publishing is refused while any has a problem."
+          },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphDiagnostic"
+            },
+            "description": "What compiling it said; an error refuses it too."
+          }
+        },
+        "description": "What publishing a graph as a package would do, for a dialog to show before it does."
+      },
+      "PackagePublished": {
+        "required": [
+          "path",
+          "manifest"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Its folder, below the library."
+          },
+          "manifest": {
+            "description": "What its \u0060package.yaml\u0060 says.",
+            "$ref": "#/components/schemas/PackageManifest"
+          }
+        },
+        "description": "A package that has been written."
+      },
+      "PackageRequest": {
+        "required": [
+          "graph"
+        ],
+        "type": "object",
+        "properties": {
+          "graph": {
+            "type": "string",
+            "description": "The graph as it is saved: absolute, or below the library."
+          },
+          "role": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What it is used as, or null for the role its project gives it."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/packages\u0060."
       },
       "ProblemDetails": {
         "type": "object",

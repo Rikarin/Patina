@@ -13,6 +13,8 @@ import {
   type GraphSettingDefinition,
   type GraphState,
   type HistoryList,
+  type PackagePlan,
+  type PackagePublished,
   type PatinaClient,
   unwrap
 } from '@patina/api-client';
@@ -936,6 +938,40 @@ export class GraphStore {
 
   removePreset(name: string): void {
     void this.apply([{ op: 'removePreset', name }], null);
+  }
+
+  /**
+   * Changes what the graph says about itself: its description, author, tags and physical size. Anything left out stays,
+   * and nothing evaluates (ADR 0027).
+   */
+  describe(change: {
+    description?: string;
+    author?: string;
+    tags?: string[];
+    physicalWidth?: number;
+    physicalHeight?: number;
+  }): void {
+    void this.apply([{ op: 'setInfo', ...change }], null);
+  }
+
+  /** What publishing the graph as saved would bring into a package, and what stops it. */
+  async packagePlan(): Promise<PackagePlan> {
+    const graph = this.mutableDocument()?.path;
+    if (graph === undefined) {
+      throw new Error('No graph is open.');
+    }
+
+    return unwrap(await this.api().GET('/api/v1/library/packages/plan', { params: { query: { graph } } }));
+  }
+
+  /** Publishes the graph as saved into the library's packages, where every shelf offers it. */
+  async publishPackage(role: string): Promise<PackagePublished> {
+    const graph = this.mutableDocument()?.path;
+    if (graph === undefined) {
+      throw new Error('No graph is open.');
+    }
+
+    return unwrap(await this.api().POST('/api/v1/library/packages', { body: { graph, role } }));
   }
 
   /** Sets a compound node's settings to one of its compound's presets, as one undo step. */

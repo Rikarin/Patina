@@ -20,7 +20,7 @@ static class MaterialEndpoints {
         library.MapGet("/materials", GetMaterials)
             .Described(
                 "GetMaterials",
-                "What a project's layers can be filled with. A search keeps those with every word in their name, "
+                "What a project's layers can be filled with. A search keeps those with every word in their name, tags, "
                 + "type, kind, origin, project or path, wherever they are from."
             );
 

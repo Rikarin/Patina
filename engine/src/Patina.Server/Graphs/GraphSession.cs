@@ -156,7 +156,8 @@ public sealed class GraphSession : FollowedSession<GraphEvent>, IFileSession {
                     [..editor.Repairs.Select(GraphDocuments.Diagnostic)],
                     evaluation,
                     settled,
-                    ReadOnly
+                    ReadOnly,
+                    GraphDocuments.Info(document)
                 );
             }
         }

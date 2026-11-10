@@ -26,3 +26,4 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0021](0021-decals-and-paths.md): accepted: a decal and a path are a fill's projection, kept as numbers and evaluated, never stamped.
 - [0023](0023-bake-shading.md): accepted: a bake shades its texture set beneath its layers, and a set says when its bake no longer fits its mesh or its UV set.
 - [0025](0025-stroke-control.md): accepted: a stroke carries the last one on from where its brush stood, a brush is pictured at a size of its own, and a material brush lays its maps as a fill does.
+- [0027](0027-packages.md): accepted: a package is a folder of text that evaluates where it is put, and a graph says what it is about in its own file.

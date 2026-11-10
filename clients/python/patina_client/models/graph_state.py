@@ -18,6 +18,7 @@ if TYPE_CHECKING:
   from ..models.graph_evaluation import GraphEvaluation
   from ..models.graph_group_state import GraphGroupState
   from ..models.graph_history_state import GraphHistoryState
+  from ..models.graph_info_state import GraphInfoState
   from ..models.graph_interface_port import GraphInterfacePort
   from ..models.graph_node_state import GraphNodeState
   from ..models.graph_preset_state import GraphPresetState
@@ -55,7 +56,11 @@ class GraphState:
             previews (list[GraphPreview]): The newest preview of each node.
             repairs (list[GraphDiagnostic]): What reading the file had to drop or fix.
             settled (int): The newest revision with nothing left to evaluate. Below Revision, evaluation is behind.
-            read_only (bool): True when this graph cannot be edited or saved: a compound that ships with Patina.
+            read_only (bool): True when this graph cannot be edited or saved: a compound that ships with Patina, or a
+                package's graph.
+            info (GraphInfoState): What a graph says about itself to whoever finds it on a shelf or in a package. Nothing it
+                says changes what the
+                graph makes.
             evaluation (GraphEvaluation | None | Unset):
      """
 
@@ -77,6 +82,7 @@ class GraphState:
     repairs: list[GraphDiagnostic]
     settled: int
     read_only: bool
+    info: GraphInfoState
     evaluation: GraphEvaluation | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -91,6 +97,7 @@ class GraphState:
         from ..models.graph_evaluation import GraphEvaluation # noqa: PLC0415
         from ..models.graph_group_state import GraphGroupState # noqa: PLC0415
         from ..models.graph_history_state import GraphHistoryState # noqa: PLC0415
+        from ..models.graph_info_state import GraphInfoState # noqa: PLC0415
         from ..models.graph_interface_port import GraphInterfacePort # noqa: PLC0415
         from ..models.graph_node_state import GraphNodeState # noqa: PLC0415
         from ..models.graph_preset_state import GraphPresetState # noqa: PLC0415
@@ -178,6 +185,8 @@ class GraphState:
 
         read_only = self.read_only
 
+        info = self.info.to_dict()
+
         evaluation: dict[str, Any] | None | Unset
         if isinstance(self.evaluation, Unset):
             evaluation = UNSET
@@ -208,6 +217,7 @@ class GraphState:
             "repairs": repairs,
             "settled": settled,
             "readOnly": read_only,
+            "info": info,
         })
         if evaluation is not UNSET:
             field_dict["evaluation"] = evaluation
@@ -224,6 +234,7 @@ class GraphState:
         from ..models.graph_evaluation import GraphEvaluation # noqa: PLC0415
         from ..models.graph_group_state import GraphGroupState # noqa: PLC0415
         from ..models.graph_history_state import GraphHistoryState # noqa: PLC0415
+        from ..models.graph_info_state import GraphInfoState # noqa: PLC0415
         from ..models.graph_interface_port import GraphInterfacePort # noqa: PLC0415
         from ..models.graph_node_state import GraphNodeState # noqa: PLC0415
         from ..models.graph_preset_state import GraphPresetState # noqa: PLC0415
@@ -345,6 +356,11 @@ class GraphState:
 
         read_only = d.pop("readOnly")
 
+        info = GraphInfoState.from_dict(d.pop("info"))
+
+
+
+
         def _parse_evaluation(data: object) -> GraphEvaluation | None | Unset:
             if data is None:
                 return data
@@ -384,6 +400,7 @@ class GraphState:
             repairs=repairs,
             settled=settled,
             read_only=read_only,
+            info=info,
             evaluation=evaluation,
         )
 

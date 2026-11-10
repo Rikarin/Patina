@@ -135,6 +135,12 @@ public static class Refusals {
     /// <summary>A layer the stack does not have. Values: <c>layer</c>.</summary>
     public const string StackLayerMissing = "stack-layer-missing";
 
+    /// <summary>
+    ///     A graph that cannot be published as a package: it reads something a package cannot carry, does not compile,
+    ///     or is not a graph (ADR 0027). Values: <c>reason</c>, which is the Server's own sentence.
+    /// </summary>
+    public const string PackageRefused = "package-refused";
+
     /// <summary>A refusal with its code and the values its detail was written from.</summary>
     public static ProblemHttpResult Problem(
         string detail,

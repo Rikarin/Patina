@@ -13,9 +13,11 @@ from patina_client.api.graphs import (
     get_graph,
     get_preview,
     open_graph,
+    save_graph,
     write_graph_image,
 )
 from patina_client.api.jobs import get_job, start_bake
+from patina_client.api.library import get_materials, get_package_plan, publish_package
 from patina_client.api.system import get_system
 from patina_client.api.viewport import get_viewport, set_viewport_mesh, show_graph_in_viewport
 from patina_client.models import (
@@ -32,8 +34,11 @@ from patina_client.models import (
     GraphCommandBatch,
     GraphImageRequest,
     GraphOpenRequest,
+    GraphCommandGraphSetInfo,
+    GraphCommandGraphSetInfoOp,
     GraphCommandGraphSetValue,
     GraphCommandGraphSetValueOp,
+    PackageRequest,
     ViewportGraphRequest,
     ViewportMeshRequest,
 )
@@ -207,3 +212,44 @@ def test_results_are_files_and_a_second_build_does_nothing(session) -> None:
 
     again = until_over(client, start_build.sync(client=client, body=request).id)
     assert again.report.projects == 0
+
+
+def test_a_graph_publishes_as_a_package_that_every_shelf_offers(session) -> None:
+    """Publishing needs no GPU: the Server gathers what the graph reads and compiles it, and the files are the result."""
+    client = attach(session)
+    source = "projects/graphs/Rust.vxtexgraph"
+
+    # Say what the graph is about, then save it, since a package is made of the graph as it is saved.
+    graph = open_graph.sync(client=client, body=GraphOpenRequest(path=source))
+    apply_graph_commands.sync(
+        id=graph.id,
+        client=client,
+        body=GraphCommandBatch(
+            commands=[
+                GraphCommandGraphSetInfo(
+                    op=GraphCommandGraphSetInfoOp.SETINFO,
+                    description="Rust for a Blender add-on.",
+                    author="Conformance",
+                    tags=["metal", "rust"],
+                    physical_width=100.0,
+                    physical_height=100.0,
+                )
+            ]
+        ),
+    )
+    assert get_graph.sync(id=graph.id, client=client).info.tags == ["metal", "rust"]
+    save_graph.sync(id=graph.id, client=client)
+
+    plan = get_package_plan.sync(client=client, graph=source)
+    assert plan.path == "packages/Rust.ptpkg"
+    assert all(isinstance(dependency.problem, (Unset, type(None))) for dependency in plan.dependencies)
+    published = publish_package.sync(client=client, body=PackageRequest(graph=source, role="material"))
+    assert published.path == plan.path
+    folder = session.library / published.path
+    assert (folder / "package.yaml").is_file()
+    assert (folder / published.manifest.graph).is_file()
+
+    shelf = get_materials.sync(client=client, search="metal")
+    offered = [material for material in shelf.items if material.origin == "package"]
+    assert [material.name for material in offered] == ["Rust"]
+    assert offered[0].description == "Rust for a Blender add-on."

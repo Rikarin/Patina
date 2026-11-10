@@ -18,3 +18,17 @@ python3 -m venv .venv && .venv/bin/pip install --require-hashes -r requirements.
 `PATINA_CONFIGURATION=Debug` runs it against a Debug build. A client finds a running Server through the per-user discovery file.
 Clients that talk to the API over HTTP are separate programs and need not be GPL. To change a pin, edit `requirements.in` and run
 the `pip-compile` line at its top.
+
+## Packages and parameters
+
+`test_a_graph_publishes_as_a_package_that_every_shelf_offers` is ADR 0027 from a client: describe a graph with a `setInfo`
+command, save it, ask `get_package_plan` what publishing would bring, then `publish_package`. The package is a folder in the
+library's `packages/`, and `get_materials` lists it with the origin `package`, its parameters and its description.
+
+A build script needs no Server for the same thing:
+
+```sh
+patina package projects/kit/Rust.vxtexgraph packages/          # gathers its compounds and pictures
+patina graph info packages/Rust.ptpkg                          # inputs, outputs, parameters and presets, as JSON
+patina bake packages/Rust.ptpkg out/ --preset Heavy --param tint=0.3 --seed 7 --size 2048
+```

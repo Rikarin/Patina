@@ -83,6 +83,23 @@ public sealed record GraphSettingCondition(string Setting, string Value, bool Ne
 /// <param name="Values">What each parameter is set to, by parameter name, as text.</param>
 public sealed record GraphPresetState(string Name, IReadOnlyDictionary<string, string> Values);
 
+/// <summary>
+///     What a graph says about itself to whoever finds it on a shelf or in a package. Nothing it says changes what the
+///     graph makes.
+/// </summary>
+/// <param name="Description">What it makes and how it is meant to be used.</param>
+/// <param name="Author">Who made it.</param>
+/// <param name="Tags">Words to find it by, beyond its name.</param>
+/// <param name="PhysicalWidth">The width one tile stands for in the world, in centimetres, or null when unsaid.</param>
+/// <param name="PhysicalHeight">Its height, the same way.</param>
+public sealed record GraphInfoState(
+    string Description,
+    string Author,
+    IReadOnlyList<string> Tags,
+    float? PhysicalWidth = null,
+    float? PhysicalHeight = null
+);
+
 /// <summary>One port of a node type.</summary>
 /// <param name="Name">What an edge calls it.</param>
 /// <param name="Direction">Input or Output.</param>
@@ -268,7 +285,10 @@ public sealed record GraphEvaluation(
 /// <param name="Settled">
 ///     The newest revision with nothing left to evaluate. Below <paramref name="Revision" />, evaluation is behind.
 /// </param>
-/// <param name="ReadOnly">True when this graph cannot be edited or saved: a compound that ships with Patina.</param>
+/// <param name="ReadOnly">
+///     True when this graph cannot be edited or saved: a compound that ships with Patina, or a package's graph.
+/// </param>
+/// <param name="Info">What it says about itself: a description, an author, tags and a physical size.</param>
 public sealed record GraphState(
     string Id,
     string Path,
@@ -288,7 +308,8 @@ public sealed record GraphState(
     IReadOnlyList<GraphDiagnostic> Repairs,
     GraphEvaluation? Evaluation,
     long Settled,
-    bool ReadOnly
+    bool ReadOnly,
+    GraphInfoState Info
 );
 #pragma warning restore SK7005
 
@@ -323,6 +344,7 @@ public sealed record GraphSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(GraphSavePreset), "savePreset")]
 [JsonDerivedType(typeof(GraphRemovePreset), "removePreset")]
 [JsonDerivedType(typeof(GraphApplyPreset), "applyPreset")]
+[JsonDerivedType(typeof(GraphSetInfo), "setInfo")]
 public abstract record GraphCommand;
 
 /// <summary>Adds a node.</summary>
@@ -370,6 +392,22 @@ public sealed record GraphRemovePreset(string Name) : GraphCommand;
 ///     settings, which <see cref="GraphSetText" /> sets.
 /// </summary>
 public sealed record GraphApplyPreset(string Name) : GraphCommand;
+
+/// <summary>Changes what the graph says about itself: anything left null stays as it is.</summary>
+/// <param name="Description">What it makes and how it is meant to be used.</param>
+/// <param name="Author">Who made it.</param>
+/// <param name="Tags">Words to find it by. Blank and repeated words are dropped, ignoring case.</param>
+/// <param name="PhysicalWidth">
+///     The width one tile stands for, in centimetres. Zero, with <paramref name="PhysicalHeight" /> zero, says nothing.
+/// </param>
+/// <param name="PhysicalHeight">Its height, the same way. The two are set together.</param>
+public sealed record GraphSetInfo(
+    string? Description = null,
+    string? Author = null,
+    IReadOnlyList<string>? Tags = null,
+    float? PhysicalWidth = null,
+    float? PhysicalHeight = null
+) : GraphCommand;
 
 /// <summary>Where one node goes.</summary>
 public sealed record GraphNodePosition(int Node, float X, float Y);
@@ -529,6 +567,7 @@ public sealed record GraphEditResult(
 /// <param name="Groups">The whole list of groups, or null when it did not change.</param>
 /// <param name="Comments">The whole list of notes, or null when it did not change.</param>
 /// <param name="Presets">The whole list of presets, or null when it did not change.</param>
+/// <param name="Info">What the graph says about itself, or null when it did not change.</param>
 public sealed record GraphDelta(
     IReadOnlyList<GraphNodeState> Nodes,
     IReadOnlyList<int> RemovedNodes,
@@ -540,7 +579,8 @@ public sealed record GraphDelta(
     IReadOnlyList<GraphGroupState>? Groups = null,
     IReadOnlyList<GraphCommentState>? Comments = null,
     IReadOnlyList<GraphInterfacePort>? Interface = null,
-    IReadOnlyList<GraphPresetState>? Presets = null
+    IReadOnlyList<GraphPresetState>? Presets = null,
+    GraphInfoState? Info = null
 );
 #pragma warning restore SK7005
 

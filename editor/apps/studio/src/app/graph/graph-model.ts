@@ -7,6 +7,7 @@ import type {
   GraphEvent,
   GraphGroupState,
   GraphHistoryState,
+  GraphInfoState,
   GraphInterfacePort,
   GraphNodeState,
   GraphPresetState,
@@ -43,8 +44,10 @@ export interface GraphDocument {
   evaluation: GraphEvaluation | null;
   /** The newest revision with nothing left to evaluate. Below {@link revision}, evaluation is behind. */
   settled: number;
-  /** True for a compound that ships with Patina. */
+  /** True for a compound that ships with Patina, or a package's graph. */
   readOnly: boolean;
+  /** What the graph says about itself: a description, an author, tags and a physical size. */
+  info: GraphInfoState;
 }
 
 /** What to do with an event, given what the client holds. */
@@ -74,7 +77,8 @@ export function documentOf(state: GraphState): GraphDocument {
     repairs: state.repairs,
     evaluation: state.evaluation ?? null,
     settled: state.settled,
-    readOnly: state.readOnly
+    readOnly: state.readOnly,
+    info: state.info
   };
 }
 
@@ -166,6 +170,7 @@ function applyDelta(document: GraphDocument, delta: GraphDelta): void {
   document.interface = delta.interface ?? document.interface;
   document.groups = delta.groups ?? document.groups;
   document.comments = delta.comments ?? document.comments;
+  document.info = delta.info ?? document.info;
 }
 
 function withSettings(settings: Readonly<Record<string, string>>, delta: GraphDelta): Record<string, string> {

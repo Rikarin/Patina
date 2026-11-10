@@ -16,6 +16,7 @@ if TYPE_CHECKING:
   from ..models.graph_delta_settings import GraphDeltaSettings
   from ..models.graph_edge_state import GraphEdgeState
   from ..models.graph_group_state import GraphGroupState
+  from ..models.graph_info_state import GraphInfoState
   from ..models.graph_interface_port import GraphInterfacePort
   from ..models.graph_node_state import GraphNodeState
   from ..models.graph_preset_state import GraphPresetState
@@ -47,6 +48,7 @@ class GraphDelta:
             interface (list[GraphInterfacePort] | None | Unset): The whole list of interface ports, or null when it did not
                 change.
             presets (list[GraphPresetState] | None | Unset): The whole list of presets, or null when it did not change.
+            info (GraphInfoState | None | Unset):
      """
 
     nodes: list[GraphNodeState]
@@ -60,6 +62,7 @@ class GraphDelta:
     comments: list[GraphCommentState] | None | Unset = UNSET
     interface: list[GraphInterfacePort] | None | Unset = UNSET
     presets: list[GraphPresetState] | None | Unset = UNSET
+    info: GraphInfoState | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -71,6 +74,7 @@ class GraphDelta:
         from ..models.graph_delta_settings import GraphDeltaSettings # noqa: PLC0415
         from ..models.graph_edge_state import GraphEdgeState # noqa: PLC0415
         from ..models.graph_group_state import GraphGroupState # noqa: PLC0415
+        from ..models.graph_info_state import GraphInfoState # noqa: PLC0415
         from ..models.graph_interface_port import GraphInterfacePort # noqa: PLC0415
         from ..models.graph_node_state import GraphNodeState # noqa: PLC0415
         from ..models.graph_preset_state import GraphPresetState # noqa: PLC0415
@@ -171,6 +175,14 @@ class GraphDelta:
         else:
             presets = self.presets
 
+        info: dict[str, Any] | None | Unset
+        if isinstance(self.info, Unset):
+            info = UNSET
+        elif isinstance(self.info, GraphInfoState):
+            info = self.info.to_dict()
+        else:
+            info = self.info
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -192,6 +204,8 @@ class GraphDelta:
             field_dict["interface"] = interface
         if presets is not UNSET:
             field_dict["presets"] = presets
+        if info is not UNSET:
+            field_dict["info"] = info
 
         return field_dict
 
@@ -203,6 +217,7 @@ class GraphDelta:
         from ..models.graph_delta_settings import GraphDeltaSettings # noqa: PLC0415
         from ..models.graph_edge_state import GraphEdgeState # noqa: PLC0415
         from ..models.graph_group_state import GraphGroupState # noqa: PLC0415
+        from ..models.graph_info_state import GraphInfoState # noqa: PLC0415
         from ..models.graph_interface_port import GraphInterfacePort # noqa: PLC0415
         from ..models.graph_node_state import GraphNodeState # noqa: PLC0415
         from ..models.graph_preset_state import GraphPresetState # noqa: PLC0415
@@ -374,6 +389,26 @@ class GraphDelta:
         presets = _parse_presets(d.pop("presets", UNSET))
 
 
+        def _parse_info(data: object) -> GraphInfoState | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                info_type_1 = GraphInfoState.from_dict(data)
+
+
+
+                return info_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(GraphInfoState | None | Unset, data)
+
+        info = _parse_info(d.pop("info", UNSET))
+
+
         graph_delta = cls(
             nodes=nodes,
             removed_nodes=removed_nodes,
@@ -386,6 +421,7 @@ class GraphDelta:
             comments=comments,
             interface=interface,
             presets=presets,
+            info=info,
         )
 
 

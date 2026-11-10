@@ -360,6 +360,8 @@ public sealed record ProjectRenameRequest(string Path, string Name);
 /// <param name="Name">The copy's display name.</param>
 public sealed record ProjectDuplicateRequest(string Path, string Name);
 
+// SK7005: as above, one constructor parameter per JSON field.
+#pragma warning disable SK7005
 /// <summary>Something a layer can be filled with (ADR 0012).</summary>
 /// <param name="Name">What it is called.</param>
 /// <param name="Kind"><c>graph</c>, which a fill reads, or <c>layered-material</c>, which unfolds into layers.</param>
@@ -368,10 +370,15 @@ public sealed record ProjectDuplicateRequest(string Path, string Name);
 ///     <c>material</c>, <c>mask</c>, <c>brush</c>, <c>filter</c>, or <c>empty</c> for a graph with no
 ///     output yet.
 /// </param>
-/// <param name="Origin"><c>shipped</c>, <c>project</c>, or <c>library</c> for another project.</param>
+/// <param name="Origin">
+///     <c>shipped</c>, <c>project</c>, <c>library</c> for another project, or <c>package</c> for one of the library's
+///     packages (ADR 0027).
+/// </param>
 /// <param name="Channels">The maps a graph makes, by usage.</param>
 /// <param name="Parameters">The knobs a graph exposes, which a layer can set.</param>
 /// <param name="Project">The project it lives in, when that is another one.</param>
+/// <param name="Tags">The words its graph is tagged with, which a search also matches.</param>
+/// <param name="Description">What its graph says it makes, or null when it says nothing.</param>
 public sealed record MaterialInfo(
     string Name,
     string Kind,
@@ -380,8 +387,11 @@ public sealed record MaterialInfo(
     string Origin,
     IReadOnlyList<string> Channels,
     IReadOnlyList<GraphSettingDefinition>? Parameters = null,
-    string? Project = null
+    string? Project = null,
+    IReadOnlyList<string>? Tags = null,
+    string? Description = null
 );
+#pragma warning restore SK7005
 
 /// <summary>The materials a project can use.</summary>
 /// <param name="Items">Them, every one with each word of the search, if there was one.</param>

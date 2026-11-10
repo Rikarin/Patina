@@ -35,6 +35,7 @@ const Words: Readonly<Record<string, string>> = {
   'stack-layer-missing': 'That layer is no longer in the stack. It may have been removed by another client.',
   'node-unknown': '{node} isn’t a node or a compound this project has. It may have been renamed or removed.',
   'preset-invalid': 'That preset can’t be kept as it is. {reason}',
+  'package-refused': 'This graph can’t be published as a package. {reason}',
   'preset-factory': '{preset} is a Starter preset, so it can’t be changed or deleted. Duplicate it to change a copy.',
   'preset-missing': 'There is no preset {preset} there any more. It may have been deleted outside Patina.',
   'export-unbuilt': 'The maps of this project are not built as they are now. Build them first, then look again.'

@@ -160,9 +160,11 @@ public sealed class GraphSessions(ServerIdentity identity) : IDisposable {
             throw new FileNotFoundException($"There is no file at '{full}'.", full);
         }
 
-        // The same folder `patina bake` reads, so a graph means the same in both.
+        // The same folder `patina bake` reads, so a graph means the same in both. A package's graph opens to be read,
+        // as a shipped compound does: it is offered by its parameters, and a republish replaces any edit (ADR 0027).
         var folder = CompoundFolders.Of(full);
-        return new(full, SharedFile.ReadAllText(full), Types(folder), folder, Wake) {
+        var packaged = PackageManifests.PackageOf(full) is not null;
+        return new(full, SharedFile.ReadAllText(full), Types(folder), folder, Wake, packaged) {
             ImageRoots = CompoundFolders.PictureRoots(full, identity.Library)
         };
     }

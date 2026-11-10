@@ -66,6 +66,7 @@ import { diagnosticsOf, edgeKey, evaluationSummary } from './graph-model';
 import { GraphStore, type NodeLink, type NodeWire, RerouteIn, RerouteOut, RerouteType } from './graph-store';
 import { NewGraphDialog } from './new-graph-dialog';
 import { NodeDragType } from './node-library';
+import { PublishPackageDialog } from './publish-package-dialog';
 import { SaveCompoundDialog } from './save-compound-dialog';
 
 const NodeWidth = 176;
@@ -213,6 +214,7 @@ export class GraphThumbnail {
     IconImports,
     GraphThumbnail,
     NewGraphDialog,
+    PublishPackageDialog,
     SaveCompoundDialog,
     XuiButtonImports,
     XuiCalloutImports,
@@ -563,6 +565,9 @@ export class GraphThumbnail {
 
     <ptn-new-graph [(open)]="creating" />
     <ptn-save-compound [(open)]="savingCompound" />
+    @defer (when publishing()) {
+      <ptn-publish-package [(open)]="publishing" />
+    }
 
     <ng-template #arrangeMenu>
       <xui-menu aria-label="Arrange" data-testid="graph-arrange-menu">
@@ -754,6 +759,8 @@ export class GraphCanvas {
   };
   protected readonly creating = signal(false);
   protected readonly savingCompound = signal(false);
+  /** Whether the Publish as Package dialog is open, which is also what loads it. */
+  protected readonly publishing = signal(false);
   /** Whether the palette shows a ranking, which grouping by category would shuffle. */
   protected readonly paletteRanked = signal(false);
 
@@ -1268,6 +1275,13 @@ export class GraphCanvas {
       'distributeVertically',
       () => editable() && this.store.selection().size > 2,
       () => this.distribute('vertical')
+    );
+    handle(
+      'publishPackage',
+      () => this.store.document() !== null && !(this.store.document()?.readOnly ?? true) && !this.publishing(),
+      () => {
+        this.publishing.set(true);
+      }
     );
     handle(
       'findNode',

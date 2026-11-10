@@ -807,7 +807,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** What a project's layers can be filled with. A search keeps those with every word in their name, type, kind, origin, project or path, wherever they are from. */
+    /** What a project's layers can be filled with. A search keeps those with every word in their name, tags, type, kind, origin, project or path, wherever they are from. */
     get: operations['GetMaterials'];
     put?: never;
     post?: never;
@@ -881,6 +881,40 @@ export interface paths {
     put: operations['UpdateBrushPreset'];
     /** Saves a brush as a new preset, a document of the project. */
     post: operations['CreateBrushPreset'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/packages/plan': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** What publishing a saved graph as a package would bring: its project's compounds, the shipped ones it reads, its pictures, and anything that stops it, with what compiling it said. */
+    get: operations['GetPackagePlan'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/packages': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Publishes a saved graph as a package in the library's packages folder, replacing one of its name. Every project's shelf then offers it. */
+    post: operations['PublishPackage'];
     delete?: never;
     options?: never;
     head?: never;
@@ -3109,7 +3143,8 @@ export interface components {
       | components['schemas']['GraphCommandGraphArrange']
       | components['schemas']['GraphCommandGraphSavePreset']
       | components['schemas']['GraphCommandGraphRemovePreset']
-      | components['schemas']['GraphCommandGraphApplyPreset'];
+      | components['schemas']['GraphCommandGraphApplyPreset']
+      | components['schemas']['GraphCommandGraphSetInfo'];
     /** @description Some edits, applied whole or not at all, and undone as one step. */
     GraphCommandBatch: {
       /** @description What to do, in order. */
@@ -3369,6 +3404,27 @@ export interface components {
       /** @description What its nodes do together. */
       description?: null | string;
     };
+    /** @description Changes what the graph says about itself: anything left null stays as it is. */
+    GraphCommandGraphSetInfo: {
+      /** @enum {string} */
+      op: 'setInfo';
+      /** @description What it makes and how it is meant to be used. */
+      description?: null | string;
+      /** @description Who made it. */
+      author?: null | string;
+      /** @description Words to find it by. Blank and repeated words are dropped, ignoring case. */
+      tags?: null | string[];
+      /**
+       * Format: float
+       * @description The width one tile stands for, in centimetres. Zero, with PhysicalHeight zero, says nothing.
+       */
+      physicalWidth?: null | number;
+      /**
+       * Format: float
+       * @description Its height, the same way. The two are set together.
+       */
+      physicalHeight?: null | number;
+    };
     /** @description Replaces a parameter where it stands. Dragging its default sends this on every step. */
     GraphCommandGraphSetParameter: {
       /** @enum {string} */
@@ -3548,6 +3604,7 @@ export interface components {
       interface?: null | components['schemas']['GraphInterfacePort'][];
       /** @description The whole list of presets, or null when it did not change. */
       presets?: null | components['schemas']['GraphPresetState'][];
+      info?: null | components['schemas']['GraphInfoState'];
     };
     /** @description Something a graph's compiler or its file's reader has to say. */
     GraphDiagnostic: {
@@ -3757,6 +3814,28 @@ export interface components {
       node: number;
       /** @description Its output port, or the usage of an Output node, as a preview names them. */
       port: string;
+    };
+    /**
+     * @description What a graph says about itself to whoever finds it on a shelf or in a package. Nothing it says changes what the
+     *     graph makes.
+     */
+    GraphInfoState: {
+      /** @description What it makes and how it is meant to be used. */
+      description: string;
+      /** @description Who made it. */
+      author: string;
+      /** @description Words to find it by, beyond its name. */
+      tags: string[];
+      /**
+       * Format: float
+       * @description The width one tile stands for in the world, in centimetres, or null when unsaid.
+       */
+      physicalWidth?: null | number;
+      /**
+       * Format: float
+       * @description Its height, the same way.
+       */
+      physicalHeight?: null | number;
     };
     /** @description One port a graph has when another graph holds it as a node. */
     GraphInterfacePort: {
@@ -4017,8 +4096,10 @@ export interface components {
        * @description The newest revision with nothing left to evaluate. Below Revision, evaluation is behind.
        */
       settled: number;
-      /** @description True when this graph cannot be edited or saved: a compound that ships with Patina. */
+      /** @description True when this graph cannot be edited or saved: a compound that ships with Patina, or a package's graph. */
       readOnly: boolean;
+      /** @description What it says about itself: a description, an author, tags and a physical size. */
+      info: components['schemas']['GraphInfoState'];
     };
     /** @description An open graph, for a list. */
     GraphSummary: {
@@ -4266,7 +4347,10 @@ export interface components {
        *                 output yet.
        */
       role: string;
-      /** @description `shipped`, `project`, or `library` for another project. */
+      /**
+       * @description `shipped`, `project`, `library` for another project, or `package` for one of the library's
+       *                 packages (ADR 0027).
+       */
       origin: string;
       /** @description The maps a graph makes, by usage. */
       channels: string[];
@@ -4274,6 +4358,10 @@ export interface components {
       parameters?: null | components['schemas']['GraphSettingDefinition'][];
       /** @description The project it lives in, when that is another one. */
       project?: null | string;
+      /** @description The words its graph is tagged with, which a search also matches. */
+      tags?: null | string[];
+      /** @description What its graph says it makes, or null when it says nothing. */
+      description?: null | string;
     };
     /** @description The materials a project can use. */
     MaterialList: {
@@ -4388,6 +4476,90 @@ export interface components {
       seconds: number;
       /** @description Why it failed. */
       error?: null | string;
+    };
+    /** @description A compound a package carries. */
+    PackageCompound: {
+      /** @description Its node type inside the package, under `Packages/&lt;name&gt;/`. */
+      type: string;
+      /** @description What it was called in the folder it came from. */
+      from: string;
+    };
+    /** @description Something a graph reads that publishing it as a package has to bring, or cannot. */
+    PackageDependency: {
+      /**
+       * @description `compound` (a graph of its project's, which the package carries), `shipped` (a compound that ships
+       *                 with Patina, which it does not), `picture` (a bitmap, which it carries), or `unknown` (a node type
+       *                 nothing publishes).
+       */
+      kind: string;
+      /** @description The node type, or the picture as the graph names it. */
+      name: string;
+      /** @description Where it was found, below the library when it is in one, or null when it was not. */
+      file?: null | string;
+      /** @description Why it cannot be brought, or null when it can. */
+      problem?: null | string;
+    };
+    /** @description A picture a package carries. */
+    PackageFile: {
+      /** @description Where it is in the package, below `files/`, named by its content. */
+      path: string;
+      /** @description How the graph named it before it was published. */
+      from: string;
+    };
+    /**
+     * @description A package's `package.yaml` (ADR 0027): what a `.ptpkg` folder holds besides its graph, and what made
+     *     it. The graph's own file holds its parameters, presets and what it says about itself, so this repeats none of
+     *     them.
+     */
+    PackageManifest: {
+      /**
+       * Format: int32
+       * @description The shape of the package. A reader refuses one newer than it knows.
+       */
+      format: number;
+      /** @description What the package is called, which is its folder's and its graph's name. */
+      name: string;
+      /** @description The graph's file, beside this one. */
+      graph: string;
+      /** @description What it is used as: `material`, `mask`, `filter` or `brush`. */
+      role: string;
+      /** @description The Patina that published it, as `Patina 0.9.0`. */
+      writer: string;
+      /** @description The compounds it carries under `Compounds/`, and what each was called before. */
+      compounds: components['schemas']['PackageCompound'][];
+      /** @description The compounds it reads from those that ship with Patina, which it does not carry. */
+      shipped: string[];
+      /** @description The pictures it carries under `files/`, and how the graph named each. */
+      files: components['schemas']['PackageFile'][];
+    };
+    /** @description What publishing a graph as a package would do, for a dialog to show before it does. */
+    PackagePlan: {
+      /** @description The package's name. */
+      name: string;
+      /** @description What it would be used as. */
+      role: string;
+      /** @description Where it would be written, below the library. */
+      path: string;
+      /** @description True when a package of that name is there already, and publishing replaces it. */
+      replaces: boolean;
+      /** @description What it reads. Publishing is refused while any has a problem. */
+      dependencies: components['schemas']['PackageDependency'][];
+      /** @description What compiling it said; an error refuses it too. */
+      diagnostics: components['schemas']['GraphDiagnostic'][];
+    };
+    /** @description A package that has been written. */
+    PackagePublished: {
+      /** @description Its folder, below the library. */
+      path: string;
+      /** @description What its `package.yaml` says. */
+      manifest: components['schemas']['PackageManifest'];
+    };
+    /** @description The body of `POST /api/v1/library/packages`. */
+    PackageRequest: {
+      /** @description The graph as it is saved: absolute, or below the library. */
+      graph: string;
+      /** @description What it is used as, or null for the role its project gives it. */
+      role?: null | string;
     };
     ProblemDetails: {
       type?: null | string;
@@ -10168,6 +10340,107 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['BrushPresetInfo'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetPackagePlan: {
+    parameters: {
+      query: {
+        graph: string;
+        role?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PackagePlan'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  PublishPackage: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PackageRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PackagePublished'];
         };
       };
       /** @description Bad Request */
