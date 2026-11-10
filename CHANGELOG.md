@@ -152,6 +152,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Quitting Patina no longer takes 3 s longer than it has to, and the engine's Server stops cleanly instead of being stopped by force, which left its entry in the discovery file and its socket behind. A client following events or viewport frames kept the Server stopping until it was killed; those connections now close as it stops.
+- The Library's top bar keeps its two switches apart at the narrowest window: the grid or list switch sits beside the search field, and where Projects and Materials cannot fit side by side they become a list to choose from.
 - A stroke on a layer painted larger than its texture set, or at another size earlier in the session, is refused before it begins, with the same reason as before. It used to stand anyway, and the stack failed to show until it was undone. Through the API the refusal's code is `stroke-canvas-larger` or `stroke-canvas-painted-at-size`.
 - Open mesh… in the viewport, clicked while a new project's tab was still coming to the front, no longer loses the mesh to that tab letting go of the one before: the viewport said No mesh.
 - Don't Save, or closing a document discarding its edits through the API, no longer brings the thrown-away edits back as an offer to recover them the next time the document opens. An autosave still being written when the edits were thrown away, or when they were saved, used to land a moment later; now it never does, and its files go too.
