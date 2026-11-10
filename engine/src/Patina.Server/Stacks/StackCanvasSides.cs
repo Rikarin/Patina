@@ -10,7 +10,10 @@ namespace Patina.Server.Stacks;
 ///     canvas's size is refused before it begins, and never stands to fail the stack until it is undone (#241). It
 ///     follows the Worker's rule (<c>StackHost.Resized</c>): the first stroke of a session on a canvas smaller than its
 ///     set enlarges it, a canvas is never made smaller, and one a stroke of the session began on is never enlarged,
-///     since that stroke's undo holds the pixels it painted over. Not thread safe: the session locks.
+///     since that stroke's undo holds the pixels it painted over. A copy (a duplicate or a paste) is made at the set's
+///     size whatever the size of the canvas it copies, which a Worker resamples (#106), and no stroke began on it, so a
+///     set made larger enlarges it. A stroke that carries the last one on is checked as any other. Not thread safe:
+///     the session locks.
 /// </summary>
 /// <param name="folder">The stack's folder, which its canvases are beside.</param>
 public sealed class StackCanvasSides(string folder) {
@@ -58,7 +61,11 @@ public sealed class StackCanvasSides(string folder) {
     /// <param name="height">The set's height.</param>
     public void Stood(IEnumerable<StackJournalEntry> entries, int width, int height) {
         foreach (var entry in entries) {
-            if (entry.Width > 0) {
+            if (entry.From is not null || entry.Capture is not null) {
+                // Made at the size the journal holds for it, or the set's: a paste or a duplicate of paint at another
+                // size is resampled to it (#106).
+                sides.TryAdd(entry.Paint, entry.Width > 0 ? (entry.Width, entry.Height) : (width, height));
+            } else if (entry.Width > 0) {
                 sides[entry.Paint] = (entry.Width, entry.Height);
                 stroked.Add(entry.Paint);
             } else {

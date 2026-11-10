@@ -326,6 +326,12 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         /// <summary>The canvases a stroke of this session began on, whose old pixels its undo holds.</summary>
         readonly HashSet<string> stroked = new(StringComparer.Ordinal);
 
+        /// <summary>
+        ///     Blanks made at load for canvases the journal makes, which nothing has written yet. See
+        ///     <see cref="Made" />.
+        /// </summary>
+        readonly HashSet<string> blanks = new(StringComparer.Ordinal);
+
         readonly TexturePlanEvaluator evaluator;
         readonly LayerStackPictures fill;
         readonly List<Applied> applied = [];
@@ -375,7 +381,9 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             }
 
             foreach (var created in load.Created.Where(paint => !touched.Contains(paint))) {
-                canvases.Adopt(LibraryLayout.Beside(folder, created), new(document.BaseWidth, document.BaseHeight));
+                var file = LibraryLayout.Beside(folder, created);
+                canvases.Adopt(file, new(document.BaseWidth, document.BaseHeight));
+                blanks.Add(file);
             }
         }
 
@@ -682,13 +690,12 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
 
             if (part.From is { } from) {
                 touched.Add(part.Paint);
-                CanvasCopy copy = new(
-                    canvases,
-                    file,
-                    Path.GetFullPath(from, folder),
-                    document.BaseWidth,
-                    document.BaseHeight
-                );
+                // At the size it was first made at, which a replay after the set's size changed keeps (#106).
+                var made = part.Width > 0 && part.Height > 0
+                    ? (part.Width, part.Height)
+                    : (document.BaseWidth, document.BaseHeight);
+                Made(file, made);
+                CanvasCopy copy = new(canvases, file, Path.GetFullPath(from, folder), made.Item1, made.Item2);
                 return known[part.Id] = new(part.Id, null, null) { Copy = copy };
             }
 
@@ -696,7 +703,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             var side = part.Width > 0 && part.Height > 0
                 ? (part.Width, part.Height)
                 : (document.BaseWidth, document.BaseHeight);
-            var canvas = canvases.Open(file);
+            var canvas = Made(file, side);
             if (canvas is null) {
                 canvas = new(side.Item1, side.Item2);
                 canvases.Adopt(file, canvas);
@@ -783,7 +790,30 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
 
             var enlarged = canvas.Enlarged(width, height);
             canvases.Adopt(file, enlarged);
+            // The plan holds the smaller one's texture, which the larger one's tiles do not fit.
+            stale = true;
             return enlarged;
+        }
+
+        /// <summary>
+        ///     The canvas a journal entry paints or makes, as it was when the entry was first done. A blank this
+        ///     Worker made at load for a canvas the journal makes is made again at the entry's size: it was made at
+        ///     the set's size today, and a replay after the size changed would otherwise paint, copy or flatten a
+        ///     canvas of another size than the first time (#106, #241). A blank holds nothing, so nothing is lost.
+        /// </summary>
+        /// <param name="file">The canvas.</param>
+        /// <param name="side">The size the entry made it at.</param>
+        /// <returns>The canvas, or null when there is none yet.</returns>
+        PaintCanvas? Made(string file, (int Width, int Height) side) {
+            var canvas = canvases.Open(file);
+            if (canvas is null || !blanks.Remove(file) || (canvas.Width, canvas.Height) == side) {
+                return canvas;
+            }
+
+            canvas = new(side.Width, side.Height);
+            canvases.Adopt(file, canvas);
+            stale = true;
+            return canvas;
         }
 
         PaintBrush Brush(StackBrush brush) =>
@@ -954,7 +984,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             }
 
             PaintCanvas Target(int width, int height) {
-                if (session.canvases.Open(target) is { } held) {
+                if (session.Made(target, (width, height)) is { } held) {
                     return held;
                 }
 

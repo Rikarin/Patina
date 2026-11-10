@@ -211,9 +211,6 @@ public sealed class StackEvaluator(
         return reply.FoundLayer;
     }
 
-    /// <summary>What each channel of a stack holds at a place on the map, read back by the Worker as numbers.</summary>
-    /// <exception cref="TimeoutException">No Worker came.</exception>
-    /// <exception cref="IpcException">The stack would not evaluate.</exception>
     /// <summary>
     ///     A picture of a brush, a stroke of it drawn small by the Worker into the preview cache, with the alphas this
     ///     stack's strokes read. Not a stroke: nothing is journalled and the stack is not touched.
@@ -235,6 +232,9 @@ public sealed class StackEvaluator(
         return reply.ThumbnailHash;
     }
 
+    /// <summary>What each channel of a stack holds at a place on the map, read back by the Worker as numbers.</summary>
+    /// <exception cref="TimeoutException">No Worker came.</exception>
+    /// <exception cref="IpcException">The stack would not evaluate.</exception>
     public async Task<StackSample> SampleAsync(
         StackSession session,
         float u,

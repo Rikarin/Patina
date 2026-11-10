@@ -54,8 +54,9 @@ public sealed class StackJournalEntry(
     public string? SourceDocument { get; init; }
 
     /// <summary>
-    ///     The texture set's size when the stroke began, which its stamps are texels of (#19). In the journal so a
-    ///     replay after the set's resolution changed still lands where the brush went. Zero for one with no stamps.
+    ///     The texture set's size when the stroke began, which its stamps are texels of (#19), or the size a copy was
+    ///     made at. In the journal so a replay after the set's resolution changed still lands where the brush went.
+    ///     Zero for one with no stamps.
     /// </summary>
     public int Width { get; init; }
 
@@ -73,9 +74,11 @@ public sealed class StackJournalEntry(
     public string? From { get; private init; }
 
     /// <summary>
-    ///     A canvas that starts as a copy of another, which is how a duplicate or a paste gets pixels of its own.
+    ///     A canvas that starts as a copy of another, which is how a duplicate or a paste gets pixels of its own. It is
+    ///     made at the set's size then, whatever the size of what it copies (#106), and the journal keeps that size so
+    ///     a replay after the set's size changed makes it the same.
     /// </summary>
-    public static StackJournalEntry Copy(long id, string paint, string from, string model) =>
+    public static StackJournalEntry Copy(long id, string paint, string from, string model, int width, int height) =>
         new(
             id,
             new(string.Empty, string.Empty, string.Empty, new(1f), [0f, 0f, 0f, 0f], []),
@@ -84,7 +87,7 @@ public sealed class StackJournalEntry(
             0u,
             model,
             null
-        ) { From = from };
+        ) { From = from, Width = width, Height = height };
 
     /// <summary>
     ///     What this entry makes <see cref="Paint" /> hold instead of strokes: one group of a document, composited,

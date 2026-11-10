@@ -911,7 +911,9 @@ public sealed class StackEditor : ILayerStackDocument {
 
     internal void Journal(StackLayerCopies copies, UndoStep step) {
         foreach (var (from, to) in copies.Canvases) {
-            step.Strokes.Add(StackJournalEntry.Copy(nextEntry++, to, from, Document.Model));
+            step.Strokes.Add(
+                StackJournalEntry.Copy(nextEntry++, to, from, Document.Model, Document.BaseWidth, Document.BaseHeight)
+            );
         }
     }
 
