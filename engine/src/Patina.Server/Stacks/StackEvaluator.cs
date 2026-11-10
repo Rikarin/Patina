@@ -354,6 +354,7 @@ public sealed class StackEvaluator(
         );
         session.Publish(work, reply.StackResult!);
         viewport.Repainted(session.Id, work.Revision);
+        viewport.Laid(session.Id, session.Set, session.UvSet);
         held.Stamps += parts.Sum(static part => part.Stamps.Count);
         await CheckpointAsync(session, connection, work, held, state, cancellationToken);
         TrimNow();

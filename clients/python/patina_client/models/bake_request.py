@@ -37,6 +37,11 @@ class BakeRequest:
             cage (None | str | Unset): A mesh with the low mesh's faces, moved outward, which the rays start from.
             material (None | str | Unset): The material of the low mesh to bake, for one texture set of a model that has
                 several.
+            uv_set (int | None | Unset): The low mesh's texture coordinate set the maps are baked in, by the file's number:
+                zero for the first
+                (#210). Null bakes a texture set in the set it is laid out in, when the low mesh is a project's and
+                string? BakeRequest.Material names one of its texture sets, and in the first otherwise. The high mesh is read
+                whole, so its sets do not matter, but for a picture moved from its layout, which is always its first.
             name (None | str | Unset): The stem of each file's name, or null for the low mesh's.
      """
 
@@ -46,6 +51,7 @@ class BakeRequest:
     options: BakeOptions
     cage: None | str | Unset = UNSET
     material: None | str | Unset = UNSET
+    uv_set: int | None | Unset = UNSET
     name: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -77,6 +83,12 @@ class BakeRequest:
         else:
             material = self.material
 
+        uv_set: int | None | Unset
+        if isinstance(self.uv_set, Unset):
+            uv_set = UNSET
+        else:
+            uv_set = self.uv_set
+
         name: None | str | Unset
         if isinstance(self.name, Unset):
             name = UNSET
@@ -96,6 +108,8 @@ class BakeRequest:
             field_dict["cage"] = cage
         if material is not UNSET:
             field_dict["material"] = material
+        if uv_set is not UNSET:
+            field_dict["uvSet"] = uv_set
         if name is not UNSET:
             field_dict["name"] = name
 
@@ -139,6 +153,16 @@ class BakeRequest:
         material = _parse_material(d.pop("material", UNSET))
 
 
+        def _parse_uv_set(data: object) -> int | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(int | None | Unset, data)
+
+        uv_set = _parse_uv_set(d.pop("uvSet", UNSET))
+
+
         def _parse_name(data: object) -> None | str | Unset:
             if data is None:
                 return data
@@ -156,6 +180,7 @@ class BakeRequest:
             options=options,
             cage=cage,
             material=material,
+            uv_set=uv_set,
             name=name,
         )
 

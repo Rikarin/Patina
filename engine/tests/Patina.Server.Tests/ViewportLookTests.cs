@@ -19,7 +19,7 @@ public sealed class ViewportLookTests {
         var session = server.Services.GetRequiredService<ViewportSession>();
         session.SetDisplay(new(new() { Look = Table, ToneMapping = "agx" }, new(Table, "hash"), null));
 
-        session.Wear("session", "/meshes/prop.glb", [], []);
+        session.Wear("session", "/meshes/prop.glb", [], [], []);
 
         Assert.Equal(Table, session.State.Display.Look);
         Assert.Equal("agx", session.State.Display.ToneMapping);
@@ -30,7 +30,7 @@ public sealed class ViewportLookTests {
         await using var server = new ServerFixture();
         var session = server.Services.GetRequiredService<ViewportSession>();
         session.SetDisplay(new(new() { Look = Table }, new(Table, "hash"), null));
-        session.Wear("session", "/meshes/prop.glb", [], []);
+        session.Wear("session", "/meshes/prop.glb", [], [], []);
 
         session.SetMaps(new());
 

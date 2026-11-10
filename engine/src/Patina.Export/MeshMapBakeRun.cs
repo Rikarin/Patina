@@ -52,7 +52,7 @@ public static class MeshMapBakeRun {
         }
 
         var high = ModelGeometry.Flatten(files);
-        var low = Read(request.Low, request.Material);
+        var low = Read(request.Low, request.Material, request.UvSet ?? 0);
         cancellationToken.ThrowIfCancellationRequested();
 
         if (low.Mesh.TexCoords.Length != low.Mesh.CornerCount) {
@@ -71,7 +71,7 @@ public static class MeshMapBakeRun {
 
         Describe(request, high, low, log);
 
-        var cage = request.Cage is { } path ? Read(path, request.Material).Mesh : null;
+        var cage = request.Cage is { } path ? Read(path, request.Material, request.UvSet ?? 0).Mesh : null;
         var (source, colours) = Ids(request.Options.Id.Source, high, files, warnings);
         var settings = Settings(request, high, low, cage, threads) with {
             IdSource = source,
@@ -122,16 +122,17 @@ public static class MeshMapBakeRun {
     /// <exception cref="ModelFormatException">It is not a readable model.</exception>
     public static FlatModel Read(string path) => Read(path, null);
 
-    /// <summary>Reads a mesh file, keeping only one material's parts.</summary>
+    /// <summary>Reads a mesh file, keeping only one material's parts, laid out in one of its coordinate sets.</summary>
     /// <param name="path">The file.</param>
     /// <param name="material">The material, or null for the whole mesh.</param>
+    /// <param name="uvSet">The coordinate set, by the file's number, a texture set is painted and baked in.</param>
     /// <exception cref="ModelFormatException">It is not a readable model.</exception>
     /// <exception cref="InvalidDataException">
-    ///     It has no such material. A texture set whose material was renamed asks for this, and the whole mesh in its
-    ///     place would bake every part into one atlas, overlaps included.
+    ///     It has no such material, or a part of it has no such set. A texture set whose material was renamed asks for
+    ///     this, and the whole mesh in its place would bake every part into one atlas, overlaps included.
     /// </exception>
-    public static FlatModel Read(string path, string? material) {
-        var read = Model(path);
+    public static FlatModel Read(string path, string? material, int uvSet = 0) {
+        var read = Model(path, uvSet != 0);
         var names = MaterialNames.Unique(read.Model.Materials);
         if (material is not null) {
             var index = Array.IndexOf(names, material);
@@ -145,12 +146,39 @@ public static class MeshMapBakeRun {
             read.Model.Parts = [..read.Model.Parts.Where(part => part.Material == index)];
         }
 
+        if (uvSet != 0) {
+            LayOut(read, uvSet, Path.GetFileName(path));
+        }
+
         return ModelGeometry.Flatten(read);
     }
 
-    /// <summary>Reads a mesh file as it is, keeping what a bake and an unwrap need.</summary>
+    /// <summary>
+    ///     Puts a coordinate set in the place of the first on every mesh a part draws, which is all a bake and a
+    ///     coverage read look at (#210).
+    /// </summary>
+    /// <exception cref="InvalidDataException">A part has no such set.</exception>
+    internal static void LayOut(ReadModel read, int uvSet, string file) {
+        var index = read.Meshes.Select(static (mesh, at) => (mesh.Name, at))
+            .ToDictionary(static pair => pair.Name, static pair => pair.at, StringComparer.Ordinal);
+        foreach (var name in read.Model.Parts.Select(static part => part.Mesh).Distinct(StringComparer.Ordinal)) {
+            var at = index[name];
+            var sets = at < read.TexCoordSets.Length ? read.TexCoordSets[at] : [];
+            if (uvSet >= sets.Length || sets[uvSet].Length == 0) {
+                throw new InvalidDataException(
+                    $"'{file}' has no UV set {uvSet + 1} on '{name}', "
+                    + $"which has {sets.Count(static s => s.Length > 0)}. "
+                    + "Choose a UV set every part of the texture set has."
+                );
+            }
+
+            read.Meshes[at].TexCoords = sets[uvSet];
+        }
+    }
+
+    /// <summary>Reads a mesh file as it is, with what a bake and an unwrap need, and every UV set if asked.</summary>
     /// <exception cref="ModelFormatException">It is not a readable model.</exception>
-    internal static ReadModel Model(string path) =>
+    internal static ReadModel Model(string path, bool allSets = false) =>
         ModelReader.Read(
             SharedFile.ReadAllBytes(path),
             Path.GetExtension(path),
@@ -159,8 +187,10 @@ public static class MeshMapBakeRun {
                 GenerateTangents = false,
                 ImportAnimations = false,
                 ImportBlendShapes = false,
-                ImportVertexColours = true
-            }
+                ImportVertexColours = true,
+                ImportAllTexCoords = allSets
+            },
+            sideFiles: SharedFile.Beside(path)
         );
 
     internal static BakeSettings Settings(

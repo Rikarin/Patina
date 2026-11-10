@@ -106,6 +106,9 @@ public static class IpcTypes {
 
     public const string MeshParts = "mesh.parts";
 
+    /// <summary>Server to Worker: say what the mesh at <see cref="IpcMessage.MeshFile" /> is (#146).</summary>
+    public const string MeshFacts = "mesh.facts";
+
     public const string MeshPartMask = "mesh.part-mask";
 
     /// <summary>Renders each fill of a stack alone, small.</summary>
@@ -199,6 +202,11 @@ public sealed class IpcMessage {
     /// <summary>viewport.open: the mesh's path, on a disk the Worker can read.</summary>
     public string? Mesh { get; set; }
 
+    /// <summary>
+    ///     viewport.open: the coordinate set each material is drawn in, by name, where it is not the first (#210).
+    /// </summary>
+    public IReadOnlyDictionary<string, int>? UvSets { get; set; }
+
     /// <summary>viewport.maps: the pictures.</summary>
     public ViewportMapSet? Maps { get; set; }
 
@@ -266,6 +274,9 @@ public sealed class IpcMessage {
 
     /// <summary>A model's materials, in the answer to <see cref="IpcTypes.MeshMaterials" />.</summary>
     public IReadOnlyList<string>? Materials { get; set; }
+
+    /// <summary>What a mesh is, in the answer to <see cref="IpcTypes.MeshFacts" />.</summary>
+    public MeshFacts? Facts { get; set; }
 
     /// <summary>The model's other texture sets, worn along with <see cref="Following" />.</summary>
     public IReadOnlyList<string>? FollowingAlso { get; set; }
@@ -583,6 +594,8 @@ public sealed record StackLoad(
 /// <param name="SourceDocument">
 ///     What a clone or a material reads, as a stack written out, sent with a stroke's first part only.
 /// </param>
+/// <param name="Width">The set's width when the stroke began, which its stamps are texels of; 0 is today's.</param>
+/// <param name="Height">The set's height when the stroke began.</param>
 public sealed record StackPaintPart(
     long Id,
     string Paint,
@@ -601,7 +614,9 @@ public sealed record StackPaintPart(
     StackStrokeSource? Source = null,
     StackPicture? Stencil = null,
     string? Fill = null,
-    string? SourceDocument = null
+    string? SourceDocument = null,
+    int Width = 0,
+    int Height = 0
 );
 
 /// <summary>What a flattened group's canvas is made of.</summary>
@@ -674,7 +689,15 @@ public sealed record MeshUnwrapAsk(string Source, string Output, UnwrapOptions O
 /// <param name="Backup">
 ///     Where copies of what they were go. Paint on a layout that did not change stays as it is.
 /// </param>
-public sealed record MeshMovePaintAsk(string From, string To, IReadOnlyList<string> Paints, string Set, string Backup);
+/// <param name="UvSet">The coordinate set the texture set is laid out in on both meshes (#210).</param>
+public sealed record MeshMovePaintAsk(
+    string From,
+    string To,
+    IReadOnlyList<string> Paints,
+    string Set,
+    string Backup,
+    int UvSet = 0
+);
 
 /// <summary>Draws where some of a model's named meshes lie in its layout, white on black.</summary>
 /// <param name="Mesh">The mesh file.</param>

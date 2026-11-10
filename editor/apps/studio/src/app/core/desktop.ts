@@ -54,7 +54,7 @@ export interface DesktopBridge {
   /** Shows a file in the system's file browser. */
   reveal(path: string): Promise<void>;
   /** Asks for a mesh or a picture of these formats: its path, or null if they cancelled. */
-  openFile(pictures?: readonly string[]): Promise<string | null>;
+  openFile(pictures?: readonly string[], meshes?: readonly string[]): Promise<string | null>;
   /** Asks for a panorama of these formats. */
   openEnvironment(formats?: readonly string[]): Promise<string | null>;
   /** Asks for a <code>.cube</code> table to view the viewport through. */
@@ -81,7 +81,7 @@ export interface DesktopBridge {
   /** Writes the person's app-wide preferences. */
   writePreferences(settings: unknown): Promise<void>;
   /** Asks the user for a mesh file: its path, or null if they cancelled. */
-  openMesh(): Promise<string | null>;
+  openMesh(formats?: readonly string[]): Promise<string | null>;
   /** Asks the user for a picture of these formats: its path, or null if they cancelled. */
   openImage(formats?: readonly string[]): Promise<string | null>;
   /** Asks the user for a folder: its path, or null if they cancelled. */

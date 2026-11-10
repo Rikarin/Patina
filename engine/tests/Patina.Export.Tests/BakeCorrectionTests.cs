@@ -127,7 +127,6 @@ public sealed class BakeCorrectionTests : IDisposable {
     /// </summary>
     [Fact]
     public void Auto_colour_falls_to_the_materials() {
-        // A GLB, because an OBJ read from its bytes cannot find the material library beside it.
         static MeshData Half(string name, float left, int material) =>
             new() {
                 Name = name,
@@ -156,6 +155,50 @@ public sealed class BakeCorrectionTests : IDisposable {
         var baked = PngCodec.Load(Path.Combine(Into("bake"), "colour.png"));
 
         // Body is red and has the left half of the atlas, Strap is blue and has the right.
+        Assert.Equal(255, Red(baked, 16, 32));
+        Assert.Equal(0, Red(baked, 48, 32));
+        Assert.Equal(255, baked.Pixels[(32 * 64 + 48) * 4 + 2]);
+    }
+
+    /// <summary>
+    ///     An OBJ's material colours bake too, from the material library beside it, in a folder of its own (#231).
+    ///     Read from its bytes alone, the OBJ found no library and baked the default grey.
+    /// </summary>
+    [Fact]
+    public void Auto_colour_falls_to_an_objs_materials_from_its_library() {
+        Directory.CreateDirectory(Into("looks"));
+        File.WriteAllText(Into("looks/two.mtl"), "newmtl Body\nKd 1 0 0\nnewmtl Strap\nKd 0 0 1\n");
+        var high = Into("two.obj");
+        File.WriteAllText(
+            high,
+            """
+            mtllib looks/two.mtl
+            v -1 0 0
+            v 0 0 0
+            v 0 1 0
+            v -1 1 0
+            v 1 0 0
+            v 1 1 0
+            vt 0 0
+            vt 0.5 0
+            vt 0.5 1
+            vt 0 1
+            vt 1 0
+            vt 1 1
+            vn 0 0 1
+            usemtl Body
+            f 1/1/1 2/2/1 3/3/1
+            f 1/1/1 3/3/1 4/4/1
+            usemtl Strap
+            f 2/2/1 5/5/1 6/6/1
+            f 2/2/1 6/6/1 3/3/1
+
+            """
+        );
+
+        Bake(Request(high, high, static options => options));
+        var baked = PngCodec.Load(Path.Combine(Into("bake"), "colour.png"));
+
         Assert.Equal(255, Red(baked, 16, 32));
         Assert.Equal(0, Red(baked, 48, 32));
         Assert.Equal(255, baked.Pixels[(32 * 64 + 48) * 4 + 2]);

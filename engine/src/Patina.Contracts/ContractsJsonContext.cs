@@ -9,6 +9,7 @@ namespace Patina.Contracts;
     WriteIndented = true
 )]
 [JsonSerializable(typeof(SystemInfo))]
+[JsonSerializable(typeof(MeshFacts))]
 [JsonSerializable(typeof(DiscoveryDocument))]
 [JsonSerializable(typeof(LibraryInfo))]
 [JsonSerializable(typeof(ProjectPage))]

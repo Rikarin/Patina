@@ -11,21 +11,21 @@ namespace Patina.Worker;
 ///     one tree. A file rewritten in place is read again, and all of this comes back from the file after a crash.
 /// </summary>
 sealed class MeshShelf {
-    readonly Dictionary<(string Path, string Set), (DateTime Written, Mesh Held)> held = [];
+    readonly Dictionary<(string Path, string Set, int UvSet), (DateTime Written, Mesh Held)> held = [];
 
     /// <exception cref="IpcException">The file cannot be read as a mesh with a layout.</exception>
     public Mesh Of(string path) => Of(path, string.Empty);
 
-    /// <summary>One texture set's triangles, or all of them for a set that is no material of the file.</summary>
-    /// <exception cref="IpcException">The file cannot be read as a mesh with a layout.</exception>
-    public Mesh Of(string path, string set) {
+    /// <summary>One texture set's triangles, laid out in the coordinate set it chose (#210).</summary>
+    /// <exception cref="IpcException">The file cannot be read as a mesh with that layout.</exception>
+    public Mesh Of(string path, string set, int uvSet = 0) {
         try {
             var written = File.GetLastWriteTimeUtc(path);
-            if (held.TryGetValue((path, set), out var known) && known.Written == written) {
+            if (held.TryGetValue((path, set, uvSet), out var known) && known.Written == written) {
                 return known.Held;
             }
 
-            var geometry = set.Length == 0 ? ViewportGeometry.Read(path) : ViewportGeometry.Read(path, set);
+            var geometry = set.Length == 0 ? ViewportGeometry.Read(path) : ViewportGeometry.Read(path, set, uvSet);
             if (!geometry.HasCoordinates) {
                 throw new IpcException($"'{path}' has no texture coordinates, so nothing can be painted on it.");
             }
@@ -38,7 +38,7 @@ sealed class MeshShelf {
                     set.Length == 0 ? $"'{Path.GetFileName(path)}'" : $"Texture set '{set}'"
                 )
             );
-            held[(path, set)] = (written, mesh);
+            held[(path, set, uvSet)] = (written, mesh);
             return mesh;
         } catch (Exception e) when (e is ModelFormatException or IOException or UnauthorizedAccessException) {
             throw new IpcException($"'{path}' would not read: {e.Message}");

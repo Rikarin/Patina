@@ -35,7 +35,7 @@ export class ProjectCommands {
       'import',
       () => bridge !== undefined && (project.current() !== null || arriving()),
       async () => {
-        const path = await bridge?.openFile(this.status.pictures());
+        const path = await bridge?.openFile(this.status.pictures(), this.status.meshes());
         return path ? project.importFiles([path]) : undefined;
       }
     );

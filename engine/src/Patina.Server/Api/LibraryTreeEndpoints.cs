@@ -63,6 +63,13 @@ static class LibraryTreeEndpoints {
                 "Whether a mesh file differs from the one the project already has, so that reloading has work to do."
             );
 
+        library.MapGet("/mesh", MeshFactsEndpoint.GetAsync)
+            .Described(
+                "GetMeshFacts",
+                "What a mesh file is: its parts, materials, texture coordinate sets, triangles, box and units. The "
+                + "path is below the library or a file on this machine."
+            );
+
         library.MapProjectBlocks();
 
         library.MapPatch("/project/settings", ProjectSettingsEndpoint.SetAsync)

@@ -84,6 +84,7 @@ function stack(overrides: Partial<StackState> = {}): StackState {
     model: '',
     seed: 0,
     heightNormal: 'Smooth',
+    uvSet: 0,
     ...overrides
   };
   return state;

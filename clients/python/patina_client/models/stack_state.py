@@ -50,6 +50,8 @@ class StackState:
             height_normal (str): How a height channel becomes the set's normal: `Sharp` or `Smooth`. Read only when the set
                 has a
                 height channel, and then it writes a normal whether or not it declares one. Default: 'Smooth'.
+            uv_set (int): The mesh's coordinate set the set is painted, baked and drawn in, by the file's number. Default:
+                0.
             evaluation (None | StackEvaluation | Unset):
             mesh_maps (None | str | Unset): The bake its generators read, or null.
             anchors (list[StackAnchor] | None | Unset): The anchor points its set publishes, by name, and who reads each.
@@ -71,6 +73,7 @@ class StackState:
     model: str
     seed: int = 0
     height_normal: str = 'Smooth'
+    uv_set: int = 0
     evaluation: None | StackEvaluation | Unset = UNSET
     mesh_maps: None | str | Unset = UNSET
     anchors: list[StackAnchor] | None | Unset = UNSET
@@ -134,6 +137,8 @@ class StackState:
 
         height_normal = self.height_normal
 
+        uv_set = self.uv_set
+
         evaluation: dict[str, Any] | None | Unset
         if isinstance(self.evaluation, Unset):
             evaluation = UNSET
@@ -181,6 +186,7 @@ class StackState:
             "model": model,
             "seed": seed,
             "heightNormal": height_normal,
+            "uvSet": uv_set,
         })
         if evaluation is not UNSET:
             field_dict["evaluation"] = evaluation
@@ -261,6 +267,8 @@ class StackState:
 
         height_normal = d.pop("heightNormal")
 
+        uv_set = d.pop("uvSet")
+
         def _parse_evaluation(data: object) -> None | StackEvaluation | Unset:
             if data is None:
                 return data
@@ -333,6 +341,7 @@ class StackState:
             model=model,
             seed=seed,
             height_normal=height_normal,
+            uv_set=uv_set,
             evaluation=evaluation,
             mesh_maps=mesh_maps,
             anchors=anchors,

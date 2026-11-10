@@ -290,9 +290,6 @@ public sealed class StackEditor : ILayerStackDocument {
             case StackSetSeed seed:
                 Do(new SetDocumentCommand(this, Document with { Seed = seed.Seed }, "Change seed"));
                 break;
-            case StackSetHeightNormal height:
-                Do(HeightNormal(height.Method));
-                break;
             case StackStroke stroke:
                 Stroke(stroke, step, set, Do);
                 break;
@@ -309,7 +306,7 @@ public sealed class StackEditor : ILayerStackDocument {
                 Unflatten(unflatten.Layer, set, Do);
                 break;
             default:
-                if (!StackLayerEdits.Run(this, command, set, Do)) {
+                if (!StackLayerEdits.Run(this, command, set, Do) && !StackSetEdits.Run(this, command, Do)) {
                     throw new StackEditRefusedException($"Unknown command '{command.GetType().Name}'.");
                 }
 
@@ -517,22 +514,9 @@ public sealed class StackEditor : ILayerStackDocument {
         );
     }
 
-    SetDocumentCommand HeightNormal(string method) {
-        if (!Enum.TryParse<LayerHeightNormal>(method, false, out var chosen) || !Enum.IsDefined(chosen)) {
-            throw new StackEditRefusedException(
-                $"'{method}' is no way to turn height into a normal. "
-                + $"Use {string.Join(" or ", Enum.GetNames<LayerHeightNormal>())}."
-            );
-        }
-
-        var set = Set;
-        var changed = set with { HeightNormal = chosen };
-        return new(
-            this,
-            Document with { Sets = [..Document.Sets.Select(held => held == set ? changed : held)] },
-            "Height to normal"
-        );
-    }
+    /// <summary>A whole-document change as one undoable step, which is how a set's own settings change.</summary>
+    internal IAuthoringCommand Replaced(LayerStackAsset after, string name) =>
+        new SetDocumentCommand(this, after, name);
 
     /// <summary>A whole-document change, which is how a texture set's own fields are undone.</summary>
     sealed class SetDocumentCommand(ILayerStackDocument document, LayerStackAsset after, string name)
@@ -581,7 +565,9 @@ public sealed class StackEditor : ILayerStackDocument {
 
         step.Strokes.Add(
             new(nextEntry++, stroke, paint, Channel(stroke), Packed(stroke.Colour), Document.Model, start) {
-                SourceDocument = StackDocuments.SourceText(stroke.Source, Document, Set)
+                SourceDocument = StackDocuments.SourceText(stroke.Source, Document, Set),
+                Width = Document.BaseWidth,
+                Height = Document.BaseHeight
             }
         );
     }

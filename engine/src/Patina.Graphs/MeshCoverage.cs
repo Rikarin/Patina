@@ -13,12 +13,13 @@ public static class MeshCoverage {
     /// </summary>
     /// <param name="mesh">The model file.</param>
     /// <param name="material">The texture set's material, or null for the whole model.</param>
+    /// <param name="uvSet">The coordinate set the texture set is laid out in (#210).</param>
     /// <param name="width">The maps' width.</param>
     /// <param name="height">The maps' height.</param>
     /// <returns>The picture, or null for a model with no layout, which has no background to pad.</returns>
     /// <exception cref="InvalidDataException">The model has no such material.</exception>
-    public static FloatImage? Of(string mesh, string? material, int width, int height) {
-        var model = MeshMapBakeRun.Read(mesh, material).Mesh;
+    public static FloatImage? Of(string mesh, string? material, int uvSet, int width, int height) {
+        var model = MeshMapBakeRun.Read(mesh, material, uvSet).Mesh;
         var corners = model.TexCoords;
         if (corners.Length == 0 || corners.Length != model.CornerCount) {
             return null;

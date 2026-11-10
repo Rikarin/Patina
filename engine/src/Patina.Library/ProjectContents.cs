@@ -1,5 +1,4 @@
 using Patina.Contracts;
-using System.Collections.Frozen;
 using System.Globalization;
 using System.Text.Json;
 
@@ -15,9 +14,6 @@ static class ProjectFiles {
     internal const string BakeFolder = "bakes";
     internal const string PictureFolder = "pictures";
     const string StackExtension = ".vxlayers";
-
-    static readonly FrozenSet<string> MeshExtensions =
-        new[] { ".glb", ".gltf", ".fbx", ".obj" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Everything in a project, with paths below the library.</summary>
     public static ProjectContents Read(string root, string path) {
@@ -178,7 +174,8 @@ static class ProjectFiles {
             AddPicture(root, path, file);
         } else {
             throw new ProjectRefusedException(
-                $"Nothing in Patina reads '{Path.GetFileName(file)}'. A project takes meshes ({Known(MeshExtensions)}) "
+                $"Nothing in Patina reads '{Path.GetFileName(file)}'. "
+                + $"A project takes meshes ({Known(MeshFormats.Meshes)}) "
                 + $"and pictures ({Known(PictureFormats.Pictures)})."
             );
         }
@@ -624,7 +621,7 @@ static class ProjectFiles {
     public static void Require(string mesh) {
         if (!IsMesh(mesh)) {
             throw new ProjectRefusedException(
-                $"'{Path.GetFileName(mesh)}' is not a mesh: use {Known(MeshExtensions)}."
+                $"'{Path.GetFileName(mesh)}' is not a mesh: use {Known(MeshFormats.Meshes)}."
             );
         }
 
@@ -718,7 +715,7 @@ static class ProjectFiles {
             Bake = BakeOf(full, path, item), Tags = item.Tags
         };
 
-    static bool IsMesh(string file) => MeshExtensions.Contains(Path.GetExtension(file));
+    static bool IsMesh(string file) => MeshFormats.IsMesh(file);
 
     /// <summary>A picture of the user's: what the Server drew for a mesh mask is not one.</summary>
     static bool IsPicture(string file) =>

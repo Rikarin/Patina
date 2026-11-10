@@ -665,12 +665,12 @@ describe('ProjectStore', () => {
     it('keeps going past a file the Server refuses, and says what happened to both', async () => {
       const { store, client } = harness();
       await store.open('a');
-      client.POST.mockImplementationOnce(() => Promise.reject(new ApiError(400, "Nothing reads 'model.dae'.")));
+      client.POST.mockImplementationOnce(() => Promise.reject(new ApiError(400, "Nothing reads 'model.blend'.")));
       client.POST.mockImplementationOnce(reply as never);
 
-      await store.importFiles(['/in/model.dae', '/in/rust.png']);
+      await store.importFiles(['/in/model.blend', '/in/rust.png']);
 
-      expect(store.failure()).toBe("Nothing reads 'model.dae'.");
+      expect(store.failure()).toBe("Nothing reads 'model.blend'.");
       expect(store.notice()).toBe('Imported rust.png into A');
       expect(store.current()?.pictures).toHaveLength(1);
     });
@@ -700,11 +700,11 @@ describe('ProjectStore', () => {
     it('says nothing worked when nothing did', async () => {
       const { store, client } = harness();
       await store.open('a');
-      client.POST.mockImplementationOnce(() => Promise.reject(new ApiError(400, "Nothing reads 'model.dae'.")));
+      client.POST.mockImplementationOnce(() => Promise.reject(new ApiError(400, "Nothing reads 'model.blend'.")));
 
-      await store.importFiles(['/in/model.dae']);
+      await store.importFiles(['/in/model.blend']);
 
-      expect(store.failure()).toBe("Nothing reads 'model.dae'.");
+      expect(store.failure()).toBe("Nothing reads 'model.blend'.");
       expect(store.notice()).toBeNull();
     });
   });

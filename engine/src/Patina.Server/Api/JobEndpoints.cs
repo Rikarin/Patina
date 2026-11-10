@@ -52,10 +52,12 @@ static class JobEndpoints {
         BakeRequest request,
         JobQueue queue,
         BakeCache cache,
+        LibraryHost host,
         CancellationToken cancellationToken
     ) {
         try {
             BakeInputs.Check(request);
+            request = BakeLayouts.Resolved(host.Library, request);
             var key = (await Task.Run(() => BakeKeyReads.KeyOf(request, ToolCatalog.Default), cancellationToken)).Hex;
             var job = cache.Find(key) is { } manifest
                 ? queue.Finished(

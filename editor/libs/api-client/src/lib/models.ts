@@ -10,6 +10,7 @@ export type MaterialInfo = components['schemas']['MaterialInfo'];
 export type StackIdColour = components['schemas']['StackIdColour'];
 export type ProjectDocumentInfo = components['schemas']['ProjectDocumentInfo'];
 export type ProjectMeshInfo = components['schemas']['ProjectMeshInfo'];
+export type MeshFacts = components['schemas']['MeshFacts'];
 export type UnwrapOptions = components['schemas']['UnwrapOptions'];
 export type UnwrapReport = components['schemas']['UnwrapReport'];
 export type UnwrapSet = components['schemas']['UnwrapSet'];

@@ -203,7 +203,8 @@ static class ProjectSettingsEndpoint {
                         library.ProjectFile(project, to.File),
                         paints,
                         document.Material ?? string.Empty,
-                        backup
+                        backup,
+                        StackDocuments.Parse(SharedFile.ReadAllText(stack)).Sets.FirstOrDefault()?.UvSet ?? 0
                     )
                 },
                 cancellationToken

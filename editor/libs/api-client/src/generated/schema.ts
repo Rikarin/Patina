@@ -506,6 +506,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/mesh': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The facts of a mesh file: one below the library, as a project lists it, or any file on this machine, so a
+     *     client can say what a mesh is before it is brought in.
+     */
+    get: operations['GetMeshFacts'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/export': {
     parameters: {
       query?: never;
@@ -2115,6 +2135,14 @@ export interface components {
       cage?: null | string;
       /** @description The material of the low mesh to bake, for one texture set of a model that has several. */
       material?: null | string;
+      /**
+       * Format: int32
+       * @description The low mesh's texture coordinate set the maps are baked in, by the file's number: zero for the first
+       *     (#210). Null bakes a texture set in the set it is laid out in, when the low mesh is a project's and
+       *     string? BakeRequest.Material names one of its texture sets, and in the first otherwise. The high mesh is read
+       *     whole, so its sets do not matter, but for a picture moved from its layout, which is always its first.
+       */
+      uvSet?: null | number;
       /** @description The stem of each file's name, or null for the low mesh's. */
       name?: null | string;
       /** @description What to bake and how: the part a project keeps between bakes. */
@@ -2588,6 +2616,8 @@ export interface components {
       pictures: string[];
       /** @description What lights the viewport. */
       environments: string[];
+      /** @description What a project takes as its mesh, its detailed mesh or a cage. */
+      meshes: string[];
     };
     /** @description The body of `POST /api/v1/library/folders`. */
     FolderCreateRequest: {
@@ -3840,6 +3870,81 @@ export interface components {
       /** @description The graph, below the library. */
       source: string;
     };
+    /** @description What a mesh file is, as the engine reads it (#146): the answer to `GET /library/mesh`. */
+    MeshFacts: {
+      /** @description The file's name. */
+      file: string;
+      /** @description What the format is called, for a person. */
+      format: string;
+      /**
+       * Format: int32
+       * @description How many triangles, every part counted where it stands.
+       */
+      triangles: number;
+      /**
+       * Format: int32
+       * @description How many vertices, after welding.
+       */
+      vertices: number;
+      /** @description Each named mesh where the file places it. */
+      parts: components['schemas']['MeshPartFacts'][];
+      /** @description Each material a triangle uses, which is each texture set the mesh has. */
+      materials: components['schemas']['MeshMaterialFacts'][];
+      /**
+       * Format: int32
+       * @description The most texture coordinate sets any part has. Zero is a mesh with no layout.
+       */
+      uvSets: number;
+      /** @description The least corner of the box round the model, in the file's units. */
+      minimum: number[];
+      /** @description The greatest corner of the box. */
+      maximum: number[];
+      /**
+       * Format: double
+       * @description How long the file's unit is, in metres, when the file or its format says: glTF is in metres, and an FBX states
+       *     its unit. Null for a file that does not say, as OBJ, PLY and STL never do.
+       */
+      metresPerUnit?: null | number;
+      /** @description Whether any part carries vertex colours. */
+      vertexColours: boolean;
+    };
+    /** @description One material of a mesh, which is one texture set. */
+    MeshMaterialFacts: {
+      /** @description Its name, unique in the file. */
+      name: string;
+      /**
+       * Format: int32
+       * @description How many triangles it is on.
+       */
+      triangles: number;
+      /**
+       * Format: int32
+       * @description How many parts it is on.
+       */
+      parts: number;
+      /**
+       * Format: int32
+       * @description The texture coordinate sets every one of its parts has, so a texture set can paint and bake on any of them.
+       */
+      uvSets: number;
+    };
+    /** @description One named mesh where the file places it. */
+    MeshPartFacts: {
+      /** @description Its name in the file. */
+      name: string;
+      /** @description The material, or texture set, it is drawn with. */
+      material: string;
+      /**
+       * Format: int32
+       * @description How many triangles.
+       */
+      triangles: number;
+      /**
+       * Format: int32
+       * @description How many texture coordinate sets it has.
+       */
+      uvSets: number;
+    };
     /** @description One output in a project's report. */
     OutputReport: {
       /** @description The output. */
@@ -4657,6 +4762,7 @@ export interface components {
       | components['schemas']['StackCommandStackFlattenLayer']
       | components['schemas']['StackCommandStackUnflattenLayer']
       | components['schemas']['StackCommandStackSetHeightNormal']
+      | components['schemas']['StackCommandStackSetSettings']
       | components['schemas']['StackCommandStackAddMaskLayer']
       | components['schemas']['StackCommandStackRemoveMaskLayer']
       | components['schemas']['StackCommandStackMoveMaskLayer']
@@ -4976,6 +5082,33 @@ export interface components {
        * @description It.
        */
       seed: number;
+    };
+    /**
+     * @description Changes the texture set's settings, any of them, as one undo step. What is left out stays as it is. Together
+     *     with its channels and its name these are the set's settings, and the stack file is the one place they live.
+     */
+    StackCommandStackSetSettings: {
+      /** @enum {string} */
+      op: 'setSettings';
+      /**
+       * Format: int32
+       * @description The width the set is painted, evaluated and exported at, one of the sides the system offers. A canvas painted at
+       *     another resolution is never rewritten by this: it is sampled at the set's, and a smaller one is enlarged exactly
+       *     when it is next painted (#19).
+       */
+      width?: null | number;
+      /**
+       * Format: int32
+       * @description The height, which may differ from the width.
+       */
+      height?: null | number;
+      /**
+       * Format: int32
+       * @description The mesh's UV set it is painted, baked and drawn in, by its number; 0 is the first.
+       */
+      uvSet?: null | number;
+      /** @description How height becomes the normal: `Sharp` or `Smooth`. */
+      heightNormal?: null | string;
     };
     /**
      * @description Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one
@@ -5723,6 +5856,12 @@ export interface components {
       heightNormal: string;
       /** @description The anchor points its set publishes, by name, and who reads each. */
       anchors?: null | components['schemas']['StackAnchor'][];
+      /**
+       * Format: int32
+       * @description The mesh's coordinate set the set is painted, baked and drawn in, by the file's number.
+       * @default 0
+       */
+      uvSet: number;
     };
     /** @description Where a stroke's colour comes from, when it is not one colour. */
     StackStrokeSource: {
@@ -7953,6 +8092,55 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProjectMeshChange'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetMeshFacts: {
+    parameters: {
+      query: {
+        path: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MeshFacts'];
         };
       };
       /** @description Bad Request */

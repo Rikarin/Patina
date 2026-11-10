@@ -111,6 +111,7 @@ sealed class WorkerLoop(
                 IpcTypes.MeshMovePaint => MovePaint(request),
                 IpcTypes.MeshMaterials => Materials(request),
                 IpcTypes.MeshParts => Parts(request),
+                IpcTypes.MeshFacts => Facts(request),
                 IpcTypes.MeshPartMask => PartMask(request),
                 IpcTypes.BakeStart => bakes.Start(request, link),
                 IpcTypes.BakeCancel => bakes.Cancel(request),
@@ -160,6 +161,16 @@ sealed class WorkerLoop(
         }
     }
 
+    /// <summary>Uses no device: it reads the file and counts.</summary>
+    static IpcMessage Facts(IpcMessage request) {
+        var file = request.MeshFile ?? throw new IpcException("mesh.facts names no file.");
+        try {
+            return new() { Type = IpcTypes.Ok, Id = request.Id, Facts = MeshFactsReader.Read(file) };
+        } catch (Exception e) when (e is ModelFormatException or IOException or UnauthorizedAccessException) {
+            throw new IpcException($"'{Path.GetFileName(file)}' would not read: {e.Message}");
+        }
+    }
+
     static IpcMessage Materials(IpcMessage request) {
         var file = request.MeshFile ?? throw new IpcException("mesh.materials names no file.");
         try {
@@ -175,7 +186,8 @@ sealed class WorkerLoop(
     /// </summary>
     IpcMessage MovePaint(IpcMessage request) {
         var ask = request.MeshMovePaint ?? throw new IpcException("mesh.move-paint moves nothing.");
-        var (from, to) = (meshes.Of(ask.From, ask.Set).Projection, meshes.Of(ask.To, ask.Set).Projection);
+        var from = meshes.Of(ask.From, ask.Set, ask.UvSet).Projection;
+        var to = meshes.Of(ask.To, ask.Set, ask.UvSet).Projection;
         if (PaintTransfer.SameLayout(from, to)) {
             return IpcMessage.Ok(request.Id);
         }

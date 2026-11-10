@@ -50,6 +50,15 @@ public sealed class StackJournalEntry(
     /// </summary>
     public string? SourceDocument { get; init; }
 
+    /// <summary>
+    ///     The texture set's size when the stroke began, which its stamps are texels of (#19). In the journal so a
+    ///     replay after the set's resolution changed still lands where the brush went. Zero for one with no stamps.
+    /// </summary>
+    public int Width { get; init; }
+
+    /// <summary>The texture set's height when the stroke began.</summary>
+    public int Height { get; init; }
+
     public List<StackStamp> Stamps { get; } = [..first.Stamps];
 
     public bool Open { get; set; } = first.Open;
