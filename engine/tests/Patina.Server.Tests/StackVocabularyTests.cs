@@ -221,8 +221,8 @@ public sealed class StackVocabularyTests {
     ///     node whose one image is a mesh map (#179), a composite of two normal maps, or one with two pictures out
     ///     (#176); and wave 5's one-picture nodes are both, Compare among them (#110), and Distance Colour, whose first
     ///     image is the colour it pads out from a mask an input names. Wave 8's placement helpers, Instance Range and
-    ///     Atlas Pack, read a placement's numbers or pack pictures and say so in their files; its distance compounds and
-    ///     its two filter atoms are offered.
+    ///     Atlas Pack, read a placement's numbers or pack pictures and say so in their files; its distance compounds
+    ///     and its two filter atoms are offered.
     /// </summary>
     [Fact]
     public void No_statistics_node_is_offered_as_a_filter_or_a_mask_step() {
