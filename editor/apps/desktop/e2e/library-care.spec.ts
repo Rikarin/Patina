@@ -156,3 +156,80 @@ test('a document deleted from the tree waits in the bin, and Empty Bin deletes i
   await expect(window.getByTestId('bin')).toContainText('The bin is empty');
   expect(bin()).toHaveLength(0);
 });
+
+/** What in the Library is wider than its room and lets it scroll, with how much wider. */
+const overflowing = () =>
+  window.locator('ptn-library').evaluate(pane =>
+    [pane, ...pane.querySelectorAll('*')]
+      .filter(
+        element => element.scrollWidth > element.clientWidth + 1 && getComputedStyle(element).overflowX !== 'visible'
+      )
+      .map(element => {
+        const name =
+          element.getAttribute('data-testid') ??
+          `${element.tagName.toLowerCase()}.${element.getAttribute('class') ?? ''}`;
+        return `${name} by ${String(element.scrollWidth - element.clientWidth)}`;
+      })
+  );
+
+/** Whether nothing in the Library's top bar or search row runs past another, or past the pane. */
+async function laidOut(what: string): Promise<void> {
+  const pane = await window.locator('ptn-library').boundingBox();
+  const shown = window.locator('ptn-library [aria-label="Library view"]:visible');
+  await expect(shown).toHaveCount(1);
+  const [switches, search, toggle] = await Promise.all(
+    [shown, window.getByTestId('library-search'), window.getByTestId('library-layout')].map(part => part.boundingBox())
+  );
+  const right = (box: typeof pane) => (box ? box.x + box.width : Infinity);
+  expect(pane && switches && right(switches) <= right(pane), `${what}: the view switch past the pane`).toBe(true);
+  expect(search && toggle && right(search) <= toggle.x + 0.5, `${what}: the search under the toggle`).toBe(true);
+  expect(right(toggle ?? null) <= right(pane), `${what}: the toggle past the pane`).toBe(true);
+  for (const segment of await shown.getByRole('radio').all()) {
+    const box = await segment.boundingBox();
+    const inside = box && switches && box.x >= switches.x - 0.5 && right(box) <= right(switches);
+    expect(inside, `${what}: a segment past its control`).toBe(true);
+  }
+
+  expect(await overflowing(), what).toEqual([]);
+}
+
+/** Sets the window's size. */
+const resize = (width: number, height: number) =>
+  app.evaluate(
+    ({ BrowserWindow }, [w, h]) => {
+      BrowserWindow.getAllWindows()[0]?.setSize(w ?? 0, h ?? 0);
+    },
+    [width, height]
+  );
+
+/**
+ * In the workspace that gives the Library least room, nothing in it runs under anything else and nothing scrolls
+ * sideways (#243): at CI's window the view switch is the segmented control, and at the narrowest window, where its
+ * labels cannot fit, it is a list.
+ */
+test('the Library keeps to its width at the narrowest window', async () => {
+  await resize(1280, 873);
+  await newLibrary(app, window, library);
+  await newProject(app, window, 'Narrow', undefined, 'graph');
+  await window.getByRole('tab', { name: 'Library' }).click();
+  const pane = window.locator('ptn-library');
+  await expect(window.getByRole('radiogroup', { name: 'Library view' })).toBeVisible();
+  await laidOut('at 1280');
+  await pane.screenshot({ path: join(shots, 'library-1280.png') });
+
+  await resize(960, 600);
+  await expect.poll(async () => (await pane.boundingBox())?.width ?? 0).toBeLessThan(170);
+  const views = window.getByRole('combobox', { name: 'Library view' });
+  await expect(views).toBeVisible();
+  for (const [value, view] of [
+    ['projects', 'Projects'],
+    ['assets', 'Materials']
+  ] as const) {
+    await views.selectOption(value);
+    for (const as of ['grid', 'list'] as const) {
+      await layOut(as);
+      await pane.screenshot({ path: join(shots, `library-narrow-${view.toLowerCase()}-${as}.png`) });
+      await laidOut(`${view} as a ${as}`);
+    }
+  }
+});
