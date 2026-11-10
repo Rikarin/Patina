@@ -6,14 +6,17 @@ using Vixen.TextureGraph;
 namespace Patina.Export.Tests;
 
 /// <summary>
-///     Patina #139: a graph's Source/Text and Source/Vector are drawn by Vixen from a font or an SVG Patina finds the way
-///     it finds a bitmap, read sharing write, and stamped so that saving the file is noticed.
+///     Patina #139: a graph's Source/Text and Source/Vector are drawn by Vixen from a font or an SVG Patina finds the
+///     way it finds a bitmap, read sharing write, and stamped so that saving the file is noticed.
 /// </summary>
 public sealed class GraphDrawingTests : IDisposable {
     const int Side = 64;
 
-    const string HalfRed =
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><rect width=\"50\" height=\"100\" fill=\"#f00\"/></svg>";
+    const string HalfRed = """
+                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+                             <rect width="50" height="100" fill="#f00"/>
+                           </svg>
+                           """;
 
     readonly string folder = Directory.CreateTempSubdirectory("patina-drawing-").FullName;
 
@@ -38,7 +41,7 @@ public sealed class GraphDrawingTests : IDisposable {
     public void A_vector_beside_the_graph_is_drawn_and_stamped() {
         var svg = Path.Combine(folder, "logo.svg");
         File.WriteAllText(svg, HalfRed);
-        var (plan, compiler) = Compile("Source/Vector", node => node.SetText("File", "logo.svg"));
+        var (plan, compiler) = Compile("Source/Vector", static node => node.SetText("File", "logo.svg"));
 
         if (!VulkanDevice.TryCreate(new(), out var device, out var refusal)) {
             Assert.Skip($"No Vulkan device: {refusal}");
@@ -59,9 +62,9 @@ public sealed class GraphDrawingTests : IDisposable {
             var picture = bake.Read(compiler.Outputs.Single().Image);
 
             // Red and opaque on the left, nothing on the right.
-            Assert.Equal(255, picture.Pixels[((32 * Side) + 8) * 4]);
-            Assert.Equal(255, picture.Pixels[(((32 * Side) + 8) * 4) + 3]);
-            Assert.Equal(0, picture.Pixels[(((32 * Side) + 56) * 4) + 3]);
+            Assert.Equal(255, picture.Pixels[(32 * Side + 8) * 4]);
+            Assert.Equal(255, picture.Pixels[(32 * Side + 8) * 4 + 3]);
+            Assert.Equal(0, picture.Pixels[(32 * Side + 56) * 4 + 3]);
 
             // Saving the file is a change the graph hears about, as it is for a bitmap.
             File.WriteAllText(svg, HalfRed.Replace("#f00", "#00f", StringComparison.Ordinal) + "\n");
@@ -71,10 +74,10 @@ public sealed class GraphDrawingTests : IDisposable {
 
     [Fact]
     public void Text_in_the_bundled_face_needs_no_file_and_a_missing_font_is_a_refusal_naming_it() {
-        var (plan, compiler) = Compile("Source/Text", node => node.SetText("Text", "Patina"));
+        var (plan, compiler) = Compile("Source/Text", static node => node.SetText("Text", "Patina"));
         var (missing, missingCompiler) = Compile(
             "Source/Text",
-            node => node.SetText("Font", "fonts/Nowhere.ttf")
+            static node => node.SetText("Font", "fonts/Nowhere.ttf")
         );
 
         if (!VulkanDevice.TryCreate(new(), out var device, out var refusal)) {

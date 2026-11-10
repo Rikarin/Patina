@@ -231,7 +231,11 @@ public sealed class GraphCatalogueProcessTests : IDisposable {
         PngCodec.Save(Path.Combine(Library, "picture.png"), new(4, 4, pixels));
         File.WriteAllText(
             Path.Combine(Library, "drawing.svg"),
-            "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"3\" fill=\"#c33\"/></svg>"
+            """
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+              <circle cx="5" cy="5" r="3" fill="#c33"/>
+            </svg>
+            """
         );
         NodeGraphAsset host = new() {
             Name = "Catalogue",

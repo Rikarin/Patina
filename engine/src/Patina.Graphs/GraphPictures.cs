@@ -110,8 +110,8 @@ public sealed class GraphPictures {
     }
 
     /// <summary>
-    ///     Draws a Source/Text or a Source/Vector. Vixen draws it at the bake's size; what Patina owns is where its font
-    ///     or SVG is, found as a bitmap is and read sharing write, and the stamp that notices the file changing.
+    ///     Draws a Source/Text or a Source/Vector. Vixen draws it at the bake's size; what Patina owns is where its
+    ///     font or SVG is, found as a bitmap is and read sharing write, and the stamp that notices the file changing.
     /// </summary>
     static void Draw(
         TextureUploads uploads,
