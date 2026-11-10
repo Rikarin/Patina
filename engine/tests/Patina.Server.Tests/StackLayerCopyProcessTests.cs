@@ -149,7 +149,8 @@ public sealed partial class StackProcessTests {
         }
 
         Assert.True(painted > 100, $"Only {painted} texels of the smaller stack took the paste.");
-        Assert.True(off / (Side / 2 * Side / 2) < 1.0, $"The smaller paste is {off / (Side / 2 * Side / 2)} of 255 off.");
+        var mean = off / (Side * 0.5 * (Side * 0.5));
+        Assert.True(mean < 1.0, $"The smaller paste is {mean} of 255 off.");
     }
 
     /// <summary>A map's red, by texel.</summary>

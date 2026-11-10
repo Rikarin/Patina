@@ -127,7 +127,11 @@ public sealed class StackEditor : ILayerStackDocument {
         }
 
         EndDrag();
-        var step = new UndoStep(nextStep + 1, batch.Label ?? StackLayerEdits.Label(batch.Commands[0], id => LayerStackEdit.Find(Document, new(Set.Name, id))));
+        var step = new UndoStep(
+            nextStep + 1,
+            batch.Label
+            ?? StackLayerEdits.Label(batch.Commands[0], id => LayerStackEdit.Find(Document, new(Set.Name, id)))
+        );
         List<IAuthoringCommand> applied = [];
         try {
             foreach (var command in batch.Commands) {

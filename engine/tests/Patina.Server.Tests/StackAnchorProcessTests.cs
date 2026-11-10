@@ -51,7 +51,11 @@ public sealed partial class StackProcessTests {
             deadline.Token,
             new StackSetLayer("base", Values: Tint, AnchorPoint: "Ground"),
             new StackSetLayer("paint", Enabled: false),
-            new StackAddLayer("fill", "Black", new Dictionary<string, IReadOnlyList<float>> { ["baseColor"] = [0f, 0f, 0f, 1f] }),
+            new StackAddLayer(
+                "fill",
+                "Black",
+                new Dictionary<string, IReadOnlyList<float>> { ["baseColor"] = [0f, 0f, 0f, 1f] }
+            ),
             new StackAddLayer("filter", "Flip", FilterNode: "Colour/Invert")
         );
         var layers = (await StateAsync(state.Id, deadline.Token)).Layers;
@@ -60,7 +64,12 @@ public sealed partial class StackProcessTests {
         await EditAsync(
             state.Id,
             deadline.Token,
-            new StackSetLayer(flip, Inputs: new Dictionary<string, StackInput> { [subject] = new("Anchor", Anchor: new("Ground", "baseColor")) })
+            new StackSetLayer(
+                flip,
+                Inputs: new Dictionary<string, StackInput> {
+                    [subject] = new("Anchor", Anchor: new("Ground", "baseColor"))
+                }
+            )
         );
         var anchored = await TexelsAsync(state.Id, "anchored", deadline.Token);
         Assert.Contains(
@@ -68,7 +77,11 @@ public sealed partial class StackProcessTests {
             use => use.Layer == flip && use.Channel == "baseColor"
         );
 
-        await EditAsync(state.Id, deadline.Token, new StackSetLayer(flip, Inputs: new Dictionary<string, StackInput>()));
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(flip, Inputs: new Dictionary<string, StackInput>())
+        );
         var beneath = await TexelsAsync(state.Id, "beneath", deadline.Token);
         await EditAsync(state.Id, deadline.Token, new StackSetLayer(black, Enabled: false));
         var tintInverted = await TexelsAsync(state.Id, "tint-inverted", deadline.Token);
@@ -82,7 +95,11 @@ public sealed partial class StackProcessTests {
             deadline.Token,
             new StackSetLayer(black, Enabled: true),
             new StackSetLayer(flip, Enabled: false),
-            new StackAddLayer("fill", "White", new Dictionary<string, IReadOnlyList<float>> { ["baseColor"] = [1f, 1f, 1f, 1f] })
+            new StackAddLayer(
+                "fill",
+                "White",
+                new Dictionary<string, IReadOnlyList<float>> { ["baseColor"] = [1f, 1f, 1f, 1f] }
+            )
         );
         var white = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
         await EditAsync(
@@ -112,7 +129,9 @@ public sealed partial class StackProcessTests {
         Assert.NotEqual(Texel(hidden, 500, 500), Texel(generated, 500, 500));
     }
 
-    /// <summary>What a node takes is answered for any node a stack can run, and a name it cannot run is refused by code.</summary>
+    /// <summary>
+    ///     What a node takes is answered for any node a stack can run, and a name it cannot run is refused by code.
+    /// </summary>
     [Fact]
     public async Task A_stack_says_what_any_node_takes() {
         using var deadline = Deadline(120);
@@ -127,7 +146,11 @@ public sealed partial class StackProcessTests {
             deadline.Token
         );
         Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
-        Assert.Contains("node-unknown", await response.Content.ReadAsStringAsync(deadline.Token), StringComparison.Ordinal);
+        Assert.Contains(
+            "node-unknown",
+            await response.Content.ReadAsStringAsync(deadline.Token),
+            StringComparison.Ordinal
+        );
     }
 
     async Task<StackFilterKind> KindAsync(string id, string node, CancellationToken token) {

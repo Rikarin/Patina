@@ -108,6 +108,7 @@ public sealed class StackVocabularyTests {
         Assert.Equal(Enum.GetNames<LayerMaskSource>(), vocabulary.Masks.Select(static term => term.Value));
         Assert.Equal(Enum.GetNames<LayerFillSource>(), vocabulary.Fills.Select(static term => term.Value));
         Assert.Equal(Enum.GetNames<LayerProjection>(), vocabulary.Projections.Select(static term => term.Value));
+        Assert.Equal(Enum.GetNames<LayerTag>(), vocabulary.Tags!.Select(static term => term.Value));
     }
 
     /// <summary>

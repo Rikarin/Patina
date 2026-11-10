@@ -48,13 +48,15 @@ static class StackLabels {
             { Inputs: not null, Filter: null, FilterNode: null, Graph: null } => "Change input",
             { Mask: { } mask } when Switched(mask, before?.Mask) => mask.Enabled ? "Switch mask on" : "Switch mask off",
             { Mask: not null } => "Change mask",
-            { Tag: not null, Mask: null, Name: null, Enabled: null } => "Tag layer",
+            { Tag: not null, Name: null, Enabled: null } => "Tag layer",
             { Decal: not null, Path: null, Projection: null } => "Move decal",
             { Path: not null, Decal: null, Projection: null } => "Edit path",
             _ => "Change layer"
         };
 
-    /// <summary>Whether a mask change turns its switch and nothing else a person set, as a Shift-click does (#109).</summary>
+    /// <summary>
+    ///     Whether a mask change turns its switch and nothing else a person set, as a Shift-click does (#109).
+    /// </summary>
     static bool Switched(StackMask mask, MaskAsset? before) =>
         before is not null
         && mask.Enabled != before.Enabled

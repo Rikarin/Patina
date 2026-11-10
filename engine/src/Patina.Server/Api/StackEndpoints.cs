@@ -601,7 +601,9 @@ static class StackEndpoints {
         }
 
         try {
-            return TypedResults.Ok(await evaluator.PixelsAsync(session, clean, folder, cancellationToken, sampled, layer));
+            return TypedResults.Ok(
+                await evaluator.PixelsAsync(session, clean, folder, cancellationToken, sampled, layer)
+            );
         } catch (TimeoutException e) {
             return Refusals.Of(e, Unavailable);
         } catch (IpcException e) {

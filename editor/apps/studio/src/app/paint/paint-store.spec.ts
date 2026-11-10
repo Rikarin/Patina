@@ -242,6 +242,20 @@ describe('PaintStore saving', () => {
   });
 });
 
+describe('PaintStore node kinds (#111)', () => {
+  it('asks the Server once what a node the vocabulary lacks takes, and remembers the answer for its stack', async () => {
+    const { store, posts, server } = setup();
+    const own = { node: 'Mine/Rust', name: 'Rust', category: 'Mine', summary: '', ports: [], settings: [], inputs: [] };
+    server.reply = (method, path) => (path.endsWith('/kind') ? Response.json(own) : null);
+    await store.open('/a/Crate.vxlayers', false);
+
+    expect(store.kindOf('Mine/Rust')).toBeUndefined();
+    await vi.waitFor(() => expect(store.kindOf('Mine/Rust')).toEqual(own));
+    expect(store.kindOf('')).toBeNull();
+    expect(posts.filter(path => path.endsWith('/kind'))).toHaveLength(1);
+  });
+});
+
 describe('PaintStore copies', () => {
   it('copies the outermost of what is selected, and a cut removes them after', async () => {
     const { store, bodies } = setup();

@@ -66,8 +66,9 @@ public sealed partial class StackProcessTests {
     }
 
     /// <summary>
-    ///     A flattened folder exports on its own (#107): its files are named after it and hold what the stack holds with
-    ///     every other layer switched off, which is not what the whole stack holds. A layer the stack lacks is refused.
+    ///     A flattened folder exports on its own (#107): its files are named after it and hold what the stack holds
+    ///     with every other layer switched off, which is not what the whole stack holds. A layer the stack lacks is
+    ///     refused.
     /// </summary>
     [Fact]
     public async Task A_flattened_folder_exports_on_its_own() {
@@ -109,7 +110,10 @@ public sealed partial class StackProcessTests {
             ContractsJsonContext.Default.IReadOnlyListStackPixels,
             deadline.Token
         ))!;
-        Assert.All(alone, static map => Assert.Contains(".Rust Folder.", Path.GetFileName(map.File!), StringComparison.Ordinal));
+        Assert.All(
+            alone,
+            static map => Assert.Contains(".Rust Folder.", Path.GetFileName(map.File!), StringComparison.Ordinal)
+        );
 
         await EditAsync(state.Id, deadline.Token, new StackSetLayer("base", Enabled: false));
         var only = await ExportAsync(state.Id, Path.Combine(this.folder.FullName, "only"), deadline.Token);
@@ -123,7 +127,11 @@ public sealed partial class StackProcessTests {
             deadline.Token
         );
         Assert.Equal(System.Net.HttpStatusCode.UnprocessableEntity, refused.StatusCode);
-        Assert.Contains("stack-layer-missing", await refused.Content.ReadAsStringAsync(deadline.Token), StringComparison.Ordinal);
+        Assert.Contains(
+            "stack-layer-missing",
+            await refused.Content.ReadAsStringAsync(deadline.Token),
+            StringComparison.Ordinal
+        );
     }
 
     /// <summary>Each map's file, within the rounding a canvas adds.</summary>
