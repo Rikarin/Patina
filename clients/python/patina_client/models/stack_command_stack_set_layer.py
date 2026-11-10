@@ -70,6 +70,7 @@ class StackCommandStackSetLayer:
                 read, by port, replacing all of them.
             decal (None | StackDecal | Unset):
             path (None | StackSurfacePath | Unset):
+            tag (None | str | Unset): The colour it is marked with, from the vocabulary's tags: None takes the mark away.
      """
 
     op: StackCommandStackSetLayerOp
@@ -97,6 +98,7 @@ class StackCommandStackSetLayer:
     inputs: None | StackCommandStackSetLayerInputsType1 | Unset = UNSET
     decal: None | StackDecal | Unset = UNSET
     path: None | StackSurfacePath | Unset = UNSET
+    tag: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -283,6 +285,12 @@ class StackCommandStackSetLayer:
         else:
             path = self.path
 
+        tag: None | str | Unset
+        if isinstance(self.tag, Unset):
+            tag = UNSET
+        else:
+            tag = self.tag
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -336,6 +344,8 @@ class StackCommandStackSetLayer:
             field_dict["decal"] = decal
         if path is not UNSET:
             field_dict["path"] = path
+        if tag is not UNSET:
+            field_dict["tag"] = tag
 
         return field_dict
 
@@ -710,6 +720,16 @@ class StackCommandStackSetLayer:
         path = _parse_path(d.pop("path", UNSET))
 
 
+        def _parse_tag(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        tag = _parse_tag(d.pop("tag", UNSET))
+
+
         stack_command_stack_set_layer = cls(
             op=op,
             layer=layer,
@@ -736,6 +756,7 @@ class StackCommandStackSetLayer:
             inputs=inputs,
             decal=decal,
             path=path,
+            tag=tag,
         )
 
 

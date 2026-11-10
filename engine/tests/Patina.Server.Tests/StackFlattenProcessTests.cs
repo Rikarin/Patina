@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using System.Net.Http.Json;
 using Vixen.Core.Imaging;
 
 namespace Patina.Server.Tests;
@@ -61,6 +62,75 @@ public sealed partial class StackProcessTests {
         Assert.Equal(
             Digest(before, "baseColor"),
             Digest(await PixelsAsync(state.Id, true, deadline.Token), "baseColor")
+        );
+    }
+
+    /// <summary>
+    ///     A flattened folder exports on its own (#107): its files are named after it and hold what the stack holds
+    ///     with every other layer switched off, which is not what the whole stack holds. A layer the stack lacks is
+    ///     refused.
+    /// </summary>
+    [Fact]
+    public async Task A_flattened_folder_exports_on_its_own() {
+        using var deadline = Deadline(300);
+        var (instance, state) = await StartAsync("Alone.vxlayers", deadline.Token);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        await PaintAsync(state.Id, "first", Line(100, 100, 30), false, deadline.Token);
+        // A base unlike the channel's default, so the whole stack is a picture the folder alone is not.
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(
+                "base",
+                Values: new Dictionary<string, IReadOnlyList<float>> { ["baseColor"] = [0.1f, 0.6f, 0.2f, 1f] }
+            ),
+            new StackAddLayer("group", "Rust Folder")
+        );
+        var folder = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackAddLayer("fill", "Rust", Tint, folder),
+            new StackNestLayer("paint", folder)
+        );
+        var rust = Layer(await StateAsync(state.Id, deadline.Token), folder).Children[0].Id;
+        await EditAsync(state.Id, deadline.Token, new StackSetLayer(rust, Mask: new("Constant", 0.5f)));
+        var flattened = await EditAsync(state.Id, deadline.Token, new StackFlattenLayer(folder));
+        await EvaluatedAsync(socket, flattened.Revision, deadline.Token);
+        var whole = await ExportAsync(state.Id, Path.Combine(this.folder.FullName, "whole"), deadline.Token);
+
+        using var response = await http.PostAsJsonAsync(
+            $"/api/v1/stacks/{state.Id}/export",
+            new(Path.Combine(this.folder.FullName, "alone"), folder),
+            ContractsJsonContext.Default.StackExportRequest,
+            deadline.Token
+        );
+        await SucceededAsync(response, deadline.Token);
+        var alone = (await response.Content.ReadFromJsonAsync(
+            ContractsJsonContext.Default.IReadOnlyListStackPixels,
+            deadline.Token
+        ))!;
+        Assert.All(
+            alone,
+            static map => Assert.Contains(".Rust Folder.", Path.GetFileName(map.File!), StringComparison.Ordinal)
+        );
+
+        await EditAsync(state.Id, deadline.Token, new StackSetLayer("base", Enabled: false));
+        var only = await ExportAsync(state.Id, Path.Combine(this.folder.FullName, "only"), deadline.Token);
+        Close(only, alone);
+        Assert.NotEqual(Digest(whole, "baseColor"), Digest(alone, "baseColor"));
+
+        using var refused = await http.PostAsJsonAsync(
+            $"/api/v1/stacks/{state.Id}/export",
+            new(Path.Combine(this.folder.FullName, "none"), "nowhere"),
+            ContractsJsonContext.Default.StackExportRequest,
+            deadline.Token
+        );
+        Assert.Equal(System.Net.HttpStatusCode.UnprocessableEntity, refused.StatusCode);
+        Assert.Contains(
+            "stack-layer-missing",
+            await refused.Content.ReadAsStringAsync(deadline.Token),
+            StringComparison.Ordinal
         );
     }
 

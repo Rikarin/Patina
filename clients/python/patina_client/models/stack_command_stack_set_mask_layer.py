@@ -14,6 +14,7 @@ from typing import cast
 
 if TYPE_CHECKING:
   from ..models.stack_anchor_ref import StackAnchorRef
+  from ..models.stack_command_stack_set_mask_layer_inputs_type_1 import StackCommandStackSetMaskLayerInputsType1
   from ..models.stack_command_stack_set_mask_layer_parameters_type_1 import StackCommandStackSetMaskLayerParametersType1
 
 
@@ -44,6 +45,9 @@ class StackCommandStackSetMaskLayer:
             opacity (float | None | Unset): How much of it composites, 0 to 1.
             enabled (bool | None | Unset): Whether it composites.
             lane (None | str | Unset): Which lane of its picture it reads: Red, Green, Blue or Alpha.
+            inputs (None | StackCommandStackSetMaskLayerInputsType1 | Unset): The image inputs of a generator entry that
+                anchor points feed, by port, replacing all of them. Another
+                generator starts with none.
      """
 
     op: StackCommandStackSetMaskLayerOp
@@ -60,6 +64,7 @@ class StackCommandStackSetMaskLayer:
     opacity: float | None | Unset = UNSET
     enabled: bool | None | Unset = UNSET
     lane: None | str | Unset = UNSET
+    inputs: None | StackCommandStackSetMaskLayerInputsType1 | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -68,6 +73,7 @@ class StackCommandStackSetMaskLayer:
 
     def to_dict(self) -> dict[str, Any]:
         from ..models.stack_anchor_ref import StackAnchorRef # noqa: PLC0415
+        from ..models.stack_command_stack_set_mask_layer_inputs_type_1 import StackCommandStackSetMaskLayerInputsType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_mask_layer_parameters_type_1 import StackCommandStackSetMaskLayerParametersType1 # noqa: PLC0415
         op = self.op.value
 
@@ -145,6 +151,14 @@ class StackCommandStackSetMaskLayer:
         else:
             lane = self.lane
 
+        inputs: dict[str, Any] | None | Unset
+        if isinstance(self.inputs, Unset):
+            inputs = UNSET
+        elif isinstance(self.inputs, StackCommandStackSetMaskLayerInputsType1):
+            inputs = self.inputs.to_dict()
+        else:
+            inputs = self.inputs
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -175,6 +189,8 @@ class StackCommandStackSetMaskLayer:
             field_dict["enabled"] = enabled
         if lane is not UNSET:
             field_dict["lane"] = lane
+        if inputs is not UNSET:
+            field_dict["inputs"] = inputs
 
         return field_dict
 
@@ -183,6 +199,7 @@ class StackCommandStackSetMaskLayer:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.stack_anchor_ref import StackAnchorRef # noqa: PLC0415
+        from ..models.stack_command_stack_set_mask_layer_inputs_type_1 import StackCommandStackSetMaskLayerInputsType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_mask_layer_parameters_type_1 import StackCommandStackSetMaskLayerParametersType1 # noqa: PLC0415
         d = dict(src_dict)
         op = StackCommandStackSetMaskLayerOp(d.pop("op"))
@@ -324,6 +341,26 @@ class StackCommandStackSetMaskLayer:
         lane = _parse_lane(d.pop("lane", UNSET))
 
 
+        def _parse_inputs(data: object) -> None | StackCommandStackSetMaskLayerInputsType1 | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                inputs_type_1 = StackCommandStackSetMaskLayerInputsType1.from_dict(data)
+
+
+
+                return inputs_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackCommandStackSetMaskLayerInputsType1 | Unset, data)
+
+        inputs = _parse_inputs(d.pop("inputs", UNSET))
+
+
         stack_command_stack_set_mask_layer = cls(
             op=op,
             layer=layer,
@@ -339,6 +376,7 @@ class StackCommandStackSetMaskLayer:
             opacity=opacity,
             enabled=enabled,
             lane=lane,
+            inputs=inputs,
         )
 
 

@@ -133,7 +133,11 @@ public sealed class StackEditor : ILayerStackDocument {
         }
 
         EndDrag();
-        var step = new UndoStep(nextStep + 1, batch.Label ?? StackLayerEdits.Label(batch.Commands[0]));
+        var step = new UndoStep(
+            nextStep + 1,
+            batch.Label
+            ?? StackLayerEdits.Label(batch.Commands[0], id => LayerStackEdit.Find(Document, new(Set.Name, id)))
+        );
         List<IAuthoringCommand> applied = [];
         try {
             foreach (var command in batch.Commands) {
@@ -453,6 +457,7 @@ public sealed class StackEditor : ILayerStackDocument {
             layer,
             layer with {
                 Name = change.Name ?? layer.Name,
+                Tag = Parsed(change.Tag, layer.Tag, "tag"),
                 Enabled = change.Enabled ?? layer.Enabled,
                 Opacity = change.Opacity ?? layer.Opacity,
                 Blend = Parsed(change.Blend, layer.Blend, "blend mode"),
@@ -776,13 +781,8 @@ public sealed class StackEditor : ILayerStackDocument {
         }
 
         var layers = LayerStackYaml.Read(clip.Text).Sets[0].Layers;
+        // Paint pasted into a stack of another size is resampled to it as the Worker copies it (#106).
         var same = string.Equals(clip.Stack, AssetPath, StringComparison.Ordinal);
-        if (Canvases(layers).Any() && (clip.Width, clip.Height) != (Document.BaseWidth, Document.BaseHeight)) {
-            throw new StackEditRefusedException(
-                $"These layers are painted at {clip.Width}×{clip.Height} and this stack at "
-                + $"{Document.BaseWidth}×{Document.BaseHeight}. Paint moves between stacks of one size."
-            );
-        }
 
         if (paste.Into is { } into) {
             StackLayerEdits.PasteInto(this, Require(into), layers, paste.Part, set, step, clip.Folder, run);

@@ -34,6 +34,7 @@ function layer(id: string, kind: string, children: StackLayer[] = []): StackLaye
   return {
     filterNode: '',
     anchorPoint: '',
+    tag: 'None',
     flattened: false,
     id,
     name: id,
@@ -240,6 +241,20 @@ describe('PaintStore saving', () => {
     await store.act('save');
 
     expect(store.failure()).toBeNull();
+  });
+});
+
+describe('PaintStore node kinds (#111)', () => {
+  it('asks the Server once what a node the vocabulary lacks takes, and remembers the answer for its stack', async () => {
+    const { store, posts, server } = setup();
+    const own = { node: 'Mine/Rust', name: 'Rust', category: 'Mine', summary: '', ports: [], settings: [], inputs: [] };
+    server.reply = (method, path) => (path.endsWith('/kind') ? Response.json(own) : null);
+    await store.open('/a/Crate.vxlayers', false);
+
+    expect(store.kindOf('Mine/Rust')).toBeUndefined();
+    await vi.waitFor(() => expect(store.kindOf('Mine/Rust')).toEqual(own));
+    expect(store.kindOf('')).toBeNull();
+    expect(posts.filter(path => path.endsWith('/kind'))).toHaveLength(1);
   });
 });
 
@@ -658,7 +673,7 @@ describe('PaintStore', () => {
   });
 
   it('turns an effect on, and off again rather than twice', () => {
-    const once = toggledEffect([{ node: 'Filters/Blur', enabled: true }], 'Colour/Invert');
+    const once = toggledEffect([{ node: 'Filters/Blur', enabled: true, blend: 'Copy', opacity: 1 }], 'Colour/Invert');
     expect(once.map(effect => effect.node)).toEqual(['Filters/Blur', 'Colour/Invert']);
     expect(toggledEffect(once, 'Colour/Invert').map(effect => effect.node)).toEqual(['Filters/Blur']);
   });

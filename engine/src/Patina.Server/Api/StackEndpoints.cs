@@ -127,6 +127,14 @@ static class StackEndpoints {
             "The colours of the id map the stack reads, the largest first, and the one at a place on it if asked.",
             Missing
         );
+        Get(
+            "/{id}/kind",
+            GetNodeKind,
+            "GetStackNodeKind",
+            "What a node or compound this stack can run takes: its numbers, its settings and the images it reads, by "
+            + "port. The project's own compounds are included, which the vocabulary's lists are not.",
+            Missing
+        );
         Post(
             "/{id}/find",
             FindLayer,
@@ -399,6 +407,21 @@ static class StackEndpoints {
         }
     }
 
+    static Results<Ok<StackFilterKind>, ProblemHttpResult> GetNodeKind(string id, string node, StackSessions sessions) {
+        if (sessions.Find(id) is not { } session) {
+            return NoSession(id);
+        }
+
+        return StackDocuments.Kind(node, session.Folder) is { } kind
+            ? TypedResults.Ok(kind)
+            : Refusals.Problem(
+                $"'{node}' is not a node type or a compound this stack can run.",
+                Missing,
+                Refusals.NodeUnknown,
+                new Dictionary<string, string> { ["node"] = node }
+            );
+    }
+
     static Results<Ok<StackIdColours>, ProblemHttpResult> GetIdColours(
         string id,
         StackSessions sessions,
@@ -538,7 +561,15 @@ static class StackEndpoints {
         CancellationToken cancellationToken
     ) {
         try {
-            return await ReadAsync(id, sessions, evaluator, true, sessions.Resolve(request.Folder), cancellationToken);
+            return await ReadAsync(
+                id,
+                sessions,
+                evaluator,
+                true,
+                sessions.Resolve(request.Folder),
+                cancellationToken,
+                layer: request.Layer
+            );
         } catch (StackEditRefusedException e) {
             return Refusals.Of(e, Refused);
         } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
@@ -553,14 +584,26 @@ static class StackEndpoints {
         bool clean,
         string? folder,
         CancellationToken cancellationToken,
-        bool sampled = false
+        bool sampled = false,
+        string? layer = null
     ) {
         if (sessions.Find(id) is not { } session) {
             return NoSession(id);
         }
 
+        if (layer is not null && !session.Has(layer)) {
+            return Refusals.Problem(
+                $"This stack has no layer '{layer}'.",
+                Refused,
+                Refusals.StackLayerMissing,
+                new Dictionary<string, string> { ["layer"] = layer }
+            );
+        }
+
         try {
-            return TypedResults.Ok(await evaluator.PixelsAsync(session, clean, folder, cancellationToken, sampled));
+            return TypedResults.Ok(
+                await evaluator.PixelsAsync(session, clean, folder, cancellationToken, sampled, layer)
+            );
         } catch (TimeoutException e) {
             return Refusals.Of(e, Unavailable);
         } catch (IpcException e) {

@@ -165,6 +165,13 @@ export const CommandTable: readonly CommandSpec[] = [
   { id: 'unflattenFolder', label: 'Unflatten Folder', section: 'Layers', area: 'stack' },
   { id: 'flattenStack', label: 'Flatten Stack', section: 'Layers', area: 'stack' },
   {
+    id: 'exportFolder',
+    label: 'Export Flattened Folder…',
+    section: 'Layers',
+    area: 'stack',
+    hint: 'Writes the folder’s maps on their own, over the channels’ defaults, into a folder you choose'
+  },
+  {
     id: 'createInstance',
     label: 'Create Instance',
     section: 'Layers',
@@ -376,6 +383,7 @@ export const MenuBar: readonly {
       'flattenFolder',
       'unflattenFolder',
       'flattenStack',
+      'exportFolder',
       '-',
       'createInstance',
       'pasteAsInstance',

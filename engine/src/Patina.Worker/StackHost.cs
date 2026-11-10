@@ -251,17 +251,14 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             return new() { Type = IpcTypes.Ok, StackPicture = Sampled(stack) };
         }
 
-        using var bake = ask.Clean ? stack.Run.EvaluateClean() : stack.Run.Evaluate();
-        var outputs = stack.Run.Outputs;
-        var maps = bake.Read([..outputs.Select(static output => output.Image)]);
-        List<StackPixels> pixels = [];
-        foreach (var (output, map) in outputs.Zip(maps)) {
-            pixels.Add(
-                new(output.Usage, map.Width, map.Height, Digest(map), Export(stack, output.Usage, map, ask.Folder))
-            );
+        if (ask.Layer is { } layer) {
+            using var alone = stack.Alone(layer, out var name);
+            using var only = alone.EvaluateClean();
+            return new() { Type = IpcTypes.Ok, StackPicture = Read(alone, only, $"{stack.Name}.{name}", ask.Folder) };
         }
 
-        return new() { Type = IpcTypes.Ok, StackPicture = pixels };
+        using var bake = ask.Clean ? stack.Run.EvaluateClean() : stack.Run.Evaluate();
+        return new() { Type = IpcTypes.Ok, StackPicture = Read(stack.Run, bake, stack.Name, ask.Folder) };
     }
 
     /// <summary>What the viewport's draw call samples for each map, read back from the viewport's own device.</summary>
@@ -276,17 +273,6 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         }
 
         return pixels;
-    }
-
-    static string? Export(Session stack, string usage, Bitmap map, string? folder) {
-        if (folder is null) {
-            return null;
-        }
-
-        Directory.CreateDirectory(folder);
-        var file = Path.Combine(folder, $"{stack.Name}.{usage}.png");
-        File.WriteAllBytes(file, PngCodec.Encode(map));
-        return file;
     }
 
     static string Digest(Bitmap map) => Convert.ToHexStringLower(SHA256.HashData(map.Pixels));
@@ -870,11 +856,11 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             public void Do(ICommandContext context) {
                 var into = Target();
                 var from = canvases.Open(source);
-                if (from is not null && (from.Width != width || from.Height != height)) {
-                    throw new IpcException(
-                        $"'{Path.GetFileName(source)}' is {from.Width}×{from.Height} and this stack paints at "
-                        + $"{width}×{height}."
-                    );
+
+                // A copy from a stack of another size, or from a canvas painted before this set's size changed, is made
+                // this set's size (#106): larger exactly, smaller by an average. The source is left as it was.
+                if (from is not null && (from.Width != into.Width || from.Height != into.Height)) {
+                    from = from.Resampled(into.Width, into.Height);
                 }
 
                 foreach (var usage in into.Channels.Where(usage => from?.Has(usage) != true)) {

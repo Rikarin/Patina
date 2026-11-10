@@ -128,6 +128,13 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     /// <summary>Whether a layer here stands for a layer of another texture set.</summary>
     public bool ReadsOtherSets => Foreign(published).Count > 0;
 
+    /// <summary>Whether this session's texture set has a layer, at any depth.</summary>
+    public bool Has(string layer) {
+        lock (Changing) {
+            return LayerStackEdit.Find(editor.Document, new(editor.Set.Name, layer)) is not null;
+        }
+    }
+
     /// <summary>The texture set this session paints.</summary>
     public string Set {
         get {

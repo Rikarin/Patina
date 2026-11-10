@@ -10,7 +10,9 @@ namespace Patina.Server.Stacks;
 /// </summary>
 static class StackLayerEdits {
     /// <summary>What the History list calls a step started by this command.</summary>
-    public static string Label(StackCommand command) => StackLabels.Of(command);
+    /// <param name="command">The command.</param>
+    /// <param name="layer">A layer as it stands before the step, by id, or null when there is none.</param>
+    public static string Label(StackCommand command, Func<string, LayerAsset?> layer) => StackLabels.Of(command, layer);
 
     /// <summary>Applies an instance or mask-stack command, or says it is neither.</summary>
     public static bool Run(StackEditor editor, StackCommand command, string set, Action<IAuthoringCommand> run) {

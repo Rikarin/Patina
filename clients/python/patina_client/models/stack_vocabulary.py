@@ -48,6 +48,7 @@ class StackVocabulary:
                 mesh map.
             sources (list[StackFilterKind]): The generators an image input can read: noises, patterns, grunges and the rest.
             lanes (list[StackTerm] | None | Unset): The lanes of a picture a mask can read.
+            tags (list[StackTerm] | None | Unset): The colours a layer can be marked with, None first.
      """
 
     blends: list[StackTerm]
@@ -65,6 +66,7 @@ class StackVocabulary:
     inputs: list[StackTerm]
     sources: list[StackFilterKind]
     lanes: list[StackTerm] | None | Unset = UNSET
+    tags: list[StackTerm] | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -177,6 +179,19 @@ class StackVocabulary:
         else:
             lanes = self.lanes
 
+        tags: list[dict[str, Any]] | None | Unset
+        if isinstance(self.tags, Unset):
+            tags = UNSET
+        elif isinstance(self.tags, list):
+            tags = []
+            for tags_type_1_item_data in self.tags:
+                tags_type_1_item = tags_type_1_item_data.to_dict()
+                tags.append(tags_type_1_item)
+
+
+        else:
+            tags = self.tags
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -198,6 +213,8 @@ class StackVocabulary:
         })
         if lanes is not UNSET:
             field_dict["lanes"] = lanes
+        if tags is not UNSET:
+            field_dict["tags"] = tags
 
         return field_dict
 
@@ -365,6 +382,31 @@ class StackVocabulary:
         lanes = _parse_lanes(d.pop("lanes", UNSET))
 
 
+        def _parse_tags(data: object) -> list[StackTerm] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                tags_type_1 = []
+                _tags_type_1 = data
+                for tags_type_1_item_data in (_tags_type_1):
+                    tags_type_1_item = StackTerm.from_dict(tags_type_1_item_data)
+
+
+
+                    tags_type_1.append(tags_type_1_item)
+
+                return tags_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[StackTerm] | None | Unset, data)
+
+        tags = _parse_tags(d.pop("tags", UNSET))
+
+
         stack_vocabulary = cls(
             blends=blends,
             filters=filters,
@@ -381,6 +423,7 @@ class StackVocabulary:
             inputs=inputs,
             sources=sources,
             lanes=lanes,
+            tags=tags,
         )
 
 

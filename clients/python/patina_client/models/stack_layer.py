@@ -60,6 +60,7 @@ class StackLayer:
             flattened (bool): Whether this is a group flattened into a canvas: it composites that canvas, and its children
                 are kept, unread,
                 as the way back. Default: False.
+            tag (str): The colour the layer is marked with in a list, from the vocabulary's tags, or None. Default: 'None'.
             placement (None | StackPlacement | Unset):
             parameters (None | StackLayerParametersType1 | Unset): What a graph fill sets the graph's knobs to, as text.
             anchor (None | StackAnchorRef | Unset):
@@ -90,6 +91,7 @@ class StackLayer:
     filter_node: str = ''
     anchor_point: str = ''
     flattened: bool = False
+    tag: str = 'None'
     placement: None | StackPlacement | Unset = UNSET
     parameters: None | StackLayerParametersType1 | Unset = UNSET
     anchor: None | StackAnchorRef | Unset = UNSET
@@ -163,6 +165,8 @@ class StackLayer:
         anchor_point = self.anchor_point
 
         flattened = self.flattened
+
+        tag = self.tag
 
         placement: dict[str, Any] | None | Unset
         if isinstance(self.placement, Unset):
@@ -245,6 +249,7 @@ class StackLayer:
             "filterNode": filter_node,
             "anchorPoint": anchor_point,
             "flattened": flattened,
+            "tag": tag,
         })
         if placement is not UNSET:
             field_dict["placement"] = placement
@@ -341,6 +346,8 @@ class StackLayer:
         anchor_point = d.pop("anchorPoint")
 
         flattened = d.pop("flattened")
+
+        tag = d.pop("tag")
 
         def _parse_placement(data: object) -> None | StackPlacement | Unset:
             if data is None:
@@ -504,6 +511,7 @@ class StackLayer:
             filter_node=filter_node,
             anchor_point=anchor_point,
             flattened=flattened,
+            tag=tag,
             placement=placement,
             parameters=parameters,
             anchor=anchor,

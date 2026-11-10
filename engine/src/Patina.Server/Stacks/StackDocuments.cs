@@ -1,3 +1,4 @@
+using Patina.Content;
 using Patina.Contracts;
 using Patina.Library;
 using Patina.Server.Graphs;
@@ -105,7 +106,8 @@ public static class StackDocuments {
         ),
         Terms.InStack(Enum.GetNames<LayerInputSource>()),
         Sources(),
-        Terms.InStack(Enum.GetNames<LayerMaskLane>())
+        Terms.InStack(Enum.GetNames<LayerMaskLane>()),
+        Terms.InTags(Enum.GetNames<LayerTag>())
     );
 
     /// <summary>The stack a new file starts as: a base, and somewhere to paint.</summary>
@@ -182,7 +184,11 @@ public static class StackDocuments {
                 )
                 ?? [],
             Texts = effect.Texts?.ToDictionary(StringComparer.Ordinal) ?? [],
-            Inputs = Sources(effect.Inputs) ?? []
+            Inputs = Sources(effect.Inputs) ?? [],
+            Blend = StackEditor.Parsed(effect.Blend, LayerBlendMode.Copy, "blend mode"),
+            Opacity = effect.Opacity is >= 0f and <= 1f
+                ? effect.Opacity
+                : throw new StackEditRefusedException("An opacity is from 0 to 1.")
         };
 
     /// <summary>Where each image input reads, as a file holds it, or null when none were given.</summary>
@@ -295,35 +301,54 @@ public static class StackDocuments {
         return [
             ..library.Types.Where(offered)
                 .OrderBy(static type => type.Path, StringComparer.Ordinal)
-                .Select(type => new StackFilterKind(
-                        type.Path,
-                        type.Title,
-                        type.Category,
-                        type.Summary,
-                        [
-                            ..type.Ports
-                                .Where(static port => port is {
-                                        Direction: PortDirection.Input, Kind: not PortKind.Image
-                                    }
-                                )
-                                .Select(GraphDocuments.Definition)
-                        ],
-                        [..type.Settings.Select(GraphDocuments.Definition)],
-                        [
-                            ..LayerStackGraph.Inputs(type, library, compounds)
-                                .Select(static input => new StackFilterInput(
-                                        input.Port,
-                                        input.Summary,
-                                        input.Subject,
-                                        input.Optional,
-                                        input.Channel
-                                    )
-                                )
-                        ]
-                    )
-                )
+                .Select(type => Kind(type, library, compounds))
         ];
     }
+
+    /// <summary>
+    ///     What any node or compound a stack can run takes, the project's own compounds included: its numbers, its
+    ///     settings and the images it reads (#111). A graph fill, a filter and a mask generator each have image inputs
+    ///     a client offers a slot for, and a compound of the project's own is in no list the vocabulary holds.
+    /// </summary>
+    /// <param name="node">The node type or compound, as a layer names it.</param>
+    /// <param name="folder">The folder of the stack, whose compounds folder the stack's Worker also reads.</param>
+    /// <returns>It, or null when neither the shipped nodes nor the project's compounds have it.</returns>
+    public static StackFilterKind? Kind(string node, string? folder) {
+        // Patina's own compounds publish beside Vixen's, as they do for the Worker that runs the stack.
+        FactoryCompounds.Register();
+        NodeTypeRegistry library = new();
+        NodeTypes.Register(library);
+        var compounds = TextureCompoundLibrary.Publish(
+            library,
+            folder is null ? null : Path.Combine(folder, LibraryLayout.CompoundsFolder),
+            out _
+        );
+        return library.TryGet(node.Trim(), out var type) ? Kind(type, library, compounds) : null;
+    }
+
+    static StackFilterKind Kind(NodeTypeDefinition type, NodeTypeRegistry library, ISubGraphSource compounds) =>
+        new(
+            type.Path,
+            type.Title,
+            type.Category,
+            type.Summary,
+            [
+                ..type.Ports.Where(static port => port is { Direction: PortDirection.Input, Kind: not PortKind.Image })
+                    .Select(GraphDocuments.Definition)
+            ],
+            [..type.Settings.Select(GraphDocuments.Definition)],
+            [
+                ..LayerStackGraph.Inputs(type, library, compounds)
+                    .Select(static input => new StackFilterInput(
+                            input.Port,
+                            input.Summary,
+                            input.Subject,
+                            input.Optional,
+                            input.Channel
+                        )
+                    )
+            ]
+        );
 
     /// <summary>The usages an Output node takes, which is the one list of what a channel can be.</summary>
     static IReadOnlyList<string> Usages() {
@@ -451,7 +476,9 @@ public static class StackDocuments {
                                 effect.Enabled,
                                 Numbers(effect.Values),
                                 effect.Texts,
-                                Wire(effect.Inputs)
+                                Wire(effect.Inputs),
+                                effect.Blend.ToString(),
+                                effect.Opacity
                             )
                         )
                 ],
@@ -478,7 +505,8 @@ public static class StackDocuments {
             layer.Flattened,
             layer.Kind == LayerKind.Instance ? new(layer.Instance.Layer, layer.Instance.Set) : null,
             StackSurfaces.Wire(layer.Decal),
-            StackSurfaces.Wire(layer.SurfacePath)
+            StackSurfaces.Wire(layer.SurfacePath),
+            layer.Tag.ToString()
         );
 
     static Dictionary<string, IReadOnlyList<float>> Numbers(Dictionary<string, float[]> numbers) =>

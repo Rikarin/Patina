@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { BakeStore } from '../bake/bake-store';
+import { Activity } from '../core/activity';
 import { Commands } from '../core/commands';
 import { desktop } from '../core/desktop';
 import { termName } from '../core/labels';
@@ -20,6 +21,7 @@ import { SystemStatus } from '../core/system-status';
 import { ViewOptions } from '../core/view-options';
 import { GraphStore } from '../graph/graph-store';
 import { ProjectStore } from '../library/project-store';
+import { MaterialUse } from '../paint/material-use';
 import { PaintStore, pressureOf } from '../paint/paint-store';
 import { ScreenPictureOverlay } from '../paint/screen-picture';
 import { StrokeGesture } from '../paint/stroke-gesture';
@@ -252,6 +254,8 @@ const PickLook = '…';
         (pointerleave)="brushAt.set(null)"
         (dblclick)="gesture.finish()"
         (wheel)="wheel($event)"
+        (dragover)="overMesh($event)"
+        (drop)="dropOnMesh($event)"
       ></canvas>
       @if (paint.worn() && project.active()?.kind === 'texturing') {
         <ptn-screen-picture />
@@ -315,6 +319,8 @@ export class ViewportPane implements AfterViewInit {
   private readonly bakes = inject(BakeStore);
   protected readonly graph = inject(GraphStore);
   protected readonly paint = inject(PaintStore);
+  private readonly using = inject(MaterialUse);
+  private readonly activity = inject(Activity);
   protected readonly project = inject(ProjectStore);
   private readonly destroyRef = inject(DestroyRef);
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
@@ -751,7 +757,7 @@ export class ViewportPane implements AfterViewInit {
     this.viewport.moveCamera(zoom(this.viewport.camera(), event.deltaY), false);
   }
 
-  private spot(event: PointerEvent): { x: number; y: number } {
+  private spot(event: MouseEvent): { x: number; y: number } {
     const box = this.canvas().nativeElement.getBoundingClientRect();
     return { x: event.clientX - box.left, y: event.clientY - box.top };
   }
@@ -759,6 +765,32 @@ export class ViewportPane implements AfterViewInit {
   /** A stroke is measured in the canvas's layout pixels, so a brush is the same size whatever the render scale. */
   private stamp(event: PointerEvent) {
     return { ...this.spot(event), pressure: pressureOf(event) };
+  }
+
+  /** A material from the shelf can land on a region of the mesh (#110). */
+  protected overMesh(event: DragEvent): void {
+    if (this.using.takesRegion(this.using.carried())) {
+      event.preventDefault();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'copy';
+      }
+    }
+  }
+
+  /** Fills the region of the id map under the drop with the material, as a new layer kept to that region. */
+  protected async dropOnMesh(event: DragEvent): Promise<void> {
+    const material = this.using.carried();
+    if (!material || !this.using.takesRegion(material)) {
+      return;
+    }
+
+    event.preventDefault();
+    this.using.carried.set(null);
+    const colour = await this.paint.idColourOnMesh({ ...this.spot(event), pressure: 1 }, this.aim());
+    await this.using.useOnRegion(material, colour);
+    if (this.using.failure()) {
+      this.activity.report({ tone: 'warning', source: 'Viewport', text: this.using.failure() ?? '' });
+    }
   }
 
   private aim() {

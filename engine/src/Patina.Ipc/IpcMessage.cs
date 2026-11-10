@@ -743,7 +743,17 @@ public sealed record StackSave(string Session, string? Folder);
 /// </param>
 /// <param name="Folder">Where to write each map, or null to write nothing.</param>
 /// <param name="Viewport">Whether to read what the viewport samples rather than evaluate anything.</param>
-public sealed record StackPixelsAsk(string Session, bool Clean, string? Folder, bool Viewport = false);
+/// <param name="Layer">
+///     A layer to evaluate alone, from nothing, over the channels' defaults, rather than the whole set: a flattened
+///     folder exported on its own (#107). Null for the whole set.
+/// </param>
+public sealed record StackPixelsAsk(
+    string Session,
+    bool Clean,
+    string? Folder,
+    bool Viewport = false,
+    string? Layer = null
+);
 
 /// <summary>Where a preview lives in the cache, for the Worker that writes it and the Server that serves it.</summary>
 public static class GraphPreviewFiles {

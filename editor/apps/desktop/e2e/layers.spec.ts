@@ -6,10 +6,10 @@ import {
   type Locator,
   type Page
 } from '@playwright/test';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { colouredGlb, leave, newLibrary, newProject } from './projects';
+import { answerOpen, colouredGlb, leave, newLibrary, newProject } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const shots = resolve(__dirname, '../../../dist/e2e-results');
@@ -519,4 +519,48 @@ test('a name typed for one layer is never written onto another when a row is pre
 
   await window.getByTestId('app-undo').click();
   await expect(paint).toContainText('Paint');
+});
+
+test('a layer takes a color tag from Properties and from its menu, and a tagged row shows it', async () => {
+  const paint = window.getByTestId('paint-layer-paint');
+  const base = window.getByTestId('paint-layer-base');
+  await paint.click();
+  await window.getByTestId('paint-tag-Violet').click();
+  await expect(paint.getByTestId('layer-tag')).toHaveAttribute('data-tag', 'Violet');
+  await expect(window.getByTestId('paint-tag-Violet')).toHaveAttribute('aria-checked', 'true');
+  await expect(window.getByTestId('app-undo')).toHaveAttribute('aria-label', 'Undo Tag layer');
+
+  // From the row's menu, whose submenu opens from the keyboard as the others do.
+  await base.click({ button: 'right' });
+  await window.getByTestId('layer-menu-tag').focus();
+  await window.keyboard.press('ArrowRight');
+  await window.getByTestId('layer-menu-tag-Green').click();
+  await expect(base.getByTestId('layer-tag')).toHaveAttribute('data-tag', 'Green');
+  await window.screenshot({ path: join(shots, 'layers-tags.png') });
+
+  await paint.click();
+  await window.getByTestId('paint-tag-None').click();
+  await expect(paint.getByTestId('layer-tag')).toHaveCount(0);
+});
+
+test('a flattened folder exports on its own, named after it', async () => {
+  // Waits on a flatten and an export, each an evaluation.
+  test.setTimeout(120_000);
+  await window.getByTestId('paint-add-group').click();
+  const folder = window.locator('[data-testid^=paint-layer-folder]');
+  await drop(window.getByTestId('paint-layer-paint'), folder, 0.5);
+  await folder.click({ button: 'right' });
+  await window.getByTestId('layer-menu-flatten').click();
+  await expect(folder.getByTestId('layer-flattened')).toBeVisible();
+  await expect(window.getByTestId('layers-evaluation')).not.toHaveText('Not evaluated', { timeout: 30_000 });
+
+  const out = join(scratch, 'alone');
+  await answerOpen(app, out);
+  await folder.click({ button: 'right' });
+  await window.getByTestId('layer-menu-export-alone').click();
+  await expect
+    .poll(() => (existsSync(out) ? readdirSync(out) : []).some(file => file.endsWith('.Folder.baseColor.png')), {
+      timeout: 60_000
+    })
+    .toBe(true);
 });

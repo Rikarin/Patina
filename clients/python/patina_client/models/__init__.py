@@ -265,6 +265,7 @@ from .stack_command_stack_set_layer_settings_type_1 import StackCommandStackSetL
 from .stack_command_stack_set_layer_textures_type_1 import StackCommandStackSetLayerTexturesType1
 from .stack_command_stack_set_layer_values_type_1 import StackCommandStackSetLayerValuesType1
 from .stack_command_stack_set_mask_layer import StackCommandStackSetMaskLayer
+from .stack_command_stack_set_mask_layer_inputs_type_1 import StackCommandStackSetMaskLayerInputsType1
 from .stack_command_stack_set_mask_layer_op import StackCommandStackSetMaskLayerOp
 from .stack_command_stack_set_mask_layer_parameters_type_1 import StackCommandStackSetMaskLayerParametersType1
 from .stack_command_stack_set_model import StackCommandStackSetModel
@@ -629,6 +630,7 @@ __all__ = (
     "StackCommandStackSetLayerTexturesType1",
     "StackCommandStackSetLayerValuesType1",
     "StackCommandStackSetMaskLayer",
+    "StackCommandStackSetMaskLayerInputsType1",
     "StackCommandStackSetMaskLayerOp",
     "StackCommandStackSetMaskLayerParametersType1",
     "StackCommandStackSetModel",

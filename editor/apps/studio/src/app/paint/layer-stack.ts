@@ -8,7 +8,7 @@ import {
   matFormatColorFill,
   matTune
 } from '@ng-icons/material-icons/baseline';
-import type { StackFilterKind, StackLayer, StackMaskLayer } from '@patina/api-client';
+import type { StackFilterKind, StackLayer, StackMaskEffect, StackMaskLayer } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiContextMenuImports } from '@xui/context-menu';
 import { XuiMenuImports } from '@xui/menu';
@@ -16,15 +16,18 @@ import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiPopoverImports } from '@xui/popover';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
+import { Activity } from '../core/activity';
 import { Commands } from '../core/commands';
+import { desktop } from '../core/desktop';
 import { IconImports } from '../core/icons';
 import { blendName as blendLabelOf, channelName, termName } from '../core/labels';
 import { MenuKeys } from '../core/menu-keys';
-import { diagnosticOf } from '../core/messages';
+import { diagnosticOf, messageOf } from '../core/messages';
 import { percent } from '../core/numbers';
 import { ProjectStore } from '../library/project-store';
 import { type DropZone, dropManyCommands, nudgeCommands } from './layer-drag';
 import { hexOf } from './layer-panel';
+import { tagSwatch } from './layer-tags';
 import { MaterialUse } from './material-use';
 import { type LayerRow, PaintStore, maskOn, toggledEffect } from './paint-store';
 
@@ -298,6 +301,36 @@ const MaskMarks: Readonly<Record<string, string>> = {
           ‹ Layers
         </button>
         <span class="min-w-0 flex-1 truncate text-xs" data-testid="mask-stack-title">{{ owner.name }} · Mask</span>
+        @if (chosenEffects().size > 0) {
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            variant="ghost"
+            class="shrink-0 px-1.5 text-xs"
+            data-testid="mask-stack-copy"
+            [title]="'Copy the chosen effects ' + commands.keyText('copy')"
+            (click)="copyEffects(owner)"
+          >
+            Copy
+          </button>
+        }
+        @if (store.effectClip(); as clip) {
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            variant="ghost"
+            class="shrink-0 px-1.5 text-xs"
+            data-testid="mask-stack-paste"
+            [title]="
+              'Paste ' + clip.length + (clip.length === 1 ? ' effect ' : ' effects ') + commands.keyText('paste')
+            "
+            (click)="pasteEffects(owner)"
+          >
+            Paste
+          </button>
+        }
         <button
           type="button"
           xuiButton
@@ -319,17 +352,25 @@ const MaskMarks: Readonly<Record<string, string>> = {
       >
         @for (item of workOf(owner); track item.key) {
           @if (item.effect !== null) {
+            @let effect = owner.mask.effects?.[item.effect];
             <div
-              class="border-hairline flex h-7 items-center gap-1.5 border-b px-1"
+              class="border-hairline flex h-9 items-center gap-1.5 border-b px-1"
               role="listitem"
+              tabindex="0"
               data-testid="mask-stack-effect"
+              [attr.aria-label]="item.name"
+              [attr.aria-selected]="chosenEffects().has(item.effect)"
+              [class.bg-selection]="chosenEffects().has(item.effect)"
+              [class.opacity-50]="!item.enabled"
+              (click)="chooseEffect($event, item.effect)"
+              (keydown.enter)="chooseEffect($event, item.effect)"
             >
               <button
                 type="button"
                 class="grid size-5 shrink-0 place-items-center"
                 [attr.aria-label]="(item.enabled ? 'Hide ' : 'Show ') + item.name"
                 [attr.aria-pressed]="item.enabled"
-                (click)="setWork(owner, item.effect, !item.enabled)"
+                (click)="$event.stopPropagation(); setWork(owner, item.effect, !item.enabled)"
               >
                 <svg viewBox="0 0 16 16" class="size-3.5" aria-hidden="true">
                   <path
@@ -345,13 +386,50 @@ const MaskMarks: Readonly<Record<string, string>> = {
               </button>
               <span class="text-foreground-muted w-5 shrink-0 text-center text-xs">Fx</span>
               <span class="min-w-0 flex-1 truncate text-xs">{{ item.name }}</span>
+              @if (effect) {
+                <span
+                  class="flex w-24 shrink-0 flex-col gap-0.5"
+                  role="group"
+                  tabindex="-1"
+                  [attr.aria-label]="'Blending of ' + item.name"
+                  (click)="$event.stopPropagation()"
+                  (keydown)="$event.stopPropagation()"
+                >
+                  <xui-select
+                    class="w-full min-w-0 [&_button]:text-xs"
+                    style="--control-height-md: 1.25rem; --control-padding-md: 0.375rem"
+                    data-testid="mask-stack-effect-blend"
+                    [ariaLabel]="'Blend mode of ' + item.name"
+                    [filterable]="false"
+                    [itemText]="blendLabel"
+                    [items]="blends()"
+                    [matchTargetWidth]="false"
+                    [value]="effect.blend"
+                    (valueChange)="$event && setEffectBlend(owner, item.effect, { blend: $event })"
+                  />
+                  <span class="flex items-center gap-1">
+                    <xui-slider
+                      class="h-3 min-w-0 flex-1 pb-0"
+                      labelStepSize="0"
+                      data-testid="mask-stack-effect-opacity"
+                      [attr.aria-label]="'Opacity of ' + item.name"
+                      [max]="1"
+                      [min]="0"
+                      [stepSize]="0.01"
+                      [value]="effect.opacity"
+                      (valueChange)="setEffectBlend(owner, item.effect, { opacity: $event })"
+                    />
+                    <span class="readout w-8 shrink-0 text-end text-xs">{{ percent(effect.opacity) }}</span>
+                  </span>
+                </span>
+              }
               <button
                 type="button"
                 class="text-foreground-muted grid size-5 shrink-0 place-items-center disabled:opacity-30"
                 data-testid="mask-stack-effect-up"
                 [attr.aria-label]="'Move ' + item.name + ' up'"
                 [disabled]="item.effect === 0"
-                (click)="moveWork(owner, item.effect, -1)"
+                (click)="$event.stopPropagation(); moveWork(owner, item.effect, -1)"
               >
                 ↑
               </button>
@@ -361,7 +439,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 data-testid="mask-stack-effect-down"
                 [attr.aria-label]="'Move ' + item.name + ' down'"
                 [disabled]="item.effect === (owner.mask.effects?.length ?? 0) - 1"
-                (click)="moveWork(owner, item.effect, 1)"
+                (click)="$event.stopPropagation(); moveWork(owner, item.effect, 1)"
               >
                 ↓
               </button>
@@ -369,7 +447,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 type="button"
                 class="text-foreground-muted grid size-5 shrink-0 place-items-center"
                 [attr.aria-label]="'Remove ' + item.name + ' from the mask'"
-                (click)="removeWork(owner, item.effect)"
+                (click)="$event.stopPropagation(); removeWork(owner, item.effect)"
               >
                 ×
               </button>
@@ -557,6 +635,14 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 [class.opacity-30]="target()?.zone === 'into'"
                 [class.top-0]="target()?.zone === 'above'"
                 [class.bottom-0]="target()?.zone === 'below'"
+              ></span>
+            }
+            @if (tagSwatch(row.layer.tag); as colour) {
+              <span
+                class="pointer-events-none absolute inset-y-0 start-0 w-[3px]"
+                data-testid="layer-tag"
+                [attr.data-tag]="row.layer.tag"
+                [style.background]="colour"
               ></span>
             }
             <button
@@ -963,6 +1049,26 @@ const MaskMarks: Readonly<Record<string, string>> = {
       </xui-menu>
     </ng-template>
 
+    <ng-template #tagMenu>
+      <xui-menu data-testid="layer-menu-tags" aria-label="Color tag">
+        @for (tag of store.vocabulary()?.tags ?? []; track tag.value) {
+          <button
+            type="button"
+            xuiMenuItem
+            [attr.data-testid]="'layer-menu-tag-' + tag.value"
+            (triggered)="tagChosen(tag.value)"
+          >
+            <span
+              class="border-hairline inline-block size-3 rounded-sm border"
+              aria-hidden="true"
+              [style.background]="tagSwatch(tag.value) ?? 'transparent'"
+            ></span>
+            {{ tag.label }}
+          </button>
+        }
+      </xui-menu>
+    </ng-template>
+
     <ng-template #filterMenu>
       <xui-menu
         data-testid="layer-menu-filters"
@@ -1176,6 +1282,14 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 Flatten Folder
               </button>
             }
+            @if (layer.flattened) {
+              <button type="button" xuiMenuItem data-testid="layer-menu-export-alone" (triggered)="exportAlone(layer)">
+                {{ commands.label('exportFolder') }}
+              </button>
+            }
+            <button type="button" xuiMenuItem data-testid="layer-menu-tag" [xuiMenuTriggerFor]="tagMenu">
+              Color Tag
+            </button>
             <button type="button" xuiMenuItem data-testid="layer-menu-group" (triggered)="groupSelected()">
               Group Layers <span menuItemLabel>{{ commands.keyText('groupLayers') }}</span>
             </button>
@@ -1436,12 +1550,91 @@ export class LayerStack {
 
   protected openMaskStack(layer: StackLayer): void {
     this.maskStack.set(layer.id);
+    this.chosenEffects.set(new Set());
     this.store.chooseMask(layer);
   }
 
   /** Back to the layers, with the layer whose mask it was still chosen. */
   protected closeMaskStack(): void {
     this.maskStack.set(null);
+    this.chosenEffects.set(new Set());
+  }
+
+  /** The effects of the open mask stack that Copy, Cut and Delete take, by their place in its list (#109). */
+  protected readonly chosenEffects = signal<ReadonlySet<number>>(new Set());
+
+  /** One effect alone, or with Shift or the platform key one more or one less, as layers are chosen. */
+  protected chooseEffect(event: Event, effect: number): void {
+    const adding = event instanceof MouseEvent && (event.shiftKey || event.metaKey || event.ctrlKey);
+    this.chosenEffects.update(held => {
+      if (!adding) {
+        return new Set([effect]);
+      }
+
+      const next = new Set(held);
+      if (!next.delete(effect)) {
+        next.add(effect);
+      }
+
+      return next;
+    });
+  }
+
+  /** The chosen effects of a mask, in the order they run. */
+  private chosenOf(owner: StackLayer): readonly StackMaskEffect[] {
+    const chosen = this.chosenEffects();
+    return (owner.mask.effects ?? []).filter((_, index) => chosen.has(index));
+  }
+
+  /** Keeps the chosen effects, settings, inputs, blend and all, to paste into this mask or another (#109). */
+  protected copyEffects(owner: StackLayer): void {
+    const effects = this.chosenOf(owner);
+    if (effects.length > 0) {
+      this.store.effectClip.set(effects.map(effect => structuredClone(effect)));
+    }
+  }
+
+  protected cutEffects(owner: StackLayer): Promise<void> {
+    this.copyEffects(owner);
+    return this.removeEffects(owner);
+  }
+
+  /** Takes the chosen effects out of the mask, as one step. */
+  protected removeEffects(owner: StackLayer): Promise<void> {
+    const chosen = this.chosenEffects();
+    this.chosenEffects.set(new Set());
+    return this.store.setMask(owner, {
+      ...owner.mask,
+      effects: (owner.mask.effects ?? []).filter((_, index) => !chosen.has(index))
+    });
+  }
+
+  /** Puts the copied effects after the last chosen one, or last, as one step, and chooses them. */
+  protected async pasteEffects(owner: StackLayer): Promise<void> {
+    const clip = this.store.effectClip();
+    if (!clip) {
+      return;
+    }
+
+    const effects = [...(owner.mask.effects ?? [])];
+    const at = this.chosenEffects().size > 0 ? Math.max(...this.chosenEffects()) + 1 : effects.length;
+    effects.splice(at, 0, ...clip.map(effect => structuredClone(effect)));
+    this.chosenEffects.set(new Set(clip.map((_, offset) => at + offset)));
+    // A mask with nothing to run on gets a white one, as adding an effect gives it.
+    await this.store.setMask(owner, {
+      ...owner.mask,
+      source: owner.mask.source === 'None' ? 'Constant' : owner.mask.source,
+      value: owner.mask.source === 'None' ? 1 : owner.mask.value,
+      effects
+    });
+  }
+
+  /** An effect's blend or opacity. */
+  protected setEffectBlend(owner: StackLayer, effect: number, change: Partial<StackMaskEffect>): void {
+    void this.store.setMask(owner, {
+      ...owner.mask,
+      effects: (owner.mask.effects ?? []).map((held, index) => (index === effect ? { ...held, ...change } : held))
+    });
   }
 
   /** A mask's entries top first, as a list of layers reads, each with its place counted from the bottom. */
@@ -1523,6 +1716,37 @@ export class LayerStack {
     return this.store.layers().find(row => row.layer.id === id)?.layer ?? null;
   });
   protected readonly commands = inject(Commands);
+  private readonly activity = inject(Activity);
+  protected readonly tagSwatch = tagSwatch;
+
+  /** Marks every chosen layer with a colour, or takes the mark away, as one step (#106). */
+  protected tagChosen(tag: string): Promise<void> {
+    const chosen = [...this.store.selection()];
+    const layers = chosen.length > 0 ? chosen : [this.store.layer()].filter(id => id !== null);
+    return this.store.edit(...layers.map(layer => ({ op: 'setLayer' as const, layer, tag })));
+  }
+
+  /** Writes a flattened folder's maps on their own, into a folder chosen now (#107). */
+  protected async exportAlone(layer: StackLayer): Promise<void> {
+    const folder = await desktop()?.openFolder();
+    if (!folder) {
+      return;
+    }
+
+    try {
+      const maps = await this.store.exportLayer(layer.id, folder);
+      if (maps) {
+        const count = maps.length;
+        this.activity.report({
+          tone: 'done',
+          source: 'Layers',
+          text: `Exported ${layer.name} on its own: ${count} ${count === 1 ? 'map' : 'maps'} in ${folder}.`
+        });
+      }
+    } catch (failure) {
+      this.activity.report({ tone: 'error', source: 'Layers', text: messageOf(failure) });
+    }
+  }
 
   /** The maps a mask waits for, as the app calls them, from the values the Worker lists them by (#198). */
   protected mapNames(maps: string): string {
@@ -1650,6 +1874,31 @@ export class LayerStack {
     const open = () => this.store.state() !== null;
     const here = () => open() && (this.commands.focus().area === 'stack' || this.commands.focus().area === null);
     const selected = () => here() && this.store.selection().size > 0;
+    // The mask stack's own effects come first while it is open and some are chosen (#109).
+    const stacked = () => (here() ? this.maskStackLayer() : null);
+    const effectsChosen = () => stacked() !== null && this.chosenEffects().size > 0;
+    handle('copy', effectsChosen, () => {
+      const owner = stacked();
+      if (owner) {
+        this.copyEffects(owner);
+      }
+    });
+    handle('cut', effectsChosen, () => {
+      const owner = stacked();
+      return owner ? this.cutEffects(owner) : undefined;
+    });
+    handle(
+      'paste',
+      () => stacked() !== null && this.store.effectClip() !== null,
+      () => {
+        const owner = stacked();
+        return owner ? this.pasteEffects(owner) : undefined;
+      }
+    );
+    handle('delete', effectsChosen, () => {
+      const owner = stacked();
+      return owner ? this.removeEffects(owner) : undefined;
+    });
     handle(
       'delete',
       () => here() && (this.store.selection().size > 0 || (this.store.masking() && this.store.chosen() !== null)),
@@ -1712,6 +1961,14 @@ export class LayerStack {
       () => {
         const layer = chosen();
         return layer ? this.store.unflatten(layer.id) : undefined;
+      }
+    );
+    handle(
+      'exportFolder',
+      () => chosen()?.flattened === true,
+      () => {
+        const layer = chosen();
+        return layer ? this.exportAlone(layer) : undefined;
       }
     );
     handle(
@@ -1996,7 +2253,7 @@ export class LayerStack {
       ...layer.mask,
       source: layer.mask.source === 'None' ? 'Constant' : layer.mask.source,
       value: layer.mask.source === 'None' ? 1 : layer.mask.value,
-      effects: [...(layer.mask.effects ?? []), { node, enabled: true }]
+      effects: [...(layer.mask.effects ?? []), { node, enabled: true, blend: 'Copy', opacity: 1 }]
     });
   }
 

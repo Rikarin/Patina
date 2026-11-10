@@ -61,6 +61,119 @@ public sealed class StackMaskStackTests {
         Assert.True(Layer(editor).Mask.Enabled);
     }
 
+    /// <summary>
+    ///     History names a switch of the mask for what it did, and any other change of the mask as a change of it
+    ///     (#109).
+    /// </summary>
+    [Fact]
+    public void History_says_a_mask_was_switched_on_or_off() {
+        var editor = Generated();
+        var wired = StackDocuments.Layers([Layer(editor)])[0].Mask;
+
+        editor.Apply(new([new StackSetLayer("paint", Mask: wired with { Enabled = false })]));
+        Assert.Equal("Switch mask off", editor.History.UndoLabel);
+
+        editor.Apply(new([new StackSetLayer("paint", Mask: wired with { Enabled = true })]));
+        Assert.Equal("Switch mask on", editor.History.UndoLabel);
+
+        editor.Apply(new([new StackSetLayer("paint", Mask: wired with { Enabled = false, Source = "Constant" })]));
+        Assert.Equal("Change mask", editor.History.UndoLabel);
+    }
+
+    /// <summary>
+    ///     A mask step's blend and opacity reach the file and come back on the wire, and a bad one is refused.
+    /// </summary>
+    [Fact]
+    public void A_mask_steps_blend_and_opacity_reach_the_file() {
+        var editor = Generated();
+        var wired = StackDocuments.Layers([Layer(editor)])[0].Mask;
+
+        editor.Apply(
+            new(
+                [
+                    new StackSetLayer(
+                        "paint",
+                        Mask: wired with { Effects = [new("Colour/Invert", Blend: "Multiply", Opacity: 0.4f)] }
+                    )
+                ]
+            )
+        );
+
+        var effect = Assert.Single(Layer(editor).Mask.Effects);
+        Assert.Equal((LayerBlendMode.Multiply, 0.4f), (effect.Blend, effect.Opacity));
+        var back = Assert.Single(StackDocuments.Layers([Layer(editor)])[0].Mask.Effects!);
+        Assert.Equal(("Multiply", 0.4f), (back.Blend, back.Opacity));
+
+        Assert.Throws<StackEditRefusedException>(() => editor.Apply(
+                new([new StackSetLayer("paint", Mask: wired with { Effects = [new("Colour/Invert", Opacity: 2f)] })])
+            )
+        );
+        Assert.Throws<StackEditRefusedException>(() => editor.Apply(
+                new(
+                    [
+                        new StackSetLayer(
+                            "paint",
+                            Mask: wired with { Effects = [new("Colour/Invert", Blend: "Sideways")] }
+                        )
+                    ]
+                )
+            )
+        );
+    }
+
+    /// <summary>
+    ///     A generator entry's image inputs are fed from anchor points by a change of the entry (#111), and another
+    ///     generator starts with none.
+    /// </summary>
+    [Fact]
+    public void A_generator_entrys_inputs_read_anchor_points() {
+        var editor = Generated();
+        editor.Apply(new([new StackAddMaskLayer("paint", "Generator", Generator: "Filters/Blur")]));
+
+        editor.Apply(
+            new(
+                [
+                    new StackSetMaskLayer(
+                        "paint",
+                        0,
+                        Inputs: new Dictionary<string, StackAnchorRef> { ["Input"] = new("Ground", "height") }
+                    )
+                ]
+            )
+        );
+
+        Assert.Equal(
+            new() { Anchor = "Ground", Channel = "height" },
+            Layer(editor).Mask.Layers[0].GeneratorInputs["Input"]
+        );
+        Assert.Equal(
+            new("Ground", "height"),
+            StackDocuments.Layers([Layer(editor)])[0].Mask.Layers![0].Inputs!["Input"]
+        );
+
+        editor.Apply(new([new StackSetMaskLayer("paint", 0, Generator: "Colour/Levels")]));
+        Assert.Empty(Layer(editor).Mask.Layers[0].GeneratorInputs);
+    }
+
+    /// <summary>
+    ///     A layer's colour tag is set, named in History, read back, and refused when it is no colour (#106).
+    /// </summary>
+    [Fact]
+    public void A_layer_takes_a_colour_tag() {
+        var editor = Generated();
+
+        editor.Apply(new([new StackSetLayer("paint", Tag: "Violet")]));
+
+        Assert.Equal(LayerTag.Violet, Layer(editor).Tag);
+        Assert.Equal("Violet", StackDocuments.Layers([Layer(editor)])[0].Tag);
+        Assert.Equal("Tag layer", editor.History.UndoLabel);
+        Assert.Contains(StackDocuments.Vocabulary.Tags!, static term => term is { Value: "Grey", Label: "Gray" });
+        Assert.Throws<StackEditRefusedException>(() => editor.Apply(new([new StackSetLayer("paint", Tag: "Plaid")])));
+
+        editor.Undo();
+        Assert.Equal(LayerTag.None, Layer(editor).Tag);
+    }
+
     [Fact]
     public void A_layer_with_no_mask_gets_a_white_base_under_its_first_entry() {
         var editor = new StackEditor("/tmp/Masks.vxlayers", Sample());

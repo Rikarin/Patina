@@ -74,7 +74,8 @@ public sealed class StackEvaluator(
         bool clean,
         string? folder,
         CancellationToken cancellationToken,
-        bool sampled = false
+        bool sampled = false,
+        string? layer = null
     ) {
         await ReachedAsync(session, cancellationToken);
         if (session.EvaluationError is { } failed) {
@@ -84,7 +85,7 @@ public sealed class StackEvaluator(
 
         var connection = await ConnectionAsync(cancellationToken);
         var reply = await connection.SendAsync(
-            new() { Type = IpcTypes.StackPixels, StackPixels = new(session.Id, clean, folder, sampled) },
+            new() { Type = IpcTypes.StackPixels, StackPixels = new(session.Id, clean, folder, sampled, layer) },
             cancellationToken
         );
         return reply.StackPicture ?? [];
