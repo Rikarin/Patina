@@ -5482,6 +5482,13 @@ export interface components {
       enabled?: null | boolean;
       /** @description Which lane of its picture it reads: Red, Green, Blue or Alpha. */
       lane?: null | string;
+      /**
+       * @description The image inputs of a generator entry that anchor points feed, by port, replacing all of them. Another
+       *     generator starts with none.
+       */
+      inputs?: null | {
+        [key: string]: components['schemas']['StackAnchorRef'];
+      };
     };
     /** @description Names the mesh a stack is painted on, which is undone like any other edit. */
     StackCommandStackSetModel: {

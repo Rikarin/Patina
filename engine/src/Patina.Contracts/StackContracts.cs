@@ -696,6 +696,10 @@ public sealed record StackMoveMaskLayer(string Layer, int Index, int Delta) : St
 /// <param name="Opacity">How much of it composites, 0 to 1.</param>
 /// <param name="Enabled">Whether it composites.</param>
 /// <param name="Lane">Which lane of its picture it reads: Red, Green, Blue or Alpha.</param>
+/// <param name="Inputs">
+///     The image inputs of a generator entry that anchor points feed, by port, replacing all of them. Another
+///     generator starts with none.
+/// </param>
 public sealed record StackSetMaskLayer(
     string Layer,
     int Index,
@@ -709,7 +713,8 @@ public sealed record StackSetMaskLayer(
     string? Blend = null,
     float? Opacity = null,
     bool? Enabled = null,
-    string? Lane = null
+    string? Lane = null,
+    IReadOnlyDictionary<string, StackAnchorRef>? Inputs = null
 ) : StackCommand;
 #pragma warning restore SK7005
 

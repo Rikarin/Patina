@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, signal, untracked } from '@angular/core';
 import {
   ApiError,
   type Connection,
@@ -9,11 +9,13 @@ import {
   type StackCommand,
   type StackCommandBatch,
   type StackEvent,
+  type StackFilterKind,
   type StackIdColour,
   type StackLayer,
   type StackMask,
   type StackMaskEffect,
   type StackPicture,
+  type StackPixels,
   type StackPreview,
   type StackProblem,
   type StackStamp,
@@ -288,6 +290,11 @@ export class PaintStore {
   readonly vocabulary = signal<StackVocabulary | null>(null);
   /** The layers last copied, from this stack or another. The Server holds them, pixels and all. */
   readonly clip = signal<StackClip | null>(null);
+  /**
+   * Mask effects copied from a mask stack, to paste into that mask or another (#109). They are settings alone, with no
+   * pixels, so the app holds them rather than the Server.
+   */
+  readonly effectClip = signal<readonly StackMaskEffect[] | null>(null);
   /** What the last copy is for: whole layers, or one layer's mask or content to paste into others (#106). */
   readonly clipPart = signal<LayerPart | null>(null);
   /** The colours of the id map this stack reads, once asked for, or null with no such map. */
@@ -599,6 +606,37 @@ export class PaintStore {
       }
     } catch (failure) {
       this.failure.set(messageOf(failure));
+    }
+  }
+
+  /**
+   * The colour of the id map under a place on the mesh, or null where the mesh is not there or the stack reads no id map
+   * (#110).
+   */
+  async idColourOnMesh(stamp: StackStamp, aim: Aim): Promise<number[] | null> {
+    const id = this.state()?.id;
+    const hit = id ? await this.picked(stamp, aim) : null;
+    if (!id || !hit?.found) {
+      return null;
+    }
+
+    const client = await this.api();
+    const params = { path: { id }, query: { u: hit.u, v: hit.v } };
+    const reply = await client.GET('/api/v1/stacks/{id}/id-colours', { params });
+    return reply.data?.at ? [...reply.data.at] : null;
+  }
+
+  /**
+   * A graph fill on top, kept to one region of the id map: a material dropped on a part of the mesh (#110). The fill is
+   * one step and the graph and its selection a second, as any new graph layer is.
+   */
+  async addGraphLayerOnRegion(name: string, graph: string, colour: readonly number[]): Promise<void> {
+    await this.addLayer('fill', name);
+    const id = this.layer();
+    const layer = this.layers().find(row => row.layer.id === id)?.layer;
+    if (layer) {
+      const mask = { ...layer.mask, source: 'Bake', map: 'id', colour: [...colour], enabled: true };
+      await this.edit({ op: 'setLayer', layer: layer.id, fill: 'Graph', graph, mask });
     }
   }
 
@@ -997,6 +1035,78 @@ export class PaintStore {
     if (this.layer() === layer.id && this.maskLayer() === index) {
       this.maskLayer.set(index + delta);
     }
+  }
+
+  /**
+   * What a node takes: from the vocabulary when one of its lists has it, and otherwise as the Server answers for this
+   * stack, which knows the project's own compounds (#111). Undefined while the answer is on its way, null for a node
+   * nothing has.
+   */
+  kindOf(node: string | null | undefined): StackFilterKind | null | undefined {
+    if (!node) {
+      return null;
+    }
+
+    const vocabulary = this.vocabulary();
+    const listed = [...(vocabulary?.filters ?? []), ...(vocabulary?.maskEffects ?? []), ...(vocabulary?.sources ?? [])];
+    const found = listed.find(kind => kind.node === node);
+    if (found) {
+      return found;
+    }
+
+    const id = this.state()?.id;
+    const known = this.kinds();
+    if (known.stack === id && known.kinds.has(node)) {
+      return known.kinds.get(node);
+    }
+
+    if (id) {
+      untracked(() => void this.askKind(id, node));
+    }
+
+    return undefined;
+  }
+
+  /** What the Server says about nodes the vocabulary does not list, for the stack it said it for. */
+  private readonly kinds = signal<{ stack?: string; kinds: ReadonlyMap<string, StackFilterKind | null> }>({
+    kinds: new Map()
+  });
+  private readonly kindsAsked = new Set<string>();
+
+  private async askKind(stack: string, node: string): Promise<void> {
+    const key = `${stack}\n${node}`;
+    if (this.kindsAsked.has(key)) {
+      return;
+    }
+
+    this.kindsAsked.add(key);
+    try {
+      const client = await this.api();
+      const reply = await client.GET('/api/v1/stacks/{id}/kind', { params: { path: { id: stack }, query: { node } } });
+      this.kinds.update(held => {
+        const kinds = new Map(held.stack === stack ? held.kinds : []);
+        kinds.set(node, reply.data ?? null);
+        return { stack, kinds };
+      });
+    } finally {
+      this.kindsAsked.delete(key);
+    }
+  }
+
+  /**
+   * Writes one layer's maps on their own, composited alone over the channels' defaults: a flattened folder exported
+   * by itself (#107). The files are named after the layer. Null when no stack is open.
+   */
+  async exportLayer(layer: string, folder: string): Promise<readonly StackPixels[] | null> {
+    const id = this.state()?.id;
+    if (!id) {
+      return null;
+    }
+
+    const client = await this.api();
+    return unwrap(
+      await client.POST('/api/v1/stacks/{id}/export', { params: { path: { id } }, body: { folder, layer } })
+    );
   }
 
   setMaskLayer(
@@ -1718,7 +1828,7 @@ export function stackSummary(state: Pick<StackState, 'revision' | 'settled' | 'e
 export function toggledEffect(effects: readonly StackMaskEffect[], node: string): StackMaskEffect[] {
   return effects.some(effect => effect.node === node)
     ? effects.filter(effect => effect.node !== node)
-    : [...effects, { node, enabled: true }];
+    : [...effects, { node, enabled: true, blend: 'Copy', opacity: 1 }];
 }
 
 /** A brush without its size, which the size slider holds apart. */

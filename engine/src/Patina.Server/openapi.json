@@ -15249,6 +15249,16 @@
               "string"
             ],
             "description": "Which lane of its picture it reads: Red, Green, Blue or Alpha."
+          },
+          "inputs": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/StackAnchorRef"
+            },
+            "description": "The image inputs of a generator entry that anchor points feed, by port, replacing all of them. Another\ngenerator starts with none."
           }
         },
         "description": "Changes an entry of a layer\u0027s mask stack. What is null stays."

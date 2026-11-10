@@ -22,8 +22,10 @@ import { blendName, channelName, choiceName, termName } from '../core/labels';
 import { amount, percent } from '../core/numbers';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
+import { AnchorInputs, type AnchorSources } from './anchor-inputs';
 import { FilterFields } from './filter-fields';
 import { FilterInputs, type FilterSources } from './filter-inputs';
+import { tagSwatch } from './layer-tags';
 import { LayerDraft } from './live-value';
 import { MaterialUse } from './material-use';
 import { colourOf, PaintStore, writesChannel } from './paint-store';
@@ -69,6 +71,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
 @Component({
   selector: 'ptn-layer-panel',
   imports: [
+    AnchorInputs,
     FilterFields,
     FilterInputs,
     SurfaceFields,
@@ -133,6 +136,36 @@ export function hexOf(colour: readonly number[] | undefined): string {
             }
           </ul>
         }
+        <div class="flex items-center gap-2">
+          <span class="text-foreground-muted w-16 shrink-0 text-xs" title="A color to find the layer by in Layers"
+            >Tag</span
+          >
+          <div
+            class="flex flex-wrap items-center gap-1"
+            role="radiogroup"
+            aria-label="Color tag"
+            data-testid="paint-tag"
+          >
+            @for (tag of tags(); track tag.value) {
+              <button
+                type="button"
+                role="radio"
+                class="border-hairline grid size-5 place-items-center rounded-sm border text-xs"
+                [attr.aria-checked]="layer.tag === tag.value"
+                [attr.aria-label]="tag.label"
+                [attr.data-testid]="'paint-tag-' + tag.value"
+                [class.outline]="layer.tag === tag.value"
+                [style.background]="swatch(tag.value)"
+                [title]="tag.label"
+                (click)="store.edit({ op: 'setLayer', layer: layer.id, tag: tag.value })"
+              >
+                @if (tag.value === 'None') {
+                  <span aria-hidden="true">∅</span>
+                }
+              </button>
+            }
+          </div>
+        </div>
         @if (layer.instance; as source) {
           <p class="section-label mt-1">Instance</p>
           <div class="flex items-center gap-2" data-testid="paint-instance">
@@ -363,6 +396,15 @@ export function hexOf(colour: readonly number[] | undefined): string {
                     (valueChange)="chooseGraph(layer, $event)"
                   />
                 </div>
+                @if (graphKind(); as kind) {
+                  <ptn-filter-inputs
+                    testId="paint-graph-input-"
+                    [anchors]="anchorNames(layer)"
+                    [inputs]="layer.inputs ?? {}"
+                    [kind]="kind"
+                    (inputsChange)="setInputs(layer, $event)"
+                  />
+                }
               }
               @if (layer.fill === 'Anchor') {
                 <div class="flex items-center gap-2">
@@ -429,6 +471,15 @@ export function hexOf(colour: readonly number[] | undefined): string {
                 <p class="text-foreground-muted text-xs" data-testid="paint-filter-node">
                   From {{ layer.filterNode.split('/').pop() }}. Choosing a filter above replaces it.
                 </p>
+                @if (store.kindOf(layer.filterNode); as kind) {
+                  <ptn-filter-inputs
+                    testId="paint-input-"
+                    [anchors]="anchorNames(layer)"
+                    [inputs]="layer.inputs ?? {}"
+                    [kind]="kind"
+                    (inputsChange)="setInputs(layer, $event)"
+                  />
+                }
               }
             }
           }
@@ -525,6 +576,15 @@ export function hexOf(colour: readonly number[] | undefined): string {
                   [value]="entry.layer.generator"
                   (valueChange)="setEntry(layer, entry.index, { generator: $event ?? '' })"
                 />
+                @if (store.kindOf(entry.layer.generator); as kind) {
+                  <ptn-anchor-inputs
+                    testId="paint-mask-layer-input-"
+                    [anchors]="anchorNames(layer)"
+                    [inputs]="entry.layer.inputs ?? {}"
+                    [kind]="kind"
+                    (inputsChange)="setEntry(layer, entry.index, { inputs: { ...$event } })"
+                  />
+                }
               }
               @case ('Bake') {
                 <xui-select
@@ -699,6 +759,15 @@ export function hexOf(colour: readonly number[] | undefined): string {
                   }
                 </div>
               }
+              @if (store.kindOf(layer.mask.generator); as kind) {
+                <ptn-anchor-inputs
+                  testId="paint-mask-input-"
+                  [anchors]="anchorNames(layer)"
+                  [inputs]="layer.mask.inputs ?? {}"
+                  [kind]="kind"
+                  (inputsChange)="setMaskInputs(layer, $event)"
+                />
+              }
             }
             @case ('Bake') {
               <xui-select
@@ -841,6 +910,31 @@ export function hexOf(colour: readonly number[] | undefined): string {
                 >
                   ✕
                 </button>
+              </div>
+              <div class="flex items-center gap-2">
+                <xui-select
+                  class="w-28 shrink-0 [&_button]:text-xs"
+                  [ariaLabel]="'Blend mode of ' + effectName(effect.node)"
+                  [attr.data-testid]="'paint-effect-' + index + '-blend'"
+                  [filterable]="false"
+                  [itemText]="blendName"
+                  [items]="blends()"
+                  [matchTargetWidth]="false"
+                  [value]="effect.blend"
+                  (valueChange)="$event && setEffect(layer, index, { blend: $event })"
+                />
+                <xui-slider
+                  class="min-w-0 flex-1"
+                  labelStepSize="0"
+                  [attr.aria-label]="'Opacity of ' + effectName(effect.node)"
+                  [attr.data-testid]="'paint-effect-' + index + '-opacity'"
+                  [max]="1"
+                  [min]="0"
+                  [stepSize]="0.01"
+                  [value]="effect.opacity"
+                  (valueChange)="setEffect(layer, index, { opacity: $event })"
+                />
+                <span class="readout w-9 shrink-0 text-end text-xs">{{ percent(effect.opacity) }}</span>
               </div>
               @if (filterOf(effect.node); as kind) {
                 <ptn-filter-fields
@@ -1028,6 +1122,27 @@ export class LayerPanel {
     return kind ? `${kind.name} · ${kind.category}` : (node.split('/').pop() ?? node);
   };
 
+  /** The colours a layer can be marked with, None first, as the Server names them (#106). */
+  protected readonly tags = computed(() => this.store.vocabulary()?.tags ?? []);
+  protected readonly swatch = (tag: string): string => tagSwatch(tag) ?? 'transparent';
+
+  /**
+   * What the chosen graph fill's graph reads, with a slot for each image (#111). A fill has no subject: an image it is
+   * not told about reads nothing, rather than the layers beneath.
+   */
+  protected readonly graphKind = computed(() => {
+    const layer = this.store.chosen();
+    const kind = layer?.kind === 'fill' && layer.fill === 'Graph' ? this.store.kindOf(layer.graph) : null;
+    return kind?.inputs?.length
+      ? { ...kind, inputs: kind.inputs.map(slot => ({ ...slot, subject: false, optional: true })) }
+      : null;
+  });
+
+  /** Which anchor points feed the mask generator's images, all at once, as the Server replaces them. */
+  protected setMaskInputs(layer: StackLayer, inputs: AnchorSources): void {
+    this.setMask(layer, { inputs: { ...inputs } });
+  }
+
   /** Where a filter's images read, all of them at once, as the Server replaces them. */
   protected setInputs(layer: StackLayer, inputs: FilterSources): void {
     void this.store.edit({ op: 'setLayer', layer: layer.id, inputs: { ...inputs } });
@@ -1207,7 +1322,7 @@ export class LayerPanel {
     const node = select.value;
     select.value = '';
     if (node) {
-      this.setEffects(layer, [...(layer.mask.effects ?? []), { node, enabled: true }]);
+      this.setEffects(layer, [...(layer.mask.effects ?? []), { node, enabled: true, blend: 'Copy', opacity: 1 }]);
     }
   }
 

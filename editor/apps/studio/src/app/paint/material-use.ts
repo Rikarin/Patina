@@ -82,6 +82,42 @@ export class MaterialUse {
     }
   }
 
+  /**
+   * Whether a material can be dropped on a region of the mesh: one with maps, a graph or a picture material, onto a
+   * stack that is open (#110).
+   */
+  takesRegion(material: MaterialInfo | null): boolean {
+    return (
+      material !== null &&
+      material.role === 'material' &&
+      (material.kind === 'graph' || material.kind === 'image-material') &&
+      this.paint.state() !== null
+    );
+  }
+
+  /**
+   * A material dropped on the mesh fills the region of the id map it landed on: a graph fill on top, masked by that
+   * region's color (#110). A stack with no id map says how to get one.
+   */
+  async useOnRegion(material: MaterialInfo, colour: readonly number[] | null): Promise<void> {
+    const project = this.project.current();
+    if (!project || !this.takesRegion(material)) {
+      return;
+    }
+
+    this.failure.set(null);
+    if (!colour) {
+      this.failure.set('Bake with the ID map on to drop a material onto a part of the mesh.');
+      return;
+    }
+
+    try {
+      await this.paint.addGraphLayerOnRegion(material.name, await this.publish(project.path, material), colour);
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+    }
+  }
+
   /** Makes a graph fill read this graph, keeping the layer it is on. */
   async fillWith(layer: StackLayer, material: MaterialInfo): Promise<void> {
     const project = this.project.current();

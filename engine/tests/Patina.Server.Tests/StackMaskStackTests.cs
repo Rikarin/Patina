@@ -104,6 +104,38 @@ public sealed class StackMaskStackTests {
         );
     }
 
+    /// <summary>
+    ///     A generator entry's image inputs are fed from anchor points by a change of the entry (#111), and another
+    ///     generator starts with none.
+    /// </summary>
+    [Fact]
+    public void A_generator_entrys_inputs_read_anchor_points() {
+        var editor = Generated();
+        editor.Apply(new([new StackAddMaskLayer("paint", "Generator", Generator: "Filters/Blur")]));
+
+        editor.Apply(
+            new([
+                new StackSetMaskLayer(
+                    "paint",
+                    0,
+                    Inputs: new Dictionary<string, StackAnchorRef> { ["Input"] = new("Ground", "height") }
+                )
+            ])
+        );
+
+        Assert.Equal(
+            new AnchorReference { Anchor = "Ground", Channel = "height" },
+            Layer(editor).Mask.Layers[0].GeneratorInputs["Input"]
+        );
+        Assert.Equal(
+            new StackAnchorRef("Ground", "height"),
+            StackDocuments.Layers([Layer(editor)])[0].Mask.Layers![0].Inputs!["Input"]
+        );
+
+        editor.Apply(new([new StackSetMaskLayer("paint", 0, Generator: "Colour/Levels")]));
+        Assert.Empty(Layer(editor).Mask.Layers[0].GeneratorInputs);
+    }
+
     /// <summary>A layer's colour tag is set, named in History, read back, and refused when it is no colour (#106).</summary>
     [Fact]
     public void A_layer_takes_a_colour_tag() {

@@ -34,6 +34,7 @@ function layer(id: string, kind: string, children: StackLayer[] = []): StackLaye
   return {
     filterNode: '',
     anchorPoint: '',
+    tag: 'None',
     flattened: false,
     id,
     name: id,
@@ -656,7 +657,7 @@ describe('PaintStore', () => {
   });
 
   it('turns an effect on, and off again rather than twice', () => {
-    const once = toggledEffect([{ node: 'Filters/Blur', enabled: true }], 'Colour/Invert');
+    const once = toggledEffect([{ node: 'Filters/Blur', enabled: true, blend: 'Copy', opacity: 1 }], 'Colour/Invert');
     expect(once.map(effect => effect.node)).toEqual(['Filters/Blur', 'Colour/Invert']);
     expect(toggledEffect(once, 'Colour/Invert').map(effect => effect.node)).toEqual(['Filters/Blur']);
   });

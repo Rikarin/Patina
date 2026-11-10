@@ -8,6 +8,7 @@ export type ProjectContents = components['schemas']['ProjectContents'];
 export type ProjectFile = components['schemas']['ProjectFile'];
 export type MaterialInfo = components['schemas']['MaterialInfo'];
 export type StackIdColour = components['schemas']['StackIdColour'];
+export type StackPixels = components['schemas']['StackPixels'];
 export type ProjectDocumentInfo = components['schemas']['ProjectDocumentInfo'];
 export type ProjectMeshInfo = components['schemas']['ProjectMeshInfo'];
 export type MeshFacts = components['schemas']['MeshFacts'];
