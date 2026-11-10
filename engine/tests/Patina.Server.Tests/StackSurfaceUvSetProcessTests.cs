@@ -10,16 +10,18 @@ namespace Patina.Server.Tests;
 /// </summary>
 public sealed partial class StackProcessTests {
     /// <summary>
-    ///     One tilted triangle laid out twice: its first UV set is the lower-left half of the square, its second a small
-    ///     triangle in the middle of it, an eighth as large as a side squared over four.
+    ///     One tilted triangle laid out twice: its first UV set is the lower-left half of the square, its second a
+    ///     small triangle in the middle of it, a thirty-second of the square.
     /// </summary>
     static string TwoLayoutTriangle(string into) {
         float[] positions = [0, 0, 0, 1, 0, 0.5f, 0, 1, 0.5f];
         float[] first = [0, 0, 1, 0, 0, 1];
         float[] second = [0.5f, 0.25f, 0.75f, 0.25f, 0.5f, 0.5f];
         var lean = 1f / MathF.Sqrt(1.5f);
-        float[] normals = [-0.5f * lean, -0.5f * lean, lean, -0.5f * lean, -0.5f * lean, lean, -0.5f * lean,
-            -0.5f * lean, lean];
+        float[] normals = [
+            -0.5f * lean, -0.5f * lean, lean, -0.5f * lean, -0.5f * lean, lean, -0.5f * lean,
+            -0.5f * lean, lean
+        ];
         ushort[] indices = [0, 1, 2];
         var buffer = new byte[36 + 24 + 24 + 36 + 6];
         Buffer.BlockCopy(positions, 0, buffer, 0, 36);
@@ -139,6 +141,9 @@ public sealed partial class StackProcessTests {
 
         var whole = map.Width * map.Height;
         Assert.InRange(count, whole / 64, whole / 16);
-        Assert.True(leftmost >= map.Width * 45 / 100, $"A red texel at {leftmost} of {map.Width} is in UV set 1's half.");
+        Assert.True(
+            leftmost >= map.Width * 45 / 100,
+            $"A red texel at {leftmost} of {map.Width} is in UV set 1's half."
+        );
     }
 }

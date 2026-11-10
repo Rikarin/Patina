@@ -1,0 +1,31 @@
+namespace Patina.Contracts;
+
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field.
+#pragma warning disable SK7005
+
+/// <summary>Says how the texture set's height becomes the normal its surface is lit with.</summary>
+/// <param name="Method">
+///     <c>Sharp</c>, the height's slope as painted, or <c>Smooth</c>, the slope of the height blurred by a texel, which
+///     hides an eight-bit height's steps.
+/// </param>
+public sealed record StackSetHeightNormal(string Method) : StackCommand;
+
+/// <summary>
+///     Changes the texture set's settings, any of them, as one undo step. What is left out stays as it is. Together
+///     with its channels and its name these are the set's settings, and the stack file is the one place they live.
+/// </summary>
+/// <param name="Width">
+///     The width the set is painted, evaluated and exported at, one of the sides the system offers. A canvas painted at
+///     another resolution is never rewritten by this: it is sampled at the set's, and a smaller one is enlarged exactly
+///     when it is next painted (#19).
+/// </param>
+/// <param name="Height">The height, which may differ from the width.</param>
+/// <param name="UvSet">The mesh's UV set it is painted, baked and drawn in, by its number; 0 is the first.</param>
+/// <param name="HeightNormal">How height becomes the normal: <c>Sharp</c> or <c>Smooth</c>.</param>
+public sealed record StackSetSettings(
+    int? Width = null,
+    int? Height = null,
+    int? UvSet = null,
+    string? HeightNormal = null
+) : StackCommand;
+#pragma warning restore SK7005

@@ -23,9 +23,15 @@ static class StackLabels {
             StackFlattenLayer { Layer: null } => "Flatten stack",
             StackFlattenLayer => "Flatten folder",
             StackUnflattenLayer => "Unflatten folder",
-            StackAddMaskLayer add => $"Add {Terms.InStack(add.Source)} to mask",
             StackAddInstance => "Add instance",
             StackSetInstance => "Change instance source",
+            _ => OfMask(command)
+        };
+
+    /// <summary>A step on a layer's mask.</summary>
+    static string OfMask(StackCommand command) =>
+        command switch {
+            StackAddMaskLayer add => $"Add {Terms.InStack(add.Source)} to mask",
             StackRemoveMaskLayer => "Remove mask layer",
             StackMoveMaskLayer => "Move mask layer",
             StackSetMaskLayer => "Change mask layer",

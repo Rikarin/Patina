@@ -2,7 +2,9 @@ using Patina.Library;
 
 namespace Patina.Server.Tests;
 
-/// <summary>Letting a document go while its autosave is still being written (#162, and the save texture-sets saw fail).</summary>
+/// <summary>
+///     Letting a document go while its autosave is still being written (#162, and the save texture-sets saw fail).
+/// </summary>
 public sealed class AutosaveGateTests : IDisposable {
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-autosave-gate-");
 

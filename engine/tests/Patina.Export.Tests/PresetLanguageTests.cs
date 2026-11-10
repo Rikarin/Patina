@@ -294,9 +294,9 @@ public sealed class PresetLanguageTests : IDisposable {
     }
 
     /// <summary>
-    ///     A set's size is the size it is authored at, which need not be square (ADR 0020); an export's size, the whole
-    ///     export's or one set's, is the longest side its files are written at and changes nothing else (ADR 0019). So a
-    ///     set four times as wide as it is high is written four times as wide at either size.
+    ///     A set's size is the size it is authored at, which need not be square (ADR 0020); an export's size, the
+    ///     whole export's or one set's, is the longest side its files are written at and changes nothing else (ADR
+    ///     0019). So a set four times as wide as it is high is written four times as wide at either size.
     /// </summary>
     [Fact]
     public void A_set_that_is_not_square_keeps_its_shape_at_each_size_an_export_writes() {

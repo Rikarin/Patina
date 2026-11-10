@@ -444,22 +444,24 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 
 /// <summary>One edit of a stack. A batch of these is one undo step.</summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "op")]
-// Two to a section. SK7020 honours no suppression, and one attribute to a line here and on GraphCommand is a clone to
-// it whatever order they take, once there are nine of them.
+// One or two to a section, in no repeating pattern. SK7020 honours no suppression, and a run of sections all alike here
+// and on GraphCommand is a clone to it whatever order they take, once there are enough of them.
 [JsonDerivedType(typeof(StackAddLayer), "addLayer"), JsonDerivedType(typeof(StackRemoveLayer), "removeLayer")]
-[JsonDerivedType(typeof(StackMoveLayer), "moveLayer"), JsonDerivedType(typeof(StackSetLayer), "setLayer")]
+[JsonDerivedType(typeof(StackMoveLayer), "moveLayer")]
+[JsonDerivedType(typeof(StackSetLayer), "setLayer")]
 [JsonDerivedType(typeof(StackStroke), "stroke"), JsonDerivedType(typeof(StackSetModel), "setModel")]
 [JsonDerivedType(typeof(StackAddChannel), "addChannel"), JsonDerivedType(typeof(StackNestLayer), "nestLayer")]
 [JsonDerivedType(typeof(StackSetSeed), "setSeed"), JsonDerivedType(typeof(StackDuplicateLayers), "duplicateLayers")]
-[JsonDerivedType(typeof(StackPasteLayers), "pasteLayers"), JsonDerivedType(typeof(StackFlattenLayer), "flattenLayer")]
-[JsonDerivedType(typeof(StackUnflattenLayer), "unflattenLayer")]
-[JsonDerivedType(typeof(StackSetHeightNormal), "setHeightNormal"),
- JsonDerivedType(typeof(StackSetSettings), "setSettings")]
-[JsonDerivedType(typeof(StackAddMaskLayer), "addMaskLayer"),
- JsonDerivedType(typeof(StackRemoveMaskLayer), "removeMaskLayer")]
-[JsonDerivedType(typeof(StackMoveMaskLayer), "moveMaskLayer"),
- JsonDerivedType(typeof(StackSetMaskLayer), "setMaskLayer")]
-[JsonDerivedType(typeof(StackAddInstance), "addInstance"), JsonDerivedType(typeof(StackSetInstance), "setInstance")]
+[JsonDerivedType(typeof(StackPasteLayers), "pasteLayers")]
+[JsonDerivedType(typeof(StackFlattenLayer), "flattenLayer"),
+ JsonDerivedType(typeof(StackUnflattenLayer), "unflattenLayer")]
+[JsonDerivedType(typeof(StackSetHeightNormal), "setHeightNormal")]
+[JsonDerivedType(typeof(StackSetSettings), "setSettings")]
+[JsonDerivedType(typeof(StackAddMaskLayer), "addMaskLayer")]
+[JsonDerivedType(typeof(StackRemoveMaskLayer), "removeMaskLayer"),
+ JsonDerivedType(typeof(StackMoveMaskLayer), "moveMaskLayer")]
+[JsonDerivedType(typeof(StackSetMaskLayer), "setMaskLayer"), JsonDerivedType(typeof(StackAddInstance), "addInstance")]
+[JsonDerivedType(typeof(StackSetInstance), "setInstance")]
 [JsonDerivedType(typeof(StackApplyMask), "applyMask")]
 public abstract record StackCommand;
 
@@ -714,32 +716,6 @@ public sealed record StackClip(string Id, int Layers, string Stack);
 /// <summary>Sets the number every procedural step of the stack derives from.</summary>
 /// <param name="Seed">It.</param>
 public sealed record StackSetSeed(uint Seed) : StackCommand;
-
-/// <summary>Says how the texture set's height becomes the normal its surface is lit with.</summary>
-/// <param name="Method">
-///     <c>Sharp</c>, the height's slope as painted, or <c>Smooth</c>, the slope of the height blurred by a texel, which
-///     hides an eight-bit height's steps.
-/// </param>
-public sealed record StackSetHeightNormal(string Method) : StackCommand;
-
-/// <summary>
-///     Changes the texture set's settings, any of them, as one undo step. What is left out stays as it is. Together
-///     with its channels and its name these are the set's settings, and the stack file is the one place they live.
-/// </summary>
-/// <param name="Width">
-///     The width the set is painted, evaluated and exported at, one of the sides the system offers. A canvas painted at
-///     another resolution is never rewritten by this: it is sampled at the set's, and a smaller one is enlarged exactly
-///     when it is next painted (#19).
-/// </param>
-/// <param name="Height">The height, which may differ from the width.</param>
-/// <param name="UvSet">The mesh's UV set it is painted, baked and drawn in, by its number; 0 is the first.</param>
-/// <param name="HeightNormal">How height becomes the normal: <c>Sharp</c> or <c>Smooth</c>.</param>
-public sealed record StackSetSettings(
-    int? Width = null,
-    int? Height = null,
-    int? UvSet = null,
-    string? HeightNormal = null
-) : StackCommand;
 
 /// <summary>Where the brush goes: in texels of the image, or on the picture of a stroke with a view.</summary>
 /// <param name="X">Its column.</param>

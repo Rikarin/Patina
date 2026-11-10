@@ -33,21 +33,25 @@ static class BakeLayouts {
                 continue;
             }
 
-            var contents = library.Contents(LibraryLayout.Relative(root, folder));
-            var below = LibraryLayout.Relative(Path.GetFullPath(library.RootPath), Path.GetFullPath(low));
-            var mesh = contents.Meshes.FirstOrDefault(m => m.Path == below)?.Id;
-            var set = (material is null ? null : contents.Documents.FirstOrDefault(d => d.Material == material))
-                ?? contents.Documents.FirstOrDefault(d =>
-                    d.Kind == DocumentKinds.Texturing && d.Material is null && mesh is not null && d.Mesh == mesh
-                );
-            if (set is null) {
-                return null;
-            }
-
-            var stack = StackDocuments.Parse(SharedFile.ReadAllText(LibraryLayout.Full(library.RootPath, set.Path)));
-            return ((material is null ? null : stack.SetNamed(material)) ?? stack.Sets.FirstOrDefault())?.UvSet;
+            return SetOf(library, library.Contents(LibraryLayout.Relative(root, folder)), low, material);
         }
 
         return null;
+    }
+
+    /// <summary>The UV set of the project's texture set on the material, or on the mesh when none is named.</summary>
+    static int? SetOf(OpenLibrary library, ProjectContents contents, string low, string? material) {
+        var below = LibraryLayout.Relative(Path.GetFullPath(library.RootPath), Path.GetFullPath(low));
+        var mesh = contents.Meshes.FirstOrDefault(m => m.Path == below)?.Id;
+        var set = (material is null ? null : contents.Documents.FirstOrDefault(d => d.Material == material))
+            ?? contents.Documents.FirstOrDefault(d =>
+                d.Kind == DocumentKinds.Texturing && d.Material is null && mesh is not null && d.Mesh == mesh
+            );
+        if (set is null) {
+            return null;
+        }
+
+        var stack = StackDocuments.Parse(SharedFile.ReadAllText(LibraryLayout.Full(library.RootPath, set.Path)));
+        return ((material is null ? null : stack.SetNamed(material)) ?? stack.Sets.FirstOrDefault())?.UvSet;
     }
 }

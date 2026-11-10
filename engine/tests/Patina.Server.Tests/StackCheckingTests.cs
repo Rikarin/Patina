@@ -66,9 +66,7 @@ public sealed class StackCheckingTests {
     public void A_sets_own_export_size_changes_what_its_files_take_and_not_its_size() {
         var state = Set("baseColor", "roughness", "metalness", "normal") with { Width = 2048, Height = 512 };
         StackMeasured wide = new(2048, 512, null, []);
-        var own = Project(new()) with {
-            Export = new() { Preset = Unreal.Id, PerSet = [new("Wood") { Size = 1024 }] }
-        };
+        var own = Project(new()) with { Export = new() { Preset = Unreal.Id, PerSet = [new("Wood") { Size = 1024 }] } };
         var other = Project(new()) with {
             Export = new() { Preset = Unreal.Id, PerSet = [new("Metal") { Size = 1024 }] }
         };
