@@ -48,7 +48,7 @@ test('a duplicated preset is a file in the project, and a BC7 file shows what co
   if (shots) {
     await window.screenshot({ path: join(shots, 'preset-editor.png') });
   }
-  await window.getByTestId('preset-save').click();
+  await window.getByTestId('preset-editor-save').click();
   await expect(window.getByTestId('preset-reveal')).toBeVisible();
   const kept = join(library, 'projects', 'housing', 'export-presets', 'godot-copy.yaml');
   await expect.poll(() => existsSync(kept)).toBe(true);

@@ -199,7 +199,7 @@ function blank(id: string): ExportPresetDocument {
               xuiInput
               class="w-full"
               aria-label="Preset name"
-              data-testid="preset-name"
+              data-testid="preset-editor-name"
               [disabled]="readOnly()"
               [value]="preset.name"
               (input)="edit({ name: text($event) })"
@@ -544,7 +544,7 @@ function blank(id: string): ExportPresetDocument {
                 xuiButton
                 size="sm"
                 color="primary"
-                data-testid="preset-save"
+                data-testid="preset-editor-save"
                 [disabled]="!!checked()?.problem"
                 (click)="save()"
               >

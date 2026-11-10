@@ -110,13 +110,13 @@ describe('PresetEditor', () => {
     await settled(fixture);
 
     expect(page.querySelector('[data-testid="preset-built-in"]')).not.toBeNull();
-    expect(page.querySelector<HTMLInputElement>('[data-testid="preset-name"]')?.disabled).toBe(true);
+    expect(page.querySelector<HTMLInputElement>('[data-testid="preset-editor-name"]')?.disabled).toBe(true);
     page.querySelector<HTMLButtonElement>('[data-testid="preset-duplicate"]')?.click();
     await settled(fixture, 700);
 
     expect(page.querySelector<HTMLInputElement>('[data-testid="preset-id"]')?.value).toBe('unreal-copy');
     expect(page.querySelector('[data-testid="preset-file-written"]')?.textContent.trim()).toBe('T_Crate_Copy_ORM.png');
-    page.querySelector<HTMLButtonElement>('[data-testid="preset-save"]')?.click();
+    page.querySelector<HTMLButtonElement>('[data-testid="preset-editor-save"]')?.click();
     await settled(fixture, 10);
 
     expect(puts).toHaveLength(1);
@@ -152,7 +152,7 @@ describe('PresetEditor', () => {
       id.dispatchEvent(new Event('input'));
     }
     await settled(fixture);
-    page.querySelector<HTMLButtonElement>('[data-testid="preset-save"]')?.click();
+    page.querySelector<HTMLButtonElement>('[data-testid="preset-editor-save"]')?.click();
     await settled(fixture, 10);
 
     expect(puts[0]).toMatchObject({
@@ -176,7 +176,7 @@ describe('PresetEditor', () => {
     await settled(fixture, 700);
 
     expect(page.querySelector('[data-testid="preset-problem"]')?.textContent).toContain('bmp');
-    expect(page.querySelector<HTMLButtonElement>('[data-testid="preset-save"]')?.disabled).toBe(true);
+    expect(page.querySelector<HTMLButtonElement>('[data-testid="preset-editor-save"]')?.disabled).toBe(true);
   });
 });
 
