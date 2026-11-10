@@ -219,21 +219,37 @@ public static class StackBrushes {
             "clone" => source.Offset is [var x, var y] && float.IsFinite(x) && float.IsFinite(y)
                 ? null
                 : "A clone reads from an offset of two numbers, in texels.",
-            "material" => string.IsNullOrWhiteSpace(source.Graph) ? "A material brush names the graph it lays."
-                : source.Projection is { } projection && !MaterialProjections.Contains(projection)
-                    ? $"'{projection}' is not how a material brush lays its maps."
-                : source.PlanarAxis is { } axis && !PlanarAxes.Contains(axis) ? $"'{axis}' is not an axis."
-                : source.Placement is { } placement
-                && (!(placement.Scale > 0f) || !float.IsFinite(placement.Scale)
-                    || !float.IsFinite(placement.Rotation) || !float.IsFinite(placement.OffsetX)
-                    || !float.IsFinite(placement.OffsetY) || !float.IsFinite(placement.Sharpness))
-                    ? "A material repeats a number of times above zero, and turns and moves by numbers."
-                : null,
+            "material" => MaterialProblem(source),
             "picture" => source.Picture is null
                 ? "A projection names the picture it paints."
                 : source.Picture.Problem(),
             _ => $"'{source.Kind}' is not where a stroke's colour can come from."
         };
+
+    /// <summary>What is wrong with a material brush's graph and where its maps land, or null.</summary>
+    static string? MaterialProblem(StackStrokeSource source) {
+        if (string.IsNullOrWhiteSpace(source.Graph)) {
+            return "A material brush names the graph it lays.";
+        }
+
+        if (source.Projection is { } projection && !MaterialProjections.Contains(projection)) {
+            return $"'{projection}' is not how a material brush lays its maps.";
+        }
+
+        if (source.PlanarAxis is { } axis && !PlanarAxes.Contains(axis)) {
+            return $"'{axis}' is not an axis.";
+        }
+
+        if (source.Placement is not { } placement) {
+            return null;
+        }
+
+        float[] numbers =
+            [placement.Scale, placement.Rotation, placement.OffsetX, placement.OffsetY, placement.Sharpness];
+        return placement.Scale > 0f && numbers.All(float.IsFinite)
+            ? null
+            : "A material repeats a number of times above zero, and turns and moves by numbers.";
+    }
 
     /// <summary>
     ///     What is wrong with what a stroke paints with besides its brush and its symmetry: a fill's mode, its source,

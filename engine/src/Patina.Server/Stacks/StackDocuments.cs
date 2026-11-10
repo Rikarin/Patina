@@ -55,7 +55,9 @@ public static class StackDocuments {
                                     Kind = LayerKind.Fill,
                                     Fill = LayerFillSource.Graph,
                                     Graph = source.Graph!,
-                                    Projection = Enum.Parse<LayerProjection>(source.Projection ?? nameof(LayerProjection.Uv)),
+                                    Projection = Enum.Parse<LayerProjection>(
+                                        source.Projection ?? nameof(LayerProjection.Uv)
+                                    ),
                                     PlanarAxis = Enum.Parse<LayerAxis>(source.PlanarAxis ?? nameof(LayerAxis.Y)),
                                     Placement = source.Placement is { } placement
                                         ? StackEditor.Placed(placement)

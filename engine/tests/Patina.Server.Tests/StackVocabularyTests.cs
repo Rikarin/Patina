@@ -493,18 +493,20 @@ public sealed class StackVocabularyTests {
 
         Assert.Throws<StackEditRefusedException>(() =>
             editor.Apply(
-                new([
-                    new StackStroke(
-                        "a",
-                        "paint",
-                        "baseColor",
-                        new(4f),
-                        [1f, 1f, 1f, 1f],
-                        [new(1f, 1f), new(9f, 1f)],
-                        Curve: curve,
-                        Resume: [..Enumerable.Repeat(4f, numbers)]
-                    )
-                ])
+                new(
+                    [
+                        new StackStroke(
+                            "a",
+                            "paint",
+                            "baseColor",
+                            new(4f),
+                            [1f, 1f, 1f, 1f],
+                            [new(1f, 1f), new(9f, 1f)],
+                            Curve: curve,
+                            Resume: [..Enumerable.Repeat(4f, numbers)]
+                        )
+                    ]
+                )
             )
         );
     }
@@ -533,17 +535,19 @@ public sealed class StackVocabularyTests {
 
         var refusal = Assert.Throws<StackEditRefusedException>(() =>
             editor.Apply(
-                new([
-                    new StackStroke(
-                        "a",
-                        "paint",
-                        "baseColor",
-                        new(4f),
-                        [1f, 1f, 1f, 1f],
-                        [new(1f, 1f)],
-                        Source: new("material", "rust.vxtexgraph", Projection: projection)
-                    )
-                ])
+                new(
+                    [
+                        new StackStroke(
+                            "a",
+                            "paint",
+                            "baseColor",
+                            new(4f),
+                            [1f, 1f, 1f, 1f],
+                            [new(1f, 1f)],
+                            Source: new("material", "rust.vxtexgraph", Projection: projection)
+                        )
+                    ]
+                )
             )
         );
 
