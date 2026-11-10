@@ -294,6 +294,28 @@ public sealed class PresetLanguageTests : IDisposable {
     }
 
     /// <summary>
+    ///     A set's size is the size it is authored at, which need not be square (ADR 0020); an export's size, the whole
+    ///     export's or one set's, is the longest side its files are written at and changes nothing else (ADR 0019). So a
+    ///     set four times as wide as it is high is written four times as wide at either size.
+    /// </summary>
+    [Fact]
+    public void A_set_that_is_not_square_keeps_its_shape_at_each_size_an_export_writes() {
+        var preset = ExportOverrides.Apply(
+            Read(One("png8", "linear", "[roughness.r]")),
+            new() { Size = 8, PerSet = [new("Head") { Size = 4 }] }
+        );
+        static MapPicture Wide() => new("roughness", new(32, 8, 1, new float[32 * 8]), GreenAxis.Up);
+        ExportSet[] sets = [
+            new("Body", new Dictionary<string, MapPicture> { ["roughness"] = Wide() }),
+            new("Head", new Dictionary<string, MapPicture> { ["roughness"] = Wide() })
+        ];
+
+        var manifest = ExportRun.Run(preset, sets, Path("object"), static (_, _) => { }, Token);
+
+        Assert.Equal([(8, 2), (4, 1)], manifest.Files.Select(static f => (f.Width, f.Height)));
+    }
+
+    /// <summary>
     ///     The glTF preset writes a glTF beside its images that names each one in its slot, which Vixen's reader,
     ///     Assimp, reads back: the file is what a DCC binds.
     /// </summary>

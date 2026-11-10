@@ -18,7 +18,9 @@ no setting of the set.
 
 `setSettings` takes any of width, height, UV set and height to normal, and is one undo step, *Texture set settings*.
 Export, the bake and the checks read these from the stack, so a client never sends them twice. A width and a height are
-each one of `TextureSizes.Sides`, so a set may be 2048 × 512.
+each one of `TextureSizes.Sides`, so a set may be 2048 × 512. This is the set's size, the one it is authored at; an
+export's size for the set (ADR 0019, `perSet`) is the longest side its files are written at, keeps the set's shape and
+changes nothing here. The checks measure the set at its own size and count its memory at the size the export writes.
 
 ## Resolution: canvases resampled reversibly, not strokes replayed (#19)
 

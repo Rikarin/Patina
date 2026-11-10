@@ -116,7 +116,10 @@ default 16) and, for `colour`, up to four numbers. A material with no mesh has n
 ### Size, in order
 
 A file is padded at the maps' size, then sized: the preset's `size`, or else the maps' own longest side, times the file's
-`scale`. Enlarging is reported.
+`scale`. Enlarging is reported. The maps' size is the texture set's own width and height (ADR 0020), which need not be
+square; every size here is a longest side, so a file keeps its set's shape. An export's size, the whole export's or one
+set's under `perSet`, changes only what is written: the set is still authored, painted, baked and checked at its own
+size and in its own UV set, and padding grows from that UV set's layout.
 
 ## An export's changes
 

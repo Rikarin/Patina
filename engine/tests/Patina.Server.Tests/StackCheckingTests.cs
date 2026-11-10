@@ -57,6 +57,29 @@ public sealed class StackCheckingTests {
         Assert.Equal(2L * 4 * Side * Side, StackChecking.Memory(Unreal, off, state, Side, Side));
     }
 
+    /// <summary>
+    ///     A set's size is what it is authored at, and need not be square (ADR 0020). An export's size for one set is
+    ///     the longest side its files are written at (ADR 0019): it changes the memory they take, keeping their shape,
+    ///     and not the size the checks say the set is. Another set's size changes nothing here.
+    /// </summary>
+    [Fact]
+    public void A_sets_own_export_size_changes_what_its_files_take_and_not_its_size() {
+        var state = Set("baseColor", "roughness", "metalness", "normal") with { Width = 2048, Height = 512 };
+        StackMeasured wide = new(2048, 512, null, []);
+        var own = Project(new()) with {
+            Export = new() { Preset = Unreal.Id, PerSet = [new("Wood") { Size = 1024 }] }
+        };
+        var other = Project(new()) with {
+            Export = new() { Preset = Unreal.Id, PerSet = [new("Metal") { Size = 1024 }] }
+        };
+
+        var checks = StackChecking.Judge(state, wide, own, 0, Unreal);
+
+        Assert.Equal((2048, 512), (checks.Width, checks.Height));
+        Assert.Equal(3L * 4 * 1024 * 256, checks.MemoryBytes);
+        Assert.Equal(3L * 4 * 2048 * 512, StackChecking.Judge(state, wide, other, 0, Unreal).MemoryBytes);
+    }
+
     [Theory]
     [InlineData("png8", "none", 3, 4)]
     [InlineData("png8", "none", 1, 1)]

@@ -330,6 +330,69 @@ public sealed class OutputBuildersTests : IDisposable {
         Assert.InRange(coverage.Samples.Sum(), 128f, 144f);
     }
 
+    /// <summary>
+    ///     A set laid out in its mesh's second UV set pads from that layout (ADR 0020), at the set's own size however
+    ///     long and narrow: here the second layout is the right half of the square, so a 32 by 8 coverage is the right
+    ///     half of every row and none of the left.
+    /// </summary>
+    [Fact]
+    public void A_sets_coverage_is_its_own_uv_set_at_its_own_size() {
+        var mesh = Path.Combine(folder.FullName, "two.gltf");
+        float[] positions = [0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0];
+        float[] first = [0, 0, 0.5f, 0, 0.5f, 1, 0, 1];
+        float[] second = [0.5f, 0, 1, 0, 1, 1, 0.5f, 1];
+        ushort[] indices = [0, 1, 2, 0, 2, 3];
+        var buffer = new byte[48 + 32 + 32 + 12];
+        Buffer.BlockCopy(positions, 0, buffer, 0, 48);
+        Buffer.BlockCopy(first, 0, buffer, 48, 32);
+        Buffer.BlockCopy(second, 0, buffer, 80, 32);
+        Buffer.BlockCopy(indices, 0, buffer, 112, 12);
+        File.WriteAllText(
+            mesh,
+            $$"""
+              {
+                "asset": { "version": "2.0" },
+                "scene": 0,
+                "scenes": [{ "nodes": [0] }],
+                "nodes": [{ "mesh": 0 }],
+                "materials": [{ "name": "Body" }],
+                "meshes": [{ "name": "Quad", "primitives": [{
+                  "attributes": { "POSITION": 0, "TEXCOORD_0": 1, "TEXCOORD_1": 2 },
+                  "indices": 3,
+                  "material": 0
+                }] }],
+                "buffers": [{
+                  "byteLength": {{buffer.Length}},
+                  "uri": "data:application/octet-stream;base64,{{Convert.ToBase64String(buffer)}}"
+                }],
+                "bufferViews": [
+                  { "buffer": 0, "byteOffset": 0, "byteLength": 48 },
+                  { "buffer": 0, "byteOffset": 48, "byteLength": 32 },
+                  { "buffer": 0, "byteOffset": 80, "byteLength": 32 },
+                  { "buffer": 0, "byteOffset": 112, "byteLength": 12 }
+                ],
+                "accessors": [
+                  {
+                    "bufferView": 0, "componentType": 5126, "count": 4, "type": "VEC3",
+                    "min": [0, 0, 0], "max": [1, 1, 0]
+                  },
+                  { "bufferView": 1, "componentType": 5126, "count": 4, "type": "VEC2" },
+                  { "bufferView": 2, "componentType": 5126, "count": 4, "type": "VEC2" },
+                  { "bufferView": 3, "componentType": 5123, "count": 6, "type": "SCALAR" }
+                ]
+              }
+              """
+        );
+
+        var coverage = MeshCoverage.Of(mesh, "Body", 1, 32, 8)!;
+
+        Assert.Equal((32, 8), (coverage.Width, coverage.Height));
+        for (var y = 0; y < 8; y++) {
+            Assert.Equal(0f, coverage.Samples[y * 32 + 4]);
+            Assert.Equal(1f, coverage.Samples[y * 32 + 27]);
+        }
+    }
+
     ExportSource Source(string name, float value, string usage = "roughness") {
         var path = Directory.CreateDirectory(Path.Combine(folder.FullName, name)).FullName;
         var map = MapPictures.Write(path, usage, new(1, 1, 1, [value]), true, null);

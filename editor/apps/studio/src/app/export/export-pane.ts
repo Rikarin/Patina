@@ -317,7 +317,8 @@ function lanesOf(hex: string): number[] {
                 <xui-select
                   class="w-32 shrink-0"
                   data-testid="export-set-size"
-                  [ariaLabel]="'Size of ' + set"
+                  title="The longest side this texture set's files are written at. The set keeps its own size."
+                  [ariaLabel]="'Export size of ' + set"
                   [filterable]="false"
                   [itemText]="setSizeName"
                   [items]="setSizes()"
