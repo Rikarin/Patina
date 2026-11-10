@@ -1558,6 +1558,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/stacks/{id}/brush-preview': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising and falling, drawn by the Worker under /previews with the alphas this stack's strokes read. A brush no stroke could take is refused with its reason. */
+    post: operations['PreviewStackBrush'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/stacks/{id}/sample': {
     parameters: {
       query?: never;
@@ -5047,6 +5064,11 @@ export interface components {
        * @default false
        */
       resume: boolean;
+    };
+    /** @description A picture of a brush: a stroke of it drawn small, under `/previews/{hash}`. */
+    StackBrushPreview: {
+      /** @description Its name in the preview cache, or null when the brush draws nothing. */
+      hash?: null | string;
     };
     /** @description What a brush's fields take and how a new brush starts, so a client keeps no list or default of its own. */
     StackBrushTerms: {
@@ -11981,6 +12003,59 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['StackFound'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  PreviewStackBrush: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StackBrush'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackBrushPreview'];
         };
       };
       /** @description Not Found */

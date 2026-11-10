@@ -80,6 +80,12 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         return new() { Type = IpcTypes.Ok, Sampled = Find(ask.Session).SampleAt(ask.U, ask.V) };
     }
 
+    /// <summary>A stroke of a brush drawn small into the preview folder, for a brush panel to show (#123).</summary>
+    public IpcMessage PreviewBrush(IpcMessage request) {
+        var ask = request.StackBrushPreview ?? throw new IpcException("stack.brush-preview names no stack.");
+        return GraphHost.Drawn(Find(ask.Session).PreviewBrush(ask.Brush, ask.PreviewFolder));
+    }
+
     public IpcMessage Sync(IpcMessage request) {
         var sync = request.StackSync ?? throw new IpcException("stack.sync says nothing.");
         Find(sync.Session).Sync(sync, watch);
@@ -789,6 +795,15 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         }
 
         PaintBrush Brush(StackBrush brush) => StrokeShapes.Brush(brush, Alpha(brush.Alpha));
+
+        /// <summary>A stroke of a brush drawn small, with its alpha, and its picture's hash.</summary>
+        public string? PreviewBrush(StackBrush brush, string folder) {
+            var image = BrushPreviews.Draw(Brush(brush));
+            var png = PngCodec.Encode(new(image.Width, image.Height, image.ToTexels()));
+            var hash = Convert.ToHexStringLower(SHA256.HashData(png));
+            GraphPreviews.Store(folder, hash, png);
+            return hash;
+        }
 
         /// <summary>A named alpha, or a picture beside the stack read through its red channel.</summary>
         IBrushMask? Alpha(string? name) {

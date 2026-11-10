@@ -348,6 +348,10 @@ public sealed record StackFound(string? Layer);
 /// <param name="Channels">Each channel the set has, with its value there.</param>
 public sealed record StackSample(IReadOnlyList<StackSampledChannel> Channels);
 
+/// <summary>A picture of a brush: a stroke of it drawn small, under <c>/previews/{hash}</c>.</summary>
+/// <param name="Hash">Its name in the preview cache, or null when the brush draws nothing.</param>
+public sealed record StackBrushPreview(string? Hash);
+
 /// <summary>What one channel holds at a place.</summary>
 /// <param name="Usage">The channel.</param>
 /// <param name="Value">

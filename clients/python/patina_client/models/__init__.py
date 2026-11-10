@@ -219,6 +219,7 @@ from .stack_anchor import StackAnchor
 from .stack_anchor_ref import StackAnchorRef
 from .stack_anchor_use import StackAnchorUse
 from .stack_brush import StackBrush
+from .stack_brush_preview import StackBrushPreview
 from .stack_brush_terms import StackBrushTerms
 from .stack_channel import StackChannel
 from .stack_checks import StackChecks
@@ -584,6 +585,7 @@ __all__ = (
     "StackAnchorRef",
     "StackAnchorUse",
     "StackBrush",
+    "StackBrushPreview",
     "StackBrushTerms",
     "StackChannel",
     "StackChecks",

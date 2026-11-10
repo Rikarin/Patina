@@ -7,6 +7,7 @@ import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
 import { hexOf } from './layer-panel';
 import { LiveValue } from './live-value';
+import { maximumRadius } from './paint-commands';
 import {
   NewBrush,
   PaintStore,
@@ -825,6 +826,96 @@ describe('PaintStore', () => {
       expect(line?.stamps[1]?.y).toBeCloseTo(0, 5);
       expect(line?.stamps[1]?.x).toBeCloseTo(20 + Math.hypot(30, 1), 5);
     });
+  });
+
+  it('carries the last stroke on from where its brush stood when asked to, near it and on the same layer (#126)', async () => {
+    const { store, bodies } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    store.radius.set(4);
+    store.brush.update(brush => ({ ...brush, lazy: 10 }));
+    const gesture = new StrokeGesture(store, () => undefined);
+    const strokes = () =>
+      bodies.flatMap(
+        body => (body as { commands: { stroke: string; resume?: number[] | null; curve: string }[] }).commands
+      );
+    const drag = async (from: number, to: number) => {
+      const before = new Set(strokes().map(part => part.stroke));
+      gesture.press({ x: from, y: 0, pressure: 1 });
+      gesture.move({ x: to, y: 0, pressure: 1 });
+      gesture.release();
+      await vi.waitFor(() => expect(strokes().some(part => !before.has(part.stroke))).toBe(true));
+      return strokes().find(part => !before.has(part.stroke));
+    };
+
+    // Off, nothing carries on.
+    expect((await drag(0, 30))?.resume ?? null).toBeNull();
+    store.brush.update(brush => ({ ...brush, resume: true }));
+    // On: the brush stopped at 20, and a press at 30 is within its size and its string of it.
+    expect((await drag(30, 60))?.resume).toEqual([20, 0]);
+    // A press far from where the brush stood starts afresh.
+    expect((await drag(200, 230))?.resume ?? null).toBeNull();
+    store.layer.set('base');
+    expect((await drag(220, 250))?.resume ?? null).toBeNull();
+  });
+
+  it('picks every channel the layer writes at a place, from the stack at full size, and goes back to the brush', async () => {
+    const { store, server } = setup();
+    server.reply = (method, path) =>
+      path.endsWith('/sample')
+        ? Response.json({
+            channels: [
+              { usage: 'baseColor', value: [1, 0.5, 0, 1] },
+              { usage: 'roughness', value: [0.2, 0.2, 0.2, 1] }
+            ]
+          })
+        : path.endsWith('/s1') || path.endsWith('/stacks')
+          ? Response.json(
+              stack({
+                channels: [
+                  { usage: 'baseColor', default: [0, 0, 0, 1] },
+                  { usage: 'roughness', default: [0.5, 0.5, 0.5, 1] }
+                ]
+              })
+            )
+          : null;
+    await store.open('/a/Crate.vxlayers', false);
+    store.tool.set('picker');
+
+    await store.pickBrushColour(0.25, 0.75);
+
+    expect(store.colour()).toBe('#ff8000');
+    expect([...store.alsoPaints()]).toEqual([['roughness', '#333333']]);
+    expect(store.tool()).toBe('brush');
+
+    store.pickEveryChannel.set(false);
+    store.alsoPaints.set(new Map());
+    await store.pickBrushColour(0.25, 0.75);
+    expect(store.alsoPaints().size).toBe(0);
+  });
+
+  it("reaches the Server's largest size with the slider and the keys, not a cap of its own (#123)", () => {
+    const { store } = setup();
+    expect(maximumRadius(store)).toBe(4096);
+    store.vocabulary.set({ brush: { maximumRadius: 2048 } } as never);
+    expect(maximumRadius(store)).toBe(2048);
+  });
+
+  it('lays a material in the projection and at the scale chosen, and over the layout by default (#125)', async () => {
+    const { store, bodies } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    store.material.set({ name: 'Rust', graph: 'rust.vxtexgraph' });
+    const source = async () => {
+      bodies.length = 0;
+      store.begin({ x: 1, y: 1, pressure: 1 });
+      store.end();
+      await vi.waitFor(() => expect(bodies.length).toBeGreaterThan(0));
+      return (bodies[0] as { commands: { source: unknown }[] }).commands[0]?.source;
+    };
+
+    expect(await source()).toMatchObject({ kind: 'material', projection: null, placement: null });
+    store.materialProjection.set('Triplanar');
+    store.materialScale.set(4);
+    expect(await source()).toMatchObject({ kind: 'material', projection: 'Triplanar', placement: { scale: 4 } });
   });
 
   it('draws no line through a camera that has moved since the stroke', async () => {

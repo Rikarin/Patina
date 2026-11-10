@@ -99,6 +99,7 @@ sealed class WorkerLoop(
                     or IpcTypes.StackThumbnails
                     or IpcTypes.StackFind
                     or IpcTypes.StackSample
+                    or IpcTypes.StackBrushPreview
                     or IpcTypes.StackCheck
                     or IpcTypes.StackEvaluate
                     or IpcTypes.StackSave
@@ -236,6 +237,7 @@ sealed class WorkerLoop(
             IpcTypes.StackThumbnails => stacks.Thumbnails(request),
             IpcTypes.StackFind => stacks.FindLayer(request),
             IpcTypes.StackSample => stacks.Sample(request),
+            IpcTypes.StackBrushPreview => stacks.PreviewBrush(request),
             IpcTypes.StackCheck => stacks.Check(request),
             IpcTypes.StackEvaluate => stacks.Evaluate(request),
             IpcTypes.StackSave or IpcTypes.StackCheckpoint => stacks.Save(request),

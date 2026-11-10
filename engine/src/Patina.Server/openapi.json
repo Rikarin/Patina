@@ -6003,6 +6003,77 @@
         }
       }
     },
+    "/api/v1/stacks/{id}/brush-preview": {
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising and falling, drawn by the Worker under /previews with the alphas this stack\u0027s strokes read. A brush no stroke could take is refused with its reason.",
+        "operationId": "PreviewStackBrush",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StackBrush"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackBrushPreview"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stacks/{id}/sample": {
       "post": {
         "tags": [
@@ -14156,6 +14227,19 @@
           }
         },
         "description": "A brush. Everything but the radius has the value a new brush has."
+      },
+      "StackBrushPreview": {
+        "type": "object",
+        "properties": {
+          "hash": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its name in the preview cache, or null when the brush draws nothing."
+          }
+        },
+        "description": "A picture of a brush: a stroke of it drawn small, under \u0060/previews/{hash}\u0060."
       },
       "StackBrushTerms": {
         "required": [

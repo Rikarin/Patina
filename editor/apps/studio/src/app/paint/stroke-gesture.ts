@@ -33,8 +33,11 @@ export class StrokeGesture {
   /** Where the brush is in the drag under way, which a lazy mouse keeps behind the pointer. */
   private brushAt: StackStamp | null = null;
 
-  /** Where the last stroke ended and what it was aimed through, which a Shift-click draws a line on from. */
-  private ended: { stamp: StackStamp; aim: Aim | undefined } | null = null;
+  /**
+   * Where the last stroke ended, what it was aimed through and the layer it painted: a Shift-click draws a line on from
+   * there, and a brush that carries strokes on starts there (#126).
+   */
+  private ended: { stamp: StackStamp; aim: Aim | undefined; layer: string | null } | null = null;
 
   constructor(
     private readonly store: PaintStore,
@@ -60,8 +63,9 @@ export class StrokeGesture {
 
     this.pressed = true;
     if (DragTools.has(tool)) {
-      this.brushAt = stamp;
-      this.store.begin(stamp, this.aim());
+      const resume = this.resumeAt(stamp);
+      this.brushAt = resume ?? stamp;
+      this.store.begin(stamp, this.aim(), resume ?? undefined);
       return;
     }
 
@@ -74,6 +78,25 @@ export class StrokeGesture {
     }
   }
 
+  /**
+   * Where a press here carries the last stroke on from, or null for a fresh one: with the brush set to carry strokes
+   * on, a press near where the last one's brush stood, under the same view and on the same layer, starts there.
+   */
+  resumeAt(stamp: StackStamp): StackStamp | null {
+    const ended = this.ended;
+    const aim = this.aim();
+    if (!this.store.brush().resume || !ended) {
+      return null;
+    }
+
+    if (ended.layer !== this.store.layer() || !sameAim(ended.aim, aim)) {
+      return null;
+    }
+
+    const reach = this.store.resumeReach(aim !== undefined);
+    return Math.hypot(stamp.x - ended.stamp.x, stamp.y - ended.stamp.y) <= reach ? ended.stamp : null;
+  }
+
   /** A straight stroke from where the last one ended to here, as one undo step. */
   lineTo(stamp: StackStamp, snap: boolean): void {
     const from = this.ended?.stamp;
@@ -83,7 +106,7 @@ export class StrokeGesture {
 
     const to = snap ? snapped(from, stamp) : stamp;
     const aim = this.aim();
-    this.ended = { stamp: to, aim };
+    this.ended = { stamp: to, aim, layer: this.store.layer() };
     void this.store.paintCurve([from, to], 'line', aim);
   }
 
@@ -111,7 +134,7 @@ export class StrokeGesture {
 
     this.pressed = false;
     if (DragTools.has(this.store.tool())) {
-      this.ended = this.brushAt ? { stamp: this.brushAt, aim: this.aim() } : null;
+      this.ended = this.brushAt ? { stamp: this.brushAt, aim: this.aim(), layer: this.store.layer() } : null;
       this.brushAt = null;
       this.store.end();
     } else if (this.store.tool() === 'line') {
@@ -137,7 +160,7 @@ export class StrokeGesture {
     this.points.set([]);
     const last = points.at(-1);
     if (last && points.length > 1) {
-      this.ended = { stamp: last, aim: this.placedOn };
+      this.ended = { stamp: last, aim: this.placedOn, layer: this.store.layer() };
     }
 
     void this.store.paintCurve(points, curve, this.placedOn);

@@ -16,6 +16,7 @@ import {
   type StackPicture,
   type StackPreview,
   type StackProblem,
+  type StackSampledChannel,
   type StackStamp,
   type StackState,
   type StackStrokeSource,
@@ -73,7 +74,9 @@ export const NewBrush: StackBrush = {
   accumulate: true,
   sizeSpace: 'screen',
   occlusion: true,
-  occlusionTolerance: 2
+  occlusionTolerance: 2,
+  facing: Math.PI / 2,
+  resume: false
 };
 
 const ThumbnailQuiet = 400;
@@ -111,6 +114,8 @@ export type ScreenPicture = StackPicture;
 export interface BrushMaterial {
   name: string;
   graph: string;
+  /** What the shelf names it by, whose picture the brush panel shows, if it came from the shelf. */
+  source?: string;
 }
 
 /** Where a stroke on the mesh is aimed: a picture of this size through this camera. */
@@ -210,6 +215,8 @@ export class PaintStore {
   private strokes = 0;
   private pending: StackStamp[] = [];
   private view: StackView | null = null;
+  /** Where the brush stood for the drag under way when it carries the last stroke on, in its stamps' units. */
+  private resumeFrom: [number, number] | null = null;
   /** Where the stroke under way started on the map, 0 to 1, which a clone measures its step from. */
   private startedAt: CloneSource | null = null;
   /** The clone's step for the stroke under way, and the one a relative clone keeps, in texels. */
@@ -266,6 +273,15 @@ export class PaintStore {
   readonly settingCloneSource = signal(false);
   /** The material the brush paints every channel of, from the shelf, or null for its colours. */
   readonly material = signal<BrushMaterial | null>(null);
+  /**
+   * How the material lays its maps on the mesh, as a fill's projection does (#125): Uv over the layout, or Triplanar
+   * and the rest in the model's space, the same size wherever a stroke goes.
+   */
+  readonly materialProjection = signal('Uv');
+  /** How many times the material's maps repeat, as a fill's scale does. */
+  readonly materialScale = signal(1);
+  /** Whether the picker takes every channel the layer writes, a material picker, or the painted channel's color alone. */
+  readonly pickEveryChannel = signal(true);
   /** The picture on the viewport that the projection tool paints and a stencil masks with, or null. */
   readonly screenPicture = signal<ScreenPicture | null>(null);
   /** Whether the picture on the viewport masks every brush, by its brightness. */
@@ -490,8 +506,28 @@ export class PaintStore {
     }
   }
 
-  /** Takes the brush's colour from the map on screen, and goes back to the brush. */
+  /**
+   * Takes the brush's colours from the stack at a place on the map, and goes back to the brush: the painted channel's
+   * color and, as a material picker, every other channel the layer writes, read from the composite at full size
+   * (#127). A mask takes its grey from the map on screen.
+   */
   async pickBrushColour(u: number, v: number): Promise<void> {
+    const id = this.state()?.id;
+    if (!this.masking() && id) {
+      try {
+        const client = await this.api();
+        const sampled = unwrap(
+          await client.POST('/api/v1/stacks/{id}/sample', { params: { path: { id } }, body: { u, v } })
+        ).channels;
+        this.takeSample(sampled);
+      } catch (failure) {
+        this.failure.set(messageOf(failure));
+      }
+
+      this.tool.set('brush');
+      return;
+    }
+
     const url = this.picture();
     if (!url) {
       return;
@@ -512,6 +548,28 @@ export class PaintStore {
     }
 
     this.tool.set('brush');
+  }
+
+  /** Takes up what a picker read: the painted channel's color, and every other channel the layer writes if asked. */
+  private takeSample(sampled: readonly StackSampledChannel[]): void {
+    const painted = sampled.find(channel => channel.usage === this.channel());
+    if (painted) {
+      this.colour.set(hexOf(painted.value));
+    }
+
+    if (!this.pickEveryChannel()) {
+      return;
+    }
+
+    const target = this.chosen();
+    const others = new Map<string, string>();
+    for (const channel of sampled) {
+      if (channel.usage !== this.channel() && (!target || writesChannel(target, channel.usage))) {
+        others.set(channel.usage, hexOf(channel.value));
+      }
+    }
+
+    this.alsoPaints.set(others);
   }
 
   /** Takes the colour under a place on the mesh in the viewport. */
@@ -1104,11 +1162,15 @@ export class PaintStore {
     }
   }
 
-  /** The brush came down on the layer chosen: on the atlas, or on the mesh when it is aimed. */
-  begin(stamp: StackStamp, aim?: Aim): void {
+  /**
+   * The brush came down on the layer chosen: on the atlas, or on the mesh when it is aimed. A stroke that carries the
+   * last one on says where the brush stood, and starts there without a stamp (#126).
+   */
+  begin(stamp: StackStamp, aim?: Aim, resume?: StackStamp): void {
     this.startAction();
     this.strokes += 1;
     this.stroke = `drag-${Date.now()}-${this.strokes}`;
+    this.resumeFrom = resume ? [resume.x, resume.y] : null;
     this.view = null;
     this.cloneStep = null;
     this.startedAt = aim ? null : this.onMap(stamp);
@@ -1208,6 +1270,16 @@ export class PaintStore {
   useBrush(brush: StackBrush): void {
     this.radius.set(brush.radius);
     this.brush.set(settingsOf(brush));
+  }
+
+  /**
+   * How far from where the last stroke's brush stood a press still carries that stroke on, in the units of a stroke's
+   * stamps: the brush's size and its string, since a lazy brush stops that far short of where the pointer lifted.
+   */
+  resumeReach(aimed: boolean): number {
+    const brush = this.wholeBrush();
+    const radius = !aimed && brush.sizeSpace === 'screen' ? brush.radius * this.atlasScale() : brush.radius;
+    return radius + brush.lazy;
   }
 
   /** Puts the brush back to the one the Server says a new brush is. The symmetry is not the brush, and stays. */
@@ -1341,6 +1413,7 @@ export class PaintStore {
     const radius =
       !view && brush.sizeSpace === 'screen' ? Math.max(0.5, brush.radius * this.atlasScale()) : brush.radius;
     const source = this.sourceOf(tool, view, curve);
+    const resume = this.resumeFrom;
     if (tool === 'clone' && !source) {
       this.failure.set(this.cloneSource() ? CloneOnModel : CloneFirst);
       return;
@@ -1383,7 +1456,8 @@ export class PaintStore {
         symmetry,
         source,
         stencil: view && this.stencil() && tool !== 'projection' ? picture : null,
-        fill: curve === 'fill' ? this.fillMode() : null
+        fill: curve === 'fill' ? this.fillMode() : null,
+        resume: curve === 'free' ? resume : null
       }))
     });
     if (revision !== null && revision > this.lastShown) {
@@ -1409,8 +1483,15 @@ export class PaintStore {
       case 'brush':
       case 'fill': {
         const material = this.material();
+        const projection = this.materialProjection();
+        const scale = this.materialScale();
         return material && !this.masking() && (tool === 'brush' || curve === 'fill')
-          ? { kind: 'material', graph: material.graph }
+          ? {
+              kind: 'material',
+              graph: material.graph,
+              projection: projection === 'Uv' ? null : projection,
+              placement: scale === 1 ? null : { scale, rotation: 0, offsetX: 0, offsetY: 0, sharpness: 4 }
+            }
           : null;
       }
       default:
@@ -1555,6 +1636,22 @@ export class PaintStore {
     if (this.state()?.id === id) {
       this.thumbnails.set(shown);
     }
+  }
+
+  /** A picture of a brush, a stroke of it drawn small by the Worker (#123), or null with no stack to draw it for. */
+  async previewBrush(brush: StackBrush): Promise<Blob | null> {
+    const id = this.state()?.id;
+    if (!id) {
+      return null;
+    }
+
+    const client = await this.api();
+    const { hash } = unwrap(
+      await client.POST('/api/v1/stacks/{id}/brush-preview', { params: { path: { id } }, body: brush })
+    );
+    return hash
+      ? unwrap(await client.GET('/api/v1/previews/{hash}', { params: { path: { hash } }, parseAs: 'blob' }))
+      : null;
   }
 
   private async load(hash: string): Promise<void> {
@@ -1731,4 +1828,13 @@ export function settingsOf(brush: StackBrush): BrushSettings {
 export function colourOf(hex: string): number[] {
   const value = Number.parseInt(hex.slice(1), 16);
   return [((value >> 16) & 255) / 255, ((value >> 8) & 255) / 255, (value & 255) / 255, 1];
+}
+
+/** The swatch for a stroke's four numbers, 0 to 1, the other way from {@link colourOf}. */
+export function hexOf(value: readonly number[]): string {
+  const lane = (at: number) =>
+    Math.round(Math.min(1, Math.max(0, value[at] ?? 0)) * 255)
+      .toString(16)
+      .padStart(2, '0');
+  return `#${lane(0)}${lane(1)}${lane(2)}`;
 }

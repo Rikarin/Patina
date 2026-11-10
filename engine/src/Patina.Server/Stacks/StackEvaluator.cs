@@ -213,6 +213,26 @@ public sealed class StackEvaluator(
     /// <summary>What every channel of a stack holds at a place on the map, which the Worker reads back as numbers.</summary>
     /// <exception cref="TimeoutException">No Worker came.</exception>
     /// <exception cref="IpcException">The stack would not evaluate.</exception>
+    /// <summary>
+    ///     A picture of a brush, a stroke of it drawn small by the Worker into the preview cache, with the alphas this
+    ///     stack's strokes read. Not a stroke: nothing is journalled and the stack is not touched.
+    /// </summary>
+    /// <exception cref="TimeoutException">No Worker came.</exception>
+    /// <exception cref="IpcException">The Worker could not draw it.</exception>
+    public async Task<string?> PreviewBrushAsync(
+        StackSession session,
+        StackBrush brush,
+        CancellationToken cancellationToken
+    ) {
+        await ReachedAsync(session, cancellationToken);
+        var connection = await ConnectionAsync(cancellationToken);
+        var reply = await connection.SendAsync(
+            new() { Type = IpcTypes.StackBrushPreview, StackBrushPreview = new(session.Id, brush, store.Root) },
+            cancellationToken
+        );
+        return reply.ThumbnailHash;
+    }
+
     public async Task<StackSample> SampleAsync(
         StackSession session,
         float u,

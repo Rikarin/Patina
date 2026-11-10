@@ -4,8 +4,13 @@ import { PaintStore, type PaintTool } from './paint-store';
 
 const RadiusStep = 1.25;
 
-/** The largest size the slider and `[`/`]` reach, which is short of the Server's 4096. */
-export const MaximumRadius = 1024;
+/** The largest size until the Server's vocabulary says: `StackBrushes.MaximumRadius`. */
+const AnyRadius = 4096;
+
+/** The largest size the slider and `[`/`]` reach, which is the Server's, so a preset's size is always in reach (#123). */
+export function maximumRadius(paint: PaintStore): number {
+  return paint.vocabulary()?.brush.maximumRadius ?? AnyRadius;
+}
 
 const Tools: Readonly<Record<string, PaintTool>> = {
   brushTool: 'brush',
@@ -43,14 +48,14 @@ export class PaintCommands {
 
     const resize = (by: number) => {
       const radius = this.paint.radius() * by;
-      this.paint.radius.set(Math.max(1, Math.min(MaximumRadius, Math.round(radius))));
+      this.paint.radius.set(Math.max(1, Math.min(maximumRadius(this.paint), Math.round(radius))));
     };
     this.commands.handle('smallerBrush', {
       enabled: () => this.paint.radius() > 1 && open(),
       run: () => resize(1 / RadiusStep)
     });
     this.commands.handle('largerBrush', {
-      enabled: () => this.paint.radius() < MaximumRadius && open(),
+      enabled: () => this.paint.radius() < maximumRadius(this.paint) && open(),
       run: () => resize(RadiusStep)
     });
     this.commands.handle('findLayer', {

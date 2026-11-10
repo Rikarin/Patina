@@ -218,6 +218,36 @@ test('the tool strip follows the tool, stays when a fill is chosen, and a polygo
   expect(await window.getByTestId('app-failure').allTextContents()).toEqual([]);
 });
 
+test('the brush panel pictures the brush, and the picker takes back every channel painted', async () => {
+  await openOnMesh();
+  const preview = window.getByTestId('paint-brush-preview');
+  await expect(preview).toBeVisible({ timeout: 30_000 });
+  const round = await preview.getAttribute('src');
+  const spacing = window.getByTestId('paint-spacing').getByRole('slider');
+  await spacing.focus();
+  await spacing.press('End');
+  await expect.poll(async () => preview.getAttribute('src'), { timeout: 30_000 }).not.toBe(round);
+  await preview.screenshot({ path: join(shots, 'brush-preview-spaced.png') });
+  await spacing.press('Home');
+
+  await colour('#e01810');
+  await drag(0.38, 0.45, 0.62, 0.45);
+  await settled();
+  await colour('#1060e0');
+  await window.getByTestId('tool-strip-picker').click();
+  await expect(window.getByTestId('paint-pick-every-channel')).toBeChecked();
+  await click(0.5, 0.45);
+  await expect(window.getByTestId('tool-strip')).toHaveAttribute('data-tool', 'brush', { timeout: 30_000 });
+
+  await window.getByTestId('paint-colour').locator('button').first().click();
+  await expect(window.getByRole('textbox', { name: 'Hex color' })).toHaveValue(/^#?e01810/iu);
+  await window.keyboard.press('Escape');
+  // The layer's other channels came with it, as Also paints.
+  await expect(window.getByTestId('paint-also-roughness')).toBeChecked();
+  expect(await window.getByTestId('app-failure').allTextContents()).toEqual([]);
+  await window.screenshot({ path: join(shots, 'picker-every-channel.png') });
+});
+
 test('a smudge drags paint along, and a clone copies it from its source', async () => {
   await openOnMesh();
   await colour('#e01810');

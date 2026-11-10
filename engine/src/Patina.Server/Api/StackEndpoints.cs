@@ -138,6 +138,17 @@ static class StackEndpoints {
             Unavailable
         );
         Post(
+            "/{id}/brush-preview",
+            PreviewBrush,
+            "PreviewStackBrush",
+            "A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising and "
+            + "falling, drawn by the Worker under /previews with the alphas this stack's strokes read. A brush no stroke "
+            + "could take is refused with its reason.",
+            Missing,
+            Refused,
+            Unavailable
+        );
+        Post(
             "/{id}/sample",
             Sample,
             "SampleStack",
@@ -364,6 +375,24 @@ static class StackEndpoints {
             sessions,
             async session => new StackFound(await evaluator.FindAsync(session, request.U, request.V, cancellationToken))
         );
+
+    static async Task<Results<Ok<StackBrushPreview>, ProblemHttpResult>> PreviewBrush(
+        string id,
+        StackBrush brush,
+        StackSessions sessions,
+        StackEvaluator evaluator,
+        CancellationToken cancellationToken
+    ) {
+        if (brush.Problem() is { } problem) {
+            return Refusals.Problem(problem, Refused, Refusals.BrushRefused, Refusals.Reason(problem));
+        }
+
+        return await AskWorkerAsync(
+            id,
+            sessions,
+            async session => new StackBrushPreview(await evaluator.PreviewBrushAsync(session, brush, cancellationToken))
+        );
+    }
 
     static Task<Results<Ok<StackSample>, ProblemHttpResult>> Sample(
         string id,
