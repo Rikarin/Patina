@@ -14,6 +14,7 @@ from typing import cast
 if TYPE_CHECKING:
   from ..models.export_file_choice import ExportFileChoice
   from ..models.export_padding_info import ExportPaddingInfo
+  from ..models.export_set_options import ExportSetOptions
 
 
 
@@ -35,6 +36,8 @@ class ExportOptions:
             dither (bool | None | Unset): Whether 8-bit files are dithered rather than rounded.
             sets (list[str] | None | Unset): The texture sets to write, or null for every one.
             files (list[ExportFileChoice] | None | Unset): Files turned off or written in another format.
+            per_set (list[ExportSetOptions] | None | Unset): Changes for one texture set at a time, over these, or null for
+                none.
      """
 
     size: int | None | Unset = UNSET
@@ -43,6 +46,7 @@ class ExportOptions:
     dither: bool | None | Unset = UNSET
     sets: list[str] | None | Unset = UNSET
     files: list[ExportFileChoice] | None | Unset = UNSET
+    per_set: list[ExportSetOptions] | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -52,6 +56,7 @@ class ExportOptions:
     def to_dict(self) -> dict[str, Any]:
         from ..models.export_file_choice import ExportFileChoice # noqa: PLC0415
         from ..models.export_padding_info import ExportPaddingInfo # noqa: PLC0415
+        from ..models.export_set_options import ExportSetOptions # noqa: PLC0415
         size: int | None | Unset
         if isinstance(self.size, Unset):
             size = UNSET
@@ -101,6 +106,19 @@ class ExportOptions:
         else:
             files = self.files
 
+        per_set: list[dict[str, Any]] | None | Unset
+        if isinstance(self.per_set, Unset):
+            per_set = UNSET
+        elif isinstance(self.per_set, list):
+            per_set = []
+            for per_set_type_1_item_data in self.per_set:
+                per_set_type_1_item = per_set_type_1_item_data.to_dict()
+                per_set.append(per_set_type_1_item)
+
+
+        else:
+            per_set = self.per_set
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -118,6 +136,8 @@ class ExportOptions:
             field_dict["sets"] = sets
         if files is not UNSET:
             field_dict["files"] = files
+        if per_set is not UNSET:
+            field_dict["perSet"] = per_set
 
         return field_dict
 
@@ -127,6 +147,7 @@ class ExportOptions:
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.export_file_choice import ExportFileChoice # noqa: PLC0415
         from ..models.export_padding_info import ExportPaddingInfo # noqa: PLC0415
+        from ..models.export_set_options import ExportSetOptions # noqa: PLC0415
         d = dict(src_dict)
         def _parse_size(data: object) -> int | None | Unset:
             if data is None:
@@ -221,6 +242,31 @@ class ExportOptions:
         files = _parse_files(d.pop("files", UNSET))
 
 
+        def _parse_per_set(data: object) -> list[ExportSetOptions] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                per_set_type_1 = []
+                _per_set_type_1 = data
+                for per_set_type_1_item_data in (_per_set_type_1):
+                    per_set_type_1_item = ExportSetOptions.from_dict(per_set_type_1_item_data)
+
+
+
+                    per_set_type_1.append(per_set_type_1_item)
+
+                return per_set_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[ExportSetOptions] | None | Unset, data)
+
+        per_set = _parse_per_set(d.pop("perSet", UNSET))
+
+
         export_options = cls(
             size=size,
             filter_=filter_,
@@ -228,6 +274,7 @@ class ExportOptions:
             dither=dither,
             sets=sets,
             files=files,
+            per_set=per_set,
         )
 
 

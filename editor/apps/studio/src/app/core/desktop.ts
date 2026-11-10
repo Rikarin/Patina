@@ -59,6 +59,8 @@ export interface DesktopBridge {
   openEnvironment(formats?: readonly string[]): Promise<string | null>;
   /** Asks for a <code>.cube</code> table to view the viewport through. */
   openLook(): Promise<string | null>;
+  /** Asks for an export preset someone shared, a <code>.yaml</code> file. */
+  openPreset(): Promise<string | null>;
   /** Where a file dropped on the window is. */
   pathOf(file: File): string;
 

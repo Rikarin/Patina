@@ -32,6 +32,7 @@ class ExportPresetFile:
             maps (list[str]): The maps it reads.
             lanes (int): How many lanes it has, which decides the formats it can change to. Default: 4.
             quality (str): For JPEG, 1 to 100; for block compression, fast, balanced or best. Default: 'balanced'.
+            scale (float): Its side as a share of every other file's: 1, 0.5, 0.25, 0.125 or 0.0625.
      """
 
     template: str
@@ -40,6 +41,7 @@ class ExportPresetFile:
     space: str
     mips: bool
     maps: list[str]
+    scale: float
     lanes: int = 4
     quality: str = 'balanced'
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -67,6 +69,8 @@ class ExportPresetFile:
 
         quality = self.quality
 
+        scale = self.scale
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -79,6 +83,7 @@ class ExportPresetFile:
             "maps": maps,
             "lanes": lanes,
             "quality": quality,
+            "scale": scale,
         })
 
         return field_dict
@@ -105,6 +110,8 @@ class ExportPresetFile:
 
         quality = d.pop("quality")
 
+        scale = d.pop("scale")
+
         export_preset_file = cls(
             template=template,
             format_=format_,
@@ -114,6 +121,7 @@ class ExportPresetFile:
             maps=maps,
             lanes=lanes,
             quality=quality,
+            scale=scale,
         )
 
 

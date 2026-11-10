@@ -274,9 +274,13 @@ static class FanOut {
             return Task.FromResult<BuildManifest>(new(work.Tool, maps, [], []));
         }
 
-        public Task<ExportManifest> ExportAsync(ExportStep work, CancellationToken cancellationToken) {
+        public Task<ExportManifest> ExportAsync(
+            ExportStep work,
+            Action<double, string>? progress,
+            CancellationToken cancellationToken
+        ) {
             exports++;
-            return Task.FromResult(ExportSteps.Run(work, cancellationToken));
+            return Task.FromResult(ExportSteps.Run(work, progress, cancellationToken));
         }
     }
 
@@ -284,7 +288,11 @@ static class FanOut {
         public Task<BuildManifest> OutputAsync(OutputStep work, CancellationToken cancellationToken) =>
             Task.FromResult(builders.Build(work, 0, cancellationToken));
 
-        public Task<ExportManifest> ExportAsync(ExportStep work, CancellationToken cancellationToken) =>
-            Task.FromResult(ExportSteps.Run(work, cancellationToken));
+        public Task<ExportManifest> ExportAsync(
+            ExportStep work,
+            Action<double, string>? progress,
+            CancellationToken cancellationToken
+        ) =>
+            Task.FromResult(ExportSteps.Run(work, progress, cancellationToken));
     }
 }

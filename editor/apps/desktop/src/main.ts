@@ -424,6 +424,15 @@ function handleIpc(): void {
     const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
     return picked.canceled ? null : (picked.filePaths[0] ?? null);
   });
+  handle('patina:openPreset', async () => {
+    const options: OpenDialogOptions = {
+      title: 'Bring In a Preset',
+      properties: ['openFile'],
+      filters: [{ name: 'Export presets', extensions: ['yaml'] }]
+    };
+    const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
+    return picked.canceled ? null : (picked.filePaths[0] ?? null);
+  });
   handle('patina:openImage', async (_event, formats: unknown) => {
     const options: OpenDialogOptions = {
       properties: ['openFile'],

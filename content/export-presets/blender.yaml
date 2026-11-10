@@ -1,0 +1,44 @@
+# Blender's Principled BSDF: one image per input, and a USD material that wires them, which Blender's USD importer
+# reads as a Principled BSDF. See docs/adr/0019-export-presets.md.
+version: 1
+id: blender
+name: Blender
+engine: Blender
+# Blender's Normal Map node reads tangent space with green up (OpenGL).
+normal: y-up
+padding: infinite
+materials: [usda]
+textures:
+  - file: "{set}_base_color"
+    format: png8
+    space: srgb
+    channels: [baseColor.r, baseColor.g, baseColor.b]
+  - file: "{set}_normal"
+    format: png16
+    space: linear
+    channels: [normal.r, normal.g, normal.b]
+  - file: "{set}_roughness"
+    format: png8
+    space: linear
+    channels: [roughness.r]
+  - file: "{set}_metallic"
+    format: png8
+    space: linear
+    channels: [metalness.r]
+  - file: "{set}_occlusion"
+    format: png8
+    space: linear
+    channels: [occlusion.r]
+  - file: "{set}_alpha"
+    format: png8
+    space: linear
+    channels: [opacity.r]
+  - file: "{set}_emission"
+    format: png8
+    space: srgb
+    channels: [emissive.r, emissive.g, emissive.b]
+  # Displacement wants the depth a 16-bit file keeps.
+  - file: "{set}_height"
+    format: exr16
+    space: linear
+    channels: [height.r]

@@ -31,8 +31,15 @@ public interface IBuildExecutor {
     Task<BuildManifest> OutputAsync(OutputStep work, CancellationToken cancellationToken);
 
     /// <summary>Runs a preset into <see cref="ExportStep.Folder" />.</summary>
+    /// <param name="work">The step.</param>
+    /// <param name="progress">Told how far through the step it is, and the file it is on, or null.</param>
+    /// <param name="cancellationToken">Stops it.</param>
     /// <exception cref="BuildExecutorLostException">It went away, and the step should run again.</exception>
-    Task<ExportManifest> ExportAsync(ExportStep work, CancellationToken cancellationToken);
+    Task<ExportManifest> ExportAsync(
+        ExportStep work,
+        Action<double, string>? progress,
+        CancellationToken cancellationToken
+    );
 }
 
 /// <summary>
@@ -56,15 +63,26 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
     ) {
         ArgumentNullException.ThrowIfNull(library);
         ArgumentNullException.ThrowIfNull(request);
-        var presets = Presets(library, request);
+        return Plan(library, request, new(library, request), tools, cancellationToken);
+    }
+
+    static BuildPlan Plan(
+        OpenLibrary library,
+        BuildRequest request,
+        BuildPresets presets,
+        ToolCatalog tools,
+        CancellationToken cancellationToken
+    ) {
         var selection = new OutputSelection(
             request.Asset is { } asset ? AssetId.From(asset) : null,
             request.Projects?.Select(ProjectId.From).ToList()
         );
+        var scan = library.ScanOutputs(selection, tools, cancellationToken);
+        presets.Refuse(scan.Projects.Select(static p => p.Path));
         return BuildPlan.Make(
-            library.ScanOutputs(selection, tools, cancellationToken),
+            scan,
             new(library.RootPath),
-            [..presets.Select(p => new PlannedPreset(p.Id, ExportOverrides.Revision(p.Revision, request.Options)))],
+            project => presets.PlannedFor(project.Path),
             ExportsOf(library, request),
             tools
         );
@@ -89,8 +107,8 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
     ) {
         ArgumentNullException.ThrowIfNull(journal);
         ArgumentNullException.ThrowIfNull(clock);
-        var plan = Plan(library, request, tools, cancellationToken);
-        var presets = Presets(library, request).ToDictionary(static p => p.Id, StringComparer.Ordinal);
+        var presets = new BuildPresets(library, request);
+        var plan = Plan(library, request, presets, tools, cancellationToken);
         var fresh = plan.Projects.Sum(static p => p.Fresh);
         var exportsFresh = plan.Projects.Sum(static p => p.Exports.Count(static e => e.Fresh));
         var steps = Math.Max(1, plan.Steps);
@@ -110,6 +128,13 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
         void Starting(string what) =>
             progress?.Invoke(done / (double)steps, journal.Totals(fresh, exportsFresh) with { Current = what });
 
+        // How far through an export step, and the file it is on, which the executor tells.
+        Action<double, string> Within(int before, string what) =>
+            (fraction, file) => progress?.Invoke(
+                (before + fraction) / steps,
+                journal.Totals(fresh, exportsFresh) with { Current = file.Length > 0 ? $"{what}: {file}" : what }
+            );
+
         async Task RunPlanAsync() {
             foreach (var project in plan.Work) {
                 var identity = new ProjectIdentity(
@@ -117,22 +142,7 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                     project.Project.Name,
                     project.Project.Path
                 );
-                var failed = false;
-                foreach (var output in project.Unresolved) {
-                    failed = true;
-                    journal.Ended(
-                        $"unresolved:{project.Project.Path}:{output.Output.Name}",
-                        identity,
-                        new OutputReport(
-                            output.Output.Name,
-                            output.Output.Tool,
-                            null,
-                            BuildStatuses.Failed,
-                            0,
-                            output.Problem
-                        )
-                    );
-                }
+                var failed = Unresolved(journal, identity, project);
 
                 foreach (var output in project.Stale) {
                     await Yield(yield);
@@ -146,15 +156,18 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                 foreach (var export in project.Exports.Where(static e => !e.Fresh)) {
                     await Yield(yield);
                     cancellationToken.ThrowIfCancellationRequested();
-                    Starting($"{project.Project.Name}: {presets[export.Preset.Id].Name}");
+                    var preset = presets.Find(project.Project.Path, export.Preset.Id);
+                    var what = $"{project.Project.Name}: {preset.Name}";
+                    Starting(what);
+                    var before = done;
                     await RunExportAsync(
                         journal,
-                        identity,
                         project,
                         export,
-                        presets[export.Preset.Id],
+                        preset,
                         request.Options,
                         failed,
+                        Within(before, what),
                         cancellationToken
                     );
                     done++;
@@ -164,32 +177,17 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
         }
     }
 
-    /// <summary>Every preset named, or the library's own targets.</summary>
-    static List<ExportPreset> Presets(OpenLibrary library, BuildRequest request) {
-        var catalog = ExportPresetCatalog.Read(library.RootPath);
-        var named = request.Presets ?? library.Document.ExportTargets;
-        List<ExportPreset> presets = [];
-        foreach (var id in named.Distinct(StringComparer.Ordinal)) {
-            presets.Add(
-                catalog.Find(id)
-                ?? throw new BuildRefusedException(
-                    $"There is no preset '{id}'. The presets are "
-                    + string.Join(", ", catalog.Presets.Select(static p => p.Id))
-                    + "."
-                )
+    /// <summary>Reports a project's outputs that cannot be built, and says whether there were any.</summary>
+    static bool Unresolved(BuildJournal journal, ProjectIdentity identity, PlannedProject project) {
+        foreach (var output in project.Unresolved) {
+            journal.Ended(
+                $"unresolved:{project.Project.Path}:{output.Output.Name}",
+                identity,
+                new OutputReport(output.Output.Name, output.Output.Tool, null, BuildStatuses.Failed, 0, output.Problem)
             );
         }
 
-        // Changes a preset cannot take are refused before anything runs, and not once per project.
-        foreach (var preset in presets) {
-            try {
-                ExportOverrides.Apply(preset, request.Options);
-            } catch (ExportPresetException e) {
-                throw new BuildRefusedException(e.Message, e);
-            }
-        }
-
-        return presets;
+        return project.Unresolved.Count > 0;
     }
 
     static string ExportsOf(OpenLibrary library, BuildRequest request) =>
@@ -265,14 +263,15 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
 
     async Task RunExportAsync(
         BuildJournal journal,
-        ProjectIdentity identity,
         PlannedProject project,
         PlannedExport export,
         ExportPreset preset,
         ExportOptions? options,
         bool failed,
+        Action<double, string> progress,
         CancellationToken cancellationToken
     ) {
+        var identity = new ProjectIdentity(project.Project.Id.Value, project.Project.Name, project.Project.Path);
         var step = $"export:{export.Preset.Id}:{export.Key.Hex}:{project.Project.Path}";
         if (failed) {
             journal.Ended(step, identity, FailedExport(preset.Id, "An output it reads could not be built."));
@@ -296,23 +295,33 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                 status = BuildStatuses.Built;
                 journal.Start(step);
                 manifest = await executor.ExportAsync(
-                    new(PresetText(preset), Sources(project), folder, options),
+                    new(PresetText(preset), SourcesOf(objects, project), folder, options),
+                    progress,
                     cancellationToken
                 );
             }
 
-            var files = ExportRun.Deliver(
+            var delivered = ExportRun.Deliver(
                 export.Key.Hex,
                 folder,
                 manifest,
                 export.Target,
-                new(project.Project.Name, preset.Id),
-                Beside(project)
+                ProjectNaming.Of(library, project.Project.Path, project.Project.Name, preset.Id),
+                Beside(project),
+                ExportOverrides.Apply(preset, options)
             );
             journal.Ended(
                 step,
                 identity,
-                new ExportReport(preset.Id, status, export.Target, files, manifest.Skipped, manifest.Warnings, null)
+                new ExportReport(
+                    preset.Id,
+                    status,
+                    export.Target,
+                    delivered.Files,
+                    manifest.Skipped,
+                    [..manifest.Warnings, ..delivered.Warnings],
+                    null
+                )
             );
         } catch (BuildStepFailedException e) {
             journal.Ended(step, identity, FailedExport(preset.Id, e.Message));
@@ -348,7 +357,9 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
     ///     The objects a project's presets read. A bake is the floor and a stack the top: an output that composes the
     ///     others wins a map they share, and a project's own names settle the rest.
     /// </summary>
-    List<ExportSource> Sources(PlannedProject project) {
+    public static List<ExportSource> SourcesOf(ObjectStore objects, PlannedProject project) {
+        ArgumentNullException.ThrowIfNull(objects);
+        ArgumentNullException.ThrowIfNull(project);
         List<ExportSource> sources = [];
         foreach (var output in project.Project.Outputs
                      .Where(static o => o.Key is not null)

@@ -33,6 +33,11 @@ class ExportPresetList:
             formats (list[ExportFormatInfo]): The file formats there are, for a client that offers another one.
             paddings (list[StackTerm]): The padding modes there are, in order, each with what a person calls it.
             filters (list[StackTerm]): The resize filters there are, each with what a person calls it.
+            compressions (list[StackTerm]): What a KTX2 or DDS file can hold, in order, each with what a person calls it.
+            maps (list[StackTerm]): The maps a lane can read, each with what a person calls it.
+            materials (list[StackTerm]): The material files a preset can write beside its textures, each with what a person
+                calls it.
+            tokens (list[str]): The names a file's template can hold, such as `project` for `{project}`.
      """
 
     presets: list[ExportPresetInfo]
@@ -40,6 +45,10 @@ class ExportPresetList:
     formats: list[ExportFormatInfo]
     paddings: list[StackTerm]
     filters: list[StackTerm]
+    compressions: list[StackTerm]
+    maps: list[StackTerm]
+    materials: list[StackTerm]
+    tokens: list[str]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -82,6 +91,31 @@ class ExportPresetList:
 
 
 
+        compressions = []
+        for compressions_item_data in self.compressions:
+            compressions_item = compressions_item_data.to_dict()
+            compressions.append(compressions_item)
+
+
+
+        maps = []
+        for maps_item_data in self.maps:
+            maps_item = maps_item_data.to_dict()
+            maps.append(maps_item)
+
+
+
+        materials = []
+        for materials_item_data in self.materials:
+            materials_item = materials_item_data.to_dict()
+            materials.append(materials_item)
+
+
+
+        tokens = self.tokens
+
+
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -91,6 +125,10 @@ class ExportPresetList:
             "formats": formats,
             "paddings": paddings,
             "filters": filters,
+            "compressions": compressions,
+            "maps": maps,
+            "materials": materials,
+            "tokens": tokens,
         })
 
         return field_dict
@@ -146,12 +184,49 @@ class ExportPresetList:
             filters.append(filters_item)
 
 
+        compressions = []
+        _compressions = d.pop("compressions")
+        for compressions_item_data in (_compressions):
+            compressions_item = StackTerm.from_dict(compressions_item_data)
+
+
+
+            compressions.append(compressions_item)
+
+
+        maps = []
+        _maps = d.pop("maps")
+        for maps_item_data in (_maps):
+            maps_item = StackTerm.from_dict(maps_item_data)
+
+
+
+            maps.append(maps_item)
+
+
+        materials = []
+        _materials = d.pop("materials")
+        for materials_item_data in (_materials):
+            materials_item = StackTerm.from_dict(materials_item_data)
+
+
+
+            materials.append(materials_item)
+
+
+        tokens = cast(list[str], d.pop("tokens"))
+
+
         export_preset_list = cls(
             presets=presets,
             problems=problems,
             formats=formats,
             paddings=paddings,
             filters=filters,
+            compressions=compressions,
+            maps=maps,
+            materials=materials,
+            tokens=tokens,
         )
 
 

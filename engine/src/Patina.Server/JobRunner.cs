@@ -177,6 +177,8 @@ public sealed class JobRunner : BackgroundService {
             }
         } else if (message is { Type: IpcTypes.BuildEnded, BuildEnded: { } ended }) {
             builds.Hear(ended);
+        } else if (message is { Type: IpcTypes.BuildProgress, BuildProgress: { } note }) {
+            builds.Hear(note);
         }
     }
 

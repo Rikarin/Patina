@@ -1,0 +1,29 @@
+# glTF 2.0: the core metallic-roughness material, with a .gltf beside the images that names them. See
+# docs/adr/0019-export-presets.md.
+version: 1
+id: gltf
+name: glTF 2.0
+engine: glTF
+# "The normal vectors use the convention +X is right and +Y is up" (glTF 2.0, 3.9.3).
+normal: y-up
+padding: infinite
+materials: [gltf]
+textures:
+  # Base colour is sRGB, with alpha in the fourth lane.
+  - file: "{set}_baseColor"
+    format: png8
+    space: srgb
+    channels: [baseColor.r, baseColor.g, baseColor.b, opacity.r]
+  - file: "{set}_normal"
+    format: png8
+    space: linear
+    channels: [normal.r, normal.g, normal.b]
+  # Occlusion in red, roughness in green and metallic in blue, which is how glTF reads one file for all three.
+  - file: "{set}_occlusionRoughnessMetallic"
+    format: png8
+    space: linear
+    channels: [occlusion.r, roughness.r, metalness.r]
+  - file: "{set}_emissive"
+    format: png8
+    space: srgb
+    channels: [emissive.r, emissive.g, emissive.b]

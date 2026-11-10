@@ -9,12 +9,19 @@ namespace Patina.Export.Builds;
 /// </summary>
 public static class ExportSteps {
     /// <summary>Runs a preset over a project's maps.</summary>
+    /// <param name="step">What to run.</param>
+    /// <param name="progress">Told how far through it is, and the file it is on, or null.</param>
+    /// <param name="cancellationToken">Stops it between blocks.</param>
     /// <exception cref="BuildStepFailedException">A preset or a map cannot be used.</exception>
-    public static ExportManifest Run(ExportStep step, CancellationToken cancellationToken) {
+    public static ExportManifest Run(
+        ExportStep step,
+        Action<double, string>? progress,
+        CancellationToken cancellationToken
+    ) {
         ArgumentNullException.ThrowIfNull(step);
         try {
             var preset = ExportOverrides.Apply(ExportPresetReader.Read(step.Preset, "the preset"), step.Options);
-            return ExportRun.Run(preset, SetsOf(step.Sources), step.Folder, null, cancellationToken);
+            return ExportRun.Run(preset, SetsOf(step.Sources), step.Folder, progress, cancellationToken);
         } catch (Exception e) when (e is InvalidDataException or ExportPresetException or ArgumentException) {
             throw new BuildStepFailedException(e.Message, e);
         }
@@ -24,7 +31,8 @@ public static class ExportSteps {
     ///     Each texture set's maps, merged by set so that one set's maps cannot replace another's. A source with no
     ///     set is every set's, under what each makes for itself.
     /// </summary>
-    static List<ExportSet> SetsOf(IReadOnlyList<ExportSource> sources) {
+    public static List<ExportSet> SetsOf(IReadOnlyList<ExportSource> sources) {
+        ArgumentNullException.ThrowIfNull(sources);
         var named = sources.Select(static s => s.Set).Where(static s => s.Length > 0).Distinct(StringComparer.Ordinal);
         List<string> sets = [..named.DefaultIfEmpty(string.Empty)];
         return [

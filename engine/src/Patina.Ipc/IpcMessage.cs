@@ -143,6 +143,11 @@ public static class IpcTypes {
     /// <summary>Worker to Server: <see cref="IpcMessage.BuildEnded" />, however it ended.</summary>
     public const string BuildEnded = "build.ended";
 
+    /// <summary>
+    ///     Worker to Server: how far a step is, and the file it is on (<see cref="IpcMessage.BuildProgress" />).
+    /// </summary>
+    public const string BuildProgress = "build.progress";
+
     /// <summary>Server to Worker: stop the bake named by <see cref="IpcMessage.BakeCancel" />.</summary>
     public const string BakeCancel = "bake.cancel";
 
@@ -319,6 +324,9 @@ public sealed class IpcMessage {
     /// <summary>build.ended: how a step ended.</summary>
     public BuildEnding? BuildEnded { get; set; }
 
+    /// <summary>build.progress: how far a step is.</summary>
+    public BuildProgressNote? BuildProgress { get; set; }
+
     public static IpcMessage Ok(long id) => new() { Type = IpcTypes.Ok, Id = id };
 
     public static IpcMessage Fail(long id, string error) => new() { Type = IpcTypes.Error, Id = id, Error = error };
@@ -358,6 +366,12 @@ public sealed record BuildStart(BakeTicket Ticket, OutputStep? Output, ExportSte
 /// <param name="Export">What a preset made.</param>
 /// <param name="Error">Why it could not be done.</param>
 public sealed record BuildEnding(BakeTicket Ticket, BuildManifest? Output, ExportManifest? Export, string? Error);
+
+/// <summary>How far a step of a build is, and what it is on.</summary>
+/// <param name="Ticket">Which attempt.</param>
+/// <param name="Fraction">How far through the step, from 0 to 1.</param>
+/// <param name="File">What it is making now, for a person: a preset's file, with its texture set.</param>
+public sealed record BuildProgressNote(BakeTicket Ticket, double Fraction, string File);
 
 /// <summary>The Worker's hello.</summary>
 public sealed record WorkerHello(int Protocol, string Version, int ProcessId);

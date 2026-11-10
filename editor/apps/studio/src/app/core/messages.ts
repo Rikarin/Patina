@@ -25,7 +25,11 @@ const Words: Readonly<Record<string, string>> = {
   'mask-layer-missing': 'The mask of {layer} has changed since that was asked. Try again.',
   'mask-layer-not-paint': 'That layer of the mask of {layer} is not painted, so a brush can’t reach it. Add a Paint layer to the mask.',
   'instance-source-missing': 'The layer to make an instance of is no longer in {set}.',
-  'instance-cycle': 'An instance of {layer} there would stand for itself. Choose another layer.'
+  'instance-cycle': 'An instance of {layer} there would stand for itself. Choose another layer.',
+  'preset-invalid': 'That preset can’t be kept as it is. {reason}',
+  'preset-factory': '{preset} is built in, so it can’t be changed or removed. Duplicate it to change a copy.',
+  'preset-missing': 'There is no preset {preset} there any more. It may have been removed outside Patina.',
+  'export-unbuilt': 'The maps of this project are not built as they are now. Build them first, then look again.'
 };
 
 const KindWords: Readonly<Record<string, string>> = { Fill: 'fill', Filter: 'filter', Group: 'folder', Paint: 'paint' };

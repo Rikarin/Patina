@@ -1,0 +1,31 @@
+# Specular-glossiness, worked out from a metal-roughness project: diffuse is base colour with metal taken out,
+# specular is four per cent for a dielectric and base colour for a metal, glossiness is one minus roughness. For
+# engines and renderers that still read this workflow. See docs/adr/0019-export-presets.md.
+version: 1
+id: spec-gloss
+name: Specular Glossiness
+engine: Any
+normal: y-up
+padding: infinite
+textures:
+  - file: "{project}_{set}_Diffuse"
+    format: png8
+    space: srgb
+    channels: [diffuse.r, diffuse.g, diffuse.b, opacity.r]
+  # Specular colour in RGB and glossiness in alpha, the packing glTF's old specular-glossiness extension used.
+  - file: "{project}_{set}_SpecularGlossiness"
+    format: png8
+    space: srgb
+    channels: [specular.r, specular.g, specular.b, glossiness.r]
+  - file: "{project}_{set}_Normal"
+    format: png8
+    space: linear
+    channels: [normal.r, normal.g, normal.b]
+  - file: "{project}_{set}_AmbientOcclusion"
+    format: png8
+    space: linear
+    channels: [occlusion.r]
+  - file: "{project}_{set}_Emissive"
+    format: png8
+    space: srgb
+    channels: [emissive.r, emissive.g, emissive.b]

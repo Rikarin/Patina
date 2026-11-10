@@ -15,7 +15,9 @@ static class BuildCommand {
     public const string Usage = """
                                   patina build --library <path> [--changed] [--asset <guid>] [--project <guid>]...
                                                [--preset <id>]... [--no-export] [--folder <path>] [--dry-run]
-                                """;
+                                """
+        + "\n"
+        + BuildFlags.Usage;
 
     public static async Task<int> RunAsync(string[] options) {
         if (Parse(options) is not { } parsed) {
@@ -23,13 +25,21 @@ static class BuildCommand {
             return 2;
         }
 
-        var (root, request, dryRun) = parsed;
+        var (root, given, dryRun, flags) = parsed;
         if (!OpenLibrary.Exists(root)) {
             await Console.Error.WriteLineAsync($"There is no library at '{root}'.");
             return 2;
         }
 
         using var library = OpenLibrary.Open(root);
+        BuildRequest request;
+        try {
+            request = BuildFlags.Apply(library, given, flags);
+        } catch (ArgumentException e) {
+            await Console.Error.WriteLineAsync(e.Message);
+            return 2;
+        }
+
         using var executor = new LocalExecutor();
         using var stop = new CancellationTokenSource();
         Console.CancelKeyPress += (_, press) => {
@@ -84,7 +94,7 @@ static class BuildCommand {
         }
     }
 
-    static (string Root, BuildRequest Request, bool DryRun)? Parse(string[] options) {
+    static (string Root, BuildRequest Request, bool DryRun, BuildFlags.Read Flags)? Parse(string[] options) {
         string? root = null;
         Guid? asset = null;
         string? folder = null;
@@ -92,8 +102,14 @@ static class BuildCommand {
         List<string> presets = [];
         var none = false;
         var dryRun = false;
+        var flags = new BuildFlags.Read();
         for (var at = 0; at < options.Length; at++) {
             var value = at + 1 < options.Length ? options[at + 1] : null;
+            if (BuildFlags.Take(options[at], value, flags, out var used)) {
+                at += used ? 1 : 0;
+                continue;
+            }
+
             switch (options[at]) {
                 case "--changed":
                     break; // What every build does: it only ever builds what changed.
@@ -138,7 +154,7 @@ static class BuildCommand {
             Presets = none ? [] : Named(presets),
             Folder = folder
         };
-        return (root, request, dryRun);
+        return (root, request, dryRun, flags);
     }
 
     static List<string>? Named(List<string> presets) => presets.Count > 0 ? presets : null;
@@ -156,8 +172,12 @@ static class BuildCommand {
         public Task<BuildManifest> OutputAsync(OutputStep work, CancellationToken cancellationToken) =>
             Task.Run(() => builders.Build(work, 0, cancellationToken), cancellationToken);
 
-        public Task<ExportManifest> ExportAsync(ExportStep work, CancellationToken cancellationToken) =>
-            Task.Run(() => ExportSteps.Run(work, cancellationToken), cancellationToken);
+        public Task<ExportManifest> ExportAsync(
+            ExportStep work,
+            Action<double, string>? progress,
+            CancellationToken cancellationToken
+        ) =>
+            Task.Run(() => ExportSteps.Run(work, progress, cancellationToken), cancellationToken);
 
         public void Dispose() {
             evaluator?.Dispose();

@@ -219,7 +219,16 @@ public sealed record ProjectSettingsRequest(
 /// <param name="Template">Which file: its naming template.</param>
 /// <param name="Enabled">Whether it is written.</param>
 /// <param name="Format">The format it is written in.</param>
-public sealed record ExportFileSetting(string Preset, string Template, bool Enabled, string Format);
+public sealed record ExportFileSetting(string Preset, string Template, bool Enabled, string Format) {
+    /// <summary>What a KTX2 or DDS file holds, or null for the preset's.</summary>
+    public string? Compression { get; init; }
+
+    /// <summary>For JPEG, 1 to 100; for BC6H and BC7, fast, balanced or best. Null for the preset's.</summary>
+    public string? Quality { get; init; }
+
+    /// <summary>Whether a KTX2 or DDS file carries a mip chain, or null for the preset's.</summary>
+    public bool? Mips { get; init; }
+}
 
 /// <summary>
 ///     A project's export settings, kept in its <c>project.yaml</c> so they travel with the library: what a client's
@@ -250,6 +259,9 @@ public sealed record ProjectExportSettings {
 
     /// <summary>Files turned off or written in another format, per preset.</summary>
     public IReadOnlyList<ExportFileSetting> Files { get; init; } = [];
+
+    /// <summary>Changes for one texture set at a time, over the rest, as <see cref="ExportOptions.PerSet" />.</summary>
+    public IReadOnlyList<ExportSetOptions> PerSet { get; init; } = [];
 }
 
 /// <summary>The body of <c>PUT /api/v1/library/project/export</c>.</summary>

@@ -1,4 +1,4 @@
-# ADR 0019: A texture set's settings live in its stack, a resolution change rewrites no paint, and a set chooses its UV set
+# ADR 0020: A texture set's settings live in its stack, a resolution change rewrites no paint, and a set chooses its UV set
 
 **Status:** accepted, 2026-11-09, for issues #19, #141, #146, #210 and #231.
 

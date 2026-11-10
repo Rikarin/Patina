@@ -38,6 +38,8 @@ test('an empty library says so, and a new project exports with nothing declared'
   await newLibrary(app, window, library);
 
   await window.getByTestId('open-export').click();
+  await window.getByTestId('export-preset').click();
+  await window.getByRole('option', { name: 'Godot' }).click();
   await expect(window.getByTestId('export-preset-info')).toContainText('Godot');
   await window.getByTestId('export-preview').click();
   await expect(window.getByTestId('export-nothing')).toContainText('anything to export');
@@ -51,6 +53,8 @@ test('an empty library says so, and a new project exports with nothing declared'
   expect(readFileSync(join(library, 'projects', 'housing', 'project.yaml'), 'utf8')).toContain('outputs: []');
 
   await window.getByTestId('open-export').click();
+  await window.getByTestId('export-preset').click();
+  await window.getByRole('option', { name: 'Godot' }).click();
   await window.getByTestId('export-preview').click();
   await expect(window.getByTestId('export-impact-rebuilds')).toHaveText('1');
   await expect(window.getByTestId('export-impact-exports')).toHaveText('1');
@@ -81,6 +85,8 @@ test('the dialog exports the document in front as TGA, transparent past its padd
 
   await window.getByTestId('open-export').click();
   await expect(window.getByTestId('export-scope')).toContainText('of Housing');
+  await window.getByTestId('export-preset').click();
+  await window.getByRole('option', { name: 'Godot' }).click();
   await window.getByTestId('export-padding').click();
   await window.getByRole('option', { name: 'Dilation + transparent' }).click();
   await expect(window.getByTestId('export-distance-readout')).toHaveText('16 px');

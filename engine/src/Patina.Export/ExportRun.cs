@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Export.Materials;
 using Patina.Export.Presets;
 using Patina.Jobs;
 using Patina.Library;
@@ -11,6 +12,11 @@ namespace Patina.Export;
 /// <param name="Name">Its name, or nothing for a project with no named sets.</param>
 /// <param name="Maps">The maps, by name.</param>
 public sealed record ExportSet(string Name, IReadOnlyDictionary<string, MapPicture> Maps);
+
+/// <summary>What a delivery put in a folder.</summary>
+/// <param name="Files">The files, absolute.</param>
+/// <param name="Warnings">What a person should know: a material slot left out, and why.</param>
+public sealed record ExportDelivered(IReadOnlyList<string> Files, IReadOnlyList<string> Warnings);
 
 /// <summary>
 ///     A preset from maps to files. The object under an export key holds the files under names of its own, and a
@@ -32,13 +38,13 @@ public static class ExportRun {
     /// <param name="preset">The preset.</param>
     /// <param name="maps">The maps, by name.</param>
     /// <param name="folder">Where the object goes.</param>
-    /// <param name="progress">Told how far through it is.</param>
+    /// <param name="progress">Told how far through it is, and the file it is on.</param>
     /// <param name="cancellationToken">Stops it between blocks.</param>
     public static ExportManifest Run(
         ExportPreset preset,
         IReadOnlyDictionary<string, MapPicture> maps,
         string folder,
-        Action<double>? progress,
+        Action<double, string>? progress,
         CancellationToken cancellationToken
     ) =>
         Run(preset, [new(string.Empty, maps)], folder, progress, cancellationToken);
@@ -47,13 +53,13 @@ public static class ExportRun {
     /// <param name="preset">The preset.</param>
     /// <param name="sets">The sets, each of which makes the preset's files.</param>
     /// <param name="folder">Where the object goes.</param>
-    /// <param name="progress">Told how far through it is.</param>
+    /// <param name="progress">Told how far through it is, and the file it is on.</param>
     /// <param name="cancellationToken">Stops it between blocks.</param>
     public static ExportManifest Run(
         ExportPreset preset,
         IReadOnlyList<ExportSet> sets,
         string folder,
-        Action<double>? progress,
+        Action<double, string>? progress,
         CancellationToken cancellationToken
     ) {
         ArgumentNullException.ThrowIfNull(preset);
@@ -74,21 +80,31 @@ public static class ExportRun {
             sets = [..sets.Where(set => chosen.Contains(set.Name, StringComparer.Ordinal))];
         }
 
-        var steps = Math.Max(1, preset.Textures.Count * sets.Count);
+        var steps = Math.Max(1, sets.Sum(set => preset.For(set.Name).Textures.Count));
+        var done = 0;
         for (var at = 0; at < sets.Count; at++) {
-            var (set, maps) = (sets[at].Name, sets[at].Maps);
+            var set = sets[at].Name;
+            var own = preset.For(set);
+            var maps = DerivedMaps.Complete(sets[at].Maps, own.Textures.SelectMany(static t => t.Maps));
             var named = several ? $"{set}: " : string.Empty;
-            for (var index = 0; index < preset.Textures.Count; index++) {
+            for (var index = 0; index < own.Textures.Count; index++) {
                 cancellationToken.ThrowIfCancellationRequested();
-                var texture = preset.Textures[index];
+                var texture = own.Textures[index];
+                progress?.Invoke(done / (double)steps, named + texture.File);
+                done++;
                 if (!ChannelPacker.Applies(texture, maps)) {
                     skipped.Add(named + texture.File);
                     continue;
                 }
 
-                var picture = Finish(ChannelPacker.Pack(texture, maps, preset.Normal), maps, preset);
+                var picture = Finish(ChannelPacker.Pack(texture, maps, own.Normal), maps, own, texture);
                 warnings.AddRange(picture.Warnings.Select(warning => named + warning));
-                var (bytes, levels) = ExportEncoder.Encode(picture, texture, preset.Dither, cancellationToken);
+                var (bytes, levels) = ExportEncoder.Encode(
+                    picture,
+                    texture,
+                    texture.Dither ?? own.Dither,
+                    cancellationToken
+                );
                 var extension = ExportFormats.ExtensionOf(texture.Format);
                 var name = $"s{at}t{index}{extension}";
                 File.WriteAllBytes(Path.Combine(part, name), bytes);
@@ -103,11 +119,12 @@ public static class ExportRun {
                         levels,
                         bytes.LongLength,
                         set
-                    )
+                    ) { Space = texture.Space, Maps = [..texture.Maps.Where(maps.ContainsKey)] }
                 );
-                progress?.Invoke((at * preset.Textures.Count + index + 1.0) / steps);
             }
         }
+
+        progress?.Invoke(1, string.Empty);
 
         var manifest = new ExportManifest(preset.Id, files, skipped, warnings) { PerSet = several };
         File.WriteAllBytes(
@@ -122,37 +139,34 @@ public static class ExportRun {
     ///     Pads a packed picture from its set's coverage, then changes its size. Padding comes first, at the maps' own
     ///     size, so that a smaller file's edge texels average the islands' colour and not the background's.
     /// </summary>
-    static PackedPicture Finish(
+    public static PackedPicture Finish(
         PackedPicture picture,
         IReadOnlyDictionary<string, MapPicture> maps,
-        ExportPreset preset
+        ExportPreset preset,
+        ExportTexture texture
     ) {
+        ArgumentNullException.ThrowIfNull(picture);
+        ArgumentNullException.ThrowIfNull(maps);
+        ArgumentNullException.ThrowIfNull(preset);
+        ArgumentNullException.ThrowIfNull(texture);
         var image = new FloatImage(picture.Width, picture.Height, picture.Lanes, picture.Samples);
         var warnings = picture.Warnings;
-        if (preset.Padding.Mode != PaddingMode.None && maps.TryGetValue(ExportMaps.Coverage, out var coverage)) {
+        var padding = texture.Padding ?? preset.Padding;
+        if (padding.Mode != PaddingMode.None && maps.TryGetValue(ExportMaps.Coverage, out var coverage)) {
             var islands = ImageResize.Resize(coverage.Image, image.Width, image.Height, ResizeFilter.Nearest);
             var covered = new bool[image.Width * image.Height];
             for (var at = 0; at < covered.Length; at++) {
                 covered[at] = islands.Samples[at * islands.Channels] >= 0.5f;
             }
 
-            ImagePadding.Pad(
-                image,
-                covered,
-                preset.Padding.Mode,
-                preset.Padding.Distance,
-                [..preset.Padding.Colour]
-            );
+            ImagePadding.Pad(image, covered, padding.Mode, padding.Distance, [..padding.Colour]);
         }
 
-        if (preset.Size is { } side && side != Math.Max(image.Width, image.Height)) {
-            var scale = side / (double)Math.Max(image.Width, image.Height);
-            var (width, height) = (
-                Math.Max(1, (int)Math.Round(image.Width * scale)),
-                Math.Max(1, (int)Math.Round(image.Height * scale))
-            );
+        // A file's scale is of the side every file is written at, which is the preset's size or else the maps' own.
+        var (width, height) = ExportMemory.Sized(preset, texture, image.Width, image.Height);
+        if ((width, height) != (image.Width, image.Height)) {
             image = ImageResize.Resize(image, width, height, ExportFilters.Of(preset.Filter));
-            if (scale > 1) {
+            if (width > picture.Width || height > picture.Height) {
                 warnings = [
                     ..warnings, $"The maps are {picture.Width}×{picture.Height} and were enlarged to {width}×{height}."
                 ];
@@ -175,32 +189,42 @@ public static class ExportRun {
     ///     Other files that go with them, such as a mesh's levels of detail: from, then its
     ///     name.
     /// </param>
-    /// <returns>The files, absolute.</returns>
-    public static IReadOnlyList<string> Deliver(
+    /// <param name="preset">The preset, whose material files are written beside the textures, or null for none.</param>
+    /// <returns>The files, absolute, and what a person should know of the material files.</returns>
+    public static ExportDelivered Deliver(
         string key,
         string folder,
         ExportManifest manifest,
         string target,
         NamingValues values,
-        IReadOnlyList<(string From, string Name)>? beside = null
+        IReadOnlyList<(string From, string Name)>? beside = null,
+        ExportPreset? preset = null
     ) {
         ArgumentNullException.ThrowIfNull(manifest);
+        ArgumentNullException.ThrowIfNull(values);
         Directory.CreateDirectory(target);
         var before = BuildObjects.Delivered(target);
 
         var several = manifest.PerSet
             || manifest.Files.Select(static file => file.Set).Distinct(StringComparer.Ordinal).Count() > 1;
         List<string> delivered = [];
+        List<(ExportedFile File, string Path)> textures = [];
         foreach (var file in manifest.Files) {
             var name = NamingTemplate.Resolve(
                 several ? NamingTemplate.PerSet(file.Template) : file.Template,
-                values with { Set = file.Set },
+                values.Of(file.Set) with { Space = file.Space, Size = Math.Max(file.Width, file.Height) },
                 Path.GetExtension(file.File)
             );
             var path = Path.Combine(target, name);
             Copy(Path.Combine(folder, file.File), path);
             delivered.Add(path);
+            textures.Add((file, path));
         }
+
+        var materials = preset is { Materials.Count: > 0 }
+            ? Materials(preset, textures, target, values, several)
+            : new([], []);
+        delivered.AddRange(materials.Files);
 
         foreach (var (from, name) in beside ?? []) {
             var path = Path.Combine(target, name);
@@ -221,7 +245,33 @@ public static class ExportRun {
                 ContractsJsonContext.Default.ExportDelivery
             )
         );
-        return delivered;
+        return new(delivered, materials.Warnings);
+    }
+
+    /// <summary>
+    ///     Each set's material files, named like <c>{project}</c>, with the set's name when there are several.
+    /// </summary>
+    static MaterialFiles.Written Materials(
+        ExportPreset preset,
+        List<(ExportedFile File, string Path)> textures,
+        string target,
+        NamingValues values,
+        bool several
+    ) {
+        List<string> files = [];
+        List<string> warnings = [];
+        foreach (var set in textures.GroupBy(static t => t.File.Set, StringComparer.Ordinal)) {
+            var template = several ? NamingTemplate.PerSet("{project}") : "{project}";
+            var stem = NamingTemplate.Resolve(template, values.Of(set.Key), string.Empty);
+            var written = MaterialFiles.Write(preset, [..set], target, stem, values.Of(set.Key).Material);
+            files.AddRange(written.Files);
+            var named = several ? $"{set.Key}: " : string.Empty;
+            foreach (var warning in written.Warnings) {
+                warnings.Add(named + warning);
+            }
+        }
+
+        return new(files, warnings);
     }
 
     static void Copy(string from, string to) {

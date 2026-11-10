@@ -42,7 +42,13 @@ public sealed record ExportedFile(
     int Levels,
     long Bytes,
     string Set = ""
-);
+) {
+    /// <summary>What its numbers are: srgb or linear.</summary>
+    public string Space { get; init; } = "linear";
+
+    /// <summary>The maps it read that the set had; a lane of any other map holds that map's default.</summary>
+    public IReadOnlyList<string> Maps { get; init; } = [];
+}
 #pragma warning restore SK7005
 
 /// <summary>What a preset made from one project's maps.</summary>
@@ -81,7 +87,10 @@ public sealed record ExportPresetFile(
     IReadOnlyList<string> Maps,
     int Lanes = 4,
     string Quality = "balanced"
-);
+) {
+    /// <summary>Its side as a share of every other file's: 1, 0.5, 0.25, 0.125 or 0.0625.</summary>
+    public double Scale { get; init; } = 1;
+}
 
 /// <summary>A file format a preset or an export can name.</summary>
 /// <param name="Id">Its name in a preset.</param>
@@ -109,7 +118,41 @@ public sealed record ExportPaddingInfo(string Mode, int Distance, IReadOnlyList<
 /// <param name="Template">Which file: its naming template.</param>
 /// <param name="Enabled">Whether it is written at all.</param>
 /// <param name="Format">Another format for it, or null for the preset's.</param>
-public sealed record ExportFileChoice(string Template, bool Enabled = true, string? Format = null);
+public sealed record ExportFileChoice(string Template, bool Enabled = true, string? Format = null) {
+    /// <summary>
+    ///     What a KTX2 or DDS file holds: none, half, float or bc1 to bc7. Null keeps the preset's, which a plain file
+    ///     made a container takes as none.
+    /// </summary>
+    public string? Compression { get; init; }
+
+    /// <summary>For JPEG, 1 to 100; for BC6H and BC7, fast, balanced or best. Null keeps the preset's.</summary>
+    public string? Quality { get; init; }
+
+    /// <summary>Whether a KTX2 or DDS file carries a mip chain. Null keeps the preset's.</summary>
+    public bool? Mips { get; init; }
+}
+
+/// <summary>
+///     One texture set's changes over the whole export's (#153): its own size, padding, dithering and files. Null
+///     fields keep what the export says for every set.
+/// </summary>
+/// <param name="Set">The texture set, by name.</param>
+public sealed record ExportSetOptions(string Set) {
+    /// <summary>The longest side of this set's files.</summary>
+    public int? Size { get; init; }
+
+    /// <summary>How this set's files change size.</summary>
+    public string? Filter { get; init; }
+
+    /// <summary>What fills the background of this set's layout.</summary>
+    public ExportPaddingInfo? Padding { get; init; }
+
+    /// <summary>Whether this set's 8-bit files are dithered.</summary>
+    public bool? Dither { get; init; }
+
+    /// <summary>This set's files turned off or written in another format.</summary>
+    public IReadOnlyList<ExportFileChoice>? Files { get; init; }
+}
 
 /// <summary>
 ///     A preset's settings changed for one export, as an export dialog changes them. Null fields keep the preset's.
@@ -133,6 +176,9 @@ public sealed record ExportOptions {
 
     /// <summary>Files turned off or written in another format.</summary>
     public IReadOnlyList<ExportFileChoice>? Files { get; init; }
+
+    /// <summary>Changes for one texture set at a time, over these, or null for none.</summary>
+    public IReadOnlyList<ExportSetOptions>? PerSet { get; init; }
 }
 
 /// <summary>An export preset.</summary>
@@ -140,7 +186,7 @@ public sealed record ExportOptions {
 /// <param name="Name">Its label.</param>
 /// <param name="Engine">What it is for.</param>
 /// <param name="Normal">The green its target reads: y-up or y-down.</param>
-/// <param name="Origin">Where it comes from: factory or library.</param>
+/// <param name="Origin">Where it comes from: factory, library or project.</param>
 /// <param name="Revision">The hash of its file.</param>
 /// <param name="Files">What it makes.</param>
 public sealed record ExportPresetInfo(
@@ -163,6 +209,9 @@ public sealed record ExportPresetInfo(
 
     /// <summary>How a file changes size.</summary>
     public string Filter { get; init; } = "box";
+
+    /// <summary>The material files it writes beside its textures: gltf, usda or mtlx.</summary>
+    public IReadOnlyList<string> Materials { get; init; } = [];
 }
 
 /// <summary>Every preset a library can use, and the files in its folder that are not presets.</summary>
@@ -177,6 +226,18 @@ public sealed record ExportPresetList(IReadOnlyList<ExportPresetInfo> Presets, I
 
     /// <summary>The resize filters there are, each with what a person calls it.</summary>
     public IReadOnlyList<StackTerm> Filters { get; init; } = [];
+
+    /// <summary>What a KTX2 or DDS file can hold, in order, each with what a person calls it.</summary>
+    public IReadOnlyList<StackTerm> Compressions { get; init; } = [];
+
+    /// <summary>The maps a lane can read, each with what a person calls it.</summary>
+    public IReadOnlyList<StackTerm> Maps { get; init; } = [];
+
+    /// <summary>The material files a preset can write beside its textures, each with what a person calls it.</summary>
+    public IReadOnlyList<StackTerm> Materials { get; init; } = [];
+
+    /// <summary>The names a file's template can hold, such as <c>project</c> for <c>{project}</c>.</summary>
+    public IReadOnlyList<string> Tokens { get; init; } = [];
 }
 
 /// <summary>What to build.</summary>

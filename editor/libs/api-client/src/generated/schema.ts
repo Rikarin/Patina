@@ -1813,6 +1813,93 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/export/presets/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** A preset as its file says it, where it comes from, and its text. */
+    get: operations['GetExportPreset'];
+    /** Keeps a preset as a file in the library's or a project's export-presets, renaming one if asked. */
+    put: operations['PutExportPreset'];
+    post?: never;
+    /** Removes a library's or a project's preset file. A factory preset cannot be removed. */
+    delete: operations['DeleteExportPreset'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/export/presets/check': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** What a preset would be and the files it would write for a project, keeping nothing. */
+    post: operations['CheckExportPreset'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/export/presets/import': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Brings a preset file into the library's or a project's export-presets, after reading it. */
+    post: operations['ImportExportPreset'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/export/compression': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** A region of one exported file as the file holds it, beside its source, with the error per lane. */
+    post: operations['PreviewCompression'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/export/compression/{id}/{picture}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One picture of a compression preview as a PNG: source, written or difference. */
+    get: operations['GetCompressionPicture'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2441,6 +2528,113 @@ export interface components {
        */
       setting?: null | string;
     };
+    /** @description How far one lane of a file is from what it was made from. */
+    CompressionLaneError: {
+      /** @description r, g, b or a. */
+      lane: string;
+      /**
+       * Format: double
+       * @description Peak signal-to-noise ratio in decibels, or null where nothing changed.
+       */
+      psnr?: null | number;
+      /**
+       * Format: double
+       * @description The largest difference, in the file's numbers from 0 to 1.
+       */
+      maxError: number;
+      /**
+       * Format: double
+       * @description The mean difference.
+       */
+      meanError: number;
+    };
+    /**
+     * @description What a file's encoding does to a region of it. The pictures are not in this: each is a PNG at
+     *     `GET /api/v1/export/compression/{id}/{picture}`, for `source`, `written` and `difference`.
+     */
+    CompressionPreviewInfo: {
+      /** @description The preview, by the hash of what it was made from, for its pictures. */
+      id: string;
+      /** @description The file's format. */
+      format: string;
+      /** @description What it holds. */
+      compression: string;
+      /**
+       * Format: int32
+       * @description The level shown.
+       */
+      level: number;
+      /**
+       * Format: int32
+       * @description How many levels the file has.
+       */
+      levels: number;
+      /**
+       * Format: int32
+       * @description The level's width.
+       */
+      width: number;
+      /**
+       * Format: int32
+       * @description The level's height.
+       */
+      height: number;
+      /** @description The region shown, as x, y, width and height in the level's texels. */
+      region: number[];
+      /** @description How far each lane is. */
+      lanes: components['schemas']['CompressionLaneError'][];
+      /**
+       * Format: double
+       * @description What the difference picture's errors are multiplied by.
+       */
+      gain: number;
+      /**
+       * Format: int64
+       * @description What the whole file takes in GPU memory as written, by the measure the pre-export checks use
+       *     (`texture-over-budget`).
+       */
+      bytes: number;
+      /**
+       * Format: int64
+       * @description What the same file would take with no block compression, by the same measure.
+       */
+      uncompressed: number;
+    };
+    /**
+     * @description The body of `POST /api/v1/export/compression` (#217): one file of an export, to see a region of it as the
+     *     file holds it beside what it was made from.
+     */
+    CompressionPreviewRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /** @description The preset's id. */
+      preset: string;
+      /** @description The file, by its template. */
+      file: string;
+      /** @description The texture set, or null for the project's first. */
+      set?: null | string;
+      options?: null | components['schemas']['ExportOptions'];
+      /**
+       * Format: int32
+       * @description The mip level, from zero.
+       */
+      level: number;
+      /**
+       * Format: double
+       * @description Where the region is centred across the level, from 0 to 1.
+       */
+      x: number;
+      /**
+       * Format: double
+       * @description Where the region is centred down the level, from 0 to 1.
+       */
+      y: number;
+      /**
+       * Format: int32
+       * @description The region's largest side in texels, 4 to 512.
+       */
+      side: number;
+    };
     /** @description Whether a document has work autosaved after its last save. */
     DocumentRecovery: {
       /**
@@ -2467,6 +2661,15 @@ export interface components {
       enabled: boolean;
       /** @description Another format for it, or null for the preset's. */
       format?: null | string;
+      /**
+       * @description What a KTX2 or DDS file holds: none, half, float or bc1 to bc7. Null keeps the preset's, which a plain file
+       *     made a container takes as none.
+       */
+      compression?: null | string;
+      /** @description For JPEG, 1 to 100; for BC6H and BC7, fast, balanced or best. Null keeps the preset's. */
+      quality?: null | string;
+      /** @description Whether a KTX2 or DDS file carries a mip chain. Null keeps the preset's. */
+      mips?: null | boolean;
     };
     /** @description One preset file as a project's export last had it. */
     ExportFileSetting: {
@@ -2478,6 +2681,12 @@ export interface components {
       enabled: boolean;
       /** @description The format it is written in. */
       format: string;
+      /** @description What a KTX2 or DDS file holds, or null for the preset's. */
+      compression?: null | string;
+      /** @description For JPEG, 1 to 100; for BC6H and BC7, fast, balanced or best. Null for the preset's. */
+      quality?: null | string;
+      /** @description Whether a KTX2 or DDS file carries a mip chain, or null for the preset's. */
+      mips?: null | boolean;
     };
     /** @description A file format a preset or an export can name. */
     ExportFormatInfo: {
@@ -2513,6 +2722,8 @@ export interface components {
       sets?: null | string[];
       /** @description Files turned off or written in another format. */
       files?: null | components['schemas']['ExportFileChoice'][];
+      /** @description Changes for one texture set at a time, over these, or null for none. */
+      perSet?: null | components['schemas']['ExportSetOptions'][];
     };
     /** @description What fills the texels a mesh's layout leaves empty. */
     ExportPaddingInfo: {
@@ -2525,6 +2736,48 @@ export interface components {
       distance: number;
       /** @description For colour, the value of each lane of a file, 0 to 1. */
       colour: number[];
+    };
+    /** @description What a preset would do, before it is kept. */
+    ExportPresetCheck: {
+      /** @description Why it cannot be kept, or null when it can. */
+      problem?: null | string;
+      /** @description Each file it would write for the project, or for a project called by its id. */
+      files: components['schemas']['ExportPresetFileName'][];
+      /** @description The file it would be. */
+      text: string;
+    };
+    /** @description The body of `POST /api/v1/export/presets/check`: a preset to try without keeping it. */
+    ExportPresetCheckRequest: {
+      /** @description What the file would say. */
+      preset: components['schemas']['ExportPresetDocument'];
+      /** @description A project whose names the file list uses, below `projects/`, or null. */
+      project?: null | string;
+    };
+    /** @description A preset as its file says it, which is what the preset editor reads and writes (ADR 0019). */
+    ExportPresetDocument: {
+      /** @description Its id: lower-case letters, digits and hyphens. It is also the file's name. */
+      id: string;
+      /** @description Its label. */
+      name: string;
+      /** @description What it is for. */
+      engine: string;
+      /** @description The green its target reads: y-up or y-down. */
+      normal: string;
+      /**
+       * Format: int32
+       * @description The longest side of every file, or null for the maps' own size.
+       */
+      size?: null | number;
+      /** @description How a file changes size: box, bilinear or nearest. */
+      filter: string;
+      /** @description Whether 8-bit files are dithered. */
+      dither: boolean;
+      /** @description What fills the background of a mesh's layout. */
+      padding: components['schemas']['ExportPaddingInfo'];
+      /** @description The material files written beside the textures: gltf, usda or mtlx. */
+      materials: string[];
+      /** @description The files. */
+      textures: components['schemas']['ExportPresetTextureDocument'][];
     };
     /** @description One file of a preset, as a client shows it. */
     ExportPresetFile: {
@@ -2551,6 +2804,27 @@ export interface components {
        * @default balanced
        */
       quality: string;
+      /**
+       * Format: double
+       * @description Its side as a share of every other file's: 1, 0.5, 0.25, 0.125 or 0.0625.
+       */
+      scale: number;
+    };
+    /** @description One file a preset would write for a project, as named. */
+    ExportPresetFileName: {
+      /** @description The file's template. */
+      template: string;
+      /** @description The texture set it is of, or nothing for a project of one. */
+      set: string;
+      /** @description The file's path below the export folder. */
+      name: string;
+    };
+    /** @description The body of `POST /api/v1/export/presets/import`: a preset file to bring in. */
+    ExportPresetImport: {
+      /** @description A preset file on the Server's machine. */
+      file: string;
+      /** @description The project it goes into, below `projects/`, or null for the library. */
+      project?: null | string;
     };
     /** @description An export preset. */
     ExportPresetInfo: {
@@ -2562,7 +2836,7 @@ export interface components {
       engine: string;
       /** @description The green its target reads: y-up or y-down. */
       normal: string;
-      /** @description Where it comes from: factory or library. */
+      /** @description Where it comes from: factory, library or project. */
       origin: string;
       /** @description The hash of its file. */
       revision: string;
@@ -2579,6 +2853,8 @@ export interface components {
       size?: null | number;
       /** @description How a file changes size. */
       filter: string;
+      /** @description The material files it writes beside its textures: gltf, usda or mtlx. */
+      materials: string[];
     };
     /** @description Every preset a library can use, and the files in its folder that are not presets. */
     ExportPresetList: {
@@ -2592,6 +2868,68 @@ export interface components {
       paddings: components['schemas']['StackTerm'][];
       /** @description The resize filters there are, each with what a person calls it. */
       filters: components['schemas']['StackTerm'][];
+      /** @description What a KTX2 or DDS file can hold, in order, each with what a person calls it. */
+      compressions: components['schemas']['StackTerm'][];
+      /** @description The maps a lane can read, each with what a person calls it. */
+      maps: components['schemas']['StackTerm'][];
+      /** @description The material files a preset can write beside its textures, each with what a person calls it. */
+      materials: components['schemas']['StackTerm'][];
+      /** @description The names a file's template can hold, such as `project` for `{project}`. */
+      tokens: string[];
+    };
+    /** @description A preset to edit, and where it comes from. */
+    ExportPresetSource: {
+      /** @description What its file says. */
+      document: components['schemas']['ExportPresetDocument'];
+      /** @description factory, library or project. */
+      origin: string;
+      /** @description The file on the Server's machine, or null for a factory preset, which lives in Patina. */
+      file?: null | string;
+      /** @description The file's text, as a person would read it. */
+      text: string;
+    };
+    /**
+     * @description One file of a preset as its file says it, for a client that edits presets (ADR 0019). Every field is the
+     *     preset language's own spelling, so what a client sends is what the file holds.
+     */
+    ExportPresetTextureDocument: {
+      /** @description Its naming template, without an extension. */
+      file: string;
+      /** @description Its format: one of IReadOnlyList&lt;ExportFormatInfo&gt; ExportPresetList.Formats. */
+      format: string;
+      /** @description srgb or linear. */
+      space: string;
+      /** @description What a KTX2 or DDS file holds: none, half, float or bc1 to bc7. */
+      compression: string;
+      /** @description For JPEG, 1 to 100; for BC6H and BC7, fast, balanced or best. Null for the format's default. */
+      quality?: null | string;
+      /** @description Whether a KTX2 or DDS file carries a mip chain. */
+      mips: boolean;
+      /**
+       * Format: double
+       * @description Its side as a share of every other file's: 1, 0.5, 0.25, 0.125 or 0.0625.
+       */
+      scale: number;
+      /** @description Whether this file is dithered, or null for what the preset says. */
+      dither?: null | boolean;
+      padding?: null | components['schemas']['ExportPaddingInfo'];
+      /**
+       * @description One to four lanes, in file order, each as the language writes one: `roughness.r`,
+       *     `1-roughness.r` or a number such as `0.5`.
+       */
+      channels: string[];
+    };
+    /**
+     * @description The body of `PUT /api/v1/export/presets/{id}`: a preset to keep in the library's or a project's
+     *     `export-presets` folder, which is a file there.
+     */
+    ExportPresetWrite: {
+      /** @description What the file says. Its id is the one in the route. */
+      preset: components['schemas']['ExportPresetDocument'];
+      /** @description The project it belongs to, below `projects/`, or null for the whole library. */
+      project?: null | string;
+      /** @description An id it takes the place of, in the same place, which renames it. */
+      replaces?: null | string;
     };
     /** @description One preset in a project's report. */
     ExportReport: {
@@ -2609,6 +2947,26 @@ export interface components {
       warnings: string[];
       /** @description Why it failed. */
       error?: null | string;
+    };
+    /**
+     * @description One texture set's changes over the whole export's (#153): its own size, padding, dithering and files. Null
+     *     fields keep what the export says for every set.
+     */
+    ExportSetOptions: {
+      /** @description The texture set, by name. */
+      set: string;
+      /**
+       * Format: int32
+       * @description The longest side of this set's files.
+       */
+      size?: null | number;
+      /** @description How this set's files change size. */
+      filter?: null | string;
+      padding?: null | components['schemas']['ExportPaddingInfo'];
+      /** @description Whether this set's 8-bit files are dithered. */
+      dither?: null | boolean;
+      /** @description This set's files turned off or written in another format. */
+      files?: null | components['schemas']['ExportFileChoice'][];
     };
     /** @description What a client may offer, with the dot. */
     FileFormats: {
@@ -4241,6 +4599,8 @@ export interface components {
       skipped: string[];
       /** @description Files turned off or written in another format, per preset. */
       files: components['schemas']['ExportFileSetting'][];
+      /** @description Changes for one texture set at a time, over the rest, as IReadOnlyList&lt;ExportSetOptions&gt;? ExportOptions.PerSet. */
+      perSet: components['schemas']['ExportSetOptions'][];
     };
     /** @description A result of a bake in a project's folder. */
     ProjectFile: {
@@ -7195,7 +7555,9 @@ export interface operations {
   };
   GetExportPresets: {
     parameters: {
-      query?: never;
+      query?: {
+        project?: string;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -11915,6 +12277,272 @@ export interface operations {
           'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetExportPreset: {
+    parameters: {
+      query?: {
+        project?: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ExportPresetSource'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  PutExportPreset: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ExportPresetWrite'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ExportPresetSource'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  DeleteExportPreset: {
+    parameters: {
+      query?: {
+        project?: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  CheckExportPreset: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ExportPresetCheckRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ExportPresetCheck'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  ImportExportPreset: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ExportPresetImport'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ExportPresetSource'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  PreviewCompression: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CompressionPreviewRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CompressionPreviewInfo'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetCompressionPicture: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        picture: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
       /** @description Not Found */
       404: {
         headers: {

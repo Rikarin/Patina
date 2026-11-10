@@ -126,7 +126,16 @@ public static class ExportEncoder {
     ///     float through the chain, so a 16-bit height is averaged at 16 bits and only then cut to what the block
     ///     holds.
     /// </summary>
-    static TextureData Texture(PackedPicture picture, ExportTexture texture, CancellationToken cancellationToken) {
+    static TextureData Texture(PackedPicture picture, ExportTexture texture, CancellationToken cancellationToken) =>
+        Blocks(Levels(picture, texture), texture, cancellationToken);
+
+    /// <summary>
+    ///     A container file's levels before blocks: the picture in the format blocks are made from, with every mip
+    ///     level the file carries, made as the file makes them.
+    /// </summary>
+    public static TextureData Levels(PackedPicture picture, ExportTexture texture) {
+        ArgumentNullException.ThrowIfNull(picture);
+        ArgumentNullException.ThrowIfNull(texture);
         var srgb = texture.Space == "srgb";
         var source = texture.Compression switch {
             ExportCompressions.Half => PixelFormat.Rgba16Float,
@@ -140,6 +149,14 @@ public static class ExportEncoder {
             MipChain.Generate(data, Options(texture));
         }
 
+        return data;
+    }
+
+    /// <summary>Levels as the file holds them: block-compressed, or as they are when the file is not.</summary>
+    public static TextureData Blocks(TextureData data, ExportTexture texture, CancellationToken cancellationToken) {
+        ArgumentNullException.ThrowIfNull(data);
+        ArgumentNullException.ThrowIfNull(texture);
+        var srgb = texture.Space == "srgb";
         var target = texture.Compression switch {
             ExportCompressions.Bc1 => PixelFormat.Bc1RgbaUNorm,
             ExportCompressions.Bc3 => PixelFormat.Bc3RgbaUNorm,

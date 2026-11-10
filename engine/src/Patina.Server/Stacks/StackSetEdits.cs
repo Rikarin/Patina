@@ -6,7 +6,7 @@ namespace Patina.Server.Stacks;
 
 /// <summary>
 ///     A texture set's own settings, each change one whole-document step: the resolution, the UV set and how height
-///     becomes a normal (ADR 0019).
+///     becomes a normal (ADR 0020).
 /// </summary>
 static class StackSetEdits {
     /// <summary>The highest coordinate set a model can have: Assimp keeps eight.</summary>

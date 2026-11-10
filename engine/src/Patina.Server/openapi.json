@@ -730,6 +730,15 @@
         ],
         "summary": "Every preset this library can use: the factory ones and those in shared/export-presets.",
         "operationId": "GetExportPresets",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -6772,6 +6781,354 @@
           }
         }
       }
+    },
+    "/api/v1/export/presets/{id}": {
+      "get": {
+        "tags": [
+          "Builds"
+        ],
+        "summary": "A preset as its file says it, where it comes from, and its text.",
+        "operationId": "GetExportPreset",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "project",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportPresetSource"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Builds"
+        ],
+        "summary": "Keeps a preset as a file in the library\u0027s or a project\u0027s export-presets, renaming one if asked.",
+        "operationId": "PutExportPreset",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportPresetWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportPresetSource"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Builds"
+        ],
+        "summary": "Removes a library\u0027s or a project\u0027s preset file. A factory preset cannot be removed.",
+        "operationId": "DeleteExportPreset",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "project",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/export/presets/check": {
+      "post": {
+        "tags": [
+          "Builds"
+        ],
+        "summary": "What a preset would be and the files it would write for a project, keeping nothing.",
+        "operationId": "CheckExportPreset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportPresetCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportPresetCheck"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/export/presets/import": {
+      "post": {
+        "tags": [
+          "Builds"
+        ],
+        "summary": "Brings a preset file into the library\u0027s or a project\u0027s export-presets, after reading it.",
+        "operationId": "ImportExportPreset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportPresetImport"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportPresetSource"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/export/compression": {
+      "post": {
+        "tags": [
+          "Builds"
+        ],
+        "summary": "A region of one exported file as the file holds it, beside its source, with the error per lane.",
+        "operationId": "PreviewCompression",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompressionPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompressionPreviewInfo"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/export/compression/{id}/{picture}": {
+      "get": {
+        "tags": [
+          "Builds"
+        ],
+        "summary": "One picture of a compression preview as a PNG: source, written or difference.",
+        "operationId": "GetCompressionPicture",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "picture",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -7943,6 +8300,186 @@
         },
         "description": "Where a problem is, for a client to go to it."
       },
+      "CompressionLaneError": {
+        "required": [
+          "lane",
+          "maxError",
+          "meanError"
+        ],
+        "type": "object",
+        "properties": {
+          "lane": {
+            "type": "string",
+            "description": "r, g, b or a."
+          },
+          "psnr": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Peak signal-to-noise ratio in decibels, or null where nothing changed.",
+            "format": "double"
+          },
+          "maxError": {
+            "type": "number",
+            "description": "The largest difference, in the file\u0027s numbers from 0 to 1.",
+            "format": "double"
+          },
+          "meanError": {
+            "type": "number",
+            "description": "The mean difference.",
+            "format": "double"
+          }
+        },
+        "description": "How far one lane of a file is from what it was made from."
+      },
+      "CompressionPreviewInfo": {
+        "required": [
+          "id",
+          "format",
+          "compression",
+          "level",
+          "levels",
+          "width",
+          "height",
+          "region",
+          "lanes",
+          "gain",
+          "bytes",
+          "uncompressed"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The preview, by the hash of what it was made from, for its pictures."
+          },
+          "format": {
+            "type": "string",
+            "description": "The file\u0027s format."
+          },
+          "compression": {
+            "type": "string",
+            "description": "What it holds."
+          },
+          "level": {
+            "type": "integer",
+            "description": "The level shown.",
+            "format": "int32"
+          },
+          "levels": {
+            "type": "integer",
+            "description": "How many levels the file has.",
+            "format": "int32"
+          },
+          "width": {
+            "type": "integer",
+            "description": "The level\u0027s width.",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "description": "The level\u0027s height.",
+            "format": "int32"
+          },
+          "region": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "The region shown, as x, y, width and height in the level\u0027s texels."
+          },
+          "lanes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CompressionLaneError"
+            },
+            "description": "How far each lane is."
+          },
+          "gain": {
+            "type": "number",
+            "description": "What the difference picture\u0027s errors are multiplied by.",
+            "format": "double"
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "What the whole file takes in GPU memory as written, by the measure the pre-export checks use\n(\u0060texture-over-budget\u0060).",
+            "format": "int64"
+          },
+          "uncompressed": {
+            "type": "integer",
+            "description": "What the same file would take with no block compression, by the same measure.",
+            "format": "int64"
+          }
+        },
+        "description": "What a file\u0027s encoding does to a region of it. The pictures are not in this: each is a PNG at\n\u0060GET /api/v1/export/compression/{id}/{picture}\u0060, for \u0060source\u0060, \u0060written\u0060 and \u0060difference\u0060."
+      },
+      "CompressionPreviewRequest": {
+        "required": [
+          "project",
+          "preset",
+          "file",
+          "level",
+          "x",
+          "y",
+          "side"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "preset": {
+            "type": "string",
+            "description": "The preset\u0027s id."
+          },
+          "file": {
+            "type": "string",
+            "description": "The file, by its template."
+          },
+          "set": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The texture set, or null for the project\u0027s first."
+          },
+          "options": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The export\u0027s changes, as a build would be sent them: another compression, size or quality.",
+                "$ref": "#/components/schemas/ExportOptions"
+              }
+            ]
+          },
+          "level": {
+            "type": "integer",
+            "description": "The mip level, from zero.",
+            "format": "int32"
+          },
+          "x": {
+            "type": "number",
+            "description": "Where the region is centred across the level, from 0 to 1.",
+            "format": "double"
+          },
+          "y": {
+            "type": "number",
+            "description": "Where the region is centred down the level, from 0 to 1.",
+            "format": "double"
+          },
+          "side": {
+            "type": "integer",
+            "description": "The region\u0027s largest side in texels, 4 to 512.",
+            "format": "int32"
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/export/compression\u0060 (#217): one file of an export, to see a region of it as the\nfile holds it beside what it was made from."
+      },
       "DocumentRecovery": {
         "type": "object",
         "properties": {
@@ -7997,6 +8534,27 @@
               "string"
             ],
             "description": "Another format for it, or null for the preset\u0027s."
+          },
+          "compression": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What a KTX2 or DDS file holds: none, half, float or bc1 to bc7. Null keeps the preset\u0027s, which a plain file\nmade a container takes as none."
+          },
+          "quality": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "For JPEG, 1 to 100; for BC6H and BC7, fast, balanced or best. Null keeps the preset\u0027s."
+          },
+          "mips": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether a KTX2 or DDS file carries a mip chain. Null keeps the preset\u0027s."
           }
         },
         "description": "One file of a preset changed for one export."
@@ -8025,6 +8583,27 @@
           "format": {
             "type": "string",
             "description": "The format it is written in."
+          },
+          "compression": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What a KTX2 or DDS file holds, or null for the preset\u0027s."
+          },
+          "quality": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "For JPEG, 1 to 100; for BC6H and BC7, fast, balanced or best. Null for the preset\u0027s."
+          },
+          "mips": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether a KTX2 or DDS file carries a mip chain, or null for the preset\u0027s."
           }
         },
         "description": "One preset file as a project\u0027s export last had it."
@@ -8126,6 +8705,16 @@
               "$ref": "#/components/schemas/ExportFileChoice"
             },
             "description": "Files turned off or written in another format."
+          },
+          "perSet": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ExportSetOptions"
+            },
+            "description": "Changes for one texture set at a time, over these, or null for none."
           }
         },
         "description": "A preset\u0027s settings changed for one export, as an export dialog changes them. Null fields keep the preset\u0027s.\nChanging one gives the export another key, so it never reuses files made under other settings."
@@ -8158,6 +8747,121 @@
         },
         "description": "What fills the texels a mesh\u0027s layout leaves empty."
       },
+      "ExportPresetCheck": {
+        "required": [
+          "files",
+          "text"
+        ],
+        "type": "object",
+        "properties": {
+          "problem": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why it cannot be kept, or null when it can."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExportPresetFileName"
+            },
+            "description": "Each file it would write for the project, or for a project called by its id."
+          },
+          "text": {
+            "type": "string",
+            "description": "The file it would be."
+          }
+        },
+        "description": "What a preset would do, before it is kept."
+      },
+      "ExportPresetCheckRequest": {
+        "required": [
+          "preset"
+        ],
+        "type": "object",
+        "properties": {
+          "preset": {
+            "description": "What the file would say.",
+            "$ref": "#/components/schemas/ExportPresetDocument"
+          },
+          "project": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A project whose names the file list uses, below \u0060projects/\u0060, or null."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/export/presets/check\u0060: a preset to try without keeping it."
+      },
+      "ExportPresetDocument": {
+        "required": [
+          "id",
+          "name",
+          "textures",
+          "engine",
+          "normal",
+          "filter",
+          "dither",
+          "padding",
+          "materials"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Its id: lower-case letters, digits and hyphens. It is also the file\u0027s name."
+          },
+          "name": {
+            "type": "string",
+            "description": "Its label."
+          },
+          "engine": {
+            "type": "string",
+            "description": "What it is for."
+          },
+          "normal": {
+            "type": "string",
+            "description": "The green its target reads: y-up or y-down."
+          },
+          "size": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The longest side of every file, or null for the maps\u0027 own size.",
+            "format": "int32"
+          },
+          "filter": {
+            "type": "string",
+            "description": "How a file changes size: box, bilinear or nearest."
+          },
+          "dither": {
+            "type": "boolean",
+            "description": "Whether 8-bit files are dithered."
+          },
+          "padding": {
+            "description": "What fills the background of a mesh\u0027s layout.",
+            "$ref": "#/components/schemas/ExportPaddingInfo"
+          },
+          "materials": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The material files written beside the textures: gltf, usda or mtlx."
+          },
+          "textures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExportPresetTextureDocument"
+            },
+            "description": "The files."
+          }
+        },
+        "description": "A preset as its file says it, which is what the preset editor reads and writes (ADR 0019)."
+      },
       "ExportPresetFile": {
         "required": [
           "template",
@@ -8167,7 +8871,8 @@
           "mips",
           "maps",
           "lanes",
-          "quality"
+          "quality",
+          "scale"
         ],
         "type": "object",
         "properties": {
@@ -8208,9 +8913,57 @@
             "type": "string",
             "description": "For JPEG, 1 to 100; for block compression, fast, balanced or best.",
             "default": "balanced"
+          },
+          "scale": {
+            "type": "number",
+            "description": "Its side as a share of every other file\u0027s: 1, 0.5, 0.25, 0.125 or 0.0625.",
+            "format": "double"
           }
         },
         "description": "One file of a preset, as a client shows it."
+      },
+      "ExportPresetFileName": {
+        "required": [
+          "template",
+          "set",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "template": {
+            "type": "string",
+            "description": "The file\u0027s template."
+          },
+          "set": {
+            "type": "string",
+            "description": "The texture set it is of, or nothing for a project of one."
+          },
+          "name": {
+            "type": "string",
+            "description": "The file\u0027s path below the export folder."
+          }
+        },
+        "description": "One file a preset would write for a project, as named."
+      },
+      "ExportPresetImport": {
+        "required": [
+          "file"
+        ],
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "A preset file on the Server\u0027s machine."
+          },
+          "project": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The project it goes into, below \u0060projects/\u0060, or null for the library."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/export/presets/import\u0060: a preset file to bring in."
       },
       "ExportPresetInfo": {
         "required": [
@@ -8223,7 +8976,8 @@
           "files",
           "padding",
           "dither",
-          "filter"
+          "filter",
+          "materials"
         ],
         "type": "object",
         "properties": {
@@ -8245,7 +8999,7 @@
           },
           "origin": {
             "type": "string",
-            "description": "Where it comes from: factory or library."
+            "description": "Where it comes from: factory, library or project."
           },
           "revision": {
             "type": "string",
@@ -8277,6 +9031,13 @@
           "filter": {
             "type": "string",
             "description": "How a file changes size."
+          },
+          "materials": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The material files it writes beside its textures: gltf, usda or mtlx."
           }
         },
         "description": "An export preset."
@@ -8287,7 +9048,11 @@
           "problems",
           "formats",
           "paddings",
-          "filters"
+          "filters",
+          "compressions",
+          "maps",
+          "materials",
+          "tokens"
         ],
         "type": "object",
         "properties": {
@@ -8325,9 +9090,166 @@
               "$ref": "#/components/schemas/StackTerm"
             },
             "description": "The resize filters there are, each with what a person calls it."
+          },
+          "compressions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "What a KTX2 or DDS file can hold, in order, each with what a person calls it."
+          },
+          "maps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "The maps a lane can read, each with what a person calls it."
+          },
+          "materials": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "The material files a preset can write beside its textures, each with what a person calls it."
+          },
+          "tokens": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The names a file\u0027s template can hold, such as \u0060project\u0060 for \u0060{project}\u0060."
           }
         },
         "description": "Every preset a library can use, and the files in its folder that are not presets."
+      },
+      "ExportPresetSource": {
+        "required": [
+          "document",
+          "origin",
+          "text"
+        ],
+        "type": "object",
+        "properties": {
+          "document": {
+            "description": "What its file says.",
+            "$ref": "#/components/schemas/ExportPresetDocument"
+          },
+          "origin": {
+            "type": "string",
+            "description": "factory, library or project."
+          },
+          "file": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The file on the Server\u0027s machine, or null for a factory preset, which lives in Patina."
+          },
+          "text": {
+            "type": "string",
+            "description": "The file\u0027s text, as a person would read it."
+          }
+        },
+        "description": "A preset to edit, and where it comes from."
+      },
+      "ExportPresetTextureDocument": {
+        "required": [
+          "file",
+          "format",
+          "space",
+          "channels",
+          "compression",
+          "mips",
+          "scale"
+        ],
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "Its naming template, without an extension."
+          },
+          "format": {
+            "type": "string",
+            "description": "Its format: one of IReadOnlyList\u0026lt;ExportFormatInfo\u0026gt; ExportPresetList.Formats."
+          },
+          "space": {
+            "type": "string",
+            "description": "srgb or linear."
+          },
+          "compression": {
+            "type": "string",
+            "description": "What a KTX2 or DDS file holds: none, half, float or bc1 to bc7."
+          },
+          "quality": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "For JPEG, 1 to 100; for BC6H and BC7, fast, balanced or best. Null for the format\u0027s default."
+          },
+          "mips": {
+            "type": "boolean",
+            "description": "Whether a KTX2 or DDS file carries a mip chain."
+          },
+          "scale": {
+            "type": "number",
+            "description": "Its side as a share of every other file\u0027s: 1, 0.5, 0.25, 0.125 or 0.0625.",
+            "format": "double"
+          },
+          "dither": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether this file is dithered, or null for what the preset says."
+          },
+          "padding": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What fills this file\u0027s background, or null for what the preset says.",
+                "$ref": "#/components/schemas/ExportPaddingInfo"
+              }
+            ]
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "One to four lanes, in file order, each as the language writes one: \u0060roughness.r\u0060,\n\u00601-roughness.r\u0060 or a number such as \u00600.5\u0060."
+          }
+        },
+        "description": "One file of a preset as its file says it, for a client that edits presets (ADR 0019). Every field is the\npreset language\u0027s own spelling, so what a client sends is what the file holds."
+      },
+      "ExportPresetWrite": {
+        "required": [
+          "preset"
+        ],
+        "type": "object",
+        "properties": {
+          "preset": {
+            "description": "What the file says. Its id is the one in the route.",
+            "$ref": "#/components/schemas/ExportPresetDocument"
+          },
+          "project": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The project it belongs to, below \u0060projects/\u0060, or null for the whole library."
+          },
+          "replaces": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "An id it takes the place of, in the same place, which renames it."
+          }
+        },
+        "description": "The body of \u0060PUT /api/v1/export/presets/{id}\u0060: a preset to keep in the library\u0027s or a project\u0027s\n\u0060export-presets\u0060 folder, which is a file there."
       },
       "ExportReport": {
         "required": [
@@ -8384,6 +9306,62 @@
           }
         },
         "description": "One preset in a project\u0027s report."
+      },
+      "ExportSetOptions": {
+        "required": [
+          "set"
+        ],
+        "type": "object",
+        "properties": {
+          "set": {
+            "type": "string",
+            "description": "The texture set, by name."
+          },
+          "size": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The longest side of this set\u0027s files.",
+            "format": "int32"
+          },
+          "filter": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How this set\u0027s files change size."
+          },
+          "padding": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What fills the background of this set\u0027s layout.",
+                "$ref": "#/components/schemas/ExportPaddingInfo"
+              }
+            ]
+          },
+          "dither": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether this set\u0027s 8-bit files are dithered."
+          },
+          "files": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ExportFileChoice"
+            },
+            "description": "This set\u0027s files turned off or written in another format."
+          }
+        },
+        "description": "One texture set\u0027s changes over the whole export\u0027s (#153): its own size, padding, dithering and files. Null\nfields keep what the export says for every set."
       },
       "FileFormats": {
         "required": [
@@ -12184,7 +13162,8 @@
       "ProjectExportSettings": {
         "required": [
           "skipped",
-          "files"
+          "files",
+          "perSet"
         ],
         "type": "object",
         "properties": {
@@ -12248,6 +13227,13 @@
               "$ref": "#/components/schemas/ExportFileSetting"
             },
             "description": "Files turned off or written in another format, per preset."
+          },
+          "perSet": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExportSetOptions"
+            },
+            "description": "Changes for one texture set at a time, over the rest, as IReadOnlyList\u0026lt;ExportSetOptions\u0026gt;? ExportOptions.PerSet."
           }
         },
         "description": "A project\u0027s export settings, kept in its \u0060project.yaml\u0060 so they travel with the library: what a client\u0027s\nexport starts from next time. Any client reads and writes them; a build reads only what a request sends, so\nkeeping them changes no key."

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 
 namespace Patina.Export.Presets;
@@ -8,7 +9,34 @@ namespace Patina.Export.Presets;
 /// <param name="Set">
 ///     The texture set, or nothing for a project with none named. <c>{set}</c> is then the project.
 /// </param>
-public sealed record NamingValues(string Project, string Preset, string Set = "");
+public sealed record NamingValues(string Project, string Preset, string Set = "") {
+    /// <summary>The name of the mesh the set is painted on, without its extension, or nothing for none.</summary>
+    public string Mesh { get; init; } = string.Empty;
+
+    /// <summary>The material of the mesh the set paints, or nothing when the set names none.</summary>
+    public string Material { get; init; } = string.Empty;
+
+    /// <summary>The file's numbers: srgb or linear.</summary>
+    public string Space { get; init; } = string.Empty;
+
+    /// <summary>The file's longest side in texels, or zero when it is not known.</summary>
+    public int Size { get; init; }
+
+    /// <summary>Each texture set's mesh and material, by the set's name, for a project that knows them.</summary>
+    public IReadOnlyDictionary<string, SetNaming> Sets { get; init; } =
+        new Dictionary<string, SetNaming>(StringComparer.Ordinal);
+
+    /// <summary>These values for one texture set: its name, and its mesh and material when they are known.</summary>
+    public NamingValues Of(string set) =>
+        Sets.TryGetValue(set, out var known)
+            ? this with { Set = set, Mesh = known.Mesh, Material = known.Material }
+            : this with { Set = set };
+}
+
+/// <summary>What a texture set's files can be named by beyond the set's own name.</summary>
+/// <param name="Mesh">The mesh it paints, without its extension.</param>
+/// <param name="Material">The material of the mesh it paints, or nothing.</param>
+public sealed record SetNaming(string Mesh, string Material);
 
 /// <summary>
 ///     Turns <c>T_{project}_D</c> into a relative path. Forward slashes make folders on every platform, and a value can
@@ -18,16 +46,24 @@ public static class NamingTemplate {
     const string ProjectHole = "{project}";
     const string SetHole = "{set}";
 
-    static readonly HashSet<string> Known = new(["project", "preset", "set"], StringComparer.Ordinal);
+    /// <summary>The UDIM tile every file is of, while Patina paints one tile (<see cref="OneTile" />).</summary>
+    public const string Udim = "1001";
+
+    /// <summary>The same tile as Mari and some importers name it.</summary>
+    public const string Tile = "u1_v1";
+
+    /// <summary>Every name a template can hold, in the order the ADR lists them.</summary>
+    public static IReadOnlyList<string> Names { get; } =
+        ["project", "preset", "set", "mesh", "material", "udim", "tile", "space", "size"];
 
     /// <summary>Refuses a template that could not make a file name.</summary>
     /// <exception cref="ExportPresetException">It names something unknown or leaves the folder.</exception>
     public static void Check(string template, string where) {
         ArgumentNullException.ThrowIfNull(template);
         foreach (var (name, _) in Holes(template, where)) {
-            if (!Known.Contains(name)) {
+            if (!Names.Contains(name, StringComparer.Ordinal)) {
                 throw new ExportPresetException(
-                    $"{where}: '{{{name}}}' is not a name. The names are {string.Join(", ", Known.Order())}."
+                    $"{where}: '{{{name}}}' is not a name. The names are {string.Join(", ", Names)}."
                 );
             }
         }
@@ -60,21 +96,28 @@ public static class NamingTemplate {
         var from = 0;
         foreach (var (name, at) in Holes(template, template)) {
             text.Append(template, from, at - from);
-            text.Append(
-                Clean(
-                    name switch {
-                        "project" => values.Project,
-                        "set" when values.Set.Length > 0 => values.Set,
-                        "set" => values.Project,
-                        _ => values.Preset
-                    }
-                )
-            );
+            text.Append(Clean(ValueOf(name, values)));
             from = at + name.Length + 2;
         }
 
         text.Append(template, from, template.Length - from).Append(extension);
         return text.ToString().Replace('/', Path.DirectorySeparatorChar);
+    }
+
+    /// <summary>What a name stands for. A value a project does not have falls back to the one that holds it.</summary>
+    static string ValueOf(string name, NamingValues values) {
+        var set = values.Set.Length > 0 ? values.Set : values.Project;
+        return name switch {
+            "project" => values.Project,
+            "set" => set,
+            "mesh" => values.Mesh.Length > 0 ? values.Mesh : values.Project,
+            "material" => values.Material.Length > 0 ? values.Material : set,
+            "udim" => Udim,
+            "tile" => Tile,
+            "space" => values.Space,
+            "size" => values.Size > 0 ? values.Size.ToString(CultureInfo.InvariantCulture) : string.Empty,
+            _ => values.Preset
+        };
     }
 
     /// <summary>

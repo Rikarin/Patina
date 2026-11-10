@@ -14,6 +14,7 @@ from typing import cast
 if TYPE_CHECKING:
   from ..models.export_file_setting import ExportFileSetting
   from ..models.export_padding_info import ExportPaddingInfo
+  from ..models.export_set_options import ExportSetOptions
 
 
 
@@ -32,6 +33,8 @@ class ProjectExportSettings:
         Attributes:
             skipped (list[str]): The texture sets left out, by name; every other one is written.
             files (list[ExportFileSetting]): Files turned off or written in another format, per preset.
+            per_set (list[ExportSetOptions]): Changes for one texture set at a time, over the rest, as
+                IReadOnlyList&lt;ExportSetOptions&gt;? ExportOptions.PerSet.
             preset (None | str | Unset): The preset's id.
             folder (None | str | Unset): Where files go, or null for the library's exports folder.
             size (int | None | Unset): The longest side of a file, or null for the maps' own size.
@@ -42,6 +45,7 @@ class ProjectExportSettings:
 
     skipped: list[str]
     files: list[ExportFileSetting]
+    per_set: list[ExportSetOptions]
     preset: None | str | Unset = UNSET
     folder: None | str | Unset = UNSET
     size: int | None | Unset = UNSET
@@ -57,6 +61,7 @@ class ProjectExportSettings:
     def to_dict(self) -> dict[str, Any]:
         from ..models.export_file_setting import ExportFileSetting # noqa: PLC0415
         from ..models.export_padding_info import ExportPaddingInfo # noqa: PLC0415
+        from ..models.export_set_options import ExportSetOptions # noqa: PLC0415
         skipped = self.skipped
 
 
@@ -65,6 +70,13 @@ class ProjectExportSettings:
         for files_item_data in self.files:
             files_item = files_item_data.to_dict()
             files.append(files_item)
+
+
+
+        per_set = []
+        for per_set_item_data in self.per_set:
+            per_set_item = per_set_item_data.to_dict()
+            per_set.append(per_set_item)
 
 
 
@@ -112,6 +124,7 @@ class ProjectExportSettings:
         field_dict.update({
             "skipped": skipped,
             "files": files,
+            "perSet": per_set,
         })
         if preset is not UNSET:
             field_dict["preset"] = preset
@@ -134,6 +147,7 @@ class ProjectExportSettings:
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.export_file_setting import ExportFileSetting # noqa: PLC0415
         from ..models.export_padding_info import ExportPaddingInfo # noqa: PLC0415
+        from ..models.export_set_options import ExportSetOptions # noqa: PLC0415
         d = dict(src_dict)
         skipped = cast(list[str], d.pop("skipped"))
 
@@ -146,6 +160,16 @@ class ProjectExportSettings:
 
 
             files.append(files_item)
+
+
+        per_set = []
+        _per_set = d.pop("perSet")
+        for per_set_item_data in (_per_set):
+            per_set_item = ExportSetOptions.from_dict(per_set_item_data)
+
+
+
+            per_set.append(per_set_item)
 
 
         def _parse_preset(data: object) -> None | str | Unset:
@@ -221,6 +245,7 @@ class ProjectExportSettings:
         project_export_settings = cls(
             skipped=skipped,
             files=files,
+            per_set=per_set,
             preset=preset,
             folder=folder,
             size=size,

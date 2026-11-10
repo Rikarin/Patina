@@ -21,4 +21,5 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0016](0016-commands.md): accepted: one command table that the menus, the keys, the shortcuts dialog and tooltips read.
 - [0017](0017-filter-inputs.md): accepted: a filter's first image is its subject, every image names where it reads, and a node says when it is no filter.
 - [0018](0018-library-care.md): accepted: a bin in the library, one thumbnail service for every list, and preferences in plain files.
-- [0019](0019-texture-set-settings.md): accepted: a texture set's settings live in its stack, a resolution change rewrites no paint, and a set chooses its UV set.
+- [0019](0019-export-presets.md): accepted: the export preset language exactly, presets in a project, the editor that writes them through the reader, material files beside the textures, and the compression preview.
+- [0020](0020-texture-set-settings.md): accepted: a texture set's settings live in its stack, a resolution change rewrites no paint, and a set chooses its UV set.
