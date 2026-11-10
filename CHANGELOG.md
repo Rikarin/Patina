@@ -152,6 +152,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A stroke on a layer painted larger than its texture set, or at another size earlier in the session, is refused before it begins, with the same reason as before. It used to stand anyway, and the stack failed to show until it was undone. Through the API the refusal's code is `stroke-canvas-larger` or `stroke-canvas-painted-at-size`.
+- Open mesh… in the viewport, clicked while a new project's tab was still coming to the front, no longer loses the mesh to that tab letting go of the one before: the viewport said No mesh.
 - Don't Save, or closing a document discarding its edits through the API, no longer brings the thrown-away edits back as an offer to recover them the next time the document opens. An autosave still being written when the edits were thrown away, or when they were saved, used to land a moment later; now it never does, and its files go too.
 - An OBJ finds its material library (`mtllib`), so the viewport draws its parts in their own colors and a Color map with materials as its source bakes them rather than grey. A `.gltf` whose buffer is a `.bin` beside it reads too. Files a mesh names beside itself are read the way the engine reads every library file, letting others write over them meanwhile.
 - A check that a preset reads a channel the texture set lacks names the file as the export writes it, such as T_Crate_ORM, and the channel by its name, such as Ambient Occlusion, where it quoted the file's template and the channel's stored value. Through the API the problem's values carry `channel` beside `map`.

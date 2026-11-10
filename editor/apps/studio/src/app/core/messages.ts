@@ -16,6 +16,10 @@ const Words: Readonly<Record<string, string>> = {
   'stack-no-mesh': 'There is no mesh to paint on. Choose one in Project Settings.',
   'stroke-repeated-channel': 'That stroke could not be painted. Try it again.',
   'stroke-brush-refused': 'That brush can’t be used. {reason}',
+  'stroke-canvas-larger':
+    '{layer} holds {held} texels and the texture set is {size}. Painting it smaller would lose detail: set the size back to {held} to paint this layer.',
+  'stroke-canvas-painted-at-size':
+    '{layer} was painted at {held} earlier in this session. Save, close and open the document again to paint it at {size}.',
   'history-step-gone': 'That step is no longer in the history: an edit made since replaced it.',
   'anchor-taken': 'Another layer is already the anchor “{anchor}”. Choose another name.',
   'anchor-in-use': '{layer} reads the anchor “{anchor}”. Point it elsewhere before taking the anchor away.',
