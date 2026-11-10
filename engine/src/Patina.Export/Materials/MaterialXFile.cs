@@ -31,7 +31,7 @@ sealed class MaterialXFile {
     }
 
     public string Write(MaterialSlots slots) {
-        Connect("base_color", Colour3, Three(slots.BaseColor, "base colour", Colour3));
+        Connect("base_color", Colour3, Three(slots.BaseColor, "base color", Colour3));
         Connect("specular_roughness", Float, Grey(slots.Roughness, "roughness"));
         Connect("metalness", Float, Grey(slots.Metalness, "metalness"));
         if (Grey(slots.Opacity, "opacity") is { } opacity) {
@@ -76,7 +76,7 @@ sealed class MaterialXFile {
         }
 
         if (slots.Specular is not null && slots.Metalness is null) {
-            warnings.Add("MaterialX: specular colour is left out, because standard_surface is metal-roughness.");
+            warnings.Add("MaterialX: specular color is left out, because standard_surface is metal-roughness.");
         }
 
         if (slots.Height is not null) {

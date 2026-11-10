@@ -104,7 +104,7 @@ function setup(routes: Record<string, (request: Request) => Response> = {}) {
           { value: 'none', label: 'None' },
           { value: 'infinite', label: 'Dilation, infinite' },
           { value: 'transparent', label: 'Dilation + transparent' },
-          { value: 'colour', label: 'Dilation + colour' },
+          { value: 'colour', label: 'Dilation + color' },
           { value: 'diffusion', label: 'Dilation + diffusion' }
         ],
         filters: [

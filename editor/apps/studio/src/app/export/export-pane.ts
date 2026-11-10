@@ -903,7 +903,7 @@ export class ExportPane implements OnInit {
   protected readonly previewOptions = computed(() => this.request().options ?? null);
 
   protected originName(origin: string): string {
-    return origin === 'factory' ? 'built in' : origin === 'project' ? 'this project' : 'this library';
+    return origin === 'factory' ? 'Starter' : origin === 'project' ? 'this project' : 'this library';
   }
 
   protected isContainer(format: string): boolean {

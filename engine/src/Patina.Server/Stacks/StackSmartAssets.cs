@@ -24,7 +24,7 @@ static class StackSmartAssets {
 
         var document = StackDocuments.Parse(session.Text);
         var set = LayerStackEdit.SetFor(document, session.Set)
-            ?? throw new StackEditRefusedException("This stack has no texture set to save from.");
+            ?? throw new StackEditRefusedException("This document has no texture set to save from.");
 
         // ⚠ Instances first become the layers they stand for: a source outside what was chosen would not come, and an
         // instance of nothing is a layer that writes nothing.
@@ -34,7 +34,7 @@ static class StackSmartAssets {
         var missing = wanted.Except(Ids(chosen)).ToArray();
         if (chosen.Count == 0 || missing.Length > 0) {
             throw new StackEditRefusedException(
-                chosen.Count == 0 ? "Choose a layer to save." : $"There is no layer '{missing[0]}' in this stack."
+                chosen.Count == 0 ? "Choose a layer to save." : $"There is no layer '{missing[0]}' in this document."
             );
         }
 

@@ -739,7 +739,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             if (canvas.Width > width || canvas.Height > height) {
                 throw new IpcException(
                     $"'{name}' holds {canvas.Width}×{canvas.Height} texels and the texture set is {width}×{height}. "
-                    + "Painting it smaller would throw its detail away, so set the resolution back to paint this layer."
+                    + "Painting it smaller would throw its detail away, so set the size back to paint this layer."
                 );
             }
 

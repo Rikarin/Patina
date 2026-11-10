@@ -36,7 +36,7 @@ static class StackSetEdits {
         if ((settings.Width is { } wide && !TextureSizes.Sides.Contains(wide))
             || (settings.Height is { } high && !TextureSizes.Sides.Contains(high))) {
             throw new StackEditRefusedException(
-                $"{width}×{height} is no resolution a texture set has. Each side is one of "
+                $"{width}×{height} is no size a texture set has. Each side is one of "
                 + $"{string.Join(", ", TextureSizes.Sides)}."
             );
         }

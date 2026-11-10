@@ -143,7 +143,7 @@ function blank(id: string): ExportPresetDocument {
             [disabled]="!removable()"
             (click)="removing.set(true)"
           >
-            Remove
+            Delete
           </button>
           <button type="button" xuiButton size="sm" variant="ghost" data-testid="preset-bring-in" (click)="bringIn()">
             Bring In…
@@ -164,10 +164,10 @@ function blank(id: string): ExportPresetDocument {
         </div>
         @if (removing()) {
           <div class="well flex flex-col gap-2 p-2 text-xs" data-testid="preset-remove-confirm">
-            <span>Remove {{ draft()?.name }}? Its file is deleted, and an export that names it can no longer run.</span>
+            <span>Delete {{ draft()?.name }}? Its file is deleted, and an export that names it can no longer run.</span>
             <div class="flex gap-1">
               <button type="button" xuiButton size="sm" color="error" data-testid="preset-remove-yes" (click)="remove()">
-                Remove
+                Delete
               </button>
               <button type="button" xuiButton size="sm" variant="ghost" (click)="removing.set(false)">Cancel</button>
             </div>
@@ -189,7 +189,7 @@ function blank(id: string): ExportPresetDocument {
         <div class="flex min-h-0 flex-col gap-2.5 overflow-y-auto pr-1" data-testid="preset-form">
           @if (readOnly()) {
             <xui-callout color="primary" compact data-testid="preset-built-in">
-              This preset is built in. Duplicate it to change a copy.
+              This is a Starter preset. Duplicate it to change a copy.
             </xui-callout>
           }
 
@@ -209,7 +209,7 @@ function blank(id: string): ExportPresetDocument {
               xuiInput
               class="readout w-full"
               aria-label="Preset id"
-              title="Lower-case letters, digits and hyphens: the file's name, and what a build names"
+              title="Lower-case letters, digits and hyphens: the file's name, and what an export names it by"
               data-testid="preset-id"
               [disabled]="readOnly()"
               [value]="preset.id"
@@ -646,7 +646,7 @@ export class PresetEditor implements OnInit {
   }
 
   protected originName(origin: string): string {
-    return origin === 'factory' ? 'built in' : origin === 'project' ? 'project' : 'library';
+    return origin === 'factory' ? 'Starter' : origin === 'project' ? 'project' : 'library';
   }
 
   protected laneLabel(lane: number): string {

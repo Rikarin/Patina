@@ -61,7 +61,7 @@ public static class Terms {
     static readonly Dictionary<string, string> InExports = new(StringComparer.Ordinal) {
         ["infinite"] = "Dilation, infinite",
         ["transparent"] = "Dilation + transparent",
-        ["colour"] = "Dilation + colour",
+        ["colour"] = "Dilation + color",
         ["diffusion"] = "Dilation + diffusion"
     };
 

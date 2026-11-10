@@ -16,7 +16,7 @@ static class GltfMaterialFile {
         new([ExportFormats.Png8, ExportFormats.Png16, ExportFormats.Jpeg, ExportFormats.WebP], StringComparer.Ordinal);
 
     public static string Write(MaterialSlots slots, string name, ICollection<string> warnings) {
-        var baseColor = slots.BaseColor is { } colour ? Image(colour.File, "base colour", true, warnings) : null;
+        var baseColor = slots.BaseColor is { } colour ? Image(colour.File, "base color", true, warnings) : null;
         var blended = Blended(slots, baseColor, warnings);
         var metallicRoughness = MetallicRoughness(slots, warnings);
         var emissive = slots.Emissive is { } glow ? Image(glow.File, "emissive", true, warnings) : null;
@@ -64,7 +64,7 @@ static class GltfMaterialFile {
 
         var inAlpha = slots.Opacity is { Lane: 3, Inverted: false } opacity && opacity.File == slots.BaseColor?.File;
         if (!inAlpha) {
-            warnings.Add("glTF: opacity is left out, because glTF reads it only from the base colour file's alpha.");
+            warnings.Add("glTF: opacity is left out, because glTF reads it only from the base color file's alpha.");
         }
 
         return inAlpha && baseColor is not null;

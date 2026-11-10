@@ -34,7 +34,7 @@ function side(value: number, metresPerUnit: number | null | undefined): string {
             {{ facts.uvSets === 0 ? 'No UVs' : facts.uvSets === 1 ? '1 UV set' : facts.uvSets + ' UV sets' }}
           </span>
           @if (facts.vertexColours) {
-            <span class="readout" title="The file carries vertex colours">Vertex colours</span>
+            <span class="readout" title="The file carries vertex colors">Vertex colors</span>
           }
         </div>
         <div class="flex flex-wrap gap-x-3 gap-y-1">

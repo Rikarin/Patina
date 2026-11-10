@@ -172,7 +172,7 @@ static class PresetEndpoints {
 
         return ExportPresetCatalog.Read(null).Find(id) is not null
             ? Refusals.Problem(
-                $"'{id}' is a factory preset, which cannot be removed.",
+                $"'{id}' is a Starter preset, which cannot be deleted.",
                 StatusCodes.Status409Conflict,
                 Refusals.PresetFactory,
                 new Dictionary<string, string> { ["preset"] = id }

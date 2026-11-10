@@ -16,7 +16,7 @@ sealed class UsdMaterialFile(string name, ICollection<string> warnings) {
     readonly StringBuilder nodes = new();
 
     public string Write(MaterialSlots slots) {
-        Colour(slots.BaseColor, "color3f inputs:diffuseColor", "base colour");
+        Colour(slots.BaseColor, "color3f inputs:diffuseColor", "base color");
         Lane(slots.Roughness, "float inputs:roughness", "roughness");
         if (slots.Metalness is null && slots.Specular is not null) {
             inputs.Add("int inputs:useSpecularWorkflow = 1");

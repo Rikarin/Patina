@@ -98,7 +98,7 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
       >
         <img
           class="absolute top-1/2 left-1/2 max-w-none"
-          alt="The baked map"
+          alt="The mesh map"
           data-testid="texture-bake"
           draggable="false"
           style="image-rendering: pixelated"
@@ -118,7 +118,7 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
       <xui-non-ideal-state
         class="flex-1"
         title="No map shown"
-        description="This shows a node's picture in a graph, or a baked map. Choose a map in the Bake dialog to see it here."
+        description="This shows a node's picture in a graph, or a mesh map. Choose a map in the Bake dialog to see it here."
         data-testid="texture-empty"
       >
         <button
