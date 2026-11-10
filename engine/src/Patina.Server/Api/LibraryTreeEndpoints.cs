@@ -421,7 +421,7 @@ static class LibraryTreeEndpoints {
                 }
 
                 if (request.Restore) {
-                    Recovery.Restore(library.RootPath, file);
+                    autosave.Restore(library.RootPath, file);
                 } else {
                     autosave.Forget(library.RootPath, file);
                 }

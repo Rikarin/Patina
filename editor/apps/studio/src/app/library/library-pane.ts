@@ -138,9 +138,11 @@ function targetOf(row: LibraryRow): LibraryTarget {
         </xui-non-ideal-state>
       }
       @case ('ready') {
-        <div class="chrome-bar flex h-9 shrink-0 items-center gap-1.5 px-2">
+        <!-- The switch has the bar to itself, and narrower than it needs it is a list: xUI's segmented control keeps its
+             labels whole, and at the narrowest window ran under the layout toggle that was beside it (#243). -->
+        <div class="chrome-bar @container flex h-9 shrink-0 items-center gap-1.5 px-2">
           <xui-segmented-control
-            class="min-w-0 flex-1"
+            class="hidden min-w-0 flex-1 @min-[9.5rem]:flex"
             size="sm"
             fill
             aria-label="Library view"
@@ -148,39 +150,52 @@ function targetOf(row: LibraryRow): LibraryTarget {
             [value]="viewName()"
             (valueChange)="switchTo($event)"
           />
-          <button
-            type="button"
-            xuiButton
-            size="sm"
-            variant="ghost"
-            class="shrink-0 px-1.5"
-            data-testid="library-layout"
-            [attr.data-layout]="layout()"
-            [attr.aria-label]="layout() === 'grid' ? 'Show as a list' : 'Show as a grid of pictures'"
-            [attr.aria-pressed]="layout() === 'grid'"
-            [title]="layout() === 'grid' ? 'Show as a list' : 'Show as a grid of pictures'"
-            (click)="lay(layout() === 'grid' ? 'list' : 'grid')"
+          <select
+            class="well h-7 min-w-0 flex-1 px-1 text-sm @min-[9.5rem]:hidden"
+            aria-label="Library view"
+            data-testid="library-view-narrow"
+            (change)="switchTo(choiceOf($event))"
           >
-            <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
-              @if (layout() === 'grid') {
-                <path d="M2 3.5h12M2 8h12M2 12.5h12" stroke="currentColor" stroke-width="1.5" fill="none" />
-              } @else {
-                <path d="M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z" fill="currentColor" />
-              }
-            </svg>
-          </button>
+            @for (view of views; track view.value) {
+              <option [value]="view.value" [selected]="viewName() === view.value">{{ view.label }}</option>
+            }
+          </select>
         </div>
         <div class="flex shrink-0 flex-col gap-1.5 p-2">
-          <input
-            xuiInput
-            size="sm"
-            type="search"
-            aria-label="Search the library"
-            data-testid="library-search"
-            placeholder="Search names, tags and paths"
-            [value]="view().search()"
-            (input)="search($event)"
-          />
+          <div class="flex gap-1.5">
+            <input
+              xuiInput
+              size="sm"
+              type="search"
+              class="min-w-0 flex-1"
+              aria-label="Search the library"
+              data-testid="library-search"
+              placeholder="Search names, tags and paths"
+              [value]="view().search()"
+              (input)="search($event)"
+            />
+            <button
+              type="button"
+              xuiButton
+              size="sm"
+              variant="ghost"
+              class="shrink-0 px-1.5"
+              data-testid="library-layout"
+              [attr.data-layout]="layout()"
+              [attr.aria-label]="layout() === 'grid' ? 'Show as a list' : 'Show as a grid of pictures'"
+              [attr.aria-pressed]="layout() === 'grid'"
+              [title]="layout() === 'grid' ? 'Show as a list' : 'Show as a grid of pictures'"
+              (click)="lay(layout() === 'grid' ? 'list' : 'grid')"
+            >
+              <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
+                @if (layout() === 'grid') {
+                  <path d="M2 3.5h12M2 8h12M2 12.5h12" stroke="currentColor" stroke-width="1.5" fill="none" />
+                } @else {
+                  <path d="M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z" fill="currentColor" />
+                }
+              </svg>
+            </button>
+          </div>
           <xui-multi-select
             data-testid="library-tags"
             placeholder="Filter by tag"
@@ -710,6 +725,12 @@ export class LibraryPane {
         .pop()
         ?.replace(/\.ptlib$/, '') ?? path
     );
+  }
+
+  /** The view a list of views was set to. */
+  protected choiceOf(event: Event): LibraryTabChoice | null {
+    const value = (event.target as HTMLSelectElement).value;
+    return views.find(view => view.value === value)?.value ?? null;
   }
 
   protected switchTo(name: LibraryTabChoice | null): void {

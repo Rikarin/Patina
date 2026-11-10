@@ -126,6 +126,7 @@ app.UseExceptionHandler(
 );
 app.UsePatinaAccess(token);
 app.UseWebSockets();
+app.UseEndlessRequestsEndOnStop();
 app.MapOpenApi();
 app.MapPatinaApi();
 

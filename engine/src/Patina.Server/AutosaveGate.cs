@@ -42,13 +42,24 @@ public sealed class AutosaveGate {
 
     /// <summary>Lets go of a document's autosaves, those still being written included.</summary>
     public void Forget(string root, string file) {
-        var folder = Recovery.Folder(root, file);
         lock (gate) {
-            count++;
-            forgotten[folder] = count;
-            // ⚠ Not the autosave being written: deleting its folder under the Worker fails the save that asked.
-            Recovery.Clear(root, file, writing);
+            ForgetHeld(root, file);
         }
+    }
+
+    /// <summary>Puts a document's newest autosave in place of its file, then lets go of its autosaves.</summary>
+    public void Restore(string root, string file) {
+        lock (gate) {
+            Recovery.Restore(root, file);
+            ForgetHeld(root, file);
+        }
+    }
+
+    void ForgetHeld(string root, string file) {
+        count++;
+        forgotten[Recovery.Folder(root, file)] = count;
+        // ⚠ Not the autosave being written: deleting its folder under the Worker fails the save that asked.
+        Recovery.Clear(root, file, writing);
     }
 
     /// <summary>

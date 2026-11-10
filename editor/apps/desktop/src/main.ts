@@ -13,6 +13,7 @@ import {
   type SaveDialogOptions
 } from 'electron';
 import { existsSync, statSync } from 'node:fs';
+import inspector from 'node:inspector';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { contentSecurityPolicy } from './csp';
@@ -23,6 +24,16 @@ import { Sidecars } from './sidecars';
 
 // Patina desktop: the studio in a sandboxed window, and the backend (patina-server + patina-worker) as supervised
 // sidecars on loopback. The app is one client of the Server's API: nothing in that API knows about Electron (plan §8).
+
+// ⚠ A debugger attached to this process, as Playwright attaches one to every app it drives, held a quitting app open:
+// after the last 'exit' listener Node says "Waiting for the debugger to disconnect..." and waits, and the debugger is
+// waiting for the app to end. The quit had finished and the window was gone, and the process stayed until Playwright
+// happened to let go, 8 s and more on a loaded machine, past a test's wait for it to end (#236).
+process.on('exit', () => {
+  if (inspector.url() !== undefined) {
+    inspector.close();
+  }
+});
 
 app.setName('Patina');
 if (process.env['PATINA_USER_DATA']) {

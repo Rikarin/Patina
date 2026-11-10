@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using System.Net.Http.Json;
 using Vixen.Texturing.Painting;
 
 namespace Patina.Server.Tests;
@@ -58,5 +59,48 @@ public sealed partial class StackProcessTests {
 
         Assert.True(painted > 100, $"{painted} texels of the first stroke were compared.");
         Assert.NotEqual(after.Background, after.At(1630, 1601));
+    }
+
+    /// <summary>
+    ///     A stroke a Worker could not paint for its canvas's size is refused before it begins, so it never stands and
+    ///     the stack still evaluates with nothing to undo (#241): a canvas larger than its set, and one a stroke of the
+    ///     session began on before the set grew.
+    /// </summary>
+    [Fact]
+    public async Task A_stroke_refused_for_its_canvas_size_never_stands() {
+        using var deadline = Deadline(240);
+        var (_, state) = await StartAsync("Refused.vxlayers", deadline.Token);
+        var line = new StackStroke("first", "paint", "baseColor", new(30f, 0.3f), Red, Line(100, 100, 10));
+        await EditAsync(state.Id, deadline.Token, line);
+        await SaveAsync(state.Id, deadline.Token);
+
+        // Painted at 1024 earlier in this session, so the set made larger cannot enlarge it now.
+        await EditAsync(state.Id, deadline.Token, new StackSetSettings(Side * 2, Side * 2));
+        await RefusedAsync(state.Id, "stroke-canvas-painted-at-size", line with { Stroke = "grown" }, deadline.Token);
+        await SaveAsync(state.Id, deadline.Token);
+
+        using (var closed = await http.DeleteAsync($"/api/v1/stacks/{state.Id}", deadline.Token)) {
+            Assert.True(closed.IsSuccessStatusCode);
+        }
+
+        // Read from its file in a new session: 1024 is larger than a set made 512.
+        var again = await OpenAsync(state.Path, deadline.Token);
+        await EditAsync(again.Id, deadline.Token, new StackSetSettings(Side / 2, Side / 2));
+        await RefusedAsync(again.Id, "stroke-canvas-larger", line with { Stroke = "shrunk" }, deadline.Token);
+        await SaveAsync(again.Id, deadline.Token);
+        Assert.Equal("Texture set settings", (await StateAsync(again.Id, deadline.Token)).History.UndoLabel);
+        Assert.Equal(Side, CanvasBeside(state.Path).Width);
+    }
+
+    async Task RefusedAsync(string id, string code, StackCommand command, CancellationToken token) {
+        using var response = await http.PostAsJsonAsync(
+            $"/api/v1/stacks/{id}/commands",
+            new([command]),
+            ContractsJsonContext.Default.StackCommandBatch,
+            token
+        );
+        var problem = await response.Content.ReadAsStringAsync(token);
+        Assert.False(response.IsSuccessStatusCode, problem);
+        Assert.Contains($"\"code\":\"{code}\"", problem, StringComparison.Ordinal);
     }
 }

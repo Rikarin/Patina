@@ -98,7 +98,9 @@ static class PatinaApi {
             .ExcludeFromDescription();
 
         // Binary and endless, so outside the OpenAPI document: docs/adr/0003-frame-transport.md describes it.
-        api.MapGet("/viewport/frames", ViewportStream.RunAsync).ExcludeFromDescription();
+        api.MapGet("/viewport/frames", ViewportStream.RunAsync)
+            .WithMetadata(EndlessRequests.Marker)
+            .ExcludeFromDescription();
 
         api.MapViewportMaps();
         api.MapGraphApi();

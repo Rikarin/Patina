@@ -7,6 +7,7 @@ import {
   type ProjectDocumentInfo,
   type UnwrapOptions,
   type ViewportDisplay,
+  type ViewportState,
   unwrap
 } from '@patina/api-client';
 import { BakeStore } from '../bake/bake-store';
@@ -327,6 +328,22 @@ export class ProjectStore {
   /** Waits for the tab on its way to the front, if one is: what a command meant by the document in front. */
   inFront(): Promise<void> {
     return this.bringing;
+  }
+
+  /**
+   * Opens a mesh on the viewport for the document in front. A tab on its way to the front first lets go of the mesh
+   * that was there, so this waits until no tab is on its way: otherwise that would take away the mesh just opened
+   * (#237). A tab brought forward after this has begun takes it away, as it would any mesh of the one before.
+   */
+  async openMesh(path: string): Promise<ViewportState> {
+    let awaited: Promise<void>;
+    do {
+      awaited = this.bringing;
+      await awaited;
+    } while (awaited !== this.bringing);
+
+    const client = await this.library.api();
+    return unwrap(await client.PUT('/api/v1/viewport/mesh', { body: { path } }));
   }
 
   private async bringToFront(tab: DocumentTab): Promise<void> {

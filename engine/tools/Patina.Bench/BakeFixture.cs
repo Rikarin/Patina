@@ -119,10 +119,12 @@ public static class BakeFixture {
 
             const float Margin = 0.03f;
             float Across(int cell, float at) => (cell + Margin + at * (1f - 2f * Margin)) / 4f;
-            coordinates.Add(new(Across(u, 0f), Across(v, 0f)));
-            coordinates.Add(new(Across(u, 1f), Across(v, 0f)));
-            coordinates.Add(new(Across(u, 1f), Across(v, 1f)));
+            // ⚠ v runs down the picture, so a chart seen from the front has a below d: up its first edge is up the
+            // picture. The other way round mirrors the picture on the face (#242).
             coordinates.Add(new(Across(u, 0f), Across(v, 1f)));
+            coordinates.Add(new(Across(u, 1f), Across(v, 1f)));
+            coordinates.Add(new(Across(u, 1f), Across(v, 0f)));
+            coordinates.Add(new(Across(u, 0f), Across(v, 0f)));
             indices.AddRange([first, first + 1, first + 2, first, first + 2, first + 3]);
         }
 
@@ -149,8 +151,10 @@ public static class BakeFixture {
                 var point = Corner(height > 0f ? Sides - 1 - corner : corner);
                 positions.Add(new Vector3(point.X, height, point.Y) * Clearance);
                 normals.Add(up);
+                // Seen from below, x runs the other way, so the bottom's picture is turned over to read rightly.
+                var across = (point.X + Half) / (2f * Half);
                 coordinates.Add(
-                    new(Across(u, (point.X + Half) / (2f * Half)), Across(v, (point.Y + Half) / (2f * Half)))
+                    new(Across(u, height > 0f ? across : 1f - across), Across(v, (point.Y + Half) / (2f * Half)))
                 );
             }
 
@@ -452,7 +456,8 @@ public static class BakeFixture {
         for (var row = 0; row < rows; row++) {
             for (var column = 0; column < columns; column++) {
                 var at = first + row * (columns + 1) + column;
-                indices.AddRange([at, at + columns + 1, at + 1, at + 1, at + columns + 1, at + columns + 2]);
+                // Anticlockwise seen from where it faces, as its normals do.
+                indices.AddRange([at, at + 1, at + columns + 1, at + 1, at + columns + 2, at + columns + 1]);
             }
         }
     }
@@ -479,11 +484,8 @@ public static class BakeFixture {
     /// </summary>
     public static int Spike(string folder, int resolution, int rays, double reach) {
         var (high, low) = (Path.Combine(folder, "s9_high.glb"), Path.Combine(folder, "s9_low.glb"));
-        Directory.CreateDirectory(folder);
         if (!File.Exists(high)) {
-            var (dense, thin) = Knot(1000);
-            ModelWriter.Write(high, [dense], "s9");
-            ModelWriter.Write(low, [thin], "s9");
+            WriteKnot(folder, 1000);
         }
 
         var request = new BakeRequest {
@@ -517,10 +519,19 @@ public static class BakeFixture {
     }
 
     /// <summary>
-    ///     The knot of <see cref="MeshFixture" /> with a bumpy skin, as a grid, and its smooth low with a full atlas.
+    ///     Writes the knot of <see cref="MeshFixture" /> with a bumpy skin, as a grid, and its smooth low with a full
+    ///     atlas, as <c>s9_high.glb</c> and <c>s9_low.glb</c>.
     /// </summary>
-    static (MeshData High, MeshData Low) Knot(int side) =>
-        (Grid("knot_high", side, side, 1f), Grid("knot_low", 180, 24, 0f));
+    /// <param name="folder">Where the two files go.</param>
+    /// <param name="side">The high's columns and rows: S9 is 1000, two million triangles.</param>
+    /// <returns>The high file and the low.</returns>
+    public static (string High, string Low) WriteKnot(string folder, int side) {
+        var (high, low) = (Path.Combine(folder, "s9_high.glb"), Path.Combine(folder, "s9_low.glb"));
+        Directory.CreateDirectory(folder);
+        ModelWriter.Write(high, [Grid("knot_high", side, side, 1f)], "s9");
+        ModelWriter.Write(low, [Grid("knot_low", 180, 24, 0f)], "s9");
+        return (high, low);
+    }
 
     static float Bump(float u, float v) {
         var (a, b, sum, amplitude, fx, fy) = (u * MathF.Tau, v * MathF.Tau, 0f, 1f, 20f, 3f);
@@ -556,9 +567,12 @@ public static class BakeFixture {
                     var at = row * (columns + 1) + column;
                     positions[at] = Surface(u, v, bump);
                     coordinates[at] = new(u, v);
+                    // Across the grid's own neighbours, so the normal is the faces' around it. A bumpy skin's finer
+                    // bumps fall between the points, and a normal read finer than that turned against its faces (#242).
+                    var (du, dv) = (1f / columns, 1f / rows);
                     var normal = Vector3.Cross(
-                        Surface(u, v + 1e-3f, bump) - Surface(u, v - 1e-3f, bump),
-                        Surface(u + 1e-3f, v, bump) - Surface(u - 1e-3f, v, bump)
+                        Surface(u, v + dv, bump) - Surface(u, v - dv, bump),
+                        Surface(u + du, v, bump) - Surface(u - du, v, bump)
                     );
                     normals[at] = normal.LengthSquared() > 0f ? Vector3.Normalize(normal) : Vector3.UnitY;
                 }

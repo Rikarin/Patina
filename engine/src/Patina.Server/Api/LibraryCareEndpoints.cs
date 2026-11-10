@@ -114,6 +114,7 @@ static class LibraryCareEndpoints {
         LibraryHost host,
         GraphSessions graphs,
         StackSessions stacks,
+        AutosaveGate autosave,
         string project,
         Guid document
     ) =>
@@ -128,7 +129,7 @@ static class LibraryCareEndpoints {
                 }
 
                 var binned = library.TrashDocument(project, new(document));
-                Recovery.Clear(library.RootPath, file);
+                autosave.Forget(library.RootPath, file);
                 host.RequestRescan();
                 return TypedResults.Ok(binned);
             }

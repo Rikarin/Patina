@@ -204,6 +204,30 @@ describe('ProjectStore', () => {
       expect(store.tabs()).toHaveLength(0);
     });
 
+    it('keeps a mesh opened while it comes forward, where letting go of the one before would wipe it (#237)', async () => {
+      const { store, client, opened, release } = await opening();
+      const order: string[] = [];
+      client.DELETE.mockImplementation((route: string) => {
+        order.push(`DELETE ${route}`);
+        return Promise.resolve({ data: {}, response: new Response() });
+      });
+      const put = vi.fn((route: string, options: { body: { path: string } }) => {
+        order.push(`PUT ${route}`);
+        return Promise.resolve({ data: { mesh: options.body.path }, response: new Response() });
+      });
+      Object.assign(client, { PUT: put });
+
+      const mesh = store.openMesh('/meshes/crate.glb');
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(put).not.toHaveBeenCalled(); // the viewport is still letting go of what was in front
+
+      release();
+      await opened;
+      expect(await mesh).toEqual({ mesh: '/meshes/crate.glb' });
+      expect(order.at(-1)).toBe('PUT /api/v1/viewport/mesh');
+      expect(store.current()).not.toBeNull();
+    });
+
     it('turns them off with nothing open or on its way', () => {
       harness();
       TestBed.inject(ProjectCommands).install();
