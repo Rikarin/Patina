@@ -136,6 +136,75 @@ public sealed partial class StackProcessTests {
         );
     }
 
+    /// <summary>
+    ///     What the viewport draws of a set with no channel of its own for either map: with the bake beneath it, the
+    ///     bevels light and the corners darken; with the bake switched off, which is how every set looked before #86,
+    ///     the low mesh is flat. <c>PATINA_PICTURES</c> names a folder to keep the two frames in.
+    /// </summary>
+    [Fact]
+    public async Task The_viewport_shades_a_set_with_its_bake() {
+        using var deadline = Deadline(300);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        var meshes = Path.Combine(folder.FullName, "meshes");
+        BakeFixture.Write(meshes, 0.05f);
+        await StartAsync("Unused.vxlayers", deadline.Token);
+        var project = await MakeTexturingProjectAsync(Path.Combine(meshes, BakeFixture.LowFile), deadline.Token);
+        var projectFolder = Path.Combine(Library, "projects", project);
+        await BakeAsync(
+            new() {
+                High = [Path.Combine(meshes, BakeFixture.HighFile)],
+                Low = Path.Combine(projectFolder, BakeFixture.LowFile),
+                Output = Path.Combine(projectFolder, "bakes", "maps"),
+                Options = new() {
+                    Resolution = 512, Maps = ["normal", "ao"], Occlusion = new() { Rays = 32 }, Format = "png16"
+                }
+            },
+            deadline.Token
+        );
+
+        var state = await OpenAsync($"projects/{project}/housing.vxlayers", deadline.Token);
+        using (var worn = await http.PutAsJsonAsync("/api/v1/viewport/stack", new { stack = state.Id }, deadline.Token)) {
+            Assert.True(worn.IsSuccessStatusCode, await worn.Content.ReadAsStringAsync(deadline.Token));
+        }
+
+        var keep = Environment.GetEnvironmentVariable("PATINA_PICTURES") ?? folder.FullName;
+        var shaded = await SettledShotAsync(Path.Combine(keep, "bake-shading-combined.png"), deadline.Token);
+        var off = await EditAsync(state.Id, deadline.Token, new StackSetSettings(BakedNormal: "Off", BakedOcclusion: "Off"));
+        while ((await StateAsync(state.Id, deadline.Token)).Settled < off.Revision) {
+            await Task.Delay(100, deadline.Token);
+        }
+
+        var flat = await SettledShotAsync(Path.Combine(keep, "bake-shading-off.png"), deadline.Token);
+
+        Assert.NotEqual(Convert.ToHexString(shaded), Convert.ToHexString(flat));
+    }
+
+    /// <summary>A screenshot once two in a row agree, so the Worker's feed has reached the frame.</summary>
+    async Task<byte[]> SettledShotAsync(string path, CancellationToken token) {
+        byte[] last = [];
+        for (var attempt = 0; attempt < 40; attempt++) {
+            await Task.Delay(500, token);
+            using var response = await http.PostAsJsonAsync(
+                "/api/v1/viewport/screenshot",
+                new ViewportScreenshotRequest(path, 640, 480),
+                ContractsJsonContext.Default.ViewportScreenshotRequest,
+                token
+            );
+            if (!response.IsSuccessStatusCode) {
+                Gpu.Skip(await response.Content.ReadAsStringAsync(token));
+            }
+
+            var shot = await File.ReadAllBytesAsync(path, token);
+            if (shot.AsSpan().SequenceEqual(last)) {
+                return shot;
+            }
+
+            last = shot;
+        }
+
+        return last;
+    }
+
     async Task<string?> ProjectBakeStaleAsync(string project, CancellationToken token) {
         var contents = await http.GetFromJsonAsync<ProjectContents>($"/api/v1/library/project?path={project}", token);
         return contents!.Documents.Single(static d => d.Kind == DocumentKinds.Texturing).BakeStale;
