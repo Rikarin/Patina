@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { provideIcons } from '@ng-icons/core';
 import type { StackSymmetry, StackTerm } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
@@ -10,8 +10,9 @@ import { IconImports } from '../core/icons';
 import { channelName, termName } from '../core/labels';
 import { degrees, percent, toDegrees, toRadians } from '../core/numbers';
 import { ProjectStore } from '../library/project-store';
+import { LibraryThumbnails } from '../library/thumbnails';
 import { BrushPresets } from './brush-presets';
-import { MaximumRadius } from './paint-commands';
+import { maximumRadius } from './paint-commands';
 import { type BrushSettings, type FillMode, PaintStore } from './paint-store';
 import { FillModes, PaintToolIcons, PaintTools } from './paint-tools';
 
@@ -45,11 +46,16 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number; min?: 
   { key: 'flowJitter', label: 'Flow jitter', max: 1, shown: 'share' },
   { key: 'pressureSize', label: 'Pressure to size', max: 1, shown: 'share' },
   { key: 'pressureFlow', label: 'Pressure to flow', max: 1, shown: 'share' },
-  { key: 'lazy', label: 'Lazy mouse', max: 100, shown: 'size' }
+  { key: 'lazy', label: 'Lazy mouse', max: 100, shown: 'size' },
+  // How far a face may turn from the camera and still take paint: 90° paints all it looks at.
+  { key: 'facing', label: 'Face angle', max: 90, shown: 'angle' }
 ];
 
 /** The size slider's positions, which run on a log scale so a small brush is as easy to set as a big one. */
 const SizeSteps = 1000;
+
+/** How long the brush rests before its picture is drawn, so a slider being dragged asks once at the end. */
+const PreviewQuiet = 200;
 
 /** The brush: everything a stroke carries. A setting is read when a stroke starts, and nothing is sent until then. */
 @Component({
@@ -88,6 +94,15 @@ const SizeSteps = 1000;
       </button>
     </div>
     <ptn-brush-presets />
+    @if (preview(); as url) {
+      <img
+        class="well h-12 w-full object-contain"
+        alt="A stroke of the brush"
+        data-testid="paint-brush-preview"
+        title="A stroke of this brush at a size of its own, pressed harder towards the middle"
+        [src]="url"
+      />
+    }
     @switch (store.tool()) {
       @case ('fill') {
         <div class="flex items-center gap-2">
@@ -146,6 +161,9 @@ const SizeSteps = 1000;
           >Material</span
         >
         @if (store.material(); as material) {
+          @if (material.source && pictures.url(material.source); as picture) {
+            <img class="size-7 shrink-0 rounded-sm" alt="" data-testid="paint-material-picture" [src]="picture" />
+          }
           <span class="readout min-w-0 flex-1 truncate text-xs" data-testid="paint-material-name">{{
             material.name
           }}</span>
@@ -164,6 +182,54 @@ const SizeSteps = 1000;
           <span class="text-foreground-muted min-w-0 flex-1 truncate text-xs">Colors · Alt-click a shelf material</span>
         }
       </div>
+      @if (store.material()) {
+        <div class="flex items-center gap-2 ps-[4.5rem]" data-testid="paint-material-placement">
+          <select
+            class="well h-7 min-w-0 flex-1 px-1 text-sm"
+            aria-label="Material projection"
+            data-testid="paint-material-projection"
+            title="How the material's maps land: over the UV layout, or in the model's space at one size everywhere"
+            (change)="store.materialProjection.set(text($event))"
+          >
+            @for (term of terms().materialProjections; track term.value) {
+              <option
+                [value]="term.value"
+                [disabled]="term.value !== 'Uv' && !store.state()?.model"
+                [selected]="store.materialProjection() === term.value"
+              >
+                {{ term.label }}
+              </option>
+            }
+          </select>
+          <xui-slider
+            class="w-24 shrink-0"
+            labelStepSize="0"
+            aria-label="Material scale"
+            data-testid="paint-material-scale"
+            title="How many times the material repeats"
+            [max]="16"
+            [min]="0.25"
+            [stepSize]="0.25"
+            [value]="store.materialScale()"
+            (valueChange)="store.materialScale.set($event)"
+          />
+          <span class="readout w-10 shrink-0 text-end text-xs">{{ store.materialScale() }}×</span>
+        </div>
+      }
+    }
+    @if (store.tool() === 'picker' && !store.masking()) {
+      <label
+        class="flex items-center gap-2 text-xs"
+        title="Takes every channel the layer writes at the click, as Also paints, besides the painted channel's color"
+      >
+        <input
+          type="checkbox"
+          data-testid="paint-pick-every-channel"
+          [checked]="store.pickEveryChannel()"
+          (change)="store.pickEveryChannel.set(checked($event))"
+        />
+        Every channel
+      </label>
     }
     <div class="flex items-center gap-2" data-testid="paint-screen-picture">
       <span
@@ -436,6 +502,18 @@ const SizeSteps = 1000;
     </label>
     <label
       class="flex items-center gap-2 text-xs"
+      title="A stroke started where the last one stopped carries it on: nothing is laid twice where they meet, and a lazy brush keeps its string"
+    >
+      <input
+        type="checkbox"
+        data-testid="paint-resume"
+        [checked]="store.brush().resume"
+        (change)="set('resume', checked($event))"
+      />
+      Carry on the last stroke
+    </label>
+    <label
+      class="flex items-center gap-2 text-xs"
       title="On the mesh, paints only what the camera sees: off, a stroke also reaches what lies close behind the surface under it"
     >
       <input
@@ -524,7 +602,57 @@ export class BrushPanel {
     { key: 'scatterAxis', label: 'Scatter', terms: 'scatterAxes' }
   ];
   private readonly project = inject(ProjectStore);
+  protected readonly pictures = inject(LibraryThumbnails);
   protected readonly nameOf = channelName;
+
+  /** A stroke of the brush as it stands, drawn by the Worker, or null until there is one (#123). */
+  protected readonly preview = signal<string | null>(null);
+
+  constructor() {
+    let wait: ReturnType<typeof setTimeout> | undefined;
+    let asked = 0;
+    effect(() => {
+      // Its size is left out: the picture is drawn at a size of its own, so dragging the size draws nothing.
+      const brush = { ...this.store.brush(), radius: 1 };
+      const stack = this.store.state()?.id;
+      clearTimeout(wait);
+      if (!stack) {
+        return;
+      }
+
+      wait = setTimeout(() => {
+        const ticket = ++asked;
+        void this.store.previewBrush(brush).then(
+          blob => {
+            if (ticket === asked) {
+              this.show(blob);
+            }
+          },
+          () => undefined // a brush the Server refused keeps the last picture, as a slider passes through it
+        );
+      }, PreviewQuiet);
+    });
+    effect(() => {
+      const source = this.store.material()?.source;
+      if (source) {
+        this.pictures.want([source]);
+      }
+    });
+    inject(DestroyRef).onDestroy(() => {
+      clearTimeout(wait);
+      asked++;
+      this.show(null);
+    });
+  }
+
+  private show(blob: Blob | null): void {
+    const held = this.preview();
+    if (held) {
+      URL.revokeObjectURL(held);
+    }
+
+    this.preview.set(blob ? URL.createObjectURL(blob) : null);
+  }
 
   /** Where the clone reads from, as a place on the map, or what to do about having none. */
   protected readonly cloneWhere = computed(() => {
@@ -567,6 +695,7 @@ export class BrushPanel {
       axes: brush?.axes ?? plain(['x', 'y', 'z']),
       centres: brush?.centres ?? plain(['model', 'origin']),
       fills: brush?.fills ?? plain([...FillModes]),
+      materialProjections: brush?.materialProjections ?? plain(['Uv']),
       maximumCount: brush?.maximumCount ?? 64
     };
   });
@@ -639,11 +768,12 @@ export class BrushPanel {
   });
 
   protected readonly sizePosition = computed(() =>
-    Math.round((Math.log(Math.max(1, this.store.radius())) / Math.log(MaximumRadius)) * SizeSteps)
+    Math.round((Math.log(Math.max(1, this.store.radius())) / Math.log(maximumRadius(this.store))) * SizeSteps)
   );
 
   protected setSize(position: number): void {
-    this.store.radius.set(Math.max(1, Math.round(Math.exp((position / SizeSteps) * Math.log(MaximumRadius)))));
+    const most = maximumRadius(this.store);
+    this.store.radius.set(Math.max(1, Math.round(Math.exp((position / SizeSteps) * Math.log(most)))));
   }
 
   protected inDegrees(radians: number): number {

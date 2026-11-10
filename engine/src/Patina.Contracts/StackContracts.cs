@@ -824,6 +824,15 @@ public sealed record StackView(
 ///     How far in front of a texel something may lie and still not hide it, in thousandths of the model's size (its
 ///     bounds' diagonal), 0 to 1000: a decal floating a hair over a face is not the face's occluder.
 /// </param>
+/// <param name="Facing">
+///     How far a face may turn from the camera and still be painted, in radians from the line of sight, 0 to π/2. π/2
+///     paints every face the camera looks at; less keeps a stroke with a view off the faces it only grazes, where a
+///     stamp smears into a streak. Measured per triangle.
+/// </param>
+/// <param name="Resume">
+///     Whether a stroke that starts where the last one stopped carries it on. A client that sees one start there sends
+///     where the brush stood as <see cref="StackStroke.Resume" />; the brush only says whether to.
+/// </param>
 public sealed record StackBrush(
     float Radius,
     float Flow = 1f,
@@ -847,7 +856,9 @@ public sealed record StackBrush(
     bool Accumulate = true,
     string SizeSpace = "screen",
     bool Occlusion = true,
-    float OcclusionTolerance = 2f
+    float OcclusionTolerance = 2f,
+    float Facing = StackBrushes.AnyFacing,
+    bool Resume = false
 );
 #pragma warning restore SK7005
 
@@ -866,25 +877,6 @@ public sealed record StackPicture(
     float Scale = 1f,
     float Angle = 0f,
     bool Tiled = false
-);
-
-/// <summary>Where a stroke's colour comes from, when it is not one colour.</summary>
-/// <param name="Kind">
-///     <c>smudge</c> drags what the canvas holds along the stroke, with the brush's flow; <c>clone</c> copies the
-///     stack's composite from <paramref name="Offset" /> away, as it stood when the stroke began; <c>material</c> lays
-///     what <paramref name="Graph" /> makes in the stroke's channel; <c>picture</c> projects
-///     <paramref name="Picture" />.
-/// </param>
-/// <param name="Graph">For a material, the graph whose maps are laid, as a graph fill names it.</param>
-/// <param name="Offset">
-///     For a clone, how far the texel read is from the texel painted, in texels of the map: two numbers.
-/// </param>
-/// <param name="Picture">For a picture, the picture and where it stands.</param>
-public sealed record StackStrokeSource(
-    string Kind,
-    string? Graph = null,
-    IReadOnlyList<float>? Offset = null,
-    StackPicture? Picture = null
 );
 
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field.
@@ -927,6 +919,12 @@ public sealed record StackStrokeSource(
 ///     With the fill curve, how much of the mesh a click takes: <c>triangle</c>, <c>polygon</c> (the flat polygon it
 ///     is part of), <c>part</c> (the named mesh it belongs to) or <c>shell</c> (its UV island). It needs a mesh.
 /// </param>
+/// <param name="Resume">
+///     Where the brush already stands when this stroke carries on the one before it, as two numbers in the units of
+///     its stamps, or null. The stroke starts there without a stamp, as a pen lifted in the middle of one stroke and
+///     put down again: its first stamp comes a step along, so nothing is laid twice where the two meet, and a lazy
+///     brush keeps its string. Only a free stroke carries one on; it is still an undo step of its own.
+/// </param>
 public sealed record StackStroke(
     string Stroke,
     string Layer,
@@ -942,7 +940,8 @@ public sealed record StackStroke(
     int? MaskLayer = null,
     StackStrokeSource? Source = null,
     StackPicture? Stencil = null,
-    string? Fill = null
+    string? Fill = null,
+    IReadOnlyList<float>? Resume = null
 ) : StackCommand;
 #pragma warning restore SK7005
 

@@ -44,6 +44,9 @@ public sealed class StackJournalEntry(
 
     public string? Fill { get; } = first.Fill;
 
+    /// <summary>Where the brush already stood when this stroke carries the last one on, or null.</summary>
+    public IReadOnlyList<float>? Resume { get; } = first.Resume;
+
     /// <summary>
     ///     What a clone or a material reads, as a stack written out: the stack as it stood when the stroke began, or a
     ///     stack of the material alone. In the journal so a replay reads the same whatever was edited since.

@@ -1575,6 +1575,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/stacks/{id}/brush-preview': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising and falling, drawn by the Worker under /previews with the alphas this stack's strokes read. A brush no stroke could take is refused with its reason. */
+    post: operations['PreviewStackBrush'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/sample': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** What every channel holds at a place on the map, as a material picker takes it up: one texel of each, read back from the composite at full size, as numbers. */
+    post: operations['SampleStack'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/stacks/{id}/thumbnails': {
     parameters: {
       query?: never;
@@ -5047,6 +5081,25 @@ export interface components {
        * @default 2
        */
       occlusionTolerance: number;
+      /**
+       * Format: float
+       * @description How far a face may turn from the camera and still be painted, in radians from the line of sight, 0 to π/2. π/2
+       *     paints every face the camera looks at; less keeps a stroke with a view off the faces it only grazes, where a
+       *     stamp smears into a streak. Measured per triangle.
+       * @default 1.5707964
+       */
+      facing: number;
+      /**
+       * @description Whether a stroke that starts where the last one stopped carries it on. A client that sees one start there sends
+       *     where the brush stood as IReadOnlyList&lt;float&gt;? StackStroke.Resume; the brush only says whether to.
+       * @default false
+       */
+      resume: boolean;
+    };
+    /** @description A picture of a brush: a stroke of it drawn small, under `/previews/{hash}`. */
+    StackBrushPreview: {
+      /** @description Its name in the preview cache, or null when the brush draws nothing. */
+      hash?: null | string;
     };
     /** @description What a brush's fields take and how a new brush starts, so a client keeps no list or default of its own. */
     StackBrushTerms: {
@@ -5085,6 +5138,8 @@ export interface components {
        * @description The most strokes a radial symmetry makes.
        */
       maximumCount: number;
+      /** @description How a material brush can lay its maps on the mesh. */
+      materialProjections: components['schemas']['StackTerm'][];
     };
     /** @description A channel a stack writes. */
     StackChannel: {
@@ -5609,6 +5664,13 @@ export interface components {
        *     is part of), `part` (the named mesh it belongs to) or `shell` (its UV island). It needs a mesh.
        */
       fill?: null | string;
+      /**
+       * @description Where the brush already stands when this stroke carries on the one before it, as two numbers in the units of
+       *     its stamps, or null. The stroke starts there without a stamp, as a pen lifted in the middle of one stroke and
+       *     put down again: its first stamp comes a step along, so nothing is laid twice where the two meet, and a lazy
+       *     brush keeps its string. Only a free stroke carries one on; it is still an undo step of its own.
+       */
+      resume?: null | number[];
     };
     /** @description Takes a flattened group back to its children, which composite again. */
     StackCommandStackUnflattenLayer: {
@@ -6319,6 +6381,24 @@ export interface components {
       /** @description What is wrong. */
       message: string;
     };
+    /**
+     * @description What every channel of a stack holds at one place on its map, as a material picker takes it up: numbers read
+     *     back from the composite at full size, never a picture.
+     */
+    StackSample: {
+      /** @description Each channel the set has, with its value there. */
+      channels: components['schemas']['StackSampledChannel'][];
+    };
+    /** @description What one channel holds at a place. */
+    StackSampledChannel: {
+      /** @description The channel. */
+      usage: string;
+      /**
+       * @description Red, green, blue and alpha, 0 to 1, as the map stores them and a stroke's colour is given: a one-number channel
+       *     repeats its number in the first three.
+       */
+      value: number[];
+    };
     /** @description What a save made. */
     StackSavedMaterial: {
       /** @description The document, below the library, as the shelf names it. */
@@ -6469,6 +6549,16 @@ export interface components {
       /** @description For a clone, how far the texel read is from the texel painted, in texels of the map: two numbers. */
       offset?: null | number[];
       picture?: null | components['schemas']['StackPicture'];
+      /**
+       * @description For a material, how its maps land on the mesh, as a fill's do: `Uv` (the default) lays them over the
+       *     layout, so a material's size follows how the UVs are laid out; `Triplanar`, `Planar`,
+       *     `Spherical` and `Cylindrical` lay them in the model's space, the same size wherever the stroke goes.
+       *     A projection in the model's space needs a mesh.
+       */
+      projection?: null | string;
+      /** @description For a planar material, the axis it projects along: X, Y or Z. */
+      planarAxis?: null | string;
+      placement?: null | components['schemas']['StackPlacement'];
     };
     /** @description An open stack, for a list. */
     StackSummary: {
@@ -12035,6 +12125,112 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['StackFound'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  PreviewStackBrush: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StackBrush'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackBrushPreview'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SampleStack: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StackFindRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackSample'];
         };
       };
       /** @description Not Found */

@@ -73,7 +73,7 @@ export class MaterialUse {
 
     try {
       const graph = await this.publish(project.path, material);
-      this.paint.material.set({ name: material.name, graph });
+      this.paint.material.set({ name: material.name, graph, source: material.source });
       if (this.paint.tool() !== 'fill') {
         this.paint.tool.set('brush');
       }

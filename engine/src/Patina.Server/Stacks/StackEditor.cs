@@ -485,7 +485,9 @@ public sealed class StackEditor : ILayerStackDocument {
         );
     }
 
-    static LayerPlacement Placed(StackPlacement placement) {
+    /// <summary>Where a fill sits, as a layer keeps it.</summary>
+    /// <exception cref="StackEditRefusedException">It repeats no times or fewer.</exception>
+    internal static LayerPlacement Placed(StackPlacement placement) {
         if (placement.Scale <= 0f) {
             throw new StackEditRefusedException("A scale is above zero.");
         }
@@ -923,11 +925,13 @@ public sealed class StackEditor : ILayerStackDocument {
             throw new StackEditRefusedException(problem, Api.Refusals.BrushRefused, Api.Refusals.Reason(problem));
         }
 
-        // A symmetry, a view, a size in the model's units and a polygon fill are all on the mesh.
+        // A symmetry, a view, a size in the model's units, a polygon fill and a material laid in the model's space are
+        // all on the mesh.
         var onMesh = stroke.View is not null
             || stroke.Symmetry is not null
             || stroke.Brush.SizeSpace == "model"
-            || stroke.Curve == "fill";
+            || stroke.Curve == "fill"
+            || stroke.Source is { Kind: "material", Projection: not (null or "Uv") };
         if (onMesh && Document.Model.Trim().Length == 0) {
             throw new StackEditRefusedException("This stack has no mesh to paint on.", Api.Refusals.NoMesh);
         }

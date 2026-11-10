@@ -1,5 +1,6 @@
 using Patina.Contracts;
 using Patina.Ipc;
+using Vixen.Core.Imaging;
 using Vixen.Core.Mathematics;
 using Vixen.Terrain;
 using Vixen.Texturing.Painting;
@@ -24,9 +25,18 @@ static class StrokeShapes {
         );
     }
 
-    /// <summary>Whether a stroke paints only what its camera sees, its tolerance a share of the model's size.</summary>
+    /// <summary>
+    ///     Whether a stroke paints only what its camera sees, its tolerance a share of the model's size, and how far a
+    ///     face may turn from the camera, which holds either way.
+    /// </summary>
     public static PaintOcclusion Occlusion(StackBrush brush) =>
-        brush.Occlusion ? new(true, brush.OcclusionTolerance / 1000f) : PaintOcclusion.None;
+        brush.Occlusion
+            ? new(true, brush.OcclusionTolerance / 1000f, brush.Facing)
+            : PaintOcclusion.None with { Facing = brush.Facing };
+
+    /// <summary>Where the brush already stands for a free stroke that carries the last one on, or null.</summary>
+    public static Vector2? Resume(StackPaintPart part) =>
+        part.Curve == "free" && part.Resume is [var x, var y] ? new Vector2(x, y) : null;
 
     public static PaintView View(StackView view) =>
         new(
@@ -85,6 +95,41 @@ static class StrokeShapes {
     }
 
     static Vector3 Point(IReadOnlyList<float> numbers) => new(numbers[0], numbers[1], numbers[2]);
+
+    /// <summary>
+    ///     A named alpha, or a picture beside the stack read through its red channel, which <paramref name="held" />
+    ///     keeps by its file so a stroke reads it once. Null is round.
+    /// </summary>
+    /// <param name="name">The alpha a brush names.</param>
+    /// <param name="folder">The stack's folder, which a picture is relative to.</param>
+    /// <param name="held">The pictures read so far.</param>
+    /// <exception cref="IpcException">The picture would not read.</exception>
+    public static IBrushMask? Alpha(string? name, string folder, Dictionary<string, IBrushMask> held) {
+        if (name is null || name == PaintAlphas.Round) {
+            return null;
+        }
+
+        if (PaintAlphas.Find(name) is { } shelved) {
+            return shelved;
+        }
+
+        var file = Path.GetFullPath(name, folder);
+        if (held.TryGetValue(file, out var known)) {
+            return known;
+        }
+
+        try {
+            var picture = PngCodec.Decode(SharedFile.ReadAllBytes(file));
+            PaintImage image = new(picture.Width, picture.Height);
+            for (var at = 0; at < picture.Width * picture.Height; at++) {
+                image[at] = PaintImage.Pack(picture.Pixels[at * 4] / 255f, 0f, 0f, 1f);
+            }
+
+            return held[file] = new PaintImageMask(image, 0);
+        } catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException) {
+            throw new IpcException($"'{name}' would not read as an alpha: {e.Message}");
+        }
+    }
 
     /// <summary>A stroke's brush as Vixen stamps with it, the alpha already found.</summary>
     public static PaintBrush Brush(StackBrush brush, IBrushMask? alpha) =>

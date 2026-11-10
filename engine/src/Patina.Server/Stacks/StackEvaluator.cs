@@ -211,6 +211,49 @@ public sealed class StackEvaluator(
         return reply.FoundLayer;
     }
 
+    /// <summary>What each channel of a stack holds at a place on the map, read back by the Worker as numbers.</summary>
+    /// <exception cref="TimeoutException">No Worker came.</exception>
+    /// <exception cref="IpcException">The stack would not evaluate.</exception>
+    /// <summary>
+    ///     A picture of a brush, a stroke of it drawn small by the Worker into the preview cache, with the alphas this
+    ///     stack's strokes read. Not a stroke: nothing is journalled and the stack is not touched.
+    /// </summary>
+    /// <remarks>It waits on nothing the stack does and needs no device, so it draws while a stroke evaluates.</remarks>
+    /// <exception cref="TimeoutException">No Worker came.</exception>
+    /// <exception cref="IpcException">The Worker could not draw it.</exception>
+    public async Task<string?> PreviewBrushAsync(
+        StackSession session,
+        StackBrush brush,
+        CancellationToken cancellationToken
+    ) {
+        var connection = await ConnectionAsync(cancellationToken);
+        var folder = Path.GetDirectoryName(session.Path) ?? string.Empty;
+        var reply = await connection.SendAsync(
+            new() { Type = IpcTypes.BrushPreview, BrushPreview = new(folder, brush, store.Root) },
+            cancellationToken
+        );
+        return reply.ThumbnailHash;
+    }
+
+    public async Task<StackSample> SampleAsync(
+        StackSession session,
+        float u,
+        float v,
+        CancellationToken cancellationToken
+    ) {
+        await ReachedAsync(session, cancellationToken);
+        if (session.EvaluationError is { } failed) {
+            throw new IpcException(failed);
+        }
+
+        var connection = await ConnectionAsync(cancellationToken);
+        var reply = await connection.SendAsync(
+            new() { Type = IpcTypes.StackSample, StackSample = new(session.Id, u, v) },
+            cancellationToken
+        );
+        return new(reply.Sampled ?? []);
+    }
+
     /// <summary>
     ///     What the Worker measures of a stack's set before export: its layout and the values in its maps, as numbers.
     /// </summary>

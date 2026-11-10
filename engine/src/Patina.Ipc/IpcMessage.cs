@@ -119,6 +119,15 @@ public static class IpcTypes {
     /// </summary>
     public const string StackFind = "stack.find";
 
+    /// <summary>Reads what each channel of a stack holds at a place on its map, for a material picker.</summary>
+    public const string StackSample = "stack.sample";
+
+    /// <summary>
+    ///     Draws a stroke of a brush small, into the preview folder, with the alphas a stack's strokes read. It needs
+    ///     no stack loaded and no device: it is a few dozen stamps on the CPU.
+    /// </summary>
+    public const string BrushPreview = "brush.preview";
+
     /// <summary>
     ///     Measures a stack's set before export: its layout on the mesh, and the share of its texels a physical
     ///     material
@@ -292,6 +301,15 @@ public sealed class IpcMessage {
     public IReadOnlyList<StackLayerThumbnail>? StackLayerThumbnails { get; set; }
 
     public StackFindAsk? StackFind { get; set; }
+
+    /// <summary>stack.sample: the stack and the place, which a find asks about the same way.</summary>
+    public StackFindAsk? StackSample { get; set; }
+
+    /// <summary>The reply to stack.sample: each channel's value there.</summary>
+    public IReadOnlyList<StackSampledChannel>? Sampled { get; set; }
+
+    /// <summary>brush.preview: the brush to draw. Its reply is <see cref="ThumbnailHash" />.</summary>
+    public BrushPreviewAsk? BrushPreview { get; set; }
 
     /// <summary>stack.check: the session to measure.</summary>
     public string? StackCheck { get; set; }
@@ -512,6 +530,12 @@ public sealed record StackLayerThumbnail(string Layer, string Hash);
 /// <param name="V">Down it, 0 to 1.</param>
 public sealed record StackFindAsk(string Session, float U, float V);
 
+/// <summary>Asks for a picture of a brush, a stroke of it drawn small.</summary>
+/// <param name="Folder">The stack's folder, which an alpha that is a picture is relative to.</param>
+/// <param name="Brush">The brush.</param>
+/// <param name="PreviewFolder">The content-addressed folder the picture goes in.</param>
+public sealed record BrushPreviewAsk(string Folder, StackBrush Brush, string PreviewFolder);
+
 /// <summary>Asks for one picture of a loaded graph at the size the graph computes it.</summary>
 /// <param name="Session">The graph.</param>
 /// <param name="Node">The node.</param>
@@ -610,6 +634,7 @@ public sealed record StackLoad(
 /// </param>
 /// <param name="Width">The set's width when the stroke began, which its stamps are texels of; 0 is today's.</param>
 /// <param name="Height">The set's height when the stroke began.</param>
+/// <param name="Resume">Where the brush already stood when a free stroke carries the last one on, or null.</param>
 public sealed record StackPaintPart(
     long Id,
     string Paint,
@@ -630,7 +655,8 @@ public sealed record StackPaintPart(
     string? Fill = null,
     string? SourceDocument = null,
     int Width = 0,
-    int Height = 0
+    int Height = 0,
+    IReadOnlyList<float>? Resume = null
 );
 
 /// <summary>What a flattened group's canvas is made of.</summary>

@@ -55,7 +55,14 @@ public static class StackDocuments {
                                     Name = "Material",
                                     Kind = LayerKind.Fill,
                                     Fill = LayerFillSource.Graph,
-                                    Graph = source.Graph!
+                                    Graph = source.Graph!,
+                                    Projection = Enum.Parse<LayerProjection>(
+                                        source.Projection ?? nameof(LayerProjection.Uv)
+                                    ),
+                                    PlanarAxis = Enum.Parse<LayerAxis>(source.PlanarAxis ?? nameof(LayerAxis.Y)),
+                                    Placement = source.Placement is { } placement
+                                        ? StackEditor.Placed(placement)
+                                        : new()
                                 }
                             ]
                         }
@@ -102,7 +109,8 @@ public static class StackDocuments {
             Terms.InFill(StackBrushes.Fills),
             StackBrushes.MaximumRadius,
             StackBrushes.MaximumAspect,
-            StackBrushes.MaximumCount
+            StackBrushes.MaximumCount,
+            Terms.InStack(StackBrushes.MaterialProjections)
         ),
         Terms.InStack(Enum.GetNames<LayerInputSource>()),
         Sources(),

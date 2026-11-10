@@ -220,6 +220,7 @@ from .stack_anchor import StackAnchor
 from .stack_anchor_ref import StackAnchorRef
 from .stack_anchor_use import StackAnchorUse
 from .stack_brush import StackBrush
+from .stack_brush_preview import StackBrushPreview
 from .stack_brush_terms import StackBrushTerms
 from .stack_channel import StackChannel
 from .stack_checks import StackChecks
@@ -324,6 +325,8 @@ from .stack_pixels import StackPixels
 from .stack_placement import StackPlacement
 from .stack_preview import StackPreview
 from .stack_problem import StackProblem
+from .stack_sample import StackSample
+from .stack_sampled_channel import StackSampledChannel
 from .stack_save_material_request import StackSaveMaterialRequest
 from .stack_saved_material import StackSavedMaterial
 from .stack_stamp import StackStamp
@@ -585,6 +588,7 @@ __all__ = (
     "StackAnchorRef",
     "StackAnchorUse",
     "StackBrush",
+    "StackBrushPreview",
     "StackBrushTerms",
     "StackChannel",
     "StackChecks",
@@ -689,6 +693,8 @@ __all__ = (
     "StackPlacement",
     "StackPreview",
     "StackProblem",
+    "StackSample",
+    "StackSampledChannel",
     "StackSavedMaterial",
     "StackSaveMaterialRequest",
     "StackStamp",
