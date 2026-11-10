@@ -46,8 +46,8 @@ const KindHints: Readonly<Record<string, string>> = {
         @if (plan(); as plan) {
           <p class="text-sm">
             <span class="font-semibold">{{ plan.name }}</span> goes to
-            <span class="readout" data-testid="publish-package-path">{{ plan.path }}</span>
-            {{ plan.replaces ? ', replacing the package of that name.' : '.' }}
+            <span class="readout" data-testid="publish-package-path">{{ plan.path }}</span
+            >{{ plan.replaces ? ', replacing the package of that name.' : '.' }}
           </p>
           <div class="flex flex-col gap-1">
             <span class="text-foreground-muted text-xs">Use as</span>
