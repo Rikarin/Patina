@@ -543,6 +543,9 @@ export class ProjectStore {
     unwrap?: UnwrapOptions;
     reassign?: Record<string, string>;
   }): Promise<boolean> {
+    // A tab on its way to the front lets go of the viewport's mesh as it comes (#237), and settings that move the mesh
+    // close and open its documents again, so they wait for it and apply to the project it brings.
+    await this.inFront();
     const project = this.current();
     if (!project) {
       return false;

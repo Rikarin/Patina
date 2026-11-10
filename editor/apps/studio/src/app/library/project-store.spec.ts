@@ -840,6 +840,35 @@ describe('ProjectStore', () => {
       expect(store.active()?.path).toBe(paths.texturing);
     });
 
+    it('reassigns the project a tab on its way to the front belongs to, once it has arrived (#89, #237)', async () => {
+      const { store, client, patch } = reloadable(true);
+      let release = (): void => undefined;
+      client.DELETE.mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            release = () => resolve({ data: {}, response: new Response() });
+          })
+      );
+      const opened = store.open('a');
+      await vi.waitFor(() => expect(store.tabs()).toHaveLength(1));
+
+      const applied = store.applySettings({ mesh: '/art/low.glb', reassign: { Old: 'New' } });
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(patch).not.toHaveBeenCalled(); // the viewport is still letting go of what was in front
+
+      release();
+      await opened;
+      expect(await applied).toBe(true);
+      const [route, options] = patch.mock.calls[0] as unknown as [
+        string,
+        { body: { project: string; reassign: Record<string, string> } }
+      ];
+      expect(route).toBe('/api/v1/library/project/settings');
+      expect(options.body.project).toBe('a');
+      expect(options.body.reassign).toEqual({ Old: 'New' });
+      expect(store.active()?.path).toBe(paths.texturing);
+    });
+
     it('says when the bake layers read is out of date', async () => {
       const { store, client } = harness();
       const stale = { ...contents, bakes: [{ kind: 'bake', name: 'a', path: 'p', stale: true }] };

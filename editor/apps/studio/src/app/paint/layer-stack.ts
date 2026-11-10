@@ -26,10 +26,9 @@ import { diagnosticOf, messageOf } from '../core/messages';
 import { percent } from '../core/numbers';
 import { ProjectStore } from '../library/project-store';
 import { type DropZone, dropManyCommands, nudgeCommands } from './layer-drag';
-import { hexOf } from './layer-panel';
 import { tagSwatch } from './layer-tags';
 import { MaterialUse } from './material-use';
-import { type LayerRow, PaintStore, maskOn, toggledEffect } from './paint-store';
+import { type LayerRow, PaintStore, hexOf, maskOn, toggledEffect } from './paint-store';
 
 const RowHeight = 56;
 /** A row in the compact list (#106): its thumbnails and its blending on one line. */

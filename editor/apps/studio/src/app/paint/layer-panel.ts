@@ -28,7 +28,7 @@ import { FilterInputs, type FilterSources } from './filter-inputs';
 import { tagSwatch } from './layer-tags';
 import { LayerDraft } from './live-value';
 import { MaterialUse } from './material-use';
-import { colourOf, PaintStore, writesChannel } from './paint-store';
+import { colourOf, hexOf, PaintStore, writesChannel } from './paint-store';
 import { SurfaceFields } from './surface-fields';
 
 const Axes: readonly string[] = ['X', 'Y', 'Z'];
@@ -53,15 +53,6 @@ function stemOf(source: string): string | undefined {
     .split('/')
     .pop()
     ?.replace(/\.[^.]*$/u, '');
-}
-
-export function hexOf(colour: readonly number[] | undefined): string {
-  const [r = 0, g = 0, b = 0] = colour ?? [];
-  const lane = (value: number) =>
-    Math.round(Math.min(1, Math.max(0, value)) * 255)
-      .toString(16)
-      .padStart(2, '0');
-  return `#${lane(r)}${lane(g)}${lane(b)}`;
 }
 
 /**

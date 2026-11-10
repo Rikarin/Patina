@@ -5,13 +5,13 @@ import { RecoveryOffers } from '../core/recovery-offers';
 import { EngineRestarts } from '../core/session-return';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
-import { hexOf } from './layer-panel';
 import { LiveValue } from './live-value';
 import { maximumRadius } from './paint-commands';
 import {
   NewBrush,
   PaintStore,
   colourOf,
+  hexOf,
   pressureOf,
   rowsOf,
   stackSocketUrl,

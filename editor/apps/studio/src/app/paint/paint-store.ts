@@ -1940,10 +1940,10 @@ export function colourOf(hex: string): number[] {
   return [((value >> 16) & 255) / 255, ((value >> 8) & 255) / 255, (value & 255) / 255, 1];
 }
 
-/** The swatch for a stroke's four numbers, 0 to 1, the other way from {@link colourOf}. */
-export function hexOf(value: readonly number[]): string {
+/** The swatch for a stroke's four numbers, 0 to 1, the other way from {@link colourOf}; black for none. */
+export function hexOf(value: readonly number[] | undefined): string {
   const lane = (at: number) =>
-    Math.round(Math.min(1, Math.max(0, value[at] ?? 0)) * 255)
+    Math.round(Math.min(1, Math.max(0, value?.[at] ?? 0)) * 255)
       .toString(16)
       .padStart(2, '0');
   return `#${lane(0)}${lane(1)}${lane(2)}`;
