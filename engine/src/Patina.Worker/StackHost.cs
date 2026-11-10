@@ -74,7 +74,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         return new() { Type = IpcTypes.Ok, FoundLayer = Find(ask.Session).LayerAt(ask.U, ask.V) };
     }
 
-    /// <summary>What every channel holds at a place on the map, for a material picker: numbers, never the picture.</summary>
+    /// <summary>What each channel holds at a place on the map, for a material picker: numbers, not a picture.</summary>
     public IpcMessage Sample(IpcMessage request) {
         var ask = request.StackSample ?? throw new IpcException("stack.sample names no stack.");
         return new() { Type = IpcTypes.Ok, Sampled = Find(ask.Session).SampleAt(ask.U, ask.V) };

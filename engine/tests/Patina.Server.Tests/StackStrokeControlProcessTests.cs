@@ -109,7 +109,7 @@ public sealed partial class StackProcessTests {
 
     /// <summary>
     ///     A stroke that carries the last one on starts where the brush stood: a lazy one put down within its string of
-    ///     there paints nothing until it is pulled past it, where a fresh stroke lays a stamp under the pointer at once.
+    ///     there paints nothing until it is pulled past it, where a fresh stroke lays a stamp under the pointer.
     ///     Undone, it takes nothing of the stroke before it.
     /// </summary>
     [Fact]

@@ -210,14 +210,14 @@ public sealed class StackEvaluator(
         return reply.FoundLayer;
     }
 
-    /// <summary>What every channel of a stack holds at a place on the map, which the Worker reads back as numbers.</summary>
+    /// <summary>What each channel of a stack holds at a place on the map, read back by the Worker as numbers.</summary>
     /// <exception cref="TimeoutException">No Worker came.</exception>
     /// <exception cref="IpcException">The stack would not evaluate.</exception>
     /// <summary>
     ///     A picture of a brush, a stroke of it drawn small by the Worker into the preview cache, with the alphas this
     ///     stack's strokes read. Not a stroke: nothing is journalled and the stack is not touched.
     /// </summary>
-    /// <remarks>It waits on nothing the stack is doing and needs no device, so it draws while a stroke evaluates.</remarks>
+    /// <remarks>It waits on nothing the stack does and needs no device, so it draws while a stroke evaluates.</remarks>
     /// <exception cref="TimeoutException">No Worker came.</exception>
     /// <exception cref="IpcException">The Worker could not draw it.</exception>
     public async Task<string?> PreviewBrushAsync(

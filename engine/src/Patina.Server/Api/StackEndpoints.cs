@@ -26,6 +26,7 @@ static class StackEndpoints {
         var stacks = api.MapGroup("/stacks").WithTags(Tag);
         stacks.MapStackChecks();
         stacks.MapStackShelf();
+        stacks.MapStackBrushes();
 
         void Post(string route, Delegate handler, string name, string summary, params int[] problems) =>
             stacks.MapPost(route, handler).Describe(name, summary, problems);
@@ -133,27 +134,6 @@ static class StackEndpoints {
             "FindStackLayer",
             "The layer on top at a place on the map, as a click on the mesh or the map finds it. Its answer is a layer "
             + "id: the Worker weighs each layer there and no picture leaves it.",
-            Missing,
-            Refused,
-            Unavailable
-        );
-        Post(
-            "/{id}/brush-preview",
-            PreviewBrush,
-            "PreviewStackBrush",
-            "A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising and "
-            + "falling, drawn by the Worker under /previews with the alphas this stack's strokes read. A brush no stroke "
-            + "could take is refused with its reason.",
-            Missing,
-            Refused,
-            Unavailable
-        );
-        Post(
-            "/{id}/sample",
-            Sample,
-            "SampleStack",
-            "What every channel holds at a place on the map, as a material picker takes it up: one texel of each, "
-            + "read back from the composite at full size, as numbers.",
             Missing,
             Refused,
             Unavailable
@@ -374,37 +354,6 @@ static class StackEndpoints {
             id,
             sessions,
             async session => new StackFound(await evaluator.FindAsync(session, request.U, request.V, cancellationToken))
-        );
-
-    static async Task<Results<Ok<StackBrushPreview>, ProblemHttpResult>> PreviewBrush(
-        string id,
-        StackBrush brush,
-        StackSessions sessions,
-        StackEvaluator evaluator,
-        CancellationToken cancellationToken
-    ) {
-        if (brush.Problem() is { } problem) {
-            return Refusals.Problem(problem, Refused, Refusals.BrushRefused, Refusals.Reason(problem));
-        }
-
-        return await AskWorkerAsync(
-            id,
-            sessions,
-            async session => new StackBrushPreview(await evaluator.PreviewBrushAsync(session, brush, cancellationToken))
-        );
-    }
-
-    static Task<Results<Ok<StackSample>, ProblemHttpResult>> Sample(
-        string id,
-        StackFindRequest request,
-        StackSessions sessions,
-        StackEvaluator evaluator,
-        CancellationToken cancellationToken
-    ) =>
-        AskWorkerAsync(
-            id,
-            sessions,
-            session => evaluator.SampleAsync(session, request.U, request.V, cancellationToken)
         );
 
     /// <summary>

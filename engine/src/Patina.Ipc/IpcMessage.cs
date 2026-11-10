@@ -119,7 +119,7 @@ public static class IpcTypes {
     /// </summary>
     public const string StackFind = "stack.find";
 
-    /// <summary>Reads what every channel of a stack holds at one place on its map: numbers, for a material picker.</summary>
+    /// <summary>Reads what each channel of a stack holds at a place on its map, for a material picker.</summary>
     public const string StackSample = "stack.sample";
 
     /// <summary>
@@ -531,7 +531,7 @@ public sealed record StackLayerThumbnail(string Layer, string Hash);
 public sealed record StackFindAsk(string Session, float U, float V);
 
 /// <summary>Asks for a picture of a brush, a stroke of it drawn small.</summary>
-/// <param name="Folder">The stack's folder, which an alpha that is a picture is relative to, as a stroke reads it.</param>
+/// <param name="Folder">The stack's folder, which an alpha that is a picture is relative to.</param>
 /// <param name="Brush">The brush.</param>
 /// <param name="PreviewFolder">The content-addressed folder the picture goes in.</param>
 public sealed record BrushPreviewAsk(string Folder, StackBrush Brush, string PreviewFolder);

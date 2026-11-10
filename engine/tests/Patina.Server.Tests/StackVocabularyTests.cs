@@ -523,7 +523,7 @@ public sealed class StackVocabularyTests {
     }
 
     /// <summary>
-    ///     A material brush lays its maps as a fill does, but not through a decal's box or along a path, and one laid in
+    ///     A material brush lays its maps as a fill does, but not through a decal's box or along a path; one laid in
     ///     the model's space needs a model.
     /// </summary>
     [Theory]

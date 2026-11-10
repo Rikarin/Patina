@@ -154,6 +154,55 @@ public sealed record BrushPresetCreateRequest(string Project, string Name, Brush
 /// <param name="Preset">What it holds now.</param>
 public sealed record BrushPresetUpdateRequest(string Project, string Source, BrushPreset Preset);
 
+/// <summary>Where a stroke's colour comes from, when it is not one colour.</summary>
+/// <param name="Kind">
+///     <c>smudge</c> drags what the canvas holds along the stroke, with the brush's flow; <c>clone</c> copies the
+///     stack's composite from <paramref name="Offset" /> away, as it stood when the stroke began; <c>material</c> lays
+///     what <paramref name="Graph" /> makes in the stroke's channel; <c>picture</c> projects
+///     <paramref name="Picture" />.
+/// </param>
+/// <param name="Graph">For a material, the graph whose maps are laid, as a graph fill names it.</param>
+/// <param name="Offset">
+///     For a clone, how far the texel read is from the texel painted, in texels of the map: two numbers.
+/// </param>
+/// <param name="Picture">For a picture, the picture and where it stands.</param>
+/// <param name="Projection">
+///     For a material, how its maps land on the mesh, as a fill's do: <c>Uv</c> (the default) lays them over the
+///     layout, so a material's size follows how the UVs are laid out; <c>Triplanar</c>, <c>Planar</c>,
+///     <c>Spherical</c> and <c>Cylindrical</c> lay them in the model's space, the same size wherever the stroke goes.
+///     A projection in the model's space needs a mesh.
+/// </param>
+/// <param name="PlanarAxis">For a planar material, the axis it projects along: X, Y or Z.</param>
+/// <param name="Placement">For a material, how often its maps repeat, and how they turn and move.</param>
+public sealed record StackStrokeSource(
+    string Kind,
+    string? Graph = null,
+    IReadOnlyList<float>? Offset = null,
+    StackPicture? Picture = null,
+    string? Projection = null,
+    string? PlanarAxis = null,
+    StackPlacement? Placement = null
+);
+
+/// <summary>A picture of a brush: a stroke of it drawn small, under <c>/previews/{hash}</c>.</summary>
+/// <param name="Hash">Its name in the preview cache, or null when the brush draws nothing.</param>
+public sealed record StackBrushPreview(string? Hash);
+
+/// <summary>
+///     What every channel of a stack holds at one place on its map, as a material picker takes it up: numbers read
+///     back from the composite at full size, never a picture.
+/// </summary>
+/// <param name="Channels">Each channel the set has, with its value there.</param>
+public sealed record StackSample(IReadOnlyList<StackSampledChannel> Channels);
+
+/// <summary>What one channel holds at a place.</summary>
+/// <param name="Usage">The channel.</param>
+/// <param name="Value">
+///     Red, green, blue and alpha, 0 to 1, as the map stores them and a stroke's colour is given: a one-number channel
+///     repeats its number in the first three.
+/// </param>
+public sealed record StackSampledChannel(string Usage, IReadOnlyList<float> Value);
+
 /// <summary>The words and limits of a brush, which the Server checks a stroke and a preset against.</summary>
 public static class StackBrushes {
     /// <summary>The largest radius, in a stroke's own units: a stamp this big is a fill, and still a stamp.</summary>
