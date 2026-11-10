@@ -73,38 +73,38 @@ public sealed record MaterialSlots {
     }
 
     MaterialSlots With(SlotFile file, IReadOnlyList<ChannelSource> channels) {
-        var found = this;
-        if (Triple(channels) is { } map) {
-            var colour = new SlotColour(file);
-            found = map switch {
-                ExportMaps.BaseColor => found with { BaseColor = found.BaseColor ?? colour },
-                ExportMaps.Normal => found with { Normal = found.Normal ?? colour },
-                ExportMaps.Emissive => found with { Emissive = found.Emissive ?? colour },
-                ExportMaps.Specular => found with { Specular = found.Specular ?? colour },
-                _ => found
-            };
-        }
-
+        var found = Triple(channels) is { } map ? WithColour(map, new(file)) : this;
         for (var lane = 0; lane < channels.Count; lane++) {
-            if (channels[lane] is not { Map: { } name, Lane: 0 } source) {
-                continue;
+            if (channels[lane] is { Map: { } name, Lane: 0 } source) {
+                found = found.WithLane(name, new(file, lane, source.Inverted));
             }
-
-            var read = new SlotLane(file, lane, source.Inverted);
-            found = name switch {
-                ExportMaps.Roughness => found with { Roughness = found.Roughness ?? read },
-                ExportMaps.Glossiness => found with { Roughness = found.Roughness ?? read with { Inverted = !read.Inverted } },
-                ExportMaps.Metalness => found with { Metalness = found.Metalness ?? read },
-                ExportMaps.Occlusion => found with { Occlusion = found.Occlusion ?? read },
-                ExportMaps.Height => found with { Height = found.Height ?? read },
-                ExportMaps.Opacity when file.File.Maps.Contains(ExportMaps.Opacity, StringComparer.Ordinal) =>
-                    found with { Opacity = found.Opacity ?? read },
-                _ => found
-            };
         }
 
         return found;
     }
+
+    /// <summary>A colour slot filled, unless an earlier file filled it.</summary>
+    MaterialSlots WithColour(string map, SlotColour colour) =>
+        map switch {
+            ExportMaps.BaseColor => this with { BaseColor = BaseColor ?? colour },
+            ExportMaps.Normal => this with { Normal = Normal ?? colour },
+            ExportMaps.Emissive => this with { Emissive = Emissive ?? colour },
+            ExportMaps.Specular => this with { Specular = Specular ?? colour },
+            _ => this
+        };
+
+    /// <summary>A grey slot filled, unless an earlier file filled it. Glossiness is roughness turned over.</summary>
+    MaterialSlots WithLane(string map, SlotLane read) =>
+        map switch {
+            ExportMaps.Roughness => this with { Roughness = Roughness ?? read },
+            ExportMaps.Glossiness => this with { Roughness = Roughness ?? read with { Inverted = !read.Inverted } },
+            ExportMaps.Metalness => this with { Metalness = Metalness ?? read },
+            ExportMaps.Occlusion => this with { Occlusion = Occlusion ?? read },
+            ExportMaps.Height => this with { Height = Height ?? read },
+            ExportMaps.Opacity when read.File.File.Maps.Contains(ExportMaps.Opacity, StringComparer.Ordinal) =>
+                this with { Opacity = Opacity ?? read },
+            _ => this
+        };
 
     /// <summary>The map whose r, g and b fill a file's first three lanes in order, or null.</summary>
     static string? Triple(IReadOnlyList<ChannelSource> channels) {

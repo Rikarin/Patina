@@ -5,7 +5,9 @@ using System.Text.Json;
 
 namespace Patina.Server.Tests;
 
-/// <summary>The preset editor's API (#155): presets as files in the library or a project, every write read first.</summary>
+/// <summary>
+///     The preset editor's API (#155): presets as files in the library or a project, every write read first.
+/// </summary>
 public sealed class PresetApiTests : IAsyncLifetime {
     readonly ServerFixture server = new();
     HttpClient client = null!;
@@ -62,7 +64,10 @@ public sealed class PresetApiTests : IAsyncLifetime {
         Assert.Equal(HttpStatusCode.OK, put.StatusCode);
         var file = Path.Combine(server.Library, "projects", "crate", "export-presets", "crate-unreal.yaml");
         Assert.Contains("name: \"Crate's Unreal\"", await File.ReadAllTextAsync(file, Token), StringComparison.Ordinal);
-        var withProject = await client.GetFromJsonAsync<ExportPresetList>("/api/v1/export/presets?project=crate", Token);
+        var withProject = await client.GetFromJsonAsync<ExportPresetList>(
+            "/api/v1/export/presets?project=crate",
+            Token
+        );
         var library = await client.GetFromJsonAsync<ExportPresetList>("/api/v1/export/presets", Token);
         Assert.Equal("project", withProject!.Presets.Single(static p => p.Id == "crate-unreal").Origin);
         Assert.DoesNotContain(library!.Presets, static p => p.Id == "crate-unreal");
@@ -73,9 +78,7 @@ public sealed class PresetApiTests : IAsyncLifetime {
     [Fact]
     public async Task A_preset_a_file_could_not_hold_is_refused_with_the_readers_reason() {
         var unreal = await Factory("unreal");
-        var broken = unreal with {
-            Textures = [unreal.Textures[0] with { Format = "jpeg" }]
-        };
+        var broken = unreal with { Textures = [unreal.Textures[0] with { Format = "jpeg" }] };
 
         var put = await client.PutAsJsonAsync("/api/v1/export/presets/broken", new ExportPresetWrite(broken), Token);
 
@@ -112,7 +115,10 @@ public sealed class PresetApiTests : IAsyncLifetime {
 
         var good = await (await client.PostAsJsonAsync(
             "/api/v1/export/presets/check",
-            new ExportPresetCheckRequest(gltf with { Textures = [gltf.Textures[0] with { File = "{mesh}/{set}_{udim}" }] }, "crate"),
+            new ExportPresetCheckRequest(
+                gltf with { Textures = [gltf.Textures[0] with { File = "{mesh}/{set}_{udim}" }] },
+                "crate"
+            ),
             Token
         )).Content.ReadFromJsonAsync<ExportPresetCheck>(Token);
         var bad = await (await client.PostAsJsonAsync(
@@ -131,15 +137,29 @@ public sealed class PresetApiTests : IAsyncLifetime {
     [Fact]
     public async Task A_preset_file_is_brought_in_after_it_is_read() {
         var source = Path.Combine(server.Library, "..", "shared-preset.yaml");
-        await File.WriteAllTextAsync(source, (await client.GetFromJsonAsync<ExportPresetSource>("/api/v1/export/presets/godot", Token))!.Text.Replace("id: godot", "id: studio", StringComparison.Ordinal), Token);
+        await File.WriteAllTextAsync(
+            source,
+            (await client.GetFromJsonAsync<ExportPresetSource>("/api/v1/export/presets/godot", Token))!.Text.Replace(
+                "id: godot",
+                "id: studio",
+                StringComparison.Ordinal
+            ),
+            Token
+        );
 
-        var imported = await client.PostAsJsonAsync("/api/v1/export/presets/import", new ExportPresetImport(source, "crate"), Token);
+        var imported = await client.PostAsJsonAsync(
+            "/api/v1/export/presets/import",
+            new ExportPresetImport(source, "crate"),
+            Token
+        );
 
         Assert.Equal(HttpStatusCode.OK, imported.StatusCode);
         Assert.True(File.Exists(Path.Combine(server.Library, "projects", "crate", "export-presets", "studio.yaml")));
     }
 
-    /// <summary>A preview of a project nothing has built says so with a code, rather than compressing nothing.</summary>
+    /// <summary>
+    ///     A preview of a project nothing has built says so with a code, rather than compressing nothing.
+    /// </summary>
     [Fact]
     public async Task A_compression_preview_of_unbuilt_maps_is_refused_with_a_code() {
         var response = await client.PostAsJsonAsync(
@@ -149,7 +169,10 @@ public sealed class PresetApiTests : IAsyncLifetime {
         );
 
         Assert.Equal((HttpStatusCode.Conflict, "export-unbuilt"), (response.StatusCode, await CodeOf(response)));
-        var picture = await client.GetAsync("/api/v1/export/compression/00000000000000000000000000000000/source", Token);
+        var picture = await client.GetAsync(
+            "/api/v1/export/compression/00000000000000000000000000000000/source",
+            Token
+        );
         Assert.Equal(HttpStatusCode.NotFound, picture.StatusCode);
     }
 }

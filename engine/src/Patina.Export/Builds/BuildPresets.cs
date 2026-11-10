@@ -51,16 +51,17 @@ public sealed class BuildPresets {
     ///     A preset only some projects have exports those, and the rest are left alone. A project's own preset is held
     ///     to the request's changes here, as the library's are when this is made.
     /// </summary>
-    /// <exception cref="BuildRefusedException">An id nothing has, or a change a project's preset cannot take.</exception>
+    /// <exception cref="BuildRefusedException">An id nothing has, or a change a preset cannot take.</exception>
     public void Refuse(IEnumerable<string> reached) {
         ArgumentNullException.ThrowIfNull(reached);
         var paths = reached.ToList();
-        foreach (var preset in paths.SelectMany(path => named.Select(id => Own(path)?.Find(id))).OfType<ExportPreset>()) {
+        foreach (var preset in paths.SelectMany(path => named.Select(id => Own(path)?.Find(id)))
+                     .OfType<ExportPreset>()) {
             Check(preset);
         }
 
-        foreach (var id in named.Where(id => library.Find(id) is null)) {
-            if (!paths.Any(path => Own(path)?.Find(id) is not null)) {
+        foreach (var id in named) {
+            if (library.Find(id) is null && !Anywhere(paths, id)) {
                 throw new BuildRefusedException(
                     $"There is no preset '{id}'. The presets are "
                     + string.Join(", ", library.Presets.Select(static p => p.Id))
@@ -68,6 +69,17 @@ public sealed class BuildPresets {
                 );
             }
         }
+    }
+
+    /// <summary>Whether any of these projects has a preset of its own with this id.</summary>
+    bool Anywhere(List<string> paths, string id) {
+        foreach (var path in paths) {
+            if (Own(path)?.Find(id) is not null) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     ExportPresetCatalog.Found? Own(string project) =>

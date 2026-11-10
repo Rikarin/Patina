@@ -138,7 +138,9 @@ public sealed record ExportPreset(
     public IReadOnlyDictionary<string, ExportPreset> PerSet { get; init; } =
         new Dictionary<string, ExportPreset>(StringComparer.Ordinal);
 
-    /// <summary>Where it was read from: factory, library or project (<see cref="ExportPresetCatalog.Origins" />).</summary>
+    /// <summary>
+    ///     Where it was read from: factory, library or project (<see cref="ExportPresetCatalog.Origins" />).
+    /// </summary>
     public string Origin { get; init; } = ExportPresetCatalog.Origins.Factory;
 
     /// <summary>The preset a set is written with: its own changes, or this.</summary>
@@ -259,6 +261,21 @@ public static class ExportCompressions {
     public const string Bc5 = "bc5";
     public const string Bc6H = "bc6h";
     public const string Bc7 = "bc7";
+
+    /// <summary>A compression's name for a person.</summary>
+    public static string LabelOf(string compression) =>
+        compression switch {
+            None => "None",
+            Half => "Half float",
+            Wide => "Float",
+            Bc1 => "BC1 (RGB)",
+            Bc3 => "BC3 (RGBA)",
+            Bc4 => "BC4 (one lane)",
+            Bc5 => "BC5 (two lanes)",
+            Bc6H => "BC6H (HDR)",
+            Bc7 => "BC7",
+            _ => compression
+        };
 }
 
 /// <summary>
@@ -289,7 +306,9 @@ public static class ExportMaps {
     /// </summary>
     public static IReadOnlyList<string> Derived { get; } = [Specular, Diffuse, Glossiness];
 
-    /// <summary>The colour at normal incidence: four per cent for a dielectric, the base colour for a metal. sRGB.</summary>
+    /// <summary>
+    ///     The colour at normal incidence: four per cent for a dielectric, the base colour for a metal. sRGB.
+    /// </summary>
     public const string Specular = "specular";
 
     /// <summary>The colour a dielectric scatters: the base colour, black where it is metal. sRGB.</summary>

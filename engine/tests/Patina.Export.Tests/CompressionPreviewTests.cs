@@ -1,4 +1,3 @@
-using Patina.Contracts;
 using Patina.Export.Presets;
 using Vixen.Core.Imaging;
 using Vixen.Core.Imaging.BlockCompression;
@@ -100,7 +99,9 @@ public sealed class CompressionPreviewTests : IDisposable {
         Assert.True(loud.Samples.Sum() > faint.Samples.Sum() * 4);
     }
 
-    /// <summary>The GPU memory a preview states is the pre-export check's measure: BC7 one byte a texel, RGBA four.</summary>
+    /// <summary>
+    ///     The GPU memory a preview states is the pre-export check's measure: BC7 one byte a texel, RGBA four.
+    /// </summary>
     [Fact]
     public void The_memory_is_the_checks_measure() {
         var texture = Texture(ExportFormats.Ktx2, ExportCompressions.Bc7, 4, true);
@@ -113,9 +114,9 @@ public sealed class CompressionPreviewTests : IDisposable {
     }
 
     /// <summary>
-    ///     Every format an export writes, read back by what Patina reads pictures with: PNG, TGA, JPEG, Radiance HDR and
-    ///     OpenEXR through MapPictures, KTX2 and DDS through Vixen's readers. TIFF and WebP have no reader here; Vixen's
-    ///     ImageWriterTests read them back with libtiff, ImageIO and libwebp.
+    ///     Every format an export writes, read back by what Patina reads pictures with: PNG, TGA, JPEG, Radiance HDR
+    ///     and OpenEXR through MapPictures, KTX2 and DDS through Vixen's readers. TIFF and WebP have no reader here;
+    ///     Vixen's ImageWriterTests read them back with libtiff, ImageIO and libwebp.
     /// </summary>
     [Theory]
     [InlineData(ExportFormats.Png8, "srgb", 1 / 255d)]

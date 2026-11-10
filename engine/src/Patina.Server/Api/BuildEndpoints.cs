@@ -49,7 +49,7 @@ static class BuildEndpoints {
     }
 
     /// <param name="host">The library.</param>
-    /// <param name="project">A project whose own presets are listed too, winning by id, or null for the library's.</param>
+    /// <param name="project">A project whose own presets are listed too and win by id, or null.</param>
     static Results<Ok<ExportPresetList>, ProblemHttpResult> GetPresets(LibraryHost host, string? project = null) {
         if (host.Library is not { } library) {
             return NoLibrary();
@@ -77,9 +77,11 @@ static class BuildEndpoints {
                 ],
                 Paddings = Terms.InExport(ExportPadding.Names),
                 Filters = Terms.InExport(ExportFilters.All),
-                Compressions = Terms.InExport(ExportCompressions.All),
+                Compressions = [
+                    ..ExportCompressions.All.Select(static c => new StackTerm(c, ExportCompressions.LabelOf(c)))
+                ],
                 Maps = Terms.InExport(ExportMaps.All),
-                Materials = Terms.InExport(ExportMaterials.All),
+                Materials = [..ExportMaterials.All.Select(static m => new StackTerm(m, ExportMaterials.LabelOf(m)))],
                 Tokens = [..NamingTemplate.Names]
             }
         );
@@ -103,9 +105,7 @@ static class BuildEndpoints {
                         [..t.Maps],
                         t.Channels.Count,
                         t.Quality
-                    ) {
-                        Scale = t.Scale
-                    }
+                    ) { Scale = t.Scale }
                 )
             ]
         ) {

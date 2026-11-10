@@ -6,8 +6,8 @@ using System.Globalization;
 namespace Patina.Cli;
 
 /// <summary>
-///     The export settings <c>patina build</c> takes on its command line (#153): what the editor's Export dialog sends as
-///     <see cref="ExportOptions" />, and <c>--kept</c>, which starts from what a project's, or the library's,
+///     The export settings <c>patina build</c> takes on its command line (#153): what the editor's Export dialog sends
+///     as <see cref="ExportOptions" />, and <c>--kept</c>, which starts from what a project's, or the library's,
 ///     <c>export</c> block keeps, as the dialog does. A flag given wins over what is kept.
 /// </summary>
 static class BuildFlags {
@@ -113,7 +113,9 @@ static class BuildFlags {
                 var path = PathOf(library, id);
                 return path is null ? null : library.Contents(path).Export;
             default:
-                throw new ArgumentException("--kept reads one project's settings, or the library's: name one project or none.");
+                throw new ArgumentException(
+                    "--kept reads one project's settings, or the library's: name one project or none."
+                );
         }
     }
 

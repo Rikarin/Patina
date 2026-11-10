@@ -25,14 +25,15 @@ public static class ProjectNaming {
         foreach (var document in contents.Documents) {
             var set = document.Material ?? document.Name;
             if (!sets.ContainsKey(set)) {
-                var mesh = document.Mesh is { } id && meshes.TryGetValue(id, out var meshName) ? meshName : string.Empty;
+                var mesh = document.Mesh is { } id && meshes.TryGetValue(id, out var meshName)
+                    ? meshName
+                    : string.Empty;
                 sets[set] = new(mesh, document.Material ?? string.Empty);
             }
         }
 
         return values with {
-            Mesh = contents.Meshes.Count > 0 ? MeshName(contents.Meshes[0]) : string.Empty,
-            Sets = sets
+            Mesh = contents.Meshes.Count > 0 ? MeshName(contents.Meshes[0]) : string.Empty, Sets = sets
         };
     }
 

@@ -3,11 +3,12 @@ using Patina.Export.Presets;
 using System.Text.Json;
 using System.Xml.Linq;
 using Vixen.Core.Imaging;
-using Vixen.Interchange;
 
 namespace Patina.Export.Tests;
 
-/// <summary>What ADR 0019 adds to the preset language, the editor's writer, and the material files beside textures.</summary>
+/// <summary>
+///     What ADR 0019 adds to the preset language, the editor's writer, and the material files beside textures.
+/// </summary>
 public sealed class PresetLanguageTests : IDisposable {
     const int Side = 16;
 
@@ -79,30 +80,31 @@ public sealed class PresetLanguageTests : IDisposable {
         var file = Assert.Single(ExportRun.Run(preset, maps, Path("object"), null, Token).Files);
 
         Assert.Equal((2, 2), (file.Width, file.Height));
-        Assert.Throws<ExportPresetException>(static () => Read(One("png8", "linear", "[roughness.r]", "    scale: 0.3")));
+        Assert.Throws<ExportPresetException>(static () => Read(One("png8", "linear", "[roughness.r]", "    scale: 0.3"))
+        );
     }
 
     /// <summary>A file's own dither and padding win over the preset's, and the other file keeps the preset's.</summary>
     [Fact]
     public void A_file_says_its_own_dither_and_padding() {
-        var text = $"""
-                    version: 1
-                    id: one
-                    name: One
-                    normal: y-up
-                    padding: none
-                    textures:
-                      - file: own
-                        format: png8
-                        space: linear
-                        dither: true
-                        padding: infinite
-                        channels: [roughness.r]
-                      - file: preset
-                        format: png8
-                        space: linear
-                        channels: [roughness.r]
-                    """;
+        var text = """
+                   version: 1
+                   id: one
+                   name: One
+                   normal: y-up
+                   padding: none
+                   textures:
+                     - file: own
+                       format: png8
+                       space: linear
+                       dither: true
+                       padding: infinite
+                       channels: [roughness.r]
+                     - file: preset
+                       format: png8
+                       space: linear
+                       channels: [roughness.r]
+                   """;
         var preset = Read(text);
         var left = new float[Side * Side];
         var covered = new float[Side * Side];
@@ -120,7 +122,7 @@ public sealed class PresetLanguageTests : IDisposable {
         var own = MapPictures.ReadFile(Path($"object/{manifest.Files[0].File}"));
         var plain = MapPictures.ReadFile(Path($"object/{manifest.Files[1].File}"));
 
-        Assert.Equal(Assert.Single(preset.Textures, static t => t.File == "own").Dither, true);
+        Assert.True(Assert.Single(preset.Textures, static t => t.File == "own").Dither);
         Assert.InRange(own.Samples[(Side - 1) * own.Channels], 100f / 255f - 1e-4f, 101f / 255f + 1e-4f);
         Assert.Equal(0.9f, plain.Samples[(Side - 1) * plain.Channels], 2);
         Assert.Contains(
@@ -167,7 +169,9 @@ public sealed class PresetLanguageTests : IDisposable {
         Assert.Contains("{project}_{set}_SpecularGlossiness", manifest.Skipped);
     }
 
-    /// <summary>Every factory preset survives the editor: its file read, written as a document and read again.</summary>
+    /// <summary>
+    ///     Every factory preset survives the editor: its file read, written as a document and read again.
+    /// </summary>
     [Fact]
     public void Every_factory_preset_comes_back_from_the_editor_as_it_was() {
         foreach (var preset in ExportPresetCatalog.Read(null).Presets) {
@@ -180,12 +184,13 @@ public sealed class PresetLanguageTests : IDisposable {
         }
     }
 
-    /// <summary>What a client types cannot become a key or a list in the file: it comes back as the text it was.</summary>
+    /// <summary>
+    ///     What a client types cannot become a key or a list in the file: it comes back as the text it was.
+    /// </summary>
     [Fact]
     public void A_name_with_yaml_in_it_is_kept_as_text() {
         var document = ExportPresetWriter.DocumentOf(ExportPresetCatalog.Read(null).Find("gltf")!) with {
-            Name = "Mine: \"quoted\"\nengine: hacked",
-            Engine = "true"
+            Name = "Mine: \"quoted\"\nengine: hacked", Engine = "true"
         };
 
         var read = ExportPresetWriter.Check(document);
@@ -214,10 +219,19 @@ public sealed class PresetLanguageTests : IDisposable {
 
     [Fact]
     public void A_preset_lists_its_material_files_once_each() {
-        Assert.Equal(["gltf", "usda"], Read(One("png8", "linear", "[roughness.r]", preset: "materials: [gltf, usda]")).Materials);
-        Assert.Throws<ExportPresetException>(static () => Read(One("png8", "linear", "[roughness.r]", preset: "materials: [fbx]")));
-        Assert.Throws<ExportPresetException>(static () => Read(One("png8", "linear", "[roughness.r]", preset: "materials: [gltf, gltf]")));
-        Assert.Throws<ExportPresetException>(static () => Read(One("png8", "linear", "[roughness.r]", preset: "material: gltf")));
+        Assert.Equal(
+            ["gltf", "usda"],
+            Read(One("png8", "linear", "[roughness.r]", preset: "materials: [gltf, usda]")).Materials
+        );
+        Assert.Throws<ExportPresetException>(static () =>
+            Read(One("png8", "linear", "[roughness.r]", preset: "materials: [fbx]"))
+        );
+        Assert.Throws<ExportPresetException>(static () =>
+            Read(One("png8", "linear", "[roughness.r]", preset: "materials: [gltf, gltf]"))
+        );
+        Assert.Throws<ExportPresetException>(static () =>
+            Read(One("png8", "linear", "[roughness.r]", preset: "material: gltf"))
+        );
     }
 
     [Fact]
@@ -225,7 +239,9 @@ public sealed class PresetLanguageTests : IDisposable {
         var preset = ExportPresetCatalog.Read(null).Find("unreal")!;
         var options = new ExportOptions {
             Files = [
-                new("T_{project}_ORM", true, ExportFormats.Ktx2) { Compression = ExportCompressions.Bc7, Quality = "fast", Mips = true },
+                new("T_{project}_ORM", true, ExportFormats.Ktx2) {
+                    Compression = ExportCompressions.Bc7, Quality = "fast", Mips = true
+                },
                 new("T_{project}_E", true, ExportFormats.Jpeg) { Quality = "70" }
             ]
         };
@@ -233,16 +249,23 @@ public sealed class PresetLanguageTests : IDisposable {
         var changed = ExportOverrides.Apply(preset, options);
 
         var orm = changed.Textures.Single(static t => t.File == "T_{project}_ORM");
-        Assert.Equal((ExportFormats.Ktx2, ExportCompressions.Bc7, "fast", true), (orm.Format, orm.Compression, orm.Quality, orm.Mips));
+        Assert.Equal(
+            (ExportFormats.Ktx2, ExportCompressions.Bc7, "fast", true),
+            (orm.Format, orm.Compression, orm.Quality, orm.Mips)
+        );
         Assert.Equal("70", changed.Textures.Single(static t => t.File == "T_{project}_E").Quality);
         Assert.Throws<ExportPresetException>(() => ExportOverrides.Apply(
                 preset,
-                new() { Files = [new("T_{project}_ORM", true, ExportFormats.Png8) { Compression = ExportCompressions.Bc7 }] }
+                new() {
+                    Files = [new("T_{project}_ORM", true, ExportFormats.Png8) { Compression = ExportCompressions.Bc7 }]
+                }
             )
         );
         Assert.Throws<ExportPresetException>(() => ExportOverrides.Apply(
                 preset,
-                new() { Files = [new("T_{project}_N", true, ExportFormats.Ktx2) { Compression = ExportCompressions.Bc4 }] }
+                new() {
+                    Files = [new("T_{project}_N", true, ExportFormats.Ktx2) { Compression = ExportCompressions.Bc4 }]
+                }
             )
         );
     }
@@ -262,7 +285,7 @@ public sealed class PresetLanguageTests : IDisposable {
         var manifest = ExportRun.Run(preset, sets, Path("object"), (_, file) => told.Add(file), Token);
 
         Assert.Equal([8, 4], manifest.Files.Select(static f => f.Width));
-        Assert.Equal(["Body: {set}_x", "Head: {set}_x", ""], told);
+        Assert.Equal(["Body: {set}_x", "Head: {set}_x", string.Empty], told);
         Assert.Throws<ExportPresetException>(() => ExportOverrides.Apply(
                 preset,
                 new() { PerSet = [new("Head"), new("Head")] }
@@ -271,35 +294,60 @@ public sealed class PresetLanguageTests : IDisposable {
     }
 
     /// <summary>
-    ///     The glTF preset writes a glTF beside its images that names each one in its slot, which Vixen's reader, Assimp,
-    ///     reads back: the file is what a DCC binds.
+    ///     The glTF preset writes a glTF beside its images that names each one in its slot, which Vixen's reader,
+    ///     Assimp, reads back: the file is what a DCC binds.
     /// </summary>
     [Fact]
     public void The_gltf_preset_writes_a_material_naming_its_images() {
         var preset = ExportPresetCatalog.Read(null).Find("gltf")!;
         var manifest = ExportRun.Run(preset, Surface(), Path("object"), null, Token);
 
-        var delivered = ExportRun.Deliver("key", Path("object"), manifest, Path("out"), new("Crate", "gltf"), preset: preset);
+        var delivered = ExportRun.Deliver(
+            "key",
+            Path("object"),
+            manifest,
+            Path("out"),
+            new("Crate", "gltf"),
+            preset: preset
+        );
 
         var gltf = Assert.Single(delivered.Files, static f => f.EndsWith(".gltf", StringComparison.Ordinal));
         using var document = JsonDocument.Parse(File.ReadAllText(gltf));
-        var images = document.RootElement.GetProperty("images").EnumerateArray().Select(static i => i.GetProperty("uri").GetString()!).ToList();
+        var images = document.RootElement.GetProperty("images")
+            .EnumerateArray()
+            .Select(static i => i.GetProperty("uri").GetString()!)
+            .ToList();
         Assert.Equal(["Crate_baseColor.png", "Crate_occlusionRoughnessMetallic.png", "Crate_normal.png"], images);
         Assert.All(images, image => Assert.True(File.Exists(Path($"out/{image}"))));
         var material = document.RootElement.GetProperty("materials")[0];
-        Assert.Equal(1, material.GetProperty("pbrMetallicRoughness").GetProperty("metallicRoughnessTexture").GetProperty("index").GetInt32());
+        Assert.Equal(
+            1,
+            material.GetProperty("pbrMetallicRoughness")
+                .GetProperty("metallicRoughnessTexture")
+                .GetProperty("index")
+                .GetInt32()
+        );
         Assert.Equal(1, material.GetProperty("occlusionTexture").GetProperty("index").GetInt32());
         Assert.False(material.TryGetProperty("alphaMode", out _));
         Assert.Empty(delivered.Warnings);
     }
 
-    /// <summary>A preset whose packing glTF cannot read leaves those slots out and says so, rather than wiring them wrong.</summary>
+    /// <summary>
+    ///     A preset whose packing glTF cannot read leaves those slots out and says so, rather than wiring them wrong.
+    /// </summary>
     [Fact]
     public void A_packing_gltf_cannot_read_is_left_out_and_said() {
         var unreal = ExportPresetCatalog.Read(null).Find("unreal")! with { Materials = ["gltf"] };
         var manifest = ExportRun.Run(unreal, Surface(), Path("object"), null, Token);
 
-        var delivered = ExportRun.Deliver("key", Path("object"), manifest, Path("out"), new("Crate", "unreal"), preset: unreal);
+        var delivered = ExportRun.Deliver(
+            "key",
+            Path("object"),
+            manifest,
+            Path("out"),
+            new("Crate", "unreal"),
+            preset: unreal
+        );
 
         Assert.Contains(delivered.Warnings, static w => w.Contains("green up", StringComparison.Ordinal));
         using var document = JsonDocument.Parse(File.ReadAllText(Path("out/Crate.gltf")));
@@ -343,7 +391,10 @@ public sealed class PresetLanguageTests : IDisposable {
         Assert.Contains("normal", inputs);
         Assert.All(
             shader.Elements("input").Where(static i => i.Attribute("output") is not null),
-            input => Assert.Single(graph.Elements("output"), o => o.Attribute("name")!.Value == input.Attribute("output")!.Value)
+            input => Assert.Single(
+                graph.Elements("output"),
+                o => o.Attribute("name")!.Value == input.Attribute("output")!.Value
+            )
         );
     }
 

@@ -35,7 +35,7 @@ public static class ExportPreviews {
 
     /// <summary>Makes a preview, or reads the one made before from the same things.</summary>
     /// <exception cref="ExportUnbuiltException">The project's maps are not built.</exception>
-    /// <exception cref="BuildRefusedException">A preset, file or set that is not there, or changes it cannot take.</exception>
+    /// <exception cref="BuildRefusedException">A preset, file or set not there, or a change refused.</exception>
     public static CompressionPreviewInfo Make(
         OpenLibrary library,
         CompressionPreviewRequest request,
@@ -45,7 +45,9 @@ public static class ExportPreviews {
         ArgumentNullException.ThrowIfNull(library);
         ArgumentNullException.ThrowIfNull(request);
         var contents = library.Contents(request.Project);
-        var build = new BuildRequest { Projects = [contents.Id], Presets = [request.Preset], Options = request.Options };
+        var build = new BuildRequest {
+            Projects = [contents.Id], Presets = [request.Preset], Options = request.Options
+        };
         var presets = new BuildPresets(library, build);
         var plan = BuildPipeline.Plan(library, build, tools, cancellationToken);
         var project = plan.Projects.FirstOrDefault(p => p.Project.Path == request.Project);
@@ -56,25 +58,30 @@ public static class ExportPreviews {
         }
 
         var id = Revision.Of(
-                Encoding.UTF8.GetBytes(
-                    project.Exports[0].Key.Hex
-                    + JsonSerializer.Serialize(request, ContractsJsonContext.Default.CompressionPreviewRequest)
-                )
+            Encoding.UTF8.GetBytes(
+                project.Exports[0].Key.Hex
+                + JsonSerializer.Serialize(request, ExportJsonContext.Default.CompressionPreviewRequest)
             )
+        )
             .Hex[..32];
         var folder = FolderOf(library.RootPath, id);
         var known = Path.Combine(folder, Measured);
         if (File.Exists(known)) {
-            return JsonSerializer.Deserialize(SharedFile.ReadAllBytes(known), ContractsJsonContext.Default.CompressionPreviewInfo)!;
+            return JsonSerializer.Deserialize(
+                SharedFile.ReadAllBytes(known),
+                ExportJsonContext.Default.CompressionPreviewInfo
+            )!;
         }
 
         var sets = ExportSteps.SetsOf(BuildPipeline.SourcesOf(new(library.RootPath), project));
         var set = request.Set is { } named
-            ? sets.FirstOrDefault(s => s.Name == named) ?? throw new BuildRefusedException($"There is no texture set '{named}'.")
+            ? sets.Find(s => s.Name == named)
+            ?? throw new BuildRefusedException($"There is no texture set '{named}'.")
             : sets[0];
         ExportPreset preset;
         try {
-            preset = ExportOverrides.Apply(presets.Find(request.Project, request.Preset), request.Options).For(set.Name);
+            preset = ExportOverrides.Apply(presets.Find(request.Project, request.Preset), request.Options)
+                .For(set.Name);
         } catch (ExportPresetException e) {
             throw new BuildRefusedException(e.Message, e);
         }
@@ -83,7 +90,9 @@ public static class ExportPreviews {
             ?? throw new BuildRefusedException($"{preset.Name} writes no file '{request.File}' here.");
         var maps = DerivedMaps.Complete(set.Maps, texture.Maps);
         if (!ChannelPacker.Applies(texture, maps)) {
-            throw new BuildRefusedException($"'{request.File}' reads no map this texture set has, so it is not written.");
+            throw new BuildRefusedException(
+                $"'{request.File}' reads no map this texture set has, so it is not written."
+            );
         }
 
         var picture = ExportRun.Finish(ChannelPacker.Pack(texture, maps, preset.Normal), maps, preset, texture);
@@ -113,7 +122,11 @@ public static class ExportPreviews {
         ) {
             Bytes = (long)Math.Ceiling(ExportMemory.Bytes(texture, picture.Width, picture.Height)),
             Uncompressed = (long)Math.Ceiling(
-                ExportMemory.Bytes(texture with { Compression = ExportCompressions.None }, picture.Width, picture.Height)
+                ExportMemory.Bytes(
+                    texture with { Compression = ExportCompressions.None },
+                    picture.Width,
+                    picture.Height
+                )
             )
         };
 
@@ -127,18 +140,22 @@ public static class ExportPreviews {
         );
         File.WriteAllBytes(
             Path.Combine(part, Measured),
-            JsonSerializer.SerializeToUtf8Bytes(info, ContractsJsonContext.Default.CompressionPreviewInfo)
+            JsonSerializer.SerializeToUtf8Bytes(info, ExportJsonContext.Default.CompressionPreviewInfo)
         );
         BuildObjects.Publish(part, folder);
         return info;
     }
 
     /// <summary>A preview's picture, or null when there is no such preview or picture.</summary>
-    public static string? PictureOf(string root, string id, string picture) =>
-        id.Length == 32 && id.All(char.IsAsciiHexDigitLower) && Pictures.Contains(picture, StringComparer.Ordinal)
-            ? Path.Combine(FolderOf(root, id), string.Create(CultureInfo.InvariantCulture, $"{picture}.png")) is var path
-              && File.Exists(path)
-                ? path
-                : null
-            : null;
+    public static string? PictureOf(string root, string id, string picture) {
+        ArgumentNullException.ThrowIfNull(id);
+        if (id.Length != 32
+            || !id.All(char.IsAsciiHexDigitLower)
+            || !Pictures.Contains(picture, StringComparer.Ordinal)) {
+            return null;
+        }
+
+        var path = Path.Combine(FolderOf(root, id), string.Create(CultureInfo.InvariantCulture, $"{picture}.png"));
+        return File.Exists(path) ? path : null;
+    }
 }

@@ -38,7 +38,9 @@ public static class ExportMemory {
             * (texture.Mips ? 4d / 3d : 1d);
     }
 
-    /// <summary>The size a file is written at from maps of a size: the preset's longest side, then its own scale.</summary>
+    /// <summary>
+    ///     The size a file is written at from maps of a size: the preset's longest side, then its own scale.
+    /// </summary>
     public static (int Width, int Height) Sized(ExportPreset preset, ExportTexture texture, int width, int height) {
         ArgumentNullException.ThrowIfNull(preset);
         ArgumentNullException.ThrowIfNull(texture);

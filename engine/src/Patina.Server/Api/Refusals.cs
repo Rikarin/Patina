@@ -44,12 +44,14 @@ public static class Refusals {
     public const string BrushRefused = "stroke-brush-refused";
 
     /// <summary>
-    ///     A preset the editor sent that is not one a file could hold. Values: <c>preset</c>, and <c>reason</c>, which is
-    ///     the reader's own sentence naming the field.
+    ///     A preset the editor sent that is not one a file could hold. Values: <c>preset</c>, and <c>reason</c>, which
+    ///     is the reader's own sentence naming the field.
     /// </summary>
     public const string PresetInvalid = "preset-invalid";
 
-    /// <summary>A factory preset, which lives in Patina and cannot be changed or removed. Values: <c>preset</c>.</summary>
+    /// <summary>
+    ///     A factory preset, which lives in Patina and cannot be changed or removed. Values: <c>preset</c>.
+    /// </summary>
     public const string PresetFactory = "preset-factory";
 
     /// <summary>No preset of that id is where it was asked for. Values: <c>preset</c>.</summary>

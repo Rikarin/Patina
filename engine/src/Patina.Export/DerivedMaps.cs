@@ -6,8 +6,9 @@ namespace Patina.Export;
 /// <summary>
 ///     The maps a preset reads that no output makes (<see cref="ExportMaps.Derived" />), worked out from a set's
 ///     metal-roughness maps. The conversion is the one glTF's specular-glossiness extension describes in reverse: a
-///     dielectric reflects four per cent at normal incidence and scatters its base colour, and a metal reflects its base
-///     colour and scatters nothing. Colour is mixed in linear numbers and stored as sRGB numbers, as base colour is.
+///     dielectric reflects four per cent at normal incidence and scatters its base colour, and a metal reflects its
+///     base colour and scatters nothing. Colour is mixed in linear numbers and stored as sRGB numbers, as base colour
+///     is.
 /// </summary>
 public static class DerivedMaps {
     /// <summary>What a dielectric reflects at normal incidence, linear.</summary>
@@ -98,7 +99,9 @@ public static class DerivedMaps {
         return new(width, height, lanes, samples);
     }
 
-    /// <summary>A lane of a texel; a grey picture's one lane is every colour lane, and no picture is the fallback.</summary>
+    /// <summary>
+    ///     A lane of a texel; a grey picture's one lane is every colour lane, and no picture is the fallback.
+    /// </summary>
     static float Lane(FloatImage? image, int x, int y, int lane, float fallback) {
         if (image is null) {
             return fallback;

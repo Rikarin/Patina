@@ -79,7 +79,10 @@ sealed class BuildHost : OneAtATime {
     static async Task SendAsync(IpcConnection link, IpcMessage message) {
         try {
             await link.SendAsync(message, CancellationToken.None).ConfigureAwait(false);
-        } catch (Exception e) when (e is IOException or IpcException or TimeoutException or OperationCanceledException) {
+        } catch (Exception e) when (e is IOException
+                                        or IpcException
+                                        or TimeoutException
+                                        or OperationCanceledException) {
             // A report nobody got. The link's own loss is what stops the step.
         }
     }

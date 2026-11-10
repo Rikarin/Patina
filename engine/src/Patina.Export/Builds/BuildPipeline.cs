@@ -63,7 +63,7 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
     ) {
         ArgumentNullException.ThrowIfNull(library);
         ArgumentNullException.ThrowIfNull(request);
-        return Plan(library, request, new BuildPresets(library, request), tools, cancellationToken);
+        return Plan(library, request, new(library, request), tools, cancellationToken);
     }
 
     static BuildPlan Plan(
@@ -128,6 +128,13 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
         void Starting(string what) =>
             progress?.Invoke(done / (double)steps, journal.Totals(fresh, exportsFresh) with { Current = what });
 
+        // How far through an export step, and the file it is on, which the executor tells.
+        Action<double, string> Within(int before, string what) =>
+            (fraction, file) => progress?.Invoke(
+                (before + fraction) / steps,
+                journal.Totals(fresh, exportsFresh) with { Current = file.Length > 0 ? $"{what}: {file}" : what }
+            );
+
         async Task RunPlanAsync() {
             foreach (var project in plan.Work) {
                 var identity = new ProjectIdentity(
@@ -135,22 +142,7 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                     project.Project.Name,
                     project.Project.Path
                 );
-                var failed = false;
-                foreach (var output in project.Unresolved) {
-                    failed = true;
-                    journal.Ended(
-                        $"unresolved:{project.Project.Path}:{output.Output.Name}",
-                        identity,
-                        new OutputReport(
-                            output.Output.Name,
-                            output.Output.Tool,
-                            null,
-                            BuildStatuses.Failed,
-                            0,
-                            output.Problem
-                        )
-                    );
-                }
+                var failed = Unresolved(journal, identity, project);
 
                 foreach (var output in project.Stale) {
                     await Yield(yield);
@@ -170,18 +162,12 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                     var before = done;
                     await RunExportAsync(
                         journal,
-                        identity,
                         project,
                         export,
                         preset,
                         request.Options,
                         failed,
-                        (fraction, file) => progress?.Invoke(
-                            (before + fraction) / steps,
-                            journal.Totals(fresh, exportsFresh) with {
-                                Current = file.Length > 0 ? $"{what}: {file}" : what
-                            }
-                        ),
+                        Within(before, what),
                         cancellationToken
                     );
                     done++;
@@ -189,6 +175,19 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                 }
             }
         }
+    }
+
+    /// <summary>Reports a project's outputs that cannot be built, and says whether there were any.</summary>
+    static bool Unresolved(BuildJournal journal, ProjectIdentity identity, PlannedProject project) {
+        foreach (var output in project.Unresolved) {
+            journal.Ended(
+                $"unresolved:{project.Project.Path}:{output.Output.Name}",
+                identity,
+                new OutputReport(output.Output.Name, output.Output.Tool, null, BuildStatuses.Failed, 0, output.Problem)
+            );
+        }
+
+        return project.Unresolved.Count > 0;
     }
 
     static string ExportsOf(OpenLibrary library, BuildRequest request) =>
@@ -264,7 +263,6 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
 
     async Task RunExportAsync(
         BuildJournal journal,
-        ProjectIdentity identity,
         PlannedProject project,
         PlannedExport export,
         ExportPreset preset,
@@ -273,6 +271,7 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
         Action<double, string> progress,
         CancellationToken cancellationToken
     ) {
+        var identity = new ProjectIdentity(project.Project.Id.Value, project.Project.Name, project.Project.Path);
         var step = $"export:{export.Preset.Id}:{export.Key.Hex}:{project.Project.Path}";
         if (failed) {
             journal.Ended(step, identity, FailedExport(preset.Id, "An output it reads could not be built."));

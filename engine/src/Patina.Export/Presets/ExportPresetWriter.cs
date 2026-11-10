@@ -1,23 +1,23 @@
 using Patina.Contracts;
 using Patina.Library;
 using System.Globalization;
-using Vixen.Core.Imaging;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Vixen.Core.Imaging;
 
 namespace Patina.Export.Presets;
 
 /// <summary>
 ///     A preset as a document a client edits, and back to the file (ADR 0019). The file is the truth: a document is
-///     written as the language spells it, read back by <see cref="ExportPresetReader" />, and kept only if that reads it,
-///     so the editor can make nothing a hand-written file could not say. Comments in a hand-written file do not survive
-///     an edit in the editor; the fields do.
+///     written as the language spells it, read back by <see cref="ExportPresetReader" />, and kept only if that reads
+///     it, so the editor can make nothing a hand-written file could not say. Comments in a hand-written file do not
+///     survive an edit in the editor; the fields do.
 /// </summary>
 public static partial class ExportPresetWriter {
     const string Header =
-        "# An export preset (docs/adr/0019-export-presets.md). Written by Patina's preset editor, and as good to edit by hand.";
+        "# An export preset (docs/adr/0019-export-presets.md), written by Patina's preset editor. Edit it by hand too.";
 
     /// <summary>What a preset's file says, as a document.</summary>
     public static ExportPresetDocument DocumentOf(ExportPreset preset) {
@@ -58,7 +58,9 @@ public static partial class ExportPresetWriter {
             ? $"{(source.Inverted ? "1-" : string.Empty)}{map}.{"rgba"[source.Lane]}"
             : source.Constant.ToString("R", CultureInfo.InvariantCulture);
 
-    /// <summary>The file a document is, fields in the order <see cref="ExportPresetReader.PresetFields" /> gives.</summary>
+    /// <summary>
+    ///     The file a document is, fields in the order <see cref="ExportPresetReader.PresetFields" /> gives.
+    /// </summary>
     public static string Text(ExportPresetDocument document) {
         ArgumentNullException.ThrowIfNull(document);
         var text = new StringBuilder();
@@ -66,61 +68,60 @@ public static partial class ExportPresetWriter {
         text.Append("version: 1\n");
         Line(text, 0, "id", Quote(document.Id));
         Line(text, 0, "name", Quote(document.Name));
-        if (document.Engine.Length > 0) {
-            Line(text, 0, "engine", Quote(document.Engine));
-        }
-
+        Optional(text, 0, "engine", document.Engine.Length > 0 ? Quote(document.Engine) : null);
         Line(text, 0, "normal", Quote(document.Normal));
-        if (document.Size is { } size) {
-            Line(text, 0, "size", size.ToString(CultureInfo.InvariantCulture));
-        }
-
-        if (document.Filter != ExportFilters.Box) {
-            Line(text, 0, "filter", Quote(document.Filter));
-        }
-
-        if (document.Dither) {
-            Line(text, 0, "dither", "true");
-        }
-
+        Optional(text, 0, "size", document.Size?.ToString(CultureInfo.InvariantCulture));
+        Optional(text, 0, "filter", document.Filter != ExportFilters.Box ? Quote(document.Filter) : null);
+        Optional(text, 0, "dither", document.Dither ? "true" : null);
         Padding(text, 0, document.Padding);
-        if (document.Materials.Count > 0) {
-            Line(text, 0, "materials", List(document.Materials));
-        }
-
+        Optional(text, 0, "materials", document.Materials.Count > 0 ? List(document.Materials) : null);
         text.Append("textures:\n");
         foreach (var texture in document.Textures ?? []) {
-            Line(text, 2, "- file", Quote(texture.File));
-            Line(text, 4, "format", Quote(texture.Format));
-            if (texture.Compression != ExportCompressions.None) {
-                Line(text, 4, "compression", Quote(texture.Compression));
-            }
-
-            if (texture.Quality is { } quality) {
-                Line(text, 4, "quality", Quote(quality));
-            }
-
-            Line(text, 4, "space", Quote(texture.Space));
-            if (texture.Mips) {
-                Line(text, 4, "mips", "true");
-            }
-
-            if (texture.Scale != 1) {
-                Line(text, 4, "scale", texture.Scale.ToString("R", CultureInfo.InvariantCulture));
-            }
-
-            if (texture.Dither is { } dither) {
-                Line(text, 4, "dither", dither ? "true" : "false");
-            }
-
-            if (texture.Padding is { } padding) {
-                Padding(text, 4, padding);
-            }
-
-            Line(text, 4, "channels", List(texture.Channels ?? []));
+            Texture(text, texture);
         }
 
         return text.ToString();
+    }
+
+    static void Texture(StringBuilder text, ExportPresetTextureDocument texture) {
+        Line(text, 2, "- file", Quote(texture.File));
+        Line(text, 4, "format", Quote(texture.Format));
+        Optional(
+            text,
+            4,
+            "compression",
+            texture.Compression != ExportCompressions.None ? Quote(texture.Compression) : null
+        );
+        Optional(text, 4, "quality", texture.Quality is { } quality ? Quote(quality) : null);
+        Line(text, 4, "space", Quote(texture.Space));
+        Optional(text, 4, "mips", texture.Mips ? "true" : null);
+        Optional(
+            text,
+            4,
+            "scale",
+            texture.Scale != 1 ? texture.Scale.ToString("R", CultureInfo.InvariantCulture) : null
+        );
+        Optional(
+            text,
+            4,
+            "dither",
+            texture.Dither switch {
+                true => "true",
+                false => "false",
+                null => null
+            }
+        );
+        if (texture.Padding is { } padding) {
+            Padding(text, 4, padding);
+        }
+
+        Line(text, 4, "channels", List(texture.Channels ?? []));
+    }
+
+    static void Optional(StringBuilder text, int indent, string key, string? value) {
+        if (value is not null) {
+            Line(text, indent, key, value);
+        }
     }
 
     /// <summary>
@@ -136,7 +137,7 @@ public static partial class ExportPresetWriter {
     ///     preset named by <paramref name="replaces" /> in that folder is removed after, which is a rename.
     /// </summary>
     /// <returns>The file.</returns>
-    /// <exception cref="ExportPresetException">It is not a preset, or the id it replaces is not in that folder.</exception>
+    /// <exception cref="ExportPresetException">It is not a preset, or what it replaces is not there.</exception>
     public static string Save(string folder, ExportPresetDocument document, string? replaces = null) {
         ArgumentNullException.ThrowIfNull(document);
         Check(document);
@@ -185,10 +186,12 @@ public static partial class ExportPresetWriter {
                 text,
                 indent + 2,
                 "colour",
-                $"[{string.Join(", ", padding.Colour.Select(static c => c.ToString("R", CultureInfo.InvariantCulture)))}]"
+                "[" + string.Join(", ", padding.Colour.Select(Number)) + "]"
             );
         }
     }
+
+    static string Number(float value) => value.ToString("R", CultureInfo.InvariantCulture);
 
     static void Line(StringBuilder text, int indent, string key, string value) =>
         text.Append(' ', indent).Append(key).Append(": ").Append(value).Append('\n');

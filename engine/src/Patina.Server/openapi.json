@@ -9292,7 +9292,7 @@
             "description": "This set\u0027s files turned off or written in another format."
           }
         },
-        "description": "One texture set\u0027s changes over the whole export\u0027s (#153): its own size, padding, dithering and files. Null fields\nkeep what the export says for every set."
+        "description": "One texture set\u0027s changes over the whole export\u0027s (#153): its own size, padding, dithering and files. Null\nfields keep what the export says for every set."
       },
       "FileFormats": {
         "required": [

@@ -62,22 +62,7 @@ public static class Terms {
         ["infinite"] = "Dilation, infinite",
         ["transparent"] = "Dilation + transparent",
         ["colour"] = "Dilation + colour",
-        ["diffusion"] = "Dilation + diffusion",
-        ["none"] = "None",
-        ["half"] = "Half float",
-        ["float"] = "Float",
-        ["bc1"] = "BC1 (RGB)",
-        ["bc3"] = "BC3 (RGBA)",
-        ["bc4"] = "BC4 (one lane)",
-        ["bc5"] = "BC5 (two lanes)",
-        ["bc6h"] = "BC6H (HDR)",
-        ["bc7"] = "BC7",
-        ["gltf"] = "glTF material",
-        ["usda"] = "USD preview surface",
-        ["mtlx"] = "MaterialX standard surface",
-        ["world"] = "World Normal",
-        ["bent"] = "Bent Normal",
-        ["id"] = "ID"
+        ["diffusion"] = "Dilation + diffusion"
     };
 
     /// <summary>

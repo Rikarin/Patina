@@ -30,7 +30,15 @@ public sealed class ExportPreviewBuildTests : IDisposable {
                     name,
                     [],
                     [],
-                    [new OutputDeclaration("maps", "texture-graph", ["input.txt"], [], new Dictionary<string, string>())]
+                    [
+                        new OutputDeclaration(
+                            "maps",
+                            "texture-graph",
+                            ["input.txt"],
+                            [],
+                            new Dictionary<string, string>()
+                        )
+                    ]
                 )
             );
             File.WriteAllText(Path.Combine(Root, "projects", name, "input.txt"), name);
@@ -60,9 +68,13 @@ public sealed class ExportPreviewBuildTests : IDisposable {
             Task.FromResult(ExportSteps.Run(work, progress, cancellationToken));
     }
 
-    async Task<LibraryReport> Build(OpenLibrary library, BuildRequest request) =>
-        await new BuildPipeline(library, new Maps(), ToolCatalog.Default).RunAsync(
-            new(Path.Combine(LibraryLayout.ReportsPath(Root), Guid.NewGuid().ToString("N")), "b", DateTimeOffset.UnixEpoch),
+    Task<LibraryReport> Build(OpenLibrary library, BuildRequest request) =>
+        new BuildPipeline(library, new Maps(), ToolCatalog.Default).RunAsync(
+            new(
+                Path.Combine(LibraryLayout.ReportsPath(Root), Guid.NewGuid().ToString("N")),
+                "b",
+                DateTimeOffset.UnixEpoch
+            ),
             request,
             null,
             null,
@@ -70,7 +82,9 @@ public sealed class ExportPreviewBuildTests : IDisposable {
             Token
         );
 
-    /// <summary>A project's own preset exports that project, and one nothing has is refused before anything runs.</summary>
+    /// <summary>
+    ///     A project's own preset exports that project, and one nothing has is refused before anything runs.
+    /// </summary>
     [Fact]
     public async Task A_projects_own_preset_exports_only_that_project() {
         using var library = Library();
@@ -85,7 +99,9 @@ public sealed class ExportPreviewBuildTests : IDisposable {
         Assert.Single(plan.Projects.Single(static p => p.Project.Path == "crate").Exports);
         Assert.Empty(plan.Projects.Single(static p => p.Project.Path == "barrel").Exports);
         Assert.Equal(1, report.Exported);
-        Assert.True(File.Exists(Path.Combine(LibraryLayout.ExportsPath(Root), "crate-only", "crate", "T_crate_ORM.png")));
+        Assert.True(
+            File.Exists(Path.Combine(LibraryLayout.ExportsPath(Root), "crate-only", "crate", "T_crate_ORM.png"))
+        );
         Assert.Throws<BuildRefusedException>(() =>
             BuildPipeline.Plan(library, new() { Presets = ["nobody"] }, ToolCatalog.Default, Token)
         );
@@ -111,7 +127,10 @@ public sealed class ExportPreviewBuildTests : IDisposable {
         Assert.True(preview.Lanes[1].MaxError > 0);
         Assert.Equal((long)Math.Ceiling(32 * 32 * 4d / 3d), preview.Bytes);
         Assert.Equal((long)Math.Ceiling(32 * 32 * 4 * 4d / 3d), preview.Uncompressed);
-        Assert.All(ExportPreviews.Pictures, picture => Assert.NotNull(ExportPreviews.PictureOf(Root, preview.Id, picture)));
+        Assert.All(
+            ExportPreviews.Pictures,
+            picture => Assert.NotNull(ExportPreviews.PictureOf(Root, preview.Id, picture))
+        );
         Assert.Null(ExportPreviews.PictureOf(Root, preview.Id, "../preview.json"));
         Assert.Equal(preview.Id, ExportPreviews.Make(library, request, ToolCatalog.Default, Token).Id);
 

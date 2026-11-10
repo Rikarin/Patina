@@ -140,7 +140,9 @@ public static class IpcTypes {
     /// <summary>Worker to Server: <see cref="IpcMessage.BuildEnded" />, however it ended.</summary>
     public const string BuildEnded = "build.ended";
 
-    /// <summary>Worker to Server: how far a step is, and the file it is on (<see cref="IpcMessage.BuildProgress" />).</summary>
+    /// <summary>
+    ///     Worker to Server: how far a step is, and the file it is on (<see cref="IpcMessage.BuildProgress" />).
+    /// </summary>
     public const string BuildProgress = "build.progress";
 
     /// <summary>Server to Worker: stop the bake named by <see cref="IpcMessage.BakeCancel" />.</summary>

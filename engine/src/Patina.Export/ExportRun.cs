@@ -119,10 +119,7 @@ public static class ExportRun {
                         levels,
                         bytes.LongLength,
                         set
-                    ) {
-                        Space = texture.Space,
-                        Maps = [..texture.Maps.Where(maps.ContainsKey)]
-                    }
+                    ) { Space = texture.Space, Maps = [..texture.Maps.Where(maps.ContainsKey)] }
                 );
             }
         }
@@ -224,19 +221,10 @@ public static class ExportRun {
             textures.Add((file, path));
         }
 
-        List<string> warnings = [];
-        if (preset is { Materials.Count: > 0 }) {
-            foreach (var set in textures.GroupBy(static t => t.File.Set, StringComparer.Ordinal)) {
-                var stem = NamingTemplate.Resolve(
-                    several ? NamingTemplate.PerSet("{project}") : "{project}",
-                    values.Of(set.Key),
-                    string.Empty
-                );
-                var written = MaterialFiles.Write(preset, [..set], target, stem, values.Of(set.Key).Material);
-                delivered.AddRange(written.Files);
-                warnings.AddRange(written.Warnings.Select(warning => several ? $"{set.Key}: {warning}" : warning));
-            }
-        }
+        var materials = preset is { Materials.Count: > 0 }
+            ? Materials(preset, textures, target, values, several)
+            : new([], []);
+        delivered.AddRange(materials.Files);
 
         foreach (var (from, name) in beside ?? []) {
             var path = Path.Combine(target, name);
@@ -257,7 +245,33 @@ public static class ExportRun {
                 ContractsJsonContext.Default.ExportDelivery
             )
         );
-        return new(delivered, warnings);
+        return new(delivered, materials.Warnings);
+    }
+
+    /// <summary>
+    ///     Each set's material files, named like <c>{project}</c>, with the set's name when there are several.
+    /// </summary>
+    static MaterialFiles.Written Materials(
+        ExportPreset preset,
+        List<(ExportedFile File, string Path)> textures,
+        string target,
+        NamingValues values,
+        bool several
+    ) {
+        List<string> files = [];
+        List<string> warnings = [];
+        foreach (var set in textures.GroupBy(static t => t.File.Set, StringComparer.Ordinal)) {
+            var template = several ? NamingTemplate.PerSet("{project}") : "{project}";
+            var stem = NamingTemplate.Resolve(template, values.Of(set.Key), string.Empty);
+            var written = MaterialFiles.Write(preset, [..set], target, stem, values.Of(set.Key).Material);
+            files.AddRange(written.Files);
+            var named = several ? $"{set.Key}: " : string.Empty;
+            foreach (var warning in written.Warnings) {
+                warnings.Add(named + warning);
+            }
+        }
+
+        return new(files, warnings);
     }
 
     static void Copy(string from, string to) {

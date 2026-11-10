@@ -18,6 +18,7 @@ public sealed class ExportPresetException : Exception {
 public static class ExportPresetReader {
     const int Version = 1;
     const string Lanes = "rgba";
+    const string Dithered = "dither";
 
     /// <summary>Reads a preset.</summary>
     /// <param name="text">The file.</param>
@@ -65,7 +66,7 @@ public static class ExportPresetReader {
             ExportFilters.All.Contains(filter, StringComparer.Ordinal),
             $"{where}: filter '{filter}' is not one of {string.Join(", ", ExportFilters.All)}."
         );
-        var dither = Flag(Optional(root, "dither"), "dither", where) ?? false;
+        var dither = Flag(Optional(root, Dithered), Dithered, where) ?? false;
         foreach (var key in root.Children.Keys.OfType<YamlScalarNode>()) {
             Require(
                 PresetFields.Contains(key.Value, StringComparer.Ordinal),
@@ -84,12 +85,12 @@ public static class ExportPresetReader {
 
     /// <summary>The fields a preset has, in the order the preset editor writes them.</summary>
     public static IReadOnlyList<string> PresetFields { get; } = [
-        "version", "id", "name", "engine", "normal", "size", "filter", "dither", "padding", "materials", "textures"
+        "version", "id", "name", "engine", "normal", "size", "filter", Dithered, "padding", "materials", "textures"
     ];
 
     /// <summary>The fields a texture has, in the order the preset editor writes them.</summary>
     public static IReadOnlyList<string> TextureFields { get; } = [
-        "file", "format", "compression", "quality", "space", "mips", "scale", "dither", "padding", "channels"
+        "file", "format", "compression", "quality", "space", "mips", "scale", Dithered, "padding", "channels"
     ];
 
     /// <summary>The material files beside the textures: a list of <see cref="ExportMaterials" />, each once.</summary>
@@ -251,7 +252,7 @@ public static class ExportPresetReader {
 
         return new(file, format, compression, quality, space, mips, channels) {
             Scale = scale,
-            Dither = Flag(Optional(node, "dither"), "dither", where),
+            Dither = Flag(Optional(node, Dithered), Dithered, where),
             Padding = Child(node, "padding") is { } padding ? ReadPadding(padding, where) : null
         };
     }

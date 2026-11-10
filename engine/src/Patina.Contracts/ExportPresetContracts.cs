@@ -48,7 +48,7 @@ public sealed record ExportPresetDocument {
     public required string Name { get; init; }
 
     /// <summary>What it is for.</summary>
-    public string Engine { get; init; } = "";
+    public string Engine { get; init; } = string.Empty;
 
     /// <summary>The green its target reads: y-up or y-down.</summary>
     public string Normal { get; init; } = "y-up";

@@ -63,10 +63,18 @@ public static class ExportPresetCatalog {
             throw new ArgumentException($"'{project}' is not a project's path.", nameof(project));
         }
 
-        return LibraryLayout.Full(libraryRoot, $"{LibraryLayout.ProjectsFolder}/{project}/{LibraryLayout.PresetsFolder}");
+        return LibraryLayout.Full(
+            libraryRoot,
+            $"{LibraryLayout.ProjectsFolder}/{project}/{LibraryLayout.PresetsFolder}"
+        );
     }
 
-    static void ReadFolder(string folder, string origin, Dictionary<string, ExportPreset> presets, List<string> problems) {
+    static void ReadFolder(
+        string folder,
+        string origin,
+        Dictionary<string, ExportPreset> presets,
+        List<string> problems
+    ) {
         if (!Directory.Exists(folder)) {
             return;
         }

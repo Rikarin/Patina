@@ -5,8 +5,8 @@ namespace Patina.Export.Presets;
 
 /// <summary>
 ///     A preset with one export's changes: another size, padding or format, files left out, sets chosen, and any of
-///     those for one set alone. The result is a preset like any other, so everything after this reads one thing, and its
-///     revision moves with the changes, so an export made under other settings is never taken for this one.
+///     those for one set alone. The result is a preset like any other, so everything after this reads one thing, and
+///     its revision moves with the changes, so an export made under other settings is never taken for this one.
 /// </summary>
 public static class ExportOverrides {
     /// <summary>The preset with the changes made.</summary>
@@ -162,12 +162,15 @@ public static class ExportOverrides {
         var compression = container ? choice.Compression ?? texture.Compression : ExportCompressions.None;
         if (!container && choice.Compression is { } refused && refused != ExportCompressions.None) {
             throw new ExportPresetException(
-                $"{where}: {texture.File} as {ExportFormats.LabelOf(format)} cannot be compressed; only ktx2 and dds can."
+                $"{where}: {texture.File} as {ExportFormats.LabelOf(format)} cannot be compressed; "
+                + "only ktx2 and dds can."
             );
         }
 
         var floating = compression is ExportCompressions.Bc6H or ExportCompressions.Half or ExportCompressions.Wide;
-        var space = ExportFormats.IsFloat(format) || ExportFormats.IsWide(format) || floating ? "linear" : texture.Space;
+        var space = ExportFormats.IsFloat(format) || ExportFormats.IsWide(format) || floating
+            ? "linear"
+            : texture.Space;
         var quality = choice.Quality ?? texture.Quality;
         if (ExportPresetReader.QualityProblem(format, quality) is { } badQuality) {
             if (choice.Quality is not null) {

@@ -217,8 +217,8 @@ public sealed class ProcessTests : IDisposable {
     }
 
     /// <summary>
-    ///     <c>patina build</c> takes the Export dialog's settings as flags (#153), held to what a preset can take before
-    ///     anything runs, as the API holds a request's.
+    ///     <c>patina build</c> takes the Export dialog's settings as flags (#153), held to what a preset can take
+    ///     before anything runs, as the API holds a request's.
     /// </summary>
     [Fact]
     public async Task The_cli_builds_with_the_export_dialogs_settings() {
@@ -229,10 +229,15 @@ public sealed class ProcessTests : IDisposable {
         var small = await PatinaAsync([..build, "--size", "0"]);
         var packed = await PatinaAsync([..build, "--file", "T_{project}_N=ktx2:bc4"]);
         var fine = await PatinaAsync([..build, "--size", "1024", "--file", "T_{project}_ORM=ktx2:bc7", "--dither"]);
-        var kept = await PatinaAsync([..build, "--kept", "--project", Guid.NewGuid().ToString(), "--project", Guid.NewGuid().ToString()]);
+        var kept = await PatinaAsync(
+            [..build, "--kept", "--project", Guid.NewGuid().ToString(), "--project", Guid.NewGuid().ToString()]
+        );
 
         Assert.Equal((2, true), (small.ExitCode, small.Output.Contains("size is a side", StringComparison.Ordinal)));
-        Assert.Equal((2, true), (packed.ExitCode, packed.Output.Contains("bc4 takes 1 to 1 lanes", StringComparison.Ordinal)));
+        Assert.Equal(
+            (2, true),
+            (packed.ExitCode, packed.Output.Contains("bc4 takes 1 to 1 lanes", StringComparison.Ordinal))
+        );
         Assert.Equal(2, kept.ExitCode);
         Assert.Contains("one project", kept.Output, StringComparison.Ordinal);
         Assert.Equal(0, fine.ExitCode);

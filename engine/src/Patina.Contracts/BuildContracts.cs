@@ -133,8 +133,8 @@ public sealed record ExportFileChoice(string Template, bool Enabled = true, stri
 }
 
 /// <summary>
-///     One texture set's changes over the whole export's (#153): its own size, padding, dithering and files. Null fields
-///     keep what the export says for every set.
+///     One texture set's changes over the whole export's (#153): its own size, padding, dithering and files. Null
+///     fields keep what the export says for every set.
 /// </summary>
 /// <param name="Set">The texture set, by name.</param>
 public sealed record ExportSetOptions(string Set) {

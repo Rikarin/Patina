@@ -2,15 +2,15 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
 using Patina.Export.Builds;
 using Patina.Export.Presets;
-using Patina.Jobs;
 using Patina.Library;
 
 namespace Patina.Server.Api;
 
 /// <summary>
 ///     Export presets as files a client edits (#155, ADR 0019). A preset lives in the library's or a project's
-///     <c>export-presets</c> folder, and every write goes through the reader, so the API can make nothing a hand-written
-///     file could not say. Factory presets are read-only: a client duplicates one into the library or a project.
+///     <c>export-presets</c> folder, and every write goes through the reader, so the API can make nothing a
+///     hand-written file could not say. Factory presets are read-only: a client duplicates one into the library or a
+///     project.
 /// </summary>
 static class PresetEndpoints {
     const string Tag = "Builds";
@@ -23,7 +23,9 @@ static class PresetEndpoints {
             .ProducesProblem(StatusCodes.Status404NotFound);
         presets.MapPut("/{id}", Put)
             .WithName("PutExportPreset")
-            .WithSummary("Keeps a preset as a file in the library's or a project's export-presets, renaming one if asked.")
+            .WithSummary(
+                "Keeps a preset as a file in the library's or a project's export-presets, renaming one if asked."
+            )
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
         presets.MapDelete("/{id}", Delete)
@@ -38,7 +40,9 @@ static class PresetEndpoints {
         var compression = api.MapGroup("/export/compression").WithTags(Tag);
         compression.MapPost("/", CompressAsync)
             .WithName("PreviewCompression")
-            .WithSummary("A region of one exported file as the file holds it, beside its source, with the error per lane.")
+            .WithSummary(
+                "A region of one exported file as the file holds it, beside its source, with the error per lane."
+            )
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
@@ -98,7 +102,10 @@ static class PresetEndpoints {
 
         return ExportPreviews.PictureOf(library.RootPath, id, picture) is { } path
             ? TypedResults.PhysicalFile(path, "image/png")
-            : TypedResults.Problem($"There is no picture '{picture}' of preview '{id}'.", statusCode: StatusCodes.Status404NotFound);
+            : TypedResults.Problem(
+                $"There is no picture '{picture}' of preview '{id}'.",
+                statusCode: StatusCodes.Status404NotFound
+            );
     }
 
     static Results<Ok<ExportPresetSource>, ProblemHttpResult> Get(string id, LibraryHost host, string? project = null) {
@@ -130,7 +137,9 @@ static class PresetEndpoints {
 
         try {
             var file = ExportPresetWriter.Save(folder, write.Preset with { Id = id }, write.Replaces);
-            var origin = write.Project is null ? ExportPresetCatalog.Origins.Library : ExportPresetCatalog.Origins.Project;
+            var origin = write.Project is null
+                ? ExportPresetCatalog.Origins.Library
+                : ExportPresetCatalog.Origins.Project;
             var preset = ExportPresetReader.Read(SharedFile.ReadAllText(file), Path.GetFileName(file), file) with {
                 Origin = origin
             };
@@ -199,7 +208,10 @@ static class PresetEndpoints {
         }
 
         if (!File.Exists(request.File)) {
-            return TypedResults.Problem($"There is no file '{request.File}'.", statusCode: StatusCodes.Status404NotFound);
+            return TypedResults.Problem(
+                $"There is no file '{request.File}'.",
+                statusCode: StatusCodes.Status404NotFound
+            );
         }
 
         try {
@@ -224,7 +236,7 @@ static class PresetEndpoints {
         var values = contents is null
             ? new NamingValues(preset.Id, preset.Id)
             : ProjectNaming.Of(library, project!, contents.Name, preset.Id);
-        IReadOnlyList<string> sets = contents is { ExportSets.Count: > 0 } ? contents.ExportSets : [string.Empty];
+        var sets = contents is { ExportSets.Count: > 0 } ? contents.ExportSets : [string.Empty];
         var several = sets.Count > 1;
         return [
             ..sets.SelectMany(set => preset.Textures.Select(texture => new ExportPresetFileName(
@@ -248,7 +260,9 @@ static class PresetEndpoints {
     static ExportPresetSource SourceOf(ExportPreset preset) =>
         new(ExportPresetWriter.DocumentOf(preset), preset.Origin, preset.Path, ExportPresetCatalog.TextOf(preset));
 
-    /// <summary>The folder a preset is kept in: the library's, or a project's, or null when there is no such project.</summary>
+    /// <summary>
+    ///     The folder a preset is kept in: the library's, or a project's, or null when there is no such project.
+    /// </summary>
     static string? Folder(OpenLibrary library, string? project) {
         if (project is null) {
             return ExportPresetCatalog.LibraryFolder(library.RootPath);

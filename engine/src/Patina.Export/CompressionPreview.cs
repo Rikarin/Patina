@@ -58,14 +58,18 @@ public static class CompressionPreview {
         var extent = levels.Levels[level];
         var region = Region((extent.Width, extent.Height), centre, side);
         var crop = new TextureData(levels.Format, region.Width, region.Height, 1);
-        Copy(levels.Level(level), extent.Width, region, crop.LevelSpan(0), levels.Format.LevelSize(1, 1, 1));
+        Copy(levels.Level(level), extent.Width, region, crop.LevelSpan(0), levels.Format.LevelSize(1, 1));
         var source = Numbers(crop, texture.Channels.Count);
         var held = ExportEncoder.Blocks(crop, texture, cancellationToken);
-        var written = held.Format.IsCompressed() ? Numbers(BlockCompressor.Decode(held), texture.Channels.Count) : source;
+        var written = held.Format.IsCompressed()
+            ? Numbers(BlockCompressor.Decode(held), texture.Channels.Count)
+            : source;
         return new(source, written, region, (extent.Width, extent.Height), levels.LevelCount);
     }
 
-    /// <summary>A plain file's region, written and read back, which shows a JPEG's loss and an 8-bit file's steps.</summary>
+    /// <summary>
+    ///     A plain file's region, written and read back, which shows a JPEG's loss and an 8-bit file's steps.
+    /// </summary>
     static CompressionRegion Plain(
         PackedPicture picture,
         ExportTexture texture,
@@ -94,7 +98,11 @@ public static class CompressionPreview {
     }
 
     /// <summary>A region on block lines, of the side asked for or the level's, centred as near as it can be.</summary>
-    static (int X, int Y, int Width, int Height) Region((int Width, int Height) size, (double X, double Y) centre, int side) {
+    static (int X, int Y, int Width, int Height) Region(
+        (int Width, int Height) size,
+        (double X, double Y) centre,
+        int side
+    ) {
         side = Math.Clamp(side, 4, MaxSide);
         var width = Math.Min(size.Width, side);
         var height = Math.Min(size.Height, side);
@@ -165,11 +173,12 @@ public static class CompressionPreview {
         var samples = new float[texels * lanes];
         for (var texel = 0; texel < texels; texel++) {
             for (var lane = 0; lane < lanes; lane++) {
-                samples[texel * lanes + lane] = image.Samples[texel * image.Channels + Math.Min(lane, image.Channels - 1)];
+                samples[texel * lanes + lane] = image.Samples[texel * image.Channels
+                    + Math.Min(lane, image.Channels - 1)];
             }
         }
 
-        return new(image.Width, image.Height, lanes, samples);
+        return image with { Channels = lanes, Samples = samples };
     }
 
     /// <summary>
@@ -209,8 +218,8 @@ public static class CompressionPreview {
     }
 
     /// <summary>
-    ///     The difference as a grey picture, each texel its largest error over the lanes times <paramref name="gain" />,
-    ///     so an error too small to see is seen.
+    ///     The difference as a grey picture, each texel its largest error over the lanes times
+    ///     <paramref name="gain" />, so an error too small to see is seen.
     /// </summary>
     public static FloatImage Difference(CompressionRegion region, double gain) {
         ArgumentNullException.ThrowIfNull(region);
@@ -222,14 +231,17 @@ public static class CompressionPreview {
             for (var lane = 0; lane < source.Channels; lane++) {
                 largest = Math.Max(
                     largest,
-                    Math.Abs(source.Samples[texel * source.Channels + lane] - written.Samples[texel * written.Channels + lane])
+                    Math.Abs(
+                        source.Samples[texel * source.Channels + lane]
+                        - written.Samples[texel * written.Channels + lane]
+                    )
                 );
             }
 
             samples[texel] = Math.Clamp((float)(largest * gain), 0f, 1f);
         }
 
-        return new(source.Width, source.Height, 1, samples);
+        return source with { Channels = 1, Samples = samples };
     }
 
     /// <summary>

@@ -2921,8 +2921,8 @@ export interface components {
       error?: null | string;
     };
     /**
-     * @description One texture set's changes over the whole export's (#153): its own size, padding, dithering and files. Null fields
-     *     keep what the export says for every set.
+     * @description One texture set's changes over the whole export's (#153): its own size, padding, dithering and files. Null
+     *     fields keep what the export says for every set.
      */
     ExportSetOptions: {
       /** @description The texture set, by name. */

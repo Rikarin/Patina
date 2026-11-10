@@ -113,7 +113,11 @@ public sealed class BuildPropertyTests {
             return Task.FromResult<BuildManifest>(new(work.Tool, [map], [], []));
         }
 
-        public Task<ExportManifest> ExportAsync(ExportStep work, Action<double, string>? progress, CancellationToken cancellationToken) {
+        public Task<ExportManifest> ExportAsync(
+            ExportStep work,
+            Action<double, string>? progress,
+            CancellationToken cancellationToken
+        ) {
             Exports++;
             return Task.FromResult(ExportSteps.Run(work, progress, cancellationToken));
         }
@@ -317,7 +321,11 @@ public sealed class BuildPropertyTests {
             return built;
         }
 
-        public Task<ExportManifest> ExportAsync(ExportStep work, Action<double, string>? progress, CancellationToken cancellationToken) =>
+        public Task<ExportManifest> ExportAsync(
+            ExportStep work,
+            Action<double, string>? progress,
+            CancellationToken cancellationToken
+        ) =>
             inner.ExportAsync(work, progress, cancellationToken);
     }
 
@@ -332,7 +340,11 @@ public sealed class BuildPropertyTests {
                 : inner.OutputAsync(work, cancellationToken);
         }
 
-        public Task<ExportManifest> ExportAsync(ExportStep work, Action<double, string>? progress, CancellationToken cancellationToken) =>
+        public Task<ExportManifest> ExportAsync(
+            ExportStep work,
+            Action<double, string>? progress,
+            CancellationToken cancellationToken
+        ) =>
             inner.ExportAsync(work, progress, cancellationToken);
     }
 }

@@ -25,8 +25,8 @@ T = TypeVar("T", bound="ExportSetOptions")
 
 @_attrs_define
 class ExportSetOptions:
-    """ One texture set's changes over the whole export's (#153): its own size, padding, dithering and files. Null fields
-    keep what the export says for every set.
+    """ One texture set's changes over the whole export's (#153): its own size, padding, dithering and files. Null
+    fields keep what the export says for every set.
 
         Attributes:
             set_ (str): The texture set, by name.

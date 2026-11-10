@@ -275,7 +275,8 @@ public sealed class OutputBuildersTests : IDisposable {
         var made = Path.Combine(folder.FullName, "export");
 
         var manifest = ExportSteps.Run(new(preset, [body], made), null, Token);
-        var delivered = ExportRun.Deliver("key", made, manifest, Path.Combine(folder.FullName, "t"), new("Crate", "p")).Files;
+        var delivered = ExportRun.Deliver("key", made, manifest, Path.Combine(folder.FullName, "t"), new("Crate", "p"))
+            .Files;
 
         Assert.Equal("T_Crate_R.png", Path.GetFileName(Assert.Single(delivered)));
     }
