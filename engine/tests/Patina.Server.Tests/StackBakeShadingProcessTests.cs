@@ -168,6 +168,12 @@ public sealed partial class StackProcessTests {
             Assert.True(worn.IsSuccessStatusCode, await worn.Content.ReadAsStringAsync(deadline.Token));
         }
 
+        // The bake writes the set's normal and occlusion, so a preset reading them finds them.
+        Assert.DoesNotContain(
+            (await ChecksAsync(state.Id, deadline.Token)).Problems,
+            static p => p.Code == CheckCodes.ChannelMissing && p.Values["map"] is "normal" or "occlusion"
+        );
+
         var keep = Environment.GetEnvironmentVariable("PATINA_PICTURES") ?? folder.FullName;
         var shaded = await SettledShotAsync(Path.Combine(keep, "bake-shading-combined.png"), deadline.Token);
         var off = await EditAsync(state.Id, deadline.Token, new StackSetSettings(BakedNormal: "Off", BakedOcclusion: "Off"));

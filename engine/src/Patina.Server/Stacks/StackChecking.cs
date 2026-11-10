@@ -244,6 +244,16 @@ public static class StackChecking {
             maps.Add("normal");
         }
 
+        // A bake beneath the set writes its normal and occlusion whether or not it has those channels (#86).
+        var baked = BakedMapPicture.Shading(state.MeshMaps);
+        if (baked.Contains("normal") && state.BakedNormal != "Off") {
+            maps.Add("normal");
+        }
+
+        if (baked.Contains("ao") && state.BakedOcclusion != "Off") {
+            maps.Add("occlusion");
+        }
+
         return maps;
     }
 
