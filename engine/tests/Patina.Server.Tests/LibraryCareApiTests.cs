@@ -52,11 +52,17 @@ public sealed class LibraryCareApiTests : IAsyncLifetime {
             await client.DeleteAsync($"/api/v1/graphs/{open.GetProperty("id").GetString()}?discard=true", Token);
         }
 
+        // An autosave left from before goes with it, through the autosave gate (#239).
+        var file = Path.GetFullPath(document.Path, server.Library);
+        Recovery.Keep(server.Library, file, "autosaved");
+        Assert.Equal(1, Recovery.Count(server.Library, file));
+
         var deleted = await client.DeleteAsync(
             $"/api/v1/library/project/document?project=crate&document={document.Id}",
             Token
         );
         Assert.Equal(HttpStatusCode.OK, deleted.StatusCode);
+        Assert.Equal(0, Recovery.Count(server.Library, file));
         var binned = (await deleted.Content.ReadFromJsonAsync<BinItem>(Token))!;
         var bin = await client.GetFromJsonAsync<BinList>("/api/v1/library/bin", Token);
         Assert.Equal(binned.Id, Assert.Single(bin!.Items).Id);

@@ -74,7 +74,10 @@ public static class Recovery {
             : null;
     }
 
-    /// <summary>Puts the newest autosave in place of the file, its paint beside it, then forgets them.</summary>
+    /// <summary>
+    ///     Puts the newest autosave in place of the file, its paint beside it. The autosaves stay: the Server lets go of
+    ///     them through its autosave gate, as it does every other letting go.
+    /// </summary>
     public static void Restore(string root, string file) {
         if (Latest(root, file) is not { } latest) {
             return;
@@ -88,16 +91,6 @@ public static class Recovery {
             } else {
                 File.Copy(kept, LibraryLayout.Beside(beside, name), true);
             }
-        }
-
-        Clear(root, file);
-    }
-
-    /// <summary>Forgets a document's autosaves, as a save or a refusal does.</summary>
-    public static void Clear(string root, string file) {
-        var folder = Folder(root, file);
-        if (Directory.Exists(folder)) {
-            Directory.Delete(folder, true);
         }
     }
 
