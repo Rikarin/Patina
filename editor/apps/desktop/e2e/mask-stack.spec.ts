@@ -203,8 +203,7 @@ test('a mask effect blends over the mask it reads, and copies into another layer
   await window.getByTestId('layer-menu-mask-black').click();
   const hidden = await changed(band);
   const withoutBand = await mean();
-  await paint.click({ button: 'right' });
-  await window.getByTestId('layer-menu-effect-Invert').click();
+  await window.getByTestId('paint-mask-effect-add').selectOption('Colour/Invert');
   let shown = await changed(hidden);
   expect(await mean()).toBeCloseTo(withBand, 0);
 
@@ -219,12 +218,16 @@ test('a mask effect blends over the mask it reads, and copies into another layer
   expect(await mean()).toBeCloseTo(withoutBand, 0);
   await window.screenshot({ path: join(shots, 'mask-effect-1-multiplied.png') });
 
-  // Chosen and copied, it pastes into the base's mask, which had none and so gets a white one to run on.
-  await effect.click();
+  // Chosen and copied, it pastes into the base's white mask, which it multiplies to black, hiding the base.
+  // On its name, since the middle of the row is its blending, which keeps a click to itself.
+  await effect.getByText('Invert', { exact: true }).click();
   await expect(effect).toHaveAttribute('aria-selected', 'true');
   await window.getByTestId('mask-stack-copy').click();
   await window.getByTestId('mask-stack-back').click();
   const base = window.getByTestId('paint-layer-base');
+  await base.click({ button: 'right' });
+  await window.getByTestId('layer-menu-mask-white').click();
+  await expect(base.getByTestId('layer-mask')).toBeVisible();
   await base.click({ button: 'right' });
   await window.getByTestId('layer-menu-mask-open').click();
   await expect(window.getByTestId('mask-stack-title')).toHaveText('Base · Mask');
