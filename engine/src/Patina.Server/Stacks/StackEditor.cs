@@ -472,7 +472,7 @@ public sealed class StackEditor : ILayerStackDocument {
                     ?? (sameFilter && (change.Graph ?? layer.Graph) == layer.Graph ? layer.Inputs : []),
                 Projection = Parsed(change.Projection, layer.Projection, "projection"),
                 PlanarAxis = Parsed(change.PlanarAxis, layer.PlanarAxis, "axis"),
-                Placement = change.Placement is { } placement ? Placed(placement) : layer.Placement,
+                Placement = change.Placement is { } placement ? StackDocuments.Placed(placement) : layer.Placement,
                 Decal = StackLayerEdits.Decal(change, layer),
                 SurfacePath = StackLayerEdits.SurfacePath(change, layer),
                 Filter = filter,
@@ -483,22 +483,6 @@ public sealed class StackEditor : ILayerStackDocument {
             },
             "Change layer"
         );
-    }
-
-    /// <summary>Where a fill sits, as a layer keeps it.</summary>
-    /// <exception cref="StackEditRefusedException">It repeats no times or fewer.</exception>
-    internal static LayerPlacement Placed(StackPlacement placement) {
-        if (placement.Scale <= 0f) {
-            throw new StackEditRefusedException("A scale is above zero.");
-        }
-
-        return new() {
-            Scale = placement.Scale,
-            Rotation = placement.Rotation,
-            OffsetX = placement.OffsetX,
-            OffsetY = placement.OffsetY,
-            Sharpness = placement.Sharpness
-        };
     }
 
     /// <summary>What a channel holds before anything paints it, which is what leaves its material alone.</summary>

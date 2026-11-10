@@ -61,7 +61,7 @@ public static class StackDocuments {
                                     ),
                                     PlanarAxis = Enum.Parse<LayerAxis>(source.PlanarAxis ?? nameof(LayerAxis.Y)),
                                     Placement = source.Placement is { } placement
-                                        ? StackEditor.Placed(placement)
+                                        ? Placed(placement)
                                         : new()
                                 }
                             ]
@@ -77,6 +77,22 @@ public static class StackDocuments {
     /// <summary>The words a stack's fields take, from the enumerations and libraries that mean them.</summary>
     /// <summary>What a person calls a channel, by its usage: Ambient Occlusion for <c>occlusion</c> (#198).</summary>
     public static string ChannelName(string usage) => Terms.Label(usage);
+
+    /// <summary>Where a fill sits, as a layer keeps it.</summary>
+    /// <exception cref="StackEditRefusedException">It repeats no times or fewer.</exception>
+    internal static LayerPlacement Placed(StackPlacement placement) {
+        if (placement.Scale <= 0f) {
+            throw new StackEditRefusedException("A scale is above zero.");
+        }
+
+        return new() {
+            Scale = placement.Scale,
+            Rotation = placement.Rotation,
+            OffsetX = placement.OffsetX,
+            OffsetY = placement.OffsetY,
+            Sharpness = placement.Sharpness
+        };
+    }
 
     /// <summary>What a person calls a mask source: Mesh Map for <c>Bake</c>, Bitmap for <c>Texture</c>.</summary>
     public static string SourceName(LayerMaskSource source) => Terms.InStack(source.ToString());
