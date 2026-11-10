@@ -122,8 +122,11 @@ public static class IpcTypes {
     /// <summary>Reads what every channel of a stack holds at one place on its map: numbers, for a material picker.</summary>
     public const string StackSample = "stack.sample";
 
-    /// <summary>Draws a stroke of a brush small, into the preview folder, with the alphas a stack's strokes read.</summary>
-    public const string StackBrushPreview = "stack.brush-preview";
+    /// <summary>
+    ///     Draws a stroke of a brush small, into the preview folder, with the alphas a stack's strokes read. It needs
+    ///     no stack loaded and no device: it is a few dozen stamps on the CPU.
+    /// </summary>
+    public const string BrushPreview = "brush.preview";
 
     /// <summary>
     ///     Measures a stack's set before export: its layout on the mesh, and the share of its texels a physical
@@ -305,8 +308,8 @@ public sealed class IpcMessage {
     /// <summary>The reply to stack.sample: each channel's value there.</summary>
     public IReadOnlyList<StackSampledChannel>? Sampled { get; set; }
 
-    /// <summary>stack.brush-preview: the brush to draw. Its reply is <see cref="ThumbnailHash" />.</summary>
-    public StackBrushPreviewAsk? StackBrushPreview { get; set; }
+    /// <summary>brush.preview: the brush to draw. Its reply is <see cref="ThumbnailHash" />.</summary>
+    public BrushPreviewAsk? BrushPreview { get; set; }
 
     /// <summary>stack.check: the session to measure.</summary>
     public string? StackCheck { get; set; }
@@ -528,10 +531,10 @@ public sealed record StackLayerThumbnail(string Layer, string Hash);
 public sealed record StackFindAsk(string Session, float U, float V);
 
 /// <summary>Asks for a picture of a brush, a stroke of it drawn small.</summary>
-/// <param name="Session">The stack, whose folder an alpha that is a picture is relative to.</param>
+/// <param name="Folder">The stack's folder, which an alpha that is a picture is relative to, as a stroke reads it.</param>
 /// <param name="Brush">The brush.</param>
 /// <param name="PreviewFolder">The content-addressed folder the picture goes in.</param>
-public sealed record StackBrushPreviewAsk(string Session, StackBrush Brush, string PreviewFolder);
+public sealed record BrushPreviewAsk(string Folder, StackBrush Brush, string PreviewFolder);
 
 /// <summary>Asks for one picture of a loaded graph at the size the graph computes it.</summary>
 /// <param name="Session">The graph.</param>

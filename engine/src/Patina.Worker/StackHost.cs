@@ -80,12 +80,6 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         return new() { Type = IpcTypes.Ok, Sampled = Find(ask.Session).SampleAt(ask.U, ask.V) };
     }
 
-    /// <summary>A stroke of a brush drawn small into the preview folder, for a brush panel to show (#123).</summary>
-    public IpcMessage PreviewBrush(IpcMessage request) {
-        var ask = request.StackBrushPreview ?? throw new IpcException("stack.brush-preview names no stack.");
-        return GraphHost.Drawn(Find(ask.Session).PreviewBrush(ask.Brush, ask.PreviewFolder));
-    }
-
     public IpcMessage Sync(IpcMessage request) {
         var sync = request.StackSync ?? throw new IpcException("stack.sync says nothing.");
         Find(sync.Session).Sync(sync, watch);
@@ -794,44 +788,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             return enlarged;
         }
 
-        PaintBrush Brush(StackBrush brush) => StrokeShapes.Brush(brush, Alpha(brush.Alpha));
-
-        /// <summary>A stroke of a brush drawn small, with its alpha, and its picture's hash.</summary>
-        public string? PreviewBrush(StackBrush brush, string folder) {
-            var image = BrushPreviews.Draw(Brush(brush));
-            var png = PngCodec.Encode(new(image.Width, image.Height, image.ToTexels()));
-            var hash = Convert.ToHexStringLower(SHA256.HashData(png));
-            GraphPreviews.Store(folder, hash, png);
-            return hash;
-        }
-
-        /// <summary>A named alpha, or a picture beside the stack read through its red channel.</summary>
-        IBrushMask? Alpha(string? name) {
-            if (name is null || name == PaintAlphas.Round) {
-                return null;
-            }
-
-            if (PaintAlphas.Find(name) is { } shelved) {
-                return shelved;
-            }
-
-            var file = Path.GetFullPath(name, folder);
-            if (alphas.TryGetValue(file, out var held)) {
-                return held;
-            }
-
-            try {
-                var picture = PngCodec.Decode(SharedFile.ReadAllBytes(file));
-                PaintImage image = new(picture.Width, picture.Height);
-                for (var at = 0; at < picture.Width * picture.Height; at++) {
-                    image[at] = PaintImage.Pack(picture.Pixels[at * 4] / 255f, 0f, 0f, 1f);
-                }
-
-                return alphas[file] = new PaintImageMask(image, 0);
-            } catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException) {
-                throw new IpcException($"'{name}' would not read as an alpha: {e.Message}");
-            }
-        }
+        PaintBrush Brush(StackBrush brush) => StrokeShapes.Brush(brush, StrokeShapes.Alpha(brush.Alpha, folder, alphas));
 
         /// <summary>
         ///     Makes a copy the journal holds. ⚠ As its turn comes and not as it begins: a replay begins every stroke

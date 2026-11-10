@@ -1,3 +1,6 @@
+using Patina.Ipc;
+using System.Security.Cryptography;
+using Vixen.Core.Imaging;
 using Vixen.Core.Mathematics;
 using Vixen.Texturing.Painting;
 
@@ -26,6 +29,18 @@ static class BrushPreviews {
     const int Steps = 96;
 
     const uint White = 0xFFFFFFFFu;
+
+    /// <summary>brush.preview: the stroke drawn into the preview folder, answered with its picture's hash.</summary>
+    /// <exception cref="IpcException">It names no brush, or an alpha that would not read.</exception>
+    public static IpcMessage Answer(IpcMessage request) {
+        var ask = request.BrushPreview ?? throw new IpcException("brush.preview names no brush.");
+        var alpha = StrokeShapes.Alpha(ask.Brush.Alpha, ask.Folder, new(StringComparer.Ordinal));
+        var image = Draw(StrokeShapes.Brush(ask.Brush, alpha));
+        var png = PngCodec.Encode(new(image.Width, image.Height, image.ToTexels()));
+        var hash = Convert.ToHexStringLower(SHA256.HashData(png));
+        GraphPreviews.Store(ask.PreviewFolder, hash, png);
+        return GraphHost.Drawn(hash);
+    }
 
     /// <summary>The stroke, drawn the same every time for the same brush.</summary>
     /// <param name="brush">The brush, its alpha found.</param>

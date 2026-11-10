@@ -38,7 +38,8 @@ first pressure rather than tapering from 1.
 asks the Worker to draw one stroke of the brush along a wave, its pressure rising and falling, white on nothing, into the
 preview cache; the client is given its hash. Everything a brush has but its size is a share of its radius or none of it,
 so drawn at one radius the stroke shows what the brush is at any, and a 400-texel brush does not draw as a white bar.
-It is per stack because an alpha that is a picture is found relative to the stack, as a stroke finds it.
+It is per stack because an alpha that is a picture is found relative to the stack, as a stroke finds it. It needs no
+device and no stack loaded in the Worker, only that folder, so it draws with no GPU and while a stroke evaluates.
 
 **A material brush lays its maps as a fill does.** Its source takes a fill's `projection`, `planarAxis` and `placement`,
 and the one-layer stack it reads is that fill. So Triplanar lays a material in the model's space at one size wherever the
@@ -51,7 +52,7 @@ and the rest as Also paints. A mask still takes its grey from the picture on scr
 
 ## Consequences
 
-- The Worker's wire gains `StackPaintPart.Resume`, `stack.sample` and `stack.brush-preview`.
+- The Worker's wire gains `StackPaintPart.Resume`, `stack.sample` and `brush.preview`.
 - A face angle (`StackBrush.Facing`, Vixen's `PaintOcclusion.Facing`) is measured per triangle, at its middle. On a mesh
   of large triangles the edge of what it keeps is the triangles' edges.
 - Quick mask (#127), tangent and planar stamp alignment and additive height (#123) are not decided here.
