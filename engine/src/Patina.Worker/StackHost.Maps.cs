@@ -37,7 +37,9 @@ sealed partial class StackHost {
         /// <summary>
         ///     One layer of this set evaluated alone, as the only layer of its set, over the channels' defaults: a
         ///     flattened folder composites its canvas, any other layer what it holds (#107). Its own mask and
-        ///     opacity count. The caller disposes it.
+        ///     opacity count. The caller disposes it. ⚠ Without the set's bake, which <see cref="Run" /> lays beneath
+        ///     the layers (#86): the bake is the set's and not the layer's, and a normal combined with it would no
+        ///     longer be what the folder paints.
         /// </summary>
         /// <param name="id">The layer.</param>
         /// <param name="name">What its files are named after: its name, with nothing a file name cannot hold.</param>
