@@ -220,18 +220,22 @@ public sealed class StackVocabularyTests {
     ///     so no statistics node is offered as either, and the equaliser, whose output is a picture, still is. Nor is a
     ///     node whose one image is a mesh map (#179), a composite of two normal maps, or one with two pictures out
     ///     (#176); and wave 5's one-picture nodes are both, Compare among them (#110), and Distance Colour, whose first
-    ///     image is the colour it pads out from a mask an input names.
+    ///     image is the colour it pads out from a mask an input names. Wave 8's placement helpers, Instance Range and
+    ///     Atlas Pack, read a placement's numbers or pack pictures and say so in their files; its distance compounds
+    ///     and its two filter atoms are offered.
     /// </summary>
     [Fact]
     public void No_statistics_node_is_offered_as_a_filter_or_a_mask_step() {
         var vocabulary = StackDocuments.Vocabulary;
         string[] refused = [
             "Analysis/Histogram", "Analysis/Histogram Render", "Analysis/Summed Area Table", "Source/Volume Noise",
-            "Source/Volume Mask", "Source/Volume Gradient", "Surface/Normal Blend", "Utility/Frequency Split"
+            "Source/Volume Mask", "Source/Volume Gradient", "Surface/Normal Blend", "Utility/Frequency Split",
+            "Utility/Atlas Pack", "Utility/Instance Range"
         ];
         string[] offered = [
             "Colour/Histogram Equalise", "Analysis/Distance", "Analysis/Flood Fill", "Surface/Height Shadow",
-            "Surface/Bevel Height", "Analysis/Compare", "Analysis/Distance Colour"
+            "Surface/Bevel Height", "Analysis/Compare", "Analysis/Distance Colour", "Analysis/Directional Distance",
+            "Surface/Height Extrude", "Adjust/Outline", "Utility/Fill from Edges"
         ];
 
         Assert.All(
@@ -295,6 +299,7 @@ public sealed class StackVocabularyTests {
         );
         Assert.Contains(vocabulary.Sources, static source => source.Node == "Source/Noise");
         Assert.Contains(vocabulary.Sources, static source => source.Node == "Noise/Clouds");
+        Assert.Contains(vocabulary.Sources, static source => source.Node == "Source/Blue Noise");
         Assert.DoesNotContain(vocabulary.Sources, static source => source.Node == "Source/Bitmap");
         Assert.All(vocabulary.Sources, static source => Assert.Empty(source.Inputs!));
         Assert.Equal(
