@@ -7,6 +7,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- A bake shades its texture set: the baked normal lies beneath the set's normal and the baked ambient occlusion multiplies its occlusion, in the viewport and in every export, whether or not the set has those channels, so a low mesh lights with its high mesh's detail as soon as it is baked. Properties sets how each reaches the set once it has a bake: Combine (Multiply for occlusion), Replace, where the bake is where the channel starts and paint covers it, or Off. A normal baked in object space is left out. Through the API `setSettings` takes `bakedNormal` and `bakedOcclusion` (ADR 0023).
+- A texture set says when its mesh maps need baking again: when its mesh changed after the bake, or its UV set did. Layers says which, the Bake dialog marks each set whose maps no longer fit it, and Checks lists it with a way to the Bake dialog. Through the API a stack's state and a project's documents carry `bakeStale`, and the check is `bake-stale`.
 - Properties sets the texture set's size, at the top with the document's other settings: its width and height each one of the offered sides, so a set can be 2048 × 512. Changing it rewrites no paint: a layer painted at another size is shown and exported resampled, and the next stroke on a smaller one enlarges it exactly, each texel repeated, so nothing is lost either way. A layer painted larger than its set is not painted smaller, and says to set the size back. An export's own size for a set changes only the files it writes, keeping the set's shape. Through the API one command, `setSettings`, changes a set's size, UV set and height to normal as one undo step (ADR 0020).
 - A texture set can be laid out in any of its mesh's UV sets: UV set in Properties, shown when the mesh has more than one, where Height to normal is now too, and a line says what the mesh under the set is. Strokes, the bake, the export's padding, checks, Preserve Paint and the viewport all use it, and a part without that UV set is named. A bake left to choose bakes each texture set in its own UV set, a mesh of one material's too, and `BakeRequest.uvSet` asks for another. Decals and paths follow the set's UV set through its mesh maps.
 - New Project takes the high poly mesh to bake from, and says what the chosen mesh is before it is brought in.
@@ -151,6 +153,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A graph node that carries a number or a setting under a name its node has no field for says so (`TG0025`): a warning while you edit, and a bake refuses it, since nothing would read it. A typo in a hand-edited graph used to compile and quietly do nothing.
 
 ### Fixed
+
+- A map a texture set stops writing leaves the viewport with it: a channel removed, or a bake switched off, no longer leaves its last picture on the mesh.
 
 - Don't Save, or closing a document discarding its edits through the API, no longer brings the thrown-away edits back as an offer to recover them the next time the document opens. An autosave still being written when the edits were thrown away, or when they were saved, used to land a moment later; now it never does, and its files go too.
 - An OBJ finds its material library (`mtllib`), so the viewport draws its parts in their own colors and a Color map with materials as its source bakes them rather than grey. A `.gltf` whose buffer is a `.bin` beside it reads too. Files a mesh names beside itself are read the way the engine reads every library file, letting others write over them meanwhile.
