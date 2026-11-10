@@ -109,14 +109,8 @@ export class MeshReloadDialog {
 
   protected choose(set: string, material: string | null): void {
     this.chosen.update(all => {
-      const next = { ...all };
-      if (material) {
-        next[set] = material;
-      } else {
-        delete next[set];
-      }
-
-      return next;
+      const kept = Object.entries(all).filter(([held]) => held !== set);
+      return Object.fromEntries(material ? [...kept, [set, material]] : kept);
     });
   }
 
