@@ -4474,7 +4474,7 @@ export interface components {
       role: string;
       /** @description The Patina that published it, as `Patina 0.9.0`. */
       writer: string;
-      /** @description The compounds it carries under `Compounds/`, and what each was called where it came from. */
+      /** @description The compounds it carries under `Compounds/`, and what each was called before. */
       compounds: components['schemas']['PackageCompound'][];
       /** @description The compounds it reads from those that ship with Patina, which it does not carry. */
       shipped: string[];

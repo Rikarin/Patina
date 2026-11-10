@@ -34,8 +34,7 @@ class PackageManifest:
             graph (str): The graph's file, beside this one.
             role (str): What it is used as: `material`, `mask`, `filter` or `brush`.
             writer (str): The Patina that published it, as `Patina 0.9.0`.
-            compounds (list[PackageCompound]): The compounds it carries under `Compounds/`, and what each was called where
-                it came from.
+            compounds (list[PackageCompound]): The compounds it carries under `Compounds/`, and what each was called before.
             shipped (list[str]): The compounds it reads from those that ship with Patina, which it does not carry.
             files (list[PackageFile]): The pictures it carries under `files/`, and how the graph named each.
      """

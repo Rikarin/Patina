@@ -12970,7 +12970,7 @@
             "items": {
               "$ref": "#/components/schemas/PackageCompound"
             },
-            "description": "The compounds it carries under \u0060Compounds/\u0060, and what each was called where it came from."
+            "description": "The compounds it carries under \u0060Compounds/\u0060, and what each was called before."
           },
           "shipped": {
             "type": "array",
