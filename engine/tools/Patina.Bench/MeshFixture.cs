@@ -12,7 +12,7 @@ namespace Patina.Bench;
 ///     the smallest scene where a metal, a dielectric and their reflections can all be told apart in a screenshot.
 ///     Vixen's model writer stores no materials, so this writes the glTF container itself.
 /// </summary>
-static class MeshFixture {
+public static class MeshFixture {
     const int ComponentFloat = 5126;
     const int ComponentUnsignedInt = 5125;
     const uint GlbMagic = 0x46546C67;
