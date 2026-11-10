@@ -7,6 +7,7 @@ using Vixen.Graphics;
 using Vixen.Interchange;
 using Vixen.NodeGraph;
 using Vixen.TextureGraph;
+using Vixen.TextureGraph.Drawing;
 
 namespace Patina.Graphs;
 
@@ -19,7 +20,8 @@ public readonly record struct PictureStamp(string Path, long Length, DateTime Wr
 public sealed record FilledPictures(IReadOnlyList<NodeDiagnostic> Refusals, IReadOnlyList<PictureStamp> Stamps);
 
 /// <summary>
-///     Fills the external images a compilation names and cannot carry: bitmaps from files through Vixen's decoder.
+///     Fills the external images a compilation names and cannot carry: bitmaps from files through Vixen's decoder, and
+///     the text and SVG drawings Vixen draws from a font or an SVG file found the way a bitmap is.
 ///     Compiling loads them again after every structural edit, so decoded pixels are kept, up to a budget, under each
 ///     file's length and time. Everything here can be read again, so a new Worker starts without it.
 /// </summary>
@@ -65,6 +67,11 @@ public sealed class GraphPictures {
         List<PictureStamp> stamps = [];
         foreach (var external in owed) {
             var reference = external.Asset.Trim();
+            if (TextureDrawings.Draws(reference)) {
+                Draw(uploads, plan, external, roots, refusals, stamps);
+                continue;
+            }
+
             try {
                 PictureStamp stamp;
                 Decoded picture;
@@ -100,6 +107,47 @@ public sealed class GraphPictures {
         }
 
         return new(refusals, stamps);
+    }
+
+    /// <summary>
+    ///     Draws a Source/Text or a Source/Vector. Vixen draws it at the bake's size; what Patina owns is where its
+    ///     font or SVG is, found as a bitmap is and read sharing write, and the stamp that notices the file changing.
+    /// </summary>
+    static void Draw(
+        TextureUploads uploads,
+        TexturePlan plan,
+        TextureGraphExternal external,
+        IReadOnlyList<string> roots,
+        List<NodeDiagnostic> refusals,
+        List<PictureStamp> stamps
+    ) {
+        var file = TextureDrawings.FileOf(external.Asset);
+        try {
+            TextureDrawings.Fill(
+                uploads,
+                plan,
+                external,
+                name => {
+                    var stamp = StampOf(Locate(name, roots));
+                    stamps.Add(stamp);
+                    return SharedFile.ReadAllBytes(stamp.Path);
+                }
+            );
+        } catch (Exception e) when (e is IOException
+                                        or InvalidDataException
+                                        or UnauthorizedAccessException
+                                        or ArgumentException
+                                        or FormatException) {
+            refusals.Add(
+                new(
+                    Problem,
+                    file is null
+                        ? $"This graph's text cannot be drawn: {e.Message}"
+                        : $"This graph draws '{file}', which cannot be drawn: {e.Message}",
+                    external.Node
+                )
+            );
+        }
     }
 
     /// <summary>A map of the bake this graph reads, by what it measures.</summary>

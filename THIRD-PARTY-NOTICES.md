@@ -8,10 +8,15 @@ compatibility as each one arrives (plan §11). NuGet and npm packages are listed
 |---|---|---|---|---|
 | xUI | `editor/` (npm packages `@xui/*`) | see `editor/pnpm-lock.yaml` | Apache-2.0 | https://github.com/rikarin/xui |
 | SQLite (native `e_sqlite3`) | `Patina.Library`, through SQLitePCLRaw | see `engine/Directory.Packages.props` | Public domain | https://sqlite.org |
+| HarfBuzz (native `libHarfBuzzSharp`) | `patina-worker` and `patina`, through `Vixen.TextureGraph.Drawing` → `Vixen.Ui.Text` and the NuGet package `HarfBuzzSharp`, to shape a Text node's string | see `external/Vixen/Directory.Packages.props` | MIT ("Old MIT") | https://github.com/harfbuzz/harfbuzz |
+| Open Sans (`OpenSans-Regular.ttf`, embedded in `Vixen.TextureGraph.Drawing.dll`) | The face a Text node draws with when it names none | as in `external/Vixen/Editor/Vixen.Editor.App/Fonts` | OFL-1.1, whose text is `Fonts/OFL.txt` there and ships in Vixen's `NOTICE` | https://github.com/googlefonts/opensans |
 | Assimp (native `libassimp`, `Assimp64.dll`) | `patina-worker`, through `Vixen.Interchange` and the NuGet package `Ultz.Native.Assimp` 6.0.2 | 5.4.1 on Linux and macOS, 6.0.2 on Windows | BSD-3-Clause, below | https://github.com/assimp/assimp |
 
 Assimp links zlib in statically (zlib licence), with the other libraries its own source tree credits. BSD-3-Clause is compatible
 with GPLv3 and requires the text below in a binary distribution, so this file ships in the app's resources.
+
+HarfBuzz's MIT licence is compatible with GPLv3. The OFL lets a font be bundled with software under any licence as long as
+the font is not sold on its own and keeps its licence, which is what embedding the face in a library is.
 
 Vixen (Apache-2.0, through `external/Vixen`) ships in the Worker. These are expected and must be listed here, with their licences
 confirmed, when they ship: MoltenVK and an EXR library.

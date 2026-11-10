@@ -144,6 +144,10 @@ public sealed class GraphCatalogueProcessTests : IDisposable {
             yield return new GraphSetText(node, "Source", "picture.png");
         }
 
+        if (type.Path == "Source/Vector") {
+            yield return new GraphSetText(node, "File", "drawing.svg");
+        }
+
         if (type.Path == "Output/Output") {
             yield return new GraphSetText(node, "Usage", "normal");
         }
@@ -225,6 +229,14 @@ public sealed class GraphCatalogueProcessTests : IDisposable {
 
         var pixels = Enumerable.Range(0, 4 * 4 * 4).Select(static i => (byte)(i * 4)).ToArray();
         PngCodec.Save(Path.Combine(Library, "picture.png"), new(4, 4, pixels));
+        File.WriteAllText(
+            Path.Combine(Library, "drawing.svg"),
+            """
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+              <circle cx="5" cy="5" r="3" fill="#c33"/>
+            </svg>
+            """
+        );
         NodeGraphAsset host = new() {
             Name = "Catalogue",
             Nodes = [

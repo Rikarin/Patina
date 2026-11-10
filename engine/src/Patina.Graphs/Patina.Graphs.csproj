@@ -7,6 +7,7 @@
     <ProjectReference Include="../Patina.Export/Patina.Export.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Core/Vixen.Core.Yaml/Vixen.Core.Yaml.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.TextureGraph/Vixen.TextureGraph.csproj"/>
+    <ProjectReference Include="../../../external/Vixen/Tools/Vixen.TextureGraph.Drawing/Vixen.TextureGraph.Drawing.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.Texturing/Vixen.Texturing.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.NodeGraph/Vixen.NodeGraph.csproj"/>
     <ProjectReference Include="../../../external/Vixen/Tools/Vixen.Interchange/Vixen.Interchange.csproj"/>
